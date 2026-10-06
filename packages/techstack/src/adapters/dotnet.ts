@@ -4,7 +4,7 @@
  * Parses .csproj files and project.assets.json to produce
  * DependencyObservation[] for .NET workspaces.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier A
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier A
  */
 
 import { readdir, readFile } from 'node:fs/promises';

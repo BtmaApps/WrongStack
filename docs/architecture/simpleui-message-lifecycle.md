@@ -228,7 +228,7 @@ suggestion chips; body via react-markdown + `rehype-pretty-code` +
 
 ## 8. Protocol envelope & validation
 
-Envelope (`packages/webui-server/src/protocol/types.ts`):
+Envelope (`packages/webui-protocol/src/types.ts`):
 
 ```ts
 interface ProtocolEnvelope { type: string; payload?: unknown }

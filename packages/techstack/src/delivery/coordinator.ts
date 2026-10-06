@@ -9,7 +9,7 @@
  * 3. Durable: survives store close/reopen; pending entries retry on recovery.
  * 4. Bounded: at most one delivery per report per session.
  *
- * @see docs/specs/techstack-sdd.md §5
+ * @see docs/archive/specs/techstack-sdd.md §5
  */
 
 import type { TechStackStore } from '../store/sqlite.js';

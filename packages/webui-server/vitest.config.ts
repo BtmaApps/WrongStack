@@ -54,7 +54,7 @@ export default defineConfig({
        * core-src to core-dist in the same commit that moved them, which is
        * exactly the kind of silent behaviour change a move should not carry.
        *
-       * See docs/audit/webui-full-review-2026-09-03.md B-07.
+       * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-07.
        */
       ...coreAliases(path.resolve(__dirname, '../core')),
     },

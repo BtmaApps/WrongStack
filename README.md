@@ -366,7 +366,7 @@ The built-in toolbox spans filesystem edits, code quality (`lint`/`format`/
 controls, and a project-owned Codebase Index. The index combines SQLite/FTS5
 substring search, local semantic ranking, content-hash invalidation, symbol and
 call-graph navigation, and bounded parser workers for large repositories. Full map:
-[reference → tools](docs/reference.md#built-in-tools-67).
+[reference → tools](docs/reference.md#built-in-tools).
 
 **[WrongStack ToolFlow](docs/toolflow.md)** composes repeated or dependent tool
 calls in sandboxed JavaScript and returns the findings needed for the next
@@ -421,7 +421,7 @@ settings; interactive decisions use the existing human-input form. See
 For executable phase goals, `/goals` and WebUI **My Goals** provide a project
 catalog with goal ids, owning sessions, task/phase progress and blockers.
 Git-backed terminal goals run in separate checkouts and retain their goal
-branches for review before integration. See [project goal tracking](docs/plans/goal-project-tracking-2026-10-05.md).
+branches for review before integration. See [project goal tracking](docs/architecture/project-goals.md).
 
 ### Multi-agent fleet + Director
 
@@ -511,7 +511,7 @@ runs that bridge headless).
 - **Curated, not chaotic** — a review queue and hygiene pipeline keep memory trustworthy; deletions are guarded.
 - **Checked, not trusted blindly** — a read-only Memory Companion verifies injected memories against current source, agents record evidence-backed feedback after real use, and a memory can state when it applies.
 
-See [`docs/sage/ARCHITECTURE.md`](docs/sage/ARCHITECTURE.md).
+See [`docs/archive/sage/ARCHITECTURE.md`](docs/archive/sage/ARCHITECTURE.md).
 
 ### Tasks & Kanban — active work tracking
 
@@ -732,7 +732,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 | [Subcommands](docs/subcommands/) | Every `wstack <subcommand>` |
 | [Configuration](docs/configuration.md) | Config files, env vars, project conventions |
 | [Architecture](docs/architecture.md) | Kernel primitives, pipelines, agent lifecycle |
-| [SAGE memory](docs/sage/ARCHITECTURE.md) | Long-term memory: storage, anchors, knowledge graph, retrieval |
+| [SAGE memory](docs/archive/sage/ARCHITECTURE.md) | Long-term memory: storage, anchors, knowledge graph, retrieval |
 | [SAGE feedback lifecycle](docs/sage-feedback-lifecycle.md) | Memory Companion, validity conditions, evidence-based feedback |
 | [OAuth sign-in](docs/oauth-signin.md) | Subscription authentication |
 | [HQ service](docs/hq-service.md) | Always-on HQ under systemd |

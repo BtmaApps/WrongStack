@@ -12,7 +12,7 @@
  * - `Analyze`  → POST /api/techstack/analyze   — + registries, OSV, and LLM research
  * - Deep dive  → POST /api/techstack/deps/:id/research — one package, on demand
  *
- * @see docs/specs/techstack-sdd.md §4.2, §6
+ * @see docs/archive/specs/techstack-sdd.md §4.2, §6
  */
 
 import { toErrorMessage } from '@wrongstack/core/utils/error';

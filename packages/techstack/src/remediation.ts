@@ -5,7 +5,7 @@
  * dependency files — the plan is read-only output that the user must
  * explicitly approve before any `language_package` or `install` tool runs.
  *
- * @see docs/specs/techstack-sdd.md §2 (R25), §9
+ * @see docs/archive/specs/techstack-sdd.md §2 (R25), §9
  */
 
 import { toErrorMessage } from '@wrongstack/core/utils/error';

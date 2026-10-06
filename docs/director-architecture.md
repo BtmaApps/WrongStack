@@ -15,7 +15,7 @@
 3. [Phase Status](#3-phase-status)
 4. [Improvement Opportunities](#4-improvement-opportunities)
 5. [Open Issues](#5-open-issues)
-6. [Feature & Fix Roadmap](#6-feature--fix-roadmap)
+6. [Feature & Fix Roadmap](#6-feature--fix-roadmap-as-of-018)
 
 ---
 

@@ -3,7 +3,7 @@
  * when a project's leader session terminates. Carries no runnable command by
  * default; the broadcast is informational. The envelope is piggybacked on
  * the existing client WS channel via `client.command_poll` (per
- * `docs/plans/hq-evolution-2026-08.md` §10.1).
+ * `docs/archive/plans/hq-evolution-2026-08.md` §10.1).
  *
  * Two event types:
  *  - `peer.rehydrate` — the project lost its leader AND has at least one

@@ -2,8 +2,8 @@
 
 WrongStack treats prompt caching as **provider-agnostic**. Every request carries a
 stable cache-partition key derived from the frozen system-prompt prefix, and each
-provider wire maps that single concept onto its own native mechanism. You get cache
-hits without configuring anything per provider, and you can see the real payoff in
+provider wire maps that single concept onto its own native mechanism. Adapters expose cache controls and usage where supported. Actual hits depend on
+prefix stability and provider behavior; inspect recorded usage in
 `/context`.
 
 ## The unified cache key
@@ -45,7 +45,8 @@ plan + autonomy contributors + the two per-turn volatile blocks) can exceed that
 the single chokepoint in the Anthropic wire `buildBody`: when over budget it keeps
 the first marker (static prefix anchor), the last (largest incremental prefix), any
 ttl-pinned marker, then fills remaining slots by the widest prefix gap — and strips
-the rest. It never *adds* a breakpoint, so it can only preserve or improve caching.
+the rest. It never adds a breakpoint. The cap prevents an invalid request; cache-hit or
+latency improvement must be measured separately.
 
 ## Gemini explicit caching (opt-in)
 
@@ -56,7 +57,7 @@ hashes the prefix, reuses a live cache or creates one (`POST .../cachedContents`
 then references it and omits the now-cached fields from the live body. State lives on
 the provider instance; the resource expires by server TTL (no dispose plumbing
 needed). It is **best-effort**: a too-small prefix or any HTTP error falls back to a
-normal inline request, so enabling it can never break a call. Default is off —
+normal inline request, while cancellation and normal provider failures still follow the request lifecycle. Default is off —
 implicit caching already covers the common case for free.
 
 ## Visibility

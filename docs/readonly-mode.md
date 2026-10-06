@@ -9,13 +9,13 @@ Read-only mode is a **session-scoped toggle** that prevents the active agent and
 Read-only mode is enforced by the `ReadOnlyPermissionPolicy` class in `packages/core/src/security/readonly-permission-policy.ts`. This is a **wrapper** around the normal permission policy that intercepts every tool evaluation and checks two things:
 
 1. **Is the session in read-only mode?** — reads `ctx.meta['readOnly']`
-2. **Does the tool carry a mutation capability?** — checks tool capabilities
+2. **Does the tool mutate?** — checks `tool.mutating === true` as well as mutation capabilities
 
 | Condition | Result |
 |---|---|
 | `readOnly` not set or `false` | Pass-through — the wrapper is a no-op |
-| `readOnly === true` + no mutation capability | Pass-through — read-only tools work normally |
-| `readOnly === true` + mutation capability | **Denied** — unless the tool targets a `.md` file under `.temp_files/` |
+| `readOnly === true` + neither mutation declaration nor mutation capability | Pass-through — read-only tools work normally |
+| `readOnly === true` + mutation declaration or capability | **Denied** — unless the tool targets a `.md` file under `.temp_files/` |
 
 ### Mutation capabilities blocked
 
@@ -120,13 +120,13 @@ This means subagents never need their own `ctx.meta['readOnly']` check — their
 | `packages/core/src/security/readonly-permission-policy.ts` | Policy wrapper class |
 | `packages/core/src/security/index.ts` | Barrel export |
 | `packages/core/src/types/permission.ts` | `PermissionDecision.source` includes `'readonly_mode'` |
-| `packages/core/tests/security/readonly-permission-policy.test.ts` | 12 unit tests |
+| `packages/core/tests/security/readonly-permission-policy.test.ts` | Policy regression coverage |
 
 ---
 
 ## Testing
 
-12 unit tests cover the policy behaviour:
+The policy tests cover mutation declarations, capabilities and report-path exceptions:
 
 ```
 ✓ passes through when ctx.meta.readOnly is not set
@@ -154,5 +154,5 @@ pnpm --filter @wrongstack/core test tests/security/readonly-permission-policy.te
 ## Limitations
 
 - **No global config persistence**: Read-only mode is session-scoped and stored in `ctx.meta`. It is not persisted to `config.json` and must be re-enabled on each session.
-- **Tool capability coverage**: The policy relies on tools correctly declaring their capabilities. A tool that omits a mutation capability from its declaration would bypass the check.
+- **Tool metadata coverage**: `toolMutates` blocks `mutating: true` even without capability labels. A tool that omits both its mutation declaration and relevant capabilities can still bypass this classification.
 - **`.temp_files/*.md` path check**: The exception uses string-based path resolution. Symbolic links or alternative path representations may bypass the check — the policy resolves paths against the project root for basic traversal protection.

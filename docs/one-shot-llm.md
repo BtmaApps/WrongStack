@@ -230,7 +230,7 @@ For internal code that needs one-shot LLM calls without going through
 the tool system:
 
 ```ts
-import { OneShotOrchestrator } from '@wrongstack/core';
+import { OneShotOrchestrator } from '@wrongstack/core/execution';
 
 const oneShot = new OneShotOrchestrator({
   buildProvider: myBuildProvider,
@@ -250,7 +250,7 @@ console.log(result.text); // "Paris"
 
 ## Testing
 
-The OneShotOrchestrator has **12 unit tests** covering:
+The OneShotOrchestrator regression suite covers:
 
 - Basic completion and token counting
 - Provider resolution (explicit, config defaults, role-based)
@@ -261,7 +261,7 @@ The OneShotOrchestrator has **12 unit tests** covering:
 - Timeout via AbortSignal
 - Error message preservation on transient failures without fallback
 
-The `llm` tool wrapper has **4 unit tests** covering:
+The `llm` tool wrapper regression suite covers:
 
 - Correct tool name and registration
 - Error on missing model/provider without defaults

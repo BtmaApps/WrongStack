@@ -25,7 +25,7 @@ import { makeFakeMemoryStore } from './fake-memory-store.js';
  *   3. The savings (~150 tokens / 4% of total) wouldn't close the doc
  *      gap anyway — that gap is structural (TIER3 tools + skill bodies).
  *
- * See commit history: docs/token-saving-tiers-design.md documents the
+ * See commit history: docs/archive/designs/token-saving-tiers-design.md documents the
  * "different optimization axes" relationship between `medium` (fewer
  * tools + full guidance) and `aggressive` (many tools + compact guidance).
  *

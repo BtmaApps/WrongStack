@@ -6,7 +6,7 @@
  * objects. This is the single entry point for workspace discovery —
  * all downstream code calls this, never the raw detector directly.
  *
- * @see docs/specs/techstack-sdd.md §3.2, §4.1
+ * @see docs/archive/specs/techstack-sdd.md §3.2, §4.1
  */
 
 import { createHash } from 'node:crypto';

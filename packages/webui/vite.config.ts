@@ -150,7 +150,7 @@ export default defineConfig({
               // `React.lazy`; the leak was purely this chunk assignment.
               //
               // Measured: eager bytes named by index.html 7,613 kB → 3,355 kB.
-              // See docs/audit/webui-full-review-2026-09-03.md B-18.
+              // See docs/archive/local/audit/webui-full-review-2026-09-03.md B-18.
               name: 'vite-preload',
               test: /vite\/preload-helper/,
               priority: 100,

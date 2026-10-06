@@ -1,7 +1,7 @@
 # Requirements Intake Module — SDD
 
 > Status: implemented (v0.298.3) · Package: `packages/requirement-intake` ·
-> Consumed by: future spec-driven modules (`@wrongstack/sdd`)
+> Consumed by: `@wrongstack/sdd`, CLI and WebUI intake flows
 
 ## 1. Purpose
 

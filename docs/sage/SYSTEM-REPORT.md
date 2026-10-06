@@ -1,9 +1,9 @@
 # SAGE Memory — Full System Report
 
-> **Status:** Source-verified architecture reference (as of 2026-08-11, post host-wiring / Review / remap work)  
-> **Primary package:** `@wrongstack/sage`  
-> **Related packages:** `sage-mcp`, `runtime`, `cli`, `tools`, `core`, `tui`, `webui`, `webui-server`, `simpleui`  
-> **Supersedes for day-to-day reading:** sections of [`ARCHITECTURE.md`](./ARCHITECTURE.md) that still describe JSONL as the runtime store (JSONL is migration-only).  
+> **Status:** Source-verified architecture reference (storage/IPC reference with retrieval ownership refreshed 2026-10-06)<br>
+> **Primary package:** `@wrongstack/sage`<br>
+> **Related packages:** `sage-mcp`, `runtime`, `cli`, `tools`, `core`, `tui`, `webui`, `webui-server`, `simpleui`<br>
+> **Supersedes for day-to-day reading:** sections of [`ARCHITECTURE.md`](../archive/sage/ARCHITECTURE.md) that still describe JSONL as the runtime store (JSONL is migration-only).<br>
 > **Package owner summary:** [`packages/sage/README.md`](../../packages/sage/README.md)
 
 This document is the end-to-end reference for SAGE: database layout, process model, IPC, retrieval, tools, MCP, middleware, host wiring, and every host surface (CLI, TUI, WebUI, SimpleUI, Desktop, ACP).
@@ -167,16 +167,16 @@ Indexes: `from_node`, `to_node`, `(to_node, relation)`.
 
 #### `candidates` (review queue)
 
-`id`, `data` (JSON), `status`, `created_at`, `updated_at`, `canonical_text`  
+`id`, `data` (JSON), `status`, `created_at`, `updated_at`, `canonical_text`<br>
 Indexes: `(status, created_at DESC)`, `(status, canonical_text)`.
 
 Carries hygiene and triage proposals (`memory_review`, `targetMemoryId`, `suggestedAction`, `reviewReason`).
 
 #### `audit_log`
 
-`id AUTOINCREMENT`, `event`, `at`, `trace_id`, `data`  
-- Cap: **1000** rows  
-- Prune every **256** inserts  
+`id AUTOINCREMENT`, `event`, `at`, `trace_id`, `data`<br>
+- Cap: **1000** rows<br>
+- Prune every **256** inserts<br>
 - Recent activity trail, not a full compliance log
 
 #### `schema_meta`
@@ -221,10 +221,10 @@ injectionCount?, useCount?, ownerSessionId?
 
 All of the following are in `VALID_KINDS` / tool schema (accepted by `rememberSage`):
 
-**Classic:**  
+**Classic:**<br>
 `fact`, `decision`, `convention`, `preference`, `warning`, `anti_pattern`, `workflow`, `bug_root_cause`, `file_note`, `symbol_note`, `command_note`, `summary`, `memory_review`
 
-**Extended (auto-capture / continuity):**  
+**Extended (auto-capture / continuity):**<br>
 `tool_outcome`, `error_pattern`, `session_digest`, `role_operational`, `task_outcome`, `security_signal`, `fleet_convention`
 
 ### 4.3 Scope, status, persistence
@@ -247,8 +247,8 @@ Path/symbol remaps rewrite `path` and/or `symbol` on live memories after renames
 
 ### 4.5 Graph relations
 
-`about_file` | `about_directory` | `about_symbol` | `about_package` | `about_command` | `about_agent`  
-`derived_from` | `validated_by` | `invalidated_by`  
+`about_file` | `about_directory` | `about_symbol` | `about_package` | `about_command` | `about_agent`<br>
+`derived_from` | `validated_by` | `invalidated_by`<br>
 `supersedes` | `contradicts` | `related_to` | `same_topic`
 
 ### 4.6 Audience
@@ -359,8 +359,8 @@ After FTS/LIKE candidate retrieval, multi-token queries are re-ordered with offl
 - Default **on** for queries with ≥2 tokens (`SageSearchOptions.semanticRerank !== false`)
 - Blend weight ≈ 0.25 cosine + original rank position
 - Fail-open: embedding errors leave SQL order unchanged
-- No durable vector index; no external API required
-- `Sage.embeddings.enabled` is reserved for a future durable vector path (no longer emits a “not wired” config warning)
+- This SAGE-local hashing re-ranker needs no external API and does not own a durable vector index
+- Durable semantic retrieval is a separate `@wrongstack/vector-memory` package; hosts compose it through `wrapMemoryPortWithVectorRecall`. See [retrieval ownership](retrieval.md).
 
 ### 7.4 Injection scoring (tool-call path)
 
@@ -388,7 +388,7 @@ score = metadataScore * (metadataWeight + relevance * (1 - metadataWeight))
 metadataWeight default = 0.3
 ```
 
-Metadata score blends importance (×3), confidence (×2), freshness (×1).  
+Metadata score blends importance (×3), confidence (×2), freshness (×1).<br>
 Relevance uses an overlap coefficient over query vs memory tokens.
 
 ### 7.6 Injection output format
@@ -409,8 +409,8 @@ Relevance uses an overlap coefficient over query vs memory tokens.
 
 ### 8.1 Shared `setupSage` (authoritative)
 
-**Implementation:** `packages/sage/src/host-wiring.ts`  
-**CLI re-export:** `packages/cli/src/wiring/sage.ts` → `@wrongstack/sage`  
+**Implementation:** `packages/sage/src/host-wiring.ts`<br>
+**CLI re-export:** `packages/cli/src/wiring/sage.ts` → `@wrongstack/sage`<br>
 **WebUI:** `packages/webui-server/src/server/backend-services.ts` calls `setupSage` and exposes `runSageSessionHygiene` for shutdown
 
 Both hosts install the **same** stack and the **same** throttled full-option hygiene teardown (`sageHygieneOptionsFromConfig`).
@@ -514,13 +514,13 @@ rememberSage
 
 `packages/sage/src/triage/`:
 
-1. **pre-filter** — deterministic KEEP / DISCARD / UNCERTAIN  
-2. **value-score** — anchors, usage, freshness, quality, persistence (+ injector rejection evidence)  
-3. **llm-evaluator** — bounded prompt; rejection pressure appends a `REJ:` line  
-4. **merge-detection**  
+1. **pre-filter** — deterministic KEEP / DISCARD / UNCERTAIN<br>
+2. **value-score** — anchors, usage, freshness, quality, persistence (+ injector rejection evidence)<br>
+3. **llm-evaluator** — bounded prompt; rejection pressure appends a `REJ:` line<br>
+4. **merge-detection**<br>
 5. **action-dispatcher** — auto-apply or propose; repeated `belowScore` rejections can lower importance (never below the 0.9 user-designated floor)
 
-CLI: `/memory triage` defaults to **dry-run**; `--apply` applies updates / merges / files proposals.  
+CLI: `/memory triage` defaults to **dry-run**; `--apply` applies updates / merges / files proposals.<br>
 Proposal filing is shared: `fileTriageProposals` (dedupe pending `targetMemoryId`).
 
 ---
@@ -529,7 +529,7 @@ Proposal filing is shared: `fileTriageProposals` (dedupe pending `targetMemoryId
 
 Source of truth: `createSageTools(service)` in `packages/sage/src/tools/memory-tools.ts` (+ `memory-candidates-tool.ts`).
 
-Registration: `packages/runtime/src/tool-registration.ts`  
+Registration: `packages/runtime/src/tool-registration.ts`<br>
 If SAGE service capability exists → `createSageTools`; otherwise thin legacy tools from `packages/tools/src/memory.ts`.
 
 ### Tools (source order)
@@ -553,10 +553,10 @@ If SAGE service capability exists → `createSageTools`; otherwise thin legacy t
 
 ### `remember` effectiveness rules (tool description)
 
-1. One durable fact per call, self-contained without session context  
-2. Prefer anchors — unanchored memories rarely inject  
-3. Put exact paths / symbols / commands in the text for FTS + path match  
-4. Session scope requires `ownerSessionId`  
+1. One durable fact per call, self-contained without session context<br>
+2. Prefer anchors — unanchored memories rarely inject<br>
+3. Put exact paths / symbols / commands in the text for FTS + path match<br>
+4. Session scope requires `ownerSessionId`<br>
 5. Auto-audience uses host `ctx.meta.agentRole`; MCP forces `no_auto_audience`
 
 ---
@@ -634,7 +634,7 @@ Parser alignment: `packages/tui/src/components/history/sage-output-format.ts` �
 
 ### 13.1 WebSocket protocol
 
-Client ops (`packages/webui-server/src/protocol/client-integrations.ts`):
+Client ops (`packages/webui-protocol/src/client-integrations.ts`):
 
 - `memory.list`
 - `memory.sage.list` / `listPage` / **`listCandidates`** / `get` / `graph` / `update` / `remember` / `delete` / `recover` / `candidateResolve` / `backfillRecoverable` / `forFile`
@@ -664,8 +664,8 @@ Server side:
 
 **FileActivityDrawer** includes a **Memory** tab that mounts `MemoryDrawer` for the open editor file.
 
-Activity bar entry: **Memory** (`BrainCircuit`).  
-Context Dashboard hosts injector + context monitor + audience panels.  
+Activity bar entry: **Memory** (`BrainCircuit`).<br>
+Context Dashboard hosts injector + context monitor + audience panels.<br>
 Settings → Connections reports SAGE ownership, mode, PID, storage, queue, and latency.
 
 ### 13.3 Host wiring
@@ -762,7 +762,7 @@ Deleted tombstones are never eligible for automatic model context. Stale records
     "triage": {
       "dailyDryRun": false        // opt-in daily hygiene + triage proposals
     },
-    "embeddings": { "enabled": false } // reserved for durable vector index future
+    "embeddings": { "enabled": false } // SAGE-local setting; separate vector-memory configuration is described in configuration.md
   }
 }
 ```
@@ -860,18 +860,18 @@ Ops helpers: `scripts/sage-maintenance.mjs`, `scripts/memory-profile.mjs`, `scri
 
 ## 20. End-to-end flow
 
-1. User opens a project in TUI / WebUI / CLI.  
-2. Runtime constructs `createProjectSageMemoryPort` → attaches to the project socket or elects/spawns the daemon.  
-3. Daemon opens `sage.db`, migrates schema, imports JSONL once if needed.  
-4. Host calls `setupSage` → inject / remap / optional capture / context monitor / optional daily timer.  
-5. Agent calls `read packages/foo.ts`.  
-6. Tool-call middleware resolves the path → `retrieveForPath` + related graph → score gates (+ hybrid re-rank on multi-token search paths).  
-7. Accepted memories become evidence / tool suffix → `recordInjection`; UI shows compact inject chip.  
-8. Assistant text is scanned by `InjectionTracker` → matching ids get `recordUse`.  
-9. Rename tools (`mv` / `git mv` / `lsp_rename`) remap anchors (and symbol text when applicable).  
-10. Session consolidator may add long-lived facts **and** a short-lived `session_digest`.  
-11. Teardown (if throttle allows) or daily dry-run runs hygiene; daily pass may file triage proposals.  
-12. Operator reviews proposals in WebUI **Review** tab (single or bulk) or `/memory candidates`.  
+1. User opens a project in TUI / WebUI / CLI.<br>
+2. Runtime constructs `createProjectSageMemoryPort` → attaches to the project socket or elects/spawns the daemon.<br>
+3. Daemon opens `sage.db`, migrates schema, imports JSONL once if needed.<br>
+4. Host calls `setupSage` → inject / remap / optional capture / context monitor / optional daily timer.<br>
+5. Agent calls `read packages/foo.ts`.<br>
+6. Tool-call middleware resolves the path → `retrieveForPath` + related graph → score gates (+ hybrid re-rank on multi-token search paths).<br>
+7. Accepted memories become evidence / tool suffix → `recordInjection`; UI shows compact inject chip.<br>
+8. Assistant text is scanned by `InjectionTracker` → matching ids get `recordUse`.<br>
+9. Rename tools (`mv` / `git mv` / `lsp_rename`) remap anchors (and symbol text when applicable).<br>
+10. Session consolidator may add long-lived facts **and** a short-lived `session_digest`.<br>
+11. Teardown (if throttle allows) or daily dry-run runs hygiene; daily pass may file triage proposals.<br>
+12. Operator reviews proposals in WebUI **Review** tab (single or bulk) or `/memory candidates`.<br>
 13. External clients (`wstack-sage-mcp --project-root .`) talk to the same daemon.
 
 ---
@@ -899,13 +899,13 @@ Ops helpers: `scripts/sage-maintenance.mjs`, `scripts/memory-profile.mjs`, `scri
 
 ## 22. Known limits and design choices
 
-1. **Durable vector index / external embedding API** are not implemented. Soft hybrid re-rank is offline hashing only.  
-2. Daily triage **files proposals** but does not auto-apply status updates (by design). Full LLM quality still depends on host providing `getLlmCall`.  
-3. Path/symbol remaps are **tool-path driven** (`mv`/`git mv`/`lsp_rename`), not a full codebase-index event bus for every rename in the IDE.  
-4. Turn-context injection remains **off by default** so ordinary turns do not break provider prefix caching.  
-5. Soft-deleted tombstones can accumulate → list UIs paginate and keep Active / Deleted / Review separate.  
-6. `Sage.enabled: false` is not “memory off”; explicit tools and `/memory` still work.  
-7. `docs/sage/ARCHITECTURE.md` still contains JSONL-era sections; this report is the runtime source of truth for operators and implementers.
+1. **Semantic retrieval has a separate owner.** `@wrongstack/vector-memory` implements the durable vector store, providers and SAGE fusion. The SAGE-local soft re-ranker remains offline hashing. External MCP facades do not inherit host vector fusion automatically.<br>
+2. Daily triage **files proposals** but does not auto-apply status updates (by design). Full LLM quality still depends on host providing `getLlmCall`.<br>
+3. Path/symbol remaps are **tool-path driven** (`mv`/`git mv`/`lsp_rename`), not a full codebase-index event bus for every rename in the IDE.<br>
+4. Turn-context injection remains **off by default** so ordinary turns do not break provider prefix caching.<br>
+5. Soft-deleted tombstones can accumulate → list UIs paginate and keep Active / Deleted / Review separate.<br>
+6. `Sage.enabled: false` is not “memory off”; explicit tools and `/memory` still work.<br>
+7. `docs/archive/sage/ARCHITECTURE.md` still contains JSONL-era sections; this report is the runtime source of truth for operators and implementers.
 
 ---
 
@@ -949,13 +949,13 @@ WRONGSTACK_SAGE_INLINE=1 ...
 | Document | Role |
 |---|---|
 | [`packages/sage/README.md`](../../packages/sage/README.md) | Ownership boundaries and composition |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Older package architecture write-up (partially superseded) |
-| [`REFACTOR-REPORT.md`](./REFACTOR-REPORT.md) | Historical refactor notes |
+| [`ARCHITECTURE.md`](../archive/sage/ARCHITECTURE.md) | Older package architecture write-up (partially superseded) |
+| [`REFACTOR-REPORT.md`](../archive/sage/REFACTOR-REPORT.md) | Historical refactor notes |
 | [`docs/slash/memory.md`](../slash/memory.md) | `/memory` user-facing command reference |
 | [`docs/configuration.md`](../configuration.md) | `Sage.*` config fields |
 | [`docs/agents.md`](../agents.md) | SAGE invariants for agents/contributors |
-| [`docs/sage-memory-analysis-2026-08-08.md`](../sage-memory-analysis-2026-08-08.md) | Historical gap analysis (several items now closed) |
-| [`docs/audit-2026-08/06-sage-memory.md`](../audit-2026-08/06-sage-memory.md) | Audit findings |
+| [`docs/archive/reports/sage-memory-analysis-2026-08-08.md`](../archive/reports/sage-memory-analysis-2026-08-08.md) | Historical gap analysis (several items now closed) |
+| [`docs/archive/audits/2026-08/06-sage-memory.md`](../archive/audits/2026-08/06-sage-memory.md) | Audit findings |
 | [`packages/sage-mcp/docs/`](../../packages/sage-mcp/docs/) | MCP architecture, safety, tool inventory |
 
 ---
@@ -964,12 +964,12 @@ WRONGSTACK_SAGE_INLINE=1 ...
 
 When you change any of the following, update **this document** in the same PR:
 
-- SQLite schema / indexes / edge-weight policy  
-- IPC ops, auth, or endpoint naming  
-- Tool names or MCP allowlist policy  
-- Injection gates / defaults  
-- Host wiring (`setupSage` middleware set, daily dry-run, capture, remap)  
-- WebSocket memory message types  
-- MemoryManager / Review / TUI / SimpleUI memory UX contracts  
+- SQLite schema / indexes / edge-weight policy<br>
+- IPC ops, auth, or endpoint naming<br>
+- Tool names or MCP allowlist policy<br>
+- Injection gates / defaults<br>
+- Host wiring (`setupSage` middleware set, daily dry-run, capture, remap)<br>
+- WebSocket memory message types<br>
+- MemoryManager / Review / TUI / SimpleUI memory UX contracts<br>
 
 If a claim cannot be pointed at a source file, treat it as aspirational and move it to a design plan instead of leaving it here as fact.

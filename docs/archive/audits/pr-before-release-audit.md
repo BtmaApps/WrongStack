@@ -139,7 +139,7 @@ A complete audit trail system for non-filesystem side effects (bash, install, fe
 - `packages/cli/src/` — cli-main.ts, fleet/host.ts, slash-commands/audit.ts, slash-commands/index.ts, slash-commands/diag-stats.ts
 - `packages/tui/src/` — app-state.ts, app-reducer.ts, app.tsx, components/audit-panel.tsx, components/status-bar.tsx
 - `packages/webui/src/` — types.ts, server/index.ts, server/setup-events.ts, hooks/ws-handlers.ts, stores/side-effect-store.ts, stores/index.ts, stores/ui-store.ts, components/SideEffectTimeline.tsx, components/InspectorPanel.tsx
-- `docs/design-side-effect-recording.md`
+- `docs/archive/designs/design-side-effect-recording.md`
 
 ---
 

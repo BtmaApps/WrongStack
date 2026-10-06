@@ -565,7 +565,7 @@ export async function handleApiRoutes(
     // here (pid, heap limits, cpu, and per-process diagnostics for up to 32
     // WrongStack processes). Completing the pattern keeps the defence intact
     // if this router is ever mounted behind a different front door.
-    // See docs/audit/webui-full-review-2026-09-03.md B-12.
+    // See docs/archive/local/audit/webui-full-review-2026-09-03.md B-12.
     if (requireAccessToken && !accessTokenOk) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Unauthorized' }));

@@ -3,7 +3,7 @@
  *
  * Converts a Snapshot into SPDX or CycloneDX JSON format.
  *
- * @see docs/specs/techstack-sdd.md §9
+ * @see docs/archive/specs/techstack-sdd.md §9
  */
 
 import type { Snapshot } from './types.js';

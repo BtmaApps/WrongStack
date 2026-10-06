@@ -1,0 +1,188 @@
+#!/usr/bin/env node
+// Read source declarations without importing runtime factories or stale dist files.
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import ts from 'typescript5';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const read = (file) => readFileSync(join(root, file), 'utf8');
+const parse = (file) => ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+function declaration(file, name) {
+  let found;
+  function visit(node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText() === name) found = node.initializer;
+    ts.forEachChild(node, visit);
+  }
+  visit(parse(file));
+  if (!found) throw new Error(`Missing declaration: ${file}#${name}`);
+  return found;
+}
+function array(file, name) {
+  let node = declaration(file, name);
+  while (ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) node = node.expression;
+  if (!ts.isArrayLiteralExpression(node)) throw new Error(`Expected array: ${name}`);
+  return node.elements;
+}
+function property(node, key) {
+  const p = node.properties.find((p) => p.name?.getText().replace(/^['"]|['"]$/g, '') === key);
+  return p && ts.isPropertyAssignment(p) ? p.initializer : undefined;
+}
+function literal(node) {
+  if (!node || !ts.isStringLiteral(node)) throw new Error('Expected string literal');
+  return node.text;
+}
+const packages = ['packages', 'apps']
+  .flatMap((base) =>
+    readdirSync(join(root, base))
+      .filter((name) => existsSync(join(root, base, name, 'package.json')))
+      .map((name) => {
+        const file = `${base}/${name}/package.json`;
+        const manifest = JSON.parse(read(file));
+        return { file, name: manifest.name, private: Boolean(manifest.private) };
+      }),
+  )
+  .sort((a, b) => a.name.localeCompare(b.name));
+const builtinFile = 'packages/tools/src/builtin.ts';
+const descriptions = declaration(builtinFile, 'BUILTIN_TOOL_DESCRIPTIONS');
+if (!ts.isObjectLiteralExpression(descriptions))
+  throw new Error('Expected tool descriptions object');
+const tools = descriptions.properties
+  .map((p) => p.name.getText().replace(/^['"]|['"]$/g, ''))
+  .sort();
+const browserCount = array('packages/tools/src/browser/tools.ts', 'browserTools').length;
+const rawTools = array(builtinFile, 'rawBuiltinTools');
+// The one spread must remain the browser suite; changed source shapes require review.
+const spreads = rawTools.filter(ts.isSpreadElement);
+if (spreads.length !== 1 || !spreads[0].expression.getText().startsWith('browserTools.map(')) {
+  throw new Error('Review changed rawBuiltinTools spread shape');
+}
+if (rawTools.length - 1 + browserCount !== tools.length) {
+  throw new Error('Tool descriptions and executable catalog have different sizes');
+}
+const loaderFile = 'packages/cli/src/subcommands/index.ts';
+const loaders = declaration(loaderFile, 'loaders');
+if (!ts.isObjectLiteralExpression(loaders)) throw new Error('Expected subcommand loader object');
+const commands = loaders.properties
+  .map((p) => {
+    const source = p.getText();
+    const match = source.match(/import\(['"]\.\/([^'"]+)\.js['"]\)\)\.([\w]+)/);
+    if (!match) throw new Error(`Review changed loader shape: ${source}`);
+    return {
+      name: p.name.getText().replace(/^['"]|['"]$/g, ''),
+      file: `packages/cli/src/subcommands/${match[1]}.ts`,
+      handler: match[2],
+    };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
+const modes = array('packages/core/src/types/mode.ts', 'DEFAULT_MODES').map((node) =>
+  literal(property(node, 'id')),
+);
+const skills = readdirSync(join(root, 'packages/core/skills'))
+  .filter((name) => existsSync(join(root, 'packages/core/skills', name, 'SKILL.md')))
+  .sort();
+const official = array('packages/plugins/src/manifest/index.ts', 'OFFICIAL_PLUGIN_NAMES').map(
+  literal,
+);
+const host = array(
+  'packages/plugins/src/plugin-audit-catalog/index.ts',
+  'HOST_PLUGIN_AUDIT_ENTRIES',
+).map((node) => ({
+  name: literal(property(node, 'name')),
+  state: literal(property(node, 'defaultState')),
+}));
+const link = (file) => `[${file}](../${file})`;
+const commandGuides = new Map();
+for (const line of read('docs/subcommands/README.md').split(/\r?\n/)) {
+  if (!line.startsWith('| ')) continue;
+  const firstCell = line.slice(2, line.indexOf('|', 2));
+  const names = [
+    ...new Set([...firstCell.matchAll(/\bwstack ([a-z][\w-]*)/g)].map((match) => match[1])),
+  ];
+  const references = [...line.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]);
+  if (!references.length) continue;
+  for (let i = 0; i < names.length; i++) {
+    if (!commandGuides.has(names[i]))
+      commandGuides.set(
+        names[i],
+        references.length === names.length ? references[i] : references[0],
+      );
+  }
+}
+for (const command of commands)
+  if (!commandGuides.has(command.name))
+    throw new Error(`No linked guide for wstack ${command.name}`);
+const md = [
+  '# Source-derived catalog',
+  '',
+  'Generated by `node scripts/documentation-catalog.mjs --write`. Run without',
+  '`--write` to check freshness. Counts describe source registrations, not enabled',
+  'tools in an individual session or verified external-service availability.',
+  '',
+  '## Workspace packages',
+  '',
+  `${packages.filter((p) => p.file.startsWith('packages/')).length} packages, ${packages.filter((p) => p.file.startsWith('apps/')).length} applications, plus the private website.`,
+  '',
+  '| Package | Manifest | Publication |',
+  '|---|---|---|',
+  ...packages.map(
+    (p) => `| \`${p.name}\` | ${link(p.file)} | ${p.private ? 'private' : 'public'} |`,
+  ),
+  '',
+  '## Built-in tools',
+  '',
+  `${tools.length} tool descriptions and executable registrations. Source: ${link(builtinFile)}.`,
+  '',
+  tools.map((name) => `\`${name}\``).join(', '),
+  '',
+  '## Shell subcommands',
+  '',
+  `${commands.length} registered keys, ${new Set(commands.map((c) => c.file + '#' + c.handler)).size} distinct handlers. Source: ${link(loaderFile)}.`,
+  '',
+  'Launch aliases such as `desktop`, `webui` and `resume` are normalized before',
+  'this registry. Bench experiment actions are nested actions of `bench`.',
+  '',
+  '| Key | Handler source | Guide |',
+  '|---|---|---|',
+  ...commands.map(
+    (c) =>
+      `| \`${c.name}\` | ${link(c.file)} (\`${c.handler}\`) | [Usage](subcommands/${commandGuides.get(c.name)}) |`,
+  ),
+  '',
+  '## Modes and bundled skills',
+  '',
+  `${modes.length} mode definitions in ${link('packages/core/src/types/mode.ts')}:`,
+  '',
+  modes.map((id) => `\`${id}\``).join(', '),
+  '',
+  `${skills.length} bundled skill directories containing a SKILL.md:`,
+  '',
+  skills.map((name) => `[${name}](../packages/core/skills/${name}/SKILL.md)`).join(', '),
+  '',
+  '## Plugins',
+  '',
+  `${official.length} official package plugins in ${link('packages/plugins/src/manifest/index.ts')};`,
+  `${host.length} host plugins in ${link('packages/plugins/src/plugin-audit-catalog/index.ts')}.`,
+  '',
+  'The [feature matrix](feature-matrix.md) maps official plugins to their tools.',
+  'Enablement also depends on operator configuration; see [plugin value and cost](plugin-value-cost.md).',
+  '',
+  '| Host plugin | Catalog default |',
+  '|---|---|',
+  ...host.map((p) => `| \`${p.name}\` | ${p.state} |`),
+  '',
+].join('\n');
+const output = join(root, 'docs/current-catalog.md');
+if (process.argv.includes('--write')) {
+  writeFileSync(output, md);
+  console.log(`Wrote ${relative(root, output)}.`);
+} else if (!existsSync(output) || readFileSync(output, 'utf8') !== md) {
+  console.error(
+    'Documentation catalog is stale. Run node scripts/documentation-catalog.mjs --write.',
+  );
+  process.exitCode = 1;
+} else {
+  console.log(
+    `Documentation catalog matches source: ${packages.length} package/app manifests, ${tools.length} tools, ${commands.length} subcommand keys, ${modes.length} modes, ${skills.length} skills, ${official.length + host.length} plugins.`,
+  );
+}

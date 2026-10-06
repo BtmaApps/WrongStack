@@ -5,7 +5,7 @@
  * or resolve different versions of the same dependency, leading to bundle
  * bloat, runtime inconsistencies, and duplicate lockfile resolutions.
  *
- * @see docs/specs/techstack-sdd.md §4.1, §7
+ * @see docs/archive/specs/techstack-sdd.md §4.1, §7
  */
 
 import type { DependencyObservation, Finding, Workspace } from '../types.js';

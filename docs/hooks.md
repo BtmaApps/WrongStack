@@ -142,7 +142,7 @@ the host also records the registration under the plugin's name so it can be
 bulk-removed on teardown.
 
 ```ts
-import type { PluginAPI } from '@wrongstack/core';
+import type { PluginAPI } from '@wrongstack/core/plugin';
 
 export default {
   name: 'lint-after-edit',
@@ -506,7 +506,7 @@ declare every subsystem they touch.
 
 ### Public exports
 
-From `@wrongstack/core`:
+From `@wrongstack/core/hooks`:
 
 ```ts
 import {
@@ -521,7 +521,7 @@ import {
   bridgeLifecycleHooks,   // wires the observational events to a HookRunner
   HOOK_EVENTS,            // every event name, in lifecycle order
   isHookEvent,            // (value) => value is HookEvent
-} from '@wrongstack/core';
+} from '@wrongstack/core/hooks';
 import type {
   HookEvent,              // see HOOK_EVENTS for the full list
   ObservationalHookEvent, // the six events whose outcome is ignored
@@ -541,7 +541,7 @@ import type {
   PreToolUseResult,       // { block?, reason?, input? }
   PromptResult,           // { block?, reason?, additionalContext? }
   ShellHookSpec,          // { command, timeoutMs? }
-} from '@wrongstack/core';
+} from '@wrongstack/core/hooks';
 ```
 
 ---

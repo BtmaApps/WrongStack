@@ -7,7 +7,7 @@
  * mode, fall back again to prompt-only discipline. Providers differ, and a
  * research pass must not be exclusive to the ones with schema support.
  *
- * @see docs/specs/techstack-sdd.md §4.2
+ * @see docs/archive/specs/techstack-sdd.md §4.2
  */
 
 import type { Provider, Request } from '@wrongstack/core/types';

@@ -7,7 +7,7 @@
  * so it can be matched across ecosystems, deduplicated in aggregate views,
  * and queried against OSV's /v1/querybatch endpoint.
  *
- * @see docs/specs/techstack-sdd.md §4.1, §5
+ * @see docs/archive/specs/techstack-sdd.md §4.1, §5
  */
 
 import type { EcosystemId } from '../types.js';

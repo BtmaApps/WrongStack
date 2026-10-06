@@ -3,9 +3,9 @@
 A bird's-eye view of every first-party plugin in
 [`@wrongstack/plugins`](../packages/plugins/README.md). The catalog
 below groups plugins by what they do, so you can spot overlaps and
-pick the right one for a job without scrolling through 56 entries.
+pick the right one for a job using the source-derived plugin catalog.
 
-> **Living document** — last updated 2026-09-17. When you add a plugin, update this
+> **Living document** — source/tool identifiers checked 2026-10-06. When you add a plugin, update this
 > file in the same commit so it never drifts from
 > `packages/plugins/README.md` and `packages/plugins/src/catalog.ts`.
 

@@ -1,10 +1,9 @@
 # TUI Ink Screen — Comprehensive Technical Report
 
-> **Package:** `@wrongstack/tui` v0.287.0<br>
-> **Frameworks:** Ink ^7.1.0 · React ^19.2.7<br>
-> **Tests:** 111 test files · ~1,452 tests<br>
-> **Lines of source:** ~18,500 (45 files in `src/`, ~30 component files)<br>
-> **Entry:** `runTui()` → `<App>` via Ink's `render()`
+> **Package:** `@wrongstack/tui` (version from its manifest)<br>
+> **Frameworks:** Ink and React (declared ranges in `packages/tui/package.json`)<br>
+> **Entry:** `runTui()` → `<App>` via Ink's `render()`<br>
+> Source/test counts are intentionally omitted; use the live source tree and test inventory.
 
 ---
 
@@ -515,7 +514,7 @@ The TUI has an extensive picker system for interactive selection:
 - Two-step flow: select provider → select model
 - Shows available models per provider
 
-### 8.4 F-Key Panel Picker (`/f` or `F12`)
+### 8.4 F-Key Panel Picker (`/f`)
 - Unified launcher for all F-key panels (F1-F12)
 - Shared metadata source `F_KEY_ENTRIES` to prevent shortcut drift
 
@@ -551,7 +550,7 @@ The TUI has an extensive picker system for interactive selection:
 - Git worktree status (handle, branch, path)
 - Live upsert/remove events
 
-### 9.4 Brain Panel (F5 available via `/f`)
+### 9.4 Brain and autonomy views
 - Brain decision log with risk levels (low/medium/high/critical)
 - Per-seat voting status
 - Settings management
@@ -564,7 +563,7 @@ The TUI has an extensive picker system for interactive selection:
 - **Goal Panel (F9)**: session goals
 - **Sessions Panel (F10)**: live terminal sessions
 - **Coordinator Monitor (F11)**: autonomous coordinator state
-- **Statusline Picker (F12)**: chip visibility control
+- **Kanban Panel (F12)**: project task board; `/statusline` opens chip controls separately
 - **Help Overlay (?)**: keyboard shortcuts reference
 - **Shadow Panel**: background shadow agent controls
 - **Audit Panel**: side-effect audit trail
@@ -723,7 +722,7 @@ Eternal mode integration: the TUI drives `runOneIteration()` from the post-slash
 | `F9` | Goal panel |
 | `F10` | Sessions panel |
 | `F11` | Coordinator monitor |
-| `F12` | Status line picker |
+| `F12` | Kanban board panel |
 | `Ctrl+S` | Settings |
 | `Esc` | Close picker/dialog/panel |
 | `Ctrl+L` | Clear screen |

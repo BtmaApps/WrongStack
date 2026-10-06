@@ -5,7 +5,7 @@
  * workspace discovery, dependency inventory, registry/advisory enrichment,
  * findings, snapshots, jobs, and the idle-delivery outbox.
  *
- * @see docs/specs/techstack-sdd.md §4.1
+ * @see docs/archive/specs/techstack-sdd.md §4.1
  */
 
 // ── Ecosystem identifiers ────────────────────────────────────────────────

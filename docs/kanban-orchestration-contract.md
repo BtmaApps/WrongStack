@@ -13,7 +13,7 @@ Related docs:
 
 - [kanban-architecture.md](kanban-architecture.md) — existing architecture and
   manager/tool surface.
-- [kanban-orchestration-roadmap.md](kanban-orchestration-roadmap.md) — phased
+- [kanban-orchestration-roadmap.md](plans/kanban-orchestration-roadmap.md) — phased
   roadmap for full orchestration.
 - [director-architecture.md](director-architecture.md) — Director/fleet concepts
   used by `kanban_queue`.

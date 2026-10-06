@@ -1,7 +1,7 @@
 /**
  * TechStackView — shared presentation tokens and version helpers.
  *
- * @see docs/specs/techstack-sdd.md §6
+ * @see docs/archive/specs/techstack-sdd.md §6
  */
 
 import type { ComponentType } from 'react';

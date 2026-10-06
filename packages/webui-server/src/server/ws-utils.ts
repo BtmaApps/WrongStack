@@ -178,7 +178,7 @@ export function sendResult(ws: WebSocket, success: boolean, message: string): vo
  * the SAGE project server already uses for request metadata
  * (`packages/sage/src/project-server.ts`).
  *
- * See docs/audit/webui-full-review-2026-09-03.md B-05.
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-05.
  */
 const dispatchSession = new AsyncLocalStorage<string | undefined>();
 const operationRequest = new AsyncLocalStorage<string | undefined>();
@@ -364,7 +364,7 @@ export function messageSessionId(msg: { payload?: unknown }): string | undefined
 /**
  * Copy a `requestId` from a request payload onto a response payload.
  *
- * B-04 (docs/audit/webui-full-review-2026-09-03.md) — the client's
+ * B-04 (docs/archive/local/audit/webui-full-review-2026-09-03.md) — the client's
  * `echoToChat: false` suppression is keyed by requestId, and the only way
  * the client can correlate a response with its request is to read the
  * same requestId back from the response. Inspect-style handlers

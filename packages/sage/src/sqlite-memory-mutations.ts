@@ -102,7 +102,7 @@ export async function clear(this: SqliteMemoryMutationsHost, scope?: MemoryScope
 }
 
 export function upsertMemory(this: SqliteMemoryMutationsHost, m: Sage): void {
-  // H6 (docs/sage-phase4-design.md): the counter chain json_set's advisory
+  // H6 (docs/archive/plans/sage-phase4-design.md): the counter chain json_set's advisory
   // fields into `data` independently of this whole-column write, so an
   // advisory bump that committed after the caller read the row must survive
   // the replace.

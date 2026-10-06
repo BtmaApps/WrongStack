@@ -252,7 +252,7 @@ regression tests preventing future drift.
 ### Sprint 2 carryovers
 
 - **A3 Phase 1**: `ProviderHealthGate` token-bucket scaffolding.
-  Design doc at `docs/design-provider-health-gate.md`. ~1 sprint day.
+  Design doc at `docs/designs/design-provider-health-gate.md`. ~1 sprint day.
 - **Adjacent to A3**: `Math.random()` jitter → deterministic source
   (~10 lines).
 - **Adjacent to A3**: honor `Retry-After` header in

@@ -3,7 +3,9 @@
 **Last verified against the published spec: 2026-09-22.**
 Source of truth: <https://modelcontextprotocol.io/specification/latest> and the
 [deprecated features registry](https://modelcontextprotocol.io/specification/2026-07-28/deprecated).
-This file records what we actually implement. It is not a plan — the plan lives in
+The upstream comparison is the September spec review. Local version declarations
+were checked on 2026-10-06; this task did not refresh the upstream spec.
+Implementation and gaps are described here; the plan lives in
 `competitive-roadmap-2026-2027/09-mcp-authentication-and-sampling.md`.
 
 ## Short answer

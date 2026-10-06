@@ -7,7 +7,7 @@ import { SqliteSageStore } from '../src/sqlite-store.js';
 import type { MemoryCandidate } from '../src/types.js';
 
 /**
- * H2 regression (docs/sage-phase4-design.md): a hard crash between
+ * H2 regression (docs/archive/plans/sage-phase4-design.md): a hard crash between
  * `rememberSage` and the memoryId annotation leaves a candidate `accepted`
  * without `memoryId`, and the claim CAS makes re-accept a no-op. The
  * initialize-time sweep (`reconcileAcceptedCandidates`) closes that window:

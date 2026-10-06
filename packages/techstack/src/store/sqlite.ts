@@ -6,7 +6,7 @@
  *
  * Store path: ~/.wrongstack/projects/<slug>/techstack/techstack.db
  *
- * @see docs/specs/techstack-sdd.md §3.2, §4.1
+ * @see docs/archive/specs/techstack-sdd.md §3.2, §4.1
  */
 
 import { existsSync, mkdirSync } from 'node:fs';

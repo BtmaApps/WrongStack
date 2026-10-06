@@ -275,7 +275,7 @@ export interface SageServerOperations {
 
 export type SageServerOperationName = keyof SageServerOperations;
 
-// ─── H9: shallow dispatch-args validation (docs/sage-phase4-design.md) ───
+// ─── H9: shallow dispatch-args validation (docs/archive/plans/sage-phase4-design.md) ───
 
 /**
  * Shallow shape kinds a required dispatch arg may take. Deliberately NOT a
@@ -392,7 +392,7 @@ export class SageInvalidArgsError extends Error {
 
 /**
  * Shallow dispatch-args check for one operation (H9,
- * docs/sage-phase4-design.md).
+ * docs/archive/plans/sage-phase4-design.md).
  *
  * Returns `null` when `rawArgs` satisfies the op's required-field spec;
  * otherwise a human-readable reason naming the first offending field. The

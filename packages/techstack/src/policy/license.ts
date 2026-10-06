@@ -5,7 +5,7 @@
  * Weak Copyleft, Strong Viral Copyleft, Restrictive/Commercial, Unknown)
  * and generates deterministic compliance findings.
  *
- * @see docs/specs/techstack-sdd.md §4.1, §7
+ * @see docs/archive/specs/techstack-sdd.md §4.1, §7
  */
 
 import type { Finding } from '../types.js';

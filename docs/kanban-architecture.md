@@ -1230,7 +1230,7 @@ Verification guards Done without stalling progress.
 
 Parking is visible rather than silent: the queue classifier appends the reason,
 queue health carries a `parked` bucket, both Cleaner implementations emit
-`parked-card`, and the card shows a `parked` badge ([§20](#20-queue-semantics)).
+`parked-card`, and the card shows a `parked` badge ([§20](#20-workbench-and-queue-health)).
 
 Enforcement resolves per board:
 

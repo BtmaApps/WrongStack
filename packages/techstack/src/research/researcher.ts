@@ -10,7 +10,7 @@
  * not one per ecosystem. That keeps the call count at ≤3 per analyze while
  * still letting each prompt be a focused specialist.
  *
- * @see docs/specs/techstack-sdd.md §31, §472, §557
+ * @see docs/archive/specs/techstack-sdd.md §31, §472, §557
  */
 
 import type { DependencyObservation, Evidence, Finding } from '../types.js';

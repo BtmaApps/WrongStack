@@ -13,7 +13,7 @@
  * demonstrably still heartbeating when it is reaped. Labelling that
  * `'heartbeat-timeout'` made every `peer.rehydrate` / `peer.lost` banner claim
  * a heartbeat failure that never happened (the plan doc reserves that reason
- * for a genuine missed heartbeat, `docs/plans/hq-evolution-2026-08.md` §4.3).
+ * for a genuine missed heartbeat, `docs/archive/plans/hq-evolution-2026-08.md` §4.3).
  * The truthful existing label is `'crash'` — an abrupt, non-graceful
  * server-side loss.
  *

@@ -198,7 +198,7 @@ pnpm lint           # style consistency
 
 ```
 docs/plans/cli-main-executiondeps-refactor.md
-docs/plans/sage-architecture.md
+docs/archive/plans/sage-architecture-2026-07-11.md
 packages/acp/src/integration/run-one-acp-task.ts
 packages/cli/src/execute-deps.ts
 packages/cli/src/wiring/controllers.ts
@@ -234,7 +234,7 @@ techstack.md
 
 | File | Purpose |
 |------|---------|
-| `docs/plans/sage-architecture.md` | Super Memory design spec |
+| `docs/archive/plans/sage-architecture-2026-07-11.md` | Super Memory design spec |
 | `docs/plans/cli-main-executiondeps-refactor.md` | CLI refactor plan |
 | `packages/sage/src/store.ts` | Core store implementation |
 | `packages/sage/src/middleware/tool-call-memory.ts` | Pipeline auto-injection |

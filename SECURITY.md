@@ -324,7 +324,7 @@ audits and explicitly accepted as non-blocking:
   - Listed as "maintainer call / won't fix" in both audits. Changing it would harm contributor experience with no meaningful security gain for end users.
 
 - **Some remaining name-string + denylist authorization checks** (e.g. `AutoApprovePermissionPolicy.DENY` and parts of plugin tool mutation rules):
-  - These were pragmatic and effective, but have now been superseded by explicit capability allowlists (see **Capability-based gating** above and `docs/plans/security-hardening-2026-06.md` P1).
+  - These were pragmatic and effective, but have now been superseded by explicit capability allowlists (see **Capability-based gating** above and `docs/archive/plans/security-hardening-2026-06.md` P1).
   - The old denylist checks remain as defense-in-depth but are no longer the primary control.
 
 - **Install-script allowlist maintenance**:
@@ -429,7 +429,7 @@ check could produce a failure.
 ## HQ implementation status
 
 The earlier phased HQ plan is retained in
-[`docs/plans/hq-command-center-2026-06.md`](docs/plans/hq-command-center-2026-06.md)
+[`docs/archive/plans/hq-command-center-2026-06.md`](docs/archive/plans/hq-command-center-2026-06.md)
 as design history. Current source has browser/client tokens, password set/rotation
 via `wstack --hq --password <value>`, live auth reload, capability scopes, and
 persistent event/snapshot/time-series storage. Token lifecycle commands are:
@@ -461,5 +461,5 @@ patch may increase network fetches for zero-lifetime cached responses.
 
 - [CHANGELOG.md](CHANGELOG.md) — security-relevant changes by version
 - [README.md](README.md) — usage and configuration
-- [docs/plans/hq-command-center-2026-06.md](docs/plans/hq-command-center-2026-06.md) — HQ command center architecture and phased plan (Access Control section)
+- [docs/archive/plans/hq-command-center-2026-06.md](docs/archive/plans/hq-command-center-2026-06.md) — HQ command center architecture and phased plan (Access Control section)
 - [docs/subcommands/hq.md](docs/subcommands/hq.md) — `wstack --hq` user command reference (flags, routes, env vars, deployment)

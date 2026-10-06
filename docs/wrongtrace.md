@@ -14,7 +14,7 @@ The daemon is **not shipped, owned, or bootstrapped by WrongStack**. Every code 
 
 Both integrations probe the same canonical health endpoint — `GET <base>/api/health` — and both treat a non-2xx or unreachable daemon as a soft signal, never a hard failure.
 
-> **Port note.** The default is `3444` in *both* integrations (`packages/wrongtrace/src/discovery.ts:50` and `WrongProxyToolConfig.url`). Port `8000` is **not** a WrongStack default — if your daemon listens elsewhere, set `WRONGTRACE_URL` (guardrails) and `tools.wrongProxy.url` (provider routing) explicitly. A mismatch between a settings URL and the daemon's real port keeps the integration silently inactive (see [Troubleshooting](#troubleshooting)).
+> **Port note.** The default is `3444` in *both* integrations (`packages/wrongtrace/src/discovery.ts:50` and `WrongProxyToolConfig.url`). Port `8000` is **not** a WrongStack default — if your daemon listens elsewhere, set `WRONGTRACE_URL` (guardrails) and `tools.wrongProxy.url` (provider routing) explicitly. A mismatch between a settings URL and the daemon's real port keeps the integration silently inactive (see [Troubleshooting](#9-troubleshooting)).
 
 ---
 

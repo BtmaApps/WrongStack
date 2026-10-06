@@ -17,7 +17,7 @@
  *    same shape so downstream consumers (UI table, report generator,
  *    outbox) can treat them uniformly.
  *
- * @see docs/specs/techstack-sdd.md §4.1, §8.2
+ * @see docs/archive/specs/techstack-sdd.md §4.1, §8.2
  */
 
 import { describe, expect, it } from 'vitest';

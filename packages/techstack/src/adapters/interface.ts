@@ -5,7 +5,7 @@
  * The inventory engine discovers workspaces via detectLanguageWorkspaces(),
  * then dispatches to the matching adapter for each workspace.
  *
- * @see docs/specs/techstack-sdd.md §3.2, §6
+ * @see docs/archive/specs/techstack-sdd.md §3.2, §6
  */
 
 import type { DependencyObservation, EcosystemId, Evidence, Workspace } from '../types.js';

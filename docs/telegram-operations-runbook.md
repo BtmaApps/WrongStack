@@ -1,7 +1,7 @@
 # Telegram Plugin — Operations Runbook
 
-**Applies to:** `@wrongstack/telegram` >= v0.293.0  
-**Last updated:** 2026-07-28  
+**Applies to:** `@wrongstack/telegram` >= v0.293.0<br>
+**Last updated:** 2026-10-06 (offset and inbox ownership checked against source)<br>
 **Related:** `docs/adr/adr-003-telegram-broker-and-webhook.md`, `packages/telegram/README.md`
 
 > Every migration and recovery step in this document is either **reversible** (the
@@ -190,14 +190,16 @@ or re-run `/telegram-setup` with the original chat.
 
 The polling cursor (`offset`) tracks which updates have been received.
 When persisted (via `offset-store`), it survives restarts so the same
-updates are not replayed. The per-chat inbox cursor (`inbox-cursor-store`)
-tracks which messages the agent acknowledged via `telegram_read`.
+updates are not replayed. `TelegramInbox` in `packages/telegram/src/inbox.ts`
+holds a bounded in-memory buffer and chat-scoped acknowledgement; no separate
+per-chat cursor is persisted.
 
 ### When cursors reset
 
-- **offsetStoragePath is unset or empty-string:** the cursor is in-memory
-  only and resets on every plugin restart. Updates since the last restart
-  are replayed.
+- **offsetStoragePath is unset:** the plugin derives a token-hashed file in
+  the global `telegram/` directory and persists the polling offset.
+- **offsetStoragePath is an empty string:** persistence is disabled; the
+  in-memory offset resets on plugin restart.
 
 - **offsetStoragePath is set but the file is deleted:** same effect as
   above — the cursor starts at 0 and replays all available updates.
@@ -211,20 +213,18 @@ tracks which messages the agent acknowledged via `telegram_read`.
 |---|---|
 | Update replay | Every update currently in Telegram's 24-hour buffer is re-delivered. The P1.6 deduplication guard (`update_id <= previous offset`) cannot prevent this because the previous offset is lost. |
 | Duplicate notifications | If the bot sends automatic notifications based on updates (e.g., session-ended), replayed updates could trigger duplicate notifications. |
-| No data loss | No data is permanently lost — the agent sees the same messages again. |
-| Inbox reset | The per-chat inbox cursor is separate; it retains its position unless its file is also deleted. |
+| Retention limit | Only updates still available upstream can be replayed; offset loss does not guarantee recovery of all prior input. |
+| Inbox reset | The local buffer is in memory and does not survive a plugin restart. |
 
 ### Safe cursor reset procedure
 
 If a cursor reset is intentional (e.g., migrating to a new machine):
 
 1. **Stop the bot** (stop wstack or disable the Telegram plugin).
-2. **Delete the cursor files:**
-   ```
-   rm ~/.wrongstack/telegram/offset-<tokenHash>.json
-   rm ~/.wrongstack/telegram/inbox-<tokenHash>-*.json
-   ```
-   Find the exact filenames by checking `~/.wrongstack/telegram/`.
+2. **Back up the configured offset file**, then remove only that exact file.
+   The default is `~/.wrongstack/telegram/offset-<tokenHash>.json`; an explicit
+   `offsetStoragePath` overrides it. There are no durable per-chat inbox files
+   to remove in this implementation.
 3. **Restart the bot.** Updates will be replayed from the Telegram buffer
    (up to 24 hours old).
 4. **Monitor for duplicate notifications.** The P3.1 telemetry snapshot
@@ -279,7 +279,7 @@ If a webhook was previously registered (e.g., via another bot framework):
    ```
    # On Linux/macOS
    lsof -i :443 | grep telegram
-   
+<br>
    # Check lock file ownership
    cat ~/.wrongstack/telegram/poll-<hash>.lock
    ```

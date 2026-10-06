@@ -1,5 +1,5 @@
 /**
- * B-13 (docs/audit/webui-full-review-2026-09-03.md) — `activity` and `settings`
+ * B-13 (docs/archive/local/audit/webui-full-review-2026-09-03.md) — `activity` and `settings`
  * used to be inlined into the English bundle (148 KB + 52 KB on the entry
  * chunk), dominating first paint even though neither namespace renders on the
  * default landing surface (chat). They are now fetched through the

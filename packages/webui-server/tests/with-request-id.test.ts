@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { withRequestId } from '../src/server/ws-utils.js';
 
 /**
- * B-04 (docs/audit/webui-full-review-2026-09-03.md) — inspect-style
+ * B-04 (docs/archive/local/audit/webui-full-review-2026-09-03.md) — inspect-style
  * handlers (`tools.list`, `memory.sage.*`, `skills.list`, `stats.get`,
  * `diag.get`, `context.debug`, `memory.list`) echo the request's
  * `requestId` on the response so the client can correlate the reply

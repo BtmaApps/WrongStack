@@ -6,7 +6,7 @@ import { createBrainRouteHandlers, handleBrainRoute } from '../src/server/brain-
 import type { WSClientMessage } from '../src/server/types.js';
 
 /**
- * B-08 (docs/audit/webui-full-review-2026-09-03.md).
+ * B-08 (docs/archive/local/audit/webui-full-review-2026-09-03.md).
  *
  * `validateBrainRiskPayload`, `validateBrainAskPayload` and
  * `validateBrainConfigSetPayload` were written, exported and unit-tested — and

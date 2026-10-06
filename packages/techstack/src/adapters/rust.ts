@@ -4,7 +4,7 @@
  * Parses Cargo.toml manifests and Cargo.lock lockfiles to produce
  * DependencyObservation[] for Rust workspaces.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier A
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier A
  */
 
 import { readFileSync } from 'node:fs';

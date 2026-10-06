@@ -4,6 +4,10 @@ This is the maintained map of the running WrongStack system. It describes the
 current source tree, not a proposed target architecture. For narrower contracts,
 use the linked documents at the end.
 
+The [package ownership guide](architecture/package-owners.md) identifies public
+integration surfaces. External WebUI clients use [the typed client API](client-api.md);
+third-party plugins use the authoring SDK described in [the plugin guide](plugin-author-guide.md).
+
 WrongStack is a local-first TypeScript/Node.js AI coding-agent platform. The
 published wstack command composes a shared runtime for terminal, browser,
 desktop, protocol, plugin, and dashboard surfaces. A project can have several
@@ -14,7 +18,7 @@ than by each client process.
 
 ## System at a glance
 
-\`\`\`text
+```text
                               +--------------------------------------+
                               |         @wrongstack/cli              |
                               | boot, composition, commands, launch  |
@@ -36,7 +40,7 @@ than by each client process.
   kanban · sage · sdd · tools        MCP · ACP · plugins       IPC owner -> SQLite authority
                                                                mailbox · Chronicle · SAGE
                                                                Kanban · Codebase Index
-\`\`\`
+```
 
 The important boundary is not a UI versus a backend: every UI is a client of
 the same runtime and, where data must be shared across processes, a client of
@@ -47,24 +51,25 @@ handle.
 
 ## Workspace and dependency direction
 
-The pnpm workspace contains 29 packages, two applications, and the marketing
+The pnpm workspace contains 35 packages, two applications, and the marketing
 site. All current workspace packages share the version in the root
 `package.json`; do not hard-code that number here.
 
 | Area | Packages / application | Responsibility |
 | --- | --- | --- |
-| Foundation | @wrongstack/persistence, @wrongstack/kanban, @wrongstack/core | SQLite/file primitives, task-board domain, agent kernel and contracts |
+| Foundation | @wrongstack/primitives, @wrongstack/persistence, @wrongstack/kanban, @wrongstack/core | SQLite/file primitives, task-board domain, agent kernel and contracts |
 | Runtime composition | @wrongstack/runtime, @wrongstack/providers, @wrongstack/tools | Default host wiring, provider implementations, built-in tools and Codebase Index |
-| Agent domains | @wrongstack/sage, @wrongstack/sdd, @wrongstack/requirement-intake, @wrongstack/techstack, @wrongstack/governance | Memory, spec workflow, intake, project analysis, and governance contracts |
-| External integration | @wrongstack/mcp, @wrongstack/acp, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/telegram | MCP, Agent Client Protocol, LSP, bundled extensions, and Telegram bridge |
+| Agent domains | @wrongstack/sage, @wrongstack/vector-memory, @wrongstack/sdd, @wrongstack/requirement-intake, @wrongstack/techstack, @wrongstack/governance | Memory, spec workflow, intake, project analysis, and governance contracts |
+| External integration | @wrongstack/mcp, @wrongstack/acp, @wrongstack/plug-lsp, @wrongstack/plugin-sdk, @wrongstack/plugins, @wrongstack/telegram, @wrongstack/wrongtrace | MCP, Agent Client Protocol, LSP, bundled extensions, and Telegram bridge |
 | MCP products | codebase-index-mcp, kanban-mcp, mailbox-mcp, requirement-intake-mcp, sage-mcp | Capability-limited MCP facades over local domains |
+| Browser contracts | @wrongstack/webui-protocol, @wrongstack/client | Shared wire types/schema and browser client transport |
 | User surfaces | cli, tui, webui, webui-server, simpleui, webui-hq, desktop | Terminal, full browser UI, small browser UI, HQ dashboard, and Electron shell |
 | Support | bench, security-scanner, wrongstack | Benchmarks, standalone scan surface, and published command shim |
 
 The package graph is a directed acyclic graph checked by
 packages/core/tests/architecture/package-boundaries.test.ts and by the
-topological build runner. persistence has no WrongStack workspace dependency.
-kanban depends on persistence. core depends on both; it is therefore the agent
+topological build runner. primitives and persistence have no WrongStack workspace dependency.
+kanban depends on both. core depends on primitives, persistence, and kanban; it is therefore the agent
 foundation, not a dependency-free kernel. Product surfaces depend toward these
 lower layers and must not create a reverse dependency from core into a surface
 package.
@@ -107,14 +112,14 @@ boot, a host provides a provider, model, system prompt, session writer, tool
 registry, pipelines, permission policy, token counter, and optional
 coordination services. A turn follows this shape:
 
-\`\`\`text
+```text
 input -> normalize and persist user message -> user-input middleware
   -> build provider request -> request middleware -> provider stream/response
   -> append assistant content and emit deltas
   -> execute requested tools (permission decision first)
   -> append tool results -> compact/repair context when needed -> next iteration
   -> final RunResult and guaranteed controller cleanup
-\`\`\`
+```
 
 Context is the per-run object passed to tools. Its observable conversation state
 lets UI hosts react to routed mutations; legacy direct mutation still exists for
@@ -175,11 +180,11 @@ HQ bridge). For a shared mutable domain, one detached local service owns the
 SQLite handle. Clients use a deterministic endpoint — a Windows named pipe or
 Unix-domain socket — and a newline-delimited authenticated protocol.
 
-\`\`\`text
+```text
 client process -- local IPC -- elected detached owner -- SQLite / watcher
        |                         |
        +-- reconnect + query ----+-- notifications accelerate, never authorize
-\`\`\`
+```
 
 The endpoint bind elects the owner. Owner-only metadata carries the per-process
 authentication token; protocol version/hello, health ping, client lease, idle

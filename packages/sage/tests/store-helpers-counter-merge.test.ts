@@ -7,7 +7,7 @@ import { mergeLiveCounterFields } from '../src/store-helpers.js';
 import type { Sage } from '../src/types.js';
 
 /**
- * H6 regression coverage (docs/sage-phase4-design.md): recordSqliteInjection /
+ * H6 regression coverage (docs/archive/plans/sage-phase4-design.md): recordSqliteInjection /
  * recordSqliteUse run `json_set` advisory counters on the independent counter
  * chain, while content writes (remember merge, update, verification) replace
  * the whole `data` column from an in-memory object. mergeLiveCounterFields

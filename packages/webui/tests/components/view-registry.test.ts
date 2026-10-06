@@ -1,5 +1,5 @@
 /**
- * B-17 (docs/audit/webui-full-review-2026-09-03.md) — the per-view
+ * B-17 (docs/archive/local/audit/webui-full-review-2026-09-03.md) — the per-view
  * registration for the main area used to live as 26 hand-written
  * `currentView === 'X' &&` branches inside `ViewRouter.tsx`, each repeating
  * the same ErrorBoundary + Suspense + wrapper-div skeleton. The branches now

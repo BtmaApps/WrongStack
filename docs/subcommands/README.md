@@ -7,6 +7,16 @@ WrongStack exposes standalone CLI entry points as `wstack <subcommand>` (the `wr
 | Registered key | Aliases / nested forms | Reference |
 |---|---|---|
 | `wstack acp` | bare, `server`, and `serve` start the server | [ACP](acp.md) |
+| `wstack remote` | SSH-hosted runtime and local WebUI tunnel | [remote](remote.md) |
+| `wstack config-export`, `wstack config-import` | Portable behavior settings | [config transfer](config-transfer.md) |
+| `wstack skill-suggest` | Skill routing and live service diagnostics | [skill evaluation](skill-suggest.md) |
+| `wstack typesafe` | Jev account and decision diagnostics | [Jev diagnostics](typesafe.md) |
+| `wstack proxy-status` | Optional WrongProxy health | [proxy status](proxy-status.md) |
+| `wstack chronicle` | Chronicle maintenance/query | [Chronicle](chronicle.md) |
+| `wstack permissions` | Inspect a tool permission decision | [permissions](permissions.md) |
+| `wstack sage` | External-agent memory attachment and sync | [SAGE integration](sage.md) |
+| `wstack governance` | Read-only project daemon status | [governance](governance.md) |
+| `wstack sandbox`, `wstack automation` | Isolated runs and persistent jobs | [sandbox](sandbox.md), [automation](automation.md) |
 | `wstack init` | deprecated compatibility command; directs users to `auth` | [init](init.md) |
 | `wstack auth` | `list`/`ls`; `remove`/`rm`; OAuth provider aliases | [authentication](auth.md) |
 | `wstack update` | `--check-only`/`-c`; package-manager selectors | [update](update.md) |
@@ -18,7 +28,7 @@ WrongStack exposes standalone CLI entry points as `wstack <subcommand>` (the `wr
 | `wstack tools`, `wstack skills` | — | [tools and skills](tools-skills.md) |
 | `wstack providers`, `wstack models` | model management includes `caps`/`capabilities` | [providers and models](providers-models.md) |
 | `wstack mcp` | `list`, `add`, `remove`, `restart`, `serve` | [MCP](mcp.md) |
-| `wstack plugin` | registry key `plugins` is an exact alias | [plugins](plugin.md) |
+| `wstack plugin`, `wstack plugins` | shared handler | [plugins](plugin.md) |
 | `wstack diag`, `wstack doctor` | — | [diagnostics](diag-doctor.md) |
 | `wstack export` | — | [session export](export.md) |
 | `wstack usage` | — | [usage](usage.md) |
@@ -32,7 +42,7 @@ WrongStack exposes standalone CLI entry points as `wstack <subcommand>` (the `wr
 | `wstack hq` | bare and `serve` normalize to `--hq`; `token` remains a real subcommand | [HQ](hq.md) |
 | `wstack mailbox` | bare and `serve` start the bridge; `help`/`--help`/`-h` show usage | [mailbox bridge](mailbox.md) |
 
-There are **28 registered keys** backed by **27 distinct handlers**: `plugin` and `plugins` share one handler. `hq` is still in the registry for token management even though `wstack hq` and `wstack hq serve` are normalized to the `--hq` launch flag by `parseArgs()`.
+The [source-derived catalog](../current-catalog.md#shell-subcommands) lists every registered key and distinct handler: `plugin` and `plugins` share one handler. `hq` is still in the registry for token management even though `wstack hq` and `wstack hq serve` are normalized to the `--hq` launch flag by `parseArgs()`.
 
 ## Shell surface aliases outside the registry
 

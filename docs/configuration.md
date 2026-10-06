@@ -6,6 +6,11 @@ WrongStack uses a layered configuration system. Settings are merged from multipl
 
 ## Config file locations
 
+For complete local profile copies, see [/profile](slash/profile.md). For
+portable behavior-only export/import and its merge rules, see
+[config transfer](subcommands/config-transfer.md). Reasoning effort and tier
+routing have distinct controls: [/effort](slash/effort.md) and [/tier](slash/tier.md).
+
 | Layer | Path | Purpose |
 |---|---|---|
 | Bootstrap | `~/.wrongstack/config.json` | `version` and `activeProfile` only |
@@ -481,7 +486,7 @@ rather than dropping them silently.
 | `models` | `string[]` or inline model objects | — | Models to surface **in addition to** the catalog, listed first. **Additive, never subtractive** — naming a model here does not hide the others, so this cannot be used as an allowlist. Accepts plain model id strings (`["gpt-4o", "claude-sonnet-4"]`) or full models.dev-style objects with all schema fields (limits, cost, modalities, capabilities). See [Model configuration](#model-configuration-models--custommodels) below. |
 | `autoDiscoverModels` | `boolean` | provider default | Fetch `{baseUrl}/v1/models` at startup and merge the result into the catalog. On by default for gateway-style providers (`ai-gateway`, `openrouter`, `omniroute`). See [Model discovery](#model-discovery) below. |
 | `customModels` | `Record<string, CustomModelDefinition>` | — | Per-model metadata overrides. Keys are model ids. Each entry can carry `name`, `maxOutput`, `capabilities`, and `modelsDev` (full models.dev schema payload). See [Model configuration](#model-configuration-models--custommodels) below. |
-| `quirks` | `Record<string, unknown>` | — | Provider-specific behavior flags. See [CompatibilityQuirks](#compatibility-quirks) below. |
+| `quirks` | `Record<string, unknown>` | — | Provider-specific behavior flags. See [CompatibilityQuirks](../packages/providers/src/compatibility-quirks.ts). |
 | `capabilities` | `Record<string, unknown>` | — | Override reported capabilities (e.g. `maxContext`, `vision`). |
 
 ### Model discovery
@@ -2207,7 +2212,7 @@ When unset, git's own configuration applies (default behavior). Manage at runtim
 | `WRONGSTACK_INDEX_QUESTION_THRESHOLD` | File-count threshold for the "Run codebase indexing now?" pre-launch prompt. Default `500`. Set to a high number to suppress the question. |
 | `WRONGSTACK_MAX_CONCURRENT` | Max concurrent subagents (default `4`). Overridden by `--max-concurrent`. Profile alternative: top-level `maxConcurrent`. |
 | `WRONGSTACK_MAX_SPAWNS` | Lifetime director spawn cap (default `64`). Overridden by `--max-spawns`. Profile alternative: `fleet.budget.maxSpawns`. Live used/remaining: `/fleet status`. |
-| `WRONGSTACK_HQ_URL` | HQ command center URL for telemetry publishing (e.g. `http://localhost:3499`). When set, CLI/REPL/TUI/WebUI/SimpleUI hosts connect to this HQ and publish mailbox events, fleet snapshots, and client lifecycle telemetry. See [HQ Command Center Plan](./plans/hq-command-center-2026-06.md). |
+| `WRONGSTACK_HQ_URL` | HQ command center URL for telemetry publishing (e.g. `http://localhost:3499`). When set, CLI/REPL/TUI/WebUI/SimpleUI hosts connect to this HQ and publish mailbox events, fleet snapshots, and client lifecycle telemetry. See [HQ Command Center Plan](archive/plans/hq-command-center-2026-06.md). |
 | `WRONGSTACK_HQ_TOKEN` | Client enrollment token for HQ authentication. Required for non-loopback HQ servers. Passed as `?token=` on the outbound `/ws/client` WebSocket. |
 | `WRONGSTACK_HQ_ENABLED` | Set `1` to force HQ publishing even when `WRONGSTACK_HQ_URL` is unset (defaults to `http://localhost:3499`). Set `0` to explicitly disable when `WRONGSTACK_HQ_URL` is set. |
 | `WRONGSTACK_HQ_RAW_CONTENT` | Raw prompt/tool/mailbox content publishing to HQ. **Defaults on for every HQ target** unless explicitly disabled. Set `0` to force raw-content redaction. |
@@ -2220,7 +2225,7 @@ When unset, git's own configuration applies (default behavior). Manage at runtim
 
 ### HQ command center
 
-The HQ command center (`wstack --hq`) is a project-independent observability and control layer. See the full architecture and deployment guide in [plans/hq-command-center-2026-06.md](./plans/hq-command-center-2026-06.md).
+The HQ command center (`wstack --hq`) is a project-independent observability and control layer. See the full architecture and deployment guide in [plans/hq-command-center-2026-06.md](archive/plans/hq-command-center-2026-06.md).
 
 **Start HQ:**
 

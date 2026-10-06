@@ -4,11 +4,18 @@
 
 ## Project brief
 
-WrongStack is a terminal AI coding agent in TypeScript: an LLM that reads code, edits files, runs shell commands, and reasons through bugs. Per-call approval and project-root containment form the non-YOLO policy: tool calls that mutate or touch the network prompt the user unless YOLO is on; filesystem tools refuse to read or write outside the active project root unless `features.allowOutsideProjectRoot` is set; explicit deny rules (trust file, `/permissions deny`, directory rules, a session "no") make YOLO ask instead of refuse, and refuse under YOLO+ and with YOLO off; `permission: 'deny'` tools refuse at every level. YOLO is not blanket auto-approval: a call classified as one of the nine `DestructiveKind`s (`security/yolo-risk.ts` — disk wipe, system halt, delete outside the project, bulk delete, git-history rewrite, publish, download-and-run, agent-state write, credential bind) still prompts while that kind is gated. The user owns seven of them via `autonomy.yoloConfirm` / `/yolo confirm` / the WebUI settings menu; `agent-state` and `credential-bind` are locked because they write the files that decide whether approval happens at all. Interactive first launch currently selects and persists YOLO on; use `--no-yolo` or `/yolo off` to restore approval prompts. Monorepo: 29 packages + 2 apps + website. Runtime surfaces: CLI (REPL), optional TUI (React/Ink), WebUI (Vite/React), SimpleUI (lightweight browser chat), Desktop (Electron), and HQ. Published entry: `apps/wrongstack/src/index.js` → `@wrongstack/cli` → `packages/cli/src/index.ts` / `cli-main.ts`.
+WrongStack is a terminal AI coding agent in TypeScript: an LLM that reads code, edits files, runs shell commands, and reasons through bugs. Per-call approval and project-root containment form the non-YOLO policy: tool calls that mutate or touch the network prompt the user unless YOLO is on; filesystem tools refuse to read or write outside the active project root unless `features.allowOutsideProjectRoot` is set; explicit deny rules (trust file, `/permissions deny`, directory rules, a session "no") make YOLO ask instead of refuse, and refuse under YOLO+ and with YOLO off; `permission: 'deny'` tools refuse at every level. YOLO is not blanket auto-approval: a call classified as one of the nine `DestructiveKind`s (`security/yolo-risk.ts` — disk wipe, system halt, delete outside the project, bulk delete, git-history rewrite, publish, download-and-run, agent-state write, credential bind) still prompts while that kind is gated. The user owns seven of them via `autonomy.yoloConfirm` / `/yolo confirm` / the WebUI settings menu; `agent-state` and `credential-bind` are locked because they write the files that decide whether approval happens at all. Interactive first launch currently selects and persists YOLO on; use `--no-yolo` or `/yolo off` to restore approval prompts. Monorepo: 35 packages + 2 apps + website. Runtime surfaces: CLI (REPL), optional TUI (React/Ink), WebUI (Vite/React), SimpleUI (lightweight browser chat), Desktop (Electron), and HQ. Published entry: `apps/wrongstack/src/index.js` → `@wrongstack/cli` → `packages/cli/src/index.ts` / `cli-main.ts`.
 
 ## Package map
 
 ```
+primitives/        — Dependency-leaf helpers and regex guards
+persistence/       — SQLite/file persistence primitives
+client/            — Browser-safe shared client transport
+webui-protocol/    — Shared browser wire contracts and schemas
+plugin-sdk/        — Plugin authoring/runtime support
+vector-memory/     — Vector retrieval alongside SAGE
+wrongtrace/        — Optional external WrongTrace adapter
 core/              — Kernel: Container, Pipeline, EventBus, RunController, Context
 providers/         — Anthropic, OpenAI, Google, OpenAI-compatible adapters
 tools/             — Builtin tools: read, write, bash, exec, git, grep, glob, ...
@@ -21,19 +28,26 @@ runtime/           — Default runtime wiring: makeDefaultRuntime()
 kanban/            — Kanban/task-board primitives and queue state helpers
 sdd/               — Spec-Driven Development stores, trackers, and workflow helpers
 security-scanner/  — Security scanning package surface
+governance/        — Governance contracts and project policy service
+requirement-intake/ — Structured request intake
+codebase-index-mcp/ — Codebase Index MCP facade
+kanban-mcp/        — Kanban MCP facade
+mailbox-mcp/       — Mailbox MCP facade
+requirement-intake-mcp/ — Intake MCP facade
+sage-mcp/          — SAGE MCP facade
 sage/      — Project-local structured memory, graph, verification, hygiene, and retrieval
 telegram/          — Telegram bridge plugin
 webui/             — Vite+React web UI frontend and client state (docs/webui.md)
 simpleui/          — Lightweight browser chat (conversation, tool progress, agent tabs)
 webui-server/      — Shared Node WebUI backend that powers `wstack --webui`
 webui-hq/          — React HQ Command Center dashboard
-plugins/           — 64-entry first-party plugin catalog and subpath exports
+plugins/           — 90-entry first-party plugin catalog and subpath exports
 bench/             — Benchmark harness (Aider polyglot + SWE-bench); docs/subcommands/bench.md
 apps/wrongstack/   — bin entry (wrongstack / wstack)
 apps/desktop/      — Electron desktop shell
 ```
 
-**Dependency direction:** `@wrongstack/kanban` has no WrongStack dependency and sits below `core`; `core` declares it as its sole `@wrongstack/*` package dependency. `core` must not depend on `cli`, `tui`, `webui`, `simpleui`, `webui-server`, `webui-hq`, apps, or other packages that consume core. Product surfaces compose the lower packages; never reverse a surface dependency into the kernel.
+**Dependency direction:** `@wrongstack/primitives` and `@wrongstack/persistence` are dependency leaves. Kanban depends on both; Core depends on primitives, persistence, and Kanban. `core` must not depend on `cli`, `tui`, `webui`, `simpleui`, `webui-server`, `webui-hq`, apps, or other packages that consume core. Product surfaces compose the lower packages; never reverse a surface dependency into the kernel.
 
 ## Kernel (`packages/core/src/kernel/`)
 
@@ -129,7 +143,7 @@ All surfaces on one project share `~/.wrongstack/projects/<slug>/`:
 
 ## HQ Command Center (port 3499)
 
-`wstack --hq`: project-independent, **the only deliberately cross-machine** server (everything else is loopback-only). Aggregates telemetry from every connected surface and can steer them. Full docs: `docs/subcommands/hq.md` + `docs/plans/hq-command-center-2026-07.md`.
+`wstack --hq`: project-independent, **the only deliberately cross-machine** server (everything else is loopback-only). Aggregates telemetry from every connected surface and can steer them. Full docs: `docs/subcommands/hq.md` + `docs/archive/plans/hq-command-center-2026-07.md`.
 
 Hub-and-spoke, two WS channels: `/ws/client` — surfaces publish versioned `HqEventEnvelope`s (`HQ_PROTOCOL_VERSION = 1`) via an `HqPublisher` + EventBus bridges (session/agent/fleet/brain/worktree/tool[redacted]/cost; wiring in `cli-main.ts` ~L1370, `webui/src/server/pre-context-services.ts`, `tui/src/run-tui.ts`); `/ws/browser` — dashboard subscribes to `hq.snapshot` (debounced 250ms) + `hq.event` + `hq.alert`. Persists `events.jsonl`/`snapshot.json`/`timeseries.jsonl` under `<dataDir>`; HTTP `/api/events`, `/api/trends/cost`, `/api/alerts`. Control plane: browser `POST /api/command` → per-client queue → `client.command_poll`/`hq.command_batch`/`client.command_ack`; token scopes via `HqToken.capabilities`; commands `steer`/`abort`/`spawn`/`broadcast`/`run-command` (RCE-gated: `--hq-allow-exec` + `control.execute`; even then routed as a steer — the agent's own permission policy applies). `HqAlertEngine` evaluates the snapshot every 15s; only state transitions emit `hq.alert`. Separate browser/client token sets in `<dataDir>/auth.json`. Code: `core/src/hq/`; `cli/src/hq-server.ts`, `hq-dashboard-html.ts` (→ React `packages/webui-hq/`, Phase 5), `hq-command-controller.ts`, `hq-publisher.ts`, `boot/short-circuit-hq.ts`.
 

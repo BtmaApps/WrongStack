@@ -5,7 +5,7 @@
  * govulncheck, composer audit, dotnet package audit) and parses their
  * output into the TechStack advisory model.
  *
- * @see docs/specs/techstack-sdd.md §6, §7
+ * @see docs/archive/specs/techstack-sdd.md §6, §7
  */
 
 import { execFile } from 'node:child_process';

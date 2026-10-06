@@ -371,7 +371,7 @@ descending order so the timeline is visible. Use the
 - 2026-06-13 webui-package-server refactor, PR 0 (sibling issue
   for `webui/src/server/index.ts`; the same H-1 finding, the
   remaining third of the four).
-- `docs/notes/bugs.md` finding C-2 ("WebSocket Auth Token
+- `docs/archive/notes/bugs.md` finding C-2 ("WebSocket Auth Token
   Exposed in URL Query String") — the cookie-based WS auth
   delivery described in this issue's `Related` section
   references the WS upgrade path that this file owns.

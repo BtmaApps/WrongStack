@@ -7,7 +7,7 @@
 | **Deciders** | WrongStack core team |
 | **Supersedes** | Sequencing and ownership assumptions in `architecture-refactor-plan.md` and the 2026-07 architecture-review backlog; historical evidence remains valid |
 | **Superseded by** | — |
-| **Execution graph** | [`architecture-refactor-task-graph-2026-07.md`](architecture-refactor-task-graph-2026-07.md) |
+| **Execution graph** | [`architecture-refactor-task-graph-2026-07.md`](../archive/plans/architecture-refactor-task-graph-2026-07.md) |
 | **Historical backlog** | [`../archive/work-items/backlog/2026-07-architecture-review/README.md`](../archive/work-items/backlog/2026-07-architecture-review/README.md) |
 
 ## Context
@@ -270,7 +270,7 @@ Architecture status is reviewed at the end of each wave. A task is not marked `d
 
 The detailed mapping of all 19 historical architecture-review items to `done`, `partial`, `superseded`, `pending`, or `killed` is maintained in the execution graph:
 
-- [`architecture-refactor-task-graph-2026-07.md#historical-backlog-disposition`](architecture-refactor-task-graph-2026-07.md#historical-backlog-disposition)
+- [`architecture-refactor-task-graph-2026-07.md#historical-backlog-disposition`](../archive/plans/architecture-refactor-task-graph-2026-07.md#historical-backlog-disposition)
 
 No historical file is deleted by this ADR. The mapping controls execution priority while retaining prior measurements and reasoning for auditability.
 

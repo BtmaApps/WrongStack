@@ -73,7 +73,9 @@ The test will flag `kernel/container.ts`'s runtime import of `WrongStackError` a
 `observability/` may import from `kernel/` (types), `types/`, and `infrastructure/`. It must not import runtime values from `core/`, `execution/`, `storage/`, or `coordination/`.
 
 ### Rule 5 — security/ is a leaf at layer 3
-`security/` must not import from `execution/`, `storage/`, `coordination/`, or any layer-4+ subdirectory. It may import from `kernel/`, `types/`, and `infrastructure/`.
+The specialized check forbids runtime imports from `execution/`, `storage/`,
+and `coordination/`. It does not apply the general upward-edge check to every
+other target; type-only imports remain permitted.
 
 ### Rule 6 — registries are consumers, not providers
 `registry/` may import from `kernel/`, `types/`, `security/`, `infrastructure/`, and `models/`. It must not import from `execution/`, `storage/`, or `coordination/`.
@@ -158,7 +160,14 @@ The following rules are enforced automatically by `packages/core/tests/architect
 | Bidirectional | No two non-barrel layers have mutual runtime dependencies |
 | Cycle | No directed cycle exists in the runtime dependency graph |
 
-The current test file contains 14 named `it(...)` cases covering internal layers, bidirectional/cycle checks, extracted-package regressions, and the workspace DAG. Run it directly with `pnpm exec vitest run packages/core/tests/architecture/package-boundaries.test.ts`.
+The test covers internal layers, bidirectional/cycle checks, extracted-package
+regressions, and the workspace DAG. Run it with
+`pnpm exec vitest run packages/core/tests/architecture/package-boundaries.test.ts`.
+The seven groups summarize the historical `LAYERS` list, which does not cover
+every present Core directory. `sdd/` is now a historical test-list label; its
+implementation is in the separate `@wrongstack/sdd` package.
+`architecture/registry.json` and the health checker track broader ownership,
+cycles, exceptions and ratchets.
 
 ---
 
@@ -190,4 +199,7 @@ The `package.json` exports map already reflects the intended layering:
 }
 ```
 
-Most public subpath exports map to a source area; `./defaults` is a compatibility barrel and `./tasking` is a task-facing surface outside the historical `LAYERS` list. External consumers should use declared exports. The architecture test—not the exports map alone—is authoritative for internal runtime edges.
+Public subpaths map to source owners or focused facades; `./tasking` is outside
+the historical `LAYERS` list. Use the current Core manifest's declared exports.
+The removed `./defaults` facade is not an import target. Architecture checks,
+rather than the exports map alone, enforce internal runtime edges.

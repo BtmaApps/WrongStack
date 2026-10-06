@@ -2,7 +2,7 @@
   "name": "@wrongstack/webui-protocol",
   "version": "1.0.34",
   "license": "MIT",
-  "description": "Wire-protocol contracts shared between the @wrongstack/webui + @wrongstack/simpleui frontends and the @wrongstack/webui-server backend. Browser-safe: depends only on @wrongstack/core types (no ws, no node-only APIs). Extracted in 2026-08 to remove the webui/simpleui -> webui-server transitive dependency (see docs/reports/modularity-assessment-2026-08-22.md §2.2).",
+  "description": "Wire-protocol contracts shared between the @wrongstack/webui + @wrongstack/simpleui frontends and the @wrongstack/webui-server backend. Browser-safe: depends only on @wrongstack/core types (no ws, no node-only APIs). Extracted in 2026-08 to remove the webui/simpleui -> webui-server transitive dependency (see docs/archive/reports/modularity-assessment-2026-08-22.md §2.2).",
   "keywords": [
     "wrongstack",
     "webui",

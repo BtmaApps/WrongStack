@@ -6,7 +6,7 @@
  * that advertised them said "Ctrl", which is the key a Mac user does not press.
  * The activity bar tooltips, the "…" overflow menu and the shortcuts overlay
  * all hard-coded the string. This module is the one place that decides.
- * See docs/audit/webui-full-review-2026-09-03.md B-15.
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-15.
  */
 
 /**

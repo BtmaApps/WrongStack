@@ -96,7 +96,7 @@ export interface HqClientResumeMessage {
    * Highest `seq` value the client has already received via prior
    * `client.event` envelopes. The server replies with `hq.resume_gap`
    * containing the missed envelopes (capped at 1000 / 1 MB) or `hq.snapshot`
-   * if the gap is too large. See `docs/plans/hq-evolution-2026-08.md` §2.5.
+   * if the gap is too large. See `docs/archive/plans/hq-evolution-2026-08.md` §2.5.
    */
   lastSeqSeen: number;
   /**
@@ -120,7 +120,7 @@ export type HqClientMessage =
  * Proactive gap-fill: a client can request missed envelopes by `clientId`
  * and `afterSeq` without waiting for the push path. The server replies with
  * `hq.resume_gap` (bounded list) or `hq.snapshot` when the gap is too large.
- * See `docs/plans/hq-evolution-2026-08.md` §2.2.
+ * See `docs/archive/plans/hq-evolution-2026-08.md` §2.2.
  */
 export interface HqClientEventPollMessage {
   type: 'client.event_poll';

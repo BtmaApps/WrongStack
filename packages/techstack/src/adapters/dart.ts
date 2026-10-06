@@ -4,7 +4,7 @@
  * Parses pubspec.yaml and pubspec.lock to produce
  * DependencyObservation[] for Dart/Flutter workspaces.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier A
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier A
  */
 
 import { readFileSync } from 'node:fs';

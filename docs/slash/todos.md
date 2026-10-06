@@ -2,7 +2,7 @@
 
 ## What it does
 
-Manages an in-memory todo list scoped to the current session. Todos live in `ctx.todos` — all mutations go through `ctx.state.replaceTodos()` so the checkpoint writer and TUI stay in sync. For persistent plans across sessions, see `/plan`.
+Manages an in-memory todo list scoped to the current session. Todos live in `ctx.todos` — all mutations go through `ctx.state.replaceTodos()` so the checkpoint writer and TUI stay in sync. Todos are checkpointed and restored on session resume. See [strategic plans](../plans_architecture.md) for higher-level steps.
 
 ## Subcommands
 
@@ -41,7 +41,7 @@ Commands that accept `<id|index>` (`done`, `remove`, `rm`, `delete`) match in th
 
 | Key | Panel | Mode |
 |-----|-------|------|
-| **F5** | Autonomy settings editor | Both modes, Esc to close |
+| **F5** | Plan panel | Both modes, Esc to close |
 | **F6** | Full-screen monitor overlay | Both modes, Esc to close |
 
 ## WebUI
@@ -52,6 +52,6 @@ The `TodosPanel` component renders the live list with status icons, colored bord
 
 - `packages/cli/src/slash-commands/todos.ts` — slash command implementation
 - `packages/core/src/core/context.ts` — `TodoItem` type
-- `packages/tui/src/components/compact-todos-panel.tsx` — F5 panel
+- `packages/tui/src/components/todos-monitor.tsx` — F5 panel
 - `packages/tui/src/components/todos-monitor.tsx` — F6 overlay
 - `packages/webui/src/components/TodosPanel.tsx` — WebUI panel
