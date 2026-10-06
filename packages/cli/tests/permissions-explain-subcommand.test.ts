@@ -110,10 +110,7 @@ describe('wstack permissions explain', () => {
   });
 
   it('applies the project directory rules', async () => {
-    const { out } = await explain(
-      { path: 'secret/key.pem', content: 'x' },
-      { yolo: true, rules: rule },
-    );
+    const { out } = await explain({ path: 'secret/key.pem', content: 'x' }, { rules: rule });
     expect(out).toContain('Effective: deny (source: directory_rules)');
     expect(out).toMatch(/denyTools ← WINNER/);
     expect(out).toContain('Rule: #1 deny write → secret (directory-rules)');

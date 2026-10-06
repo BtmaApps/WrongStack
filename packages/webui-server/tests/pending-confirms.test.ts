@@ -44,6 +44,29 @@ describe('pending-confirms', () => {
   });
 
   describe('resolveYoloEligiblePendingConfirms', () => {
+    it('YOLO+ answers every prompt on screen for its session, destructive and boundary included', () => {
+      const answered: string[] = [];
+      const keep = (id: string) => (d: string) => answered.push(`${id}:${d}`);
+      const pending = new Map<
+        string,
+        Parameters<typeof resolveYoloEligiblePendingConfirms>[0] extends Map<string, infer V>
+          ? V
+          : never
+      >([
+        ['d', { resolve: keep('d'), riskTier: 'destructive', sessionId: 's1' }],
+        ['b', { resolve: keep('b'), boundaryReason: 'outside task scope', sessionId: 's1' }],
+        ['other', { resolve: keep('other'), riskTier: 'destructive', sessionId: 's2' }],
+      ]);
+
+      // Plain YOLO leaves the destructive and boundary prompts alone…
+      resolveYoloEligiblePendingConfirms(pending, 's1');
+      expect(answered).toEqual([]);
+      // …YOLO+ answers both, and still only for the tab that turned it on.
+      resolveYoloEligiblePendingConfirms(pending, 's1', { allowAll: true });
+      expect(answered.sort()).toEqual(['b:yes', 'd:yes']);
+      expect([...pending.keys()]).toEqual(['other']);
+    });
+
     it('resolves all pending confirms with "yes"', () => {
       const resolves: string[] = [];
       const pending = new Map([

@@ -92,6 +92,7 @@ export function setupCliSlashCommands(params: {
   eventWiring: { setEffectiveMaxContext: SE['setEventMaxContext'] };
   mcpRegistry: SE['mcpRegistry'];
   setYoloMode: SE['onYolo'];
+  setYoloPlusMode: SE['onYoloPlus'];
   setYoloConfirm: SE['onYoloConfirm'];
   getNextPredict: SE['getNextPredict'];
   setNextPredict: SE['setNextPredict'];
@@ -185,6 +186,7 @@ export function setupCliSlashCommands(params: {
     eventWiring,
     mcpRegistry,
     setYoloMode,
+    setYoloPlusMode,
     setYoloConfirm,
     getNextPredict,
     setNextPredict,
@@ -307,6 +309,7 @@ export function setupCliSlashCommands(params: {
       setEventMaxContext: eventWiring.setEffectiveMaxContext,
       mcpRegistry,
       onYolo: setYoloMode,
+      onYoloPlus: setYoloPlusMode,
       onYoloConfirm: setYoloConfirm,
       getNextPredict,
       setNextPredict,

@@ -231,7 +231,7 @@
       },
       "source": "packages/core/src/types/index.ts",
       "declarations": [
-        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LimitBound, LimitsBudgetKey, LimitsConfig, LimitsScalarKey, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, ObservabilityConfig, OtlpExportConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemeName, ThemePresetId, ThemePresetMeta, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
+        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LimitBound, LimitsBudgetKey, LimitsConfig, LimitsScalarKey, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsMode, NextStepsToolConfig, ObservabilityConfig, OtlpExportConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemeName, ThemePresetId, ThemePresetMeta, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
         "export type { AddAttachmentInput, Attachment, AttachmentKind, AttachmentMeta, AttachmentRef, AttachmentStore, } from './attachment.js';",
         "export type { AggregateHealth, HealthCheck, HealthCheckResult, HealthRegistry, HealthStatus, MetricLabels, MetricSeries, MetricsRuntimeStatus, MetricsSink, MetricsSnapshot, Span, Tracer, } from './observability.js';",
         "export type { AnyHookOutcome, ConfiguredHook, HookEntry, HookEvent, HookFailurePolicy, HookInput, HookInvocationContext, HookMatcher, HookOutcome, HookRegistrationOptions, HttpHook, InProcessHook, ObservationalHookEvent, PreToolUseOutcome, PreToolUseStage, ShellHook, } from './hooks.js';",
@@ -294,7 +294,7 @@
         "export { HOOK_EVENTS, isHookEvent } from './hooks.js';",
         "export { MALFORMED_ARG_MARKERS } from './tool-markers.js';",
         "export { ToolErrorCategory } from './tool.js';",
-        "export { activeLimits, BUILTIN_MODEL_TIER_IDS, clampLimit, clampLimits, DEFAULT_TUI_THINKING_WORD, FLEET_CHAT_VERBOSITY_VALUES, formatLimitRange, installLimitsSource, LIMIT_BOUNDS, LIMITS_BUDGET_KEYS, LIMITS_SCALAR_KEYS, limitValueError, MAX_TUI_THINKING_WORD_LENGTH, MAX_WRONGPROXY_URL_LENGTH, normalizeTokenSavingTier, normalizeTuiThinkingWord, positiveLimit, resolveFleetChatVerbosity, resolveTokenSavingTier, THEME_PRESET_IDS, THEME_PRESET_META, THEME_RANDOM_ID, TOOL_MEMORY_GUARD_BYTES, } from './config.js';",
+        "export { activeLimits, BUILTIN_MODEL_TIER_IDS, clampLimit, clampLimits, DEFAULT_TUI_THINKING_WORD, FLEET_CHAT_VERBOSITY_VALUES, formatLimitRange, installLimitsSource, LIMIT_BOUNDS, LIMITS_BUDGET_KEYS, LIMITS_SCALAR_KEYS, limitValueError, MAX_TUI_THINKING_WORD_LENGTH, MAX_WRONGPROXY_URL_LENGTH, NEXT_STEPS_MODES, normalizeTokenSavingTier, normalizeTuiThinkingWord, positiveLimit, resolveFleetChatVerbosity, resolveNextStepsMode, resolveTokenSavingTier, THEME_PRESET_IDS, THEME_PRESET_META, THEME_RANDOM_ID, TOOL_MEMORY_GUARD_BYTES, } from './config.js';",
         "export { classifyProviderError, effectiveInputTokens, freshInputTokens, isContextOverflowShaped, isFallbackWorthy, isReasoningEffort, isRetryableKind, ProviderError, promptCacheHitRatio, REASONING_EFFORT_LEVELS, StreamHangError, totalUsageTokens, } from './provider.js';",
         "export { clearProviderReportedMaxOutputs, parseProviderReportedMaxOutput, providerReportedMaxOutput, recordProviderReportedMaxOutput, } from './provider-output-caps.js';",
         "export { defineMemoryCapability, MEMORY_TYPE_LABELS } from './memory.js';",
@@ -499,8 +499,10 @@
       },
       "source": "packages/core/src/utils/next-steps.ts",
       "declarations": [
+        "export const NEXT_STEPS_COMPLETE_MARKER",
         "export const stripNextSteps",
         "export function closingCodeFence",
+        "export function hasNextStepsCompleteMarker",
         "export function indexInsideCodeFence",
         "export function isFinalTurnStopReason",
         "export function parseNextSteps",
@@ -896,7 +898,7 @@
         "export type { VcsAdapter, VcsKind, VcsOptions } from '../vcs/vcs-adapter.js';",
         "export type { VcsRunner, VcsRunResult } from '../vcs/vcs-runner.js';",
         "export { ALL_SYNC_CATEGORIES, CloudSync, type SyncResult, } from './cloud-sync.js';",
-        "export { CONFIG_BEHAVIOR_DEFAULTS, type ConfigDefaultRepair, type ConfigDefaultRepairReport, type ConfigLoaderOptions, type ConfigSource, DefaultConfigLoader, repairConfigDefaults, } from './config-loader.js';",
+        "export { CONFIG_BEHAVIOR_DEFAULTS, type ConfigDefaultRepair, type ConfigDefaultRepairReport, type ConfigLoaderOptions, type ConfigSource, DefaultConfigLoader, listInProjectDeniedPaths, repairConfigDefaults, } from './config-loader.js';",
         "export { DefaultConfigStore } from './config-store.js';",
         "export { DefaultPromptStore, migratePromptEntry, type PromptEntry, type PromptStore, promptChecksum, } from './prompt-store.js';",
         "export { DefaultSessionReader } from './session-reader.js';",
@@ -993,6 +995,7 @@
         "export { isProjectRootLocked, isYoloLockedOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
         "export { restrictDirPermissions, restrictFilePermissions, SECRET_DIR_MODE, SECRET_FILE_MODE, } from './file-permissions.js';",
+        "export { setSessionLeaderMetaResolver, subagentYoloPlus } from './session-yolo.js';",
         "export { type KanbanGovernancePort, kanbanGovernance, setKanbanGovernance, } from './kanban-governance-port.js';",
         "export { withExecutorGate } from './permission-explain.js';"
       ]
@@ -1522,8 +1525,8 @@
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 68,
-      "sourceLines": 15517
+      "sourceFiles": 69,
+      "sourceLines": 15749
     },
     {
       "directory": "design",
@@ -1537,7 +1540,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 80,
-      "sourceLines": 21864
+      "sourceLines": 21867
     },
     {
       "directory": "extension",
@@ -1662,8 +1665,8 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 33,
-      "sourceLines": 10190
+      "sourceFiles": 35,
+      "sourceLines": 10632
     },
     {
       "directory": "session-catalog",
@@ -1691,7 +1694,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 113,
-      "sourceLines": 25443
+      "sourceLines": 25476
     },
     {
       "directory": "tasking",
@@ -1712,7 +1715,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 84,
-      "sourceLines": 15864
+      "sourceLines": 15930
     },
     {
       "directory": "typesafe",
@@ -1726,7 +1729,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 82,
-      "sourceLines": 13824
+      "sourceLines": 13862
     },
     {
       "directory": "vcs",

@@ -6,13 +6,19 @@
  * sync realpath probe in {@link isInsideAgentStateRoot} (symlinked-root
  * containment); everything else is pure string work.
  */
+
 import { realpathSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { PermissionDecision } from '../types/permission.js';
 import type { Tool } from '../types/tool.js';
 import { matchAny, matchAnyCommand } from '../utils/glob-match.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
 import { wstackGlobalRoot } from '../utils/wstack-paths.js';
+import {
+  isAgentStateExtractionTarget,
+  isAgentStateWriteTarget,
+} from './agent-state-sensitivity.js';
 import { hasCapability, ToolCapabilities } from './capabilities.js';
 import { classifyDestructiveCommand, type DestructiveKind, getInputString } from './yolo-risk.js';
 
@@ -150,6 +156,43 @@ export function fsWriteTargetPaths(tool: Tool | undefined, input: unknown): stri
     }
   }
   return out;
+}
+
+/** Input keys naming a directory the tool writes beneath, not a single file. */
+const FS_WRITE_DIRECTORY_INPUT_KEYS: readonly string[] = ['directory', 'cwd'];
+
+/**
+ * Does this call write agent-state under the wstack global root?
+ *
+ * The single judgment behind the locked `agent-state` kind for file tools, for
+ * the leader's policy and the subagent policy alike. File targets go through
+ * {@link isAgentStateWriteTarget}; a DIRECTORY input is judged like an archive
+ * extraction, because the tool may write any name beneath it — `directory:
+ * ~/.wrongstack/projects/abc` can reach that project's `config.local.json`.
+ * Tool-declared targets can be relative to that directory (`patch`), so a
+ * relative target is resolved against it as well as against `base`.
+ */
+export function writesAgentState(
+  tool: Tool | undefined,
+  input: unknown,
+  base: string | undefined,
+): boolean {
+  const at = (p: string, from: string | undefined) =>
+    from ? path.resolve(from, p) : path.resolve(p);
+  const obj =
+    input && typeof input === 'object' && !Array.isArray(input)
+      ? (input as Record<string, unknown>)
+      : {};
+  const dirs = FS_WRITE_DIRECTORY_INPUT_KEYS.map((key) => obj[key])
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .map((dir) => at(dir, base));
+  if (dirs.some(isAgentStateExtractionTarget)) return true;
+  for (const target of fsWriteTargetPaths(tool, input)) {
+    if (isAgentStateWriteTarget(at(target, base))) return true;
+    if (path.isAbsolute(target)) continue;
+    if (dirs.some((dir) => isAgentStateWriteTarget(path.resolve(dir, target)))) return true;
+  }
+  return false;
 }
 
 /**
@@ -631,4 +674,34 @@ export function isSensitiveReadCall(tool: Tool, input: unknown): boolean {
     return false;
   }
   return shellCommandLinesFromInput(input).lines.some(shellCommandReadsSensitivePath);
+}
+
+/**
+ * What a refusal the user wrote becomes under each YOLO level.
+ *
+ * - off: it refuses, as it always has.
+ * - YOLO: it ASKS. YOLO runs without interrupting, except that it stops on
+ *   damage and on anything the user forbade — and stopping means asking, so
+ *   the user decides this one call. The confirm carries the destructive tier,
+ *   so a host that auto-answers prompts when YOLO turns on leaves it for the
+ *   user, and the `yolo_user_rule` source, so only the user answers it
+ *   (`userRuleAnswer`).
+ * - YOLO+: it refuses. YOLO+ asks nothing at all; the user's own refusals are
+ *   the one thing it does not run.
+ *
+ * The single rule behind `evaluate()` and `explain()` for session "no"
+ * answers, trust-file deny patterns, `/permissions deny` rules, and deny lists
+ * that could not be checked for a call.
+ */
+export function refusalUnderYolo(
+  refusal: PermissionDecision,
+  mode: { yolo: boolean; yoloPlus: boolean },
+): PermissionDecision {
+  if (!mode.yolo || mode.yoloPlus || refusal.permission !== 'deny') return refusal;
+  return {
+    permission: 'confirm',
+    source: 'yolo_user_rule',
+    riskTier: 'destructive',
+    reason: `${refusal.reason ?? 'denied'} — YOLO asks instead of refusing`,
+  };
 }

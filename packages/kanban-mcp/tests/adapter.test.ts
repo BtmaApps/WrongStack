@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBoard, type KanbanServerEvent, type KanbanTask } from '@wrongstack/kanban';
 import { addCheckToTask, addGoalMetricToTask, addTask } from '@wrongstack/kanban/test-support';
+import type { MCPServerTool } from '@wrongstack/mcp';
 // Namespace import: vitest resolves this to the tools SOURCE, while the test
 // tsconfig resolves it to the built dist, which may predate the export.
 import * as kanbanToolModule from '@wrongstack/tools/kanban';
@@ -27,6 +28,32 @@ describe('createKanbanMcpToolHost', () => {
     };
     expect(readSchema.properties.action.enum).toContain('get_board');
     expect(readSchema.properties.action.enum).not.toContain('update_task');
+  });
+
+  it('publishes tier-driven MCP annotations on every descriptor', async () => {
+    // Read the hints through the upstream element type rather than a local
+    // restatement, so this assertion follows the wire shape if `MCPServerTool`
+    // ever widens.
+    const annotationsOf = (tool: MCPServerTool): MCPServerTool['annotations'] => tool.annotations;
+
+    const host = createKanbanMcpToolHost('C:/project', {
+      destructive: true,
+      dependencies: { executeKanban: vi.fn() },
+    });
+    const tools = await host.listTools();
+    const annotations = new Map(tools.map((tool) => [tool.name, annotationsOf(tool)]));
+    expect(annotations.get('kanban_read')).toEqual({ readOnlyHint: true, openWorldHint: false });
+    expect(annotations.get('kanban_watch')).toEqual({ readOnlyHint: true, openWorldHint: false });
+    expect(annotations.get('kanban_manage')).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    expect(annotations.get('kanban_destructive')).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: false,
+    });
   });
 
   it('executes an allowed action with project and actor context', async () => {
@@ -282,6 +309,30 @@ describe('Kanban MCP against the real kanban tool', () => {
 });
 
 describe('createKanbanMcpServer', () => {
+  it('publishes annotations through the tools/list JSON-RPC surface', async () => {
+    const server = createKanbanMcpServer('C:/project', {
+      writable: true,
+      dependencies: { executeKanban: vi.fn() },
+    });
+    const listed = JSON.parse(
+      (await server.handleMessage(
+        JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+      ))!,
+    ) as { result: { tools: Array<{ name: string; annotations?: object }> } };
+    const byName = new Map(listed.result.tools.map((tool) => [tool.name, tool.annotations]));
+
+    // Tier selection still gates what is published: writable mode exposes
+    // manage but never destructive.
+    expect([...byName.keys()].sort()).toEqual(['kanban_manage', 'kanban_read', 'kanban_watch']);
+    expect(byName.get('kanban_read')).toEqual({ readOnlyHint: true, openWorldHint: false });
+    expect(byName.get('kanban_watch')).toEqual({ readOnlyHint: true, openWorldHint: false });
+    expect(byName.get('kanban_manage')).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+  });
+
   it('publishes server identity and the Kanban workflow prompt', async () => {
     const server = createKanbanMcpServer('C:/project', {
       dependencies: { executeKanban: vi.fn() },

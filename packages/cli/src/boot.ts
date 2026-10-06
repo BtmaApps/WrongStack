@@ -704,7 +704,7 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
     if (shouldPrintYoloNotice(lastChoices, yoloPinned, choices.yolo)) {
       writeErr(
         `\n  ${color.yellow('YOLO is on')}: non-denied tool calls, including shell and file writes, run without confirmation.\n` +
-          `  ${color.dim('Explicit deny rules still apply. Use')} --no-yolo ${color.dim('or')} /yolo off ${color.dim('to require prompts.')}\n\n`,
+          `  ${color.dim('Damaging calls and calls your deny rules forbid still ask. Use')} --no-yolo ${color.dim('or')} /yolo off ${color.dim('to require prompts.')}\n\n`,
       );
     }
 

@@ -18,6 +18,7 @@ describe('resolveSettingsFieldValue', () => {
       [14, 'allowOutsideProjectRoot'],
       [33, 'debugStream'],
       [63, 'featureToolCoach'],
+      [64, 'nextStepsRequired'],
     ];
 
     for (const [field, _key] of boolCases) {
@@ -312,6 +313,7 @@ describe('getSettingsFieldValue', () => {
     sageMemoryInjectThreshold: 0.85,
     readSymbols: true,
     nextStepsTool: false,
+    nextStepsRequired: true,
     // WrongProxy / WrongTrace (fields 59/60).
     wrongProxyEnabled: false,
     wrongProxyUrl: 'http://localhost:3444',
@@ -480,6 +482,7 @@ describe('formatAllSettingsSummary', () => {
     sageMemoryInjectThreshold: 0.85,
     readSymbols: false,
     nextStepsTool: false,
+    nextStepsRequired: true,
     // WrongProxy / WrongTrace (fields 59/60).
     wrongProxyEnabled: false,
     wrongProxyUrl: 'http://localhost:3444',
@@ -593,9 +596,14 @@ describe('resetSettingsFieldValue', () => {
     if (!r.ok) expect(r.error).toContain('99');
   });
 
-  it('SETTINGS_DEFAULTS has all 52 keys including Tool Coach', () => {
-    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(52);
+  it('SETTINGS_DEFAULTS has all 53 keys including Tool Coach and required next steps', () => {
+    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(53);
     expect(SETTINGS_DEFAULTS.featureToolCoach).toBe(true);
+    expect(SETTINGS_DEFAULTS.nextStepsRequired).toBe(true);
+  });
+
+  it('field 64 toggles and resets required next steps', () => {
+    expect(resetSettingsFieldValue(64).ok).toBe(true);
   });
 
   it('every field 0-57 can be reset', () => {
@@ -603,5 +611,19 @@ describe('resetSettingsFieldValue', () => {
       const r = resetSettingsFieldValue(f);
       expect(r.ok).toBe(true);
     }
+  });
+});
+
+describe('settingsValueChange — field 64 (required next steps)', () => {
+  it('toggles nextStepsRequired both ways', async () => {
+    const { reduceSettingsValues } = await import('../src/reducers/settings-values.js');
+    const before = {
+      settingsPicker: { open: true, field: 64, nextStepsRequired: true },
+    } as unknown as import('../src/app-state.js').State;
+    const off = reduceSettingsValues(before, { type: 'settingsValueChange', delta: 1 });
+    expect(off.settingsPicker.nextStepsRequired).toBe(false);
+    const on = reduceSettingsValues(off, { type: 'settingsValueChange', delta: -1 });
+    expect(on.settingsPicker.nextStepsRequired).toBe(true);
+    expect(SETTINGS_FIELD_LABELS[64]).toBe('Require next steps');
   });
 });

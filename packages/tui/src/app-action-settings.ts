@@ -135,6 +135,7 @@ export type AppActionSettings =
       showSageMemoryInject: boolean;
       sageMemoryInjectThreshold: number;
       nextStepsTool: boolean;
+      nextStepsRequired: boolean;
       /**
        * WrongProxy / WrongTrace: master switch + configurable URL
        * (default http://localhost:3444). Mirrors `Settings.wrongProxy*`

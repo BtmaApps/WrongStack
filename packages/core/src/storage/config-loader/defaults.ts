@@ -145,6 +145,9 @@ export const CONFIG_BEHAVIOR_DEFAULTS: Omit<Config, 'provider' | 'model'> = {
     // 0 = unlimited: auto-proceed keeps going until the user stops it
     // (Ctrl+C / [GOAL_COMPLETE] / loop guard), matching tools.maxIterations.
     autoProceedMaxIterations: 0,
+    // Every finished turn ends with <nextsteps> or <nextsteps-complete/>, so
+    // auto mode runs until the model says the work is done (user default).
+    nextSteps: 'required',
     autonomyNextPrompt: 'auto {{suggestion}}',
     terminalTitleAnimation: true,
     // Mirrored from the top-level yolo default so the autonomy subsystem

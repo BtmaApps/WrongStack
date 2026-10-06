@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { noOpVault } from '@wrongstack/core/security';
@@ -95,6 +95,31 @@ describe('TUI settings adapter', () => {
     expect(configStore.get().features.toolCoach).toBe(false);
     expect(JSON.parse(readFileSync(globalConfig, 'utf8')).features.toolCoach).toBe(false);
   });
+  it('round-trips required next steps through autonomy.nextSteps', async () => {
+    const { adapter, configStore, globalConfig } = makeAdapter();
+    // Unset means the default, required.
+    expect(adapter.getSettings().nextStepsRequired).toBe(true);
+    expect(await adapter.saveSettings({ nextStepsRequired: false })).toBeNull();
+    expect(adapter.getSettings().nextStepsRequired).toBe(false);
+    expect(configStore.get().autonomy?.nextSteps).toBe('optional');
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).autonomy.nextSteps).toBe('optional');
+    expect(await adapter.saveSettings({ nextStepsRequired: true })).toBeNull();
+    expect(configStore.get().autonomy?.nextSteps).toBe('required');
+  });
+
+  it('keeps required next steps in the profile under project scope', async () => {
+    const { adapter, globalConfig, inProjectConfig } = makeAdapter(
+      baseConfig({ configScope: 'project' } as never),
+    );
+    expect(await adapter.saveSettings({ nextStepsRequired: true })).toBeNull();
+    // The in-project policy strips autonomy.nextSteps; the profile must carry it.
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).autonomy.nextSteps).toBe('required');
+    const project = existsSync(inProjectConfig)
+      ? JSON.parse(readFileSync(inProjectConfig, 'utf8'))
+      : {};
+    expect(project.autonomy?.nextSteps).toBeUndefined();
+  });
+
   it('returns the runtime default maxConcurrent when config has no setting', () => {
     const initial = baseConfig({ maxConcurrent: undefined as never });
     const { adapter } = makeAdapter(initial);

@@ -101,3 +101,19 @@ export function approvalRecord(
           : suggestedPattern;
   return { pattern, displayPattern, ...(scope ? { scope } : {}) };
 }
+
+/**
+ * What an answer to a YOLO question about the user's own rule
+ * (`source: 'yolo_user_rule'`) actually does. "Always allow" cannot stick —
+ * the user's deny rule is checked first and would turn the new allow into a
+ * dead entry that asks again anyway — so it runs the call once, like "yes",
+ * and writes nothing. Lifting the rule itself is `/permissions` or the trust
+ * file, never a side effect of answering a prompt. Every other answer, and
+ * every other prompt, passes through unchanged.
+ */
+export function userRuleAnswer<C extends string>(
+  choice: C,
+  decisionSource: string | undefined,
+): C | 'yes' {
+  return decisionSource === 'yolo_user_rule' && isPersistentApproval(choice) ? 'yes' : choice;
+}

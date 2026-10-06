@@ -98,6 +98,17 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
     description: 'Ask the agent for concrete next steps',
   },
   {
+    name: '/yolo',
+    category: 'Inspect',
+    description: 'YOLO: on (damaging kinds ask) · plus (nothing ever asks) · off',
+  },
+  {
+    name: '/nextsteps',
+    category: 'Inspect',
+    description:
+      'Make <nextsteps> optional or required; cap auto-continue (5–100 turns or unlimited)',
+  },
+  {
     name: '/next',
     category: 'Inspect',
     aliases: ['/enxt'],

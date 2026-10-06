@@ -15,7 +15,7 @@
  */
 
 import { isSecretField } from '@wrongstack/core/security';
-import type { Config, JSONSchema } from '@wrongstack/core/types';
+import { type Config, type JSONSchema, NEXT_STEPS_MODES } from '@wrongstack/core/types';
 import {
   isTypeSafeRoute,
   resolveTypeSafeAccount,
@@ -158,8 +158,9 @@ const AUTONOMY_ENUMS: Record<string, readonly string[]> = {
   // flag a config that the rest of the system happily writes.
   defaultMode: ['off', 'suggest', 'auto', 'eternal', 'eternal-parallel'],
   enhanceLanguage: ['original', 'english'],
+  nextSteps: NEXT_STEPS_MODES,
 };
-const AUTONOMY_BOOLEANS = ['enhance'] as const;
+const AUTONOMY_BOOLEANS = ['enhance', 'yoloPlus'] as const;
 const AUTONOMY_DELAYS = ['autoProceedDelayMs', 'enhanceDelayMs'] as const;
 
 // Mirrors ENCRYPTED_PREFIX in core types/secret-vault.ts — vault-encrypted

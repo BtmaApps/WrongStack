@@ -70,6 +70,9 @@ export function createProjectPermissionPolicy(opts: {
     const policyOptions: ConstructorParameters<typeof DefaultPermissionPolicy>[0] = {
       trustFile: opts.trustFile,
       yolo: opts.permission?.yolo ?? false,
+      // YOLO+ from the user's own config (in-project and cloud-synced config
+      // cannot carry it). Implies YOLO.
+      yoloPlus: opts.config.autonomy?.yoloPlus === true,
       // Which kinds of damage still prompt under YOLO. Read from the user's
       // profile config; an absent map gates every kind (fail-closed), and the
       // in-project loader strips `autonomy.yoloConfirm` so a repo cannot widen it.

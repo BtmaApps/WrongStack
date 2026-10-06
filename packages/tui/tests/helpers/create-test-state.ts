@@ -173,6 +173,7 @@ export function createTestState(
       sageMemoryInjectThreshold: 0.85,
       readSymbols: false,
       nextStepsTool: false,
+      nextStepsRequired: true,
       // WrongProxy / WrongTrace: match app-initial-state defaults (switch
       // off, daemon default URL, no edit in progress).
       wrongProxyEnabled: false,

@@ -38,6 +38,7 @@ export { fillMissingDefaults, repairConfigDefaults } from './config-loader/defau
 export { CONFIG_BEHAVIOR_DEFAULTS } from './config-loader/defaults.js';
 export {
   assertInProjectAllowListComplete,
+  listInProjectDeniedPaths,
   stripUnsafeInProjectFields,
 } from './config-loader/in-project-policy.js';
 export type { ConfigLoaderOptions, ConfigSource } from './config-loader/types.js';

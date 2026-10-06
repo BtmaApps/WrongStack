@@ -111,6 +111,41 @@ export function isFinalTurnStopReason(stopReason: string | undefined): boolean {
   return stopReason !== 'tool_use' && stopReason !== 'tool_call';
 }
 
+// ── Completion marker ──────────────────────────────────────────────────────
+
+/**
+ * The leader's explicit "the requested work is complete" signal.
+ *
+ * Under `autonomy.nextSteps: 'required'` every finished turn must end with
+ * either a `<nextsteps>` block or this marker; the runtime only asks for
+ * suggestions when it sees neither. It is control metadata, never prose: every
+ * surface strips it from the rendered body (`parseNextSteps().stripped` and
+ * `stripNextStepsBlock`). Self-closing only — a paired form would need its own
+ * close-tag handling in every stripper.
+ */
+export const NEXT_STEPS_COMPLETE_MARKER = '<nextsteps-complete/>';
+
+const COMPLETE_MARKER_RE = /<nextsteps-complete\s*\/>[ \t]*\n?/gi;
+
+/** Whether `content` carries the completion marker outside code fences. */
+export function hasNextStepsCompleteMarker(content: string): boolean {
+  if (!content.includes('<nextsteps-complete')) return false;
+  const spans = fenceSpans(content);
+  for (const match of content.matchAll(COMPLETE_MARKER_RE)) {
+    if (!spans.some(([start, end]) => match.index >= start && match.index < end)) return true;
+  }
+  return false;
+}
+
+/** Remove completion markers outside code fences; fenced examples stay verbatim. */
+function stripCompleteMarkers(content: string): string {
+  if (!content.includes('<nextsteps-complete')) return content;
+  const spans = fenceSpans(content);
+  return content.replace(COMPLETE_MARKER_RE, (marker, offset: number) =>
+    spans.some(([start, end]) => offset >= start && offset < end) ? marker : '',
+  );
+}
+
 // ── Patterns ───────────────────────────────────────────────────────────────
 
 /**
@@ -267,8 +302,11 @@ function parseRawNumbered(content: string): ParseNextStepsResult {
 }
 
 /** Find the first complete, actionable block; preserve malformed candidates. */
-function parseWithHeading(content: string): ParseNextStepsResult {
-  const empty: ParseNextStepsResult = { steps: [], texts: [], stripped: content, autoTexts: [] };
+function parseWithHeading(raw: string): ParseNextStepsResult {
+  // The completion marker is metadata on every path, block or no block.
+  const content = stripCompleteMarkers(raw);
+  const stripped = content === raw ? raw : content.replace(/\n{3,}/g, '\n\n').trim();
+  const empty: ParseNextStepsResult = { steps: [], texts: [], stripped, autoTexts: [] };
   const spans = fenceSpans(content);
   const headings = [...content.matchAll(/<nextsteps\b[^<>]*>\s*\n+/gi)].filter(
     (match) =>

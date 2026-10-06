@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T06:54:45.210Z",
+  "generatedAt": "2026-10-06T06:58:54.644Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4639,
-    "testFiles": 4119,
-    "sourceLines": 1063990,
+    "sourceFiles": 4643,
+    "testFiles": 4126,
+    "sourceLines": 1065523,
     "workspaceEdges": 133,
-    "moduleEdges": 15271,
+    "moduleEdges": 15299,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 962
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 583,
-      "testFiles": 593,
+      "sourceFiles": 584,
+      "testFiles": 594,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 593
+          "testFiles": 594
         }
       ]
     },
@@ -243,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1047,
-      "testFiles": 908,
+      "sourceFiles": 1050,
+      "testFiles": 913,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 908
+          "testFiles": 913
         }
       ]
     },
@@ -920,7 +920,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 276,
-      "testFiles": 268,
+      "testFiles": 269,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -946,7 +946,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 268
+          "testFiles": 269
         }
       ]
     },
@@ -4572,6 +4572,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/slash-nextsteps-mode.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/slash-openai-quota.test.ts",
         "projects": [
           "root-node"
@@ -7140,6 +7146,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/agent-nextsteps-required.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/agent-nextsteps-tool.test.ts",
         "projects": [
           "root-node"
@@ -7195,6 +7207,12 @@
       },
       {
         "file": "packages/core/tests/core/context-working-dir-dotdot.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/context-working-dir-wstack-home.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7369,6 +7387,12 @@
       },
       {
         "file": "packages/core/tests/core/nested-tool-call.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/next-steps-required.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9138,6 +9162,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/security/agent-state-sensitivity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/security/always-allow-without-subject.test.ts",
         "projects": [
           "root-node"
@@ -9379,6 +9409,12 @@
       },
       {
         "file": "packages/core/tests/security/yolo-credential-binding.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/security/yolo-plus.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22602,6 +22638,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/session-yolo-plus-per-tab.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/setup-events-fleet-broadcaster.test.ts",
         "projects": [
           "root-node"
@@ -26008,7 +26050,7 @@
   "hotspotCandidates": [
     {
       "file": "packages/cli/src/cli-main.ts",
-      "lines": 850,
+      "lines": 856,
       "relativeImports": 30
     },
     {
@@ -26037,6 +26079,11 @@
       "relativeImports": 45
     },
     {
+      "file": "packages/core/src/core/context.ts",
+      "lines": 800,
+      "relativeImports": 23
+    },
+    {
       "file": "packages/core/src/execution/brain-runtime.ts",
       "lines": 823,
       "relativeImports": 20
@@ -26050,6 +26097,11 @@
       "file": "packages/core/src/plugins/skills-plugin.ts",
       "lines": 828,
       "relativeImports": 15
+    },
+    {
+      "file": "packages/core/src/security/permission-policy.ts",
+      "lines": 846,
+      "relativeImports": 23
     },
     {
       "file": "packages/core/src/storage/session-store.ts",
@@ -26140,6 +26192,11 @@
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 822,
       "relativeImports": 40
+    },
+    {
+      "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
+      "lines": 917,
+      "relativeImports": 2
     },
     {
       "file": "packages/webui/src/components/CodeMap.tsx",
@@ -26179,9 +26236,19 @@
       "relativeImports": 36
     },
     {
+      "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
+      "lines": 917,
+      "relativeImports": 2
+    },
+    {
       "file": "packages/mcp/src/client.ts",
       "lines": 876,
       "relativeImports": 16
+    },
+    {
+      "file": "packages/cli/src/cli-main.ts",
+      "lines": 856,
+      "relativeImports": 30
     },
     {
       "file": "packages/core/src/coordination/director.ts",
@@ -26189,9 +26256,9 @@
       "relativeImports": 45
     },
     {
-      "file": "packages/cli/src/cli-main.ts",
-      "lines": 850,
-      "relativeImports": 30
+      "file": "packages/core/src/security/permission-policy.ts",
+      "lines": 846,
+      "relativeImports": 23
     },
     {
       "file": "packages/webui-server/src/server/start-webui.ts",
@@ -26334,6 +26401,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/core/src/core/context.ts",
+      "lines": 800,
+      "relativeImports": 23
+    },
+    {
       "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
       "lines": 800,
       "relativeImports": 0
@@ -26364,11 +26436,6 @@
       "relativeImports": 7
     },
     {
-      "file": "packages/core/src/core/context.ts",
-      "lines": 798,
-      "relativeImports": 23
-    },
-    {
       "file": "packages/core/src/core/system-prompt-builder.ts",
       "lines": 798,
       "relativeImports": 29
@@ -26379,24 +26446,19 @@
       "relativeImports": 11
     },
     {
+      "file": "packages/core/src/execution/tool-executor.ts",
+      "lines": 797,
+      "relativeImports": 27
+    },
+    {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 797,
       "relativeImports": 13
     },
     {
-      "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
-      "lines": 796,
-      "relativeImports": 2
-    },
-    {
       "file": "packages/tools/src/codebase-index/ast-invariant-engine.ts",
       "lines": 795,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/core/src/execution/tool-executor.ts",
-      "lines": 794,
-      "relativeImports": 27
     },
     {
       "file": "packages/core/src/plugins/review-claim-registry.ts",
@@ -26417,11 +26479,6 @@
       "file": "packages/core/src/session-catalog/project-server.ts",
       "lines": 792,
       "relativeImports": 7
-    },
-    {
-      "file": "packages/core/src/coordination/brain-monitor.ts",
-      "lines": 791,
-      "relativeImports": 3
     }
   ],
   "testOnlyExports": [
@@ -26874,6 +26931,10 @@
       "name": "fileProposals"
     },
     {
+      "file": "packages/cli/src/slash-commands/nextsteps-mode.ts",
+      "name": "parseNextStepsLimit"
+    },
+    {
       "file": "packages/cli/src/slash-commands/scout-stats.ts",
       "name": "formatVariantUsage"
     },
@@ -27314,6 +27375,10 @@
       "name": "MAX_LAST_RESORT_CANDIDATES"
     },
     {
+      "file": "packages/core/src/core/next-steps-required.ts",
+      "name": "NEXT_STEPS_REQUIRED_PROMPT"
+    },
+    {
       "file": "packages/core/src/core/provider-runner.ts",
       "name": "PROVIDER_FAILURE_TRACKED"
     },
@@ -27640,6 +27705,14 @@
     {
       "file": "packages/core/src/sandbox/types.ts",
       "name": "DEFAULT_SANDBOX_CONFIG"
+    },
+    {
+      "file": "packages/core/src/security/agent-state-sensitivity.ts",
+      "name": "isSensitiveAgentStateRelPath"
+    },
+    {
+      "file": "packages/core/src/security/permission-helpers.ts",
+      "name": "fsWriteTargetPaths"
     },
     {
       "file": "packages/core/src/security/permission-helpers.ts",

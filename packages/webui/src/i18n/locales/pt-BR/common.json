@@ -59,6 +59,7 @@
     "trustSuggestionTitle": "Sugestão de padrão de confiança",
     "trustSuggestionHint": "Escolher Sempre vai permitir chamadas correspondentes para este projeto.",
     "yoloDestructiveNote": "YOLO está ativado. Esta confirmação ainda é exibida porque a solicitação foi classificada como destrutiva.",
+    "yoloUserRuleNote": "YOLO está ativado. Ele parou porque uma regra que você escreveu proíbe esta chamada — Sim a executa uma vez; a regra continua. Sem resposta, continua recusada.",
     "brainCountdown": "Aguardando sua aprovação · Brain assume em {{time}}",
     "brainDeciding": "Tempo esgotado · Brain está decidindo…",
     "skipApprovalsTitle": "Pular aprovações futuras",

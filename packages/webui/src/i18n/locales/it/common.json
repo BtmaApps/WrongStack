@@ -59,6 +59,7 @@
     "trustSuggestionTitle": "Suggerimento pattern attendibile",
     "trustSuggestionHint": "Scegliendo Sempre le chiamate corrispondenti verranno aggiunte all'allowlist per questo progetto.",
     "yoloDestructiveNote": "YOLO è attivo. Questo prompt viene comunque mostrato perché la richiesta è stata classificata come distruttiva.",
+    "yoloUserRuleNote": "YOLO è attivo. Si è fermato perché una regola che hai scritto vieta questa chiamata: Sì la esegue una volta; la regola resta. Senza risposta, resta rifiutata.",
     "brainCountdown": "In attesa della tua approvazione · Brain subentrerà tra {{time}}",
     "brainDeciding": "Tempo scaduto · Brain sta decidendo…",
     "skipApprovalsTitle": "Salta le approvazioni future",

@@ -43,6 +43,7 @@ export function isDestructivePendingConfirm(confirm: PendingConfirm): boolean {
 export function resolveYoloEligiblePendingConfirms(
   pendingConfirms: Map<string, PendingConfirm>,
   sessionId?: string | undefined,
+  opts?: { allowAll?: boolean | undefined },
 ): void {
   for (const [id, confirm] of pendingConfirms) {
     // A prompt with no recorded owner belongs to the only session there is.
@@ -52,6 +53,13 @@ export function resolveYoloEligiblePendingConfirms(
       confirm.sessionId !== sessionId
     )
       continue;
+    // YOLO+: the user allowed everything, so a prompt already on screen is
+    // answered too — a boundary or destructive one included.
+    if (opts?.allowAll) {
+      pendingConfirms.delete(id);
+      confirm.resolve('yes');
+      continue;
+    }
     if (confirm.boundaryReason) continue;
     // WS-022: this skipped only `boundaryReason` (set solely for kanban gate
     // violations), so flipping YOLO on blanket-answered "yes" to every prompt

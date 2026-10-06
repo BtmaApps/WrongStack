@@ -94,15 +94,22 @@ export function buildYoloCommand(opts: SlashCommandContext): SlashCommand {
       'Usage:',
       '  /yolo              Show current YOLO status',
       '  /yolo on           Enable YOLO mode (auto-approve tool calls)',
+      '  /yolo plus         YOLO+: allow everything — nothing ever asks',
       '  /yolo off          Disable YOLO mode (restore permission prompts)',
       '  /yolo confirm            List which kinds of damage still prompt under YOLO',
       '  /yolo confirm <kind> on  Keep prompting for that kind',
       '  /yolo confirm <kind> off Let YOLO run that kind unattended',
       '',
-      'YOLO auto-approves tool calls unless an explicit deny rule blocks them, or',
-      'the call would do damage of a kind still listed under `/yolo confirm`.',
+      'YOLO runs tool calls without asking, and stops to ask on two things: a call',
+      'your own deny rules forbid (a "no" this session, trust file, /permissions',
+      'deny, directory rules), and damage of a kind still listed under `/yolo confirm`.',
       `Kinds: ${ALL_DESTRUCTIVE_KINDS.join(', ')}.`,
       `Always gated (they can switch approval itself off): ${[...LOCKED_DESTRUCTIVE_KINDS].join(', ')}.`,
+      '',
+      'YOLO+ goes further: no call ever asks — not the kinds above, not the locked',
+      'ones, not a sensitive read — and subagents are no longer refused them.',
+      'Your own deny rules are the one thing it does not run: they refuse.',
+      '`/yolo on` drops back to plain YOLO; `--yolo-plus` starts in it.',
     ].join('\n'),
     async run(args) {
       const arg = args.trim().toLowerCase();
@@ -116,9 +123,12 @@ export function buildYoloCommand(opts: SlashCommandContext): SlashCommand {
       // No argument — show current status
       if (!arg) {
         const current = opts.onYolo();
-        const status = current
-          ? `${color.yellow('ON')} ${color.dim('(auto-approving tool calls)')}`
-          : `${color.green('OFF')} ${color.dim('(permission prompts active)')}`;
+        const plus = current && opts.onYoloPlus?.() === true;
+        const status = plus
+          ? `${color.red('YOLO+')} ${color.dim('(everything allowed — nothing asks; deny rules still refuse)')}`
+          : current
+            ? `${color.yellow('ON')} ${color.dim('(auto-approving; asks on damage and on what your deny rules forbid)')}`
+            : `${color.green('OFF')} ${color.dim('(permission prompts active)')}`;
         const msg = `YOLO mode: ${status}`;
         opts.renderer.write(msg);
         return { message: msg };
@@ -134,8 +144,24 @@ export function buildYoloCommand(opts: SlashCommandContext): SlashCommand {
         newState = !opts.onYolo();
       } else if (arg === 'confirm' || arg.startsWith('confirm ')) {
         return runConfirm(opts, arg.slice('confirm'.length).trim());
+      } else if (arg === 'plus' || arg === '+' || arg === 'all') {
+        if (!opts.onYoloPlus) {
+          const msg = 'YOLO+ is not available in this session.';
+          opts.renderer.writeWarning(msg);
+          return { message: msg };
+        }
+        const on = opts.onYoloPlus(true);
+        if (!on) {
+          // `--restricted` locks YOLO and YOLO+ off; say so instead of claiming it.
+          const msg = `YOLO+ could not be enabled — this session is locked to prompts (--restricted).`;
+          opts.renderer.writeWarning(msg);
+          return { message: msg };
+        }
+        const msg = `YOLO mode: ${color.red('YOLO+')} — every call is allowed, nothing will ask. Deny rules still refuse. /yolo on returns to plain YOLO.`;
+        opts.renderer.write(msg);
+        return { message: msg };
       } else {
-        const msg = `Unknown argument: ${arg}. Use /yolo on, /yolo off, /yolo toggle, or /yolo confirm.`;
+        const msg = `Unknown argument: ${arg}. Use /yolo on, /yolo plus, /yolo off, /yolo toggle, or /yolo confirm.`;
         opts.renderer.writeWarning(msg);
         return { message: msg };
       }

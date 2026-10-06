@@ -3,6 +3,7 @@ import type { PermissionTrace, PermissionTraceStep, TrustPolicy } from '../types
 import type { Tool } from '../types/tool.js';
 import { matchGlob } from '../utils/glob-match.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
+import { isAgentStateWriteTarget } from './agent-state-sensitivity.js';
 import {
   capabilityDowngradesToConfirm,
   getDangerousCapabilities,
@@ -11,9 +12,9 @@ import {
 } from './capabilities.js';
 import {
   hasShellSubject,
-  isInsideAgentStateRoot,
   matchesCommandTrust,
   matchesTrust,
+  refusalUnderYolo,
 } from './permission-helpers.js';
 import {
   allowedToolsRef,
@@ -39,6 +40,8 @@ export interface PermissionExplainContext {
   sessionDenied: Map<string, boolean>;
   sessionAllowed: Map<string, boolean>;
   yolo: boolean;
+  /** YOLO+ — allow every call no deny rule refuses. */
+  yoloPlus?: boolean | undefined;
   promptDelegatePresent: boolean;
   isSensitiveReadCall(tool: Tool, input: unknown): boolean;
   isDestructiveCall?(tool: Tool, input: unknown, ctx: Context): boolean;
@@ -68,6 +71,28 @@ export function explainPermissionTrace(
     ref?: string | undefined,
   ): void => {
     steps.push({ rule, matched, decision, source, detail, ...(ref !== undefined ? { ref } : {}) });
+  };
+
+  // A refusal the user wrote — the same rule as evaluate(): off and YOLO+
+  // refuse, YOLO asks (`refusalUnderYolo`).
+  const yoloMode = { yolo: state.yolo, yoloPlus: state.yoloPlus === true };
+  const refused = (
+    rule: string,
+    detail: string,
+    ref: string | undefined,
+    refusal: PermissionTrace['decision'],
+  ): PermissionTrace => {
+    const decision = refusalUnderYolo(refusal, yoloMode);
+    const asks = decision.permission === 'confirm';
+    add(
+      rule,
+      true,
+      asks ? 'confirm' : 'deny',
+      asks ? (decision.source ?? 'yolo_destructive') : (refusal.source ?? 'deny'),
+      asks ? `${detail} — YOLO asks instead of refusing` : detail,
+      ref,
+    );
+    return { toolName: tool.name, subject, steps, winnerIndex: steps.length - 1, decision };
   };
 
   // 1. Policy invalid
@@ -100,26 +125,12 @@ export function explainPermissionTrace(
   // 2. Session soft deny
   const cacheKey = `${tool.name}::${subject ?? tool.name}`;
   if (state.sessionDenied.has(cacheKey)) {
-    add(
+    return refused(
       'session soft deny',
-      true,
-      'deny',
-      'deny',
       'user pressed "no" earlier in this session — blocked until reload',
       permissionRuleRef.answer(cacheKey),
+      { permission: 'deny', source: 'deny', reason: 'session soft deny (user pressed no)' },
     );
-    winnerIndex = steps.length - 1;
-    return {
-      toolName: tool.name,
-      subject,
-      steps,
-      winnerIndex,
-      decision: {
-        permission: 'deny',
-        source: 'deny',
-        reason: 'session soft deny (user pressed no)',
-      },
-    };
   }
   add(
     'session soft deny',
@@ -131,22 +142,12 @@ export function explainPermissionTrace(
 
   // 4. Trust deny
   if (entry?.deny && subject && matchesTrust(entry.deny, subject)) {
-    add(
+    return refused(
       'trust deny',
-      true,
-      'deny',
-      'deny',
       `subject "${subject}" matched a deny pattern in trust file`,
       trustDenyRef(state, tool.name, subject),
+      { permission: 'deny', source: 'deny', reason: 'matched deny pattern' },
     );
-    winnerIndex = steps.length - 1;
-    return {
-      toolName: tool.name,
-      subject,
-      steps,
-      winnerIndex,
-      decision: { permission: 'deny', source: 'deny', reason: 'matched deny pattern' },
-    };
   }
   add(
     'trust deny',
@@ -161,21 +162,11 @@ export function explainPermissionTrace(
   const sessionDeny = matchSessionPermissionOverride(overrides, 'deny', tool, subject ?? undefined);
   if (sessionDeny) {
     const reason = `session rule: ${describeSessionPermissionOverride(sessionDeny.override)}`;
-    add(
-      'session rule deny',
-      true,
-      'deny',
-      'session_override',
+    return refused('session rule deny', reason, permissionRuleRef.session(sessionDeny.index), {
+      permission: 'deny',
+      source: 'session_override',
       reason,
-      permissionRuleRef.session(sessionDeny.index),
-    );
-    return {
-      toolName: tool.name,
-      subject,
-      steps,
-      winnerIndex: steps.length - 1,
-      decision: { permission: 'deny', source: 'session_override', reason },
-    };
+    });
   }
   add('session rule deny', false, 'deny', 'session_override', 'no session deny rule matched');
 
@@ -240,6 +231,34 @@ export function explainPermissionTrace(
   const denyUnevaluated =
     (Boolean(entry?.deny?.length) && subject === undefined) ||
     sessionDenyUnevaluated(overrides, tool, subject ?? undefined);
+
+  // YOLO+ — the same place evaluate() decides it: below every refusal, and
+  // refusing when a deny list could not be checked for this call.
+  const unevaluatedRefusal = {
+    permission: 'deny',
+    source: 'deny',
+    reason: 'a deny rule for this tool could not be evaluated for this call',
+  } as const;
+  if (state.yoloPlus) {
+    if (denyUnevaluated) {
+      return refused('yolo+', unevaluatedRefusal.reason, undefined, unevaluatedRefusal);
+    }
+    winnerIndex = steps.length;
+    add('yolo+', true, 'auto', 'yolo', 'YOLO+ is active — every call no deny rule refuses runs');
+    return {
+      toolName: tool.name,
+      subject,
+      steps,
+      winnerIndex,
+      decision: {
+        permission: 'auto',
+        source: 'yolo',
+        reason: 'YOLO+ — every call is allowed',
+        allowAll: true,
+      },
+    };
+  }
+  add('yolo+', false, 'auto', 'yolo', 'YOLO+ is not active');
 
   // Session rule allow (`/permissions allow`)
   const sessionAllow = denyUnevaluated
@@ -431,6 +450,9 @@ export function explainPermissionTrace(
 
   // 9. YOLO
   if (state.yolo) {
+    if (denyUnevaluated) {
+      return refused('yolo', unevaluatedRefusal.reason, undefined, unevaluatedRefusal);
+    }
     if (state.yoloBlockedAsDestructive(tool, input, ctx)) {
       add(
         'yolo destructive gate',
@@ -467,7 +489,7 @@ export function explainPermissionTrace(
 
   // 10. Write-tool smart bypass
   if (tool.name === 'write' && subject) {
-    const isAgentState = isInsideAgentStateRoot(subject);
+    const isAgentState = isAgentStateWriteTarget(subject);
     const hasRead = ctx.hasRead(subject) && !isAgentState;
     add(
       'write smart bypass',

@@ -38,7 +38,11 @@ import {
 } from '@wrongstack/core/execution';
 import { type Container, EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { type ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
-import { AutoApprovePermissionPolicy, WIDE_SUBAGENT_CAPABILITIES } from '@wrongstack/core/security';
+import {
+  AutoApprovePermissionPolicy,
+  subagentYoloPlus,
+  WIDE_SUBAGENT_CAPABILITIES,
+} from '@wrongstack/core/security';
 import type {
   Config,
   ModelsRegistry,
@@ -235,7 +239,17 @@ export function makeLightSubagentFactory(deps: LightSubagentFactoryDeps): AgentF
     // from this policy is the authoritative-auto waiver the ToolExecutor trusts
     // for dangerous caps (fs.write, shell), so code edits actually go through.
     const caps = subCfg.allowedCapabilities ?? WIDE_SUBAGENT_CAPABILITIES;
-    const permissionPolicy = new AutoApprovePermissionPolicy(caps);
+    // Read per call: a `/yolo plus` toggle reaches subagents already running.
+    // The spawning conversation's YOLO+, not another tab's (`subagentYoloPlus`).
+    const leaderPolicy = deps.container.safeResolve(TOKENS.PermissionPolicy);
+    const permissionPolicy = new AutoApprovePermissionPolicy(caps, {
+      yoloPlus: () =>
+        subagentYoloPlus({
+          sessionId: subCfg.originSessionId,
+          leaderPolicy,
+          fallback: () => configStore.get().autonomy?.yoloPlus === true,
+        }),
+    });
 
     const toolExecutor = new ToolExecutor(subRegistry, {
       permissionPolicy,

@@ -281,7 +281,8 @@ describe('createDefaultContainer', () => {
         { path: 'secrets/token.txt' },
         { meta: {}, projectRoot, workingDir: projectRoot, provider: { id: 'anthropic' } } as never,
       ),
-    ).resolves.toMatchObject({ permission: 'deny', source: 'directory_rules' });
+      // Without the rule this YOLO call would run; with it, YOLO stops and asks.
+    ).resolves.toMatchObject({ permission: 'confirm', source: 'yolo_user_rule' });
   });
 
   it('rejects an invalid in-project directory policy instead of silently bypassing it', () => {

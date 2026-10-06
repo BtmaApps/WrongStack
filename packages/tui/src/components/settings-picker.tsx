@@ -102,6 +102,7 @@ export function SettingsPicker({
   showSageMemoryInject,
   sageMemoryInjectThreshold,
   nextStepsTool,
+  nextStepsRequired,
   readSymbols,
   panelPositions,
   // WrongProxy / WrongTrace: pick these from the same slice as
@@ -434,6 +435,11 @@ export function SettingsPicker({
       label: 'Tool Coach',
       value: boolVal(featureToolCoach),
       detail: 'Suggest enabled tools and guide recovery after tool errors (default on)',
+    },
+    {
+      label: 'Require next steps',
+      value: boolVal(nextStepsRequired),
+      detail: 'Every finished turn ends with <nextsteps> or a completion marker (/nextsteps)',
     },
   ];
 

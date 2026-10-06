@@ -20,8 +20,8 @@
  *
  * Extracted from permission-policy.ts.
  */
+
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import type { PermissionDecision, PermissionPolicy, PermissionTrace } from '../types/permission.js';
 import type { Tool } from '../types/tool.js';
 import { matchGlob } from '../utils/glob-match.js';
@@ -31,13 +31,13 @@ import { resolveWstackPaths } from '../utils/wstack-paths.js';
 import { getDangerousCapabilities, hasCapability, ToolCapabilities } from './capabilities.js';
 import {
   classifyShellSurfaceInput,
-  fsWriteTargetPaths,
   hasShellSubject,
-  isInsideAgentStateRoot,
   isSensitiveReadCall,
   matchesTrust,
+  writesAgentState,
 } from './permission-helpers.js';
 import { validateTrustPolicy } from './permission-policy-schema.js';
+import { isYoloLockedOff } from './process-lockdown.js';
 import {
   attachesWellKnownCredential,
   type DestructiveKind,
@@ -73,6 +73,15 @@ export interface AutoApprovePolicyOptions {
    * Omitted means the fail-closed default: every kind gated.
    */
   yoloConfirmKinds?: Iterable<DestructiveKind> | undefined;
+  /**
+   * The leader's live YOLO+ switch. A subagent cannot answer a prompt, so the
+   * guards below turn what the leader would ASK into a refusal; under YOLO+
+   * the user has allowed everything, so those refusals would only be a
+   * question nobody can answer. Read per call, so a toggle reaches subagents
+   * that are already running. The user's deny rules and the role's tool
+   * allowlist still apply.
+   */
+  yoloPlus?: (() => boolean) | undefined;
 }
 
 /**
@@ -87,6 +96,7 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
   private readonly allowedCapabilities: readonly string[];
   private readonly trustFile: string | undefined;
   private readonly yoloConfirmKinds: ReadonlySet<DestructiveKind>;
+  private readonly yoloPlus: () => boolean;
 
   constructor(allowedCapabilities?: readonly string[], opts?: AutoApprovePolicyOptions) {
     // Default allowlist: read-only, safe operations
@@ -96,6 +106,16 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
     ];
     this.trustFile = opts?.trustFile;
     this.yoloConfirmKinds = normalizeYoloConfirmKinds(opts?.yoloConfirmKinds);
+    const yoloPlus = opts?.yoloPlus;
+    this.yoloPlus = () => {
+      // `--restricted` locks YOLO+ off here exactly as it does for the leader.
+      if (isYoloLockedOff()) return false;
+      try {
+        return yoloPlus?.() === true;
+      } catch {
+        return false;
+      }
+    };
   }
 
   private static isMcpTool(name: string): boolean {
@@ -109,7 +129,8 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
     // and a subagent has no `confirmAwaiter`, so there is no prompt to fall back
     // on. Deny outright instead: the director can request the file itself if it
     // genuinely needs it, which puts the decision back in front of the user.
-    if (input !== undefined && isSensitiveReadCall(tool, input)) {
+    const allowAll = this.yoloPlus();
+    if (!allowAll && input !== undefined && isSensitiveReadCall(tool, input)) {
       return {
         permission: 'deny',
         source: 'subagent_guard',
@@ -133,7 +154,7 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
     // the only correct terminal state, because a subagent cannot answer a
     // prompt. `shellCommandLineFromInput` joins command+args so the classifier
     // sees the full line, never the bare program name.
-    const destructiveReason = this.destructiveCallReason(tool, input, ctx);
+    const destructiveReason = allowAll ? undefined : this.destructiveCallReason(tool, input, ctx);
     if (destructiveReason) {
       return { permission: 'deny', source: 'subagent_guard', reason: destructiveReason };
     }
@@ -142,7 +163,7 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
     // config.json is boot-time RCE on next launch, writing `trust.json`
     // disables approval prompts permanently — both silent. The leader forces
     // these to a prompt (hasAgentStateWriteTarget); the subagent port denies.
-    if (this.hasAgentStateWriteTarget(tool, input, ctx)) {
+    if (!allowAll && this.hasAgentStateWriteTarget(tool, input, ctx)) {
       return {
         permission: 'deny',
         source: 'subagent_guard',
@@ -235,12 +256,7 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
   /** Port of DefaultPermissionPolicy.hasAgentStateWriteTarget (leader). */
   private hasAgentStateWriteTarget(tool: Tool, input: unknown, ctx?: SubagentContext): boolean {
     if (!hasCapability(tool, ToolCapabilities.FS_WRITE)) return false;
-    const base = ctx?.workingDir ?? ctx?.cwd;
-    for (const targetPath of fsWriteTargetPaths(tool, input)) {
-      const resolved = base ? path.resolve(base, targetPath) : path.resolve(targetPath);
-      if (isInsideAgentStateRoot(resolved)) return true;
-    }
-    return false;
+    return writesAgentState(tool, input, ctx?.workingDir ?? ctx?.cwd);
   }
 
   private resolveTrustFile(ctx?: SubagentContext): string | undefined {

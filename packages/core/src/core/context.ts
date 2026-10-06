@@ -75,7 +75,8 @@ export interface ContextInit {
   /** Mutable working directory. Defaults to `cwd`. Must stay within `projectRoot`. */
   workingDir?: string | undefined;
   /**
-   * When false, file tools and `setWorkingDir()` are confined to `projectRoot`.
+   * When false, file tools and `setWorkingDir()` are confined to `projectRoot`
+   * plus the user-global `~/.wrongstack` (always reachable).
    * Defaults to `false` (restrictive) when omitted so directly-constructed
    * contexts (tests, embedded callers) keep the safe behavior; the runtime
    * passes the config-derived value (default `true` — permissive) explicitly.
@@ -116,7 +117,8 @@ export interface ContextInit {
  * There IS a mutable `workingDir` (separate from `projectRoot`) that can be
  * changed at runtime via `setWorkingDir()`. It starts as `cwd` and allows
  * the agent and user to navigate within the project without spawning a new
- * process. All changes must stay inside `projectRoot`.
+ * process. In restricted mode it stays inside `projectRoot` or the user-global
+ * `~/.wrongstack`.
  */
 export class Context implements RunEnv, AgentContext {
   userInputAwaiter: UserInputAwaiter | undefined;

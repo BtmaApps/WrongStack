@@ -55,6 +55,7 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/brain` | — | [Brain](brain.md) |
 | `/btw` | — | [by-the-way messages](btw.md) |
 | `/next` | `/enxt` | [next-task prediction](next.md) |
+| `/nextsteps` | — | [required next steps + auto-continue limit](nextsteps.md) |
 | `/mode` | — | [mode](mode.md) |
 | `/design` | — | [design](design.md) |
 | `/mailbox-demo` | — | [mailbox demo](mailbox-demo.md) |

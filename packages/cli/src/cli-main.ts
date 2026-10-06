@@ -543,6 +543,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     goalHost,
     coordinatorController,
     setYoloMode,
+    setYoloPlusMode,
     setYoloConfirm,
     secretInputController,
     sddRunRegistry,
@@ -565,7 +566,11 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     reader,
     permissionPolicy: container.resolve(TOKENS.PermissionPolicy),
     contextMeta: agent.ctx.meta,
+    configStore,
   });
+  // YOLO+ from the profile or `--yolo-plus`: move the policy, the conversation
+  // meta (the TUI chip reads it) and the live store subagents read together.
+  if (config.autonomy?.yoloPlus === true) setYoloPlusMode(true);
 
   // Plan 28 T6 — expansion approvals ride the standard permission policy
   // (trust rules / YOLO / prompt delegate) via a `sandbox-expansion` pseudo-tool;
@@ -637,6 +642,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     eventWiring,
     mcpRegistry,
     setYoloMode,
+    setYoloPlusMode,
     setYoloConfirm,
     getNextPredict: () => nextPredictEnabled,
     setNextPredict: (enabled) => {

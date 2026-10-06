@@ -247,4 +247,52 @@ describe('SessionPanel quick actions', () => {
     // DOCUMENT_POSITION_FOLLOWING (4): the stats toggle comes after history.
     expect(history.compareDocumentPosition(stats) & 4).toBe(4);
   });
+
+  describe('YOLO three-way switch', () => {
+    const level = (name: string) => screen.getByRole('radio', { name });
+    const sent = () => updatePrefs.mock.calls.map(([patch]) => patch);
+
+    it('shows the current level as the checked segment', () => {
+      useLocalPrefs.setState({ yolo: true, yoloPlus: true });
+      renderPanel();
+      expect(screen.getByRole('radiogroup', { name: 'YOLO mode' })).toBeTruthy();
+      expect(level('YOLO+').getAttribute('aria-checked')).toBe('true');
+      expect(level('On').getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('off → YOLO+ turns YOLO on first, then YOLO+', () => {
+      useLocalPrefs.setState({ yolo: false, yoloPlus: false });
+      renderPanel();
+      act(() => fireEvent.click(level('YOLO+')));
+      expect(sent()).toEqual([{ yolo: true }, { yoloPlus: true }]);
+      expect(useLocalPrefs.getState()).toMatchObject({ yolo: true, yoloPlus: true });
+    });
+
+    it('YOLO+ → off leaves YOLO+ before turning YOLO off', () => {
+      useLocalPrefs.setState({ yolo: true, yoloPlus: true });
+      renderPanel();
+      act(() => fireEvent.click(level('Off')));
+      expect(sent()).toEqual([{ yoloPlus: false }, { yolo: false }]);
+    });
+
+    it('YOLO+ → on only drops YOLO+', () => {
+      useLocalPrefs.setState({ yolo: true, yoloPlus: true });
+      renderPanel();
+      act(() => fireEvent.click(level('On')));
+      expect(sent()).toEqual([{ yoloPlus: false }]);
+    });
+
+    it('clicking the current level sends nothing; arrow keys move the choice', () => {
+      useLocalPrefs.setState({ yolo: true, yoloPlus: false });
+      renderPanel();
+      act(() => fireEvent.click(level('On')));
+      expect(sent()).toEqual([]);
+      act(() => {
+        fireEvent.keyDown(screen.getByRole('radiogroup', { name: 'YOLO mode' }), {
+          key: 'ArrowRight',
+        });
+      });
+      expect(sent()).toEqual([{ yoloPlus: true }]);
+    });
+  });
 });

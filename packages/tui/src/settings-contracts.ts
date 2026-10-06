@@ -108,6 +108,13 @@ export type SettingsPickerPatch = Partial<{
    */
   nextStepsTool: boolean;
   /**
+   * Leader must end every finished turn with `<nextsteps>` or the
+   * `<nextsteps-complete/>` marker. Persisted as `autonomy.nextSteps`
+   * ('required' | 'optional'); read live, so it applies on the next turn.
+   * Default: true.
+   */
+  nextStepsRequired: boolean;
+  /**
    * WrongProxy / WrongTrace: master switch. When true AND the daemon at
    * `wrongProxyUrl` is reachable, every provider's base URL is rewritten
    * through `${wrongProxyUrl}/proxy/<host><path>`. openai-codex is

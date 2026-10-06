@@ -1,17 +1,12 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { wstackGlobalRoot } from '../utils/wstack-paths.js';
+import {
+  isAgentStateExtractionTarget,
+  isAgentStateWriteTarget,
+  isSensitiveAgentStateBasename,
+} from './agent-state-sensitivity.js';
 import { INLINE_PAYLOAD_INTERPRETERS } from './yolo-payload-risk.js';
 import { commandSegment, SHELL_OPERATORS, tokenizeShell } from './yolo-shell-scan.js';
-
-/**
- * Basenames under the wstack global root that constitute WrongStack's own
- * trusted state. Duplicated from permission-helpers.ts to avoid a circular
- * import (permission-helpers imports getInputString from yolo-risk).
- * Keep in sync with AGENT_STATE_SENSITIVE_BASENAMES.
- */
-const PROTECTED_STATE_BASENAMES =
-  /^(?:config(?:\.local)?\.json(?:\..+)?|trust\.json|auth\.json|\.key)$/i;
 
 /**
  * Best-effort detection of a shell command that writes to WrongStack's own
@@ -80,6 +75,23 @@ export function hasWriteToAgentStateRoot(command: string): boolean {
       // The last non-flag, non-operator argument is the destination.
       const dst = args.filter((a) => !a.startsWith('-') && !SHELL_OPERATORS.has(a)).pop();
       if (dst && looksLikeAgentStateTarget(dst)) return true;
+    }
+  }
+
+  // 3b. `ln` and `mv` change agent-state through their SOURCE too. A hard link
+  //     (`ln ~/.wrongstack/trust.json cache/t`) gives a benign name to the same
+  //     inode — no realpath reveals it, so a later write to `cache/t` rewrites
+  //     `trust.json`. Moving a state file away drops it (persisted deny rules,
+  //     a session's overrides) just as surely as overwriting it.
+  for (let i = 0; i < tokens.length; i++) {
+    const base = tokens[i]
+      ?.toLowerCase()
+      .replace(/^.*[\\/]/, '')
+      .replace(/\.exe$/, '');
+    if (base !== 'ln' && base !== 'mv' && base !== 'move') continue;
+    for (const arg of commandSegment(tokens, i + 1)) {
+      if (SHELL_OPERATORS.has(arg)) break;
+      if (!arg.startsWith('-') && looksLikeAgentStateTarget(arg)) return true;
     }
   }
 
@@ -177,23 +189,23 @@ export function hasWriteToAgentStateRoot(command: string): boolean {
 }
 
 /**
- * True when `rawPath` resolves at or inside the wstack global root.
+ * True when extracting an archive into `rawPath` could plant agent-state.
  *
- * Unlike {@link looksLikeAgentStateTarget} this does NOT require a protected
- * basename: it answers "does this name a place inside the trust anchor", which
- * is the right question for an extraction directory.
+ * An extraction writes whatever names the archive carries, so the question is
+ * not the directory's own name but what loads from it: the root itself, the
+ * profile/project directories configs are read from, and the sensitive
+ * subtrees (`agent-state-sensitivity.ts`). Extracting into a benign subtree such
+ * as `cache/` stays silent.
  */
 function resolvesInsideAgentStateRoot(rawPath: string): boolean {
   if (!rawPath) return false;
   const expanded = rawPath.replace(/^~([\\/])/, (_, sep) => `${os.homedir()}${sep}`);
+  if (isAgentStateExtractionTarget(path.resolve(expanded))) return true;
+  // Lexical fallback: the configured global root is not always the literal
+  // `~/.wrongstack` (tests and alternate homes relocate it), and extracting
+  // into a directory of that name plants state wherever the root points.
   const resolved = path.resolve(expanded).replace(/\\/g, '/').toLowerCase();
-  const rootNorm = path.resolve(wstackGlobalRoot()).replace(/\\/g, '/').toLowerCase();
-  if (resolved === rootNorm || resolved.startsWith(`${rootNorm}/`)) return true;
-  // Same lexical fallback as looksLikeAgentStateTarget: the configured global
-  // root is not always the literal `~/.wrongstack` (tests and alternate homes
-  // relocate it), and a path naming that directory is a write into the trust
-  // anchor wherever the root happens to point.
-  return resolved.endsWith('/.wrongstack') || resolved.includes('/.wrongstack/');
+  return resolved.endsWith('/.wrongstack');
 }
 
 /**
@@ -214,56 +226,24 @@ const LAST_OPERAND_WRITERS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Quick check: does the token look like it could resolve into the wstack
- * global root, and does its basename match a protected file? We delegate the
- * full path resolution to isProtectedAgentStatePath, but we pre-filter on
- * the path containing `.wrongstack` or starting with `~/.wrongstack` so we
- * don't call realpath on every token in every command.
+ * Does a shell write to `rawPath` land on agent-state?
  *
- * Coverage:
- *   1. The protected config basenames (config.json, trust.json, etc.) — the
- *      original "agent state" set: a write here can disable the approval
- *      system or inject boot-time RCE via hooks/mcpServers/plugins.
- *   2. Anything under the global plugin root (`~/.wrongstack/plugins/`) —
- *      H-4: the global plugin root ships `defaultState: 'active'`, so a
- *      single bash `> ~/.wrongstack/plugins/x.mjs` becomes boot-time code
- *      execution on the next launch (the TOFU gate pins with no prompt).
- *      No basename whitelist is needed: the global plugin root is itself
- *      the trust anchor, and every file inside it is part of the closure
- *      a plugin load imports.
- *   3. Anything else under the global root — the same line the write/edit
- *      tools draw (`isInsideAgentStateRoot` in permission-policy's
- *      hasAgentStateWriteTarget). The root holds more state that decides what
- *      runs or what is approved than the two cases above: session journals
- *      carry `permission_overrides` that come back live on resume, and
- *      `updates/pending.json` names the executable swapped in at exit. With
- *      only (1)+(2) a shell `echo >>` reached them while the write tool was
- *      stopped (WS-2026-09-26-04). This judges WRITES only, so the agent
- *      still reads memory and sessions without a prompt.
+ * Under the global root the shared classifier decides
+ * (`agent-state-sensitivity.ts`): code that runs, approval state, secrets, and
+ * instructions every session obeys stay gated; the agent's own working state
+ * (plans, specs, caches, logs, project memory) does not. The classifier sees
+ * through symlinks, so `cache/t -> trust.json` is still `trust.json`.
+ *
+ * Outside it, a path that merely contains a `.wrongstack` segment (an
+ * alternate home, a project's `.wrongstack/`) is judged by the sensitive
+ * basenames alone, as before.
  */
 function looksLikeAgentStateTarget(rawPath: string): boolean {
   // Expand ~ to the home directory for the comparison.
   const expanded = rawPath.replace(/^~([\\/])/, (_, sep) => `${os.homedir()}${sep}`);
   const resolved = path.resolve(expanded);
-  // Fast lexical pre-filter: must contain `.wrongstack` or match the wstack
-  // global root prefix.
-  const rootStr = wstackGlobalRoot();
+  if (isAgentStateWriteTarget(resolved)) return true;
   const resolvedNorm = resolved.replace(/\\/g, '/').toLowerCase();
-  const rootNorm = path.resolve(rootStr).replace(/\\/g, '/').toLowerCase();
-  if (!resolvedNorm.startsWith(rootNorm) && !resolvedNorm.includes('.wrongstack')) {
-    return false;
-  }
-  // Coverage (3), which subsumes (2): the whole global root.
-  if (resolvedNorm === rootNorm || resolvedNorm.startsWith(`${rootNorm}/`)) return true;
-  // Coverage (2): any path inside the global plugin root is a protected
-  // write target — not just the .mjs/.js entry, but the whole closure the
-  // entry imports. We resolve the plugins root once per call; cheap.
-  const pluginsRoot = path.resolve(rootStr, 'plugins');
-  const pluginsRootNorm = pluginsRoot.replace(/\\/g, '/').toLowerCase();
-  if (resolvedNorm === pluginsRootNorm || resolvedNorm.startsWith(`${pluginsRootNorm}/`)) {
-    return true;
-  }
-  // Coverage (1): basename against the protected list (inlined to avoid a
-  // circular import with permission-helpers.ts).
-  return PROTECTED_STATE_BASENAMES.test(path.basename(resolved));
+  if (!resolvedNorm.includes('/.wrongstack/')) return false;
+  return isSensitiveAgentStateBasename(path.basename(resolved));
 }

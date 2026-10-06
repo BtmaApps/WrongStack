@@ -11,6 +11,7 @@
  * regression in the precedence rules shows up at the source rather than
  * as a symptom in a consumer.
  */
+import { listInProjectDeniedPaths } from '@wrongstack/core/storage';
 import { describe, expect, it } from 'vitest';
 import {
   deriveFsAccessPair,
@@ -85,6 +86,30 @@ describe('project config write boundary', () => {
     expect(safe).not.toHaveProperty('tools.maxIterations');
     expect(safe).not.toHaveProperty('tools.exec.allow');
     expect(source.autonomy.defaultMode).toBe('eternal');
+  });
+
+  it('strips every nested path the loader denies, so the two boundaries cannot drift', () => {
+    const denied = listInProjectDeniedPaths();
+    // Spot-check entries a hand-kept copy once missed.
+    expect(denied).toEqual(
+      expect.arrayContaining([
+        'autonomy.nextSteps',
+        'tools.sandbox.image',
+        'tools.sandbox.backend',
+      ]),
+    );
+    for (const dotted of denied) {
+      const source: Record<string, unknown> = {};
+      let cursor = source;
+      const parts = dotted.split('.');
+      for (const part of parts.slice(0, -1)) {
+        const next: Record<string, unknown> = {};
+        cursor[part] = next;
+        cursor = next;
+      }
+      cursor[parts.at(-1)!] = 'repo-set';
+      expect(filterSafeForProject(source), dotted).not.toHaveProperty(dotted);
+    }
   });
 });
 

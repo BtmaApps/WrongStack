@@ -114,6 +114,8 @@ export interface LiveSettingsInput {
    * `tools.nextsteps.enabled`; read at boot, so it applies next session.
    */
   nextStepsTool?: boolean | undefined;
+  /** Persisted as `autonomy.nextSteps` ('required' when true). Read live. */
+  nextStepsRequired?: boolean | undefined;
   /** Minimum relation strength for SAGE memory injection. Default: 0.85. */
   sageMemoryInjectThreshold?: number | undefined;
   /**

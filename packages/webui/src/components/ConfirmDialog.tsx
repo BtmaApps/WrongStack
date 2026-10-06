@@ -27,6 +27,15 @@ function pickToolIcon(toolName: string) {
   return Wrench;
 }
 
+/**
+ * YOLO stopped because a rule the user wrote forbids this call. "Always" has
+ * nothing to remember here — the rule is checked first, so the server runs an
+ * "always" answer once, like "yes" — and the dialog does not offer it.
+ */
+export function isUserRuleConfirm(info: { decisionSource?: string | undefined }): boolean {
+  return info.decisionSource === 'yolo_user_rule';
+}
+
 export function isDestructiveConfirm(info: {
   decisionSource?: string | undefined;
   riskTier?: 'safe' | 'standard' | 'destructive' | undefined;
@@ -210,7 +219,10 @@ export function ConfirmDialog() {
       } else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape') {
         e.preventDefault();
         handleConfirm('no');
-      } else if (e.key === 'a' || e.key === 'A') {
+      } else if (
+        (e.key === 'a' || e.key === 'A') &&
+        !(confirmInfo && isUserRuleConfirm(confirmInfo))
+      ) {
         e.preventDefault();
         handleConfirm(approvalScope);
       } else if (e.key === 'd' || e.key === 'D') {
@@ -257,8 +269,13 @@ export function ConfirmDialog() {
             {confirmInfo.boundaryReason ??
               (isEdit ? t('confirm.descriptionEdit') : t('confirm.descriptionTool'))}
           </DialogDescription>
-          {yolo && isDestructiveConfirm(confirmInfo) && (
-            <p className="text-left text-xs text-warning">{t('confirm.yoloDestructiveNote')}</p>
+          {isUserRuleConfirm(confirmInfo) ? (
+            <p className="text-left text-xs text-warning">{t('confirm.yoloUserRuleNote')}</p>
+          ) : (
+            yolo &&
+            isDestructiveConfirm(confirmInfo) && (
+              <p className="text-left text-xs text-warning">{t('confirm.yoloDestructiveNote')}</p>
+            )
           )}
           {remainingLabel && (
             <p className="text-left text-xs text-muted-foreground" aria-live="polite">
@@ -288,24 +305,26 @@ export function ConfirmDialog() {
             <SmartInputPreview toolName={confirmInfo.toolName} input={confirmInfo.input} />
           )}
 
-          <label className="block space-y-1 text-sm">
-            <span>{t('confirm.approvalScope')}</span>
-            <select
-              aria-label={t('confirm.approvalScope')}
-              className="w-full min-w-0 rounded border bg-background p-2"
-              value={approvalScope}
-              onChange={(event) => setApprovalScope(event.target.value as typeof approvalScope)}
-            >
-              <option value="always-exact">{t('confirm.scopeExact')}</option>
-              {confirmInfo.toolName === 'exec' && (
-                <option value="always-command">{t('confirm.scopeCommand')}</option>
-              )}
-              <option value="always-tool">
-                {t('confirm.scopeTool', { tool: confirmInfo.toolName })}
-              </option>
-            </select>
-            <span className="block text-xs text-muted-foreground">{t('confirm.scopeHint')}</span>
-          </label>
+          {!isUserRuleConfirm(confirmInfo) && (
+            <label className="block space-y-1 text-sm">
+              <span>{t('confirm.approvalScope')}</span>
+              <select
+                aria-label={t('confirm.approvalScope')}
+                className="w-full min-w-0 rounded border bg-background p-2"
+                value={approvalScope}
+                onChange={(event) => setApprovalScope(event.target.value as typeof approvalScope)}
+              >
+                <option value="always-exact">{t('confirm.scopeExact')}</option>
+                {confirmInfo.toolName === 'exec' && (
+                  <option value="always-command">{t('confirm.scopeCommand')}</option>
+                )}
+                <option value="always-tool">
+                  {t('confirm.scopeTool', { tool: confirmInfo.toolName })}
+                </option>
+              </select>
+              <span className="block text-xs text-muted-foreground">{t('confirm.scopeHint')}</span>
+            </label>
+          )}
 
           {confirmInfo.suggestedPattern && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
@@ -363,16 +382,18 @@ export function ConfirmDialog() {
             {t('action.no')}{' '}
             <kbd className="ml-1 text-[10px] border rounded px-1 bg-background">n</kbd>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="confirm-remember"
-            onClick={() => handleConfirm(approvalScope)}
-            title={t('confirm.alwaysTitle')}
-          >
-            {t('action.always')}{' '}
-            <kbd className="ml-1 text-[10px] border rounded px-1 bg-background">a</kbd>
-          </Button>
+          {!isUserRuleConfirm(confirmInfo) && (
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="confirm-remember"
+              onClick={() => handleConfirm(approvalScope)}
+              title={t('confirm.alwaysTitle')}
+            >
+              {t('action.always')}{' '}
+              <kbd className="ml-1 text-[10px] border rounded px-1 bg-background">a</kbd>
+            </Button>
+          )}
           <Button size="sm" onClick={() => handleConfirm('yes')} title={t('confirm.yesTitle')}>
             {t('action.yes')}{' '}
             <kbd className="ml-1 text-[10px] border rounded px-1 bg-background/80">y</kbd>

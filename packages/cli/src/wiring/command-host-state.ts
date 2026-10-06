@@ -22,6 +22,7 @@ import type {
 import {
   AgentError,
   type Config,
+  type ConfigStore,
   resolveFleetChatVerbosity,
   type SessionWriter,
 } from '@wrongstack/core/types';
@@ -71,6 +72,8 @@ interface CommandHostStateInput {
   permissionPolicy: {
     setYolo?(enabled: boolean): void;
     getYolo?(): boolean;
+    setYoloPlus?(enabled: boolean): void;
+    getYoloPlus?(): boolean;
     setYoloConfirmKinds?(kinds: Iterable<DestructiveKind>): void;
     getYoloConfirmKinds?(): ReadonlySet<DestructiveKind>;
   };
@@ -83,6 +86,12 @@ interface CommandHostStateInput {
    * value keep overriding the switch the user just flipped.
    */
   contextMeta?: Record<string, unknown> | undefined;
+  /**
+   * The live config store subagent policies read YOLO+ from. `setConfig` only
+   * swaps the host's own config object, so a toggle that skipped the store
+   * would leave every subagent refusing what the leader now runs.
+   */
+  configStore?: Pick<ConfigStore, 'get' | 'update'> | undefined;
 }
 
 export async function setupCommandHostState(input: CommandHostStateInput) {
@@ -211,14 +220,45 @@ export async function setupCommandHostState(input: CommandHostStateInput) {
     log: (line) => input.renderer.write(`${line}\n`),
   });
   const coordinatorController: CoordinatorController = {};
+  /** Move the YOLO+ switch in the policy, the conversation, the config and the store together. */
+  const applyYoloPlus = (enabled: boolean): void => {
+    input.permissionPolicy.setYoloPlus?.(enabled);
+    if (input.contextMeta) input.contextMeta['yoloPlus'] = enabled;
+    const config = input.getConfig();
+    const autonomy = { ...config.autonomy, yoloPlus: enabled };
+    input.setConfig(patchConfig(config, { autonomy }));
+    input.configStore?.update({
+      autonomy: { ...input.configStore.get().autonomy, yoloPlus: enabled },
+    });
+  };
   const setYoloMode = (enabled?: boolean): boolean => {
     if (enabled !== undefined) {
       input.permissionPolicy.setYolo?.(enabled);
       if (input.contextMeta) input.contextMeta['yolo'] = enabled;
       input.setConfig(patchConfig(input.getConfig(), { yolo: enabled }));
+      // `/yolo on` and `/yolo off` both mean "not YOLO+": plain YOLO keeps
+      // asking for the gated kinds, and off asks for everything.
+      if (getYoloPlusMode()) applyYoloPlus(false);
       return enabled;
     }
     return input.permissionPolicy.getYolo?.() ?? input.getConfig().yolo ?? false;
+  };
+  function getYoloPlusMode(): boolean {
+    return input.permissionPolicy.getYoloPlus?.() ?? input.getConfig().autonomy?.yoloPlus === true;
+  }
+  /**
+   * Read, or set, YOLO+ — every call allowed, nothing ever asks. Turning it on
+   * turns YOLO on; turning it off leaves plain YOLO on.
+   */
+  const setYoloPlusMode = (enabled?: boolean): boolean => {
+    if (enabled === undefined) return getYoloPlusMode();
+    if (enabled) {
+      input.permissionPolicy.setYolo?.(true);
+      if (input.contextMeta) input.contextMeta['yolo'] = true;
+      input.setConfig(patchConfig(input.getConfig(), { yolo: true }));
+    }
+    applyYoloPlus(enabled);
+    return getYoloPlusMode();
   };
   /**
    * Read, or set, which kinds of damage still prompt while YOLO is on.
@@ -302,6 +342,7 @@ export async function setupCommandHostState(input: CommandHostStateInput) {
     goalHost,
     coordinatorController,
     setYoloMode,
+    setYoloPlusMode,
     setYoloConfirm,
     secretInputController,
     sddRunRegistry,

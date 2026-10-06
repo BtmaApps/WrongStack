@@ -278,6 +278,7 @@ export function AppViewPickers({
             showSageMemoryInject={state.settingsPicker.showSageMemoryInject}
             sageMemoryInjectThreshold={state.settingsPicker.sageMemoryInjectThreshold}
             nextStepsTool={state.settingsPicker.nextStepsTool}
+            nextStepsRequired={state.settingsPicker.nextStepsRequired}
             readSymbols={state.settingsPicker.readSymbols}
             panelPositions={state.settingsPicker.panelPositions}
             // WrongProxy / WrongTrace (fields 59–60): the runtime probe

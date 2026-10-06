@@ -3,7 +3,7 @@
   "thresholdLines": 800,
   "files": {
     "packages/cli/src/cli-main.ts": {
-      "lines": 850,
+      "lines": 856,
       "relativeImports": 30
     },
     "packages/cli/src/slash-commands/settings-mutations.ts": {
@@ -26,6 +26,10 @@
       "lines": 855,
       "relativeImports": 45
     },
+    "packages/core/src/core/context.ts": {
+      "lines": 800,
+      "relativeImports": 23
+    },
     "packages/core/src/execution/brain-runtime.ts": {
       "lines": 823,
       "relativeImports": 20
@@ -37,6 +41,10 @@
     "packages/core/src/plugins/skills-plugin.ts": {
       "lines": 828,
       "relativeImports": 15
+    },
+    "packages/core/src/security/permission-policy.ts": {
+      "lines": 846,
+      "relativeImports": 23
     },
     "packages/core/src/storage/session-store.ts": {
       "lines": 801,
@@ -109,6 +117,10 @@
     "packages/tui/src/use-app-controller.tsx": {
       "lines": 822,
       "relativeImports": 40
+    },
+    "packages/webui/src/components/ChatInput/slash-routing.ts": {
+      "lines": 917,
+      "relativeImports": 2
     },
     "packages/webui/src/components/CodeMap.tsx": {
       "lines": 811,

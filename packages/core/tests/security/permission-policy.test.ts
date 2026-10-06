@@ -101,13 +101,13 @@ describe('DefaultPermissionPolicy', () => {
     expect(d.permission).toBe('auto');
   });
 
-  it('yolo bypasses declared confirm but respects deny', async () => {
+  it('yolo bypasses declared confirm but stops on a deny rule and asks', async () => {
     await fs.writeFile(trustFile, JSON.stringify({ edit: { deny: ['**/.env*'] } }));
     const p = new DefaultPermissionPolicy({ trustFile, yolo: true });
     const ok = await p.evaluate(tool('edit', 'confirm'), { path: 'src/a.ts' }, {} as Context);
     expect(ok).toMatchObject({ permission: 'auto', source: 'yolo' });
     const denied = await p.evaluate(tool('edit'), { path: '.env' }, {} as Context);
-    expect(denied.permission).toBe('deny');
+    expect(denied).toMatchObject({ permission: 'confirm', source: 'yolo_user_rule' });
   });
 
   it.each(['remember', 'todo'])(

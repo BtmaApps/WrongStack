@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import type { Context } from '../core/context.js';
 import type { InputReader } from '../types/input-reader.js';
 import type {
@@ -14,6 +13,7 @@ import { matchGlob } from '../utils/glob-match.js';
 import { LruCache } from '../utils/lru-cache.js';
 import { safeParse } from '../utils/safe-json.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
+import { isAgentStateWriteTarget } from './agent-state-sensitivity.js';
 import { hasCapability, ToolCapabilities } from './capabilities.js';
 import { explainPermissionTrace } from './permission-explain.js';
 import { type TrustPolicyDiagnostic, validateTrustPolicy } from './permission-policy-schema.js';
@@ -47,14 +47,14 @@ export {
 import {
   alwaysAllowUnavailableReason,
   classifyShellSurfaceInput,
-  fsWriteTargetPaths,
   gitToolCommandLine,
   hasShellSubject,
-  isInsideAgentStateRoot,
   isSensitiveReadCall,
   matchesCommandTrust,
   matchesTrust,
   permissionFingerprint,
+  refusalUnderYolo,
+  writesAgentState,
 } from './permission-helpers.js';
 
 import { isYoloLockedOff } from './process-lockdown.js';
@@ -72,6 +72,8 @@ export { mergeTrustEntries } from './trust-entry.js';
 export interface PermissionPolicyOptions {
   trustFile: string;
   yolo?: boolean | undefined;
+  /** YOLO+ — see {@link PermissionPolicy.setYoloPlus}. */
+  yoloPlus?: boolean | undefined;
   yoloDestructive?: boolean | undefined;
   /**
    * Destructive kinds that still require approval while YOLO is on. Defaults to
@@ -114,6 +116,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
   private policyChanges: Promise<void> = Promise.resolve();
   private readonly trustFile: string;
   private yolo: boolean;
+  private yoloPlus: boolean;
   private sessionDenied = new Map<string, boolean>();
   private sessionAllowed = new Map<string, boolean>();
   private promptDelegate?: PermissionPolicyOptions['promptDelegate'] | undefined;
@@ -128,6 +131,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     this.trustFile = opts.trustFile;
     this.launchAllowedTools = [...(opts.launchAllowedTools ?? [])];
     this.yolo = opts.yolo ?? false;
+    this.yoloPlus = opts.yoloPlus ?? false;
     this.yoloConfirmKinds = normalizeYoloConfirmKinds(
       opts.yoloConfirmKinds ?? (opts.yoloDestructive === true ? [] : undefined),
     );
@@ -178,12 +182,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     const isConfigMutate = hasCapability(tool, ToolCapabilities.CONFIG_MUTATE);
     const isDestructiveTier = tool.riskTier === 'destructive';
     if (!isFsWrite && !isConfigMutate && !isDestructiveTier) return false;
-    for (const targetPath of fsWriteTargetPaths(tool, input)) {
-      const base = ctx.workingDir ?? ctx.cwd;
-      const resolved = base ? path.resolve(base, targetPath) : path.resolve(targetPath);
-      if (isInsideAgentStateRoot(resolved)) return true;
-    }
-    return false;
+    return writesAgentState(tool, input, ctx.workingDir ?? ctx.cwd);
   }
 
   /**
@@ -274,6 +273,34 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
   setYolo(enabled: boolean): void {
     if (this.yolo !== enabled) this._evalCache.clear();
     this.yolo = enabled;
+  }
+
+  /**
+   * YOLO+ for ONE conversation — the per-tab `ctx.meta.yoloPlus` first, like
+   * {@link effectiveYolo}, then the process switch. `--restricted` locks it off
+   * the same way it locks YOLO off.
+   */
+  private effectiveYoloPlus(ctx?: Pick<Context, 'meta'> | undefined): boolean {
+    // YOLO+ never outlives YOLO: "YOLO off" must always mean every call asks,
+    // whatever a stale YOLO+ flag in this tab's meta still says.
+    if (!this.effectiveYolo(ctx)) return false;
+    const scoped = ctx?.meta?.['yoloPlus'];
+    return typeof scoped === 'boolean' ? scoped : this.yoloPlus;
+  }
+
+  setYoloPlus(enabled: boolean): void {
+    if (this.yoloPlus !== enabled) this._evalCache.clear();
+    this.yoloPlus = enabled;
+    // YOLO+ is YOLO with nothing held back; turning it on turns YOLO on.
+    if (enabled) this.setYolo(true);
+  }
+
+  getYoloPlus(): boolean {
+    return this.yoloPlus && this.getYolo();
+  }
+
+  yoloModeFor(ctx?: Pick<Context, 'meta'> | undefined): { yolo: boolean; yoloPlus: boolean } {
+    return { yolo: this.effectiveYolo(ctx), yoloPlus: this.effectiveYoloPlus(ctx) };
   }
 
   getYolo(): boolean {
@@ -397,46 +424,44 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     const overrides = readSessionPermissionOverrides(ctx);
     const evalKey = `${ctx.session?.id ?? '__default__'}::${cacheKey}::${permissionFingerprint(tool)}::${exactApprovalKey(input, ctx)}::y${
       this.effectiveYolo(ctx) ? 1 : 0
-    }::o${sessionOverridesFingerprint(overrides)}`;
+    }::p${this.effectiveYoloPlus(ctx) ? 1 : 0}::o${sessionOverridesFingerprint(overrides)}`;
 
     if (tool.name !== 'write' && !this.hasAgentStateWriteTarget(tool, input, ctx)) {
       const cached = this._evalCache.get(evalKey);
       if (cached !== undefined) return cached;
     }
 
+    // The user's own refusals. Off and YOLO+ refuse; YOLO asks instead
+    // (`refusalUnderYolo`).
+    const yoloMode = { yolo: this.effectiveYolo(ctx), yoloPlus: this.effectiveYoloPlus(ctx) };
+    const refuse = (refusal: PermissionDecision): PermissionDecision => {
+      const decision = refusalUnderYolo(refusal, yoloMode);
+      if (decision.permission === 'deny') {
+        this._logDeny(tool.name, subject, decision.reason ?? 'deny');
+      }
+      this._evalCache.set(evalKey, decision);
+      return decision;
+    };
+
     if (this.sessionDenied.has(cacheKey)) {
-      this._logDeny(tool.name, subject, 'session soft deny (user pressed no)');
-      const decision: PermissionDecision = {
+      return refuse({
         permission: 'deny',
         source: 'deny',
         reason: 'session soft deny (user pressed no)',
-      };
-      this._evalCache.set(evalKey, decision);
-      return decision;
+      });
     }
 
     if (entry?.deny && subject && matchesTrust(entry.deny, subject)) {
-      this._logDeny(tool.name, subject, 'matched deny pattern');
-      const decision: PermissionDecision = {
-        permission: 'deny',
-        source: 'deny',
-        reason: 'matched deny pattern',
-      };
-      this._evalCache.set(evalKey, decision);
-      return decision;
+      return refuse({ permission: 'deny', source: 'deny', reason: 'matched deny pattern' });
     }
 
     const sessionDeny = matchSessionPermissionOverride(overrides, 'deny', tool, subject);
     if (sessionDeny) {
-      const reason = `session rule: ${describeSessionPermissionOverride(sessionDeny.override)}`;
-      this._logDeny(tool.name, subject, reason);
-      const decision: PermissionDecision = {
+      return refuse({
         permission: 'deny',
         source: 'session_override',
-        reason,
-      };
-      this._evalCache.set(evalKey, decision);
-      return decision;
+        reason: `session rule: ${describeSessionPermissionOverride(sessionDeny.override)}`,
+      });
     }
 
     // Deliberately below the deny branch. A stale one-shot allow must never
@@ -469,6 +494,32 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     const denyUnevaluated =
       (Boolean(entry?.deny?.length) && subject === undefined) ||
       sessionDenyUnevaluated(overrides, tool, subject);
+
+    // YOLO+: the user allowed everything. Every refusal they wrote themselves
+    // is above this line and still wins (deny rules, a "no" this session, a
+    // tool that is deny by default); everything that would only have ASKED —
+    // the destructive kinds, the locked ones, sensitive reads, broad approvals
+    // stopping short of a destructive call — runs.
+    if (this.effectiveYoloPlus(ctx)) {
+      // A deny list that could not be checked might be refusing this very
+      // call, and YOLO+ has no prompt to fall back to — so refuse rather than
+      // let "allow everything" quietly outrank a rule the user wrote.
+      if (denyUnevaluated) {
+        return refuse({
+          permission: 'deny',
+          source: 'deny',
+          reason: 'a deny rule for this tool could not be evaluated for this call',
+        });
+      }
+      const decision: PermissionDecision = {
+        permission: 'auto',
+        source: 'yolo',
+        reason: 'YOLO+ — every call is allowed',
+        allowAll: true,
+      };
+      this._evalCache.set(evalKey, decision);
+      return decision;
+    }
 
     // The user's own rule for this session: honoured like an approval given at
     // a prompt, and stopped short by the same things (a sensitive read, a
@@ -610,6 +661,15 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // the normal-mode default, while explicit denies and the destructive-kind
     // check inside this branch still win.
     if (this.effectiveYolo(ctx)) {
+      // A deny list that could not be checked for this call might be refusing
+      // it: YOLO stops and asks rather than running it unseen.
+      if (denyUnevaluated) {
+        return refuse({
+          permission: 'deny',
+          source: 'deny',
+          reason: 'a deny rule for this tool could not be evaluated for this call',
+        });
+      }
       const gatedKind = this.gatedDestructiveKind(tool, input, ctx);
       if (gatedKind !== undefined) {
         return {
@@ -629,7 +689,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     }
 
     if (tool.name === 'write' && subject) {
-      if (ctx.hasRead(subject) && !isInsideAgentStateRoot(subject)) {
+      if (ctx.hasRead(subject) && !isAgentStateWriteTarget(subject)) {
         return {
           permission: 'auto',
           source: 'context',
@@ -747,6 +807,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         sessionDenied: this.sessionDenied,
         sessionAllowed: this.sessionAllowed,
         yolo: this.effectiveYolo(ctx),
+        yoloPlus: this.effectiveYoloPlus(ctx),
         promptDelegatePresent: this.promptDelegate !== undefined,
         isDestructiveCall: (t, inp, c) => this.broadApprovalStopsShort(t, inp, c),
         isSensitiveReadCall: (t, inp) => this.isSensitiveReadCall(t, inp),

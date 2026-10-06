@@ -506,11 +506,12 @@ describe('CloudConfigSync engine', () => {
     it('refuses a pulled autonomy mode (autonomy is user-owned)', () => {
       const local = realisticConfig();
       const applied = applyNamespacePayload(local, 'ui.preferences', {
-        autonomy: { defaultMode: 'yolo', yolo: true, chime: false },
+        autonomy: { defaultMode: 'yolo', yolo: true, yoloPlus: true, chime: false },
       });
       const autonomy = applied.autonomy as Record<string, unknown>;
       expect(autonomy.defaultMode).not.toBe('yolo');
       expect(autonomy.yolo).not.toBe(true);
+      expect(autonomy.yoloPlus).not.toBe(true);
       // A genuine preference in the same payload still syncs.
       expect(autonomy.chime).toBe(false);
     });

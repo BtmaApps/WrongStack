@@ -17,6 +17,7 @@ export interface StatusBarRailBuildParams {
   latestVersion?: string | undefined;
   updateAvailable?: boolean | undefined;
   yolo?: boolean | undefined;
+  yoloPlus?: boolean | undefined;
   autonomy?: StatusBarProps['autonomy'];
   processCount?: number | undefined;
   stateStatusChip: React.ReactElement | null;

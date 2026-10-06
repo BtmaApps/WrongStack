@@ -15,7 +15,7 @@
 import { FallbackProfileManager } from '@wrongstack/core/agent';
 import { resolvePluginEnablement } from '@wrongstack/core/plugin';
 import { ALL_DESTRUCTIVE_KINDS, resolveYoloConfirmKinds } from '@wrongstack/core/security';
-import type { Config } from '@wrongstack/core/types';
+import { type Config, resolveNextStepsMode } from '@wrongstack/core/types';
 import { FORBIDDEN_PROTO_KEYS } from '@wrongstack/core/utils';
 
 /**
@@ -36,6 +36,8 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['autonomyDelayMs'] = (autonomyCfg['autoProceedDelayMs'] as number) ?? 15_000;
   meta['autoProceedMaxIterations'] = (autonomyCfg['autoProceedMaxIterations'] as number) ?? 0;
   meta['yolo'] = (autonomyCfg['yolo'] as boolean) ?? config.yolo ?? true;
+  meta['yoloPlus'] = autonomyCfg['yoloPlus'] === true;
+  if (meta['yoloPlus'] === true) meta['yolo'] = true;
   // Published as the RESOLVED set, not the raw map: the browser must render
   // what the policy will actually enforce, including the locked kinds and the
   // fail-closed reading of a partial or unknown-key map. Sending the raw config
@@ -56,6 +58,7 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['enhanceLanguage'] = (autonomyCfg['enhanceLanguage'] as string) ?? 'english';
   meta['nextPrediction'] = config.nextPrediction ?? true;
   meta['nextStepsTool'] = config.tools?.nextsteps?.enabled === true;
+  meta['nextStepsMode'] = resolveNextStepsMode(autonomyCfg['nextSteps']);
   meta['fallbackModels'] = config.fallbackModels ?? [];
   meta['fallbackBridge'] = config.fallbackBridge ?? '';
   meta['fallbackProfiles'] = config.fallbackProfiles ?? {};

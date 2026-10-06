@@ -239,6 +239,9 @@
     "packages/cli/src/slash-commands/memory-triage.ts": [
       "fileProposals"
     ],
+    "packages/cli/src/slash-commands/nextsteps-mode.ts": [
+      "parseNextStepsLimit"
+    ],
     "packages/cli/src/slash-commands/scout-stats.ts": [
       "formatVariantUsage",
       "SOLO_HEAVY_TOOL_CALLS",
@@ -455,6 +458,9 @@
     "packages/core/src/core/fallback-profile-manager.ts": [
       "MAX_LAST_RESORT_CANDIDATES"
     ],
+    "packages/core/src/core/next-steps-required.ts": [
+      "NEXT_STEPS_REQUIRED_PROMPT"
+    ],
     "packages/core/src/core/provider-runner.ts": [
       "PROVIDER_FAILURE_TRACKED"
     ],
@@ -607,7 +613,11 @@
     "packages/core/src/sandbox/types.ts": [
       "DEFAULT_SANDBOX_CONFIG"
     ],
+    "packages/core/src/security/agent-state-sensitivity.ts": [
+      "isSensitiveAgentStateRelPath"
+    ],
     "packages/core/src/security/permission-helpers.ts": [
+      "fsWriteTargetPaths",
       "MAX_COMMAND_SCAN_NODES",
       "SENSITIVE_PATH_INPUT_KEYS"
     ],

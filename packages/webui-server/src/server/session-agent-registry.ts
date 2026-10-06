@@ -22,6 +22,7 @@
 
 import { Agent, Context } from '@wrongstack/core/agent';
 import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
+import { setSessionLeaderMetaResolver } from '@wrongstack/core/security';
 import type {
   ModelsRegistry,
   SessionStore,
@@ -380,6 +381,15 @@ export function createSessionAgentRegistry(
   };
   const build = (sessionId: string): Agent => opts.createAgent?.(sessionId) ?? create(sessionId);
 
+  const peek = (sessionId: string | undefined): Agent | undefined => {
+    if (!sessionId) return template;
+    return agents.get(sessionId) ?? (template.ctx.session?.id === sessionId ? template : undefined);
+  };
+  // The fleet host is one per process and shared by every tab; a subagent
+  // finds its own tab's YOLO+ through this (non-creating) lookup, so one tab's
+  // YOLO+ never widens another tab's workers.
+  setSessionLeaderMetaResolver((sessionId) => peek(sessionId)?.ctx.meta);
+
   return {
     get(sessionId) {
       if (!sessionId) return template;
@@ -395,12 +405,7 @@ export function createSessionAgentRegistry(
       agents.set(sessionId, agent);
       return agent;
     },
-    peek(sessionId) {
-      if (!sessionId) return template;
-      return (
-        agents.get(sessionId) ?? (template.ctx.session?.id === sessionId ? template : undefined)
-      );
-    },
+    peek,
     isLive(sessionId) {
       const agent =
         agents.get(sessionId) ?? (template.ctx.session?.id === sessionId ? template : undefined);

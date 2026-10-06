@@ -30,7 +30,11 @@ describe('buildLiveNextStepsGateBlock', () => {
     // boundary, so a cache_control marker would re-create per-request churn.
     expect(block?.cache_control).toBeUndefined();
     expect(block?.text).toContain('open todos = 0');
-    expect(block?.text).toContain('MUST take exactly one branch');
+    // Omission is the default, not one of two equal obligations.
+    expect(block?.text).not.toContain('MUST take exactly one branch');
+    expect(block?.text).toContain('<nextsteps> is optional');
+    expect(block?.text).toContain("Default: if the user's request is complete, omit <nextsteps>");
+    expect(block?.text).toContain('Never emit <nextsteps> just to keep the run going');
     expect(block?.text).toContain('include a balanced <nextsteps> block');
     expect(block?.text).toContain('submitted back to you through the current TUI or WebUI input');
     expect(block?.text).toContain('Never put a human-only chore');
@@ -327,6 +331,27 @@ describe('provider request live-context tail', () => {
     expect(sentAssistant.content[0]?.text).toContain('All done.');
     // The durable history keeps the block for resume/rendering.
     expect((assistant.content[0] as { text: string }).text).toContain('<nextsteps>');
+  });
+
+  it('strips the completion marker without swallowing the text up to a later block', async () => {
+    const history = [
+      { role: 'user', content: 'first task' },
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'text',
+            text: 'Part one.\n<nextsteps-complete/>\nPart two.\n<nextsteps>\n1. Go\n</nextsteps>',
+          },
+        ],
+      },
+      { role: 'user', content: 'second task' },
+    ];
+    const { a } = makeInternals({ messages: history });
+
+    const request = await createAgentResponseHandler(a).buildAndRunRequestPipeline({});
+    const sent = request.request.messages[1] as { content: { text?: string }[] };
+    expect(sent.content[0]?.text).toBe('Part one.\nPart two.');
   });
 
   it('replaces a nextsteps-only assistant turn with a stable placeholder', async () => {

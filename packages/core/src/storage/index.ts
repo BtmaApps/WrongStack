@@ -81,6 +81,7 @@ export {
   type ConfigLoaderOptions,
   type ConfigSource,
   DefaultConfigLoader,
+  listInProjectDeniedPaths,
   repairConfigDefaults,
 } from './config-loader.js';
 export {

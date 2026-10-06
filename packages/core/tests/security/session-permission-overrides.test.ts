@@ -110,12 +110,17 @@ describe('session rules in the permission policy', () => {
     expect((await p.evaluate(read, { path: '.env' }, ctx)).permission).toBe('confirm');
   });
 
-  it('a deny wins over a trust-file allow and over YOLO', async () => {
-    const p = await policy({ bash: { allow: ['*'] } }, true);
+  it('a deny wins over a trust-file allow; under YOLO it asks instead of refusing', async () => {
     const ctx = ctxWith([{ effect: 'deny', tool: 'bash', pattern: 'git push*' }]);
-    expect(await p.evaluate(bash, { command: 'git push origin main' }, ctx)).toMatchObject({
+    const off = await policy({ bash: { allow: ['*'] } });
+    expect(await off.evaluate(bash, { command: 'git push origin main' }, ctx)).toMatchObject({
       permission: 'deny',
       source: 'session_override',
+    });
+    const p = await policy({ bash: { allow: ['*'] } }, true);
+    expect(await p.evaluate(bash, { command: 'git push origin main' }, ctx)).toMatchObject({
+      permission: 'confirm',
+      source: 'yolo_user_rule',
     });
     expect((await p.evaluate(bash, { command: 'git status' }, ctx)).permission).toBe('auto');
   });

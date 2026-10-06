@@ -313,6 +313,7 @@ export function buildMinimumChips(p: StatusBarRailBuildParams): React.ReactEleme
     showTokenDisplay,
     displayTokens,
     yolo,
+    yoloPlus,
     autonomy,
     fleetWorkingTime,
     minimalWorkParts,
@@ -332,7 +333,11 @@ export function buildMinimumChips(p: StatusBarRailBuildParams): React.ReactEleme
     ) : null,
     yolo && showChip('yolo') ? (
       <Text color={chipColor(theme.error, isNoColor)} bold>
-        {isNoColor ? 'YOLO' : `${STATUSLINE_ICONS.yolo} YOLO`}
+        {isNoColor
+          ? yoloPlus
+            ? 'YOLO+'
+            : 'YOLO'
+          : `${STATUSLINE_ICONS.yolo} ${yoloPlus ? 'YOLO+' : 'YOLO'}`}
       </Text>
     ) : null,
     // No effort suffix here: minimum mode is the DEFAULT statusline and its

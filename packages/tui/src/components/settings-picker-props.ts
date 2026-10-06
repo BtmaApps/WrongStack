@@ -101,6 +101,8 @@ export interface SettingsPickerProps {
   sageMemoryInjectThreshold: number;
   /** Register the leader's agent-callable `nextsteps` tool. Default: false. */
   nextStepsTool: boolean;
+  /** Leader must end every finished turn with <nextsteps> or the completion marker (`autonomy.nextSteps: 'required'`). Default: true. */
+  nextStepsRequired: boolean;
   // ── Tools ──
   /** When true, read tool includes codebase-index symbols alongside file content. */
   readSymbols: boolean;

@@ -328,6 +328,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
       showSageMemoryInject: true,
       sageMemoryInjectThreshold: 0.85,
       nextStepsTool: false,
+      nextStepsRequired: true,
       readSymbols: false,
       // WrongProxy / WrongTrace. Defaults match the WebUI LocalPrefs
       // (master switch off; URL 'http://localhost:3444'). The runtime

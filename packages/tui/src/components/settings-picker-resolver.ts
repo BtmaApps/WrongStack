@@ -86,6 +86,7 @@ export function resolveSettingsFieldValue(
     [42, 'readSymbols'],
     [43, 'showSageMemoryInject'],
     [45, 'nextStepsTool'],
+    [64, 'nextStepsRequired'],
     [59, 'wrongProxyEnabled'],
     [61, 'showSidebar'],
   ]);

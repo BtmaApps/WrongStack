@@ -75,12 +75,26 @@ export function AgentSettingsTab({
           label={t('settings:agent.yoloLabel')}
           hint={t('settings:agent.yoloHint')}
           value={localPrefs.yolo}
-          onChange={() => syncPref('yolo', !localPrefs.yolo)}
+          onChange={() => {
+            // Turning YOLO off also leaves YOLO+; it cannot outlive YOLO.
+            if (localPrefs.yolo && localPrefs.yoloPlus) syncPref('yoloPlus', false);
+            syncPref('yolo', !localPrefs.yolo);
+          }}
+        />
+        <PreferenceToggle
+          label={t('settings:agent.yoloPlusLabel')}
+          hint={t('settings:agent.yoloPlusHint')}
+          value={localPrefs.yoloPlus}
+          onChange={() => {
+            const next = !localPrefs.yoloPlus;
+            if (next && !localPrefs.yolo) syncPref('yolo', true);
+            syncPref('yoloPlus', next);
+          }}
         />
         {/* Only meaningful while YOLO is on: with YOLO off every call already
             prompts, so the per-kind list would be a no-op the user could still
             click. Collapsing it keeps the section honest about what it does. */}
-        {localPrefs.yolo ? (
+        {localPrefs.yolo && !localPrefs.yoloPlus ? (
           <div className="mt-4 rounded-lg border border-border/60 bg-background/40 p-4">
             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('settings:agent.yoloConfirmHeading')}

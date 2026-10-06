@@ -168,6 +168,8 @@ export interface StatusBarProps {
   hint?: string | undefined;
   queueCount?: number | undefined;
   yolo?: boolean | undefined;
+  /** YOLO+ — everything allowed, nothing asks. Shown instead of YOLO. */
+  yoloPlus?: boolean | undefined;
   /**
    * Session start timestamp (ms). Still passed by `app-status-region.tsx`
    * but currently read by nothing: StatusBar stopped rendering the chip

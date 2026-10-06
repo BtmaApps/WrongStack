@@ -11,7 +11,11 @@
  * then syncs the in-memory store and applies live runtime effects.
  */
 import type { Config, ConfigStore, FleetChatVerbosity, SecretVault } from '@wrongstack/core/types';
-import { normalizeTokenSavingTier, resolveFleetChatVerbosity } from '@wrongstack/core/types';
+import {
+  normalizeTokenSavingTier,
+  resolveFleetChatVerbosity,
+  resolveNextStepsMode,
+} from '@wrongstack/core/types';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { getProcessRegistry } from '@wrongstack/tools';
 import type { LiveSettingsInput } from '../live-settings-input.js';
@@ -204,6 +208,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           | number
           | undefined) ?? 5,
       nextStepsTool: cfg.tools?.nextsteps?.enabled === true,
+      nextStepsRequired: resolveNextStepsMode(autonomy?.nextSteps) === 'required',
       restrictFsToRoot: resolvedRestrict,
       autoProceedMaxIterations:
         ((cfg.autonomy as Record<string, unknown> | undefined)
@@ -328,6 +333,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         s.maxIterations !== undefined ||
         s.multiDiffSummaryThreshold !== undefined ||
         s.nextStepsTool !== undefined ||
+        s.nextStepsRequired !== undefined ||
         s.restrictFsToRoot !== undefined ||
         s.nextPrediction !== undefined ||
         s.debugStream !== undefined ||
@@ -423,6 +429,8 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
             autonomy.autonomyNextPrompt = s.autonomyNextPrompt;
           if (s.autoProceedMaxIterations !== undefined)
             autonomy.autoProceedMaxIterations = s.autoProceedMaxIterations;
+          if (s.nextStepsRequired !== undefined)
+            autonomy.nextSteps = s.nextStepsRequired ? 'required' : 'optional';
           decrypted.autonomy = autonomy;
 
           if (s.nextPrediction !== undefined) decrypted.nextPrediction = s.nextPrediction;
@@ -574,6 +582,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         const hasProfileOnlySettings =
           s.mode !== undefined ||
           s.yolo !== undefined ||
+          s.nextStepsRequired !== undefined ||
           fsAccess !== undefined ||
           s.maxIterations !== undefined ||
           s.wrongProxyEnabled !== undefined ||
@@ -582,10 +591,17 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           await persistConfigSetting(
             { ...persistDeps, forceGlobal: true, updateStore: false },
             (profileConfig) => {
-              if (s.mode !== undefined || s.yolo !== undefined) {
+              if (
+                s.mode !== undefined ||
+                s.yolo !== undefined ||
+                s.nextStepsRequired !== undefined
+              ) {
                 const autonomy = (profileConfig.autonomy as Record<string, unknown>) ?? {};
                 if (s.mode !== undefined) autonomy.defaultMode = s.mode;
                 if (s.yolo !== undefined) autonomy.yolo = s.yolo;
+                // User-owned: a project config cannot carry it (in-project policy).
+                if (s.nextStepsRequired !== undefined)
+                  autonomy.nextSteps = s.nextStepsRequired ? 'required' : 'optional';
                 profileConfig.autonomy = autonomy;
               }
               if (s.yolo !== undefined) profileConfig.yolo = s.yolo;

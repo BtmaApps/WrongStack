@@ -196,6 +196,8 @@ export function AppStatusRegion({
           hint={state.copiedNotice || renderRunningTools(state.runningTools) || state.hint}
           queueCount={state.queue.length}
           yolo={yoloLive}
+          // `/yolo plus` writes the conversation meta; read it per render.
+          yoloPlus={yoloLive && agent.ctx.meta['yoloPlus'] === true}
           autonomy={autonomyLive}
           droppedTools={droppedTools}
           startedAt={startedAt}
@@ -301,8 +303,7 @@ export function AppStatusRegion({
             />
           ) : state.worktreeMonitorOpen && routedToBottom('worktree') ? (
             <WorktreeMonitor
-              worktrees={state.worktrees}
-              baseBranch={state.worktreeBase}
+              events={state.worktreeTimeline}
               nowTick={nowTick}
               onClose={() => dispatch({ type: 'toggleWorktreeMonitor' })}
             />

@@ -286,6 +286,8 @@ export interface SlashCommandContext {
   onContextLimit?: ((tokens?: number) => number) | undefined;
   /** Toggle or query YOLO mode at runtime. Pass undefined to query, boolean to set. */
   onYolo?: ((setTo?: boolean) => boolean) | undefined;
+  /** Read or set YOLO+ (nothing ever asks). On implies YOLO. */
+  onYoloPlus?: ((setTo?: boolean) => boolean) | undefined;
   /**
    * Read, or set, which kinds of damage still prompt while YOLO is on.
    *

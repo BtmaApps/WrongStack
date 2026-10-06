@@ -448,6 +448,17 @@ export async function handlePrefsUpdate(
     if (payload['yolo']) resolveYoloEligiblePendingConfirms(ctx.pendingConfirms, sessionId);
   }
 
+  if (typeof payload['yoloPlus'] === 'boolean') {
+    // YOLO+ is this tab's alone: the leader reads it from this tab's meta
+    // (written above), and subagents find the same meta through the session
+    // registry (`subagentYoloPlus`). It is deliberately NOT written to the
+    // process-wide ConfigStore — that reached every tab's workers and seeded
+    // every newly opened tab with YOLO+.
+    if (payload['yoloPlus']) {
+      resolveYoloEligiblePendingConfirms(ctx.pendingConfirms, sessionId, { allowAll: true });
+    }
+  }
+
   if (typeof payload['yoloConfirm'] === 'object' && payload['yoloConfirm'] !== null) {
     ctx.setYoloConfirm?.(payload['yoloConfirm'] as Record<string, boolean>);
   }

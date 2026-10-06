@@ -52,6 +52,10 @@ export interface LocalPrefs {
    * change takes effect in the next session.
    */
   nextStepsTool: boolean;
+  /** `autonomy.nextSteps` — required = every finished turn ends with suggestions. */
+  nextStepsMode: 'optional' | 'required';
+  /** YOLO+ — every call allowed, nothing asks (deny rules still refuse). Implies YOLO. */
+  yoloPlus: boolean;
   /** Global fallback model chain (entries: `model` or `provider/model`). */
   fallbackModels: string[];
   /** Named fallback chains selectable by setmodel/model routing. */
@@ -421,6 +425,8 @@ export const DEFAULTS: LocalPrefsData = {
   fleetChatVerbosity: 'off',
   nextPrediction: true,
   nextStepsTool: false,
+  nextStepsMode: 'required',
+  yoloPlus: false,
   fallbackModels: [],
   fallbackProfiles: {},
   favoriteModels: [],

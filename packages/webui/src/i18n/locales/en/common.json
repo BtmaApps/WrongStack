@@ -59,6 +59,7 @@
     "trustSuggestionTitle": "Trust pattern suggestion",
     "trustSuggestionHint": "Picking Always will whitelist matching calls for this project.",
     "yoloDestructiveNote": "YOLO is on. This prompt is still shown because the request was classified as destructive.",
+    "yoloUserRuleNote": "YOLO is on. It stopped because a rule you wrote forbids this call — Yes runs it once; the rule stays. Unanswered, it stays refused.",
     "brainCountdown": "Waiting for your approval · Brain takes over in {{time}}",
     "brainDeciding": "Time expired · Brain is deciding…",
     "skipApprovalsTitle": "Skip future approvals",

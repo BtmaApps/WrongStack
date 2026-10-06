@@ -439,4 +439,121 @@ describe('Headless confirm fallback (P1 #4)', () => {
       timeoutSpy.mockRestore();
     }
   });
+
+  it('a headless auto-deny refuses the call without writing a permanent deny rule', async () => {
+    const danger: Tool = {
+      name: 'danger',
+      description: 'a destructive op requiring confirm',
+      inputSchema: { type: 'object' },
+      permission: 'confirm',
+      riskTier: 'destructive',
+      mutating: true,
+      async execute() {
+        return 'should-not-reach';
+      },
+    } as Tool;
+    const provider = new MockProvider([
+      {
+        content: [{ type: 'tool_use', id: 'u1', name: 'danger', input: {} }],
+        stopReason: 'tool_use',
+      },
+      { content: [{ type: 'text', text: 'recovered' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, events, tmp } = await buildHeadlessAgent(provider, [danger]);
+    cleanupDirs.push(tmp);
+    const persisted = vi.fn();
+    events.on('trust.persisted', persisted);
+
+    expect((await agent.run('do the dangerous thing')).finalText).toBe('recovered');
+    expect(persisted).not.toHaveBeenCalled();
+    const trust = await fs.readFile(path.join(tmp, 'trust.json'), 'utf8').catch(() => '{}');
+    expect(JSON.parse(trust)).not.toHaveProperty('danger');
+  }, 10_000);
+
+  describe('YOLO asking about a rule the user wrote', () => {
+    async function setup(brain?: BrainArbiter) {
+      const execute = vi.fn(async () => 'ran');
+      const sh: Tool = {
+        name: 'sh',
+        description: 'shell',
+        inputSchema: { type: 'object' },
+        permission: 'confirm',
+        subjectKey: 'command',
+        mutating: true,
+        execute,
+      } as Tool;
+      const provider = new MockProvider([
+        {
+          content: [{ type: 'tool_use', id: 'u-rule', name: 'sh', input: { command: 'git push' } }],
+          stopReason: 'tool_use',
+        },
+        { content: [{ type: 'text', text: 'continued' }], stopReason: 'end_turn' },
+      ]);
+      const built = await buildHeadlessAgent(provider, [sh], brain);
+      cleanupDirs.push(built.tmp);
+      await fs.writeFile(
+        path.join(built.tmp, 'trust.json'),
+        JSON.stringify({ sh: { deny: ['git push*'] } }),
+      );
+      built.ctx.meta['yolo'] = true;
+      return { ...built, execute };
+    }
+
+    it('an unanswered question stays refused: the Brain is never asked', async () => {
+      const brain: BrainArbiter = {
+        decide: vi.fn(async () => ({
+          type: 'answer' as const,
+          optionId: 'approve',
+          text: 'Approve this tool call once',
+        })),
+      };
+      const { agent, events, execute } = await setup(brain);
+      let source: string | undefined;
+      let seen: (() => void) | undefined;
+      const confirmSeen = new Promise<void>((r) => {
+        seen = r;
+      });
+      events.on('tool.confirm_needed', (e) => {
+        source = e.decisionSource;
+        seen?.();
+      });
+      const resolved = vi.fn();
+      events.on('tool.confirm_resolved', resolved);
+
+      const nativeSetTimeout = globalThis.setTimeout.bind(globalThis);
+      let fire: (() => void) | undefined;
+      const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation((h, ms, ...args) => {
+        const t = nativeSetTimeout(h, ms, ...args);
+        if (ms === HUMAN_APPROVAL_TIMEOUT_MS && typeof h === 'function') fire = () => h(...args);
+        return t;
+      });
+      try {
+        const run = agent.run('push it');
+        await confirmSeen;
+        expect(source).toBe('yolo_user_rule');
+        fire?.();
+        expect((await run).finalText).toBe('continued');
+      } finally {
+        spy.mockRestore();
+      }
+      expect(brain.decide).not.toHaveBeenCalled();
+      expect(execute).not.toHaveBeenCalled();
+      expect(resolved).toHaveBeenCalledWith(
+        expect.objectContaining({ decision: 'no', source: 'brain_timeout' }),
+      );
+    }, 10_000);
+
+    it('"always allow" runs the call once and writes no allow rule — the deny rule stays', async () => {
+      const { agent, events, execute, tmp } = await setup();
+      const persisted = vi.fn();
+      events.on('trust.persisted', persisted);
+      events.on('tool.confirm_needed', (e) => e.resolve('always-tool'));
+
+      expect((await agent.run('push it')).finalText).toBe('continued');
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(persisted).not.toHaveBeenCalled();
+      const saved = JSON.parse(await fs.readFile(path.join(tmp, 'trust.json'), 'utf8'));
+      expect(saved).toEqual({ sh: { deny: ['git push*'] } });
+    }, 10_000);
+  });
 });

@@ -599,6 +599,12 @@ export function cycleSettingsValue(inputs: {
           ...state,
           settingsPicker: { ...sp, featureToolCoach: !sp.featureToolCoach, hint: undefined },
         };
+      // Field 64: required next steps (boolean toggle over `autonomy.nextSteps`)
+      if (f === 64)
+        return {
+          ...state,
+          settingsPicker: { ...sp, nextStepsRequired: !sp.nextStepsRequired, hint: undefined },
+        };
       if (f >= PANEL_POSITION_FIELD_START && f - PANEL_POSITION_FIELD_START < PANEL_IDS.length) {
         const PANEL_POSITION_CYCLE = ['bottom', 'sidebar'] as const;
         const panelId = PANEL_IDS[f - PANEL_POSITION_FIELD_START]!;

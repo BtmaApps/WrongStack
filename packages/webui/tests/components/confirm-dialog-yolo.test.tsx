@@ -158,4 +158,36 @@ describe('ConfirmDialog YOLO behavior', () => {
     );
     expect(screen.queryByRole('option', { name: 'This executable with any arguments' })).toBeNull();
   });
+
+  it('a question about a rule the user wrote stays on screen and offers no "Always"', async () => {
+    render(<ConfirmDialog />);
+    act(() => {
+      useLocalPrefs.getState().set({ yolo: true });
+      useUIStore.getState().showConfirm({
+        id: 'confirm_rule',
+        toolName: 'bash',
+        input: { command: 'git push' },
+        suggestedPattern: 'git push',
+        decisionSource: 'yolo_user_rule',
+        riskTier: 'destructive',
+      });
+    });
+
+    await Promise.resolve();
+    expect(sendConfirm).not.toHaveBeenCalled();
+    expect(screen.getByText(/a rule you wrote forbids this call/)).toBeTruthy();
+    expect(screen.queryByTestId('confirm-remember')).toBeNull();
+    expect(screen.queryByLabelText('Remember approval for')).toBeNull();
+
+    // The "always" shortcut does nothing here; "yes" still answers.
+    act(() => {
+      fireEvent.keyDown(window, { key: 'a' });
+    });
+    expect(sendConfirm).not.toHaveBeenCalled();
+    act(() => {
+      fireEvent.keyDown(window, { key: 'y' });
+    });
+    expect(sendConfirm).toHaveBeenCalledTimes(1);
+    expect(sendConfirm.mock.calls[0]).toContain('yes');
+  });
 });

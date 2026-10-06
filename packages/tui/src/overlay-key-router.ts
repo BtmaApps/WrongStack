@@ -396,6 +396,7 @@ export function routeSettingsOverlayKey(
     showSageMemoryInject: config.showSageMemoryInject ?? false,
     sageMemoryInjectThreshold: config.sageMemoryInjectThreshold ?? 0.85,
     nextStepsTool: config.nextStepsTool ?? false,
+    nextStepsRequired: config.nextStepsRequired ?? true,
     readSymbols: config.readSymbols ?? false,
     // WrongProxy / WrongTrace: hydrate from the persisted Config (CLI
     // adapter owns the read/write — see LiveSettingsInput + the

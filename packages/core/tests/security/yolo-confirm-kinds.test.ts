@@ -242,3 +242,24 @@ describe('--yolo-destructive maps onto the per-kind preference', () => {
     expect(flagsToConfigPatch({}).autonomy?.yoloConfirm).toBeUndefined();
   });
 });
+
+describe('--yolo-plus maps onto YOLO + autonomy.yoloPlus', () => {
+  it('turns YOLO and YOLO+ on for this launch', async () => {
+    const { flagsToConfigPatch } = await import('../../src/boot.js');
+    const patch = flagsToConfigPatch({ 'yolo-plus': true });
+    expect(patch.yolo).toBe(true);
+    expect(patch.autonomy?.yoloPlus).toBe(true);
+  });
+
+  it('--no-yolo wins and also clears a YOLO+ from the config file', async () => {
+    const { flagsToConfigPatch } = await import('../../src/boot.js');
+    const patch = flagsToConfigPatch({ 'yolo-plus': true, 'no-yolo': true });
+    expect(patch.yolo).toBe(false);
+    expect(patch.autonomy?.yoloPlus).toBe(false);
+  });
+
+  it('leaves the preference untouched when neither flag is given', async () => {
+    const { flagsToConfigPatch } = await import('../../src/boot.js');
+    expect(flagsToConfigPatch({}).autonomy?.yoloPlus).toBeUndefined();
+  });
+});

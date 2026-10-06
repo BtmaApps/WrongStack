@@ -1,3 +1,5 @@
+import type { MCPToolAnnotations } from '@wrongstack/mcp';
+
 export const KANBAN_READ_ACTIONS = [
   'list_boards',
   'get_board',
@@ -99,6 +101,63 @@ export interface KanbanMcpToolPolicy {
   name: KanbanMcpToolName;
   actions?: readonly KanbanMcpAction[];
 }
+
+/**
+ * MCP `ToolAnnotations` — the five optional hint fields from the Model Context
+ * Protocol schema (byte-identical in the 2025-03-26 and 2026-07-28 revisions,
+ * verified against the per-revision schema). `@wrongstack/mcp` publishes this exact
+ * shape as `MCPToolAnnotations` on `MCPServerTool.annotations`, so this is an
+ * alias rather than a local restatement: one source of truth for the wire type,
+ * and a new upstream hint becomes visible here automatically. The name is kept
+ * because the tier mapping below reads it locally.
+ *
+ * Spec semantics: `destructiveHint` and `idempotentHint` are meaningful only
+ * when `readOnlyHint` is false. Spec defaults are readOnly=false,
+ * destructive=true, idempotent=false, openWorld=true. Annotations are
+ * UNTRUSTED hints for clients (UI affordances, approval prompts) — nothing
+ * here gates execution; the tier enforcement in the adapter's `callTool`
+ * remains the authority.
+ */
+export type KanbanToolAnnotations = MCPToolAnnotations;
+
+/**
+ * Tier → published MCP annotations. The hints mirror the tier semantics the
+ * action lists in this file already encode:
+ *
+ * - `kanban_read` and `kanban_watch` never mutate board state — watch only
+ *   long-polls the daemon's event stream — so both publish `readOnlyHint:
+ *   true` and leave the mutation-only hints unset (they are meaningless
+ *   under a read-only tool).
+ * - `kanban_manage` mutates but never removes durable work: every action
+ *   that deletes or absorbs task/board state (delete/merge/transfer) lives
+ *   in the destructive tier. The removals manage does carry
+ *   (`remove_check`, `remove_contract_node`/`edge`) strip advisory metadata,
+ *   which is exactly why the action lists classify them as manage — they are
+ *   recoverable by re-adding and do not destroy the card or board.
+ * - `kanban_destructive` is the delete/merge/transfer tier.
+ *
+ * `openWorldHint: false` on every tier: these tools act on the local
+ * project's own board store through the project IPC owner — a closed,
+ * self-owned set of entities — not the unpredictable third-party systems
+ * (web search, external APIs) the spec's `true` default is about.
+ *
+ * `idempotentHint` is deliberately unset everywhere: the spec default
+ * (false) is honest. Manage actions are generative (retrying `add_task`
+ * duplicates the card), destructive deletes of a missing id throw
+ * NOT_FOUND instead of succeeding, and merge/transfer move state between
+ * boards. None is idempotent, and an affirmative hint would invite unsafe
+ * client retries.
+ *
+ * `destructiveHint` is published explicitly even where it matches the spec
+ * default: stating the semantics is the point of the field, and an explicit
+ * value survives a client that applies defaults sloppily.
+ */
+export const KANBAN_TOOL_ANNOTATIONS: Readonly<Record<KanbanMcpToolName, KanbanToolAnnotations>> = {
+  kanban_read: { readOnlyHint: true, openWorldHint: false },
+  kanban_watch: { readOnlyHint: true, openWorldHint: false },
+  kanban_manage: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  kanban_destructive: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+};
 
 export function selectKanbanMcpTools(opts: KanbanMcpPolicyOptions = {}): KanbanMcpToolPolicy[] {
   const tools: KanbanMcpToolPolicy[] = [

@@ -86,6 +86,7 @@ export function useSettingsAutoSave(
       showSageMemoryInject: sp.showSageMemoryInject,
       sageMemoryInjectThreshold: sp.sageMemoryInjectThreshold,
       nextStepsTool: sp.nextStepsTool,
+      nextStepsRequired: sp.nextStepsRequired,
       readSymbols: sp.readSymbols,
       // WrongProxy / WrongTrace: persist the picker-state values to
       // the same Config keys the adapter exposes (see LiveSettingsInput
@@ -155,6 +156,7 @@ export function useSettingsAutoSave(
     state.settingsPicker.showSageMemoryInject,
     state.settingsPicker.sageMemoryInjectThreshold,
     state.settingsPicker.nextStepsTool,
+    state.settingsPicker.nextStepsRequired,
     state.settingsPicker.readSymbols,
     state.settingsPicker.wrongProxyEnabled,
     state.settingsPicker.wrongProxyUrl,

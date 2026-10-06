@@ -351,6 +351,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'toolsPickerSetItems',
   'toolsPickerToggle',
   'worktreeRemove',
+  'worktreeTimelineEvent',
   'worktreeUpsert',
 ] as const);
 

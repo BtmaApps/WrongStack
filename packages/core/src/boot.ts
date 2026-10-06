@@ -373,6 +373,14 @@ export function flagsToConfigPatch(flags: Record<string, string | boolean>): Par
   }
   if (flags['no-yolo'] === true) patch.yolo = false;
   else if (flags['yolo']) patch.yolo = true;
+  // `--yolo-plus`: YOLO with nothing held back — no prompt at all. `--no-yolo`
+  // wins, and also clears a YOLO+ the config file turned on.
+  if (flags['no-yolo'] === true) {
+    patch.autonomy = { ...patch.autonomy, yoloPlus: false };
+  } else if (flags['yolo-plus'] === true) {
+    patch.yolo = true;
+    patch.autonomy = { ...patch.autonomy, yoloPlus: true };
+  }
   // `--yolo-destructive` was parsed and then dropped on the floor: nothing read
   // it, so the one documented way to widen YOLO did nothing. It now un-gates
   // every kind the user is allowed to un-gate — `resolveYoloConfirmKinds` still

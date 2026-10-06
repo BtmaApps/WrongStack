@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { decryptConfigSecretsForRewrite, encryptConfigSecrets } from '@wrongstack/core/security';
+import { listInProjectDeniedPaths } from '@wrongstack/core/storage';
 import type { ConfigStore } from '@wrongstack/core/types';
 import { ConfigError, ERROR_CODES, FsError, type SecretVault } from '@wrongstack/core/types';
 import { atomicWrite, deepMerge, withFileLock } from '@wrongstack/core/utils';
@@ -145,34 +146,11 @@ const PROJECT_SAFE_FIELDS = new Set([
   'themePreset',
 ]);
 
-// Must mirror Core's IN_PROJECT_DENIED_PATHS. Keeping the write boundary at
-// least as strict as the read boundary prevents a setting from reporting
-// success for a value the next boot will deliberately discard.
-const PROJECT_DENIED_PATHS = [
-  'tools.exec.allow',
-  'tools.exec.danger',
-  'tools.council',
-  'skills.extraDirs',
-  'skills.registryUrl',
-  'skills.suggest',
-  'Sage.storage.directory',
-  'autonomy.yolo',
-  'autonomy.defaultMode',
-  'autonomy.yoloConfirm',
-  'launch.autonomy',
-  'features.allowOutsideProjectRoot',
-  'tools.restrictToProjectRoot',
-  'tools.loopDetection',
-  'tools.maxIterations',
-  'tools.autoExtendLimit',
-  'tools.maxAutoExtensions',
-  'tools.kanbanGovernance',
-  'tools.autoThin',
-  'tools.disabledToolMeta',
-  'tools.wrongProxy',
-  'features.mailboxBridge',
-  'features.pluginsTrust',
-] as const;
+// Core's own in-project deny list, not a copy: the write boundary must be at
+// least as strict as the read boundary, or a setting reports success for a
+// value the next boot deliberately discards. A hand-kept mirror here drifted
+// (`autonomy.nextSteps`, `tools.sandbox.*`).
+const PROJECT_DENIED_PATHS = listInProjectDeniedPaths();
 
 function deleteProjectDeniedPath(target: Record<string, unknown>, dotted: string): void {
   const parts = dotted.split('.');

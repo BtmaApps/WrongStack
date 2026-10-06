@@ -234,6 +234,7 @@ export function usePanelControllers({
       showSageMemoryInject: s.showSageMemoryInject ?? false,
       sageMemoryInjectThreshold: s.sageMemoryInjectThreshold ?? 0.85,
       nextStepsTool: s.nextStepsTool ?? false,
+      nextStepsRequired: s.nextStepsRequired ?? true,
       readSymbols: s.readSymbols ?? false,
       // WrongProxy / WrongTrace: hydrate from the picker state slice.
       // Same defaults as the WebUI LocalPrefs and the CLI adapter's

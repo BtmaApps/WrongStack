@@ -34,6 +34,22 @@ omitted. With no useful follow-on work, both the tag and any ceremonial closing
 sentence can be omitted. The same contract applies to the structured `nextsteps`
 tool and the live request gate.
 
+`autonomy.nextSteps` defaults to `"required"`: the gate demands either a block
+or the `<nextsteps-complete/>` marker on every finished turn with no open todos,
+so `auto` autonomy keeps going until the model declares the work complete.
+`"optional"` (`/nextsteps optional`, the TUI "Require next steps" setting, or the
+WebUI execution settings) restores the quiet ending: a finished request ends with
+no block unless a concrete follow-on exists, in every autonomy mode. When a turn ends with neither, the host sends
+the same request plus the answer and a short `[nextsteps_required]` instruction
+once more (cache-friendly, never added to history) and appends the suggestions it
+returns; an answer of the marker appends nothing, which is how an `auto` run
+ends. Consecutive automatic turns are capped by
+`autonomy.autoProceedMaxIterations` (default 0 = unlimited; `/nextsteps limit
+5|10|20|50|100|unlimited`); the repeated-suggestion loop guard still halts a run
+that re-feeds the same prompt.
+The marker is stripped from every rendered body. The mode is user-owned: an
+in-project config cannot set it, and WebUI tabs hold it per session.
+
 Structured tool prompts retain whitespace and line breaks. The runtime uses a
 marked JSON string (`<!--ws:nextstep-json-->`) on the item line only when text
 would collide with the line/tag format or the trailing `auto="true"` marker.

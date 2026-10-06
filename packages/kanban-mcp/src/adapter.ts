@@ -9,6 +9,7 @@ import {
 import { systemSessionId } from '@wrongstack/primitives';
 import { kanbanTool } from '@wrongstack/tools/kanban';
 import {
+  KANBAN_TOOL_ANNOTATIONS,
   type KanbanMcpAction,
   type KanbanMcpPolicyOptions,
   type KanbanMcpToolName,
@@ -88,6 +89,12 @@ const TOOL_DESCRIPTIONS: Record<KanbanMcpToolName, string> = {
     'Wait for the next project Kanban mutation event. After any event or timeout, reconcile authoritative state with kanban_read.',
 };
 
+/**
+ * A published tool descriptor carrying the MCP `annotations` hint block.
+ * `MCPServerTool` declares the field itself (`@wrongstack/mcp`, spec
+ * 2025-03-26), so no local widening type is needed — the tier mapping in
+ * policy.ts supplies the value.
+ */
 function toolDescriptor(
   name: KanbanMcpToolName,
   actions?: readonly KanbanMcpAction[],
@@ -96,6 +103,7 @@ function toolDescriptor(
     name,
     description: TOOL_DESCRIPTIONS[name],
     inputSchema: actions ? actionSchema(actions) : WATCH_SCHEMA,
+    annotations: KANBAN_TOOL_ANNOTATIONS[name],
   };
 }
 

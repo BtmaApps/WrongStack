@@ -99,6 +99,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
     ...section('Tools & permissions', [
       ['--yolo | --no-yolo', 'Auto-approve on or off (gated destructive kinds still ask)'],
       ['--yolo-destructive', 'Let YOLO run every destructive kind you may un-gate'],
+      ['--yolo-plus', 'YOLO+: never ask for anything (explicit deny rules still refuse)'],
       ['--restricted', 'Untrusted repo: no shell/network/MCP tools, stay in project, no YOLO'],
       ['--safe-mode', 'Troubleshoot: no 3rd-party plugins, hooks, MCP, skills, overrides'],
       ['--only-tools <a,b,...>', 'Expose only these tools (trailing * = prefix: mcp__gh__*)'],

@@ -1,5 +1,5 @@
 import type { FleetChatVerbosity } from '@wrongstack/core/types';
-import { resolveFleetChatVerbosity } from '@wrongstack/core/types';
+import { resolveFleetChatVerbosity, resolveNextStepsMode } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
 import { formatDelay } from '../utils/delay-format.js';
 import type { SlashCommandContext } from './command-context.js';
@@ -114,6 +114,7 @@ export function formatCurrentSettingsView(opts: SlashCommandContext): string {
   const features = opts.configStore.get().features as never as Record<string, unknown> | undefined;
   const tokenSavingTier = (features?.tokenSavingMode as string) ?? 'off';
   const nextStepsToolEnabled = opts.configStore.get().tools?.nextsteps?.enabled === true;
+  const nextStepsMode = resolveNextStepsMode(opts.configStore.get().autonomy?.nextSteps);
   const autoThinRaw = opts.configStore.get().tools?.autoThin;
   const autoThinEnabled = autoThinRaw?.enabled === true;
   const autoThinApplyOnBoot = autoThinRaw?.applyOnBoot === true;
@@ -190,6 +191,7 @@ export function formatCurrentSettingsView(opts: SlashCommandContext): string {
     `  context auto-compact:       ${contextAutoCompact ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings context-auto-compact on|off')}`,
     `  token-saving:               ${color.cyan(tokenSavingTier)}   ${color.dim('change: /settings token-saving off|minimal|light|medium|aggressive')}`,
     `  nextsteps tool:             ${nextStepsToolEnabled ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings nextsteps-tool on|off')}`,
+    `  nextsteps mode:             ${color.cyan(nextStepsMode)}   ${color.dim('change: /nextsteps optional|required [limit]')}`,
     `  auto-thinning:              ${autoThinEnabled ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings autothin on|off|status')}`,
     `  auto-thinning boot-apply:  ${autoThinApplyOnBoot ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings autothin-boot on|off')}`,
     `  auto-thinning idle window: ${color.cyan(`${autoThinIdleDays}d`)}   ${color.dim('change: /settings autothin-idle <days>')}`,
@@ -202,7 +204,7 @@ export function formatCurrentSettingsView(opts: SlashCommandContext): string {
     `  Tool Coach:                 ${feats?.toolCoach !== false ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings tool-coach on|off')}`,
     `  max concurrent:             ${color.cyan(maxConcurrent === 0 ? 'default' : String(maxConcurrent))}   ${color.dim('change: /settings max-concurrent <n>')}`,
     `  max iterations:             ${color.cyan(String(tools?.maxIterations ?? 'default'))}   ${color.dim('change: /settings max-iterations <n>')}`,
-    `  auto-proceed max iters:     ${color.cyan(String(au?.autoProceedMaxIterations ?? 'unlimited'))}   ${color.dim('change: /settings auto-proceed-max-iterations <n>')}`,
+    `  auto-proceed max iters:     ${color.cyan(au?.autoProceedMaxIterations ? String(au.autoProceedMaxIterations) : 'unlimited')}   ${color.dim('change: /nextsteps limit 5|10|20|50|100|unlimited')}`,
     `  title animation:            ${titleAnimation ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings title-animation on|off')}`,
     `  thinking word:              ${color.cyan((au?.thinkingWord as string) ?? 'thinking')}   ${color.dim('change: /settings thinking-word <word>')}`,
     `  statusline mode:            ${color.cyan((au?.statuslineMode as string) ?? 'minimum')}   ${color.dim('change: /settings statusline minimum|detailed|no-color')}`,

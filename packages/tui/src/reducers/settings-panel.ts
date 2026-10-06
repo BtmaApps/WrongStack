@@ -99,6 +99,7 @@ export function reduceSettingsPanel(state: State, action: SettingsPanelAction): 
           showSageMemoryInject: action.showSageMemoryInject,
           sageMemoryInjectThreshold: action.sageMemoryInjectThreshold,
           nextStepsTool: action.nextStepsTool,
+          nextStepsRequired: action.nextStepsRequired,
           readSymbols: action.readSymbols,
           // WrongProxy / WrongTrace: hydrate from the persisted boot-time
           // values pushed into the action by the TUI settings adapter.

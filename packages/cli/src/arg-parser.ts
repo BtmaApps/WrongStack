@@ -7,6 +7,7 @@
 export const BOOLEAN_FLAGS = new Set([
   'yolo',
   'no-yolo',
+  'yolo-plus',
   'yolo-destructive',
   'confirm-destructive',
   'force-all-yolo',

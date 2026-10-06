@@ -251,13 +251,32 @@ describe('write smart-bypass — wstack global root is never silently writable (
     expect(decision.permission).toBe('confirm');
   });
 
-  it('covers the whole global-root tree, not just config files', async () => {
-    // `skills/` and `instructions/` feed straight back into the prompt, so a
-    // silent write there is a prompt-injection persistence primitive too.
+  it('covers instructions every session obeys, not just config files', async () => {
+    // Profile `skills/` and `instructions/` feed straight back into every
+    // session's prompt, so a silent write there is a prompt-injection
+    // persistence primitive too.
     const target = path.join(fakeHome, 'profiles', 'default', 'skills', 'evil.md');
     const p = new DefaultPermissionPolicy({ trustFile });
     const decision = await p.evaluate(t, { path: target }, agentStateCtx(target));
     expect(decision.permission).toBe('confirm');
+  });
+
+  it("does not prompt for the agent's own working state under the root", async () => {
+    // Plans, specs, caches and project memory are routine writes; gating them
+    // stopped ordinary work for approval with no reason the user could see.
+    for (const target of [
+      path.join(fakeHome, 'projects', 'abc123', 'plan.json'),
+      path.join(fakeHome, 'projects', 'abc123', 'specs', 'feature.md'),
+      path.join(fakeHome, 'projects', 'abc123', 'memory.md'),
+      path.join(fakeHome, 'cache', 'notes.txt'),
+    ]) {
+      const p = new DefaultPermissionPolicy({ trustFile });
+      const decision = await p.evaluate(t, { path: target }, agentStateCtx(target));
+      expect(decision.permission, target).toBe('auto');
+      const yolo = new DefaultPermissionPolicy({ trustFile, yolo: true });
+      const yoloDecision = await yolo.evaluate(t, { path: target }, agentStateCtx(target));
+      expect(yoloDecision.permission, target).toBe('auto');
+    }
   });
 
   it('still auto-approves an ordinary project file (no regression)', async () => {
@@ -375,15 +394,26 @@ describe('YOLO carve-out — path keys beyond `path`/`file_path` (C1 follow-up)'
     expect(decision.source).toBe('yolo_destructive');
   });
 
-  it('`out` (design) and `directory` (patch) targeting the root confirm under YOLO', async () => {
+  it('`out` (design) confirms for code that runs, not for ordinary state files', async () => {
     const p = new DefaultPermissionPolicy({ trustFile, yolo: true });
-    const outDecision = await p.evaluate(
+    const plugin = await p.evaluate(
       fsWriteTool('design'),
-      { action: 'materialize', out: path.join(fakeHome, 'theme.css') },
+      { action: 'materialize', out: path.join(fakeHome, 'plugins', 'theme.mjs') },
       mkCtx(),
     );
-    expect(outDecision.permission).toBe('confirm');
-    expect(outDecision.source).toBe('yolo_destructive');
+    expect(plugin.permission).toBe('confirm');
+    expect(plugin.source).toBe('yolo_destructive');
+    // The agent's own working state is not agent-state: no prompt for no reason.
+    const css = await p.evaluate(
+      fsWriteTool('design'),
+      { action: 'materialize', out: path.join(fakeHome, 'cache', 'theme.css') },
+      mkCtx(),
+    );
+    expect(css.permission).toBe('auto');
+  });
+
+  it('`directory` (patch) into a directory configs load from confirms under YOLO', async () => {
+    const p = new DefaultPermissionPolicy({ trustFile, yolo: true });
     const dirDecision = await p.evaluate(
       fsWriteTool('patch'),
       { directory: path.join(fakeHome, 'projects', 'abc') },

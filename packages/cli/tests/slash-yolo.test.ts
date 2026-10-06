@@ -23,7 +23,8 @@ describe('/yolo slash command', () => {
       expect(cmd.help).toContain('/yolo on');
       expect(cmd.help).toContain('/yolo off');
       expect(cmd.help).toContain('/yolo confirm');
-      expect(cmd.help).toContain('auto-approves tool calls');
+      expect(cmd.help).toContain('runs tool calls without asking');
+      expect(cmd.help).toContain('your own deny rules forbid');
     });
   });
 
@@ -63,7 +64,7 @@ describe('/yolo slash command', () => {
       const result = await cmd.run!('');
       const message = stripAnsi(result!.message!);
       expect(message).toMatch(/YOLO mode: ON/);
-      expect(message).toContain('tool calls');
+      expect(message).toContain('what your deny rules forbid');
     });
 
     it('does NOT call onYolo with an argument when querying', async () => {
@@ -194,5 +195,55 @@ describe('/yolo confirm — per-kind gate', () => {
     const ctx = makeCtx({ onYolo: () => true } as never);
     const result = await buildYoloCommand(ctx).run!('confirm');
     expect(result?.message).toMatch(/not available/);
+  });
+});
+
+describe('/yolo plus', () => {
+  const setup = (initial = false) => {
+    const state = { yolo: initial, plus: false };
+    const onYolo = vi.fn((next?: boolean) => {
+      if (next !== undefined) {
+        state.yolo = next;
+        state.plus = false;
+      }
+      return state.yolo;
+    });
+    const onYoloPlus = vi.fn((next?: boolean) => {
+      if (next !== undefined) {
+        state.plus = next;
+        if (next) state.yolo = true;
+      }
+      return state.plus;
+    });
+    return { state, cmd: buildYoloCommand(makeCtx({ onYolo, onYoloPlus } as never)) };
+  };
+
+  it('enables YOLO+ and says nothing will ask', async () => {
+    const { state, cmd } = setup();
+    const result = await cmd.run!('plus');
+    expect(state).toEqual({ yolo: true, plus: true });
+    expect(stripAnsi(result!.message!)).toMatch(/YOLO\+ — every call is allowed, nothing will ask/);
+  });
+
+  it('shows YOLO+ in the status line', async () => {
+    const { cmd } = setup();
+    await cmd.run!('plus');
+    expect(stripAnsi((await cmd.run!(''))!.message!)).toMatch(/YOLO mode: YOLO\+/);
+  });
+
+  it('/yolo on drops back to plain YOLO, /yolo off to prompts', async () => {
+    const { state, cmd } = setup();
+    await cmd.run!('plus');
+    await cmd.run!('on');
+    expect(state).toEqual({ yolo: true, plus: false });
+    await cmd.run!('plus');
+    await cmd.run!('off');
+    expect(state).toEqual({ yolo: false, plus: false });
+  });
+
+  it('reports a session locked by --restricted instead of claiming it', async () => {
+    const onYoloPlus = vi.fn(() => false);
+    const cmd = buildYoloCommand(makeCtx({ onYolo: vi.fn(() => false), onYoloPlus } as never));
+    expect((await cmd.run!('plus'))!.message).toMatch(/could not be enabled/);
   });
 });

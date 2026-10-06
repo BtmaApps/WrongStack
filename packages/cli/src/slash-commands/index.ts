@@ -60,6 +60,7 @@ import { buildModeCommand } from './mode.js';
 import { buildModelCapsCommand } from './modelcaps.js';
 import { buildModelsCommand } from './models.js';
 import { buildNextCommand } from './next.js';
+import { buildNextStepsModeCommand } from './nextsteps-mode.js';
 import { buildOpenAIQuotaCommand, buildProviderQuotaCommand } from './openai-quota.js';
 import { buildPermissionsCommand } from './permissions.js';
 import { buildPlanCommand } from './plan.js';
@@ -167,6 +168,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildBrainCommand(opts),
     buildBtwCommand(opts),
     buildNextCommand(opts),
+    buildNextStepsModeCommand(opts),
     buildModeCommand(opts),
     buildThemeCommand(opts),
     buildDesignCommand(opts),

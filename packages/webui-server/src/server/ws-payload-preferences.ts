@@ -54,6 +54,7 @@ const BOOLEAN_PREF_KEYS = new Set([
   'subagentsAllowed',
   'subagentCompanionsAllowed',
   'yolo',
+  'yoloPlus',
   'chime',
   'confirmExit',
   'nextPrediction',
@@ -323,6 +324,7 @@ const ENUM_PREF_KEYS: Record<string, Set<string>> = {
   autoReviewModelSelection: new Set(['round-robin', 'random']),
   autoReviewCascadeOn: new Set(['off', 'critical', 'high']),
   fleetChatVerbosity: new Set(['off', 'full']),
+  nextStepsMode: new Set(['optional', 'required']),
   showAgentSwarmPanel: new Set(['bottom', 'sidebar', 'off']),
 };
 

@@ -24,7 +24,7 @@ describe('--restricted', () => {
     expect(validateRestrictedMode({ restricted: true })).toBe(true);
   });
 
-  it.each(['yolo', 'yolo-destructive', 'full-auto', 'mcp-config', 'allowed-tools'])(
+  it.each(['yolo', 'yolo-plus', 'yolo-destructive', 'full-auto', 'mcp-config', 'allowed-tools'])(
     'refuses --%s alongside it',
     (flag) => {
       expect(() => validateRestrictedMode({ restricted: true, [flag]: 'x' })).toThrow(

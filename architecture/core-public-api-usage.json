@@ -149,9 +149,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 186,
+      "files": 189,
       "typeOnly": 27,
-      "runtimeOrMixed": 162
+      "runtimeOrMixed": 165
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 138,
+      "files": 140,
       "typeOnly": 35,
-      "runtimeOrMixed": 134
+      "runtimeOrMixed": 136
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -189,9 +189,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1346,
-      "typeOnly": 1189,
-      "runtimeOrMixed": 406
+      "files": 1347,
+      "typeOnly": 1188,
+      "runtimeOrMixed": 409
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -229,9 +229,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 729,
+      "files": 731,
       "typeOnly": 67,
-      "runtimeOrMixed": 694
+      "runtimeOrMixed": 696
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -10788,6 +10788,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/slash-commands/nextsteps-mode.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/slash-commands/permissions.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11508,6 +11514,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/src/server/session-agent-registry.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/src/server/session-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11613,6 +11625,12 @@
       "file": "packages/webui-server/tests/sdd-board-ws-handler.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/session-yolo-plus-per-tab.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",
@@ -12144,6 +12162,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/src/settings-menu.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/src/slash-commands/collab.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 2
@@ -12367,6 +12391,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/session-move.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/settings-menu.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13525,8 +13555,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/config-doctor.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14295,6 +14325,12 @@
       "file": "packages/cli/src/slash-commands/next.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/nextsteps-mode.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -20239,8 +20275,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/context-meta.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -22668,6 +22704,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/slash-commands/nextsteps-mode.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/openai-quota.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23641,6 +23683,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/slash-interrupt.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/slash-nextsteps-mode.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

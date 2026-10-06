@@ -33,6 +33,13 @@ export interface PermissionDecision {
     | 'trust'
     | 'yolo'
     | 'yolo_destructive'
+    /**
+     * YOLO stopped to ask because a rule the USER wrote forbids this call (a
+     * session "no", a trust-file or `/permissions` deny, a directory rule).
+     * Only the user may answer it: an unanswered one is refused, never handed
+     * to the Brain, and an "always allow" answer runs it once — the rule stays.
+     */
+    | 'yolo_user_rule'
     | 'user'
     | 'deny'
     | 'context'
@@ -43,6 +50,12 @@ export interface PermissionDecision {
     | 'session_override';
   /** Risk tier of the tool, if classified. */
   riskTier?: 'safe' | 'standard' | 'destructive' | undefined;
+  /**
+   * YOLO+ allowed this call: the user has allowed everything, so nothing the
+   * executor would add on top — a Kanban scope-boundary confirm — may turn it
+   * back into a question. A boundary or hook DENY still refuses.
+   */
+  allowAll?: true | undefined;
   /**
    * The `auto` came from a tool the operator named with `--allowed-tools` at
    * launch. Unlike a remembered trust pattern it is a deliberate, per-process
@@ -235,6 +248,22 @@ export interface PermissionPolicy {
   getYolo?(): boolean;
   /** Optional runtime setter for policies that support leader YOLO toggling. */
   setYolo?(enabled: boolean): void;
+  /**
+   * YOLO+: the user has allowed everything. No call ever prompts — not even
+   * the destructive kinds or the locked ones. Explicit deny rules still refuse.
+   */
+  getYoloPlus?(): boolean;
+  /** Turn YOLO+ on or off. On implies YOLO. */
+  setYoloPlus?(enabled: boolean): void;
+  /**
+   * The YOLO level in force for ONE conversation (per-tab meta first). Lets a
+   * wrapping policy apply the same rule to its own refusals: off and YOLO+
+   * refuse, YOLO asks.
+   */
+  yoloModeFor?(ctx?: { meta?: Record<string, unknown> | undefined } | undefined): {
+    yolo: boolean;
+    yoloPlus: boolean;
+  };
   /**
    * All-or-nothing view of the destructive gate: `true` when nothing but the
    * locked kinds still prompts. Superseded by the per-kind pair below, and kept

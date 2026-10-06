@@ -34,6 +34,7 @@ export const RESTRICTED_DENY_CAPABILITIES: readonly string[] = [
 /** Flags that would widen what `--restricted` narrows; combining them is a usage error. */
 const CONFLICTING_FLAGS = [
   'yolo',
+  'yolo-plus',
   'yolo-destructive',
   'full-auto',
   'mcp-config',

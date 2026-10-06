@@ -68,8 +68,8 @@ export const MAX_ITERATIONS_PRESETS = [100, 200, 500, 1000, 0];
 /** Presets for max concurrent subagents. 0 = runtime default. */
 export const MAX_CONCURRENT_PRESETS = [1, 3, 4, 5, 10, 25, 50, 0];
 
-/** Presets for auto-proceed max iterations. 0 = unlimited, 50 default. */
-export const AUTO_PROCEED_MAX_PRESETS = [10, 25, 50, 100, 250, 0];
+/** Presets for auto-proceed max iterations (also offered by `/nextsteps limit`). 0 = unlimited, the default. */
+export const AUTO_PROCEED_MAX_PRESETS = [5, 10, 20, 50, 100, 0];
 
 /** Presets for prompt refinement preview countdown. */
 export const ENHANCE_DELAY_PRESETS = [15_000, 30_000, 45_000, 60_000, 90_000, 120_000];
@@ -266,4 +266,5 @@ export const SETTINGS_FIELD_LABELS: readonly string[] = [
   'Right sidebar', // 61
   'Tool result view', // 62
   'Tool Coach', // 63
+  'Require next steps', // 64
 ];

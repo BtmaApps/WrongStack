@@ -119,6 +119,8 @@ export type Settings = {
   sageMemoryInjectThreshold: number;
   /** Register the leader's agent-callable `nextsteps` tool. Default: false. */
   nextStepsTool: boolean;
+  /** Leader must end every finished turn with <nextsteps> or the completion marker (`autonomy.nextSteps: 'required'`). Default: true. */
+  nextStepsRequired: boolean;
   /** Prompt cache TTL. */
   cacheTtl: CacheTtl;
   /** Where to persist settings: 'global' or 'project'. */

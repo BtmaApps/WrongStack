@@ -16,6 +16,7 @@ import {
   approvalRecord,
   DEFAULT_ALWAYS_TRUST_TTL_MS,
   isPersistentApproval,
+  userRuleAnswer,
 } from '../security/scoped-approval.js';
 import {
   pendingRequiredSkills,
@@ -234,7 +235,8 @@ export class ToolExecutor {
         effectivePermission = 'confirm';
       }
 
-      if (boundary.decision === 'confirm' && effectivePermission !== 'deny') {
+      // YOLO+ never asks; a boundary DENY was already returned by the guard.
+      if (boundary.decision === 'confirm' && effectivePermission !== 'deny' && !decision.allowAll) {
         effectivePermission = 'confirm';
       }
 
@@ -284,7 +286,7 @@ export class ToolExecutor {
         const writeTargets = describeWriteTargets(tool, use.input);
         if (this.opts.confirmAwaiter) {
           const awaiter = this.opts.confirmAwaiter;
-          const choice = await new Promise<
+          const answer = await new Promise<
             | 'yes'
             | 'no'
             | 'always'
@@ -312,6 +314,7 @@ export class ToolExecutor {
               },
             );
           });
+          const choice = userRuleAnswer(answer, decision.source);
           if (isPersistentApproval(choice)) {
             const approval = approvalRecord(choice, tool, use.input, ctx, suggestedPattern);
             await this.opts.permissionPolicy.trust({

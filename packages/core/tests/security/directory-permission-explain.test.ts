@@ -62,7 +62,7 @@ describe('DirectoryPermissionPolicy.explain', () => {
   });
 
   it('names the directory rule for a file under a plain directory rule', async () => {
-    const policy = make([{ directory: 'secret', denyTools: ['write'] }], true);
+    const policy = make([{ directory: 'secret', denyTools: ['write'] }], false);
     const input = { path: 'secret/key.pem', content: 'x' };
 
     const trace = await policy.explain(write, input, ctx());
@@ -70,5 +70,12 @@ describe('DirectoryPermissionPolicy.explain', () => {
     expect(trace.decision).toMatchObject({ permission: 'deny', source: 'directory_rules' });
     expect(trace.steps[trace.winnerIndex]?.rule).toBe('denyTools');
     expect(await policy.evaluate(write, input, ctx())).toMatchObject({ permission: 'deny' });
+
+    // Under YOLO the same rule asks instead — and is still named as the reason.
+    const yolo = make([{ directory: 'secret', denyTools: ['write'] }], true);
+    const asked = await yolo.explain(write, input, ctx());
+    expect(asked.decision).toMatchObject({ permission: 'confirm', source: 'yolo_user_rule' });
+    expect(asked.steps[asked.winnerIndex]?.rule).toBe('denyTools');
+    expect(await yolo.evaluate(write, input, ctx())).toMatchObject({ permission: 'confirm' });
   });
 });

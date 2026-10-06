@@ -17,6 +17,7 @@ import { compact, entry, icon, type StatusBarRailBuildParams } from './status-ba
 export function buildSafetyWorkEntries(p: StatusBarRailBuildParams): RailSpanEntry[] {
   const {
     yolo,
+    yoloPlus,
     showChip,
     isNoColor,
     autonomy,
@@ -48,10 +49,18 @@ export function buildSafetyWorkEntries(p: StatusBarRailBuildParams): RailSpanEnt
     yolo && showChip('yolo')
       ? entry('yolo', 'yolo', p, [
           <Text color={chipColor(theme.error, isNoColor)} bold>
-            {isNoColor ? 'YOLO' : `${STATUSLINE_ICONS.yolo} YOLO`}
+            {isNoColor
+              ? yoloPlus
+                ? 'YOLO+'
+                : 'YOLO'
+              : `${STATUSLINE_ICONS.yolo} ${yoloPlus ? 'YOLO+' : 'YOLO'}`}
           </Text>,
           <Text color={chipColor(theme.error, isNoColor)} bold>
-            {isNoColor ? 'YOLO' : `${STATUSLINE_ICONS.yolo}Y`}
+            {isNoColor
+              ? yoloPlus
+                ? 'YOLO+'
+                : 'YOLO'
+              : `${STATUSLINE_ICONS.yolo}${yoloPlus ? 'Y+' : 'Y'}`}
           </Text>,
         ])
       : null,

@@ -1,5 +1,15 @@
 import type { FleetChatVerbosity } from './fleet-chat.js';
 
+/** `autonomy.nextSteps` — see {@link AutonomyConfig.nextSteps}. */
+export type NextStepsMode = 'optional' | 'required';
+
+export const NEXT_STEPS_MODES: readonly NextStepsMode[] = ['optional', 'required'];
+
+/** Resolve the configured mode; anything but an explicit 'optional' is the default, 'required'. */
+export function resolveNextStepsMode(value: unknown): NextStepsMode {
+  return value === 'optional' ? 'optional' : 'required';
+}
+
 export interface AutonomyConfig {
   /** Default autonomy mode at startup. Default: "auto".
    *
@@ -18,10 +28,34 @@ export interface AutonomyConfig {
   autoProceedMaxIterations?: number | undefined;
   /** Template used for YOLO+auto suggestions. Must include {{suggestion}}. */
   autonomyNextPrompt?: string | undefined;
+  /**
+   * Whether the leader must close every finished turn with `<nextsteps>`.
+   * - 'optional': suggestions only when a concrete follow-on exists; the
+   *   default ending is no block.
+   * - 'required': the final response carries either a `<nextsteps>` block or
+   *   the `<nextsteps-complete/>` marker. When it carries neither, the runtime
+   *   asks the model for one in a side request, so `auto` autonomy keeps going
+   *   until the model declares the work complete.
+   * User-owned — denied for in-project config alongside `autonomy.defaultMode`.
+   * Default: 'required' — with `auto` autonomy and the unlimited
+   * `autoProceedMaxIterations` default, a run keeps going until the model
+   * declares the work complete.
+   */
+  nextSteps?: NextStepsMode | undefined;
   /** Animate the terminal/window title while the agent is active. Default: true. */
   terminalTitleAnimation?: boolean | undefined;
   /** Persisted YOLO preference mirrored into top-level config.yolo at runtime. Default: true. */
   yolo?: boolean | undefined;
+  /**
+   * YOLO+: the user has allowed everything. No tool call ever prompts — not the
+   * destructive kinds, not the locked `agent-state` / `credential-bind`, not a
+   * sensitive read, not a Kanban scope boundary — and subagents are no longer
+   * refused what the leader would have asked about. Explicit deny rules (trust
+   * file, `/permissions deny`, directory rules, a "no" this session) still
+   * refuse. Implies YOLO. `--restricted` locks it off. User-owned — denied for
+   * in-project and cloud-synced config. Default: false.
+   */
+  yoloPlus?: boolean | undefined;
   /**
    * Which kinds of damage still require approval while YOLO is on, as
    * `{ 'git-history': true, publish: false, … }`. Keys are `DestructiveKind`

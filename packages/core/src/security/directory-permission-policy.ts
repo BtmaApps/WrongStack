@@ -52,6 +52,7 @@ import type {
 import type { Tool } from '../types/tool.js';
 import { matchAny, matchGlob } from '../utils/glob-match.js';
 import { providerIdentities } from '../utils/provider-catalog-binding.js';
+import { refusalUnderYolo } from './permission-helpers.js';
 import { permissionRuleRef, type UnnumberedPermissionRule } from './permission-rules.js';
 import { type DestructiveKind, normalizeYoloConfirmKinds } from './yolo-risk.js';
 
@@ -353,11 +354,16 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
         ctx.provider?.id &&
         deniesProvider(rule.denyProviders, ctx.provider)
       ) {
-        return deny(
-          `provider "${ctx.provider.id}" is denied in this directory`,
-          rule,
-          'denyProviders',
-          tool.name,
+        return this.refuse(
+          tool,
+          input,
+          ctx,
+          deny(
+            `provider "${ctx.provider.id}" is denied in this directory`,
+            rule,
+            'denyProviders',
+            tool.name,
+          ),
         );
       }
 
@@ -365,21 +371,26 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
       // the declared allow list, deny. An empty list intentionally denies
       // every tool. Computed before denyTools so the stricter rule wins.
       if (rule.allowOnlyTools != null && !isToolInList(tool.name, rule.allowOnlyTools)) {
-        return deny(
-          `tool "${tool.name}" is not in the allowOnlyTools list for this directory`,
-          rule,
-          'allowOnlyTools',
-          tool.name,
+        return this.refuse(
+          tool,
+          input,
+          ctx,
+          deny(
+            `tool "${tool.name}" is not in the allowOnlyTools list for this directory`,
+            rule,
+            'allowOnlyTools',
+            tool.name,
+          ),
         );
       }
 
       // denyTools — ban specific tool names (or namespace patterns).
       if (rule.denyTools && isToolInList(tool.name, rule.denyTools)) {
-        return deny(
-          `tool "${tool.name}" is denied in this directory`,
-          rule,
-          'denyTools',
-          tool.name,
+        return this.refuse(
+          tool,
+          input,
+          ctx,
+          deny(`tool "${tool.name}" is denied in this directory`, rule, 'denyTools', tool.name),
         );
       }
     }
@@ -388,12 +399,48 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
     return this.inner.evaluate(tool, input, ctx);
   }
 
+  /**
+   * A directory rule is a refusal the user wrote, so it follows the same rule
+   * as the inner policy's (`refusalUnderYolo`): off and YOLO+ refuse, YOLO
+   * asks. Before turning it into a question, the inner policy's verdict is
+   * read through `explain()` — side-effect free, unlike `evaluate()`, which
+   * can prompt — so a "yes" here never runs a call the inner policy refuses
+   * outright (a `permission: 'deny'` tool, an invalid trust file). An inner
+   * policy that cannot say keeps the refusal.
+   */
+  private async refuse(
+    tool: Tool,
+    input: unknown,
+    ctx: Context,
+    refusal: PermissionDecision,
+  ): Promise<PermissionDecision> {
+    const mode = this.inner.yoloModeFor?.(ctx);
+    if (!mode) return refusal;
+    const asked = refusalUnderYolo(refusal, mode);
+    if (asked === refusal) return refusal;
+    if (!this.inner.explain) return refusal;
+    const inner = await this.inner.explain(tool, input, ctx);
+    return inner.decision.permission === 'deny' ? inner.decision : asked;
+  }
+
+  yoloModeFor(ctx?: Pick<Context, 'meta'> | undefined): { yolo: boolean; yoloPlus: boolean } {
+    return this.inner.yoloModeFor?.(ctx) ?? { yolo: false, yoloPlus: false };
+  }
+
   getYolo(): boolean {
     return this.inner.getYolo?.() ?? false;
   }
 
   setYolo(enabled: boolean): void {
     this.inner.setYolo?.(enabled);
+  }
+
+  getYoloPlus(): boolean {
+    return this.inner.getYoloPlus?.() ?? false;
+  }
+
+  setYoloPlus(enabled: boolean): void {
+    this.inner.setYoloPlus?.(enabled);
   }
 
   getYoloDestructive(): boolean {
@@ -621,11 +668,16 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
             subject: targetPath,
             steps,
             winnerIndex,
-            decision: deny(
-              `provider "${ctx.provider.id}" is denied in this directory`,
-              rule,
-              'denyProviders',
-              tool.name,
+            decision: await this.refuse(
+              tool,
+              input,
+              ctx,
+              deny(
+                `provider "${ctx.provider.id}" is denied in this directory`,
+                rule,
+                'denyProviders',
+                tool.name,
+              ),
             ),
           };
         }
@@ -658,11 +710,16 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
             subject: targetPath,
             steps,
             winnerIndex,
-            decision: deny(
-              `tool "${tool.name}" is not in the allowOnlyTools list for this directory`,
-              rule,
-              'allowOnlyTools',
-              tool.name,
+            decision: await this.refuse(
+              tool,
+              input,
+              ctx,
+              deny(
+                `tool "${tool.name}" is not in the allowOnlyTools list for this directory`,
+                rule,
+                'allowOnlyTools',
+                tool.name,
+              ),
             ),
           };
         }
@@ -695,11 +752,11 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
             subject: targetPath,
             steps,
             winnerIndex,
-            decision: deny(
-              `tool "${tool.name}" is denied in this directory`,
-              rule,
-              'denyTools',
-              tool.name,
+            decision: await this.refuse(
+              tool,
+              input,
+              ctx,
+              deny(`tool "${tool.name}" is denied in this directory`, rule, 'denyTools', tool.name),
             ),
           };
         }

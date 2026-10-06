@@ -59,6 +59,7 @@
     "trustSuggestionTitle": "Sugerencia de patrón de confianza",
     "trustSuggestionHint": "Elegir Siempre añadirá a la lista de permitidas las llamadas coincidentes para este proyecto.",
     "yoloDestructiveNote": "YOLO está activado. Este aviso se sigue mostrando porque la solicitud se clasificó como destructiva.",
+    "yoloUserRuleNote": "YOLO está activado. Se detuvo porque una regla que escribiste prohíbe esta llamada: Sí la ejecuta una vez; la regla se mantiene. Sin respuesta, sigue rechazada.",
     "brainCountdown": "Esperando tu aprobación · Brain tomará el control en {{time}}",
     "brainDeciding": "Tiempo agotado · Brain está decidiendo…",
     "skipApprovalsTitle": "Omitir aprobaciones futuras",

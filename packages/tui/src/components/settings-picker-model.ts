@@ -67,6 +67,7 @@ export function getSettingsFieldValue(
     [42, 'readSymbols'],
     [43, 'showSageMemoryInject'],
     [45, 'nextStepsTool'],
+    [64, 'nextStepsRequired'],
     // WrongProxy / WrongTrace master switch (field 59). The companion
     // URL field (60) is text-typed, see getSettingsFieldValue.
     [59, 'wrongProxyEnabled'],
@@ -179,7 +180,7 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ name: string; fields: readonly number[]
   },
   {
     name: 'Agent guidance',
-    fields: [63],
+    fields: [63, 64],
   },
   {
     name: 'Tools',
@@ -338,6 +339,7 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   showSageMemoryInject: true,
   sageMemoryInjectThreshold: 0.85,
   nextStepsTool: false,
+  nextStepsRequired: true,
   // WrongProxy / WrongTrace. Defaults mirror the WebUI `LocalPrefs`
   // DEFAULTS in `packages/webui/src/stores/local-prefs.ts` (master
   // switch off, URL 'http://localhost:3444'). Required keys here
@@ -422,6 +424,7 @@ function buildResetPatch(field: number): SettingsPickerPatch | null {
     [43, 'showSageMemoryInject'],
     [44, 'sageMemoryInjectThreshold'],
     [45, 'nextStepsTool'],
+    [64, 'nextStepsRequired'],
     // WrongProxy / WrongTrace: appended at the end so the existing
     // 46+13 = 59 entries are not shifted (the picker caps + scrolls;
     // field 59 is boolean, 60 is text). See `Settings.wrongProxy*`

@@ -42,6 +42,17 @@ export function ExecutionSettingsTab({
           onChange={(v) => syncPref('autoProceedMaxIterations', v)}
         />
         <PreferenceToggle
+          label={t('settings:execution.nextStepsRequiredLabel')}
+          hint={t('settings:execution.nextStepsRequiredHint')}
+          value={localPrefs.nextStepsMode === 'required'}
+          onChange={() =>
+            syncPref(
+              'nextStepsMode',
+              localPrefs.nextStepsMode === 'required' ? 'optional' : 'required',
+            )
+          }
+        />
+        <PreferenceToggle
           label={t('settings:execution.confirmExitLabel')}
           hint={t('settings:execution.confirmExitHint')}
           value={localPrefs.confirmExit}

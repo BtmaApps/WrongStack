@@ -320,6 +320,16 @@ const IN_PROJECT_DENIED_PATHS: ReadonlyArray<{ path: string; reason: string }> =
     reason:
       'Chooses which kinds of damage still prompt under YOLO. A repo-committed map could un-gate disk wipes, history rewrites and publishes on the victim machine — the same boundary as `autonomy.yolo`, one level finer.',
   },
+  {
+    path: 'autonomy.yoloPlus',
+    reason:
+      'Allows every tool call with no prompt at all, the locked agent-state and credential-bind kinds included — the strongest form of the denied `yolo`.',
+  },
+  {
+    path: 'autonomy.nextSteps',
+    reason:
+      "'required' makes every finished turn produce a follow-up prompt, which `auto` autonomy then executes unattended; a repo-committed config could keep the agent working past the user's request.",
+  },
   // Deliberately NOT denied: autonomy.autoProceedDelayMs and
   // autoProceedMaxIterations. They tune a mode the user has already switched on
   // rather than granting it, and config-loader-extra.test.ts classifies the
@@ -543,6 +553,17 @@ export function assertInProjectAllowListComplete(): void {
 }
 
 let driftChecked = false;
+
+/**
+ * The nested paths an in-project config may never set. The settings writer
+ * (`filterSafeForProject` in the CLI) strips exactly these before writing a
+ * project config, so the write boundary can never be looser than this read
+ * boundary — a hand-kept copy there once lagged behind and let a setting
+ * report success for a value the next boot discarded.
+ */
+export function listInProjectDeniedPaths(): readonly string[] {
+  return IN_PROJECT_DENIED_PATHS.map((entry) => entry.path);
+}
 
 export function stripUnsafeInProjectFields(
   inProject: PartialConfig,

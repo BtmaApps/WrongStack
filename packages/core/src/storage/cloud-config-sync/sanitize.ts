@@ -138,6 +138,8 @@ const UI_PREFERENCES_TREE: ContractNode = {
     autonomyNextPrompt: true,
     terminalTitleAnimation: true,
     yolo: true,
+    // Named so the inbound deny below resolves; it never syncs IN.
+    yoloPlus: true,
     streamFleet: true,
     chime: true,
     confirmExit: true,
@@ -375,6 +377,11 @@ const INBOUND_DENIED_PATHS: ReadonlyArray<{
     namespace: 'ui.preferences',
     path: 'autonomy.yolo',
     reason: 'Alias for the denied top-level `yolo`, and it wins over the user setting.',
+  },
+  {
+    namespace: 'ui.preferences',
+    path: 'autonomy.yoloPlus',
+    reason: 'Allows every tool call with no prompt at all; never remote-owned.',
   },
   {
     namespace: 'ui.preferences',

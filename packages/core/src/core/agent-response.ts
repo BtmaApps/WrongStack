@@ -5,6 +5,7 @@
  */
 
 import { type ContentBlock, isTextBlock, type TextBlock } from '../types/blocks.js';
+import type { NextStepsMode } from '../types/config/autonomy.js';
 import type { Message } from '../types/messages.js';
 import type { Provider, Request, Response } from '../types/provider.js';
 import { deriveCachePrefixKey } from '../utils/cache-key.js';
@@ -16,6 +17,7 @@ import {
 import { toErrorMessage } from '../utils/error.js';
 import { formatMemoryEvidenceBlock } from '../utils/memory-evidence-fence.js';
 import { hasMeaningfulContent, repairToolUseAdjacency } from '../utils/message-invariants.js';
+import { NEXT_STEPS_COMPLETE_MARKER } from '../utils/next-steps.js';
 import { formatTodoForModel, hasKanbanBoundTodos } from '../utils/todos-format.js';
 import type { AgentInternals } from './agent-internals.js';
 import { refreshAgentToolSurface } from './agent-tool-surface.js';
@@ -23,6 +25,7 @@ import { type Context, type RunOptions, resolveEventSessionId } from './context.
 import { bindRequestHistoryVersion, contextHistoryVersion } from './context-history-version.js';
 import { bindRequestPromptBasis, captureRequestPromptBasis } from './context-usage-anchor.js';
 import { type ContinueDirective, parseContinueDirective } from './continue-to-next-iteration.js';
+import { maybeRequireNextSteps, readNextStepsMode } from './next-steps-required.js';
 import { maybeAppendPendingNextSteps } from './next-steps-slot.js';
 import { bindRequestConversation } from './request-conversation-binding.js';
 import { bindRequestProvider } from './request-provider-binding.js';
@@ -58,6 +61,7 @@ const MODEL_REROUTE_META_KEY = 'lastModelReroute';
  */
 export function buildLiveNextStepsGateBlock(
   ctx: Pick<Context, 'agentId' | 'todos'> & { tools?: readonly { name: string }[] | undefined },
+  mode: NextStepsMode = 'optional',
 ): TextBlock | undefined {
   if (ctx.agentId !== 'leader') return undefined;
 
@@ -67,25 +71,30 @@ export function buildLiveNextStepsGateBlock(
   );
 
   if (openTodos.length === 0) {
-    // The opt-in `nextsteps` tool is a second way to satisfy branch 1. Mention
+    // The opt-in `nextsteps` tool is a second way to satisfy branch 2. Mention
     // it only when it is actually registered, so a request without the tool
     // never carries a line pointing at something the model cannot call.
     const toolRoute = ctx.tools?.some((t) => t.name === 'nextsteps')
       ? [
-          'Calling the `nextsteps` tool with the same items satisfies branch 1 as well; if you both call it and write the block, the block wins.',
+          'Calling the `nextsteps` tool with the same items is an equal way to deliver the <nextsteps> block; if you both call it and write the block, the block wins.',
         ]
       : [];
+    if (mode === 'required') return buildRequiredNextStepsGateBlock(toolRoute);
+    // Omission is listed first and named the default on purpose: a "MUST pick
+    // a branch" contract with the suggest branch first read as an obligation,
+    // and in auto autonomy every padded suggestion is executed unattended.
     return {
       type: 'text',
       text: [
         '[nextsteps_gate]',
         'Authoritative live state for this request: open todos = 0.',
-        'On the final response, you MUST take exactly one branch:',
-        '1. If at least one genuinely useful follow-on action exists, include a balanced <nextsteps> block containing 1-4 exact prompt messages that can be submitted back to you through the current TUI or WebUI input.',
+        '<nextsteps> is optional. On the final response:',
+        "1. Default: if the user's request is complete, omit <nextsteps> and end the turn. This is the normal, correct ending. No special closing sentence is required; the outcome and relevant evidence are enough.",
+        '2. Only if a concrete follow-on action exists that the user would plausibly want next, include a balanced <nextsteps> block containing 1-4 exact prompt messages that can be submitted back to you through the current TUI or WebUI input.',
         'Every item must ask the agent to perform work. Never put a human-only chore or an instruction addressed to the user inside <nextsteps>; natural-language agent-directed imperatives are valid and need not be shell commands.',
         "The recipient is the LLM, not the user. Each item is the next user prompt, submitted verbatim: name its target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, and questions for the user.",
         ...toolRoute,
-        '2. If no useful follow-on action truly exists, omit <nextsteps>. No special closing sentence is required; the outcome and relevant evidence are enough.',
+        'In auto autonomy a suggestion is executed without the user. Never emit <nextsteps> just to keep the run going; when the work is done, omit it and let the run end.',
         'Do not invent filler suggestions or defer unfinished authorized work into a suggestion.',
         '[/nextsteps_gate]',
       ].join('\n'),
@@ -124,6 +133,29 @@ export function buildLiveNextStepsGateBlock(
       ...todoReconciliation,
       'Open todo snapshot:',
       ...todoSnapshot,
+      '[/nextsteps_gate]',
+    ].join('\n'),
+  };
+}
+
+/**
+ * `autonomy.nextSteps: 'required'` with no open todos: every finished turn
+ * ends with suggestions or the completion marker. A turn that ends with
+ * neither is asked once more by `maybeRequireNextSteps`.
+ */
+function buildRequiredNextStepsGateBlock(toolRoute: readonly string[]): TextBlock {
+  return {
+    type: 'text',
+    text: [
+      '[nextsteps_gate]',
+      'Authoritative live state for this request: open todos = 0. Next-steps mode = required (set by the user).',
+      'Every final response MUST end with exactly one of:',
+      "1. A balanced <nextsteps> block containing 1-4 exact prompt messages for the most useful remaining work toward the user's goal. Each item is submitted back to you verbatim through the current TUI or WebUI input, and in auto autonomy it runs without the user.",
+      'Every item must ask the agent to perform work. Never put a human-only chore or an instruction addressed to the user inside <nextsteps>; natural-language agent-directed imperatives are valid and need not be shell commands.',
+      "The recipient is the LLM, not the user. Each item is the next user prompt, submitted verbatim: name its target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, and questions for the user.",
+      ...toolRoute,
+      `2. The marker ${NEXT_STEPS_COMPLETE_MARKER} on its own line, only when the user's goal is fully achieved and verified and no meaningful work remains.`,
+      'Prefer continuing real, verifiable work over declaring completion early, but never invent filler work to avoid the marker: when the goal is achieved, the marker is the correct ending.',
       '[/nextsteps_gate]',
     ].join('\n'),
   };
@@ -233,7 +265,11 @@ const LIVE_CONTEXT_INSTRUCTIONS: TextBlock = {
  * every request reuses the identical stripped clone (stable bytes AND stable
  * identities keep provider prefix caches and token-estimate caches warm).
  */
-const NEXT_STEPS_BLOCK_RE = /<nextsteps\b[^>]*>[\s\S]*?<\/nextsteps>[ \t]*\n?/gi;
+// The completion marker alternative comes first and the block's opening tag
+// refuses it: `<nextsteps\b` alone matches `<nextsteps-complete/>` and would
+// swallow everything up to a later block's close tag.
+const NEXT_STEPS_BLOCK_RE =
+  /<nextsteps-complete\s*\/>[ \t]*\n?|<nextsteps\b(?!-complete)[^>]*>[\s\S]*?<\/nextsteps>[ \t]*\n?/gi;
 const NEXT_STEPS_STRIPPED_PLACEHOLDER = '[nextsteps suggestions were delivered to the user]';
 const strippedNextStepsCache = new WeakMap<Message, Message>();
 
@@ -448,7 +484,7 @@ export function createAgentResponseHandler(
     const { stable: stableSystem, tail: epochTail } = partitionPromptEpoch(a.ctx.systemPrompt);
     const volatileLedger = buildCompletedWorkLedgerBlock(a.ctx);
     const continuity = buildConversationContinuityBlock(a.ctx);
-    const liveNextStepsGate = buildLiveNextStepsGateBlock(a.ctx);
+    const liveNextStepsGate = buildLiveNextStepsGateBlock(a.ctx, readNextStepsMode(a));
     const memoryEvidence = buildMemoryEvidenceBlocks(a.ctx);
     const liveContextTail = [
       ...epochTail,
@@ -541,6 +577,9 @@ export function createAgentResponseHandler(
     // session journal, the conversation history, and `finalText` at once, so
     // tool-produced suggestions travel the same path as model-typed ones.
     res = maybeAppendPendingNextSteps(a.ctx, res);
+    // `autonomy.nextSteps: 'required'`: a finished turn with neither a block
+    // nor the completion marker is asked once more, before anyone observes it.
+    res = await maybeRequireNextSteps(a, res, req, requestProvider);
     a.events.emit('provider.response', {
       sessionId: resolveEventSessionId(a.ctx),
       ctx: a.ctx,

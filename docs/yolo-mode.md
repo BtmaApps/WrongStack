@@ -8,8 +8,17 @@ Current behavior:
 
 - The stored config default (`BEHAVIOR_DEFAULTS.yolo`) is `false`. Interactive first launch currently selects YOLO on and persists that launch choice.
 - `--yolo` forces broad auto-approval at startup. `--no-yolo` forces approval prompts and overrides both a saved YOLO preference and `--yolo`.
-- Explicit denies still win: session soft-deny, trust-file deny patterns, and
-  tools declared with `permission: 'deny'`.
+- What the user forbade makes YOLO **ask**, not refuse: a session "no", a
+  trust-file deny pattern, a `/permissions deny` rule, a directory rule, or a
+  deny list that cannot be checked for the call. YOLO's job is to run without
+  interrupting, and to stop — by asking — only on damage and on these. The
+  question has `source: 'yolo_user_rule'` / `riskTier: 'destructive'`: a host
+  auto-answering prompts on a YOLO toggle leaves it to the user, an unanswered
+  one is refused (never handed to the Brain), and an "always" answer runs it
+  once without writing an allow rule — the deny rule stays. With YOLO
+  off, and under YOLO+, the same rules refuse. Tools declared
+  `permission: 'deny'` refuse at every level. The single rule is
+  `refusalUnderYolo()` in `security/permission-helpers.ts`.
 - A tool's own `permission: 'confirm'` declaration is **not** an input to the
   YOLO decision. Under YOLO the only question asked is
   `gatedDestructiveKind()` — see below. A tool that declares `confirm` because
@@ -22,6 +31,26 @@ Current behavior:
   (`DestructiveKind`); `agent-state` and `credential-bind` are permanently
   locked because they are writes that can switch the approval system itself
   off.
+- `agent-state` covers only the parts of `~/.wrongstack` a silent write could
+  turn against the user (`security/agent-state-sensitivity.ts`): code that runs
+  (`plugins/`, `updates/`, `automation/`, every `config*.json` and
+  `config-history/`), approval state (`trust.json`, `plugin-trust.json`, session
+  journals), secrets (`.key`, `auth.json`, `sync.json`), and instructions every
+  session obeys (profile `instructions/`, `skills/`, `memory.md`, the global
+  `AGENTS.md`). The agent's own working state there — plans, goals, specs, SDD
+  boards, project memory, caches, logs — is written without a prompt. Links do
+  not get around it: a benign name that resolves to a gated file is gated,
+  `ln`/`mv` are judged by their source as well, and a directory input or an
+  archive extracted where configs load is gated too.
+- **YOLO+** (`/yolo plus`, `--yolo-plus`, `autonomy.yoloPlus`) is YOLO with
+  nothing held back: no call ever asks — not the gated kinds, not the two
+  locked ones, not a sensitive read or a Kanban scope boundary — and subagents
+  are no longer refused what the leader would have asked about. The user's own
+  refusals (a "no" this session, trust-file / `/permissions deny` / directory
+  rules, `permission: 'deny'` tools) refuse — they are the one thing YOLO+ does
+  not run. It never outlives YOLO,
+  cannot be set by in-project or cloud-synced config, and `--restricted` locks
+  it off. See [`/yolo`](slash/yolo.md).
 - `--confirm-destructive`, `--yolo-destructive`, and `--force-all-yolo` select
   *which* of those categories still prompt (`autonomy.yoloConfirm`); the two
   locked kinds are re-added on every entry path.
@@ -34,14 +63,17 @@ Current behavior:
 | Slash command | `/yolo`, `/yolo on`, `/yolo off`, `/yolo toggle` |
 | Programmatic | `permissionPolicy.setYolo(true)` |
 
-When YOLO is off, mutating or sensitive calls fall through to confirm prompts.
-Trust-file deny rules and `permission: 'deny'` tools still win regardless.
+When YOLO is off, mutating or sensitive calls fall through to confirm prompts,
+and trust-file deny rules and `permission: 'deny'` tools refuse.
 
 ## Approval Timeout
 
 Any approval that still reaches a human surface waits for exactly 120 seconds.
 If nobody answers, the active Brain arbitration chain decides whether that one
-call may run. The timed-out request cannot escalate back to the human; an
+call may run — except a YOLO question about a rule the user wrote
+(`yolo_user_rule`), which is refused: the Brain does not overrule the user's
+own prohibitions. With no surface listening at all (headless, CI), a prompt is
+refused at once for this run only; no deny rule is written to `trust.json`. The timed-out request cannot escalate back to the human; an
 unavailable, failed, or inconclusive Brain decision rejects the call safely.
 WebUI sends the deadline with the prompt and shows the remaining time.
 
@@ -51,20 +83,23 @@ Every tool call passes through `DefaultPermissionPolicy.evaluate()` before
 execution. The first matching rule wins:
 
 ```text
-1. Session soft deny          -> deny
-2. Session soft allow         -> auto
-3. Trust file deny pattern    -> deny
-4. Tool default deny          -> deny
-5. Trust file allow pattern   -> auto
-6. Trust file auto flag       -> auto
-7. YOLO                       -> auto
-8. Smart bypass (write+read)  -> auto
-9. Tool default               -> auto for non-mutating auto tools
-10. Confirm prompt / event    -> confirm
+1. Session soft deny          -> deny  (YOLO: confirm)
+2. Trust file deny pattern    -> deny  (YOLO: confirm)
+3. /permissions deny rule     -> deny  (YOLO: confirm)
+4. Session soft allow         -> auto
+5. Tool default deny          -> deny  (every level)
+6. YOLO+                      -> auto  (deny if a deny list cannot be checked)
+7. Trust file allow / auto    -> auto
+8. YOLO                       -> confirm if a deny list cannot be checked or
+                                 the call is a gated destructive kind, else auto
+9. Smart bypass (write+read)  -> auto
+10. Tool default              -> auto for non-mutating auto tools
+11. Confirm prompt / event    -> confirm
 ```
 
-This means trust-file deny rules and `permission: 'deny'` still win over YOLO.
-When YOLO is off, mutating or sensitive calls can still ask for confirmation.
+Directory rules (`DirectoryPermissionPolicy`) run before all of this and follow
+the same rule: refuse when off or under YOLO+, ask under YOLO — unless the inner
+policy refuses the call outright.
 
 ## Runtime Toggle
 
@@ -92,7 +127,8 @@ Permission decisions can report these relevant sources:
 | Source | Meaning |
 |---|---|
 | `yolo` | Auto-approved because YOLO mode is active |
-| `yolo_destructive` | Legacy source value retained for older session/UI compatibility |
+| `yolo_destructive` | YOLO stopped to ask: a gated destructive kind |
+| `yolo_user_rule` | YOLO stopped to ask: a rule the user wrote forbids this call (only the user answers it) |
 | `trust` | Matched an allow rule or trust-file auto flag |
 | `deny` | Explicitly denied by a pattern or tool declaration |
 | `user` | User answered a permission prompt |
@@ -107,7 +143,7 @@ for the rest of the session:
 | Answer | Effect |
 |---|---|
 | `y` | `allowOnce()` auto-approves this tool/pattern once for the immediate re-run |
-| `n` | `denyOnce()` blocks this tool/pattern for the session |
+| `n` | `denyOnce()` blocks this tool/pattern for the session (under YOLO it asks again instead) |
 | `a` | `trust()` writes a permanent allow rule to `trust.json` |
 | `d` | `deny()` writes a permanent deny rule to `trust.json` |
 

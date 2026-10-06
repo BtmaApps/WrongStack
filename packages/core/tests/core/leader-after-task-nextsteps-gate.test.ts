@@ -29,6 +29,9 @@ describe('leader-after-task `nextsteps` tool gate', () => {
       expect(out).toContain('If only a human can perform the action, omit it');
       expect(out).toContain('No special closing sentence is required');
       expect(out).not.toContain('Never omit both the tag and that explanation');
+      expect(out).toContain('`<nextsteps>` is optional');
+      expect(out).toContain('Never emit `<nextsteps>` just to keep an autonomous run going');
+      expect(out).not.toContain('not optional');
     },
   );
   it('says nothing about the tool when it is not registered', () => {

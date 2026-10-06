@@ -30,9 +30,9 @@ import {
   ToolExecutor,
 } from '@wrongstack/core/execution';
 import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
-import { EventBus } from '@wrongstack/core/kernel';
+import { EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { ToolRegistry } from '@wrongstack/core/registry';
-import { AutoApprovePermissionPolicy } from '@wrongstack/core/security';
+import { AutoApprovePermissionPolicy, subagentYoloPlus } from '@wrongstack/core/security';
 import { createSessionEventBridge, resolveSessionLoggingConfig } from '@wrongstack/core/storage';
 import type {
   Config,
@@ -377,8 +377,19 @@ export function createHostSubagentFactory(
     const subAllowedCaps = resolveSubagentCapabilities(effectiveCfg, (allow) =>
       host.filterTools([...allow]),
     );
+    // Read per call: a `/yolo plus` toggle reaches subagents already running.
+    // The spawning conversation's YOLO+, not another tab's (`subagentYoloPlus`).
+    const leaderPolicy = host.deps.container.safeResolve(TOKENS.PermissionPolicy);
+    const subagentPolicyOptions = {
+      yoloPlus: () =>
+        subagentYoloPlus({
+          sessionId: owningSessionId,
+          leaderPolicy,
+          fallback: () => host.deps.configStore.get().autonomy?.yoloPlus === true,
+        }),
+    };
     const toolExecutor = new ToolExecutor(baseRegistry, {
-      permissionPolicy: new AutoApprovePermissionPolicy(subAllowedCaps),
+      permissionPolicy: new AutoApprovePermissionPolicy(subAllowedCaps, subagentPolicyOptions),
       secretScrubber: host.deps.secretScrubber,
       renderer: host.deps.renderer,
       events,
@@ -420,7 +431,7 @@ export function createHostSubagentFactory(
       events,
       pipelines,
       context: ctx,
-      permissionPolicy: new AutoApprovePermissionPolicy(subAllowedCaps),
+      permissionPolicy: new AutoApprovePermissionPolicy(subAllowedCaps, subagentPolicyOptions),
       toolExecutor,
       tracer: host.deps.tracer,
       loopDetection: config.tools?.loopDetection,

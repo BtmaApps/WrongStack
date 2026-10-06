@@ -191,6 +191,8 @@ export interface WorktreeHandleView {
   deletions: number;
   files: number;
   conflictFiles?: string[] | undefined;
+  /** Error of the last failed step (commit refused by a hook, merge failure…). */
+  lastError?: string | undefined;
   allocatedAt: number;
   lastEventAt: number;
   recentActivity: Array<{ kind: string; text: string; at: number }>;

@@ -20,11 +20,13 @@ export const PREF_KEYS = [
   'autonomyDelayMs',
   'autoProceedMaxIterations',
   'yolo',
+  'yoloPlus',
   'maxIterations',
   'chime',
   'confirmExit',
   'nextPrediction',
   'nextStepsTool',
+  'nextStepsMode',
   'enhanceEnabled',
   'enhanceDelayMs',
   'enhanceLanguage',
@@ -209,6 +211,9 @@ export async function persistPrefsToConfig(
         setAutonomy('autoProceedDelayMs', payload['autonomyDelayMs']);
       if (typeof payload['autoProceedMaxIterations'] === 'number')
         setAutonomy('autoProceedMaxIterations', payload['autoProceedMaxIterations']);
+      if (payload['nextStepsMode'] === 'optional' || payload['nextStepsMode'] === 'required')
+        setAutonomy('nextSteps', payload['nextStepsMode']);
+      if (typeof payload['yoloPlus'] === 'boolean') setAutonomy('yoloPlus', payload['yoloPlus']);
       if (typeof payload['yolo'] === 'boolean') {
         setAutonomy('yolo', payload['yolo']);
         decrypted.yolo = payload['yolo'];

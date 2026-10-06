@@ -63,7 +63,7 @@ import {
 } from '../ui/dropdown-menu';
 import { WorkspaceDock } from '../WorkspaceDock';
 import { ProviderQuotaPanel } from './ProviderQuotaPanel';
-import { ActionButton, QuickToggle, StatBox } from './SessionPanelControls.js';
+import { ActionButton, QuickSegmented, QuickToggle, StatBox } from './SessionPanelControls.js';
 import { type SessionSection, SessionSections } from './SessionSections';
 
 // ── Formatting helpers ────────────────────────────────────────────────
@@ -509,11 +509,42 @@ export function SessionPanel() {
             switchAutonomy(next);
           }}
         />
-        <QuickToggle
+        <QuickSegmented
           label={t('activity:sessionPanel.yolo')}
           title={t('activity:sessionPanel.yoloTitle')}
-          value={localPrefs.yolo}
-          onChange={() => syncPref('yolo', !localPrefs.yolo)}
+          value={localPrefs.yolo ? (localPrefs.yoloPlus ? 'plus' : 'on') : 'off'}
+          options={[
+            {
+              value: 'off',
+              label: t('activity:sessionPanel.yoloOff'),
+              title: t('activity:sessionPanel.yoloOffTitle'),
+            },
+            {
+              value: 'on',
+              label: t('activity:sessionPanel.yoloOn'),
+              title: t('activity:sessionPanel.yoloOnTitle'),
+            },
+            {
+              value: 'plus',
+              label: t('activity:sessionPanel.yoloPlus'),
+              title: t('activity:sessionPanel.yoloPlusTitle'),
+              tone: 'danger',
+            },
+          ]}
+          onChange={(level) => {
+            // YOLO+ never outlives YOLO: leave it before turning YOLO off, and
+            // turn YOLO on before entering it — the order the settings tab uses.
+            if (level === 'off') {
+              if (localPrefs.yoloPlus) syncPref('yoloPlus', false);
+              syncPref('yolo', false);
+            } else if (level === 'on') {
+              if (!localPrefs.yolo) syncPref('yolo', true);
+              if (localPrefs.yoloPlus) syncPref('yoloPlus', false);
+            } else {
+              if (!localPrefs.yolo) syncPref('yolo', true);
+              syncPref('yoloPlus', true);
+            }
+          }}
         />
         <QuickToggle
           label={t('activity:sessionPanel.sound')}

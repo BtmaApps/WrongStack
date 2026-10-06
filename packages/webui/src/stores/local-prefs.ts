@@ -23,6 +23,7 @@ export const SESSION_SCOPED_PREFS = [
   'autonomyDelayMs',
   'autoProceedMaxIterations',
   'yolo',
+  'yoloPlus',
   'maxIterations',
   'contextStrategy',
   'contextMode',
@@ -34,6 +35,7 @@ export const SESSION_SCOPED_PREFS = [
   'reasoningPreserve',
   'nextPrediction',
   'nextStepsTool',
+  'nextStepsMode',
 ] as const satisfies ReadonlyArray<string>;
 
 const SESSION_SCOPED_PREF_SET: ReadonlySet<string> = new Set(SESSION_SCOPED_PREFS);

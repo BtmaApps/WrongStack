@@ -10,6 +10,7 @@ import {
   approvalRecord,
   DEFAULT_ALWAYS_TRUST_TTL_MS,
   isPersistentApproval,
+  userRuleAnswer,
 } from '../security/scoped-approval.js';
 import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { NestedToolCaller } from '../types/context.js';
@@ -132,8 +133,10 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     // resolver promise pending forever — the tool neither executes nor fails
     // and the agent appears stuck. This happens in headless/CI/test runs that
     // construct a minimal agent without wiring a TUI/WebUI confirm handler.
-    // Fall back to `deny` so the tool surfaces an error the model can react
-    // to, instead of hanging silently.
+    // Fall back to `no` so the tool surfaces an error the model can react
+    // to, instead of hanging silently. Not `deny`: that is the user's
+    // "block this pattern forever" answer and writes a permanent trust-file
+    // rule — a CI run nobody watched must not leave deny rules behind.
     //
     // Passive observers are subtracted: the HQ approval bridge subscribes to
     // MIRROR prompts a local surface raised, and can never answer on its own.
@@ -152,7 +155,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
           message: `No tool.confirm_needed listener — auto-denying "${info.tool.name}" to avoid headless deadlock.`,
         }),
       );
-      return Promise.resolve('deny' as const);
+      return Promise.resolve('no' as const);
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -211,6 +214,17 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       const writeTargets = info.writeTargets ?? describeWriteTargets(info.tool, info.input);
       timeout = setTimeout(() => {
         void (async () => {
+          // YOLO asked because the user's own rule forbids this call. Only the
+          // user can lift their rule for a call; nobody answered, so it stays
+          // refused — the Brain does not overrule what the user forbade.
+          if (info.decisionSource === 'yolo_user_rule') {
+            settle(
+              'no',
+              'brain_timeout',
+              'A rule you wrote forbids this call and nobody answered; it stays refused.',
+            );
+            return;
+          }
           const brain = a.container.safeResolve(TOKENS.BrainArbiter);
           if (!brain) {
             settle('no', 'brain_timeout', 'No Brain arbiter is available; denied by default.');
@@ -404,7 +418,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
 
     for (const { result, tool, durationMs, settlement: executorSettlement } of outputs) {
       if (result.type === 'tool_confirm_pending' && tool) {
-        const decision = await waitForConfirm({
+        const answer = await waitForConfirm({
           tool: tool,
           input: result.input,
           toolUseId: result.toolUseId,
@@ -419,6 +433,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
           // for callers that construct the info object directly.
           writeTargets: result.writeTargets,
         });
+        const decision = userRuleAnswer(answer, result.decisionSource);
 
         // Persist trust/deny rules
         if (isPersistentApproval(decision)) {
