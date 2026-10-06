@@ -1754,10 +1754,6 @@
     "packages/webui/src/components/ProviderWaitingRoom.tsx": [
       "siblingTriggerOf"
     ],
-    "packages/webui/src/components/RepositoryHistoryView.tsx": [
-      "COMMIT_DETAIL_PANEL_CLASS",
-      "layoutCommitGraph"
-    ],
     "packages/webui/src/components/SearchOverlay.tsx": [
       "messageSearchText"
     ],
@@ -1822,13 +1818,10 @@
       "handleToolsList"
     ],
     "packages/webui/src/hooks/ws-handlers/chat-handlers.ts": [
-      "forgetLaneRunState",
       "handleIterationStarted",
-      "handleRunResult",
       "handleSessionRunState",
       "handleToolConfirmNeeded",
-      "handleToolConfirmResolved",
-      "isAutoContinuableRunError"
+      "handleToolConfirmResolved"
     ],
     "packages/webui/src/hooks/ws-handlers/files-mailbox-handlers.ts": [
       "debouncedRefresh",
@@ -1991,11 +1984,7 @@
       "normalizeSessionPanelOrder"
     ],
     "packages/webui/src/stores/session-tab-store.ts": [
-      "readStoredTabs",
-      "resetBootRestoreLatchForTests",
-      "restoreOpenTabsOnBoot",
-      "TAB_STORAGE_KEY",
-      "writeStoredTabs"
+      "restoreOpenTabsOnBoot"
     ],
     "packages/webui/src/stores/viz-graph-helpers.ts": [
       "inferKind",

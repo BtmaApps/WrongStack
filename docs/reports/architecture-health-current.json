@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:50:48.938Z",
+  "generatedAt": "2026-10-06T18:51:41.565Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4795,
+    "sourceFiles": 4824,
     "testFiles": 4160,
-    "sourceLines": 1076863,
+    "sourceLines": 1077810,
     "workspaceEdges": 133,
-    "moduleEdges": 15787,
+    "moduleEdges": 15862,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 967
+    "testOnlyExports": 958
   },
   "errors": [],
   "packageCycles": [],
@@ -843,7 +843,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 676,
+      "sourceFiles": 705,
       "testFiles": 468,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -26251,79 +26251,8 @@
   ],
   "selfImports": [],
   "nonCommandSlashImports": [],
-  "hotspotCandidates": [
-    {
-      "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
-      "lines": 962,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/webui/src/components/CodeMap.tsx",
-      "lines": 811,
-      "relativeImports": 13
-    },
-    {
-      "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
-      "lines": 861,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
-      "lines": 824,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
-      "lines": 803,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
-      "lines": 800,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/webui/src/stores/session-tab-store.ts",
-      "lines": 813,
-      "relativeImports": 19
-    }
-  ],
+  "hotspotCandidates": [],
   "hotspots": [
-    {
-      "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
-      "lines": 962,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
-      "lines": 861,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
-      "lines": 824,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/webui/src/stores/session-tab-store.ts",
-      "lines": 813,
-      "relativeImports": 19
-    },
-    {
-      "file": "packages/webui/src/components/CodeMap.tsx",
-      "lines": 811,
-      "relativeImports": 13
-    },
-    {
-      "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
-      "lines": 803,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
-      "lines": 800,
-      "relativeImports": 0
-    },
     {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 797,
@@ -26538,6 +26467,41 @@
       "file": "packages/tools/src/replace.ts",
       "lines": 772,
       "relativeImports": 5
+    },
+    {
+      "file": "packages/core/src/core/agent-loop.ts",
+      "lines": 771,
+      "relativeImports": 37
+    },
+    {
+      "file": "packages/plug-lsp/src/slash-commands/lsp.ts",
+      "lines": 771,
+      "relativeImports": 13
+    },
+    {
+      "file": "packages/core/src/coordination/task-auctioneer.ts",
+      "lines": 769,
+      "relativeImports": 4
+    },
+    {
+      "file": "packages/core/src/execution/eternal-autonomy.ts",
+      "lines": 768,
+      "relativeImports": 12
+    },
+    {
+      "file": "packages/core/src/goal/phase-orchestrator.ts",
+      "lines": 767,
+      "relativeImports": 16
+    },
+    {
+      "file": "packages/webui-server/src/server/ws-payload-preferences.ts",
+      "lines": 767,
+      "relativeImports": 0
+    },
+    {
+      "file": "packages/tools/src/todo.ts",
+      "lines": 766,
+      "relativeImports": 2
     }
   ],
   "testOnlyExports": [
@@ -29834,14 +29798,6 @@
       "name": "siblingTriggerOf"
     },
     {
-      "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
-      "name": "COMMIT_DETAIL_PANEL_CLASS"
-    },
-    {
-      "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
-      "name": "layoutCommitGraph"
-    },
-    {
       "file": "packages/webui/src/components/SearchOverlay.tsx",
       "name": "messageSearchText"
     },
@@ -29959,15 +29915,7 @@
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
-      "name": "forgetLaneRunState"
-    },
-    {
-      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
       "name": "handleIterationStarted"
-    },
-    {
-      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
-      "name": "handleRunResult"
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
@@ -29980,10 +29928,6 @@
     {
       "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
       "name": "handleToolConfirmResolved"
-    },
-    {
-      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
-      "name": "isAutoContinuableRunError"
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/files-mailbox-handlers.ts",
@@ -30371,23 +30315,7 @@
     },
     {
       "file": "packages/webui/src/stores/session-tab-store.ts",
-      "name": "readStoredTabs"
-    },
-    {
-      "file": "packages/webui/src/stores/session-tab-store.ts",
-      "name": "resetBootRestoreLatchForTests"
-    },
-    {
-      "file": "packages/webui/src/stores/session-tab-store.ts",
       "name": "restoreOpenTabsOnBoot"
-    },
-    {
-      "file": "packages/webui/src/stores/session-tab-store.ts",
-      "name": "TAB_STORAGE_KEY"
-    },
-    {
-      "file": "packages/webui/src/stores/session-tab-store.ts",
-      "name": "writeStoredTabs"
     },
     {
       "file": "packages/webui/src/stores/viz-graph-helpers.ts",

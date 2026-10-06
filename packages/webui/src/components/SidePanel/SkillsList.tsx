@@ -2,71 +2,24 @@
  * SkillsList — the skill list shown in the SidePanel when Skills activity is active.
  * When a skill is clicked, it opens in the main content area (SkillDetailView).
  */
-
-import { FileText, Plus, Download, Loader2, RefreshCw, Sparkles, X } from 'lucide-react';
+import { Download, FileText, Loader2, Plus, RefreshCw, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { i18n, useAppTranslation } from '@/i18n';
 import { showPanel } from '@/lib/view-navigation';
 import { useUIStore } from '@/stores/ui-store';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-interface SkillInfo {
-  name: string;
-  description: string;
-  version: string;
-  source: string;
-  sourceUrl: string;
-  ref: string;
-  path: string;
-  trigger: string;
-  scope: string[];
-}
-
-type ScopeFilter = 'all' | 'project' | 'user' | 'bundled' | 'foreign';
-type ScopeBucket = 'project' | 'user' | 'bundled' | 'foreign';
-
-/** Localized label for a scope bucket. Reuses skillDetail scope labels + skillsList.scopeForeign. */
-function scopeLabelFor(
-  t: (k: string, opts?: Record<string, unknown>) => string,
-  scope: ScopeBucket,
-): string {
-  switch (scope) {
-    case 'project':
-      return t('activity:skillDetail.scopeProject');
-    case 'user':
-      return t('activity:skillDetail.scopeGlobal');
-    case 'bundled':
-      return t('activity:skillDetail.scopeBundled');
-    case 'foreign':
-      return t('activity:skillsList.scopeForeign');
-  }
-}
-
-/** Bucket a skill source for grouping. project/user/bundled map to themselves; everything else (.claude/*, extra) → foreign. */
-function bucketForSource(source: string | undefined): ScopeBucket {
-  if (source === 'project' || source === 'user' || source === 'bundled') return source;
-  return 'foreign';
-}
-
-function ScopeBadge({ source }: { source: string }) {
-  const { t } = useAppTranslation();
-  const scope = bucketForSource(source);
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
-        scope === 'project' && 'border-success/25 bg-success/8 text-success',
-        scope === 'user' && 'border-primary/25 bg-primary/10 text-primary',
-        scope === 'bundled' && 'border-border/70 bg-muted/60 text-muted-foreground',
-        scope === 'foreign' && 'border-warning/28 bg-warning/10 text-warning',
-      )}
-    >
-      {scopeLabelFor(t, scope)}
-    </span>
-  );
-}
+import { SkillCreateDialog, useSkillCreateForm } from './SkillCreateDialog.js';
+import { SkillInstallDialog, useSkillInstallForm } from './SkillInstallDialog.js';
+import {
+  bucketForSource,
+  ScopeBadge,
+  type ScopeBucket,
+  type ScopeFilter,
+  type SkillInfo,
+  scopeLabelFor,
+} from './SkillsListScope.js';
+import { useSkillsOneShotListener } from './use-skills-one-shot.js';
 
 export function SkillsList({ className }: { className?: string }) {
   const { t } = useAppTranslation();
@@ -82,23 +35,14 @@ export function SkillsList({ className }: { className?: string }) {
   // Always-accessible ref to current skillsState
   const skillsStateRef = useRef(skillsState);
   skillsStateRef.current = skillsState;
+  // One-shot WS listeners (install/create/export) — see use-skills-one-shot.ts.
+  const listenOnce = useSkillsOneShotListener(client);
 
-  // Install modal state
-  const [installModalOpen, setInstallModalOpen] = useState(false);
-  const [installRef, setInstallRef] = useState('');
-  const [installGlobal, setInstallGlobal] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const [installError, setInstallError] = useState<string | null>(null);
-  const [installSuccess, setInstallSuccess] = useState<string | null>(null);
-
-  // Create skill modal state
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [createDescription, setCreateDescription] = useState('');
-  const [createScope, setCreateScope] = useState<'project' | 'global'>('project');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+  // Install / create modal state + requests.
+  const installForm = useSkillInstallForm(client, listenOnce);
+  const createForm = useSkillCreateForm(client, listenOnce);
+  const { installModalOpen, setInstallModalOpen } = installForm;
+  const { createModalOpen, setCreateModalOpen } = createForm;
 
   // Export all state
   const [exportingAll, setExportingAll] = useState(false);
@@ -117,108 +61,6 @@ export function SkillsList({ className }: { className?: string }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [installModalOpen, createModalOpen]);
-
-  // One-shot WS listeners (install/create/export). Tracked in a ref so that:
-  //   - a timeout clears the busy state when the server never replies,
-  //   - unmount tears the listener down (no setState-after-unmount),
-  //   - a rapid second click replaces (not stacks) the pending listener.
-  const oneShotOffs = useRef(new Map<string, () => void>());
-  useEffect(() => {
-    const offs = oneShotOffs.current;
-    return () => {
-      for (const off of offs.values()) off();
-      offs.clear();
-    };
-  }, []);
-
-  const listenOnce = useCallback(
-    (type: string, onMsg: (msg: unknown) => void, onTimeout: () => void, timeoutMs = 15_000) => {
-      if (!client) return;
-      oneShotOffs.current.get(type)?.();
-      let timer: ReturnType<typeof setTimeout> | null = null;
-      const handler = (msg: unknown) => {
-        dispose();
-        onMsg(msg);
-      };
-      const dispose = () => {
-        if (timer) clearTimeout(timer);
-        client.off(type, handler as (msg: unknown) => void);
-        oneShotOffs.current.delete(type);
-      };
-      timer = setTimeout(() => {
-        dispose();
-        onTimeout();
-      }, timeoutMs);
-      client.on(type, handler as (msg: unknown) => void);
-      oneShotOffs.current.set(type, dispose);
-    },
-    [client],
-  );
-
-  // Handle install
-  const handleInstallSkill = useCallback(() => {
-    if (!client || !installRef.trim()) return;
-    setInstalling(true);
-    setInstallError(null);
-    setInstallSuccess(null);
-
-    listenOnce(
-      'skills.installed',
-      (msg) => {
-        const m = msg as {
-          payload: { success: boolean; error: string | null; results?: Array<{ name: string }> };
-        };
-        setInstalling(false);
-        if (m.payload.success) {
-          const names = m.payload.results?.map((r) => r.name).join(', ') ?? installRef;
-          setInstallSuccess(i18n.t('activity:skillsList.installedMsg', { names }));
-          client.send({ type: 'skills.list' }, { echoToChat: false });
-        } else {
-          setInstallError(m.payload.error ?? i18n.t('activity:skillsList.installFailed'));
-        }
-      },
-      () => {
-        setInstalling(false);
-        setInstallError(i18n.t('activity:skillsList.installFailed'));
-      },
-    );
-    client.installSkill(installRef.trim(), installGlobal);
-  }, [client, installRef, installGlobal, listenOnce]);
-
-  // Handle create
-  const handleCreateSkill = useCallback(() => {
-    if (!client || !createName.trim() || !createDescription.trim()) return;
-    setCreating(true);
-    setCreateError(null);
-    setCreateSuccess(null);
-
-    listenOnce(
-      'skills.created',
-      (msg) => {
-        const m = msg as {
-          payload: {
-            success: boolean;
-            error: string | null;
-            skill?: { name: string; path: string; scope: string };
-          };
-        };
-        setCreating(false);
-        if (m.payload.success) {
-          setCreateSuccess(
-            i18n.t('activity:skillsList.createdMsg', { name: m.payload.skill?.name ?? '' }),
-          );
-          client.send({ type: 'skills.list' }, { echoToChat: false });
-        } else {
-          setCreateError(m.payload.error ?? i18n.t('activity:skillsList.createFailed'));
-        }
-      },
-      () => {
-        setCreating(false);
-        setCreateError(i18n.t('activity:skillsList.createFailed'));
-      },
-    );
-    client.createSkill(createName.trim(), createDescription.trim(), createScope);
-  }, [client, createName, createDescription, createScope, listenOnce]);
 
   // Handle refresh all
   const handleRefreshAll = useCallback(() => {
@@ -396,13 +238,7 @@ export function SkillsList({ className }: { className?: string }) {
       <div className="flex w-full items-center gap-1 border-b border-border/60 bg-card/65 px-2 py-2">
         <button
           type="button"
-          onClick={() => {
-            setInstallRef('');
-            setInstallError(null);
-            setInstallSuccess(null);
-            setInstallGlobal(false);
-            setInstallModalOpen(true);
-          }}
+          onClick={installForm.openInstallModal}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           title={t('activity:skillsList.installTitle')}
         >
@@ -410,14 +246,7 @@ export function SkillsList({ className }: { className?: string }) {
         </button>
         <button
           type="button"
-          onClick={() => {
-            setCreateName('');
-            setCreateDescription('');
-            setCreateScope('project');
-            setCreateError(null);
-            setCreateSuccess(null);
-            setCreateModalOpen(true);
-          }}
+          onClick={createForm.openCreateModal}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           title={t('activity:skillsList.createTitle')}
         >
@@ -455,7 +284,6 @@ export function SkillsList({ className }: { className?: string }) {
           )}
         </button>
       </div>
-
       {/* Search + filter */}
       <div className="shrink-0 space-y-2 border-b border-border/60 bg-card/45 p-2">
         <input
@@ -498,7 +326,6 @@ export function SkillsList({ className }: { className?: string }) {
           })}
         </div>
       </div>
-
       {/* Skill list */}
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-gutter:stable]">
         {loading ? (
@@ -550,253 +377,9 @@ export function SkillsList({ className }: { className?: string }) {
             })}
           </div>
         )}
-      </div>
-      {/* ── Install skill modal ── */}
-      <Dialog open={installModalOpen} onOpenChange={setInstallModalOpen}>
-        <DialogContent
-          className="flex max-h-[calc(100dvh-2rem)] w-[420px] max-w-[90vw] flex-col gap-0 overflow-hidden p-0"
-          showCloseButton={false}
-        >
-          <DialogHeader className="flex shrink-0 items-center justify-between border-b border-border/70 p-4 sm:flex-row sm:justify-between sm:space-y-0">
-            <div className="flex items-center gap-2">
-              <Download className="h-4 w-4 text-primary" />
-              <DialogTitle className="font-semibold text-sm">
-                {t('activity:skillsList.installHeading')}
-              </DialogTitle>
-            </div>
-            <button
-              type="button"
-              onClick={() => setInstallModalOpen(false)}
-              aria-label={t('common:action.close')}
-              className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </DialogHeader>
-
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">{t('activity:skillsList.installHint')}</p>
-            <input
-              type="text"
-              value={installRef}
-              onChange={(e) => {
-                setInstallRef(e.target.value);
-                setInstallError(null);
-                setInstallSuccess(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !installing) handleInstallSkill();
-              }}
-              placeholder={t('activity:skillsList.installPlaceholder')}
-              className="w-full rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-
-            {/* Scope toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {t('activity:skillsList.installScope')}
-              </span>
-              <div className="flex overflow-hidden rounded-md border border-border/70">
-                <button
-                  type="button"
-                  onClick={() => setInstallGlobal(false)}
-                  className={cn(
-                    'px-2 py-1 text-[10px] transition-colors',
-                    !installGlobal
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background hover:bg-accent',
-                  )}
-                >
-                  {t('activity:skillDetail.scopeProject')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInstallGlobal(true)}
-                  className={cn(
-                    'px-2 py-1 text-[10px] transition-colors border-l border-border',
-                    installGlobal
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background hover:bg-accent',
-                  )}
-                >
-                  {t('activity:skillDetail.scopeGlobal')}
-                </button>
-              </div>
-            </div>
-
-            {installError && (
-              <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                {installError}
-              </p>
-            )}
-            {installSuccess && (
-              <p className="rounded-md bg-success/10 px-2 py-1 text-xs text-success">
-                {installSuccess}
-              </p>
-            )}
-          </div>
-
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border/70 bg-muted/20 p-4">
-            <button
-              type="button"
-              onClick={() => setInstallModalOpen(false)}
-              className="rounded-md border border-border/70 px-3 py-1.5 text-xs transition-colors hover:bg-accent"
-            >
-              {installSuccess ? t('common:action.close') : t('common:action.cancel')}
-            </button>
-            {!installSuccess && (
-              <button
-                type="button"
-                onClick={handleInstallSkill}
-                disabled={installing || !installRef.trim()}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {installing && <Loader2 className="h-3 w-3 animate-spin" />}
-                {t('activity:skillsList.installBtn')}
-              </button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Create skill modal ── */}
-      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent
-          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[90vw] flex-col gap-0 overflow-hidden p-0"
-          showCloseButton={false}
-        >
-          <DialogHeader className="flex shrink-0 items-center justify-between border-b border-border/70 p-4 sm:flex-row sm:justify-between sm:space-y-0">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              <DialogTitle className="font-semibold text-sm">
-                {t('activity:skillsList.createHeading')}
-              </DialogTitle>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCreateModalOpen(false)}
-              aria-label={t('common:action.close')}
-              className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </DialogHeader>
-
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">{t('activity:skillsList.createHint')}</p>
-
-            {/* Skill name */}
-            <div>
-              <span className="block text-xs font-medium mb-1">
-                {t('activity:skillsList.nameLabel')} <span className="text-destructive">*</span>
-              </span>
-              <input
-                type="text"
-                value={createName}
-                onChange={(e) => {
-                  const val = e.target.value
-                    .trim()
-                    .toLowerCase()
-                    .replace(/\s+/g, '-')
-                    .replace(/[^a-z0-9-]/g, '');
-                  setCreateName(val);
-                  setCreateError(null);
-                  setCreateSuccess(null);
-                }}
-                placeholder={t('activity:skillsList.namePlaceholder')}
-                className="w-full rounded-md border border-border/70 bg-background/70 px-3 py-2 font-mono text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-
-            {/* Description / trigger */}
-            <div>
-              <span className="block text-xs font-medium mb-1">
-                {t('activity:skillsList.descLabel')} <span className="text-destructive">*</span>
-              </span>
-              <textarea
-                value={createDescription}
-                onChange={(e) => {
-                  setCreateDescription(e.target.value);
-                  setCreateError(null);
-                  setCreateSuccess(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creating)
-                    handleCreateSkill();
-                }}
-                placeholder={t('activity:skillsList.descPlaceholder')}
-                rows={4}
-                className="w-full resize-y rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-
-            {/* Scope toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {t('activity:skillsList.saveIn')}
-              </span>
-              <div className="flex overflow-hidden rounded-md border border-border/70">
-                <button
-                  type="button"
-                  onClick={() => setCreateScope('project')}
-                  className={cn(
-                    'px-2 py-1 text-[10px] transition-colors',
-                    createScope === 'project'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background hover:bg-accent',
-                  )}
-                >
-                  {t('activity:skillDetail.scopeProject')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCreateScope('global')}
-                  className={cn(
-                    'px-2 py-1 text-[10px] transition-colors border-l border-border',
-                    createScope === 'global'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background hover:bg-accent',
-                  )}
-                >
-                  {t('activity:skillDetail.scopeGlobal')}
-                </button>
-              </div>
-            </div>
-
-            {createError && (
-              <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                {createError}
-              </p>
-            )}
-            {createSuccess && (
-              <p className="rounded-md bg-success/10 px-2 py-1 text-xs text-success">
-                {createSuccess}
-              </p>
-            )}
-          </div>
-
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border/70 bg-muted/20 p-4">
-            <button
-              type="button"
-              onClick={() => setCreateModalOpen(false)}
-              className="rounded-md border border-border/70 px-3 py-1.5 text-xs transition-colors hover:bg-accent"
-            >
-              {createSuccess ? t('common:action.close') : t('common:action.cancel')}
-            </button>
-            {!createSuccess && (
-              <button
-                type="button"
-                onClick={handleCreateSkill}
-                disabled={creating || !createName.trim() || !createDescription.trim()}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {creating && <Loader2 className="h-3 w-3 animate-spin" />}
-                {t('activity:skillsList.createBtn')}
-              </button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      </div>{' '}
+      <SkillInstallDialog form={installForm} />
+      <SkillCreateDialog form={createForm} />
     </div>
   );
 }

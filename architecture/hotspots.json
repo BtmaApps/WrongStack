@@ -1,34 +1,5 @@
 {
   "schemaVersion": 1,
   "thresholdLines": 800,
-  "files": {
-    "packages/webui/src/components/ChatInput/slash-routing.ts": {
-      "lines": 962,
-      "relativeImports": 2
-    },
-    "packages/webui/src/components/CodeMap.tsx": {
-      "lines": 811,
-      "relativeImports": 13
-    },
-    "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx": {
-      "lines": 861,
-      "relativeImports": 0
-    },
-    "packages/webui/src/components/RepositoryHistoryView.tsx": {
-      "lines": 824,
-      "relativeImports": 2
-    },
-    "packages/webui/src/components/SidePanel/SkillsList.tsx": {
-      "lines": 803,
-      "relativeImports": 0
-    },
-    "packages/webui/src/hooks/ws-handlers/chat-handlers.ts": {
-      "lines": 800,
-      "relativeImports": 0
-    },
-    "packages/webui/src/stores/session-tab-store.ts": {
-      "lines": 813,
-      "relativeImports": 19
-    }
-  }
+  "files": {}
 }

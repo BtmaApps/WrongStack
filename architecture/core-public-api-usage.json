@@ -249,9 +249,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 15,
+      "files": 17,
       "typeOnly": 0,
-      "runtimeOrMixed": 15
+      "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 16,
@@ -26734,6 +26734,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/webui/src/components/DeadCodeScanPanel/dead-code-panel-model.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
       "file": "packages/webui/src/components/SessionsDashboard.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -26753,6 +26759,12 @@
     {
       "specifier": "@wrongstack/core/utils/error",
       "file": "packages/webui/src/components/TechStackView/TrendsTab.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/webui/src/components/use-code-map-graph-loader.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -26848,7 +26860,7 @@
     },
     {
       "specifier": "@wrongstack/core/utils/expect-defined",
-      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
+      "file": "packages/webui/src/hooks/ws-handlers/chat-run-result.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

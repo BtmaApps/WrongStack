@@ -36,6 +36,10 @@ const ISOLATED_COLOR_SURFACES = new Map<string, string>([
     'webui/components/RepositoryHistoryView.tsx',
     'Git topology graph lanes and branch/tag badge tones.',
   ],
+  [
+    'webui/components/RepositoryCommitDetail.tsx',
+    'Branch/tag badge tones and merge marker of the git history view (split from RepositoryHistoryView).',
+  ],
   ['webui/components/SetupScreen/ProviderKeyCard.tsx', 'QR encoder requires explicit dark/light colors.'],
   ['webui/components/TerminalPanel.tsx', 'xterm owns a complete terminal ANSI palette.'],
   [
