@@ -105,6 +105,30 @@ export function ToolsPage() {
         }
       />
 
+      <section className="mx-auto max-w-[1380px] px-4 py-12 sm:px-6 lg:px-10">
+        <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
+          <h2 className="text-2xl font-black text-fg">
+            Dead code: scan, preview, verify, restore.
+          </h2>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-muted">
+            dead-code-scan analyzes TypeScript module reachability independently from the Codebase
+            Index. Inspect finding ids, confidence, reasons and planned diffs before selecting
+            edits. dead-code-fix rechecks the selection, typechecks affected packages by default and
+            rolls back failed verification. Backups support undo with conflict reporting. Public API
+            and dynamic entrypoints can have consumers beyond the visible graph.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-5">
+            <Link href="/tools/dead-code-scan" className="text-sm font-bold text-brand">
+              Inspect scan parameters →
+            </Link>
+            <Link href="/tools/dead-code-fix" className="text-sm font-bold text-brand">
+              Inspect cleanup and undo →
+            </Link>
+            <ExternalDoc path="docs/tools/dead-code.md">Read the full workflow</ExternalDoc>
+          </div>
+        </div>
+      </section>
+
       <section className="border-b border-line bg-surface">
         <div className="mx-auto grid max-w-[1380px] grid-cols-2 gap-px bg-line px-4 sm:grid-cols-3 sm:px-6 lg:grid-cols-6 lg:px-10">
           {[

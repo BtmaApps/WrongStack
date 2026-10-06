@@ -13,7 +13,7 @@ export function PromptsPage() {
           </>
         }
         description="The prompts library stores reusable prompt templates across three layers — bundled, user, and project. Search, favorite, and insert with variable rendering and AI-assisted authoring."
-        aside={<ExternalDoc path="docs/prompts/README.md">Open Prompts docs</ExternalDoc>}
+        aside={<ExternalDoc path="docs/slash/prompts.md">Open Prompts docs</ExternalDoc>}
       />
 
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">

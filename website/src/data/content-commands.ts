@@ -40,7 +40,9 @@ const commandRows: Array<[string, string]> = [
   ['/setmodel', 'Set the leader model or role/phase model routing matrix.'],
   ['/models', 'Manage custom model definitions.'],
   ['/modelcaps', 'Browse model context, capability and pricing information.'],
-  ['/yolo', 'Query or toggle automatic tool approval for this session.'],
+  ['/effort', 'Inspect or set the leader model reasoning effort and inspect role overrides.'],
+  ['/yolo', 'Choose off, YOLO or YOLO+ confirmation behavior for this conversation.'],
+  ['/permissions', 'Explain tool decisions and manage temporary session allow/deny rules.'],
   ['/sandbox', 'Inspect the resolved exec-sandbox policy and recent denial or expansion records.'],
   ['/autonomy', 'Set the active autonomy level.'],
   ['/save', 'Force the live session writer to flush to disk.'],
@@ -64,11 +66,14 @@ const commandRows: Array<[string, string]> = [
   ['/sdd', 'Run the Spec-Driven Development workflow.'],
   ['/btw', 'Ask a quick side question without derailing the current task.'],
   ['/next', 'Toggle automatic next-task prediction.'],
+  ['/nextsteps', 'Require a next action or completion marker and cap automatic continuation.'],
   ['/suggest', 'Generate context-aware next actions, with a fast heuristic mode.'],
   ['/enhance', 'Refine a prompt before it is sent to the agent.'],
   ['/ensemble', 'Fan one task to multiple ACP-capable coding agents.'],
   ['/fix', 'Classify an error and route it into a focused repair workflow.'],
   ['/goal', 'Run an autonomous phase-based workflow.'],
+  ['/goals', 'Inspect project goals by id, owning session, progress and verification.'],
+  ['/solo', 'Choose the TUI session worker policy before work begins.'],
   ['/worktree', 'Inspect and manage worktrees used by autonomous phases.'],
   ['/settings', 'View or change live runtime settings.'],
   ['/telegram-setup', 'Configure a Telegram bot token and default chat.'],
@@ -143,10 +148,12 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
     '/sdd',
     '/btw',
     '/next',
+    '/nextsteps',
     '/suggest',
     '/enhance',
     '/fix',
     '/goal',
+    '/goals',
     '/autonomy',
     '/plan',
     '/review',
@@ -170,6 +177,7 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
     '/interrupt',
   ],
   Agents: [
+    '/solo',
     '/spawn',
     '/agent-improve',
     '/agents',
@@ -194,7 +202,9 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
     '/setmodel',
     '/models',
     '/modelcaps',
+    '/effort',
     '/yolo',
+    '/permissions',
     '/sandbox',
     '/settings',
     '/statusline',
@@ -255,6 +265,50 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
 };
 
 const featuredUsage: Record<string, { usage: string[]; note?: string }> = {
+  '/goals': {
+    usage: ['/goals', '/goals <goal-id>', '/goal status <goal-id>'],
+    note: 'Inspection only. Observing a goal owned by another terminal does not grant mutation rights.',
+  },
+  '/nextsteps': {
+    usage: [
+      '/nextsteps',
+      '/nextsteps required 20',
+      '/nextsteps optional',
+      '/nextsteps limit unlimited',
+    ],
+    note: 'Required and unlimited are the defaults. The counter limits auto continuation; open todos take priority.',
+  },
+  '/solo': {
+    usage: ['/solo status', '/solo on', '/solo companions', '/solo off'],
+    note: 'TUI session policy. Choose before the runtime locks it; companions mode permits only resident read-only companions.',
+  },
+  '/effort': {
+    usage: ['/effort', '/effort high', '/effort auto', '/effort matrix'],
+    note: 'Choose a level advertised by the current model. auto removes the explicit leader pin.',
+  },
+  '/permissions': {
+    usage: [
+      '/permissions rules',
+      '/permissions explain read {"path":"README.md"}',
+      '/permissions deny write',
+      '/permissions clear',
+    ],
+    note: 'Rules are session-only. Explanation does not execute a tool; allow rules do not bypass higher-priority boundaries.',
+  },
+  '/yolo': {
+    usage: ['/yolo', '/yolo on', '/yolo plus', '/yolo off', '/yolo confirm'],
+    note: 'YOLO+ removes confirmation prompts while retaining user-authored refusal rules and tool-declared denials. --restricted locks it off.',
+  },
+  '/refiner': {
+    usage: [
+      '/refiner show',
+      '/refiner set provider <id>',
+      '/refiner set model <id>',
+      '/refiner set fallback-profile <name>',
+      '/refiner clear',
+    ],
+    note: 'Selects the refinement provider/model and fallback profile. Use /enhance to enable or disable prompt refinement.',
+  },
   '/sandbox': {
     usage: ['/sandbox', '/sandbox --audit'],
     note: 'Reports the current policy; configure tools.sandbox in your profile to change it.',

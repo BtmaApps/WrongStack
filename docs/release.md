@@ -24,6 +24,9 @@ Step-by-step guide for publishing a WrongStack release.
   - `pnpm test:coverage`
 - [ ] Run the exact publish dry-run script: `pnpm release:dry`
 - [ ] Run `pnpm lint` separately if the release policy requires the full Biome lint; it is not currently part of `release:check`.
+- [ ] Manually dispatch the CI and dependency-audit workflows for the reviewed ref and inspect their results. `ci.yml` and `audit.yml` are `workflow_dispatch` only; a push or pull request does not run them.
+- [ ] Run `pnpm docs:check`, `pnpm website:tools:check`, and `pnpm --dir website run build` for the release documentation and website. Update README highlights, website changelog/homepage and HTML metadata together.
+- [ ] Deploy website content with a separate manual `pages.yml` dispatch after the reviewed ref is published. A successful local website build does not deploy it.
 
 ## Version bump
 

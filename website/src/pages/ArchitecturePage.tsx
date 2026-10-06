@@ -197,6 +197,24 @@ export function ArchitecturePage() {
           ))}
         </div>
       </section>
+      <section className="mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 lg:px-10">
+        <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
+          <h2 className="text-2xl font-black text-fg">Focused modules, recorded contracts.</h2>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-muted">
+            Runtime, persistence, transports, host boot and interface controllers are split into
+            focused modules. Architecture snapshots track public exports, consumers and source
+            hotspots; generated catalogs keep documentation aligned with registrations. Package
+            ownership and the typed client API explain where integrations belong.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-5">
+            <ExternalDoc path="docs/architecture/package-owners.md">
+              Find the package owner
+            </ExternalDoc>
+            <ExternalDoc path="docs/client-api.md">Use the typed client API</ExternalDoc>
+            <ExternalDoc path="docs/maintenance.md">Check documentation and catalogs</ExternalDoc>
+          </div>
+        </div>
+      </section>
       <PageNext
         label="Ecosystem"
         title="Extend the contracts, not the core"

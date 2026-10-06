@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.34] — 2026-10-06
+
+Project-owned goal runs, explicit continuation controls and a TypeScript
+dead-code workflow extend autonomous work. MCP negotiation, prompt refinement
+and the HQ cockpit become easier to inspect. Dependency audits, lifecycle
+fixes, smaller source modules and a reorganized documentation set round out
+the release.
+
+### Added
+
+- **Project goal catalog and isolated execution.** `/goals`, `/goals <id>` and WebUI **My Goals** expose goal ids, owning sessions, task/phase progress, blockers, branches and verification. New git-backed goals receive their own managed checkout and branch; phase changes integrate into that goal branch, which is retained for operator review. Other terminals' goals remain observable without transferring control. No-task progress and unexecuted verification stay unknown instead of appearing complete. See [project goals](docs/architecture/project-goals.md).
+- **Session YOLO+.** `/yolo plus` and `--yolo-plus` remove confirmation prompts for the current conversation, including its subagents. WebUI tabs keep independent policy. User-authored refusal rules and tool-declared `deny` still refuse calls; `--restricted` locks YOLO+ off, and repository/cloud config cannot enable it. Turning YOLO off also leaves YOLO+. See [approval levels](docs/slash/yolo.md).
+- **Required next steps and continuation limits.** `/nextsteps required [limit]`, `optional` and `limit <n>` control whether a finished turn supplies another action or an explicit completion marker, and how many automatic turns may run before input is needed. Required mode and unlimited continuation are the defaults; open todos take priority and repeated suggestions still stop the loop. CLI/TUI settings and WebUI per-tab execution settings share the controls. See [next steps](docs/slash/nextsteps.md).
+- **TypeScript dead-code analysis and cleanup.** `dead-code-scan` analyzes project-wide module reachability, symbol references, entries and dependency use, with stable finding ids, confidence, reasons and a diff preview. `dead-code-fix` rechecks selected findings, applies supported edits, typechecks affected packages by default and rolls back failed verification; backups support conflict-aware undo. The WebUI exposes findings, selection and cleanup. Published API and dynamic entrypoints still require operator judgment. See [scan, preview, apply and restore](docs/tools/dead-code.md).
+- **Startup reasoning-effort selection.** The initial model picker gains a model-aware left/right effort strip. Only supported levels are offered; `default` preserves the configured effort, and changing the selected model resets the pending choice.
+- **Replayable terminal wordmark.** The TUI startup banner assembles the existing WRONGSTACK artwork through a pixel formation. Clearing the conversation restarts the formation without changing the wordmark or leaving the previous history reachable above it.
+- **HQ operator workflow.** Bookmarkable view URLs and browser history, a responsive keyboard-accessible navigation rail, operator context, pending-decision counts and cockpit attention shortcuts make fleet triage easier. Quick actions expose their command target. Missing telemetry stays unknown; Kanban text/status filters preserve board totals, ordering and WIP calculations. Mobile navigation includes approvals and events.
+
+### Changed
+
+- **Inspectable MCP interoperability.** The client rejects unsupported negotiated revisions without retrying an incompatible server indefinitely. CLI/WebUI management exposes negotiated protocol, capabilities and server instructions. Tool hints preserve read-only/destructive/open-world metadata as advisory information, while calls retain permission checks. Progress and log notifications are correlated with requests across stdio, SSE and Streamable HTTP. The declared revision remains `2024-11-05`; later transport/elicitation support does not claim full conformance to a newer revision. See [MCP conformance](docs/mcp-protocol-conformance.md).
+- **Shared refinement behavior.** Prompt and goal refinement resolve provider/model targets through the same rules, record effective target, usage and outcome, and share preview/recovery decisions across TUI and WebUI. Accept refined or English text, keep the original, edit, retry or cancel without a surface silently choosing a different action. Session history retains `enhance_usage` evidence. `/refiner` selects a dedicated provider/model; `/enhance` controls prompt refinement.
+- **Documentation and catalogs.** Maintained guides are separated from dated audits, plans and designs. New onboarding, client API, package ownership, slash-command, shell-command and tool-workflow references document persistence and failure behavior. `pnpm docs:check` checks local links, source-derived catalogs, linked command coverage and plugin tool mappings. The website tool catalog contains 72 built-in tools.
+- **Focused source modules.** Runtime, coordination, persistence, CLI boot, MCP, SAGE, tools, plugins, SDD, TUI, SimpleUI and WebUI implementation files are split into smaller modules. Unused helpers, barrels and interface components are removed; architecture snapshots and source-aware regression guards are refreshed.
+- **Manual repository workflows.** CI, dependency audit and GitHub Pages deployment now run only through `workflow_dispatch`. A push or pull request does not start those workflows. The separate tag-triggered release workflow remains in place; maintainers must run validation and Pages deployment explicitly.
+
+### Fixed
+
+- **Goal lifecycle and ownership.** Pause stops admitting new tasks while active work settles; stop fences late phase/final-verification results. Stopping during final verification can resume that gate without replaying completed tasks. Setup, leases, phase integration, timed-out worker ownership and project maintenance cannot announce completion or admit overlapping work before the owner settles. The TUI retries transient goal-file reads even when the file stat is unchanged.
+- **Fallback after cancellation.** A canceled request no longer starts another fallback-model selection or provider request.
+- **SAGE anchor hygiene.** Symbol anchors are verified against the expected symbol type, rather than accepting a matching name in unrelated source text.
+- **Dependency audit delivery.** Manifest changes produce dependency evidence across supported ecosystems, trigger the dependency-audit path and retain background reports through session teardown. Python canonical identities/non-registry dependencies and Gradle configuration aliases are handled consistently. A blank line inside pnpm's all-versions output no longer drops subsequent vulnerability records.
+- **Dependency inventory parsing.** npm alias declarations, Dart quoted constraints and lockfile metadata, Go workspace/replacement handling, Composer dependency classification, Ruby constraints, Cargo metadata and Python requirements preserve their package identities and declared/resolved evidence.
+- **Dead-code safety and resolution.** `import.meta` references, root-absolute entry globs, additional incoming edges, package/TypeScript resolution and dynamic/framework entry evidence retain reachable code. Cleanup preserves file content, avoids unsafe edits and supports verification/rollback instead of treating uncertainty as permission to delete.
+- **Filesystem matching.** Brace alternatives remain whole in glob/tree/grep patterns, and Codebase Index ignore handling follows directory-pattern semantics. Windows agent-state protection normalizes trailing dots/spaces and alternate data-stream spellings before classifying sensitive paths.
+- **TUI and activity evidence.** Bug-hunt progress, live agent rows, function-key panels and history viewport handling follow the rendered session state. PowerShell `pwsh` executions count as terminal activity. The fallback skill addendum is bounded by UTF-8 bytes rather than UTF-16 code units.
+- **Build and verification contracts.** Removed server barrels no longer remain build entries; packed-artifact checks can resolve the tree-sitter grammar helpers, session-history switches handle refinement usage, and affected test/type/architecture inventories match the extracted modules.
+- **Dependency overrides.** Workspace and lockfile overrides raise DOMPurify to `>=3.4.16`, sharp to `>=0.35.5`, and affected `source-map-js` versions to `1.2.2`. Electron's download path uses `global-agent@4.1.3`, removing the older logging dependency chain.
+
 ## [1.0.33] — 2026-10-05
 
 A provider-account patch release. ChatGPT account catalogs now list every model

@@ -102,6 +102,10 @@ export function McpPage() {
                 'Sleeping or failed',
                 'Idle lazy servers sleep; five failed reconnect cycles mark a hard failed slot until restart.',
               ],
+              [
+                'Incompatible revision',
+                'An unsupported negotiated revision is a terminal compatibility failure, not a reason to reconnect forever. Inspect the protocol and capabilities before changing the server definition.',
+              ],
             ].map(([title, body], index) => (
               <div key={title}>
                 <div className="grid gap-4 rounded-xl border border-line bg-card p-5 sm:grid-cols-[44px_160px_1fr] sm:items-center">
@@ -109,7 +113,7 @@ export function McpPage() {
                   <strong className="text-sm text-fg">{title}</strong>
                   <p className="text-sm leading-6 text-muted">{body}</p>
                 </div>
-                {index < 4 && <ArrowDown className="mx-auto my-1 size-4 text-faint" />}
+                {index < 5 && <ArrowDown className="mx-auto my-1 size-4 text-faint" />}
               </div>
             ))}
           </div>
@@ -209,26 +213,26 @@ export function McpPage() {
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
         <SectionIntro
           index="04"
-          eyebrow="Transports"
-          title="Stdio today. SSE and streamable HTTP on the roadmap."
-          description="WrongStack supports three MCP transport types. Each has different latency, security, and setup characteristics."
+          eyebrow="Interoperability"
+          title="Know what the server actually negotiated."
+          description="Management surfaces expose the protocol revision, capabilities and server instructions. Progress and log notifications retain their requesting call across stdio, SSE and Streamable HTTP."
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {[
             {
-              title: 'Stdio',
-              body: 'Child process over stdin/stdout. Zero network — the MCP server runs as a local subprocess. Lowest latency, simplest security model.',
-              tag: 'default',
+              title: 'Conservative negotiation',
+              body: 'The declared revision remains 2024-11-05. Later transport and elicitation features do not establish full conformance to a newer revision; unsupported peers fail explicitly.',
+              tag: 'inspect compatibility',
             },
             {
-              title: 'SSE',
-              body: 'Server-Sent Events over HTTP. The server pushes tool results to the client. Supports remote servers behind a reverse proxy.',
-              tag: 'remote',
+              title: 'Tool hints and instructions',
+              body: 'Server instructions and read-only, destructive or open-world annotations help explain the remote surface. Hints are advisory; local tool permission checks still decide whether a call runs.',
+              tag: 'advisory metadata',
             },
             {
-              title: 'Streamable HTTP',
-              body: 'Bidirectional HTTP streaming. The most flexible transport. Supports both local and remote servers with full-duplex communication.',
-              tag: 'roadmap',
+              title: 'Request-bound progress',
+              body: 'Progress tokens and log context identify the requesting call rather than publishing an unowned event. Transport closure and cancellation retain their lifecycle fences.',
+              tag: 'all three transports',
             },
           ].map(({ title, body, tag }) => (
             <article key={title} className="rounded-2xl border border-line bg-card p-7">

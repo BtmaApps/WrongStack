@@ -243,13 +243,13 @@ export const commandDetailsPart2: CommandDetailMap = {
   },
 
   '/yolo': {
-    purpose:
-      'Query or toggle automatic tool approval for this session — skip permission prompts when you trust the agent.',
+    purpose: 'Select off, YOLO or YOLO+ confirmation behavior for the conversation.',
     behavior:
-      'By default, tools require confirmation before execution. `/yolo` enables automatic approval — the agent runs tools without asking. `/yolo off` restores confirmations. `/yolo` without arguments shows the current state. YOLO mode is session-scoped and resets on restart. Explicit deny rules still apply.',
+      '`/yolo on` auto-approves routine calls while configured destructive kinds and locked agent-state/credential operations still ask. A user-authored deny under YOLO asks for that call only and leaves the rule in place. `/yolo plus` removes confirmation prompts but refuses user-authored denials and tool-declared deny. `/yolo off` leaves both modes. WebUI tabs and their subagents have independent policy; the last choice can seed new tabs. Repository/cloud config cannot enable YOLO+, and restricted mode locks it off.',
     before:
       'Only enable YOLO when you fully trust the agent and the working directory. Review the permission policy first.',
-    during: 'The status line updates to show YOLO is active. Tools execute without prompting.',
+    during:
+      'The status line distinguishes YOLO and YOLO+. Inspect gated destructive kinds with `/yolo confirm` and rules with `/permissions rules`.',
     after:
       'Monitor agent actions more closely in YOLO mode. Disable it when you need to review each step.',
   },

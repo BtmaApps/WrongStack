@@ -1,13 +1,4 @@
 import {
-  CopyCommand,
-  ExternalDoc,
-  PageHero,
-  PageNext,
-  SectionIntro,
-} from '@/components/site/primitives';
-import { installCommand, installCommandWindows, releasesUrl } from '@/data/content';
-import { Link } from '@/lib/router';
-import {
   ArrowRight,
   KeyRound,
   Laptop,
@@ -18,6 +9,15 @@ import {
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
+import {
+  CopyCommand,
+  ExternalDoc,
+  PageHero,
+  PageNext,
+  SectionIntro,
+} from '@/components/site/primitives';
+import { installCommand, installCommandWindows, releasesUrl } from '@/data/content';
+import { Link } from '@/lib/router';
 
 const setupSteps = [
   [
@@ -60,7 +60,7 @@ export function GettingStartedPage() {
           </>
         }
         description="Set up WrongStack without guessing which credential, interface or safety mode you need. This path starts local, keeps project instructions explicit and leaves room to grow into fleets later."
-        aside={<ExternalDoc path="README.md#quick-start">Open repository quick start</ExternalDoc>}
+        aside={<ExternalDoc path="docs/getting-started.md">Open first-session guide</ExternalDoc>}
       />
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
         <SectionIntro index="01" eyebrow="Setup path" title="Four steps. No hidden bootstrap." />

@@ -13,7 +13,11 @@ export function GoalPage() {
           </>
         }
         description="Goal combines a durable mission with autonomous phased runs. My Goals tracks project runs by goal id and session, with task/phase progress, blockers and verification. Git-backed goals run in their own checkouts and retain branches for review before integration."
-        aside={<ExternalDoc path="docs/goal.md">Open Goal docs</ExternalDoc>}
+        aside={
+          <ExternalDoc path="docs/architecture/project-goals.md">
+            Open project goal guide
+          </ExternalDoc>
+        }
       />
 
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
@@ -21,14 +25,14 @@ export function GoalPage() {
           index="01"
           eyebrow="Architecture"
           title="Worktree isolation and durable run state."
-          description="Phase/task state is persisted throughout the run. Optional worktree isolation keeps phase changes reviewable before integration."
+          description="New git-backed goals own a managed checkout and branch. Phase worktrees integrate into that goal branch, which remains available for review before project integration."
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-4">
           {[
             {
               icon: GitBranch,
-              title: 'Worktree per phase',
-              body: 'Plan, implement, test, and review each run in isolated worktrees. No branch switching, no merge conflicts mid-phase.',
+              title: 'Checkout per goal',
+              body: 'Each new git-backed goal gets its own branch and checkout. Phase worktrees integrate there; another terminal can run a different goal without switching the project branch.',
             },
             {
               icon: RotateCcw,
@@ -43,7 +47,7 @@ export function GoalPage() {
             {
               icon: Target,
               title: 'Goal tracking',
-              body: 'My Goals and /goals track goal ids, owning sessions, phase status and task progress. Unknown reachability stays unknown until the result is verified.',
+              body: 'My Goals and /goals separate task progress, phase status, blockers and final verification. A goal with no tasks shows unknown progress; observing another owner does not grant control.',
             },
           ].map(({ icon: Icon, title, body }) => (
             <div key={title} className="rounded-xl border border-line bg-card p-6">
@@ -117,7 +121,7 @@ export function GoalPage() {
             {
               icon: CheckCircle,
               title: 'Manual intervention',
-              body: 'Pause Goal at any time, inspect the worktree, make manual fixes, then resume from where you left off.',
+              body: 'Pause stops admitting new tasks while active work settles. Stop fences late verification results; a stopped final gate can resume without replaying completed tasks.',
             },
           ].map(({ icon: Icon, title, body }) => (
             <article key={title} className="rounded-2xl border border-line bg-card p-7">
@@ -135,25 +139,25 @@ export function GoalPage() {
             index="04"
             eyebrow="Commands"
             title="Start, pause, resume, status."
-            description="Goal integrates with /goal for persistent missions and /coordinator for cross-session tracking."
+            description="Executable phase runs use the project catalog. The persistent goal.json mission used by eternal/parallel autonomy remains a separate workflow."
           />
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
-                cmd: '/goal set "refactor auth"',
-                desc: 'Create a persistent goal. Goal reads this as its mission.',
+                cmd: '/goals',
+                desc: 'List project runs, owners, blockers, progress and verification.',
               },
               {
                 cmd: '/goal start "refactor auth"',
                 desc: 'Plan executable phases and begin an autonomous run.',
               },
               {
-                cmd: '/goal status',
-                desc: 'Check current phase, progress, and any errors encountered.',
+                cmd: '/goal status <id>',
+                desc: 'Inspect one project goal without taking over its owning terminal.',
               },
               {
                 cmd: '/goal pause',
-                desc: 'Suspend at the next phase boundary. Resume with /goal resume.',
+                desc: 'Pause new task admission in the owning terminal. Resume with /goal resume.',
               },
             ].map(({ cmd, desc }) => (
               <div key={cmd} className="rounded-xl border border-line bg-card p-5">

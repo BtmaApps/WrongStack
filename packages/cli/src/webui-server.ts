@@ -34,7 +34,10 @@ import {
   startEmbeddedLiveStatusLogger,
 } from './webui-client-observability.js';
 import type { ConnectedClient } from './webui-server/connection-handler.js';
-import type { WSServerMessage as EmbeddedWSServerMessage } from './webui-server/contracts.js';
+import type {
+  WSClientMessage as EmbeddedWSClientMessage,
+  WSServerMessage as EmbeddedWSServerMessage,
+} from './webui-server/contracts.js';
 import { createWebuiDomainHandlers } from './webui-server/domain-handlers.js';
 import { resolveWebuiHostSettings } from './webui-server/host-settings.js';
 import { startWebuiHttpBridge } from './webui-server/http-bridge.js';
@@ -55,6 +58,7 @@ import { runWebuiServerLifecycle } from './webui-server-lifecycle.js';
 import type { CliWebUIOptions } from './webui-server-options.js';
 import { setupWebuiSessionMaintenance } from './webui-session-maintenance.js';
 import { createWebuiSessionRetirement } from './webui-session-retirement.js';
+export type WSClientMessage = EmbeddedWSClientMessage;
 export type WSServerMessage = EmbeddedWSServerMessage;
 
 export type { CliWebUIOptions } from './webui-server-options.js';

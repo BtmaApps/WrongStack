@@ -33,9 +33,33 @@ export function HqPage() {
             <span className="text-brand">from a browser.</span>
           </>
         }
-        description="HQ is a web-based control panel that connects to every WrongStack session on your machines. Monitor fleet status, stream agent transcripts, track costs, view Brain decisions, and send steer commands — all through a browser dashboard."
-        aside={<ExternalDoc path="docs/hq/README.md">Open HQ docs</ExternalDoc>}
+        description="HQ connects your WrongStack sessions to a browser dashboard. Inspect fleet telemetry, costs and Brain decisions, act on pending approvals, select a command target and move from cockpit attention signals to the view that can resolve them."
+        aside={<ExternalDoc path="docs/hq.md">Open HQ operator guide</ExternalDoc>}
       />
+
+      <section className="mx-auto max-w-[1380px] px-4 pt-12 sm:px-6 lg:px-10">
+        <div className="grid gap-5 lg:grid-cols-3">
+          {[
+            [
+              'A cockpit that admits uncertainty',
+              'Missing telemetry is shown as unknown. Attention shortcuts separate pending decisions, agent errors, alerts, failed commands and disconnected clients. Quick actions show which client will receive the command.',
+            ],
+            [
+              'Navigation you can return to',
+              'View URLs support bookmarks, reload and browser history. A responsive rail, keyboard focus handling, skip-to-content control and operator context keep orientation across desktop and mobile.',
+            ],
+            [
+              'Kanban filters without changed totals',
+              'Search task text and filter status while preserving the board’s ordering, totals and WIP calculations. The visible subset does not redefine the underlying work queue.',
+            ],
+          ].map(([title, body]) => (
+            <article key={title} className="rounded-2xl border border-line bg-card p-6 sm:p-8">
+              <h2 className="text-xl font-black text-fg">{title}</h2>
+              <p className="mt-4 text-sm leading-7 text-muted">{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* ── Architecture ────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">

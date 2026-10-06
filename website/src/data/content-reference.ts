@@ -130,6 +130,42 @@ export const settingGroups: SettingGroup[] = [
     ],
   },
   {
+    name: 'Autonomy & refinement',
+    description: 'Choose continuation, confirmation behavior and the refinement target.',
+    icon: Workflow,
+    fields: [
+      {
+        key: 'autonomy.nextSteps',
+        defaultValue: 'required',
+        explanation:
+          'Finished turns supply another action or a completion marker; optional makes suggestions conditional.',
+      },
+      {
+        key: 'autonomy.autoProceedMaxIterations',
+        defaultValue: '0 (unlimited)',
+        explanation:
+          'Consecutive automatic-turn cap; typed input re-arms it. Open todos and repetition guards still apply.',
+      },
+      {
+        key: 'autonomy.yoloPlus',
+        defaultValue: 'false',
+        explanation:
+          'Remove confirmation prompts per conversation and its workers. User refusal rules remain enforced; repository/cloud config cannot enable it.',
+      },
+      {
+        key: 'autonomy.refinerProvider / refinerModel',
+        defaultValue: 'session defaults',
+        explanation: 'Dedicated refinement target; omitted fields inherit session values.',
+      },
+      {
+        key: 'autonomy.refinerFallbackProfile',
+        defaultValue: 'unset',
+        explanation:
+          'Named fallback-profile candidates take precedence over the explicit refinement target.',
+      },
+    ],
+  },
+  {
     name: 'Fleet',
     description: 'Set worker concurrency, lifecycle, worktrees and shared budgets.',
     icon: Network,
@@ -215,6 +251,8 @@ export const ecosystemPillars = [
       'Manifest cache for lazy servers',
       'Single-flight first connection',
       'Five-cycle reconnect cap',
+      'Inspect negotiated revision, capabilities and server instructions',
+      'Advisory tool hints and request-bound progress/log notifications',
     ],
     command: '/mcp',
   },

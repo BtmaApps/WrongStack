@@ -153,6 +153,7 @@ export function CockpitAttentionStrip({
             <button
               key={item.label}
               type="button"
+              aria-label={`${item.label} ${item.count}`}
               onClick={() => useHqStore.getState().setActiveView(item.view)}
               className="flex items-center gap-2 border border-warning/35 bg-warning/5 px-3 py-2 text-left hover:bg-warning/10"
             >

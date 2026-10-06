@@ -13,7 +13,7 @@ export function ShadowAgentPage() {
           </>
         }
         description="The Shadow Agent is a background fleet monitor with a deterministic cron heartbeat. It observes agent status, detects anomalies, tracks spike tasks, and can intervene on command — silently, without blocking the fleet."
-        aside={<ExternalDoc path="docs/shadow-agent.md">Open Shadow Agent docs</ExternalDoc>}
+        aside={<ExternalDoc path="docs/slash/shadow.md">Open Shadow Agent docs</ExternalDoc>}
       />
 
       {/* ── Responsibilities ────────────────────────────────────────────── */}

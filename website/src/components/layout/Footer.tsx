@@ -31,6 +31,8 @@ const columns = [
     links: [
       ['Getting started', '/getting-started'],
       ['Workflows', '/workflows'],
+      ['Project goals', '/goal'],
+      ['HQ cockpit', '/hq'],
       ['Fleet & Brain', '/fleet'],
       ['Agent roster', '/agent-roster'],
       ['Session modes', '/modes'],

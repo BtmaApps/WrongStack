@@ -209,6 +209,16 @@ machine and the full suite is much larger than this three-file selection.
 | `pnpm test:guard` / `pnpm prepublishOnly` | Three focused plugin tests only |
 | `pnpm test` | Root Vitest suite, then the WebUI package test script |
 | Tag push (`v*.*.*`) | Verify the tag/SHA; build and smoke standalone plus Desktop assets; create the GitHub Release; run the separately gated npm pack/publish path |
+| Manual `CI` dispatch (`ci.yml`) | Run the repository CI jobs on the selected ref; pushes and pull requests do not start them |
+| Manual `Dependency Audit` dispatch (`audit.yml`) | Run the configured dependency audit; there is no scheduled or push trigger |
+| Manual `Deploy Website` dispatch (`pages.yml`) | Validate/build the website and deploy the selected ref to Pages |
+
+Since 1.0.34, CI, dependency audit and Pages deployment use
+`workflow_dispatch` only. Publishing a commit does not start those checks or
+deploy the website. Dispatch them for the reviewed ref and inspect their final
+results separately from the tag-triggered release workflow. Updating README,
+changelog and website content prepares those surfaces; it does not establish
+package publication or a live deployment.
 
 ## Adding a new guard
 

@@ -103,7 +103,7 @@ export function ProvidersPage() {
           index="01"
           eyebrow="Wire families"
           title="The catalog is large; the protocol surface stays small."
-          description="Models and prices refresh from models.dev. Four adapter families cover native and compatible transports without hardcoding every model into the agent."
+          description="Public models and prices refresh from models.dev; account catalogs retain their own membership, limits and status. Four adapter families cover native and compatible transports without hardcoding every model into the agent."
         />
         <div className="mt-12 overflow-hidden rounded-2xl border border-line bg-card">
           {families.map(([name, transport, examples], index) => (

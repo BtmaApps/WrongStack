@@ -210,7 +210,7 @@ describe('release workflow (WS-040)', () => {
   it('keeps the operator runbook on the tag-first automated release path', () => {
     const runbook = readFileSync(join(repoRoot, 'docs', 'release.md'), 'utf8');
 
-    expect(runbook).toContain('git push origin v0.5.0');
+    expect(runbook).toContain('git push origin v<version>');
     expect(runbook).toContain('all eight `wstack-*` targets');
     expect(runbook).toContain('`DESKTOP-SHA256SUMS`');
     expect(runbook).not.toContain('no checked-in release workflow currently does this');
@@ -356,10 +356,9 @@ describe('website CI and Pages verification', () => {
     expect(pages).toContain('cancel-in-progress: false');
   });
 
-  it('triggers Pages when the workspace verification dependency inputs change', () => {
+  it('starts Pages only on manual dispatch', () => {
     const triggers = withoutComments(read('pages.yml')).split('\njobs:')[0]!;
-    for (const path of ['website/**', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
-      expect(triggers).toContain(`- '${path}'`);
-    }
+    expect(triggers).toMatch(/^ {2}workflow_dispatch:/m);
+    expect(triggers).not.toMatch(/^ {2}(?:push|pull_request|schedule):/m);
   });
 });

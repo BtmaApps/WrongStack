@@ -57,6 +57,27 @@ export function InterfacesPage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-[1380px] px-4 pt-8 sm:px-6 lg:px-10">
+        <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
+          <h2 className="text-2xl font-black text-fg">Terminal details that follow the session.</h2>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-muted">
+            The TUI replays a pixel formation of the WRONGSTACK wordmark on startup and after
+            clearing history. Startup and in-session model pickers expose supported reasoning
+            effort. Function-key panels, bug-hunt progress and live worker rows follow the current
+            session; choose solo or read-only companion policy before submitting work.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-5">
+            <Link href="/commands/effort" className="text-sm font-bold text-brand">
+              Reasoning controls →
+            </Link>
+            <Link href="/commands/solo" className="text-sm font-bold text-brand">
+              Session worker policy →
+            </Link>
+            <ExternalDoc path="docs/slash/f-keys.md">Function-key panel guide</ExternalDoc>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
         <SectionIntro
           index="01"

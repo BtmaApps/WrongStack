@@ -24,7 +24,9 @@ export function MemoryPage() {
         }
         description="Sessions reconstruct what happened. SAGE preserves verified project knowledge. Checkpoints capture reversible file state. Compaction keeps the model window healthy without deleting history."
         aside={
-          <ExternalDoc path="docs/archive/plans/sage-architecture-2026-07-11.md">Open SAGE architecture</ExternalDoc>
+          <ExternalDoc path="docs/sage/SYSTEM-REPORT.md">
+            Open current SAGE architecture
+          </ExternalDoc>
         }
       />
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">

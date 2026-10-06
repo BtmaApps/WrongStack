@@ -52,7 +52,7 @@ export function SecurityPage() {
           <SectionIntro
             index="02"
             eyebrow="Permission decision"
-            title="YOLO skips confirmation. It does not erase denial."
+            title="Choose confirmation behavior deliberately."
             description="Tool metadata, hook outcomes, trust rules and runtime danger detection all contribute to a final permission decision."
           />
           <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_.68fr]">
@@ -80,8 +80,16 @@ export function SecurityPage() {
                 What YOLO really means
               </h2>
               <p className="mt-4 text-sm leading-7 text-muted">
-                YOLO auto-approves calls that the active policy permits. A hook denial, explicit
-                deny rule or unavailable capability still blocks the call.
+                YOLO auto-approves routine calls while configured destructive kinds and locked
+                agent-state or credential operations still ask. A user-authored deny under YOLO asks
+                for that call only; accepting it does not remove the rule. Tool-declared denials and
+                hook refusals still block execution.
+              </p>
+              <p className="mt-4 text-sm leading-7 text-muted">
+                YOLO+ removes confirmation prompts, including guarded destructive operations and
+                calls from the conversation's subagents. User-authored refusal rules and
+                tool-declared denials still refuse calls. WebUI tabs keep independent policy;
+                --restricted locks YOLO+ off, and repository or cloud config cannot enable it.
               </p>
               <p className="mt-4 text-sm leading-7 text-muted">
                 Remembered approvals can cover exact input, one executable with any arguments
@@ -90,7 +98,7 @@ export function SecurityPage() {
                 destructive calls and remain subject to command allowlists and hard guards.
               </p>
               <code className="mt-6 block rounded-lg border border-brand/15 bg-card px-4 py-3 font-mono text-xs text-brand">
-                --yolo ≠ bypass security policy
+                /yolo on · /yolo plus · /yolo off
               </code>
               <h3 className="mt-6 font-black text-fg">Optional execution sandbox</h3>
               <p className="mt-3 text-sm leading-7 text-muted">

@@ -1,6 +1,53 @@
 import type { CommandDetailMap } from './command-detail-types';
 
 export const commandDetailsPart1: CommandDetailMap = {
+  '/goals': {
+    purpose: 'Inspect every executable goal in the current project without changing a run.',
+    behavior:
+      '`/goals` lists the project catalog; `/goals <id>` accepts a unique id prefix. Rows show owner/session, tasks, phases, blockers, branch and verification. No-task progress is unknown, and completed tasks do not establish final verification. WebUI My Goals projects the same catalog; another terminal retains control of its run.',
+    before: 'Start an executable run with `/goal start <goal>` or inspect an existing project.',
+    during: 'Read ownership, reachability and verification separately from task progress.',
+    after:
+      'Send pause, stop or retry through the owning terminal. Review the retained goal branch before integration.',
+  },
+  '/nextsteps': {
+    purpose: 'Choose how finished turns propose more work and bound automatic continuation.',
+    behavior:
+      '`/nextsteps required [limit]` requires a next action or an explicit completion marker. `optional` makes suggestions conditional; `limit <n>` caps consecutive automatic turns, with 0 or unlimited removing that cap. Defaults are required and unlimited. In auto autonomy, open todos take priority and repeated suggestions still stop the loop. A typed prompt re-arms the counter; WebUI settings are per tab.',
+    before: 'Choose `/autonomy auto` when you want suggestions to continue automatically.',
+    during:
+      'Use `/nextsteps` to inspect the mode and limit; choose a finite cap when you want an input checkpoint.',
+    after:
+      'Required mode completion stops further suggestions. These controls do not grant tool permissions.',
+  },
+  '/solo': {
+    purpose: 'Choose the TUI session worker policy before submitting work.',
+    behavior:
+      '`/solo on` blocks delegation, background workers, Chimera and companions. `/solo companions` permits only resident read-only Memory/Explore companions; `/solo off` admits workers subject to normal capability, budget and depth controls. The session records its policy for resume and refuses changes after the runtime locks it.',
+    before: 'Choose the worker policy before the first message.',
+    during: 'Use `/solo status` to inspect the selected mode and lock reason.',
+    after: 'The policy does not disable leader tools or change the profile fleet defaults.',
+  },
+  '/effort': {
+    purpose: 'Inspect or set reasoning effort for the active leader model.',
+    behavior:
+      '`/effort` shows the current setting and supported levels. `/effort <level>` updates the active profile and live leader configuration. `auto` or `clear` removes the explicit pin. `matrix` reads role/phase overrides; use `/setmodel reasoning-effort <role|phase|*> <level>` to change those. Unsupported documented levels are refused; unknown capabilities still depend on the provider request resolver.',
+    before: 'Inspect the current model vocabulary before selecting an effort level.',
+    during:
+      'The next request uses the resolved effort. Startup and TUI model pickers also expose model-aware effort choices.',
+    after:
+      'Clearing the leader setting does not clear worker overrides or prove provider wire support.',
+  },
+  '/permissions': {
+    purpose: 'Explain a tool decision and manage temporary session rules.',
+    behavior:
+      '`rules` shows compiled policy order and YOLO state. `explain <tool> [JSON]` evaluates a call without executing it. `allow`, `deny`, `remove <n>` and `clear` manage session overrides. Rules are not written to profile or project trust files; restricted mode ignores session allows while retaining denies.',
+    before: 'Identify the registered tool and input whose decision you want to inspect.',
+    during:
+      'Read the compiled rule view; destructive calls, sensitive reads and higher-priority boundaries can still require approval or refuse.',
+    after:
+      'The shell `wstack permissions` command creates a fresh-session view and cannot inspect this session’s temporary answers.',
+  },
   '/sandbox': {
     purpose: 'Inspect the resolved exec-family sandbox policy and its recent audit records.',
     behavior:
@@ -70,11 +117,11 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Refine a prompt before it is sent to the agent — improve clarity, add missing context, or rephrase for better results.',
     behavior:
-      'The command takes your raw prompt and runs it through a refinement pass. The model expands vague instructions, adds relevant context from the session, and sharpens the ask. You see the enhanced version and can accept it, edit it, or discard it before it reaches the agent.',
+      '`/enhance on`, `off` and `toggle` control automatic prompt refinement. Each pass rewrites the latest message using recent conversation as read-only context. Prompt and goal refinement share provider/model target rules; preview and failure decisions are shared by TUI and WebUI. Recorded evidence includes the effective target, usage and outcome.',
     before:
       'Write a rough prompt — even a few words will do. The enhancer works best when you give it a clear goal statement.',
     during:
-      'The refined prompt appears for your review. You can accept it as-is, edit it inline, or cancel.',
+      'Accept refined or English text, keep the original, edit, retry or cancel. A failure can retry the same target or a selected fallback instead of silently changing the submitted text.',
     after:
       'The accepted prompt is sent to the agent. If you edited it, your version is used. If cancelled, nothing is sent.',
   },
@@ -94,15 +141,15 @@ export const commandDetailsPart1: CommandDetailMap = {
 
   '/goal': {
     purpose:
-      'Set, show, pause, resume, journal, or clear an autonomous mission that the agent works toward across turns. The eternal / parallel engines keep the goal, its Kanban board, and the Brain council in sync through adaptive coordination — when every deliverable is complete and the Brain confirms `goal reached`, the loop stops and `goal.json` records the verdict.',
+      'Create an executable phase goal or maintain a persistent eternal/parallel mission, with explicit ownership and recorded progress.',
     behavior:
-      'A goal is a persistent, high-level objective the agent keeps in context. `/goal set "..."` creates one and seeds a matching Kanban board with one card per deliverable. While `/autonomy eternal` runs, the agent emits `[DONE: <index>]` or `[DONE: <text-prefix>]` markers in its output to mark deliverables complete; the coordinator moves each card to Done, recomputes progress deterministically (ratio of completed deliverables), and consults Brain exactly once when the checklist reaches 100%. A `goal_reached` verdict stops the loop with `goal reached` recorded; a `keep_working` verdict leaves the goal active at 100% so the next iteration can re-attempt. `/goal pause` suspends it; `/goal resume` reactivates it; `/goal journal` shows progress; `/goal clear` removes it.',
+      '`/goal start <goal>` creates an executable phase run. New git-backed runs use a dedicated goal checkout; phase worktrees integrate into that retained goal branch. `/goals` and `/goal status <id>` inspect all project runs, and other terminals retain their own control. `/goal set`, `refine` and `journal` operate the separate persistent goal.json mission used by eternal/parallel autonomy; the catalog does not migrate that aggregate into multiple missions.',
     before:
       'Formulate a concrete, achievable mission statement. Goals work best when they are scoped to a session or a few sessions. List the deliverables you expect the agent to finish — the engine uses them for both the Kanban board and the progress bar.',
     during:
-      'The goal appears in the status line and the agent references it when choosing next actions. The Kanban board auto-refreshes as the agent emits `[DONE:]` markers, and the progress bar reflects the completed-deliverable ratio. Brain is consulted exactly once per goal, at 100%, and the goal file is preserved (never deleted) so the verdict survives reloads.',
+      'Inspect task progress, phase state, owner, blockers and final verification independently. Pause stops admitting new tasks while active work settles; stop fences late verification results. Another terminal’s snapshot is observable without granting mutation rights.',
     after:
-      'Use `/goal journal` to review progress. The final state of a reached goal — including the `reachedAt` timestamp and the `goal reached` note — stays in `goal.json`; clear it with `/goal clear` only when you want to start a fresh mission.',
+      'Review the goal branch and verification evidence before integration. A stopped final gate can resume without replaying completed tasks; inspect unmerged phases first. Use `/goal journal` for the separate persistent mission’s recorded history.',
   },
 
   '/autonomy': {
@@ -157,14 +204,12 @@ export const commandDetailsPart1: CommandDetailMap = {
   },
 
   '/refiner': {
-    purpose:
-      'Inspect and tune automatic prompt-refinement behavior — control how the agent polishes prompts before execution.',
+    purpose: 'Inspect or select a dedicated refinement provider/model and fallback profile.',
     behavior:
-      'The refiner automatically enhances prompts before they reach the agent. `/refiner` shows current settings. You can adjust the refinement level, enable/disable it, or configure which prompt types get refined. Works alongside `/enhance` for manual refinement.',
-    before:
-      'Understand your refinement preferences. Aggressive refinement may change your intent; light refinement only fixes clarity.',
+      '`/refiner show` displays the configured provider, model and fallback profile. `set provider <id>`, `set model <id>` and `set fallback-profile <name>` persist them to the active profile; `clear` removes all three. Resolution considers named fallback-profile candidates before the explicit target and fills omitted fields from the session. Prompt and goal refinement share this ordering; configured models need not be favorites. `/enhance` controls whether prompt refinement runs.',
+    before: 'Configure the provider credentials and named fallback profile you intend to use.',
     during:
-      'Settings take effect immediately. Future prompts are refined according to the new configuration.',
+      'Inspect the effective target and recorded usage/outcome; unavailable targets use the consumer’s fallback or recovery flow.',
     after: 'Test with a sample prompt to verify the refinement level matches your expectations.',
   },
 

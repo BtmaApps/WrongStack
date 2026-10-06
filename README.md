@@ -55,27 +55,34 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.33
+### What's new in 1.0.34
 
-- **[ChatGPT account catalogs](docs/chatgpt-model-catalog.md)** now list every
-  entitled model, including `gpt-6.1-sol`, `gpt-6-sol` and `gpt-6-luna`, with
-  reasoning levels and retirement notices. Context window, pricing and status
-  come from the account snapshot, never from models.dev.
-  `WRONGSTACK_CODEX_CLIENT_VERSION` adopts a newer catalog rollout without a
-  release.
-- **Safe OAuth rotation:** Codex and Claude renew single-use refresh tokens
-  inside a locked config transaction, so concurrent processes adopt the rotated
-  token instead of replaying a consumed one. A failed proactive refresh no
-  longer fails a request whose token is still valid.
-- **Model commands:** `wstack models <provider>` and `models caps` merge the
-  account snapshot; `models hide/show/reset` no longer throw after writing.
-- **Fixes** for duplicate fallback suggestions, Antigravity bootstrap
-  retries, SDD cleanup after a deadlocked run, and WebUI frames sent without a
-  payload.
+- **[Project goals](docs/architecture/project-goals.md):** `/goals` and WebUI
+  **My Goals** track owning sessions, tasks, phases, blockers and verification.
+  New git-backed goals use dedicated checkouts and retain their branches for
+  review before integration. Observing another terminal's goal does not grant control.
+- **[Explicit continuation](docs/slash/nextsteps.md):** require a next action
+  or completion marker and cap consecutive automatic turns. **[YOLO+](docs/slash/yolo.md)**
+  removes confirmation prompts per conversation, including its subagents;
+  user-authored refusal rules and tool-declared denials still apply.
+- **[Dead-code workflow](docs/tools/dead-code.md):** scan TypeScript reachability,
+  inspect confidence and planned diffs, then apply selected fixes with fresh
+  analysis, default package typechecks, rollback and conflict-aware backup undo.
+- **[MCP visibility](docs/mcp-protocol-conformance.md):** inspect negotiated
+  revision, capabilities, server instructions, advisory tool hints and correlated
+  progress/log notifications. Unsupported revisions fail without endless reconnects.
+- **Refinement and HQ:** prompt/goal refinement shares target selection and
+  recorded outcomes across TUI/WebUI. The startup model picker adds supported
+  reasoning-effort choices. HQ gains bookmarkable navigation, operator context,
+  attention shortcuts, explicit quick-action targets and Kanban filters.
+- **Maintenance:** smaller source modules, dependency-audit/parser fixes,
+  replayable TUI wordmark formation, stronger goal lifecycle handling and a
+  reorganized documentation set with
+  source-derived catalogs and `pnpm docs:check`.
 
-1.0.32 added optional execution sandbox tiers, the general-purpose
-[Scout](docs/configuration.md#systemprompt--baseline-system-prompt-selection)
-identity and [post-edit LSP feedback](docs/agent-feedback.md).
+1.0.33 added complete [ChatGPT account catalogs](docs/chatgpt-model-catalog.md)
+and coordinated OAuth token rotation. Scout, optional execution sandbox tiers
+and [post-edit LSP feedback](docs/agent-feedback.md) remain available.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -361,12 +368,19 @@ required**. Deep reference lives in [`docs/reference.md`](docs/reference.md).
 
 ### Tools & code intelligence
 
-The built-in toolbox spans filesystem edits, code quality (`lint`/`format`/
+The 72-tool built-in toolbox spans filesystem edits, code quality (`lint`/`format`/
 `typecheck`/`test`), execution, web search/fetch, git, packages, browser/E2E
 controls, and a project-owned Codebase Index. The index combines SQLite/FTS5
 substring search, local semantic ranking, content-hash invalidation, symbol and
 call-graph navigation, and bounded parser workers for large repositories. Full map:
 [reference → tools](docs/reference.md#built-in-tools).
+
+`dead-code-scan` adds independent TypeScript reachability analysis with finding
+ids, confidence and planned diffs. `dead-code-fix` rechecks selected findings,
+typechecks affected packages by default and rolls back failed verification.
+Backups support undo with conflict reporting. Public API and dynamic entrypoints
+can have consumers outside the visible graph; review them before cleanup.
+See [dead-code workflows](docs/tools/dead-code.md).
 
 **[WrongStack ToolFlow](docs/toolflow.md)** composes repeated or dependent tool
 calls in sandboxed JavaScript and returns the findings needed for the next
@@ -422,6 +436,23 @@ For executable phase goals, `/goals` and WebUI **My Goals** provide a project
 catalog with goal ids, owning sessions, task/phase progress and blockers.
 Git-backed terminal goals run in separate checkouts and retain their goal
 branches for review before integration. See [project goal tracking](docs/architecture/project-goals.md).
+
+Task progress and final verification are distinct: a completed checklist does
+not establish a verified outcome. Another terminal's goal is read-only in My Goals;
+send mutations through its owning terminal.
+
+[`/nextsteps required [limit]`](docs/slash/nextsteps.md) closes finished turns
+with a concrete next action or completion marker. In `auto` autonomy, open todos
+take priority; a configured limit pauses consecutive automatic turns for input.
+Defaults are required next steps and unlimited continuation, with repetition
+guards still active.
+
+[`/yolo on`, `/yolo plus`, `/yolo off`](docs/slash/yolo.md) choose confirmation
+behavior independently from continuation. YOLO+ removes confirmation prompts
+for a conversation and its subagents, while user-authored refusal rules and
+tool-declared denials remain enforced. WebUI tabs are isolated, and
+`--restricted` locks YOLO+ off. [`/solo`](docs/slash/solo.md) controls whether a
+TUI session admits workers or only read-only companions; choose it before work starts.
 
 ### Multi-agent fleet + Director
 
@@ -511,7 +542,7 @@ runs that bridge headless).
 - **Curated, not chaotic** — a review queue and hygiene pipeline keep memory trustworthy; deletions are guarded.
 - **Checked, not trusted blindly** — a read-only Memory Companion verifies injected memories against current source, agents record evidence-backed feedback after real use, and a memory can state when it applies.
 
-See [`docs/archive/sage/ARCHITECTURE.md`](docs/archive/sage/ARCHITECTURE.md).
+See the current [SAGE system reference](docs/sage/SYSTEM-REPORT.md).
 
 ### Tasks & Kanban — active work tracking
 
@@ -712,10 +743,11 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.33** — current release; semver from 1.0.0 onward
+- **v1.0.34** — current repository version; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
-- Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`
+- Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`
+- CI, dependency audit and Pages deployment are manually dispatched; pushes do not run them
 - Node 22.19+ only, ESM-only, no CommonJS bundles
 - Threat model: [`SECURITY.md`](SECURITY.md)
 
@@ -725,6 +757,8 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 | Doc | What it covers |
 |-----|----------------|
+| [Getting started](docs/getting-started.md) | First session and everyday workflow |
+| [Documentation index](docs/README.md) | Maintained guides and dated archives |
 | [CLI reference](docs/cli-reference.md) | Launch flags, subcommands, and `wstack update` |
 | [Reference](docs/reference.md) | Tools, providers, slash commands, modes, skills at a glance |
 | [Project Kit](docs/project-kit.md) | Reusable project tools with schemas, verification, revisions, and execution history |
@@ -732,7 +766,10 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 | [Subcommands](docs/subcommands/) | Every `wstack <subcommand>` |
 | [Configuration](docs/configuration.md) | Config files, env vars, project conventions |
 | [Architecture](docs/architecture.md) | Kernel primitives, pipelines, agent lifecycle |
-| [SAGE memory](docs/archive/sage/ARCHITECTURE.md) | Long-term memory: storage, anchors, knowledge graph, retrieval |
+| [Project goals](docs/architecture/project-goals.md) | Goal ownership, checkouts, progress and verification |
+| [Tool workflows](docs/tools/README.md) | Language tools, dead-code cleanup, codebase context and web evidence |
+| [Typed client API](docs/client-api.md) | Integrating with the WebUI protocol and client |
+| [SAGE memory](docs/sage/SYSTEM-REPORT.md) | Long-term memory: storage, anchors, knowledge graph, retrieval |
 | [SAGE feedback lifecycle](docs/sage-feedback-lifecycle.md) | Memory Companion, validity conditions, evidence-based feedback |
 | [OAuth sign-in](docs/oauth-signin.md) | Subscription authentication |
 | [HQ service](docs/hq-service.md) | Always-on HQ under systemd |

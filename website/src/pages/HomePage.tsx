@@ -303,14 +303,15 @@ export function HomePage() {
         <div className="mx-auto max-w-[1380px] px-4 py-12 sm:px-6 lg:px-10">
           <div className="flex flex-col gap-6 rounded-2xl border border-line bg-card p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <Eyebrow>Now shipping · v{version}</Eyebrow>
+              <Eyebrow>Release highlights · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Every model your account carries. Tokens that rotate safely.
+                Separate goal branches. Clear next steps. Reviewable cleanup.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                In {version}: ChatGPT account catalogs list every entitled model with its own
-                limits, and Codex and Claude sign-ins survive refresh-token rotation across
-                concurrent processes. Fallback, Antigravity, SDD and WebUI fixes round it out.
+                In {version}: track project goals by owning session, keep each goal's branch for
+                review, and choose how automatic work continues. Scan TypeScript dead code, preview
+                selected edits and verify cleanup. MCP visibility and HQ attention shortcuts keep
+                the work inspectable.
               </p>
             </div>
             <a
@@ -324,16 +325,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Every entitled model',
-                'ChatGPT account catalogs now include gpt-6.1-sol, gpt-6-sol and gpt-6-luna, with reasoning levels and retirement notices. Context, pricing and status come from the account, never from models.dev.',
+                'Project-owned goals',
+                'My Goals and /goals separate task progress, blockers and verification. New git-backed goals use dedicated checkouts; observing another terminal does not transfer control.',
               ],
               [
-                'Sign-ins that stay signed in',
-                'Codex and Claude renew single-use refresh tokens inside a locked config transaction, so a second process adopts the rotation instead of replaying a consumed token.',
+                'Continuation you choose',
+                '/nextsteps requires a follow-on action or completion marker and can limit automatic turns. Session YOLO+ removes confirmation prompts while retaining explicit user refusal rules.',
               ],
               [
-                'Scout and sandbox tiers',
-                'Since 1.0.32: start with --system-scout for research, writing, operations or code, and opt into exec-family sandbox tiers. Sandboxing is off by default; policy-only remains advisory.',
+                'Inspect before cleanup',
+                'dead-code-scan supplies finding ids, confidence and planned diffs. dead-code-fix rechecks the selection, typechecks packages by default and rolls back failed verification.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">
