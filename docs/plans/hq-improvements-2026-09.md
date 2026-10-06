@@ -117,7 +117,7 @@ silences a rule forever. Guard with a max snooze duration (default 24h,
 operator-configurable in the same file).
 
 **Files:** `packages/core/src/hq/alerts.ts`,
-`packages/cli/src/hq-server/routes/alerts-handlers.ts` (new),
+a proposed CLI alert route module (not a current source file),
 `packages/webui-hq/src/views/alerts.tsx` (snooze button + countdown badge).
 
 ### RFC: W2 #13 — Persisted alert config
@@ -353,7 +353,7 @@ the granted scope when the TTL elapses.
 - Audit chain: a TTL-bounded grant is a different event than an unbounded
   one. The audit log should record `kind`, `ttlMs`, `grantedUntil`.
 
-**Files:** `packages/core/src/types/permission-policy.ts`,
+**Files:** `packages/core/src/types/permission.ts`,
 `packages/core/src/hq/protocol/tool.ts`,
 `packages/core/src/hq/approval-bridge.ts`,
 `packages/core/src/core/confirm-observers.ts`.

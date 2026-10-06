@@ -23,7 +23,7 @@
  * during the one-time AssertNever check, so an entry can never fall through
  * in CI.
  *
- * See docs/audit/webui-full-review-2026-09-03.md B-17 for the context and
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-17 for the context and
  * view-router/shell examples.
  */
 import { type ComponentType, lazy } from 'react';

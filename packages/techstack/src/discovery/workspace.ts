@@ -16,7 +16,7 @@
  * Languages with no `EcosystemId` mapping (`deno`, `shell`) are dropped from
  * the result — they cannot be inventoried by the TechStack pipeline.
  *
- * @see docs/specs/techstack-sdd.md §3.2, §6
+ * @see docs/archive/specs/techstack-sdd.md §3.2, §6
  */
 
 import type {

@@ -5,7 +5,7 @@
  * parsing (Maven has no standardized lockfile); version resolution
  * requires `mvn dependency:tree` which is not invoked here.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier B
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier B
  */
 
 import { readFileSync } from 'node:fs';

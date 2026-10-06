@@ -5,7 +5,7 @@ third-party API. See [What leaves the machine](#what-leaves-the-machine).
 
 ## Where this sits
 
-`dispatchAgent` routes a free-form task to one of the ~75 catalog roles in two
+`dispatchAgent` routes a free-form task to a registered catalog role in two
 stages:
 
 1. **Keyword heuristic** — scores each role's `capability.keywords` against the

@@ -6,7 +6,7 @@
  *
  * Supports: pnpm, npm, yarn, bun — determined by lockfile presence.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier A
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier A
  */
 
 import { access, readFile, stat } from 'node:fs/promises';

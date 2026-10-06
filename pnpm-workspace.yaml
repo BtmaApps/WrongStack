@@ -6,7 +6,7 @@
 #     * Native code / node-gyp usage
 #     * Obfuscated or remote-executing postinstall scripts
 #     * Whether the package is truly required at install time
-# See docs/plans/security-hardening-2026-06.md (P2) and SECURITY.md.
+# See docs/archive/plans/security-hardening-2026-06.md (P2) and SECURITY.md.
 
 packages:
   - "packages/*"

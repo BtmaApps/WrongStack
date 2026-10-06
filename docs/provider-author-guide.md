@@ -22,7 +22,7 @@ wiring, SSE parsing — is shared by `WireFormatProvider`.
 ### The shape
 
 ```ts
-import type { StreamEvent } from '@wrongstack/core';
+import type { StreamEvent } from '@wrongstack/core/types';
 import type { WireFormatConfig } from '@wrongstack/providers';
 
 const config: WireFormatConfig<MyStreamState> = {
@@ -120,7 +120,7 @@ share state across streams.
 Wrap the config in a factory and register it:
 
 ```ts
-import type { ProviderFactory } from '@wrongstack/core';
+import type { ProviderFactory } from '@wrongstack/core/registry';
 import { WireFormatProvider } from '@wrongstack/providers';
 import { myLlmConfig } from './my-llm-config.js';
 
@@ -318,7 +318,7 @@ prefer extending that rather than inlining a map.
 Override only when the vendor returns errors in a non-standard envelope:
 
 ```ts
-import { ProviderError } from '@wrongstack/core';
+import { ProviderError } from '@wrongstack/core/types';
 
 normalizeError(status, body) {
   const j = JSON.parse(body);

@@ -167,7 +167,7 @@ packages/cli/src/auth-menu/         # Modular auth menu implementation
   helpers.ts        — Config I/O wrappers
   index.ts          — Public API re-exports
 
-packages/cli/src/auth-menu.ts       # Backward-compatible re-export shim
+packages/cli/src/auth-menu/index.ts # Auth-menu entry point
 packages/cli/src/slash-commands/auth.ts  # /auth slash command
 packages/cli/src/subcommands/handlers/auth.ts  # Subcommand handler
 packages/cli/src/provider-config-utils.ts  # Shared config I/O + normalization

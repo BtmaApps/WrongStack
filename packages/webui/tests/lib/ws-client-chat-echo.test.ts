@@ -3,7 +3,7 @@ import { WrongStackWebSocketClient } from '../../src/lib/ws-client.js';
 import type { WSServerMessage } from '../../src/types/server-message.js';
 
 /**
- * B-04 (docs/audit/webui-full-review-2026-09-03.md) — the suppression map
+ * B-04 (docs/archive/local/audit/webui-full-review-2026-09-03.md) — the suppression map
  * moved from a type-keyed FIFO (which suffered a multi-tab race: tab A's
  * suppression could swallow tab B's `/tools` reply when B's response
  * happened to arrive first) to a requestId-keyed map. Each `echoToChat:

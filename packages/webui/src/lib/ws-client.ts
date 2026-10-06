@@ -165,7 +165,7 @@ class WrongStackWebSocketClientBase {
    * unmounted mid-flight, server crash, etc.) so the map cannot grow
    * unboundedly.
    *
-   * B-04 (docs/audit/webui-full-review-2026-09-03.md).
+   * B-04 (docs/archive/local/audit/webui-full-review-2026-09-03.md).
    */
   private echoSuppression = new WsClientEchoSuppression();
 

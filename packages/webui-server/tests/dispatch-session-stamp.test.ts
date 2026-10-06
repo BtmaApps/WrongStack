@@ -28,7 +28,7 @@ it('keeps concurrent operation request identities separate across async continua
 });
 
 /**
- * B-05 (docs/audit/webui-full-review-2026-09-03.md).
+ * B-05 (docs/archive/local/audit/webui-full-review-2026-09-03.md).
  *
  * `key.operation_result` is the server's general-purpose result channel — 90
  * call sites through six `sendResult` helpers — and it carried no session at

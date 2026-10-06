@@ -5,9 +5,9 @@
  * utilities, and the discovery wrapper. Inventory/enrichment/audit engines,
  * registry clients, advisory clients, the policy classifier, the SQLite
  * store, the report generator, and the idle-delivery coordinator are
- * scheduled for later rollout phases per docs/specs/techstack-sdd.md §9.
+ * scheduled for later rollout phases per docs/archive/specs/techstack-sdd.md §9.
  *
- * @see docs/specs/techstack-sdd.md
+ * @see docs/archive/specs/techstack-sdd.md
  */
 
 // ── Tier C adapters (§6) ────────────────────────────────────────────────

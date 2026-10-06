@@ -2,14 +2,16 @@
 
 Opens the TUI's F-key panels by number, for terminals or keyboards where the
 physical F-keys are captured (tmux, some terminal emulators, laptops with an
-Fn layer). `/f 3` does exactly what pressing F3 does.
+Fn layer). In the TUI `/f` opens a keyboard-navigable picker; `/f3` directly
+requests the F3 panel. The CLI's underlying `/f 3` numeric launcher is
+overridden by that TUI picker and should not be confused with `/f3`.
 
 ## Usage
 
 | Command | Effect |
 |---|---|
-| `/f` | List all twelve panels with their numbers. |
-| `/f <1-12>` | Open the corresponding panel. |
+| `/f` | TUI: open the panel picker. REPL: list numbered panels. |
+| `/f <1-12>` | Underlying CLI numeric launcher; the TUI override opens its picker. |
 | `/f1` … `/f12` | Same, as single commands (hidden from the slash picker). |
 
 ## Panel map
@@ -20,14 +22,14 @@ Fn layer). `/f 3` does exactly what pressing F3 does.
 | F2 | fleet orchestration monitor |
 | F3 | agents live monitor |
 | F4 | worktree monitor |
-| F5 | autonomy settings |
+| F5 | plan panel |
 | F6 | todos monitor overlay |
 | F7 | queue panel |
 | F8 | process list overlay |
 | F9 | goal panel |
 | F10 | live sessions panel |
 | F11 | coordinator monitor |
-| F12 | status line picker |
+| F12 | Kanban board panel |
 
 ## Notes
 

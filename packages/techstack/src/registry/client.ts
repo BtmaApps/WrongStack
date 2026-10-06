@@ -5,7 +5,7 @@
  * Features: in-memory cache with ETag/TTL, per-host concurrency limit (max 3),
  * exponential backoff on 429/5xx responses.
  *
- * @see docs/specs/techstack-sdd.md §5, §6
+ * @see docs/archive/specs/techstack-sdd.md §5, §6
  */
 
 import { compareVersions } from '../policy/status.js';

@@ -225,7 +225,7 @@ Responses: `202` `{ commandId, queued: true, clientId }` on accept;
 a project that has **no connected agent** (e.g. a terminal open but no
 active leader run, or nothing running at all), the dashboard falls back
 to `POST /api/mailbox-send`. This writes the prompt directly into the
-project's `GlobalMailbox` on disk, where the next agent to run — or any
+project's `SqliteMailbox` on disk, where the next agent to run — or any
 open terminal/WebUI — picks it up.
 
 **Target resolution is server-side and path-safe.** The browser sends a
@@ -864,7 +864,7 @@ simultaneously.
 > only for temporary development/demo sharing. For unattended deployments, use
 > token/password mode plus a production TLS-terminating, identity-aware proxy.
 > The plan for stricter browser controls lives in
-> [Access Control and Security](../plans/hq-command-center-2026-06.md#access-control-and-security).
+> [Access Control and Security](../archive/plans/hq-command-center-2026-06.md#access-control-and-security).
 > The consolidated threat model, defaults, and roadmap are tracked
 > in [SECURITY.md](../../SECURITY.md). Treat anything below as
 > forward-looking guidance, not a supported production configuration.
@@ -939,7 +939,7 @@ token enabled even when another access layer sits in front of HQ.
 Do **not** run `wstack --hq --host 0.0.0.0` on a public VPS without
 TOKEN MODE + a TLS-terminating proxy. In OPEN MODE there is nothing
 preventing an unauthenticated client or browser from connecting. The plan's
-[VPS guidance](../plans/hq-command-center-2026-06.md#vps-guidance) lists
+[VPS guidance](../archive/plans/hq-command-center-2026-06.md#vps-guidance) lists
 the prerequisites (HTTPS reverse proxy, strong password, client enrollment
 tokens, explicit retention/data directory, no raw content publishing) —
 all of which require Phase 2 auth work that has not shipped yet.
@@ -1162,11 +1162,11 @@ is also taken.
   mailbox aggregation, protocol mismatch, drawer markup, live event feed
 - `packages/core/src/hq/` — protocol, redaction, mapper, publisher,
   factory (client-side)
-- `packages/core/src/coordination/global-mailbox.ts` — `GlobalMailbox` →
+- `packages/core/src/coordination/sqlite-mailbox.ts` — `SqliteMailbox` →
   `HqPublisher` wiring
 - `packages/core/src/mailbox-attach.ts` — agent-loop checker mailbox
   publisher injection
-- `docs/plans/hq-command-center-2026-06.md` — architecture and phased plan
+- `docs/archive/plans/hq-command-center-2026-06.md` — architecture and phased plan
 - `docs/configuration.md` — full HQ env-var reference table
 
 ## Shared mailbox router

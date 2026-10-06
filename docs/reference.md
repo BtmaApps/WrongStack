@@ -11,15 +11,17 @@ Use this as a map; the deep docs it links to are authoritative.
 - [Architecture](architecture.md)
 - [Skills](skills.md)
 - [Agents / roster](agents.md)
+- [First session](getting-started.md)
+- [Tool workflows](tools/README.md)
+- [Typed client API](client-api.md)
 
 ---
 
 ## Built-in tools
 
-WrongStack ships **68 built-in tools** — no plugins required (the exact count is
-derived from `builtinTools`; see `TOOL_COUNT` in
-`website/src/data/runtime-catalog.ts`). They fall into
-these families:
+The [source-derived catalog](current-catalog.md#built-in-tools) lists the
+current built-in registrations from `packages/tools/src/builtin.ts`. They fall
+into these families:
 
 | Family | Examples |
 |--------|----------|
@@ -27,14 +29,14 @@ these families:
 | Code quality | `lint`, `format`, `typecheck`, `test`, `codebase-targeted-test`, `security-ast-scan` |
 | Language ops | `language_info`, `language`, `language_package` |
 | Execution | `bash`, `exec`, `pwsh` |
-| Search & web | `search`, `fetch` |
-| Project insight | `codebase-index` (SQLite/FTS5 symbol index), `codebase-search`, `codebase-skeleton`, `codebase-repo-map`, `codebase-impact-analysis`, `codebase-incoming-calls`, `codebase-outgoing-calls`, `codebase-stats`, `dead-code-scan` |
+| Search & web | `search`, `fetch`, `read_url_content` |
+| Project insight | `codebase-index` (SQLite/FTS5 symbol index), `codebase-search`, `codebase-skeleton`, `codebase-repo-map`, `codebase-impact-analysis`, `codebase-incoming-calls`, `codebase-outgoing-calls`, `codebase-stats`, `codebase-context`, `dead-code-scan`, `dead-code-fix` |
 | Planning | `todo`, `plan`, `task`, `kanban` |
 | Git | `git` |
 | Packages | `install`, `audit`, `outdated`, `logs` |
 | Generation | `design` |
 | Browser / E2E | `browser_open`, `browser_navigate`, `browser_click`, `browser_screenshot`, `browser_evaluate`, `e2e_plan`, … |
-| Meta & tooling | `clarify`, `tool_search`, `tool_use` |
+| Meta & tooling | `clarify`, `tool_search`, `tool_use`, `tool_script`, `present_artifact`, `project_kit`, `project_kit_run` |
 | Structured edits | `codebase-ast-replace`, `codebase-invariant-check` |
 
 Related surfaces that are **not** built-in tools: `git_autocommit` /
@@ -44,13 +46,16 @@ Related surfaces that are **not** built-in tools: `git_autocommit` /
 `spawn_subagent` / `assign_task` / `await_tasks` are the runtime agent
 layer.
 
-Every one of the 67 is registered and callable. How many are *described* to the
+Every built-in registration is available to the registry; enabled tools still
+depend on session policy and configuration. How many are *described* to the
 model per request depends on `features.tokenSavingMode`: the default withholds
 the specialized schemas and the model reaches them through `tool_search` (find
 it) and `tool_use` (call it), which is why that pair is always present. Set the
 mode to `off` to describe the whole catalog directly.
 
-Run `wstack tools` for the live, version-specific list.
+Run `wstack tools` for the live, version-specific list. The
+[tool workflow index](tools/README.md) explains detection/planning/execution,
+dead-code cleanup, context retrieval and web evidence with schema examples.
 
 ---
 

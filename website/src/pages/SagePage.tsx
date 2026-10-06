@@ -28,7 +28,7 @@ export function SagePage() {
         }
         description="SAGE is WrongStack's persistent, structured knowledge system. It remembers facts, conventions, decisions, and anti-patterns — then scores and injects the most relevant ones into every agent turn."
         aside={
-          <ExternalDoc path="docs/plans/sage-architecture.md">Open SAGE architecture</ExternalDoc>
+          <ExternalDoc path="docs/archive/plans/sage-architecture-2026-07-11.md">Open SAGE architecture</ExternalDoc>
         }
       />
 

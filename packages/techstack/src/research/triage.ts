@@ -3,7 +3,7 @@
  *
  * Decides which dependencies are worth an LLM call. No LLM, no network.
  *
- * @see docs/specs/techstack-sdd.md §31, §557
+ * @see docs/archive/specs/techstack-sdd.md §31, §557
  */
 
 import type { DependencyObservation, DependencyStatus } from '../types.js';

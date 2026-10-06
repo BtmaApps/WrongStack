@@ -8,10 +8,15 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 
 | You want to… | Start here |
 |---|---|
+| Start a first session and choose a surface | [getting-started.md](getting-started.md) |
 | Understand how the system is wired | [architecture.md](architecture.md) — the maintained architecture overview |
 | Add a new tool, plugin, provider, or help module | [Author Guides](#author-guides) below |
+| Choose and use built-in tools | [Tool workflows](tools/README.md) |
+| Connect an application to the WebUI API | [client-api.md](client-api.md) |
 | Look up CLI flags, subcommands, and `wstack update` | [cli-reference.md](cli-reference.md) |
 | Scan tools, providers, slash commands, modes, and skills at a glance | [reference.md](reference.md) |
+| Check exact source registrations | [current-catalog.md](current-catalog.md) |
+| Update or check documentation | [maintenance.md](maintenance.md) |
 | Understand a specific subcommand | [Subcommand Reference](#subcommand-reference) |
 | Understand a specific slash command | [Slash Command Reference](#slash-command-reference) |
 | Configure MCP servers (browser, SSH, GitHub, …) | [subcommands/mcp.md](subcommands/mcp.md) → `mcpServers` in [configuration.md](configuration.md) |
@@ -29,12 +34,13 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | Document | What it covers | When to read |
 |---|---|---|
 | [architecture.md](architecture.md) | Package layout, layer model, dependency direction, IPC contracts | **Read first** — the canonical architecture entry point |
+| [architecture/package-owners.md](architecture/package-owners.md) | Shared package owners, public integration surfaces and host boundaries | Read when selecting a package dependency or integration API |
 | [wrongtrace.md](wrongtrace.md) | WrongTrace integration: the optional external daemon, `@wrongstack/wrongtrace` adapter (HTTP/IPC/MCP), guardrail hooks, WrongProxy provider routing, testing & troubleshooting | Read when working on `packages/wrongtrace/`, the CLI guardrail hooks, or `tools.wrongProxy` |
 | [architecture-rules.md](architecture-rules.md) | Seven-layer internal runtime-import ordering with automated enforcement | Read when adding a new file to `packages/core/src/` |
-| [plans/session-catalog-project-service-2026-08.md](plans/session-catalog-project-service-2026-08.md) | Detailed project plan for daemon-owned session claims, live presence, and shared session catalog operations | Read before changing session ownership, resume, registry, session index, or cross-surface presence |
+| [architecture/session-catalog.md](architecture/session-catalog.md) | Catalog claims, presence and transcript ownership | Read before changing session ownership or resume |
 | [webui.md](webui.md) | WebUI architecture: Vite + React 19 + WebSocket + Monaco | Read when working on `packages/webui/` |
 | [architecture/simpleui-message-lifecycle.md](architecture/simpleui-message-lifecycle.md) | SimpleUI message lifecycle end to end: composer → `user_message` frame → webui-server → `@wrongstack/core` emit sites → rendered chat, plus the client/server protocol frame registry | Read when working on `packages/simpleui/`, the surface protocol, or the chat frame flow |
-| [plans/hq-command-center-2026-07.md](plans/hq-command-center-2026-07.md) | HQ command center enhancement plan — `packages/webui-hq/` React app (Phase 5) | Read when working on the cross-machine HQ dashboard |
+| [hq.md](hq.md) | HQ server, browser transport and state ownership | Read when working on the cross-machine dashboard |
 | [agent-monitoring.md](agent-monitoring.md) | Agent monitoring system: FleetBus → AgentMonitorService → HQ browser + TUI timeline | Read when working on subagent visibility or HQ integration |
 | [mcp-server.md](mcp-server.md) | MCP server architecture: stdio / SSE / streamable-HTTP transports | Read when working on `packages/mcp/` |
 | [director-architecture.md](director-architecture.md) | Multi-agent Director orchestration: phase-based pipeline, brain handoff, autonomy levels | Read when working on `packages/core/src/coordination/` |
@@ -42,7 +48,7 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | [kanban-contract-graph.md](kanban-contract-graph.md) | Goodhart-safe objective, impact, guardrail, risk, and verification graph for autonomous coding tasks | Read before changing contract-graph types, completion enforcement, or autonomous Kanban instructions |
 | [kanban-workbench.md](kanban-workbench.md) | Bounded cross-board Now, Next, Blocked, Review, alerts, and shared WebUI/TUI/SimpleUI visibility | Read before changing global Kanban navigation, work-surface projections, or task-flow presentation |
 | [kanban-orchestration-contract.md](kanban-orchestration-contract.md) | Canonical task/assignment lifecycle contract for Kanban-backed LLM, Director, subagent, review, and recovery work | Read before changing Kanban queue semantics, assignment lifecycle, stale recovery, or orchestration prompts |
-| [kanban-orchestration-roadmap.md](kanban-orchestration-roadmap.md) | Roadmap for turning Kanban into the source-of-truth orchestration state machine for LLM/fleet work | Read when planning Kanban leases, stale recovery, event logs, quality gates, phase orchestration, or E2E fleet tests |
+| [architecture/project-goals.md](architecture/project-goals.md) | Goal ids, workspaces, leases, My Goals and verification | Read before changing phase goals |
 | [todos_architecture.md](todos_architecture.md) | Todo/plan/queue storage architecture | Read when working on `packages/core/src/storage/` |
 | [goal-pause-resume-stage-reporting.md](goal-pause-resume-stage-reporting.md) | Goal-driven autonomous run lifecycle (pause / resume / stage reporting) | Read when working on `/goal` or `autonomous-runner` |
 | [collab-debug.md](collab-debug.md) | 3-agent parallel collab-debug flow (BugHunter + RefactorPlanner + Critic) | Read when working on `/collab debug` |
@@ -57,7 +63,8 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | [skills.md](skills.md) | Skill system: SKILL.md format, skill loader, registry | Read when working on `packages/core/src/skills/` |
 | [codebase-index-calls.md](codebase-index-calls.md) | Incoming/outgoing calls tools: ref-graph caller/callee lookup, 7-layer dispatch, edit→index pipeline, impact analysis | Read when working on `codebase-incoming-calls`/`codebase-outgoing-calls` or the index dispatch stack |
 | [sage/SYSTEM-REPORT.md](sage/SYSTEM-REPORT.md) | SAGE long-term memory end to end: SQLite schema, IPC project server, injection middleware, tools, MCP, CLI/TUI/WebUI/SimpleUI surfaces | **Read first** before changing memory storage, inject policy, `/memory`, MemoryManager, or `sage-mcp` |
-| [sage/ARCHITECTURE.md](sage/ARCHITECTURE.md) | Older SAGE package write-up (partially superseded; JSONL-era sections are historical) | Background only — prefer `SYSTEM-REPORT.md` for runtime truth |
+| [sage/retrieval.md](sage/retrieval.md) | SAGE, durable vectors, host fusion and visibility | Read before changing retrieval |
+| [context-editor.md](context-editor.md) | Revision checks, validation and context edits | Read before changing the context editor |
 
 ---
 
@@ -86,6 +93,13 @@ How to add new things. Each guide is self-contained — read the one for the sur
 | Document | What it covers |
 |---|---|
 | [configuration.md](configuration.md) | Configuration model, secret vault, environment variables, config migration |
+| [slash/profile.md](slash/profile.md) | Profile copy/switch and which state requires a restart |
+| [subcommands/config-transfer.md](subcommands/config-transfer.md) | Portable settings, included controls and merge semantics |
+| [slash/permissions.md](slash/permissions.md) | Explain live policy decisions and manage session rules |
+| [slash/effort.md](slash/effort.md), [slash/tier.md](slash/tier.md) | Reasoning effort versus role/phase cost-tier routing |
+| [subcommands/remote.md](subcommands/remote.md) | Remote project runtime with a local SSH WebUI tunnel |
+| [subcommands/chronicle.md](subcommands/chronicle.md) | Recorded work, metrics and retention maintenance |
+| [subcommands/sage.md](subcommands/sage.md) | External-agent memory and memory-only HQ synchronization |
 | [project-daemons.md](project-daemons.md) | The per-project IPC daemons: ownership election, stale-endpoint self-healing, degradation rules, `wstack doctor --daemons` |
 | [troubleshooting.md](troubleshooting.md) | Common problems and their fixes: provider failures, model registry, session replay, MCP issues |
 | [SECURITY.md](../SECURITY.md) | Threat model, current controls, known limitations, HQ implementation status, vulnerability reporting |
@@ -100,7 +114,8 @@ the per-subcommand and per-slash-command docs below.
 | Document | What it covers |
 |---|---|
 | [cli-reference.md](cli-reference.md) | Launch flags, subcommands, and the `wstack update` self-updater (`--check-only`, `--pm`, `--allow-scripts`) |
-| [reference.md](reference.md) | Condensed map of the built-in tools, ~140 providers, slash commands, the 19 modes, and the 37 bundled skills |
+| [reference.md](reference.md) | Tool families, providers, slash commands, modes and skills |
+| [current-catalog.md](current-catalog.md) | Generated package, tool, shell-command, mode, skill and plugin inventories |
 
 ---
 
@@ -148,6 +163,8 @@ ADRs capture significant architectural decisions, the alternatives considered, a
 |---|---|---|---|
 | [adr-001-layer-instead-of-split.md](adr/adr-001-layer-instead-of-split.md) | 2026-05-20 | Accepted | Rejected extracting `@wrongstack/kernel` as a separate package; kept everything in `@wrongstack/core` with strict internal layering + automated enforcement |
 | [adr-002-help-delegation-pattern.md](adr/adr-002-help-delegation-pattern.md) | 2026-06-15 | Accepted (audit predictions confirmed) | Added `customBody?: () => string` to `PerSubcommandHelp`; the canonical pattern for help modules that don't fit the standard layout |
+| [adr-003-telegram-broker-and-webhook.md](adr/adr-003-telegram-broker-and-webhook.md) | 2026-07-28 | Accepted | Telegram delivery choices |
+| [adr-004-step-budgeted-regex-ambiguity-matcher.md](adr/adr-004-step-budgeted-regex-ambiguity-matcher.md) | 2026-09-01 | Proposed | Bounded regex ambiguity matching |
 
 **For new ADRs**: use `docs/adr/adr-NNN-short-title.md` (zero-padded, kebab-case). The on-ramp for the help-delegation pattern is [help-modules.md](help-modules.md); the ADR is the historical record.
 
@@ -157,18 +174,22 @@ ADRs capture significant architectural decisions, the alternatives considered, a
 
 | Location | What it covers |
 |---|---|
-| [plans/](plans/) | Active, implementation-oriented plans. Keep status, owner, and last-verified date in every plan. |
-| [specs/](specs/) | Spec-driven-development contracts and acceptance criteria. |
+| [plans/README.md](plans/README.md) | Ongoing ledgers, pending proposals and retained decisions; refresh baselines before executing. |
+| [designs/README.md](designs/README.md) | Proposed or partly delivered contracts, separate from runtime guidance. |
+| [specs/README.md](specs/README.md) | Specification status and acceptance contracts; planned paths do not establish delivery. |
 | [notes/](notes/) | Short-lived working notes; promote durable guidance to a maintained document. |
 | [archive/](archive/) | Superseded architecture documents, completed work items, dated reports, audits, and release snapshots. |
 
 ---
+
+For documentation checks and source-derived inventories, see [maintenance](maintenance.md).
 
 ## Conventions
 
 - **Markdown formatting**: ATX-style headings (`#`, `##`), fenced code blocks with language tags, two-space indent, 100-char soft wrap. See [typescript-style-guide.md](typescript-style-guide.md) for code style.
 - **Cross-references**: use relative links (for example, `[Architecture](architecture.md)`) so docs render correctly on GitHub and in editors.
 - **Code paths**: reference files with their full path from the repo root in backticks (e.g. `` `packages/cli/src/subcommands/handlers/per-subcommand-help.ts` ``).
+- **Verification**: run `pnpm docs:check`; refresh inventories with `pnpm docs:catalog:write`. Behavior claims still need code/test evidence.
 - **New docs**: add maintained guidance to the appropriate category and index it here. Put dated snapshots and completed work in `archive/` instead of the current-docs path.
 
 ---

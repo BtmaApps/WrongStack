@@ -11,7 +11,7 @@
  * unit-testable with fakes and `packages/techstack` never reaches for a live
  * provider or the network on its own.
  *
- * @see docs/specs/techstack-sdd.md §4.2, §31, §472, §557
+ * @see docs/archive/specs/techstack-sdd.md §4.2, §31, §472, §557
  */
 
 import type { DependencyObservation, Finding } from '../types.js';

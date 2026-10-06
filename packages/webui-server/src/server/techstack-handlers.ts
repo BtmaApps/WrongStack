@@ -10,7 +10,7 @@
  *
  * Commands arrive over REST; progress goes back over the WebSocket via `emit`.
  *
- * @see docs/specs/techstack-sdd.md §4.2
+ * @see docs/archive/specs/techstack-sdd.md §4.2
  */
 
 import { randomUUID } from 'node:crypto';

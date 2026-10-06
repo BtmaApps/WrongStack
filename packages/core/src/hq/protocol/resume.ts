@@ -9,7 +9,7 @@
  *
  * The envelope is additively v1; existing v1 clients ignore unknown types.
  *
- * See `docs/plans/hq-evolution-2026-08.md` §2.5 and §7.
+ * See `docs/archive/plans/hq-evolution-2026-08.md` §2.5 and §7.
  *
  * @module hq/protocol/resume
  */

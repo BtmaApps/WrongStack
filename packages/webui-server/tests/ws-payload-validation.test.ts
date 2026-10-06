@@ -433,7 +433,7 @@ describe('WebUI payload validation', () => {
       expect(validatePrefsUpdatePayload({ modelMatrix })).toMatchObject({ ok: false });
     });
 
-    // B-01 regression (docs/audit/webui-full-review-2026-09-03.md).
+    // B-01 regression (docs/archive/local/audit/webui-full-review-2026-09-03.md).
     // `modelTiers` was in pref-helpers' PREF_KEYS with a working persist
     // branch, but in no validator set — so it fell through to "unknown
     // preference key" and the rejection took the WHOLE payload with it. The

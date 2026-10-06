@@ -36,7 +36,7 @@ support `--provenance`, but passing it would be redundant in this setup.)
 
 1. **Per package on npmjs.com.** Trust is bound per package, not per org:
    register the trusted publisher (repository, workflow `release.yml`,
-   environment `npm-publish`) on each one. There are currently 36 — every public
+   environment `npm-publish`) on each one. Enumerate every public
    workspace member (all non-private `packages/*` plus the two `apps/*`
    binaries `wrongstack` and `@wrongstack/desktop`; `website` is private):
 
@@ -143,18 +143,37 @@ A broad correctness sweep run before anything goes to npm:
 pnpm release:check
 # ↪ pnpm audit --audit-level=moderate
 #   pnpm build
+#   node scripts/check-tools-package-smoke.mjs
+#   pnpm check:dist-hidden
+#   pnpm providers:catalog:check
+#   pnpm website:tools:check
+#   pnpm plugins:manifest:check
 #   node scripts/check-package-contracts.mjs
+#   node scripts/check-npm-package-install.mjs
+#   pnpm write:build-manifest
+#   pnpm check:build-manifest
+#   pnpm check:architecture
+#   pnpm check:test-inventory
+#   pnpm check:test-skips
 #   pnpm check:node-pty
+#   pnpm check:rulebook
 #   pnpm lint:i18n
-#   pnpm typecheck
-#   pnpm test
+#   pnpm typecheck:only
+#   pnpm check:test-types
+#   pnpm test:coverage
 ```
 
-**What it catches**: moderate-or-higher dependency audit findings (subject to the checked-in audit policy), build/type/test failures, package export/file contract drift, an unusable optional `node-pty`, and incomplete WebUI translations. Full `pnpm lint` and browser smoke are not part of this script.
+The matrix is defined in `scripts/release-check-matrix.mjs`. Its release profile
+has 20 gates, including packed-package installation, catalog/projection freshness,
+architecture, test inventory/skips/types, build lineage and coverage ratchets.
+Full `pnpm lint` and browser smoke are separate. `ci:local` and `release:fast`
+use different profiles; neither is the full release profile.
 
-**Caveat**: it runs the *full* vitest suite. A single broken
-test anywhere in the monorepo blocks the release. That's by
-design — we don't ship if anything is red.
+Coverage executes its configured test areas; a failed or skipped prerequisite
+prevents certification. Report a full pass only after the final process exits 0
+with `0 failed · 0 skipped · 20 passed`. Per-gate evidence is written under
+`.reports/release-check-matrix/`. Focused tests or old logs do not certify the
+current checkout.
 
 ## Narrow plugin guard — `prepublishOnly` / `test:guard`
 

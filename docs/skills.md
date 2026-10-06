@@ -234,13 +234,16 @@ A skill is a passive Markdown file. A **roster role** is a TypeScript subagent d
 
 ### Example: `shadow-agent`
 
-`shadow-agent` is a roster role, not a skill. Its definition lives at `packages/core/src/coordination/agents/shadow-agent-role.ts` as `export const SHADOW_AGENT: SubagentConfig = { id: 'shadow-agent', role: 'shadow-agent', ... }`. The roster catalog in `packages/core/src/coordination/fleet.ts` registers it under the key `'shadow-agent'`. You start it with:
+`shadow-agent` is a roster role, not a skill. Its lazy prompt-backed configuration is defined in `packages/core/src/coordination/fleet.ts` and uses `SHADOW_AGENT_SKILLS` from `packages/core/src/coordination/agents/role-skills.ts`. The roster catalog in `packages/core/src/coordination/fleet.ts` registers it under the key `'shadow-agent'`. You start it with:
 
 ```
 spawn_subagent { role: 'shadow-agent', task: '...', maxIterations: 12 }
 ```
 
-If you have ever seen a file at `<project>/.wrongstack/skills/shadow-agent/SKILL.md`, that is a **runtime side-effect** — the shadow agent writes its own SKILL.md to disk while it runs so its prompt survives session restarts. It is not how the role is *defined*; it is how the role is *persisted*. The actual source of truth is the `SHADOW_AGENT` constant in `agents/shadow-agent-role.ts`.
+The fleet configuration and bundled agent prompt define the role. Project-developed
+agent identity and skills live under `.wrongstack/agents/`; an installed
+`.wrongstack/skills/shadow-agent/SKILL.md` is a local skill, not the fleet role
+definition. See [agent identity and learning](slash/agent-improve.md).
 
 Other roster roles follow the same pattern (see `packages/core/src/coordination/agents/`). If you're looking for "how do I make the agent smarter about X", you almost always want to write a skill. If you're looking for "how do I spawn a specialized subagent that runs X", you want a roster role.
 

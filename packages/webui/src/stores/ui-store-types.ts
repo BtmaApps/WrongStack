@@ -46,7 +46,7 @@ export function coerceActivity(value: unknown): Activity {
  * the whole panel was unreachable. `AppView` is now derived from this array and
  * an exhaustiveness assertion pins every entry to exactly one navigation
  * bucket, which makes that class of drift a compile error.
- * See docs/audit/webui-full-review-2026-09-03.md B-02.
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-02.
  */
 export const VIEWS = [
   'chat',

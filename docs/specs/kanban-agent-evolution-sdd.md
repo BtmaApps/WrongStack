@@ -1,11 +1,11 @@
 # Kanban Agent Evolution — Software Design Document
 
-**Spec ID:** `kanban-agent-evolution-v1`  
-**Version:** `1.0.0-draft`  
-**Created:** 2026-07-26  
-**Status:** Partially implemented — P1 managed board support complete  
-**Template:** SDD architecture/refactor/migration  
-**Owner:** Kanban + Core Coordination + SDD + Tools + WebUI Server maintainers  
+**Spec ID:** `kanban-agent-evolution-v1`<br>
+**Version:** `1.0.0-draft`<br>
+**Created:** 2026-07-26<br>
+**Status:** Historical contract and partial implementation roadmap. Reviewed 2026-10-06: current SQLite storage, managed lifecycle and queue behavior are documented in [Kanban architecture](../kanban-architecture.md). Proposed command-service/scheduler paths and phase gates below must not be treated as existing modules or current completion evidence.<br>
+**Template:** SDD architecture/refactor/migration<br>
+**Owner:** Kanban + Core Coordination + SDD + Tools + WebUI Server maintainers<br>
 **Task graph:** [`kanban-agent-evolution.task-graph.json`](kanban-agent-evolution.task-graph.json)
 
 ---

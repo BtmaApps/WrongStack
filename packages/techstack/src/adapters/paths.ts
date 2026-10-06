@@ -12,7 +12,7 @@
  * `InventoryOptions.projectRoot`, instead of being baked into the persisted
  * type.
  *
- * @see docs/specs/techstack-sdd.md §3.2
+ * @see docs/archive/specs/techstack-sdd.md §3.2
  */
 
 import { existsSync } from 'node:fs';

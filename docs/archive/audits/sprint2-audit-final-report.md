@@ -18,7 +18,7 @@ Three findings were confirmed and acted on:
 
 | # | Severity | Finding | Resolution |
 |---|----------|---------|-----------|
-| **A3** | P2 | Provider retry amplification under concurrent 429s | Design doc landed at `docs/design-provider-health-gate.md` (4-phase rollout) |
+| **A3** | P2 | Provider retry amplification under concurrent 429s | Design doc landed at `docs/designs/design-provider-health-gate.md` (4-phase rollout) |
 | **B6** | P2 | Orphaned worktrees after subagent crash | Fixed in `a89ea935` — `cleanupStale()` on boot |
 | **D4** | P3 | WebUI optimistic update has no `failed` flag | Fixed in `49af75b7` — `status` field on `ChatMessage` |
 
@@ -99,7 +99,7 @@ checked by `bash`/`exec` tools only — provider retries never consult
 it, and the breaker never sees provider HTTP failures.
 
 **Resolution**: Design doc at
-[`docs/design-provider-health-gate.md`](design-provider-health-gate.md)
+[`docs/designs/design-provider-health-gate.md`](design-provider-health-gate.md)
 proposes a token-bucket `ProviderHealthGate` per provider that
 coordinates retries across concurrent iterations without changing
 single-iteration behavior. Implementation is staged in 4 phases:

@@ -122,5 +122,5 @@ The stage is shown in real time during `/autonomy eternal` mode. Use `/goal paus
 - `packages/cli/src/slash-commands/sdd.ts`
 - `packages/cli/src/slash-commands/sdd/`
 - `packages/core/src/sdd/`
-- `packages/core/tests/sdd/spec-store.test.ts`
-- `packages/core/tests/sdd/task-graph-store.test.ts`
+- `packages/sdd/tests/spec-store.test.ts`
+- `packages/sdd/tests/task-graph-store.test.ts`

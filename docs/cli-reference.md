@@ -21,7 +21,6 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--hq` | Launch the cross-machine HQ Command Center. |
 | `--no-menu` | Skip the five-option launch menu on a TTY and go straight to the REPL. |
 | `--yolo` | Auto-approve tool calls within the active permission policy (never overrides trust-denies). |
-| `--director` | Enable multi-agent Director orchestration. |
 | `--provider <id>` / `--model <id>` | Skip the startup picker and pin a provider/model. |
 | `-p, --print <query>` | Single-shot: run one query non-interactively and exit. |
 | `--resume [id]` | Resume a saved session (prompts for one when omitted). |
@@ -30,6 +29,10 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--system-lite` | Use the compact `system-lite.md` baseline for this launch. Equivalent to `--system-prompt lite`. |
 | `--system-scout` | Use the general-purpose Scout identity (`system-scout.md`) for this launch: a small direct tool set (files, shell, web, todo, memory) with the rest of the catalog reached through `tool_search` / `tool_use`. Equivalent to `--system-prompt scout`. |
 | `--system-prompt default\|lite\|pro\|scout` | Select the baseline system prompt variant for this launch. `default` uses `system.md`; `lite` uses `system-lite.md`; `pro` uses `system-pro.md`; `scout` uses `system-scout.md` and the Scout tool surface, including profile/project instruction overrides. |
+
+Director is always available. Use `/spawn`, `/fleet`, `/delegate`, or `/goal`;
+`--director` and `--no-director` are no longer accepted.
+
 Run `wstack --help` for the authoritative, version-specific flag list.
 
 TUI startup keeps routine console logs, HQ connection warnings, and dependency
@@ -46,7 +49,7 @@ normal console diagnostics.
 
 | Subcommand | Purpose |
 |------------|---------|
-| `wstack init` | Scaffold project-level `.wrongstack/` config and identity. |
+| `wstack init` | Deprecated compatibility command; prints guidance to `wstack auth` without writing project files. |
 | `wstack auth` | Interactive auth menu (API keys + subscription OAuth sign-in). |
 | `wstack sessions` | List, inspect, and resume saved sessions. |
 | `wstack config` | Inspect and edit configuration. |

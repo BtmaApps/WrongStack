@@ -22,7 +22,7 @@ import { PanelSuspense } from './PanelSuspense';
  * an overlay rather than a "main view" — it can come and go without
  * swapping `currentView`.
  *
- * See docs/audit/webui-full-review-2026-09-03.md B-17.
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-17.
  */
 export function ViewRouter({
   sessionId,

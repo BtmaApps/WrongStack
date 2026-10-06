@@ -10,7 +10,7 @@
  * - It cannot fail the deterministic job that produced the inventory.
  *
  * @see packages/techstack/src/research/researcher.ts
- * @see docs/specs/techstack-sdd.md §31, §472
+ * @see docs/archive/specs/techstack-sdd.md §31, §472
  */
 
 import { describe, expect, it, vi } from 'vitest';

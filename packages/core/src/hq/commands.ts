@@ -14,7 +14,7 @@
  * `control.approve` on both the browser credential and the target client.
  * Every other command routes through the agent's own decision loop / mailbox
  * and inherits their existing guardrails.
- * See `docs/plans/hq-command-center-2026-07.md`.
+ * See `docs/archive/plans/hq-command-center-2026-07.md`.
  *
  * @module hq/commands
  */

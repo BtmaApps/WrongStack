@@ -8,7 +8,7 @@ import {
 } from '../src/project-server-protocol.js';
 
 /**
- * H9 malformed-args matrix (docs/sage-phase4-design.md): every operation's
+ * H9 malformed-args matrix (docs/archive/plans/sage-phase4-design.md): every operation's
  * required-args spec in SAGE_DISPATCH_FIELD_SPECS is exercised for —
  * minimal-valid acceptance, unknown-field tolerance, missing args object,
  * per-field omission, and per-field wrong type — plus the

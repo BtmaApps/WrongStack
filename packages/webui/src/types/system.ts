@@ -356,7 +356,7 @@ export interface WSKeyOperationResult {
      * timer) genuinely has no asking tab; those still fall back to the tab in
      * front. The server stamps this at the dispatch boundary — see
      * `runWithDispatchSession` in webui-server/ws-utils.ts, and
-     * docs/audit/webui-full-review-2026-09-03.md B-05.
+     * docs/archive/local/audit/webui-full-review-2026-09-03.md B-05.
      */
     sessionId?: string | undefined;
   };

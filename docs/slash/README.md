@@ -2,9 +2,13 @@
 
 WrongStack routes slash commands through `SlashCommandRegistry`. The command set is assembled from three independently registered surfaces: CLI core commands, commands mounted by the TUI, and plugin commands. The tables below are derived from the corresponding registration sites; aliases are shown explicitly rather than treated as separate commands.
 
-## Always-registered CLI commands
+## CLI command registrations
 
 `buildBuiltinSlashCommands()` in `packages/cli/src/slash-commands/index.ts` is the canonical registry for this table.
+
+The registry includes conditional host capabilities: `/provider-status` requires
+the host's status tracker. TUI-only overrides and plugin commands are listed
+separately below.
 
 | Command | Aliases | Reference |
 |---|---|---|
@@ -24,6 +28,7 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/metrics` | — | [metrics](metrics.md) |
 | `/tuneup` | `/checkup` | [tuneup](tuneup.md) |
 | `/codebase-reindex` | `/reindex` | [codebase reindex](codebase-reindex.md) |
+| `/codebase-map` | — | [codebase map](codebase-map.md) |
 | `/techstack` | `/tech`, `/deps` | [tech stack](techstack.md) |
 | `/tool` | — | [tool modes](tool.md) |
 | `/tools` | — | [tools](tools.md) |
@@ -36,8 +41,8 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/spawn`, `/agents` | — | [multi-agent commands](spawn-agents.md) |
 | `/agent-improve` | — | [agent identity & learning](agent-improve.md) |
 | `/fleet` | — | [fleet](fleet.md) |
-| `/specialist-triggers` | — | [specialist triggers](specialist-triggers.md) |
-| `/director` | — | Show fleet status (Director Mode is permanently on) |
+| `/director` | — | [Fleet status](fleet.md); Director is permanently available |
+| `/scout-stats` | — | [Scout statistics](scout-stats.md) |
 | `/f` | hidden `/f1` … `/f12` commands | [F-key panels](f-keys.md) |
 | `/enhance` | — | [enhance](enhance.md) |
 | `/ensemble` | — | [ensemble](ensemble.md) |
@@ -63,6 +68,10 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/mailbox-serve` | — | [mailbox bridge](mailbox-serve.md) |
 | `/fix` | — | [fix](fix.md) |
 | `/goal` | — | [goal](goal.md) |
+| `/goals` | — | [Project goal catalog](goals.md) |
+| `/jev` | `/typesafe` | [Jev account and controls](jev.md) |
+| `/permissions` | — | [Policy inspection and session rules](permissions.md) |
+| `/sandbox` | — | [Sandbox policy](sandbox.md) |
 | `/worktree` | `/wt` | [worktrees](worktree.md) |
 | `/settings` | — | [settings](settings.md) |
 | `/hq` | — | [HQ connection](hq.md) |
@@ -85,13 +94,13 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/shadow` | `/shadow-agent` | [Shadow Agent](shadow.md) |
 | `/supervisor` | — | [supervisor](supervisor.md) |
 | `/audit` | `/sideeffects`, `/side` | [side-effect audit](audit.md) |
-| `/theme` | — | Switch or select the TUI color theme preset interactively |
-| `/tier` | — | View or change model cost tiers (budget/standard/premium) and their routing |
-| `/effort` | — | View or set the session-wide reasoning effort for the active model |
-| `/profile` | — | Manage configuration profiles |
-| `/sidebar` | — | Toggle or configure the TUI right sidebar visibility |
-| `/intake` | — | Create and submit a requirement intake record from the current prompt |
-| `/provider-status` | — | Live provider/model health: healthy, degraded, blocked |
+| `/theme` | — | [TUI theme presets](theme.md) |
+| `/tier` | — | [Tier routing, budgets and leader policy](tier.md) |
+| `/effort` | — | [Reasoning effort and supported levels](effort.md) |
+| `/profile` | — | [Configuration profiles](profile.md) |
+| `/sidebar` | — | [TUI sidebar visibility](sidebar.md) |
+| `/intake` | — | [Requirement intake](intake.md) |
+| `/provider-status` | — | [Provider/model health](provider-status.md) |
 | `/openai-quota` | — | [openai-quota](openai-quota.md) — ChatGPT (Codex) plan windows used and reset times |
 | `/provider-quota` | — | [provider-quota](provider-quota.md) — Plan windows used and reset times for every metered provider |
 | `/zai-plan` | — | [zai-plan](zai-plan.md) — Z.AI / BigModel GLM Coding Plan: subscription, 5h/weekly windows, MCP pool, usage |
@@ -112,10 +121,10 @@ The TUI registers these commands after mounting. They are not available in the p
 | `/model` | `/provider`, `/switch` | Open the provider/model picker; [model picker](model.md) |
 | `/settings-get` | `/config-get`, `/get` | Read settings without opening the picker; [settings lookup](settings-get.md) |
 | `/lite`, `/full` | — | Layout presets: statusline density + sidebar visibility; [layout presets](lite-full.md) |
-| `/connections` | `/conn`, `/conns` | Service connection health — Chronicle, Codebase Index, SAGE Memory, Kanban IPC, Mailbox IPC |
-| `/flow` | `/workbench` | Text-first cross-board Kanban view: running, ready, blocked, awaiting review |
-| `/solo` | — | Control session-only subagents before the first message: `/solo on\|off\|status` |
-| `/cron` | — | Bare `/cron` opens the cron monitor; arguments fall through to the core handler |
+| `/connections` | `/conn`, `/conns` | [Service health and restart](connections.md) |
+| `/flow` | `/workbench` | [Cross-board focus lanes](flow.md) |
+| `/solo` | — | [Session worker policy](solo.md), including companions mode |
+| `/cron` | — | [Session cron monitor](cron.md); arguments use the registered list handler |
 
 The TUI also installs official overrides for existing names. `/settings` gains `/config` and `/prefs`; `/mailbox` gains `/inbox` and `/mail`; and `/autonomy` gains `/auto`. The core aliases remain registered, so `/mb` still reaches the core mailbox command. The TUI claims `/resume` and `/load` for its session picker while `/sessions` remains the core listing command. `/f`, `/design`, and `/statusline` keep their core names but gain interactive behavior.
 
@@ -178,8 +187,8 @@ interface SlashCommand {
 
 ```typescript
 // packages/cli/src/slash-commands/mycommand.ts
-import { color } from '@wrongstack/core';
-import type { SlashCommand } from '@wrongstack/core';
+import { color } from '@wrongstack/core/utils';
+import type { SlashCommand } from '@wrongstack/core/types';
 import type { SlashCommandContext } from './index.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
 
@@ -254,8 +263,8 @@ describe('buildMyCommand', () => {
 
 | Import | From | Purpose |
 |---|---|---|
-| `color`, `noOpVault`, `dispatchAgent` | `@wrongstack/core` | Core utilities |
-| `type SlashCommand` | `@wrongstack/core` | Return type |
+| `color`, `noOpVault`, `dispatchAgent` | `@wrongstack/core/utils` | Core utilities |
+| `type SlashCommand` | `@wrongstack/core/types` | Return type |
 | `type SlashCommandContext` | `./index.js` | DI context |
 | `parseSubcommand`, `unknownSubcommand` | `./helpers.js` | Arg parsing + error messages |
 

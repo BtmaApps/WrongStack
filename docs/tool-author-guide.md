@@ -9,7 +9,7 @@ the result feeds back into the next turn.
 ## The minimum viable tool
 
 ```ts
-import type { Tool } from '@wrongstack/core';
+import type { Tool } from '@wrongstack/core/types';
 
 export const echoTool: Tool<{ text: string }, { echoed: string }> = {
   name: 'echo',
@@ -333,7 +333,7 @@ fields:
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import type { Context } from '@wrongstack/core';
+import type { Context } from '@wrongstack/core/agent';
 import { echoTool } from '../src/echo.js';
 
 const ctx = {} as Context;
@@ -395,7 +395,7 @@ When you write a new tool you are extending the agent's attack surface.
 - MCP tool proxying or dynamic tool registration
 - Changes to `onlyBuiltDependencies` or `allowBuilds` in `pnpm-workspace.yaml`
 
-See `docs/plans/security-hardening-2026-06.md` (P2) for the current process expectations.
+See `docs/archive/plans/security-hardening-2026-06.md` (P2) for the current process expectations.
 
 ## Reference
 

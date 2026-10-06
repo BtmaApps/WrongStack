@@ -20,7 +20,7 @@
  *   3. `<targetRoot>/.wrongstack/techstack.rulebook.yaml`
  *   4. No rulebook → Resolver falls back to "no overrides" mode.
  *
- * @see docs/specs/techstack-sdd.md §1, §7
+ * @see docs/archive/specs/techstack-sdd.md §1, §7
  * @see packages/techstack/src/policy/resolver.ts — the consumer of this contract.
  */
 

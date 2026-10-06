@@ -148,7 +148,7 @@ const SUBAGENT_MODEL_PLAN_PREF_KEYS = new Set(['subagentModelPlan']);
  * the entire object through `syncPref` on every keystroke, so the local store
  * updated, the panel re-rendered, and the config file never changed — the
  * setting looked applied while `/tier` and the TUI menu showed the old value.
- * See docs/audit/webui-full-review-2026-09-03.md B-01.
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-01.
  */
 const MODEL_TIERS_PREF_KEYS = new Set(['modelTiers']);
 /** User-chosen limits (`Config.limits`); sent whole, unset fields = no limit. */

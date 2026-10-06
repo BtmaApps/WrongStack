@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SageProjectServerConnection } from '../src/project-server-client.js';
 
 /**
- * H4 regression (docs/sage-phase4-design.md): the client's outbound write
+ * H4 regression (docs/archive/plans/sage-phase4-design.md): the client's outbound write
  * mirrors the server's writeEncoded cap — when bytes queued for the daemon
  * exceed 8 MB, the socket is destroyed instead of growing this process's
  * heap without bound. Destroy routes pending calls through the existing

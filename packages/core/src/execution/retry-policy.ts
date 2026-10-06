@@ -166,7 +166,7 @@ export class DefaultRetryPolicy implements RetryPolicy {
     // [min, max). With (0, RETRY_JITTER_MS) we get integers in [0, 1000),
     // matching the previous Math.random() * 1000 jitter range. Using crypto
     // (not Math.random) per the project's deterministic-source
-    // convention (see docs/design-provider-health-gate.md).
+    // convention (see docs/designs/design-provider-health-gate.md).
     const jitter = randomInt(0, RETRY_JITTER_MS);
     return Math.min(MAX_BACKOFF_MS, exp + jitter);
   }

@@ -1,7 +1,7 @@
 /**
  * TechStack — research stage barrel.
  *
- * @see docs/specs/techstack-sdd.md §31, §557
+ * @see docs/archive/specs/techstack-sdd.md §31, §557
  */
 
 export { createProviderLlm, type LlmAccessor, parseResearchJson } from './llm.js';

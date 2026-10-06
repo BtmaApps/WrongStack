@@ -20,7 +20,7 @@ import {
  * re-rendered, and the config file never changed.
  *
  * This test is the enforcement that was missing. See
- * docs/audit/webui-full-review-2026-09-03.md B-01.
+ * docs/archive/local/audit/webui-full-review-2026-09-03.md B-01.
  */
 describe('preference key allowlists — validator ↔ persist parity', () => {
   /**

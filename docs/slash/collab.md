@@ -23,5 +23,5 @@ live participant list.
 ## Code Reference
 
 - `packages/cli/src/slash-commands/collab.ts`
-- `packages/webui/src/server/entry.ts`
+- `packages/webui-server/src/server/entry.ts`
 - `packages/webui/src/components/CollabPanel.tsx`

@@ -119,4 +119,4 @@ instead of every call failing with an opaque 401.
 - `packages/core/src/infrastructure/mcp-servers.ts`
 - `packages/mcp/src/manage.ts` — shared management core (used by both WebUI servers)
 - `packages/mcp/src/authorization-manager.ts` — bounded PKCE/manual authorization coordinator
-- `packages/webui/src/server/mcp-handlers.ts` — WebUI WS ↔ manage.ts translator
+- `packages/webui-server/src/server/mcp-handlers.ts` — WebUI WS ↔ manage.ts translator

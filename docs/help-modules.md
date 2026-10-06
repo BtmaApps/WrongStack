@@ -25,7 +25,7 @@ The full audit table is in [ADR 002 § Audit of existing deep entries](adr/adr-0
 Here's the shape of a help module. The 3 production examples (`auth-local-help.ts`, `models-add-help.ts`, `bench-run-help.ts`) all follow this structure:
 
 ```ts
-import { color } from '@wrongstack/core';
+import { color } from '@wrongstack/core/utils';
 import type { TerminalRenderer } from '../../renderer.js';
 
 // ── Data shape ────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ In `packages/cli/src/subcommands/handlers/per-subcommand-help.ts`, add an entry 
 },
 ```
 
-The `title` / `description` / `usage` / `seeAlso` fields are required by `PerSubcommandHelp` but never rendered when `customBody` is set. They're filled in with sensible defaults so a future refactor that drops `customBody` (e.g. to use the standard layout) has a coherent fallback. See the [Field JSDoc section](#per-subcommandhelp-shape) below for the full contract.
+The `title` / `description` / `usage` / `seeAlso` fields are required by `PerSubcommandHelp` but never rendered when `customBody` is set. They're filled in with sensible defaults so a future refactor that drops `customBody` (e.g. to use the standard layout) has a coherent fallback. See the [Field JSDoc section](#the-persubcommandhelp-shape) below for the full contract.
 
 ### Step 2: Add the `--help` short-circuit to the handler
 
@@ -369,7 +369,7 @@ Suppose a future contributor wants to add a `wstack plugin official --help` deep
 1. **Create** `packages/cli/src/subcommands/handlers/plugin-official-help.ts` (modeled on `models-add-help.ts`):
 
    ```ts
-   import { color } from '@wrongstack/core';
+   import { color } from '@wrongstack/core/utils';
    import type { TerminalRenderer } from '../../renderer.js';
 
    export const PLUGIN_OFFICIAL_FLAGS: ReadonlyArray<{

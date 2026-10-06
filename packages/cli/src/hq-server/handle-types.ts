@@ -5,7 +5,7 @@
  * `subcommands/handlers/hq.ts`) can depend on the public types without
  * pulling in the HQ server implementation. Breaks a long-standing type-only
  * import edge `handlers/hq.ts → hq-server.ts` that participated in the
- * 33-member CLI SCC (see docs/reports/modularity-assessment-2026-08-22.md).
+ * 33-member CLI SCC (see docs/archive/reports/modularity-assessment-2026-08-22.md).
  *
  * This module MUST contain no runtime imports.
  */

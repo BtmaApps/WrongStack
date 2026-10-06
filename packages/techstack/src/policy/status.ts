@@ -11,7 +11,7 @@
  * - Registry says yanked → `yanked`
  * - Advisory found → `vulnerable`
  *
- * @see docs/specs/techstack-sdd.md §7, R8, R9
+ * @see docs/archive/specs/techstack-sdd.md §7, R8, R9
  */
 
 import type { DependencyObservation, DependencyStatus, EcosystemId, Evidence } from '../types.js';

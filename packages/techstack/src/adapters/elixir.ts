@@ -4,7 +4,7 @@
  * Parses mix.exs for direct dependencies and mix.lock for resolved versions.
  * Partial support — no registry API; OSV-only advisory enrichment.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier B
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier B
  */
 
 import { readFileSync } from 'node:fs';

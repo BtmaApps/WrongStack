@@ -666,7 +666,8 @@ effects:
 
 ```ts
 import { describe, it, expect, vi } from 'vitest';
-import { Container, EventBus, ToolRegistry } from '@wrongstack/core';
+import { Container, EventBus } from '@wrongstack/core/kernel';
+import { ToolRegistry } from '@wrongstack/core/registry';
 import myPlugin from '../src/index.js';
 
 describe('my-plugin', () => {
@@ -733,7 +734,7 @@ register slash commands, contribute pipelines, and load MCP servers).
 
 Adding a plugin that grants new powerful capabilities (especially shell, arbitrary FS write, or MCP proxying) should be treated as a security-sensitive change.
 
-See `docs/plans/security-hardening-2026-06.md` (P2) and `SECURITY.md`.
+See `docs/archive/plans/security-hardening-2026-06.md` (P2) and `SECURITY.md`.
 
 ---
 

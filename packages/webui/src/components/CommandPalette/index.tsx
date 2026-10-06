@@ -173,7 +173,7 @@ export function CommandPalette() {
         // way to open it — the navigation union it would have needed did not
         // list the view. It is a diagnostic, so it belongs here next to the
         // context dashboard rather than in the activity bar.
-        // See docs/audit/webui-full-review-2026-09-03.md B-02.
+        // See docs/archive/local/audit/webui-full-review-2026-09-03.md B-02.
         id: 'deadcode',
         category: 'Command',
         label: t('activity:panels.deadcode'),

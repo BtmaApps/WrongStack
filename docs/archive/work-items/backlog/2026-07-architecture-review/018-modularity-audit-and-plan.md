@@ -11,7 +11,7 @@ boundaries and improvement steps. This document is **incremental to the
 existing artifacts**:
 
 - [`docs/architecture-rules.md`](../../architecture-rules.md) — 7-layer dependency rules
-- [`docs/plans/architecture-refactor-plan.md`](../../plans/architecture-refactor-plan.md) — Phase 0–6 sequencing
+- [`docs/archive/plans/architecture-refactor-plan.md`](../../plans/architecture-refactor-plan.md) — Phase 0–6 sequencing
 - [`docs/backlog/2026-07-architecture-review/`](../2026-07-architecture-review/) — 17 backlog items
 
 It does not duplicate them. It adds: fresh measurements, three new findings
@@ -578,7 +578,7 @@ cadence.
 ## 11. Cross-References
 
 - Architecture rules: [`docs/architecture-rules.md`](../../architecture-rules.md)
-- Master plan: [`docs/plans/architecture-refactor-plan.md`](../../plans/architecture-refactor-plan.md)
+- Master plan: [`docs/archive/plans/architecture-refactor-plan.md`](../../plans/architecture-refactor-plan.md)
 - Backlog with wave dependency map: [`docs/backlog/2026-07-architecture-review/README.md`](../2026-07-architecture-review/README.md)
 - Existing hotspot guardrail: `packages/core/tests/architecture/hotspot-guardrails.test.ts`
 - Existing boundary test: `packages/core/tests/architecture/package-boundaries.test.ts`

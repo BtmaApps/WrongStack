@@ -9,7 +9,7 @@
  *   - jobs:          async inventory/analyze job state
  *   - outbox:        idle-delivery tracking
  *
- * @see docs/specs/techstack-sdd.md §3.2, §4.1
+ * @see docs/archive/specs/techstack-sdd.md §3.2, §4.1
  */
 
 export const SCHEMA_VERSION = 2;

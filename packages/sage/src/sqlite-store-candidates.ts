@@ -450,7 +450,7 @@ export async function resolveSqliteCandidate(
   };
 }
 
-// ─── H2 accepted-candidate reconciliation (docs/sage-phase4-design.md) ──
+// ─── H2 accepted-candidate reconciliation (docs/archive/plans/sage-phase4-design.md) ──
 
 export interface SqliteReconcileContext {
   stmt: (sql: string) => ReturnType<DatabaseSync['prepare']>;

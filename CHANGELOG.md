@@ -3964,7 +3964,7 @@ _No notable changes — internal version bump._
   `mapBound` helper replaces `Promise.allSettled(map(...))` with `Promise.all`
   semantics (since `runOne` already swallows every error).
 
-- **`docs/token-saving-tiers-design.md` + `docs/configuration.md` — tier
+- **`docs/archive/designs/token-saving-tiers-design.md` + `docs/configuration.md` — tier
   doc reconciled.** Tier comparison matrix updated to reflect measured
   `aggressive` behavior. The misleading "Doc claim" column was dropped from
   the savings table; replaced with explicit measured values only. An
@@ -4693,14 +4693,14 @@ _No notable changes — internal version bump._
   enrollment tokens (`~/.wrongstack/hq/auth.json`, random + hash-only,
   capability scope), frame & endpoint hygiene, persistence (`--data-dir`
   flag), and TLS / Cloudflare Tunnel guidance. `docs/subcommands/hq.md`
-  and `docs/plans/hq-command-center-2026-06.md` linked as authoritative
+  and `docs/archive/plans/hq-command-center-2026-06.md` linked as authoritative
   sources.
 
 Docs-only release — no code or behavior change. Phase 1 HQ security
 posture is unchanged; the new docs make the existing limitations
 discoverable instead of implicit.
 
-- **`docs/plans/hq-command-center-2026-06.md` — Mailbox event feed
+- **`docs/archive/plans/hq-command-center-2026-06.md` — Mailbox event feed
   section.** Phase 4 acceptance criteria, Recommended MVP, and
   Success Criteria updated to reflect the live mailbox event feed's
   ring-buffer preservation: events for a project accumulate even

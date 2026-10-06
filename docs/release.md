@@ -13,9 +13,10 @@ Step-by-step guide for publishing a WrongStack release.
   - the test-skip budget (`test-skips:sync` — review required; every skip declaration change is a policy decision)
 - [ ] Run the repository release gate: `pnpm release:check`
   - `pnpm audit --audit-level=moderate`
-  - dependency-ordered `pnpm build`, then `pnpm check:dist-hidden`
-  - `pnpm providers:catalog:check` and `pnpm plugins:manifest:check` (each rebuilds its own package first)
+  - dependency-ordered `pnpm build`, tools-package WASM smoke, then `pnpm check:dist-hidden`
+  - `pnpm providers:catalog:check`, `pnpm website:tools:check` and `pnpm plugins:manifest:check`
   - `node scripts/check-package-contracts.mjs`
+  - `node scripts/check-npm-package-install.mjs`
   - `pnpm write:build-manifest` → `pnpm check:build-manifest`
   - `pnpm check:architecture`, `pnpm check:test-inventory`, `pnpm check:test-skips`
   - `pnpm check:node-pty`, `pnpm check:rulebook`, `pnpm lint:i18n`
@@ -45,7 +46,7 @@ git diff --stat
 ## Commit the release candidate
 
 ```bash
-git commit -am 'release: 0.5.0'
+git commit -am 'release: <version>'
 ```
 
 - [ ] Commit message follows `release: X.Y.Z` format
@@ -59,8 +60,8 @@ The intended publication path is the tag-triggered workflow
 commit; do not publish from a laptop first:
 
 ```bash
-git tag v0.5.0
-git push origin v0.5.0
+git tag v<version>
+git push origin v<version>
 ```
 
 The workflow verifies that the tag version matches `package.json` and that the
@@ -112,7 +113,7 @@ irm https://wrongstack.com/install.ps1 | iex
 If a critical bug is found after release:
 
 ```bash
-git checkout v0.5.0
+git checkout v<version>
 git checkout -b hotfix/0.5.1
 # fix the bug
 node scripts/bump-version.mjs patch

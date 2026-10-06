@@ -7,7 +7,7 @@
 | **Deciders** | WrongStack core team |
 | **Supersedes** | — |
 | **Superseded by** | — |
-| **Related** | `packages/telegram/src/bot.ts`, `packages/telegram/src/poll-lock.ts`, `packages/telegram/src/index.ts`, `packages/telegram/src/inbox-cursor-store.ts`, `packages/telegram/src/offset-store.ts`, `docs/adr/` |
+| **Related** | `packages/telegram/src/bot.ts`, `packages/telegram/src/poll-lock.ts`, `packages/telegram/src/index.ts`, `packages/telegram/src/inbox.ts`, `packages/telegram/src/offset-store.ts`, `docs/adr/` |
 
 ## Context
 
@@ -16,7 +16,7 @@ The Telegram plugin currently uses **local polling**: every wstack instance that
 - **Cross-process poll lock** (`poll-lock.ts`): a filesystem-based lock ensures only one instance consumes `getUpdates` per bot token, preventing HTTP 409 conflicts.
 - **Standby takeover**: instances that fail to acquire the lock wait and periodically retry; when the holder stops or its heartbeat expires, a standby takes over.
 - **Atomic offset persistence** (`offset-store.ts`): cursors survive crashes via `writeSync` + `fsync` + atomic rename.
-- **Per-chat inbox cursor** (`inbox-cursor-store.ts`): per-chat cursor files keep ack boundaries independent.
+- **Inbox acknowledgement:** `inbox.ts` owns an in-memory message buffer and chat-scoped acknowledgement. A separate durable per-chat cursor is not implemented.
 
 However, the current architecture has several structural limitations:
 

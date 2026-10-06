@@ -4,7 +4,7 @@
  * Parses go.mod manifests and go.sum to produce DependencyObservation[]
  * for Go workspaces.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier A
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier A
  */
 
 import { readFileSync } from 'node:fs';

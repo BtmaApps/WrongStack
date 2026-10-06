@@ -41,7 +41,7 @@ export interface BrainRouteHandlers {
  * One factory, shared by both hosts, mirroring `createAutonomyRouteHandlers`.
  * The handlers keep their internal guards — they are exported and callable
  * directly — but they are defence in depth now rather than the only check.
- * See docs/audit/webui-full-review-2026-09-03.md B-08.
+ * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-08.
  */
 export function createBrainRouteHandlers(ctx: BrainHandlerContext): BrainRouteHandlers {
   return {

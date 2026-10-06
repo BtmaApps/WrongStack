@@ -69,6 +69,8 @@
     "check:dep-paths": "node scripts/check-dep-path-separators.mjs",
     "check:action-pins": "node scripts/check-action-pins.mjs",
     "check:feature-matrix": "node scripts/check-feature-matrix.mjs",
+    "docs:check": "node scripts/check-docs.mjs && node scripts/documentation-catalog.mjs && node scripts/check-command-docs.mjs && node scripts/check-feature-matrix.mjs",
+    "docs:catalog:write": "node scripts/documentation-catalog.mjs --write",
     "check:lint-warnings": "node scripts/check-lint-warnings.mjs",
     "check:build-manifest": "node scripts/check-build-lineage.mjs --verify .reports/build-artifact-manifest.json",
     "write:build-manifest": "node scripts/check-build-lineage.mjs --write .reports/build-artifact-manifest.json",

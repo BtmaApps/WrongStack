@@ -3,7 +3,7 @@
  *
  * Compares two snapshots to identify added, removed, and changed dependencies.
  *
- * @see docs/specs/techstack-sdd.md §9
+ * @see docs/archive/specs/techstack-sdd.md §9
  */
 
 import type { DependencyObservation, Snapshot } from './types.js';

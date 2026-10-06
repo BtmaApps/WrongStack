@@ -5,6 +5,10 @@ lifecycle, business logic, and trust boundaries. One module at a time, one
 commit per module, findings recorded here so the campaign survives a context
 reset.
 
+> This is a campaign method and dated ledger, not current whole-repository
+> certification. Completed topic reviews live in `docs/archive/audits/`.
+> Re-run a scope before relying on its recorded test counts or findings.
+
 ## Order
 
 Modules are audited in dependency order — a defect in a leaf package reproduces

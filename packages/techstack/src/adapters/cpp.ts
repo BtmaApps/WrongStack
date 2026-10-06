@@ -4,7 +4,7 @@
  * Best-effort: parses conanfile.txt / conanfile.py for `[requires]` and
  * vcpkg.json for dependencies. No lockfile resolution; coverage='unsupported'.
  *
- * @see docs/specs/techstack-sdd.md §6 Tier C
+ * @see docs/archive/specs/techstack-sdd.md §6 Tier C
  */
 
 import { readFileSync } from 'node:fs';

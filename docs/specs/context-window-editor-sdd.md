@@ -1,11 +1,11 @@
 # WebUI Context Window Editor — Software Design Document
 
-**Spec ID:** `context-window-editor-v1`  
-**Version:** `1.0.0-draft`  
-**Created:** 2026-07-27  
-**Status:** Draft  
-**Template:** SDD feature  
-**Owner:** WebUI + Core Context maintainers  
+**Spec ID:** `context-window-editor-v1`<br>
+**Version:** `1.0.0-draft`<br>
+**Created:** 2026-07-27<br>
+**Status:** Historical draft with a delivered subset; reviewed 2026-10-06. Current snapshot/validation/apply code is in `packages/webui-server/src/server/context-editor.ts` and the UI is `packages/webui/src/components/context-editor/ContextWindowEditor.tsx`. Proposed file splits and tests below are not an inventory of existing files. See [the maintained guide](../context-editor.md).<br>
+**Template:** SDD feature<br>
+**Owner:** WebUI + Core Context maintainers<br>
 **Scope:** `packages/webui`, `packages/webui-server`, `packages/core`
 
 ---
