@@ -27,6 +27,7 @@ DELIVERABLES:
       if (overrides?.shouldThrow) throw new Error('provider down');
       return {
         content: [{ type: 'text' as const, text }],
+        usage: { input: 10, output: 5 },
       } as unknown as Response;
     },
   };
@@ -124,13 +125,18 @@ describe('resolveRefinerTarget', () => {
     expect(result!.model).toBe('gpt-4o-mini');
   });
 
-  it('rejects a refinerModel that is NOT a favorite AND NOT the active model', () => {
+  it('resolves a refinerModel even when NOT a favorite and NOT the active model (favorites gate removed)', () => {
+    // Favorites gating used to silently disable the dedicated refiner on the
+    // goal path while prompt refinement honored the same config; the shared
+    // spec resolver removed that divergence.
     const cfg = makeMinimalConfig({
       autonomy: { refinerModel: 'unknown-model-v42' },
       favoriteModels: ['gpt-4o-mini'],
     });
     const result = resolveRefinerTarget(cfg, createFake('openai'), 'openai', 'gpt-4');
-    expect(result).toBeUndefined();
+    expect(result).toBeDefined();
+    expect(result!.provider.id).toBe('openai');
+    expect(result!.model).toBe('unknown-model-v42');
   });
 
   it('accepts model when favoriteModels is empty (no constraint)', () => {
@@ -152,6 +158,16 @@ describe('resolveRefinerTarget', () => {
     expect(result).toBeDefined();
     expect(result!.provider.id).toBe('anthropic');
     expect(result!.model).toBe('claude-haiku');
+  });
+
+  it('uses the active model when only refinerProvider is set (no refinerModel)', () => {
+    const cfg = makeMinimalConfig({
+      autonomy: { refinerProvider: 'anthropic' },
+    });
+    const result = resolveRefinerTarget(cfg, createFake('anthropic'), 'openai', 'gpt-4');
+    expect(result).toBeDefined();
+    expect(result!.provider.id).toBe('anthropic'); // explicit refiner provider
+    expect(result!.model).toBe('gpt-4'); // active model substitutes for the missing refinerModel
   });
 
   it('returns undefined when refinerProvider is unreachable (createProvider returns undefined)', () => {
@@ -332,5 +348,19 @@ Just cleanup.`,
     });
 
     expect(result.refinedGoal).toContain('auth module');
+  });
+
+  it('threads onUsage from the serving tier', async () => {
+    const onUsage = vi.fn();
+    await refineGoalWithFallback('build auth', {
+      primaryProvider: fakeProvider(),
+      primaryModel: 'claude-opus-4',
+      onUsage,
+    });
+    expect(onUsage).toHaveBeenCalledTimes(1);
+    expect(onUsage).toHaveBeenCalledWith(
+      { input: 10, output: 5 },
+      { providerId: 'test-provider', model: 'claude-opus-4' },
+    );
   });
 });

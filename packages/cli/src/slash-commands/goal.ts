@@ -10,12 +10,37 @@ import {
   saveGoal,
   updateGoal,
 } from '@wrongstack/core/goal';
-import type { SlashCommand } from '@wrongstack/core/types';
+import type { SlashCommand, Usage } from '@wrongstack/core/types';
 import { ConfigError } from '@wrongstack/core/types';
 import type { SlashCommandContext } from './command-context.js';
 import { refineGoalWithFallback, resolveRefinerTarget } from './goal-refiner.js';
 import { buildGoalsCommand } from './goals.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
+
+/**
+ * Best-effort: journal goal-refinement spend into the session cost pipeline.
+ * Closed-session append failures are intentionally dropped — the refine
+ * confirmation must not depend on journaling.
+ */
+function journalGoalRefineUsage(
+  opts: SlashCommandContext,
+  usage: Usage,
+  source: { providerId: string; model: string },
+): void {
+  const session = opts.context?.session;
+  if (!session) return;
+  void session
+    .append({
+      type: 'enhance_usage',
+      ts: new Date().toISOString(),
+      usage,
+      provider: source.providerId,
+      model: source.model,
+    })
+    .catch(() => {
+      // Session journaling is best-effort by contract.
+    });
+}
 
 function getStore(opts: SlashCommandContext): PhaseStore {
   // Engine checkpoints live apart from the canonical mission goal.json file.
@@ -63,6 +88,7 @@ async function runMissionCommand(
       primaryModel: opts.llmModel,
       refinerProvider: refinerTarget?.provider,
       refinerModel: refinerTarget?.model,
+      onUsage: (usage, source) => journalGoalRefineUsage(opts, usage, source),
     });
     let next: GoalFile | undefined;
     await updateGoal(
@@ -92,6 +118,7 @@ async function runMissionCommand(
       primaryModel: opts.llmModel,
       refinerProvider: refinerTarget?.provider,
       refinerModel: refinerTarget?.model,
+      onUsage: (usage, source) => journalGoalRefineUsage(opts, usage, source),
     });
     const updated: GoalFile = {
       ...current,

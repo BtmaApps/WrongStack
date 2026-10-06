@@ -361,6 +361,34 @@ export function createMessageDispatcher(
           primaryModel: model,
           activeProviderId,
           createProvider,
+          onUsage: (usage, source) => {
+            // Journal to the TARGET session's writer — the goal refine may
+            // target a non-default session (ensureCurrentSession accepts
+            // foreign ids), so the default writer would misattribute spend.
+            void targetContext.session
+              .append({
+                type: 'enhance_usage',
+                ts: new Date().toISOString(),
+                usage,
+                provider: source.providerId,
+                model: source.model,
+              })
+              .catch(() => {
+                // Session journaling is best-effort by contract.
+              });
+          },
+          onOutcome: (outcome) => {
+            deps.agent.events.emit('enhance.outcome', {
+              providerId: outcome.providerId,
+              model: outcome.model,
+              result: outcome.result,
+              passes: 1,
+              parseRejections: 0,
+              durationMs: outcome.durationMs,
+              reason: outcome.reason,
+              failureKind: outcome.failureKind,
+            });
+          },
         }),
       );
     },

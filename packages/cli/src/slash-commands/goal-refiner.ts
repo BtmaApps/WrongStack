@@ -6,7 +6,7 @@ import {
   refineGoalHeuristic,
   refineGoalWithProvider,
 } from '@wrongstack/core/goal';
-import type { Provider } from '@wrongstack/core/types';
+import type { Provider, Usage } from '@wrongstack/core/types';
 
 export { refineGoalHeuristic, resolveRefinerTarget } from '@wrongstack/core/goal';
 
@@ -36,6 +36,8 @@ interface GoalRefinerOptions {
    * chain support and cheap-model defaulting.
    */
   oneShotOrchestrator?: OneShotOrchestrator | undefined;
+  /** Token-usage hook: fired by the serving tier with the reported usage. */
+  onUsage?: ((usage: Usage, source: { providerId: string; model: string }) => void) | undefined;
 }
 
 /**
@@ -55,19 +57,37 @@ export async function refineGoalWithFallback(
 ): Promise<RefinedGoal> {
   // Tier 1: dedicated refiner provider + model
   if (opts.refinerProvider && opts.refinerModel) {
-    const result = await refineGoal(rawGoal, opts.refinerProvider, opts.refinerModel);
+    const result = await refineGoal(
+      rawGoal,
+      opts.refinerProvider,
+      opts.refinerModel,
+      undefined,
+      opts.onUsage,
+    );
     if (result) return result;
   }
 
   // Tier 2: refiner model on primary provider
   if (opts.refinerModel && opts.primaryProvider) {
-    const result = await refineGoal(rawGoal, opts.primaryProvider, opts.refinerModel);
+    const result = await refineGoal(
+      rawGoal,
+      opts.primaryProvider,
+      opts.refinerModel,
+      undefined,
+      opts.onUsage,
+    );
     if (result) return result;
   }
 
   // Tier 3: primary provider + model
   if (opts.primaryProvider && opts.primaryModel) {
-    const result = await refineGoal(rawGoal, opts.primaryProvider, opts.primaryModel);
+    const result = await refineGoal(
+      rawGoal,
+      opts.primaryProvider,
+      opts.primaryModel,
+      undefined,
+      opts.onUsage,
+    );
     if (result) return result;
   }
 
@@ -85,6 +105,7 @@ export async function refineGoal(
   provider: Provider,
   model: string,
   oneShotOrchestrator?: OneShotOrchestrator | undefined,
+  onUsage?: ((usage: Usage, source: { providerId: string; model: string }) => void) | undefined,
 ): Promise<RefinedGoal | null> {
   try {
     if (oneShotOrchestrator) {
@@ -94,9 +115,19 @@ export async function refineGoal(
         timeoutMs: 30_000,
       });
       if (result.error) return null;
+      if (result.tokens) {
+        try {
+          onUsage?.(
+            { input: result.tokens.input, output: result.tokens.output },
+            { providerId: result.provider, model: result.model },
+          );
+        } catch {
+          // Swallowed by design: the observer is telemetry, not control flow.
+        }
+      }
       return result.text ? parseGoalRefinement(result.text, rawGoal) : null;
     }
-    return refineGoalWithProvider(rawGoal, provider, model);
+    return refineGoalWithProvider(rawGoal, provider, model, { onUsage });
   } catch {
     return null;
   }

@@ -2,6 +2,7 @@ import { stat as fspStat } from 'node:fs/promises';
 import { normalizeSessionPermissionOverrides } from '../../security/session-permission-overrides.js';
 import type { ContentBlock } from '../../types/blocks.js';
 import type { Message } from '../../types/messages.js';
+import type { Usage } from '../../types/provider.js';
 import type { SecretScrubber } from '../../types/secret-scrubber.js';
 import type {
   SessionData,
@@ -228,7 +229,7 @@ export async function loadSessionDataFromFile(params: {
           exactJournalActive = replayState.exactJournalActive;
           messageIndexOffset = replayState.messageIndexOffset;
           usage = replayState.usage ?? usage;
-        } else if (ev.type === 'llm_response') {
+        } else if (ev.type === 'llm_response' || ev.type === 'enhance_usage') {
           usage = accumulateUsage(usage, ev);
         }
       } catch {
@@ -456,6 +457,10 @@ function replaySessionEvent(params: {
       }
     }
     return { exactJournalActive, messageIndexOffset, usage: accumulateUsage(params.usage, ev) };
+  } else if (ev.type === 'enhance_usage') {
+    // Refiner spend is journaled outside llm_response; resumed-session usage
+    // totals must count it too (same fold as the tracker and summary builder).
+    return { exactJournalActive, messageIndexOffset, usage: accumulateUsage(params.usage, ev) };
   } else if (!exactJournalActive && ev.type === 'tool_result') {
     if (!openToolUses.has(ev.id)) {
       emitDamaged(params, `Orphan tool_result "${ev.id}" has no matching tool_use`);
@@ -505,10 +510,7 @@ function shouldReplaceLegacyReplay(messages: readonly Message[], eventTs: string
   return typeof lastTs === 'string' && lastTs >= eventTs;
 }
 
-function accumulateUsage(
-  usage: UsageTotals,
-  ev: Extract<SessionEvent, { type: 'llm_response' }>,
-): UsageTotals {
+function accumulateUsage(usage: UsageTotals, ev: { usage: Usage }): UsageTotals {
   return {
     input: usage.input + (ev.usage.input ?? 0),
     output: usage.output + (ev.usage.output ?? 0),

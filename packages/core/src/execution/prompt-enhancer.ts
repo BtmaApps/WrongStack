@@ -9,6 +9,7 @@ import type {
   ReasoningEffort,
   ReasoningRequest,
   Request,
+  Usage,
 } from '../types/provider.js';
 import { toErrorMessage } from '../utils/error.js';
 import { readBundledInstructionText } from '../utils/instruction-file.js';
@@ -35,6 +36,17 @@ const AFFIRMATION_RE =
   /^(y|n|yes|no|yep|nope|ok|okay|sure|go|go ahead|continue|proceed|stop|cancel|done|next|skip|retry|again|please do|do it)\b[.! ]*$/i;
 
 /**
+ * Non-English control answers for the languages NON_ENGLISH_PROMPT_WORDS
+ * already covers (Turkish, Spanish/Portuguese, French, German). "evet devam
+ * et" or "ja weiter" is a control answer, not a refinable request — skip it
+ * like AFFIRMATION_RE skips the English ones. No `\b` tail: words ending in
+ * non-ASCII letters (sí, geç) have no ASCII word boundary there, and the $
+ * anchor already prevents the alternation from bleeding into longer input.
+ */
+const NON_ENGLISH_CONTROL_RE =
+  /^(?:evet devam et|evet|hayır|tamam|devam et|devam|iptal|olur|dur|geç|tekrar|sí|si|continuar|sigue|cancelar|parar|listo|otra vez|vale|oui|continuer|annuler|arrêter|arrête|encore|d'accord|vas-y|ja|nein|weiter|abbrechen|fertig|nochmal)[.! ]*$/iu;
+
+/**
  * Heuristic gate: should this raw input be sent through the refiner at all?
  * Pure + exported for unit testing. Returns false for inputs where refinement
  * is pointless or unwanted (slash commands, one-word affirmations, trivially
@@ -45,7 +57,7 @@ export function shouldEnhance(text: string): boolean {
   if (!t) return false;
   if (t.startsWith('/')) return false; // slash command
   if (t.length < 12) return false; // too short to be worth refining
-  if (AFFIRMATION_RE.test(t)) return false; // "yes" / "continue" / ...
+  if (AFFIRMATION_RE.test(t) || NON_ENGLISH_CONTROL_RE.test(t)) return false; // "yes" / "continue" / "evet devam et" / ...
   if (/^[\d\s.,]+$/.test(t)) return false; // bare numbers (menu picks, etc.)
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length < 3) return false; // 1–2 words rarely benefit
@@ -379,6 +391,25 @@ export type EnhanceFailureKind = 'timeout' | 'empty' | 'provider_error';
 export const DEFAULT_REFINER_RETRY_FEEDBACK =
   'Make another pass that is sharper and more self-contained. Use the provided project memory, current session context, and recent conversation only to resolve references and preserve project vocabulary; keep the original scope unchanged.';
 
+/** Which refiner pass produced a usage report. */
+export interface EnhancePassInfo {
+  /** 1 = initial pass, 2 = the single corrective pass. */
+  pass: 1 | 2;
+  kind: 'initial' | 'corrective';
+}
+
+/** Final disposition of a refine call. */
+export type EnhanceOutcomeKind = 'success' | 'timeout' | 'provider_error' | 'empty' | 'cancelled';
+
+export interface EnhanceOutcome {
+  result: EnhanceOutcomeKind;
+  /** Total refiner passes (1 = clean; 2 = the corrective pass was used). */
+  passes: number;
+  /** Responses that failed the bilingual contract and required a corrective pass. */
+  parseRejections: number;
+  durationMs: number;
+}
+
 export interface EnhanceUserPromptOptions {
   provider: Provider;
   model: string;
@@ -427,6 +458,13 @@ export interface EnhanceUserPromptOptions {
    * existing callers that only read the reason keep compiling.
    */
   onError?: ((reason: string, kind?: EnhanceFailureKind) => void) | undefined;
+  onUsage?: ((usage: Usage, pass: EnhancePassInfo) => void) | undefined;
+  /**
+   * Called exactly once with the final disposition of the call — including
+   * cancellations, which `onError` deliberately omits. Pure telemetry for
+   * metrics/event surfaces; absent, nothing is reported.
+   */
+  onOutcome?: ((outcome: EnhanceOutcome) => void) | undefined;
   /**
    * OneShotOrchestrator for the refiner LLM call. When set, uses it instead
    * of direct provider.complete(), gaining fallback chain support.
@@ -650,7 +688,7 @@ export interface RefinerCompletionOptions {
 export async function completeRefinerPass(
   input: string,
   opts: RefinerCompletionOptions,
-): Promise<{ text: string; error?: string | undefined }> {
+): Promise<{ text: string; error?: string | undefined; usage?: Usage | undefined }> {
   if (opts.oneShotOrchestrator) {
     const result = await opts.oneShotOrchestrator.call({
       system: ENHANCER_SYSTEM_PROMPT,
@@ -659,7 +697,12 @@ export async function completeRefinerPass(
       timeoutMs: opts.timeoutMs,
       signal: opts.signal,
     });
-    return result.error ? { text: '', error: result.error } : { text: result.text.trim() };
+    return result.error
+      ? { text: '', error: result.error }
+      : {
+          text: result.text.trim(),
+          usage: { input: result.tokens.input, output: result.tokens.output },
+        };
   }
   const response = await opts.provider.complete(
     { ...opts.request, messages: [{ role: 'user', content: input }] },
@@ -671,6 +714,7 @@ export async function completeRefinerPass(
       .map((block) => block.text)
       .join('\n')
       .trim(),
+    usage: response.usage,
   };
 }
 
@@ -710,24 +754,59 @@ export async function enhanceUserPrompt(
     ...(opts.reasoning ? { reasoning: opts.reasoning } : {}),
   };
 
+  const startedAt = Date.now();
+  let passes = 0;
+  let parseRejections = 0;
+  // Observer exceptions must not escape the never-throws contract — a
+  // throwing onOutcome would otherwise be re-reported as provider_error.
+  const reportOutcome = (result: EnhanceOutcomeKind): void => {
+    try {
+      opts.onOutcome?.({
+        result,
+        passes,
+        parseRejections,
+        durationMs: Date.now() - startedAt,
+      });
+    } catch {
+      // Swallowed by design: the observer is telemetry, not control flow.
+    }
+  };
   let timedOut = false;
-  const runPass = async (input: string): Promise<{ text: string; error?: string | undefined }> => {
+  const runPass = async (
+    input: string,
+    pass: EnhancePassInfo,
+  ): Promise<{ text: string; error?: string | undefined; usage?: Usage | undefined }> => {
     // Each model pass receives the full configured window. The parent signal
     // still cancels both passes immediately, while a slow first pass cannot
     // consume the corrective retry's entire timeout budget.
+    passes = pass.pass;
     const timer = new AbortController();
     const timeout = setTimeout(() => timer.abort(new Error('enhancer timeout')), timeoutMs);
     const signal = opts.signal ? AbortSignal.any([opts.signal, timer.signal]) : timer.signal;
     try {
-      return await completeRefinerPass(input, {
+      const out = await completeRefinerPass(input, {
         provider,
         oneShotOrchestrator: opts.oneShotOrchestrator,
         request: req,
         signal,
         timeoutMs,
       });
+      // Orchestrator failures arrive as structured errors, not throws —
+      // record whether OUR deadline fired before the finally masks the flag.
+      if (out.error && timer.signal.aborted && !opts.signal?.aborted) timedOut = true;
+      // A throwing cost-pipeline hook must not discard a completed response.
+      if (out.usage) {
+        try {
+          opts.onUsage?.(out.usage, pass);
+        } catch {
+          // Swallowed by design: the observer is telemetry, not control flow.
+        }
+      }
+      return out;
     } catch (error) {
-      if (timer.signal.aborted && !opts.signal?.aborted) timedOut = true;
+      // A fired deadline wins the race against a same-tick caller cancel —
+      // the pass WAS too slow, matching the mission-refiner classification.
+      if (timer.signal.aborted) timedOut = true;
       throw error;
     } finally {
       timer.abort();
@@ -736,18 +815,37 @@ export async function enhanceUserPrompt(
   };
 
   try {
-    const first = await runPass(refinerInput);
+    const first = await runPass(refinerInput, { pass: 1, kind: 'initial' });
     if (first.error) {
+      // The orchestrator path never throws — OneShotOrchestrator.call returns
+      // aborts as result.error — so classify caller cancellation HERE, not
+      // only in the catch below, or it would surface as provider_error.
+      if (timedOut) {
+        // Our deadline fired while the orchestrator was running: the pass
+        // WAS too slow, even though it reported back as a structured error.
+        opts.onError?.(`timed out after ${Math.round(timeoutMs / 1000)}s`, 'timeout');
+        reportOutcome('timeout');
+        return null;
+      }
+      if (opts.signal?.aborted) {
+        reportOutcome('cancelled');
+        return null;
+      }
       opts.onError?.(first.error, 'provider_error');
+      reportOutcome('provider_error');
       return null;
     }
     const parsed = parseBilingualEnhancement(first.text, text);
-    if (parsed) return parsed;
+    if (parsed) {
+      reportOutcome('success');
+      return parsed;
+    }
 
     // The output contract is deliberately validated outside the model. Give a
     // malformed response one corrective pass, with the failure and exact wire
     // format made explicit, instead of silently treating non-English text as
     // the English option.
+    parseRejections = 1;
     const correctionInput = [
       'Your previous response did not satisfy the required bilingual output contract.',
       'Return exactly two non-empty versions separated by one line containing only "---".',
@@ -758,24 +856,46 @@ export async function enhanceUserPrompt(
       '',
       `Invalid previous response:\n${compactText(first.text || '(empty response)', 1800)}`,
     ].join('\n');
-    const corrected = await runPass(correctionInput);
+    const corrected = await runPass(correctionInput, { pass: 2, kind: 'corrective' });
     if (corrected.error) {
+      // Same orchestrator-path cancellation classification as above.
+      if (timedOut) {
+        opts.onError?.(`timed out after ${Math.round(timeoutMs / 1000)}s`, 'timeout');
+        reportOutcome('timeout');
+        return null;
+      }
+      if (opts.signal?.aborted) {
+        reportOutcome('cancelled');
+        return null;
+      }
       opts.onError?.(corrected.error, 'provider_error');
+      reportOutcome('provider_error');
       return null;
     }
     const correctedParsed = parseBilingualEnhancement(corrected.text, text);
-    if (correctedParsed) return correctedParsed;
+    if (correctedParsed) {
+      reportOutcome('success');
+      return correctedParsed;
+    }
 
     opts.onError?.('model returned malformed bilingual output after one corrective retry', 'empty');
+    reportOutcome('empty');
     return null;
   } catch (err) {
-    // User-initiated cancel → stay silent (they chose to send the original).
-    if (opts.signal?.aborted) return null;
+    // A fired deadline wins the race against a same-tick caller cancel —
+    // the pass WAS too slow, and cost attribution must see the timeout.
     if (timedOut) {
       opts.onError?.(`timed out after ${Math.round(timeoutMs / 1000)}s`, 'timeout');
+      reportOutcome('timeout');
+      return null;
+    }
+    // User-initiated cancel → stay silent (they chose to send the original).
+    if (opts.signal?.aborted) {
+      reportOutcome('cancelled');
       return null;
     }
     opts.onError?.(toErrorMessage(err), 'provider_error');
+    reportOutcome('provider_error');
     return null;
   }
 }

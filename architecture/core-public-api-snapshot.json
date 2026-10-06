@@ -611,6 +611,27 @@
       ]
     },
     {
+      "subpath": "./execution/refine-decisions",
+      "target": {
+        "types": "./dist/execution/refine-decisions.d.ts",
+        "import": "./dist/execution/refine-decisions.js"
+      },
+      "source": "packages/core/src/execution/refine-decisions.ts",
+      "declarations": [
+        "export function projectRefineResult",
+        "export function resolveFailureNextStep",
+        "export function resolvePreviewAction",
+        "export interface RefinePreviewTexts",
+        "export interface RefineResultPayload",
+        "export type RefineErrorKind",
+        "export type RefineFailureDecision",
+        "export type RefineFailureNextStep",
+        "export type RefinePreviewDecision",
+        "export type RefineResultAction",
+        "export type RefineSendPlan"
+      ]
+    },
+    {
       "subpath": "./execution",
       "target": {
         "types": "./dist/execution/index.d.ts",
@@ -641,11 +662,12 @@
         "export { buildCouncilJudgeSystemPrompt, buildCouncilJudgeUserPrompt, buildCouncilQuestionPrompt, buildCouncilVoterSystemPrompt, buildCouncilVoterUserPrompt, COUNCIL_JUDGE_PROMPT_PATH, COUNCIL_VOTER_PROMPT_PATH, } from './council-prompts.js';",
         "export { buildGoalPreamble } from './goal-preamble.js';",
         "export { buildRecoveryStrategies, DEFAULT_RECOVERY_STRATEGIES, DefaultErrorHandler, type RecoveryStrategy, } from './error-handler.js';",
-        "export { buildRefinerContextSections, DEFAULT_REFINER_RETRY_FEEDBACK, type EnhanceFailureKind, enhanceUserPrompt, gatedEnhancerReasoning, isValidEnglishRefinement, normalizedEqual, parseBilingualEnhancement, recentTextTurns, shouldEnhance, } from './prompt-enhancer.js';",
+        "export { buildRefinerContextSections, completeRefinerPass, DEFAULT_REFINER_RETRY_FEEDBACK, ENHANCER_SYSTEM_PROMPT, type EnhanceFailureKind, enhanceUserPrompt, gatedEnhancerReasoning, isValidEnglishRefinement, normalizedEqual, parseBilingualEnhancement, recentTextTurns, shouldEnhance, } from './prompt-enhancer.js';",
         "export { compactionReportStillCurrent } from './compaction-result-state.js';",
         "export { createSystemOneBrainTier, probeSystemOneBrain, type SystemOneBrainProbe, type SystemOneBrainTier, type SystemOneBrainTierOptions, systemOneBrainSettles, } from './brain-system-one.js';",
         "export { installSubagentAutoCompaction } from './subagent-compaction.js';",
         "export { nextEnhanceTimeout, resolveConfiguredRefinerRef, resolveEnhanceFallbackRef, } from './enhance-recovery.js';",
+        "export { projectRefineResult, type RefineErrorKind, type RefineFailureDecision, type RefineFailureNextStep, type RefinePreviewDecision, type RefinePreviewTexts, type RefineResultAction, type RefineResultPayload, type RefineSendPlan, resolveFailureNextStep, resolvePreviewAction, } from './refine-decisions.js';",
         "export { startFreshTopicContext, type TopicShiftAdvice, TopicShiftAdvisor, type TopicShiftAdvisorInput, type TopicShiftAdvisorOptions, type TopicShiftDiagnostic, } from './topic-shift-advisor.js';",
         "export { type AutonomyBrainOptions, type BrainAutoRisk, type BrainLlmTarget, buildBrainUserMessage, completeBrainLlm, createAutonomyBrain, createTieredBrainArbiter, formatDecisionSummary, parseOptionDecision, type TieredBrainArbiterOptions, } from './autonomy-brain.js';",
         "export { type AutonomyPromptContributorOptions, makeAutonomyPromptContributor, } from './autonomy-prompt-contributor.js';",
@@ -1549,14 +1571,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 226,
-      "sourceLines": 60484
+      "sourceLines": 60467
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 69,
-      "sourceLines": 15749
+      "sourceLines": 15739
     },
     {
       "directory": "design",
@@ -1569,8 +1591,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 80,
-      "sourceLines": 21867
+      "sourceFiles": 82,
+      "sourceLines": 22266
     },
     {
       "directory": "extension",
@@ -1584,7 +1606,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 22,
-      "sourceLines": 4704
+      "sourceLines": 4806
     },
     {
       "directory": "hooks",
@@ -1611,15 +1633,15 @@
       "directory": "kernel",
       "classification": "kernel primitive",
       "intendedOwner": "Core",
-      "sourceFiles": 22,
-      "sourceLines": 4451
+      "sourceFiles": 23,
+      "sourceLines": 4495
     },
     {
       "directory": "models",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 17,
-      "sourceLines": 4080
+      "sourceLines": 4051
     },
     {
       "directory": "notifications",
@@ -1696,7 +1718,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 35,
-      "sourceLines": 10632
+      "sourceLines": 10636
     },
     {
       "directory": "session-catalog",
@@ -1724,7 +1746,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 113,
-      "sourceLines": 25476
+      "sourceLines": 25487
     },
     {
       "directory": "tasking",
@@ -1738,14 +1760,14 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 23,
-      "sourceLines": 4557
+      "sourceLines": 4551
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 85,
-      "sourceLines": 16400
+      "sourceLines": 16380
     },
     {
       "directory": "typesafe",

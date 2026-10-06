@@ -7,12 +7,7 @@ import type {
   StatuslineMode,
 } from './settings-contracts.js';
 
-export type { PanelId, PanelPosition, PanelPositionMap } from './ui-contracts.js';
-export {
-  coercePanelPositionMap,
-  DEFAULT_PANEL_POSITIONS,
-  PANEL_IDS,
-} from './ui-contracts.js';
+export { coercePanelPositionMap } from './ui-contracts.js';
 
 import type { ToolResultViewMode } from './tool-result-view-mode.js';
 import type { PanelPositionMap } from './ui-contracts.js';
@@ -80,6 +75,8 @@ export type Settings = {
   enhanceEnabled: boolean;
   /** Default language for refinement: original or english. */
   enhanceLanguage: 'original' | 'english';
+  /** Retry window override for the refiner (ms). Unset = derived (2× base, floored at 180s). */
+  enhanceRetryTimeoutMs?: number | undefined;
   midRunSendPicker?: boolean | undefined;
   /** Raw SSE stream debugging — hex-dump every byte received from providers. */
   debugStream: boolean;

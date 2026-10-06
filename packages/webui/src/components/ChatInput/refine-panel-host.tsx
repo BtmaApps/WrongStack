@@ -1,3 +1,4 @@
+import { resolvePreviewAction } from '@wrongstack/core/execution/refine-decisions';
 import type React from 'react';
 import { useAppTranslation } from '@/i18n';
 import { useUIStore } from '@/stores';
@@ -84,23 +85,21 @@ export function ChatInputRefinePanelHost({
 
   const handleDecision = (decision: RefineDecision): void => {
     const { original, refined, english } = refinePanel;
+    const plan = resolvePreviewAction(decision, { original, refined, english });
 
-    if (decision === 'cancel') {
+    if (plan.action === 'cancel') {
       setRefinePanel(null);
       setInput((prev) => resolveCancelInput(prev, original));
       return;
     }
 
-    let text = original;
-    if (decision === 'refined') text = refined;
-    else if (decision === 'english') text = english;
-    else if (decision === 'edit') text = refined;
-
-    if (decision === 'edit') {
-      setInput(refined);
+    if (plan.action === 'edit') {
+      setInput(plan.text);
       setRefinePanel(null);
       return;
     }
+
+    const text = plan.action === 'send' ? plan.text : original;
 
     const preservedMode = refinePanel.mode;
     const preservedImages = refinePanel.images;

@@ -149,6 +149,18 @@ type SessionEventVariant =
       systemVariant?: string | undefined;
     }
   | {
+      type: 'enhance_usage';
+      ts: string;
+      usage: Usage;
+      /**
+       * Provider/model that served the refine pass, when known. Optional for
+       * the same reason as on `llm_response`: journals written before these
+       * fields existed omit them — a live writer always sets both.
+       */
+      provider?: string | undefined;
+      model?: string | undefined;
+    }
+  | {
       type: 'llm_response';
       ts: string;
       content: ContentBlock[];

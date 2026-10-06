@@ -140,6 +140,14 @@ async function summarizeSessionEventSequence(opts: {
         // tracker so a rebuilt summary equals the one the writer produced.
         if (e.model) model = e.model;
         if (e.provider) provider = e.provider;
+      } else if (e.type === 'enhance_usage') {
+        // Refiner passes are journaled outside llm_response (no messageCount,
+        // no model overwrite) but their tokens belong in tokenTotal. Guarded
+        // like llm_response: a journal on disk is not a type.
+        if (e.usage) {
+          tokenIn += effectiveInputTokens(e.usage);
+          tokenOut += e.usage.output ?? 0;
+        }
       } else if (e.type === 'in_flight_start') iterationCount++;
       else if (e.type === 'tool_call_start') {
         toolCallCount++;

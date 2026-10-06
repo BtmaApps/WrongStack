@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "thresholdLines": 800,
   "files": {
+    "packages/cli/src/boot.ts": {
+      "lines": 802,
+      "relativeImports": 29
+    },
     "packages/cli/src/cli-main.ts": {
       "lines": 856,
       "relativeImports": 30
@@ -35,7 +39,7 @@
       "relativeImports": 20
     },
     "packages/core/src/execution/prompt-enhancer.ts": {
-      "lines": 818,
+      "lines": 938,
       "relativeImports": 9
     },
     "packages/core/src/plugins/skills-plugin.ts": {
@@ -119,11 +123,11 @@
       "relativeImports": 36
     },
     "packages/tools/src/dead-code/fix.ts": {
-      "lines": 1173,
+      "lines": 1247,
       "relativeImports": 5
     },
     "packages/tools/src/dead-code/parse.ts": {
-      "lines": 1121,
+      "lines": 1180,
       "relativeImports": 0
     },
     "packages/tui/src/use-app-controller.tsx": {

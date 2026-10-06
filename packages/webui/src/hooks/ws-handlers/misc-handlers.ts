@@ -1,3 +1,4 @@
+import { projectRefineResult } from '@wrongstack/core/execution/refine-decisions';
 import { toast } from '@/components/Toaster';
 import { reconcileFileTabsAfterEnvChange } from '@/hooks/ws-handlers/files-mailbox-handlers';
 import { normalizedEqual } from '@/lib/core-browser-shim';
@@ -293,32 +294,39 @@ export function handleModelRefineResult(msg: WSServerMessage) {
   }
 
   if (!refinePanel) return;
-  if (p.error) {
+  // The shared projection (SimpleUI pattern, also used by the TUI) decides
+  // what the reply means: one silent timeout retry, failure recovery, an
+  // original-send for a no-op refinement, or the ready comparison panel.
+  const projection = projectRefineResult(p, {
+    original: refinePanel.original,
+    retried: refinePanel.retried,
+  });
+  if (projection.action === 'retry') {
     // Auto-retry ONCE on a timeout with the server-suggested longer window —
     // the model was reachable, just slow. Everything else (or a second
     // timeout) surfaces the recovery panel so the user decides.
-    if (p.errorKind === 'timeout' && !refinePanel.retried && p.retryTimeoutMs) {
-      useUIStore.getState().setRefinePanel({
-        ...refinePanel,
-        status: 'refining',
-        retried: true,
-      });
-      getWSClient().refineModel(refinePanel.original, { timeoutMs: p.retryTimeoutMs });
-      return;
-    }
+    useUIStore.getState().setRefinePanel({
+      ...refinePanel,
+      status: 'refining',
+      retried: true,
+    });
+    getWSClient().refineModel(refinePanel.original, { timeoutMs: projection.timeoutMs });
+    return;
+  }
+  if (projection.action === 'failed') {
     // Surface the failure with recovery options instead of silently sending
     // the original — the user can retry, switch model, edit, or send as-is.
     useUIStore.getState().setRefinePanel({
       ...refinePanel,
       status: 'failed',
-      error: p.error,
-      errorKind: p.errorKind,
-      fallbackRef: p.fallbackRef,
+      error: projection.error,
+      errorKind: projection.errorKind,
+      fallbackRef: projection.fallbackRef,
     });
     return;
   }
   const original = refinePanel.original;
-  if (normalizedEqual(p.refined, original)) {
+  if (projection.action === 'noop-send') {
     useUIStore.getState().setRefinePanel(null);
     const target = chat ?? activeChatLane();
     target.addMessage({ role: 'user', content: original });
@@ -332,8 +340,8 @@ export function handleModelRefineResult(msg: WSServerMessage) {
   useUIStore.getState().setRefinePanel({
     ...refinePanel,
     status: 'ready',
-    refined: p.refined,
-    english: p.english,
+    refined: projection.refined,
+    english: projection.english,
     ...(p.refinedWith ? { provider: p.refinedWith.provider, model: p.refinedWith.model } : {}),
     // Clear any stale failure state from a prior retry round.
     error: undefined,

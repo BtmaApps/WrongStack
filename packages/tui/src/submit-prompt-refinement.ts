@@ -7,6 +7,8 @@ import {
   nextEnhanceTimeout,
   normalizedEqual,
   recentTextTurns,
+  resolveFailureNextStep,
+  resolvePreviewAction,
   shouldEnhance,
 } from '@wrongstack/core/execution';
 import type { Provider, ReasoningRequest } from '@wrongstack/core/types';
@@ -115,6 +117,12 @@ export async function refineSubmittedPrompt(
   host.setDuration(null);
   const controller = new AbortController();
   const baseTimeoutMs = 90_000;
+  // Server parity: webui-server refineModel passes config?.autonomy into
+  // nextEnhanceTimeout, so the configured retry-window override must reach
+  // every escalation here too. Undefined = derived default (2× base, ≥180s).
+  const retryTimeoutConfig = {
+    enhanceRetryTimeoutMs: host.capabilities.getSettings?.().enhanceRetryTimeoutMs,
+  };
   const contextSections = await startPromptRefinement({
     original: trimmed,
     controller,
@@ -183,6 +191,35 @@ export async function refineSubmittedPrompt(
         },
         history: recentTextTurns(agent.ctx.messages),
         contextSections,
+        onUsage: (usage, passInfo) => {
+          agent.events.emit('enhance.usage', {
+            providerId: provider.id,
+            model,
+            usage,
+            pass: passInfo.pass,
+            kind: passInfo.kind,
+          });
+          // Journal the refiner's out-of-loop spend into the session cost
+          // pipeline (tokenTotal). Best-effort: never fail the refine.
+          void agent.ctx.session
+            .append({
+              type: 'enhance_usage',
+              ts: new Date().toISOString(),
+              usage,
+              provider: provider.id,
+              model,
+            })
+            .catch(() => {
+              // Session logging is best-effort by contract.
+            });
+        },
+        onOutcome: (outcome) => {
+          agent.events.emit('enhance.outcome', {
+            providerId: provider.id,
+            model,
+            ...outcome,
+          });
+        },
         ...(hints.previousRefinement ? { previousRefinement: hints.previousRefinement } : {}),
         ...(hints.retryFeedback ? { retryFeedback: hints.retryFeedback } : {}),
         ...(reasoning ? { reasoning } : {}),
@@ -226,7 +263,7 @@ export async function refineSubmittedPrompt(
     outcome = await runAttempt(
       initialProvider,
       initialModel,
-      nextEnhanceTimeout(baseTimeoutMs, undefined),
+      nextEnhanceTimeout(baseTimeoutMs, retryTimeoutConfig),
       initialReasoning,
     );
   }
@@ -268,16 +305,17 @@ export async function refineSubmittedPrompt(
         });
       });
       host.dispatch({ type: 'refineFailureClose' });
-      if (decision.kind === 'original') {
+      const step = resolveFailureNextStep(decision, fallbackRef, agent.ctx.provider.id);
+      if (step.action === 'send-original') {
         sendOriginal = true;
         break;
       }
-      if (decision.kind === 'edit') {
+      if (step.action === 'edit-original') {
         editLoad = true;
         break;
       }
-      const retryTimeout = nextEnhanceTimeout(baseTimeoutMs, undefined);
-      if (decision.kind === 'retry') {
+      const retryTimeout = nextEnhanceTimeout(baseTimeoutMs, retryTimeoutConfig);
+      if (step.action === 'retry-same') {
         outcome = await runAttempt(
           agent.ctx.provider,
           agent.ctx.model,
@@ -286,35 +324,47 @@ export async function refineSubmittedPrompt(
         );
         continue;
       }
-      const ref =
-        decision.kind === 'fallback'
-          ? parseModelRef(fallbackRef ?? '')
-          : { provider: decision.providerId, model: decision.model };
-      const providerId = ref.provider ?? agent.ctx.provider.id;
-      const model = ref.model;
-      let built: Provider | undefined;
-      try {
-        built = await capabilities.buildEnhancerProvider?.(providerId, model);
-      } catch {
-        built = undefined;
-      }
-      if (!built || !model) {
+      if (step.action === 'invalid-target') {
         host.dispatch({
           type: 'addEntry',
-          entry: { kind: 'warn', text: `✨ couldn't use ${providerId}/${model} for refinement` },
+          entry: {
+            kind: 'warn',
+            text: `✨ couldn't use ${step.providerId}/${step.model} for refinement`,
+          },
         });
         outcome = {
           result: null,
           kind: 'provider_error',
-          reason: `couldn't build ${providerId}/${model}`,
+          reason: `couldn't use ${step.providerId}/${step.model}`,
+        };
+        continue;
+      }
+      let built: Provider | undefined;
+      try {
+        built = await capabilities.buildEnhancerProvider?.(step.providerId, step.model);
+      } catch {
+        built = undefined;
+      }
+      if (!built) {
+        host.dispatch({
+          type: 'addEntry',
+          entry: {
+            kind: 'warn',
+            text: `✨ couldn't use ${step.providerId}/${step.model} for refinement`,
+          },
+        });
+        outcome = {
+          result: null,
+          kind: 'provider_error',
+          reason: `couldn't build ${step.providerId}/${step.model}`,
         };
         continue;
       }
       outcome = await runAttempt(
         built,
-        model,
+        step.model,
         retryTimeout,
-        await capabilities.getEnhancerReasoning?.(providerId, model),
+        await capabilities.getEnhancerReasoning?.(step.providerId, step.model),
       );
     }
 
@@ -351,30 +401,30 @@ export async function refineSubmittedPrompt(
       host.dispatch({ type: 'enhanceClose' });
       host.setStartedAt(null);
       host.setDuration(null);
-      if (decision === 'retry') {
+      const plan = resolvePreviewAction(decision, {
+        original: trimmed,
+        refined: refinedWithChips,
+        english: englishWithChips,
+      });
+      if (plan.action === 'retry') {
         outcome = await runAttempt(
           agent.ctx.provider,
           agent.ctx.model,
-          nextEnhanceTimeout(baseTimeoutMs, undefined),
+          nextEnhanceTimeout(baseTimeoutMs, retryTimeoutConfig),
           await capabilities.getEnhancerReasoning?.(agent.ctx.provider.id, agent.ctx.model),
           { previousRefinement: result, retryFeedback: DEFAULT_REFINER_RETRY_FEEDBACK },
         );
         continue;
       }
-      if (decision === 'cancel') {
+      if (plan.action === 'cancel') {
         host.setDraft(trimmed, trimmed.length);
         return { kind: 'cancel' };
       }
-      if (decision === 'edit') {
-        host.setDraft(refinedWithChips, refinedWithChips.length);
+      if (plan.action === 'edit') {
+        host.setDraft(plan.text, plan.text.length);
         return { kind: 'cancel' };
       }
-      effectiveText =
-        decision === 'english'
-          ? englishWithChips
-          : decision === 'refined'
-            ? refinedWithChips
-            : trimmed;
+      effectiveText = plan.text;
     }
     return { kind: 'send', effectiveText };
   }

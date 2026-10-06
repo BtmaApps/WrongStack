@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 369,
-      "typeOnly": 289,
+      "files": 371,
+      "typeOnly": 291,
       "runtimeOrMixed": 100
     },
     "@wrongstack/core/agent-catalog": {
@@ -24,8 +24,8 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 259,
-      "typeOnly": 98,
+      "files": 260,
+      "typeOnly": 99,
       "runtimeOrMixed": 226
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
@@ -49,9 +49,14 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/execution": {
-      "files": 81,
-      "typeOnly": 19,
-      "runtimeOrMixed": 78
+      "files": 83,
+      "typeOnly": 21,
+      "runtimeOrMixed": 79
+    },
+    "@wrongstack/core/execution/refine-decisions": {
+      "files": 2,
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -69,8 +74,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 160,
-      "typeOnly": 96,
+      "files": 159,
+      "typeOnly": 95,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -115,7 +120,7 @@
     },
     "@wrongstack/core/plugin": {
       "files": 31,
-      "typeOnly": 18,
+      "typeOnly": 17,
       "runtimeOrMixed": 26
     },
     "@wrongstack/core/prompts": {
@@ -190,8 +195,8 @@
     },
     "@wrongstack/core/types": {
       "files": 1348,
-      "typeOnly": 1189,
-      "runtimeOrMixed": 409
+      "typeOnly": 1187,
+      "runtimeOrMixed": 411
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -269,9 +274,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils/tree-kill": {
-      "files": 4,
+      "files": 5,
       "typeOnly": 0,
-      "runtimeOrMixed": 4
+      "runtimeOrMixed": 5
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
       "files": 20,
@@ -1991,6 +1996,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tui/tests/agents-monitor-live-render.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tui/tests/app-mount.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -2010,6 +2021,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tui/tests/f-key-monitors-render.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tui/tests/f-key-panel-journey.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -4037,6 +4054,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/tests/f-key-live-panels.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/tui/tests/leader-auto-wake-host.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4823,6 +4846,12 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/tui/tests/submit-prompt-refinement.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/webui-server/src/server/backend-brain.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4850,6 +4879,12 @@
       "file": "packages/webui-server/src/server/create-session-agent-manager.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/src/server/goal-refiner-adapter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/execution",
@@ -4908,6 +4943,18 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/webui-server/tests/session-context-ops-per-session.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution/refine-decisions",
+      "file": "packages/webui/src/components/ChatInput/refine-panel-host.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution/refine-decisions",
+      "file": "packages/webui/src/hooks/ws-handlers/misc-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -5982,12 +6029,6 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/src/domain/kanban-model.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/hq",
-      "file": "packages/webui-hq/src/domain/mailbox-events.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -9102,7 +9143,7 @@
     {
       "specifier": "@wrongstack/core/plugin",
       "file": "packages/cli/src/chimera-cascade-evidence.ts",
-      "typeOnly": 2,
+      "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
@@ -13979,6 +14020,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/picker-effort.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/picker-model-picker.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15648,8 +15695,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/picker.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -21287,12 +21334,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/webui/src/lib/delegate-format.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/webui/src/lib/plugin-enablement.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -26502,6 +26543,12 @@
     {
       "specifier": "@wrongstack/core/utils/tree-kill",
       "file": "packages/plug-lsp/src/server/lsp-server.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/tools/src/dead-code/fix.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

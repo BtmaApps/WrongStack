@@ -16,6 +16,7 @@ import {
   parseModelRef,
 } from '../core/fallback-model.js';
 import type { Config } from '../types/config.js';
+import { resolveRefinerTargetSpec } from './refiner-target.js';
 
 /** Default first-attempt refine window (mirrors `enhanceUserPrompt`'s default). */
 export const ENHANCE_BASE_TIMEOUT_MS = 90_000;
@@ -25,25 +26,20 @@ export const ENHANCE_MIN_RETRY_TIMEOUT_MS = 180_000;
 
 /**
  * Dedicated provider/model configured for prompt refinement, normalized as a
- * `provider/model` ref. The named refiner profile has precedence over the
- * explicit refiner provider/model, matching `/refiner` and goal refinement.
- * Returns undefined only when no dedicated refiner is configured; callers may
- * then deliberately fall back to the live session target.
+ * `provider/model` ref. Delegates the config decision to the shared
+ * {@link resolveRefinerTargetSpec} — the same precedence (named refiner
+ * profile over explicit provider/model) that goal/mission refinement applies
+ * — then renders the spec against the config's active provider. Returns
+ * undefined only when no dedicated refiner is configured or neither the spec
+ * nor the config names a provider; callers may then deliberately fall back to
+ * the live session target.
  */
 export function resolveConfiguredRefinerRef(config: Config): string | undefined {
-  const activeProvider = config.provider?.trim();
-  const profileName = config.autonomy?.refinerFallbackProfile?.trim();
-  if (profileName) {
-    for (const entry of config.fallbackProfiles?.[profileName] ?? []) {
-      if (!parseModelRef(entry).model) continue;
-      return normalizeModelRef(entry, activeProvider);
-    }
-  }
-
-  const provider = config.autonomy?.refinerProvider?.trim() || activeProvider;
-  const model = config.autonomy?.refinerModel?.trim();
-  if (!model || !provider) return undefined;
-  return normalizeModelRef(`${provider}/${model}`, provider);
+  const spec = resolveRefinerTargetSpec(config);
+  if (!spec?.model) return undefined;
+  const provider = spec.providerId ?? config.provider?.trim();
+  if (!provider) return undefined;
+  return normalizeModelRef(`${provider}/${spec.model}`, provider);
 }
 
 /**

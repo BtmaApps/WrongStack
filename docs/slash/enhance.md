@@ -43,7 +43,7 @@ It is **on by default** and persisted to the active profile config (`autonomy.en
 
 The refiner is instructed to **preserve intent and scope exactly** — it restates, it does not solve. It keeps concrete details verbatim (file paths, identifiers, code, error text, numbers, URLs), resolves obvious ambiguity by making the implied subject explicit (never by inventing specifics), stays concise, and preserves your language (a Turkish prompt is refined in Turkish). If a message is already clear, it comes back essentially unchanged.
 
-When you write in a non-English language, the refiner returns **two** versions — one in your language and one in English (the panel offers both). When you write in **English**, it returns a single version, skipping the redundant second copy — that halves the refiner's output for English prompts with no change to what you see.
+When you write in a non-English language, the refiner returns **two** versions — one in your language and one in English (the panel offers both). English input uses the **same** two-part contract: both versions are English and may be identical. Keeping the contract uniform for every language is what lets the parser validate the model's output deterministically outside the model, with one corrective pass when the format is violated.
 
 ## When it is skipped
 
@@ -52,7 +52,7 @@ Refinement is bypassed (the message is sent verbatim) for:
 - slash commands and image / attachment-only messages
 - messages carrying inline attachment chips (the refiner would drop the tokens)
 - steering interrupts (Esc-redirected turns) and messages queued while the agent is busy
-- one- or two-word inputs, bare affirmations (`yes`, `continue`, …), bare numbers, and anything shorter than ~12 characters
+- one- or two-word inputs, bare affirmations (`yes`, `continue`, …) and their non-English counterparts (`evet devam et`, `oui`, `ja weiter`, …), bare numbers, and anything shorter than ~12 characters
 - any refiner error or timeout — refinement is best-effort and never blocks you from sending
 
 The refined output is also discarded automatically when it is effectively identical to what you typed (no panel is shown).

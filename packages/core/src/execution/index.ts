@@ -184,7 +184,9 @@ export {
 } from './parallel-eternal-engine.js';
 export {
   buildRefinerContextSections,
+  completeRefinerPass,
   DEFAULT_REFINER_RETRY_FEEDBACK,
+  ENHANCER_SYSTEM_PROMPT,
   type EnhanceFailureKind,
   enhanceUserPrompt,
   gatedEnhancerReasoning,
@@ -195,6 +197,19 @@ export {
   shouldEnhance,
 } from './prompt-enhancer.js';
 export { DefaultPromptLoader, type PromptLoaderOptions, renderPrompt } from './prompt-loader.js';
+export {
+  projectRefineResult,
+  type RefineErrorKind,
+  type RefineFailureDecision,
+  type RefineFailureNextStep,
+  type RefinePreviewDecision,
+  type RefinePreviewTexts,
+  type RefineResultAction,
+  type RefineResultPayload,
+  type RefineSendPlan,
+  resolveFailureNextStep,
+  resolvePreviewAction,
+} from './refine-decisions.js';
 export {
   DefaultRetryPolicy,
   MODEL_RETRIES,

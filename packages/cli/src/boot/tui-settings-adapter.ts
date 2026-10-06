@@ -244,6 +244,8 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           : (cfg.autonomy as Record<string, unknown> | undefined)?.enhanceLanguage === 'original'
             ? ('original' as const)
             : ('english' as const),
+      enhanceRetryTimeoutMs: (cfg.autonomy as Record<string, unknown> | undefined)
+        ?.enhanceRetryTimeoutMs as number | undefined,
       midRunSendPicker:
         ((cfg.autonomy as Record<string, unknown> | undefined)?.midRunSendPicker as boolean) ??
         true,

@@ -441,6 +441,9 @@
       "materializeMessages",
       "serializeReceiptRecordV2"
     ],
+    "packages/core/src/coordination/mutation-engine.ts": [
+      "applyMutation"
+    ],
     "packages/core/src/coordination/session-subagent-models.ts": [
       "__resetAllSessionSubagentModelPlans"
     ],
@@ -498,9 +501,6 @@
     ],
     "packages/core/src/execution/model-runtime.ts": [
       "resolveParametersForRequest"
-    ],
-    "packages/core/src/execution/prompt-enhancer.ts": [
-      "completeRefinerPass"
     ],
     "packages/core/src/execution/tool-error-taxonomy.ts": [
       "classifiedToolErrorResult",
@@ -636,6 +636,9 @@
     ],
     "packages/core/src/statusline/index.ts": [
       "DEFAULT_HIDDEN_ITEMS"
+    ],
+    "packages/core/src/storage/cloud-config-sync/sanitize.ts": [
+      "inboundContractFor"
     ],
     "packages/core/src/storage/director-state.ts": [
       "acquireDirectorStateLock",
@@ -785,6 +788,12 @@
     ],
     "packages/kanban/src/verification/completion-park.ts": [
       "DEFAULT_MAX_VERIFICATION_ATTEMPTS"
+    ],
+    "packages/kanban/src/verification/plugins/agent.ts": [
+      "AgentVerifierPlugin"
+    ],
+    "packages/kanban/src/verification/plugins/council.ts": [
+      "CouncilVerifierPlugin"
     ],
     "packages/kanban/src/verification/verification-report.ts": [
       "renderVerificationReportMarkdown"
@@ -1374,6 +1383,7 @@
       "applyWashTokens"
     ],
     "packages/tui/src/components/history/copy-icon.ts": [
+      "inspectTextForEntry",
       "isInspectableEntry"
     ],
     "packages/tui/src/components/history/entry.tsx": [
@@ -1618,10 +1628,12 @@
       "actionableAlertCount"
     ],
     "packages/webui-hq/src/data/store/reducers.ts": [
+      "MAX_COMMAND_STATUSES",
       "SNAPSHOT_RACE_GUARD_WINDOW_MS"
     ],
     "packages/webui-hq/src/data/transport/hq-socket.ts": [
       "closeHqSocket",
+      "HqSocket",
       "resolveHqSocketUrl"
     ],
     "packages/webui-hq/src/data/transport/resume-frames.ts": [
@@ -1682,6 +1694,9 @@
     ],
     "packages/webui-server/src/server/governance-runtime.ts": [
       "webUiGovernanceRuntimeEnabled"
+    ],
+    "packages/webui-server/src/server/handlers/worklist-handlers.ts": [
+      "handlePlanGet"
     ],
     "packages/webui-server/src/server/mcp-handlers.ts": [
       "toView"
@@ -1876,6 +1891,10 @@
       "handlePrefsUpdated",
       "handleSystemPromptInfo",
       "handleWorkingDirChanged"
+    ],
+    "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts": [
+      "hydrateReplayMessages",
+      "isRoutePinnedView"
     ],
     "packages/webui/src/hooks/ws-handlers/techstack-handlers.ts": [
       "handleTechStackJobCancelled",

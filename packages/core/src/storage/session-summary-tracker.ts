@@ -185,6 +185,17 @@ export class SessionSummaryTracker {
         ...(event.model !== undefined ? { model: event.model } : {}),
         ...(event.provider !== undefined ? { provider: event.provider } : {}),
       };
+    } else if (event.type === 'enhance_usage') {
+      // Refiner ("enhance") passes run OUTSIDE the agent loop, so their spend
+      // is journaled as its own event instead of an llm_response — folding it
+      // there would pollute messageCount and overwrite the routed model
+      // metadata. Tokens belong in tokenTotal either way.
+      this.tokenIn += effectiveInputTokens(event.usage);
+      this.tokenOut += event.usage.output;
+      this.summary = {
+        ...this.summary,
+        tokenTotal: this.baseTokenTotal + this.tokenIn + this.tokenOut,
+      };
     } else if (event.type === 'session_end') {
       const total = totalUsageTokens(event.usage);
       if (total > 0) {

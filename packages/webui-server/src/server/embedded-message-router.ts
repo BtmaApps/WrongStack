@@ -394,6 +394,31 @@ export function createEmbeddedMessageRouter(
           primaryModel: model,
           activeProviderId,
           createProvider,
+          onUsage: (usage, source) => {
+            void targetAgent.ctx.session
+              .append({
+                type: 'enhance_usage',
+                ts: new Date().toISOString(),
+                usage,
+                provider: source.providerId,
+                model: source.model,
+              })
+              .catch(() => {
+                // Session journaling is best-effort by contract.
+              });
+          },
+          onOutcome: (outcome) => {
+            opts.agent.events.emit('enhance.outcome', {
+              providerId: outcome.providerId,
+              model: outcome.model,
+              result: outcome.result,
+              passes: 1,
+              parseRejections: 0,
+              durationMs: outcome.durationMs,
+              reason: outcome.reason,
+              failureKind: outcome.failureKind,
+            });
+          },
         }),
       );
     },

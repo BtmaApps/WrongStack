@@ -138,6 +138,7 @@ export { OneShotOrchestrator } from './execution/one-shot-llm.js';
 export {
   buildRefinerContextSections,
   type ConversationTurn,
+  completeRefinerPass,
   DEFAULT_REFINER_RETRY_FEEDBACK,
   ENHANCER_SYSTEM_PROMPT,
   type EnhanceFailureKind,

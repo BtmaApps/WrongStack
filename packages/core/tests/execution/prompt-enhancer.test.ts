@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { EnhanceOutcome, EnhancePassInfo } from '../../src/execution/prompt-enhancer.js';
 import {
   buildRefinerContextSections,
   completeRefinerPass,
@@ -12,7 +13,13 @@ import {
   shouldEnhance,
 } from '../../src/execution/prompt-enhancer.js';
 import type { Message } from '../../src/types/messages.js';
-import type { Provider, ReasoningConfig, Request, Response } from '../../src/types/provider.js';
+import type {
+  Provider,
+  ReasoningConfig,
+  Request,
+  Response,
+  Usage,
+} from '../../src/types/provider.js';
 
 function makeProvider(
   impl: (req: Request, opts: { signal: AbortSignal }) => Promise<Response>,
@@ -64,6 +71,17 @@ describe('shouldEnhance', () => {
   it('enhances genuine multi-word requests', () => {
     expect(shouldEnhance('fix the bug in the parser')).toBe(true);
     expect(shouldEnhance('make the login flow faster please')).toBe(true);
+  });
+
+  it('skips non-English control answers for lexicon-covered languages', () => {
+    // Listed control phrase, long enough to pass every other gate.
+    expect(shouldEnhance('evet devam et')).toBe(false);
+    expect(shouldEnhance('EVET DEVAM ET.')).toBe(false);
+    expect(shouldEnhance('devam')).toBe(false);
+    expect(shouldEnhance('oui')).toBe(false);
+    // Real instructions that merely start with a control word still refine.
+    expect(shouldEnhance('evet ama önce parser düzelt')).toBe(true);
+    expect(shouldEnhance('ja und danach die Tests ausführen')).toBe(true);
   });
 });
 
@@ -255,7 +273,7 @@ describe('completeRefinerPass', () => {
         signal,
         timeoutMs: 5000,
       }),
-    ).resolves.toEqual({ text: 'Refined output.' });
+    ).resolves.toEqual({ text: 'Refined output.', usage: { input: 10, output: 5 } });
     expect(complete).toHaveBeenCalledWith(
       { ...request, messages: [{ role: 'user', content: 'raw prompt' }] },
       { signal },
@@ -335,9 +353,13 @@ describe('enhanceUserPrompt', () => {
   it('uses the orchestrator for both the malformed response and corrective retry', async () => {
     const call = vi
       .fn()
-      .mockResolvedValueOnce({ text: 'auth.ts içindeki hatayı düzelt.' })
+      .mockResolvedValueOnce({
+        text: 'auth.ts içindeki hatayı düzelt.',
+        tokens: { input: 3, output: 2, total: 5 },
+      })
       .mockResolvedValueOnce({
         text: 'auth.ts içindeki hatayı düzelt.\n---\nFix the error in auth.ts.',
+        tokens: { input: 4, output: 3, total: 7 },
       });
     const provider = makeProvider(async () => {
       throw new Error('direct provider should not run');
@@ -713,4 +735,225 @@ it('keeps selected skills when the refiner drops their mention tokens', () => {
   );
   expect(result?.refined).toContain('$code-review');
   expect(result?.english).toContain('$code-review');
+});
+
+// ---------------------------------------------------------------------------
+// usage + outcome telemetry (F3: refiner tokens flow to the cost pipeline)
+// ---------------------------------------------------------------------------
+
+describe('usage + outcome telemetry', () => {
+  it('completeRefinerPass surfaces direct-provider usage', async () => {
+    const out = await completeRefinerPass('refine this', {
+      provider: makeProvider(async () => textResponse('a\n---\nb')),
+      request: { model: 'test' } as Request,
+      signal: new AbortController().signal,
+      timeoutMs: 1_000,
+    });
+    expect(out.usage).toEqual({ input: 10, output: 5 });
+  });
+
+  it('completeRefinerPass maps one-shot orchestrator token totals into usage', async () => {
+    const orchestrator = {
+      call: vi.fn(async () => ({
+        text: 'a\n---\nb',
+        tokens: { input: 7, output: 3, total: 10 },
+      })),
+    };
+    const out = await completeRefinerPass('refine this', {
+      provider: makeProvider(async () => textResponse('unused')),
+      request: { model: 'test' } as Request,
+      signal: new AbortController().signal,
+      timeoutMs: 1_000,
+      oneShotOrchestrator: orchestrator as never,
+    });
+    expect(out.text).toBe('a\n---\nb');
+    expect(out.usage).toEqual({ input: 7, output: 3 });
+  });
+
+  it('reports per-pass usage and a success outcome', async () => {
+    const usageReports: Array<{ usage: Usage; pass: EnhancePassInfo }> = [];
+    const outcomes: EnhanceOutcome[] = [];
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async () =>
+        textResponse('the parser has a race condition\n---\nthe parser has a race condition'),
+      ),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      onUsage: (usage, pass) => usageReports.push({ usage, pass }),
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).not.toBeNull();
+    expect(usageReports).toEqual([
+      { usage: { input: 10, output: 5 }, pass: { pass: 1, kind: 'initial' } },
+    ]);
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]).toMatchObject({ result: 'success', passes: 1, parseRejections: 0 });
+    expect(outcomes[0]!.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('counts parse rejections and the corrective pass', async () => {
+    const responses = [
+      textResponse('no separator in this response at all'),
+      textResponse('the parser has a race condition\n---\nthe parser has a race condition'),
+    ];
+    let call = 0;
+    const passes: EnhancePassInfo[] = [];
+    const outcomes: EnhanceOutcome[] = [];
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async () => responses[Math.min(call++, responses.length - 1)]!),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      onUsage: (_usage, pass) => passes.push(pass),
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).not.toBeNull();
+    expect(passes).toEqual([
+      { pass: 1, kind: 'initial' },
+      { pass: 2, kind: 'corrective' },
+    ]);
+    expect(outcomes[0]).toMatchObject({ result: 'success', passes: 2, parseRejections: 1 });
+  });
+
+  it('reports a timeout outcome when the pass exceeds its window', async () => {
+    const onError = vi.fn();
+    const outcomes: EnhanceOutcome[] = [];
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async (_req, { signal }) => {
+        await new Promise<never>((_, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason ?? new Error('aborted')), {
+            once: true,
+          });
+        });
+        return textResponse('unused');
+      }),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      timeoutMs: 20,
+      onError,
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).toBeNull();
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('timed out'), 'timeout');
+    expect(outcomes[0]).toMatchObject({ result: 'timeout', passes: 1 });
+  });
+
+  it('reports cancelled without onError when the caller aborts (direct provider)', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const onError = vi.fn();
+    const outcomes: EnhanceOutcome[] = [];
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async (_req, { signal }) => {
+        signal.throwIfAborted();
+        return textResponse('unused');
+      }),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      signal: controller.signal,
+      onError,
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).toBeNull();
+    expect(onError).not.toHaveBeenCalled();
+    expect(outcomes[0]).toMatchObject({ result: 'cancelled' });
+  });
+
+  it('classifies a deadline hit as timeout even when the caller cancel races it', async () => {
+    // Caller cancelled up-front; the deadline fires at 5ms; the provider's
+    // late rejection lands at 20ms — by then BOTH abort flags are set, and
+    // the fired deadline must win the classification.
+    const controller = new AbortController();
+    controller.abort();
+    const onError = vi.fn();
+    const outcomes: EnhanceOutcome[] = [];
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        throw new Error('late provider failure');
+      }),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      signal: controller.signal,
+      timeoutMs: 5,
+      onError,
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).toBeNull();
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('timed out'), 'timeout');
+    expect(outcomes[0]).toMatchObject({ result: 'timeout', passes: 1 });
+  });
+
+  it('keeps the result and reports once when onOutcome throws', async () => {
+    const onOutcome = vi.fn(() => {
+      throw new Error('telemetry down');
+    });
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async () =>
+        textResponse('the parser has a race condition\n---\nthe parser has a race condition'),
+      ),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      onOutcome,
+    });
+    expect(result).not.toBeNull();
+    expect(onOutcome).toHaveBeenCalledTimes(1);
+  });
+
+  it('classifies an orchestrator deadline as timeout, not provider_error', async () => {
+    const onError = vi.fn();
+    const outcomes: EnhanceOutcome[] = [];
+    const orchestrator = {
+      call: vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return { text: '', error: 'request timed out upstream' };
+      }),
+    };
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async () => textResponse('unused')),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      timeoutMs: 5,
+      oneShotOrchestrator: orchestrator as never,
+      onError,
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).toBeNull();
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('timed out'), 'timeout');
+    expect(outcomes[0]).toMatchObject({ result: 'timeout', passes: 1 });
+  });
+
+  it('classifies orchestrator-path aborts as cancelled, not provider_error', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const onError = vi.fn();
+    const outcomes: EnhanceOutcome[] = [];
+    const orchestrator = {
+      call: vi.fn(async () => ({ text: '', error: 'aborted before completion' })),
+    };
+    const result = await enhanceUserPrompt({
+      provider: makeProvider(async () => textResponse('unused')),
+      model: 'test',
+      text: 'fix the parser race please quickly',
+      signal: controller.signal,
+      oneShotOrchestrator: orchestrator as never,
+      onError,
+      onOutcome: (outcome) => outcomes.push(outcome),
+    });
+    expect(result).toBeNull();
+    expect(onError).not.toHaveBeenCalled();
+    expect(outcomes[0]).toMatchObject({ result: 'cancelled' });
+  });
+});
+
+describe('core execution barrel surface', () => {
+  it('re-exports completeRefinerPass and ENHANCER_SYSTEM_PROMPT from both barrels', async () => {
+    const execution = await import('../../src/execution/index.js');
+    const publicApi = await import('../../src/public-execution.js');
+    expect(typeof execution.completeRefinerPass).toBe('function');
+    expect(typeof execution.ENHANCER_SYSTEM_PROMPT).toBe('string');
+    expect(execution.ENHANCER_SYSTEM_PROMPT).toBe(ENHANCER_SYSTEM_PROMPT);
+    expect(typeof publicApi.completeRefinerPass).toBe('function');
+    expect(typeof publicApi.ENHANCER_SYSTEM_PROMPT).toBe('string');
+    expect(publicApi.ENHANCER_SYSTEM_PROMPT).toBe(ENHANCER_SYSTEM_PROMPT);
+  });
 });

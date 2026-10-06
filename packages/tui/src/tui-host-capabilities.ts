@@ -25,6 +25,8 @@ export interface PromptRefinementCapabilities {
   getEnhanceFallbackRef?: (() => string | undefined) | undefined;
   getConfiguredRefinerRef?: (() => string | undefined) | undefined;
   getPickableProviders?: (() => Promise<PickableProviderCapability[]>) | undefined;
+  /** Live TUI settings; the refiner reads the retry-window override from it. */
+  getSettings?: (() => Settings) | undefined;
 }
 
 export interface RunBlocksCapabilities {
@@ -75,7 +77,6 @@ type ClearAction = Extract<
 export interface SubmitCapabilities extends PromptRefinementCapabilities {
   slashRegistry: SlashCommandRegistry;
   tokenCounter?: TokenCounter | undefined;
-  getSettings?: (() => Settings) | undefined;
   saveSettings?: ((settings: Settings) => string | null | Promise<string | null>) | undefined;
   getYolo?: (() => boolean) | undefined;
   getAutonomy?: (() => 'off' | 'suggest' | 'auto' | 'eternal' | 'eternal-parallel') | undefined;

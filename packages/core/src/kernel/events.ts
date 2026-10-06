@@ -5,6 +5,7 @@
 
 import type { AgentEventMap } from './events/agent-events.js';
 import type { BrainEventMap } from './events/brain-events.js';
+import type { EnhanceEventMap } from './events/enhance-events.js';
 import type { FileEventMap } from './events/file-events.js';
 import type { FleetEventMap } from './events/fleet-events.js';
 import type { MemoryEventMap } from './events/memory-events.js';
@@ -79,6 +80,7 @@ export interface TrackedAgentSnapshot {
 export interface EventMap
   extends AgentEventMap,
     BrainEventMap,
+    EnhanceEventMap,
     SessionEventMap,
     ProviderEventMap,
     ProcessEventMap,

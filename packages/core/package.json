@@ -96,6 +96,10 @@
       "types": "./dist/utils/tree-kill.d.ts",
       "import": "./dist/utils/tree-kill.js"
     },
+    "./execution/refine-decisions": {
+      "types": "./dist/execution/refine-decisions.d.ts",
+      "import": "./dist/execution/refine-decisions.js"
+    },
     "./execution": {
       "types": "./dist/execution/index.d.ts",
       "import": "./dist/execution/index.js"
