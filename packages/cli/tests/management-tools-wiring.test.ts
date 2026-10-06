@@ -158,7 +158,12 @@ describe('registerCliManagementTools', () => {
       join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-main.ts'),
       'utf8',
     );
-    expect(cliMain).toContain('getHookRunner: () => hookRunnerRef.current');
+    const initialTools = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-initial-tools.ts'),
+      'utf8',
+    );
+    expect(cliMain).toContain('await setupInitialCliTools(');
+    expect(initialTools).toContain('getHookRunner: () => hookRunnerRef.current');
     expect(cliMain).toContain('hookRunnerRef.current = hookRunner;');
   });
 
@@ -231,7 +236,14 @@ describe('registerCliManagementTools', () => {
       join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-main.ts'),
       'utf8',
     );
-    expect(cliMain).toContain('getSwitchProviderAndModel: () => switchProviderAndModelRef.current');
+    const initialTools = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-initial-tools.ts'),
+      'utf8',
+    );
+    expect(cliMain).toContain('await setupInitialCliTools(');
+    expect(initialTools).toContain(
+      'getSwitchProviderAndModel: () => switchProviderAndModelRef.current',
+    );
     expect(cliMain).toContain('switchProviderAndModelRef.current = switchProviderAndModel;');
   });
 

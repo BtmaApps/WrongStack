@@ -84,9 +84,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/kernel": {
-      "files": 340,
+      "files": 341,
       "typeOnly": 153,
-      "runtimeOrMixed": 207
+      "runtimeOrMixed": 208
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -7111,6 +7111,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/cli-infrastructure.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/cli-initial-tools.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

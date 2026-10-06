@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T06:52:40.971Z",
+  "generatedAt": "2026-10-06T06:53:41.940Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4639,
-    "testFiles": 4113,
+    "testFiles": 4114,
     "sourceLines": 1063130,
     "workspaceEdges": 133,
     "moduleEdges": 15264,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 583,
-      "testFiles": 592,
+      "testFiles": 593,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 592
+          "testFiles": 593
         }
       ]
     },
@@ -2401,6 +2401,12 @@
       },
       {
         "file": "packages/cli/tests/cli-infrastructure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/cli-initial-tools.test.ts",
         "projects": [
           "root-node"
         ]
