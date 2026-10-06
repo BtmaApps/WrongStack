@@ -56,6 +56,10 @@
       "types": "./dist/types/session-timeline.d.ts",
       "import": "./dist/types/session-timeline.js"
     },
+    "./types/worktree-timeline": {
+      "types": "./dist/types/worktree-timeline.d.ts",
+      "import": "./dist/types/worktree-timeline.js"
+    },
     "./core/model-ref": {
       "types": "./dist/core/model-ref.d.ts",
       "import": "./dist/core/model-ref.js"

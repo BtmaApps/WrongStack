@@ -23,6 +23,7 @@ interface GoalRunState {
   /** Full operator prompt that started the run (title is only a short heading). */
   goal: string | null;
   status: GoalRunStatus;
+  readOnly: boolean;
   /** Split goal across multiple kanban boards (one per phase). */
   multiBoard: boolean;
   lastEvent: string | null;
@@ -41,6 +42,7 @@ interface GoalRunState {
     status: 'passed' | 'failed';
     checkedAt: number;
     error?: string | undefined;
+    skipped?: boolean | undefined;
   } | null;
 
   setState: (s: {
@@ -52,6 +54,7 @@ interface GoalRunState {
     graphId?: string | null | undefined;
     goal?: string | null | undefined;
     status?: GoalRunStatus | undefined;
+    readOnly?: boolean | undefined;
     multiBoard?: boolean | undefined;
     lastEvent?: string | null | undefined;
     lastError?: string | null | undefined;
@@ -73,6 +76,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
   graphId: null,
   goal: null,
   status: 'idle',
+  readOnly: false,
   multiBoard: false,
   lastEvent: null,
   lastError: null,
@@ -90,6 +94,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
       graphId: patch.graphId !== undefined ? patch.graphId : prev.graphId,
       goal: patch.goal !== undefined ? patch.goal : prev.goal,
       status: patch.status ?? prev.status,
+      readOnly: patch.readOnly ?? prev.readOnly,
       multiBoard: patch.multiBoard ?? prev.multiBoard,
       lastEvent: patch.lastEvent !== undefined ? patch.lastEvent : prev.lastEvent,
       lastError: patch.lastError !== undefined ? patch.lastError : prev.lastError,
@@ -108,6 +113,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
       graphId: null,
       goal: null,
       status: 'idle',
+      readOnly: false,
       multiBoard: false,
       lastEvent: null,
       lastError: null,

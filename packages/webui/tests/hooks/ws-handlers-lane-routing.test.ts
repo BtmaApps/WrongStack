@@ -134,6 +134,9 @@ const PROJECT_WIDE_STORES = new Set([
   'useGitChangesStore',
   'useGitInfoStore',
   'useGoalAssessStore',
+  // The server broadcasts the project-wide goal catalog; selection is a
+  // browser preference keyed by goal id, independent of conversation tabs.
+  'useGoalCatalogStore',
   'useGoalRunStore',
   'useGoalStateStore',
   'useGoalStore',

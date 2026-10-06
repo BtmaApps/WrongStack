@@ -418,6 +418,11 @@ single-model fallback. CLI/TUI and standalone WebUI share this chain and live
 settings; interactive decisions use the existing human-input form. See
 [Brain controls and Judge behavior](docs/slash/brain.md).
 
+For executable phase goals, `/goals` and WebUI **My Goals** provide a project
+catalog with goal ids, owning sessions, task/phase progress and blockers.
+Git-backed terminal goals run in separate checkouts and retain their goal
+branches for review before integration. See [project goal tracking](docs/plans/goal-project-tracking-2026-10-05.md).
+
 ### Multi-agent fleet + Director
 
 A specialist roster and smart dispatcher fan out under a Director. Each subagent

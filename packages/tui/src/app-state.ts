@@ -1,6 +1,7 @@
 // State, Action, and supporting types extracted from app-reducer.ts.
 // This file has NO React or Ink dependencies — pure type definitions.
 import type { AutonomyStage, FleetChatVerbosity } from '@wrongstack/core/types';
+import type { WorktreeTimelineEvent } from '@wrongstack/core/types/worktree-timeline';
 import type { SddBoardSnapshot } from '@wrongstack/sdd';
 import type { PanelState } from './app-panel-state.js';
 import type { GoalSummary, QueueItem } from './app-state-core-types.js';
@@ -403,6 +404,11 @@ export type State = PanelState & {
   worktreeBase?: string | undefined;
   /** True while the worktree monitor overlay is open (Ctrl+T). */
   worktreeMonitorOpen: boolean;
+  /**
+   * Normalised `worktree.*` lifecycle log (bounded) the monitor projects into
+   * its timeline. Unlike `worktrees` it is not pruned on release.
+   */
+  worktreeTimeline: WorktreeTimelineEvent[];
   /**
    * AutonomousCoordinator state — live from `subscribeCoordinatorEvents`.
    * Tracks project-level multi-session coordination: goals, tasks, consensus, and knowledge.

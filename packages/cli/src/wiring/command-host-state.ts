@@ -216,6 +216,7 @@ export async function setupCommandHostState(input: CommandHostStateInput) {
     getSessionId: () => input.sessionRef.current?.id ?? input.session.id,
     storeDir: input.paths.projectAutophase,
     projectRoot: input.projectRoot,
+    sddBoardsDir: input.paths.projectSddBoards,
     brain: input.brain,
     log: (line) => input.renderer.write(`${line}\n`),
   });

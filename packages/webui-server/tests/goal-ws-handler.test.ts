@@ -50,6 +50,7 @@ vi.mock('@wrongstack/core/goal', async (importOriginal) => {
     save = vi.fn(async () => undefined);
     load = vi.fn(async () => null);
     list = vi.fn(async () => []);
+    listGoals = vi.fn(async () => []);
     acquireRunLease = vi.fn(async () => vi.fn(async () => undefined));
   }
   class FakePlanner {
@@ -269,7 +270,7 @@ describe('GoalWebSocketHandler', () => {
 
       // The mock PhaseStore.list returns [] → goal.list has its own
       // unconditional broadcast branch, independent of any loaded graph.
-      expect(sentMessages(ws)).toEqual([{ type: 'goal.list', payload: { graphs: [] } }]);
+      expect(sentMessages(ws)).toEqual([{ type: 'goal.list', payload: { graphs: [], goals: [] } }]);
     });
 
     it('goal.load with unknown id: broadcasts goal.error', async () => {

@@ -45,6 +45,8 @@ import type {
   WSWorktreeMergeResult,
   WSWorktreeOrphans,
   WSWorktreeState,
+  WSWorktreeTimeline,
+  WSWorktreeTimelineEvent,
 } from './goal-kanban-worktree.js';
 import type { WSQueueDrained, WSQueueState } from './prompt-queue.js';
 import type {
@@ -340,6 +342,8 @@ export type WSServerMessage =
   | WSKanbanTaskActivity
   | WSWorktreeState
   | WSWorktreeEvent
+  | WSWorktreeTimeline
+  | WSWorktreeTimelineEvent
   | WSWorktreeOrphans
   | WSWorktreeCleanupResult
   | WSWorktreeMergeResult

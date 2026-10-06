@@ -14,6 +14,7 @@ import type { SlashCommand } from '@wrongstack/core/types';
 import { ConfigError } from '@wrongstack/core/types';
 import type { SlashCommandContext } from './command-context.js';
 import { refineGoalWithFallback, resolveRefinerTarget } from './goal-refiner.js';
+import { buildGoalsCommand } from './goals.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
 
 function getStore(opts: SlashCommandContext): PhaseStore {
@@ -224,6 +225,7 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
       const raw = args.trim();
       const [firstRaw, ...tail] = raw.split(/\s+/);
       const first = (firstRaw ?? '').toLowerCase();
+      if (first === 'status' && tail.length > 0) return buildGoalsCommand(opts).run(tail.join(' '));
       if (first === 'mission') return runMissionCommand(opts, tail.join(' '));
       if (MISSION_COMMANDS.has(first)) return runMissionCommand(opts, raw);
       const phaseCommands = new Set([
@@ -268,7 +270,7 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
               'Building autonomously in the background — one subagent per todo.',
               'Use `/goal` for status, `/goal pause` to hold, `/goal stop` to abort.',
             ].join('\n'),
-            metadata: { goalRunInit: { title: result.graph.title } },
+            metadata: { goalRunInit: { title: `${result.graph.title} [${result.graph.id}]` } },
           };
         }
 

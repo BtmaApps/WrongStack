@@ -7,6 +7,7 @@ import {
   PhaseOrchestrator,
   PhaseStore,
   type PhaseTemplate,
+  summarizeGoal,
 } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
@@ -39,6 +40,7 @@ import { errMessage, sendSerialized } from './ws-utils.js';
 interface WSClient {
   ws: WebSocket;
   id: string;
+  cleanup: () => void;
 }
 
 interface GoalWSMessage {
@@ -59,8 +61,16 @@ interface GoalWSMessage {
  *   goal.taskStatus  → { taskId, status }
  */
 export class GoalWebSocketHandler {
+  private readonly goals = new Map<string, GoalWebSocketHandler>();
+  private readonly selections = new WeakMap<WebSocket, string>();
+  private catalogTimer: ReturnType<typeof setInterval> | null = null;
+  private catalogInFlight = false;
+  private readOnly = false;
+  private stopGeneration = 0;
   private orchestrator: PhaseOrchestrator | null = null;
   private runPromise: Promise<void> | null = null;
+  private setupPromise: Promise<void> | null = null;
+  private disposed = false;
   private graph: PhaseGraph | null = null;
   private store: PhaseStore;
   private persistence: GoalRunPersistence;
@@ -115,24 +125,55 @@ export class GoalWebSocketHandler {
     private onBoardState?: ((graphId: string, state: Record<string, unknown>) => void) | undefined,
     /** Fresh isolated worker factory; task execution never shares the chat Context when provided. */
     private taskAgentFactory?: AgentFactory | undefined,
+    private readonly goalId?: string | undefined,
   ) {
     this.store = new PhaseStore({ baseDir: storeDir });
     this.persistence = new GoalRunPersistence(this.store);
   }
 
   addClient(ws: WebSocket): void {
-    const client: WSClient = { ws, id: crypto.randomUUID() };
+    const onClose = () => {
+      this.clients.delete(client);
+      client.cleanup();
+      if (this.clients.size === 0 && this.catalogTimer) {
+        clearInterval(this.catalogTimer);
+        this.catalogTimer = null;
+      }
+    };
+    const client: WSClient = {
+      ws,
+      id: crypto.randomUUID(),
+      cleanup: () => {
+        ws.off?.('close', onClose);
+        ws.off?.('error', onClose);
+      },
+    };
     this.clients.add(client);
 
-    ws.on('close', () => this.clients.delete(client));
-    ws.on('error', () => this.clients.delete(client));
+    ws.on('close', onClose);
+    ws.on('error', onClose);
 
     // Send current state
     this.sendState(client);
+    if (!this.goalId) {
+      for (const goal of this.goals.values()) goal.addClient(ws);
+      if (!this.catalogTimer) {
+        this.catalogTimer = setInterval(() => {
+          void this.broadcastCatalog();
+        }, 2000);
+        this.catalogTimer.unref?.();
+      }
+    }
   }
 
   /** Release timers, in-flight work, and socket references owned by this host. */
   dispose(): void {
+    this.stopGeneration++;
+    this.disposed = true;
+    if (this.catalogTimer) clearInterval(this.catalogTimer);
+    this.catalogTimer = null;
+    for (const goal of this.goals.values()) goal.dispose();
+    this.goals.clear();
     this.stopping = true;
     this.abort?.abort();
     this.abort = null;
@@ -140,26 +181,138 @@ export class GoalWebSocketHandler {
     this.assessAbort = null;
     const orchestrator = this.orchestrator;
     const runPromise = this.runPromise;
+    const setupPromise = this.setupPromise;
     orchestrator?.stop();
     this.orchestrator = null;
     this.runPromise = null;
-    const graph = this.graph;
     void (async () => {
+      await setupPromise?.catch(() => undefined);
       await runPromise?.catch(() => undefined);
-      if (graph) {
-        await this.persistence.save(graph).catch((err) => {
+      if (this.graph && this.releaseRunLease) {
+        this.graph.runState = 'stopped';
+        await this.persistence.save(this.graph).catch((err) => {
           this.logger.warn(`[Goal] Failed to save during disposal: ${toErrorMessage(err)}`);
         });
       }
       await this.releaseActiveRunLease();
     })().catch((err) => this.logger.warn(`[Goal] Disposal cleanup failed: ${toErrorMessage(err)}`));
     this.stopBroadcast();
+    for (const client of this.clients) client.cleanup();
     this.clients.clear();
     this.usedNicknames.clear();
     this.worktrees = null;
   }
 
   async handleMessage(ws: WebSocket, msg: GoalWSMessage): Promise<void> {
+    if (this.disposed) return;
+    if (!this.goalId && msg.type === 'goal.list') {
+      await this.broadcastCatalog();
+      return;
+    }
+    if (!this.goalId) {
+      const requestedId = typeof msg.payload?.goalId === 'string' ? msg.payload.goalId : undefined;
+      const selectedId = requestedId ?? this.selections.get(ws);
+      if (selectedId && msg.type !== 'goal.assess') {
+        if (!/^[a-zA-Z0-9_-]{1,200}$/.test(selectedId)) throw new Error('Invalid Goal id.');
+        let goal = this.goals.get(selectedId);
+        let requestGeneration = goal?.stopGeneration ?? 0;
+        if (!goal) {
+          if (this.goals.size >= 64) {
+            const unused = [...this.goals].find(
+              ([, entry]) => !entry.startInFlight && !entry.runPromise,
+            );
+            if (unused) {
+              unused[1].dispose();
+              this.goals.delete(unused[0]);
+            }
+          }
+          if (msg.type === 'goal.start' && !this.taskAgentFactory)
+            throw new Error('Concurrent Goals require isolated worker agents.');
+          const live = [...this.goals.values()].filter(
+            (entry) => entry.startInFlight || entry.runPromise || !entry.graph,
+          );
+          if (msg.type === 'goal.start' && live.length >= 8)
+            throw new Error(
+              'Eight Goals are already active in this server. Stop one before starting another.',
+            );
+          goal = new GoalWebSocketHandler(
+            this.agent,
+            this.context,
+            this.logger,
+            this.store.baseDir,
+            this.events,
+            this.projectRoot,
+            this.onBoardState,
+            this.taskAgentFactory,
+            selectedId,
+          );
+          this.goals.set(selectedId, goal);
+          requestGeneration = goal.stopGeneration;
+          for (const client of this.clients) goal.addClient(client.ws);
+          if (msg.type !== 'goal.start') {
+            const graph = await this.store.load(selectedId);
+            if (!graph) throw new Error(`Goal not found: ${selectedId}`);
+            goal.graph = graph;
+            goal.runStatus = graph.completedAt
+              ? 'completed'
+              : graph.runState === 'failed'
+                ? 'failed'
+                : 'stopped';
+          } else if (await this.store.load(selectedId)) {
+            this.goals.delete(selectedId);
+            goal.dispose();
+            throw new Error('This Goal id already exists. Resume it or start a new id.');
+          }
+        }
+        if (msg.type === 'goal.start' && goal.stopGeneration !== requestGeneration) {
+          goal.broadcast({ type: 'goal.stopped', payload: {} });
+          return;
+        }
+        this.selections.set(ws, selectedId);
+        if (msg.type === 'goal.start' && goal.graph) {
+          goal.broadcast({
+            type: 'goal.error',
+            payload: {
+              message: 'This Goal already exists. Resume it or start a new id.',
+              controlOnly: true,
+            },
+          });
+          return;
+        }
+        if (
+          goal.graph &&
+          !goal.releaseRunLease &&
+          ['goal.status', 'goal.selectPhase'].includes(msg.type)
+        ) {
+          const latest = await this.store.load(selectedId);
+          if (latest) goal.graph = latest;
+          const owner = await this.store.goalRunOwner(goal.graph);
+          goal.readOnly = Boolean(owner);
+          const status = summarizeGoal(goal.graph, owner).status;
+          goal.runStatus = status === 'pending' || status === 'planning' ? 'stopped' : status;
+        }
+        if (
+          goal.graph &&
+          !goal.releaseRunLease &&
+          !['goal.status', 'goal.list', 'goal.selectPhase'].includes(msg.type)
+        ) {
+          const owner = await this.store.goalRunOwner(goal.graph);
+          if (owner) {
+            goal.broadcast({
+              type: 'goal.error',
+              payload: {
+                message: `This Goal is owned by ${owner}. Control it in its owning terminal.`,
+                controlOnly: true,
+              },
+            });
+            return;
+          }
+        }
+        await goal.handleMessage(ws, msg);
+        await this.broadcastCatalog();
+        return;
+      }
+    }
     switch (msg.type) {
       case 'goal.assess':
         await this.handleAssess(ws, msg.payload);
@@ -169,7 +322,13 @@ export class GoalWebSocketHandler {
         break;
       case 'goal.pause':
         this.orchestrator?.pause();
-        if (this.orchestrator) this.runStatus = 'paused';
+        if (this.orchestrator) {
+          this.runStatus = 'paused';
+          if (this.graph) {
+            this.graph.runState = 'paused';
+            this.persistDetached(this.graph);
+          }
+        }
         this.broadcast({ type: 'goal.paused', payload: {} });
         if (this.orchestrator) this.broadcastState();
         break;
@@ -177,6 +336,10 @@ export class GoalWebSocketHandler {
         if (this.orchestrator && this.runStatus === 'paused') {
           this.orchestrator.resume();
           this.runStatus = 'running';
+          if (this.graph) {
+            this.graph.runState = 'running';
+            this.persistDetached(this.graph);
+          }
           this.broadcast({ type: 'goal.resumed', payload: {} });
           this.broadcastState();
         } else {
@@ -269,7 +432,12 @@ export class GoalWebSocketHandler {
         break;
       }
       case 'goal.load': {
-        if (this.startInFlight || this.runStatus === 'running' || this.runStatus === 'paused') {
+        if (
+          this.startInFlight ||
+          this.runPromise ||
+          this.runStatus === 'running' ||
+          this.runStatus === 'paused'
+        ) {
           this.broadcast({
             type: 'goal.error',
             payload: { message: 'Stop the active Goal run before loading another board.' },
@@ -331,11 +499,25 @@ export class GoalWebSocketHandler {
   }
 
   private async handleStart(payload?: Record<string, unknown>): Promise<void> {
-    return handleStartFromHost(this.goalWsRunControlsHost(), payload);
+    if (this.setupPromise) return handleStartFromHost(this.goalWsRunControlsHost(), payload);
+    const setup = handleStartFromHost(this.goalWsRunControlsHost(), payload);
+    this.setupPromise = setup;
+    try {
+      await setup;
+    } finally {
+      if (this.setupPromise === setup) this.setupPromise = null;
+    }
   }
 
   private async handleResumeGraph(graphId: string): Promise<void> {
-    return handleResumeGraphFromHost(this.goalWsRunControlsHost(), graphId);
+    if (this.setupPromise) return handleResumeGraphFromHost(this.goalWsRunControlsHost(), graphId);
+    const setup = handleResumeGraphFromHost(this.goalWsRunControlsHost(), graphId);
+    this.setupPromise = setup;
+    try {
+      await setup;
+    } finally {
+      if (this.setupPromise === setup) this.setupPromise = null;
+    }
   }
 
   private async startRun(
@@ -352,6 +534,7 @@ export class GoalWebSocketHandler {
    * `goal.clear` to reset or `goal.revert` to undo the changes.
    */
   private async handleStop(): Promise<void> {
+    this.stopGeneration++;
     return handleStopFromHost(this.goalWsRunControlsHost());
   }
 
@@ -379,6 +562,19 @@ export class GoalWebSocketHandler {
    *  the LLM turn (the previous fresh, never-aborted controller made planning
    *  uninterruptible). */
   private async planPhases(goal: string, signal?: AbortSignal): Promise<PhaseTemplate[]> {
+    if (this.goalId && this.taskAgentFactory) {
+      const built = await this.taskAgentFactory({
+        name: `goal-planner-${this.goalId}`.slice(0, 48),
+        role: 'planner',
+        cwd: this.projectRoot,
+        allowedCapabilities: ['fs.read'],
+      });
+      try {
+        return await delegatePlanPhases({ agent: built.agent, logger: this.logger }, goal, signal);
+      } finally {
+        await built.dispose?.();
+      }
+    }
     return delegatePlanPhases(this.goalPhasePlanningHost(), goal, signal);
   }
 
@@ -554,7 +750,10 @@ export class GoalWebSocketHandler {
   }
 
   private buildState(activePhaseId?: string): Record<string, unknown> {
-    return buildGoalState(this.graph, activePhaseId, this.runStatus);
+    return {
+      ...buildGoalState(this.graph, activePhaseId, this.runStatus),
+      ...(this.goalId ? { readOnly: this.readOnly } : {}),
+    };
   }
 
   private sendState(client: WSClient): void {
@@ -564,6 +763,11 @@ export class GoalWebSocketHandler {
   }
 
   private broadcast(msg: { type: string; payload: unknown }): void {
+    if (this.goalId)
+      msg = {
+        ...msg,
+        payload: { ...(msg.payload as Record<string, unknown>), goalId: this.goalId },
+      };
     const data = JSON.stringify(msg);
     const frameBytes = Buffer.byteLength(data, 'utf8');
     for (const client of this.clients) {
@@ -572,6 +776,11 @@ export class GoalWebSocketHandler {
   }
 
   private send(client: WSClient, msg: { type: string; payload: unknown }): void {
+    if (this.goalId)
+      msg = {
+        ...msg,
+        payload: { ...(msg.payload as Record<string, unknown>), goalId: this.goalId },
+      };
     sendSerialized(client.ws, JSON.stringify(msg));
   }
 
@@ -590,6 +799,9 @@ export class GoalWebSocketHandler {
   private goalRunHost(): GoalRunHost {
     const self = this;
     return {
+      get goalId() {
+        return self.goalId;
+      },
       get abort() {
         return self.abort;
       },
@@ -683,7 +895,7 @@ export class GoalWebSocketHandler {
         return self.agent;
       },
       get projectRoot() {
-        return self.projectRoot;
+        return self.graph?.workspace?.dir ?? self.projectRoot;
       },
       get logger() {
         return self.logger;
@@ -707,9 +919,11 @@ export class GoalWebSocketHandler {
     // Check the complete helper contract while preserving the owner's identity and receivers.
     void ({
       startInFlight: this.startInFlight,
+      goalId: this.goalId,
       orchestrator: this.orchestrator,
       stopping: this.stopping,
       runPromise: this.runPromise,
+      setupPromise: this.setupPromise,
       broadcast: this.broadcast,
       runStatus: this.runStatus,
       releaseRunLease: this.releaseRunLease,
@@ -730,5 +944,29 @@ export class GoalWebSocketHandler {
       buildState: this.buildState,
     } satisfies GoalWsRunControlsHost);
     return this as unknown as GoalWsRunControlsHost;
+  }
+
+  private async broadcastCatalog(): Promise<void> {
+    if (this.catalogInFlight) return;
+    this.catalogInFlight = true;
+    try {
+      const graphs = await this.store.list();
+      const goals = await this.store.listGoals();
+      for (const [id, handler] of this.goals) {
+        if (!handler.graph || (!handler.runPromise && !handler.startInFlight)) continue;
+        const summary = summarizeGoal(
+          handler.graph,
+          handler.runPromise || handler.startInFlight ? `webui:${process.pid}:${id}` : null,
+        );
+        const index = goals.findIndex((entry) => entry.id === id);
+        if (index >= 0) goals[index] = summary;
+        else goals.unshift(summary);
+      }
+      this.broadcast({ type: 'goal.list', payload: { graphs, goals } });
+    } catch (err) {
+      this.logger.warn(`[Goal] Catalog refresh failed: ${toErrorMessage(err)}`);
+    } finally {
+      this.catalogInFlight = false;
+    }
   }
 }

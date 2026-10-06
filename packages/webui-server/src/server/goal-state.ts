@@ -109,11 +109,12 @@ export function buildGoalState(
     .filter((p) => p.status === 'failed')
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
   const lastError =
-    graph.finalVerification?.status === 'failed'
+    graph.runError ??
+    (graph.finalVerification?.status === 'failed'
       ? (graph.finalVerification.error ?? 'final verification failed')
       : lastFailed
         ? `${lastFailed.name}: ${(lastFailed.metadata?.integrationError as string | undefined) ?? 'phase failed'}`
-        : null;
+        : null);
 
   return {
     title: graph.title,

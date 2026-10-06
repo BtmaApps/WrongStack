@@ -13,11 +13,12 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { cn } from '@/lib/utils';
+import { useWorktreeActions } from '@/hooks/useWorktreeActions';
 import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
 import { useWorktreeStore } from '@/stores';
-import { confirmModal } from '../ConfirmModal';
+import { WorktreeDiffSummaryView } from '../WorktreeDiffSummary';
+import { WorktreeTimelineView } from '../WorktreeTimeline';
 
 /** Active in-session statuses where destructive actions are blocked. */
 const LIVE_STATUSES = new Set(['allocating', 'active', 'committing', 'merging']);
@@ -31,6 +32,8 @@ interface Row {
   deletions: number;
   files: number;
   owner?: string;
+  /** Why the last step failed (e.g. a pre-commit hook refused the commit). */
+  error?: string;
   live: boolean;
 }
 
@@ -51,8 +54,9 @@ const STATUS_TINT: Record<string, string> = {
  * Destructive actions are refused server-side while a run owns the worktree.
  */
 export function WorktreesPanel(): React.ReactElement {
-  const { client } = useWebSocket();
   const { t } = useAppTranslation();
+  const actions = useWorktreeActions();
+  const { send, busyBranch } = actions;
   const shortBranch = (b?: string) =>
     b ? b.replace(/^wstack\/ap\//, '') : t('activity:worktrees.detached');
   const live = useWorktreeStore((s) => s.worktrees);
@@ -62,23 +66,11 @@ export function WorktreesPanel(): React.ReactElement {
   const cleanResult = useWorktreeStore((s) => s.cleanResult);
   const mergeResult = useWorktreeStore((s) => s.mergeResult);
   const diffByDir = useWorktreeStore((s) => s.diffByDir);
-  const [busyBranch, setBusyBranch] = useState<string | null>(null);
   const [openDiff, setOpenDiff] = useState<string | null>(null);
 
-  // Bind once: `client.send` reads `this.ws` internally, so it MUST be invoked
-  // as a method on the client. Extracting the bare method (`const send =
-  // client.send`) drops the `this` binding and the first call throws
-  // "can't access property 'ws', this is undefined". Every other panel calls
-  // `client.send(...)` directly for the same reason.
-  const send = useMemo(() => (client ? client.send.bind(client) : undefined), [client]);
   useEffect(() => {
     send?.({ type: 'worktree.scan' });
   }, [send]);
-
-  // Clear the per-row spinner once a merge/clean result lands.
-  useEffect(() => {
-    setBusyBranch(null);
-  }, [mergeResult, cleanResult]);
 
   const rows = useMemo<Row[]>(() => {
     const liveBranches = new Set(live.map((w) => w.branch));
@@ -91,6 +83,7 @@ export function WorktreesPanel(): React.ReactElement {
       deletions: w.deletions,
       files: w.files,
       owner: w.ownerLabel,
+      ...(w.lastError ? { error: w.lastError } : {}),
       live: LIVE_STATUSES.has(w.status),
     }));
     for (const o of orphans) {
@@ -108,39 +101,14 @@ export function WorktreesPanel(): React.ReactElement {
     return out;
   }, [live, orphans]);
 
-  const onOpen = (dir: string | undefined, target: 'terminal' | 'file-manager') => {
-    if (dir) send?.({ type: 'shell.open', payload: { path: dir, target } });
-  };
+  const onOpen = actions.open;
   const onDiff = (dir?: string) => {
     if (!dir) return;
-    send?.({ type: 'worktree.diff', payload: { dir } });
+    actions.viewChanges(dir);
     setOpenDiff((cur) => (cur === dir ? null : dir));
   };
-  const onMerge = async (branch?: string) => {
-    if (!branch) return;
-    const ok = await confirmModal({
-      title: t('activity:worktrees.mergeConfirmTitle', {
-        branch: shortBranch(branch),
-        base: baseBranch || t('activity:worktrees.baseLabel'),
-      }),
-      message: t('activity:worktrees.mergeConfirmMsg'),
-      confirmLabel: t('activity:worktrees.mergeAction'),
-    });
-    if (!ok) return;
-    setBusyBranch(branch);
-    send?.({ type: 'worktree.merge', payload: { branch } });
-  };
-  const onRemove = async (row: Row) => {
-    const ok = await confirmModal({
-      title: t('activity:worktrees.removeConfirmTitle', { branch: shortBranch(row.branch) }),
-      message: t('activity:worktrees.removeConfirmMsg'),
-      confirmLabel: t('common:action.remove'),
-      danger: true,
-    });
-    if (!ok) return;
-    setBusyBranch(row.branch ?? '');
-    send?.({ type: 'worktree.remove', payload: { dir: row.dir, branch: row.branch } });
-  };
+  const onMerge = actions.merge;
+  const onRemove = (row: Row) => actions.remove({ dir: row.dir, branch: row.branch });
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -175,6 +143,11 @@ export function WorktreesPanel(): React.ReactElement {
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
+      </div>
+
+      {/* Every session's worktree history at a glance (bars only). */}
+      <div className="px-3 pb-2">
+        <WorktreeTimelineView compact />
       </div>
 
       {/* Result banners */}
@@ -245,6 +218,15 @@ export function WorktreesPanel(): React.ReactElement {
                   )}
                 </div>
 
+                {row.error && (
+                  <div
+                    className="mt-0.5 truncate pl-5 font-mono text-[10px] text-destructive"
+                    title={row.error}
+                  >
+                    {row.error}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="mt-1.5 flex items-center gap-0.5 pl-5">
                   <Act
@@ -296,37 +278,8 @@ export function WorktreesPanel(): React.ReactElement {
 
                 {/* Inline diff summary */}
                 {openDiff === row.dir && diff !== undefined && (
-                  <div className="mt-1.5 ml-5 rounded bg-muted/50 p-1.5 text-[10px]">
-                    {diff === null || diff.files.length === 0 ? (
-                      <span className="text-muted-foreground">
-                        {t('activity:worktrees.noUncommitted')}
-                        {diff && diff.commits > 0
-                          ? ` · ${t('activity:worktrees.commitsAhead', { count: diff.commits })}`
-                          : ''}
-                        .
-                      </span>
-                    ) : (
-                      <>
-                        <div className="mb-1 text-muted-foreground">
-                          {diff.commits > 0
-                            ? `${t('activity:worktrees.commitsAhead', { count: diff.commits })} · `
-                            : ''}
-                          <span className="text-success">+{diff.insertions}</span>{' '}
-                          <span className="text-destructive">−{diff.deletions}</span>
-                        </div>
-                        {diff.files.slice(0, 12).map((f) => (
-                          <div key={f.path} className="truncate font-mono">
-                            <span className="text-success">+{f.insertions}</span>{' '}
-                            <span className="text-destructive">−{f.deletions}</span> {f.path}
-                          </div>
-                        ))}
-                        {diff.files.length > 12 && (
-                          <div className="text-muted-foreground">
-                            {t('activity:worktrees.more', { count: diff.files.length - 12 })}
-                          </div>
-                        )}
-                      </>
-                    )}
+                  <div className="mt-1.5 ml-5">
+                    <WorktreeDiffSummaryView diff={diff} />
                   </div>
                 )}
               </div>

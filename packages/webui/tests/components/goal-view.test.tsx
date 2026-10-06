@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoalView } from '../../src/components/GoalView.js';
+import { useGoalCatalogStore } from '../../src/stores/goal-catalog-store';
 import {
   useChatStore,
   useGoalAssessStore,
@@ -24,6 +25,7 @@ vi.mock('@/components/activity-bar/nav', () => ({
 describe('GoalView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useGoalCatalogStore.setState({ goals: [], selectedGoalId: null });
     useGoalRunStore.getState().clear();
     useGoalAssessStore.getState().clear();
     useChatStore.getState().clearMessages();
@@ -67,7 +69,7 @@ describe('GoalView', () => {
 
     expect(sendMock).toHaveBeenCalledWith({
       type: 'goal.stop',
-      payload: {},
+      payload: { goalId: expect.any(String) },
     });
   });
 
@@ -159,10 +161,8 @@ describe('GoalView', () => {
     // New button resets run
     const newBtn = screen.getByRole('button', { name: /New/i });
     fireEvent.click(newBtn);
-    expect(sendMock).toHaveBeenCalledWith({
-      type: 'goal.clear',
-      payload: {},
-    });
+    expect(sendMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'goal.clear' }));
+    expect(useGoalRunStore.getState().phases).toEqual([]);
   });
 
   it('offers Resume for a stopped saved board', () => {
@@ -176,7 +176,7 @@ describe('GoalView', () => {
     fireEvent.click(screen.getByRole('button', { name: /Resume/i }));
     expect(sendMock).toHaveBeenCalledWith({
       type: 'goal.resume',
-      payload: { graphId: 'saved-graph' },
+      payload: { graphId: 'saved-graph', goalId: 'saved-graph' },
     });
   });
 

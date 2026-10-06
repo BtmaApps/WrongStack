@@ -153,7 +153,13 @@ export async function integrateTaskWorktree(params: {
     }
     await wt.release(handle, { keep: false }).catch(() => {});
     forgetTaskWorktree(state, task.id, { keepBranchLabel: true });
-    return { ok: false, conflictFiles: res.conflictFiles ?? [] };
+    // A non-conflict failure (refused commit, dirty base) is not a "merge
+    // conflict"; carry git's reason so the task failure names the real cause.
+    return {
+      ok: false,
+      conflictFiles: res.conflictFiles ?? [],
+      ...(res.conflict ? {} : { reason: res.stderr?.trim() || 'worktree merge failed' }),
+    };
   } catch {
     forgetTaskWorktree(state, task.id);
     return { ok: false, conflictFiles: [] };

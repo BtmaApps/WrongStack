@@ -1,3 +1,4 @@
+import type { WorktreeTimelineEvent } from '@wrongstack/core/types/worktree-timeline';
 import { projectFleetMessage } from '@wrongstack/webui-protocol';
 import type { SubagentEvent } from '@/stores';
 import { useFleetStore, useMonitorStore, useWorktreeStore } from '@/stores';
@@ -14,6 +15,16 @@ export function handleWorktreeState(msg: WSServerMessage) {
 export function handleWorktreeEvent(msg: WSServerMessage) {
   const p = msg.payload as { kind: string; handleId: string; text: string; at: number };
   useWorktreeStore.getState().pushEvent(p);
+}
+
+export function handleWorktreeTimeline(msg: WSServerMessage) {
+  const p = msg.payload as { events?: WorktreeTimelineEvent[] };
+  useWorktreeStore.getState().setTimeline(Array.isArray(p.events) ? p.events : []);
+}
+
+export function handleWorktreeTimelineEvent(msg: WSServerMessage) {
+  const p = msg.payload as { event?: WorktreeTimelineEvent };
+  if (p.event) useWorktreeStore.getState().pushTimelineEvent(p.event);
 }
 
 export function handleWorktreeOrphans(msg: WSServerMessage) {
@@ -135,6 +146,8 @@ let lastMailboxRefresh = 0;
 export const fleetHandlerMap: Partial<Record<string, (msg: WSServerMessage) => void>> = {
   'worktree.state': handleWorktreeState,
   'worktree.event': handleWorktreeEvent,
+  'worktree.timeline': handleWorktreeTimeline,
+  'worktree.timeline_event': handleWorktreeTimelineEvent,
   'worktree.orphans': handleWorktreeOrphans,
   'worktree.cleanup_result': handleWorktreeCleanupResult,
   'worktree.merge_result': handleWorktreeMergeResult,

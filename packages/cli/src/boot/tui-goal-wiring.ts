@@ -11,6 +11,7 @@
  */
 import { PHASE_EVENT_NAMES } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
+import { WORKTREE_EVENT_NAMES } from '@wrongstack/core/types/worktree-timeline';
 
 /**
  * The full set of events forwarded from the EventBus to the TUI's
@@ -23,12 +24,7 @@ const GOAL_EVENTS: readonly string[] = [
   ...PHASE_EVENT_NAMES,
   // Extra events not in PhaseEventMap (sourced from other subsystems)
   'sdd.board.snapshot',
-  'worktree.allocated',
-  'worktree.committed',
-  'worktree.merged',
-  'worktree.conflict',
-  'worktree.released',
-  'worktree.failed',
+  ...WORKTREE_EVENT_NAMES,
   'countdown.tick',
 ];
 

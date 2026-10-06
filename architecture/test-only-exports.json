@@ -507,6 +507,9 @@
       "classifiedToolErrorResult",
       "getToolErrorInfo"
     ],
+    "packages/core/src/goal/phase-orchestrator-integration.ts": [
+      "markPhaseMergeFailed"
+    ],
     "packages/core/src/hq/alerts-config.ts": [
       "emptyHqAlertsConfig",
       "HQ_ALERTS_CONFIG_VERSION",
@@ -1854,7 +1857,9 @@
       "handleWorktreeEvent",
       "handleWorktreeMergeResult",
       "handleWorktreeOrphans",
-      "handleWorktreeState"
+      "handleWorktreeState",
+      "handleWorktreeTimeline",
+      "handleWorktreeTimelineEvent"
     ],
     "packages/webui/src/hooks/ws-handlers/mcp-status-handlers.ts": [
       "_resetMcpStatusHandlersForTests"

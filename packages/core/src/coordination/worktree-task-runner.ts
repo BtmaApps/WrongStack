@@ -191,6 +191,17 @@ async function integrateSuccessfulWorktree(
     handle,
     `subagent(${config.role ?? config.name}): ${task.id}`,
   );
+  if (committed.error) {
+    // The commit was refused (pre-commit hook, locked index): the work exists
+    // only as uncommitted edits in the checkout. Keep it and fail the task —
+    // reporting "no changes" here would silently drop the subagent's work.
+    await opts.worktrees!.release(handle, { keep: true }).catch(() => undefined);
+    emitUpdate(opts, task, ctx, handle, { status: 'failed', error: committed.error });
+    throw new WorktreeIntegrationError(
+      `worktree commit failed (work kept in ${handle.dir}): ${committed.error.trim()}`,
+      { taskId: task.id, subagentId: ctx.subagentId, branch: handle.branch },
+    );
+  }
   if (!committed.committed) {
     await opts.worktrees!.release(handle, { keep: false });
     emitUpdate(opts, task, ctx, handle, { status: 'released' });
@@ -254,21 +265,24 @@ async function parkFailedWorktree(
   handle: WorktreeHandle,
   err: unknown,
 ): Promise<void> {
-  let committed = false;
+  let hasWork = false;
   try {
     const res = await opts.worktrees!.commitAll(
       handle,
       `subagent(${ctx.config.role ?? ctx.config.name}) failed: ${task.id}`,
     );
-    committed = res.committed;
+    // A refused commit still leaves the partial work in the checkout.
+    hasWork = res.committed || Boolean(res.error);
   } catch {
-    committed = false;
+    hasWork = false;
   }
 
-  const keep = (opts.policy?.keepFailed ?? true) && committed;
+  const keep = (opts.policy?.keepFailed ?? true) && hasWork;
   await opts.worktrees!.release(handle, { keep }).catch(() => undefined);
+  // release() keeps a failed handle regardless of `keep`; report what is on disk.
+  const kept = opts.worktrees!.get(handle.ownerId) === handle;
   emitUpdate(opts, task, ctx, handle, {
-    status: keep ? 'kept' : 'released',
+    status: kept ? 'kept' : 'released',
     commitSha: handle.sha,
     error: toErrorMessage(err),
   });

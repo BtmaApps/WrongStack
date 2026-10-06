@@ -28,9 +28,16 @@ The verifier is on by default in CLI and WebUI. It runs the project's configured
 typecheck/lint scripts when available. The WebUI control can disable verification
 for a run; a failed phase gate launches a repair worker in that phase's worktree.
 
-Only one Goal run may own a project at once. CLI and WebUI share a process-aware
-lease in the canonical `autophase` directory; a crashed process's stale lease is
-reclaimed automatically on the next start.
+New git-backed runs have a stable goal id, their own checkout/branch and an
+independent process-backed lease. Different terminal goals can run in parallel;
+the same goal still has one owner. Phases integrate into the goal branch, which
+is retained for operator review and integration into the project branch. Legacy
+and shared-checkout runs keep project-wide exclusivity.
+
+WebUI **My Goals** and `/goals` track project goals by id, session, task/phase
+progress, blockers and verification. Use `/goal status <id>` for one run.
+Task progress is separate from verified completion; unavailable verification
+and unknown reachability stay visible. Another terminal's live goal is read only.
 
 This is "SDD logic but different": phased, persisted task-lists like SDD, but
 driven by the autonomous orchestrator + concurrent subagents rather than
@@ -40,6 +47,9 @@ single-thread turn injection. Live progress is shown in the TUI PhaseMonitor.
 
 ```
 /goal                        → Show the active phase run, or the persistent mission
+/goals                       → List project goals, owning sessions and progress
+/goals <id>                  → Show one goal's phases, blockers and verification
+/goal status <id>            → Inspect a goal by id
 /goal set <mission>          → Set/refine the eternal/parallel mission
 /goal refine                 → Re-refine the mission without resetting its journal
 /goal <mission text>         → Back-compatible shorthand for /goal set

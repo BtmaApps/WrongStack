@@ -69,6 +69,7 @@ const coreEntries = entryMap([
   'src/cloud-provider.ts',
   'src/types/session-markers.ts',
   'src/types/session-timeline.ts',
+  'src/types/worktree-timeline.ts',
   'src/utils/index.ts',
   'src/utils/expect-defined.ts',
   'src/utils/next-steps.ts',

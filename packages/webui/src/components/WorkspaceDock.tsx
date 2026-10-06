@@ -55,6 +55,12 @@ import { WorkDashboard } from './WorkDashboard';
 import { WorktreeGraph } from './WorktreeGraph';
 import { WorktreeLanes } from './WorktreeLanes';
 import { WorktreeOrphans } from './WorktreeOrphans';
+import {
+  useSessionWorktreeCount,
+  WorktreeTimelineView,
+  type WorktreeViewMode,
+  WorktreeViewSwitch,
+} from './WorktreeTimeline';
 
 // ── Chip ──────────────────────────────────────────────────────────────
 
@@ -184,6 +190,8 @@ export function WorkspaceDock() {
   const overallPercent = useGoalRunStore((s) => s.overallPercent);
   const activePhaseId = useGoalRunStore((s) => s.activePhaseId);
   const worktrees = useWorktreeStore((s) => s.worktrees);
+  // History counts too: a finished run's worktrees stay inspectable.
+  const sessionWorktreeCount = useSessionWorktreeCount(activeSessionId ?? undefined);
   const todos = useSessionStore((s) => s.todos);
   const fleetAgents = useFleetStore((s) => s.agents);
 
@@ -215,7 +223,7 @@ export function WorkspaceDock() {
     'goal-state': goalState !== null,
     fleet: fleetTotal > 0,
     work: true,
-    worktrees: worktrees.length > 0,
+    worktrees: worktrees.length > 0 || sessionWorktreeCount > 0,
     collab: true,
     browser: browserSessions.length > 0,
   };
@@ -297,7 +305,8 @@ export function WorkspaceDock() {
             section="worktrees"
             icon={<GitBranch className="h-3 w-3" />}
             label={t('activity:dock.worktrees')}
-            value={String(worktrees.length)}
+            value={String(worktrees.length > 0 ? worktrees.length : sessionWorktreeCount)}
+            pulse={worktrees.length > 0}
             active={open === 'worktrees'}
             onClick={() => toggleDockSection('worktrees')}
           />
@@ -424,7 +433,7 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
   const refiningMissionId = useGoalStateStore((s) => s.refiningMissionId);
   const worktrees = useWorktreeStore((s) => s.worktrees);
   const baseBranch = useWorktreeStore((s) => s.baseBranch);
-  const [worktreeView, setWorktreeView] = useState<'graph' | 'lanes'>('graph');
+  const [worktreeView, setWorktreeView] = useState<WorktreeViewMode>('timeline');
   const { t } = useAppTranslation();
 
   const fullChrome = useIsFullChrome();
@@ -502,25 +511,11 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
         {section === 'browser' && <BrowserLivePane />}
         {section === 'worktrees' && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              {(['graph', 'lanes'] as const).map((view) => (
-                <button
-                  key={view}
-                  type="button"
-                  onClick={() => setWorktreeView(view)}
-                  className={cn(
-                    'rounded-md border px-2.5 py-1 text-xs capitalize transition-colors',
-                    worktreeView === view
-                      ? 'border-primary/30 bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {view}
-                </button>
-              ))}
-            </div>
+            <WorktreeViewSwitch value={worktreeView} onChange={setWorktreeView} />
             <WorktreeOrphans />
-            {worktreeView === 'graph' ? (
+            {worktreeView === 'timeline' ? (
+              <WorktreeTimelineView sessionId={sessionId || undefined} />
+            ) : worktreeView === 'graph' ? (
               <WorktreeGraph worktrees={worktrees} baseBranch={baseBranch || 'HEAD'} />
             ) : (
               <WorktreeLanes worktrees={worktrees} baseBranch={baseBranch || 'HEAD'} />

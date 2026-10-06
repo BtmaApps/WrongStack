@@ -5,6 +5,9 @@ import {
 } from '../../src/components/ChatInput/slash-routing.js';
 import { streamCoalescer } from '../../src/lib/stream-coalescer.js';
 import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
+import { useGoalCatalogStore } from '../../src/stores/goal-catalog-store.js';
+
+beforeEach(() => useGoalCatalogStore.setState({ selectedGoalId: null, goals: [] }));
 
 // Mock external store dependencies and downloadChatAsMarkdown
 const mocks = vi.hoisted(() => {
@@ -52,7 +55,7 @@ const mocks = vi.hoisted(() => {
   return {
     ...fns,
     createMockUIStore,
-    goalRunState: { status: 'idle', graphId: null as string | null },
+    goalRunState: { status: 'idle', graphId: null as string | null, clear: vi.fn() },
   };
 });
 
@@ -554,7 +557,7 @@ describe('runChatSlashCommand — agent/autonomy commands', () => {
     runChatSlashCommand(opts);
     expect(opts.client?.send).toHaveBeenCalledWith({
       type: 'goal.start',
-      payload: { title: 'Build the thing' },
+      payload: expect.objectContaining({ title: 'Build the thing', goalId: expect.any(String) }),
     });
     expect(mocks.setCurrentViewUI).toHaveBeenCalledWith('goal');
   });
@@ -758,7 +761,7 @@ describe('runChatSlashCommand — /goal', () => {
     expect(runChatSlashCommand(opts)).toBe(true);
     expect(opts.client?.send).toHaveBeenCalledWith({
       type: 'goal.start',
-      payload: { title: 'Ship the thing' },
+      payload: expect.objectContaining({ title: 'Ship the thing', goalId: expect.any(String) }),
     });
   });
 
@@ -818,7 +821,7 @@ describe('runChatSlashCommand — /goal', () => {
     expect(runChatSlashCommand(opts)).toBe(true);
     expect(opts.client?.send).toHaveBeenCalledWith({
       type: 'goal.resume',
-      payload: { graphId: 'saved-graph' },
+      payload: { graphId: 'saved-graph', goalId: 'saved-graph' },
     });
   });
 

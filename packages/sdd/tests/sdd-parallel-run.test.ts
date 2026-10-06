@@ -1371,7 +1371,7 @@ describe('SddParallelRun — coverage edge paths', () => {
       worktrees: {
         commitAll: vi.fn(async () => {}),
         baseHead: vi.fn(async () => 'same'),
-        merge: vi.fn(async () => ({ ok: false })),
+        merge: vi.fn(async () => ({ ok: false, conflict: true })),
         release: conflictRelease,
       },
     });

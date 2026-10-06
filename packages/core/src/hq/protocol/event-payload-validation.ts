@@ -448,6 +448,7 @@ function isHqBrainEventPayload(x: unknown): x is HqBrainEventPayload {
 const HQ_WORKTREE_EVENT_KINDS = new Set<string>([
   'allocated',
   'committed',
+  'merging',
   'merged',
   'conflict',
   'released',

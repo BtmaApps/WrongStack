@@ -41,6 +41,7 @@ import {
   markTaskFailed as markTaskFailedFromHost,
   type PhaseTaskExecutionHost,
 } from './phase-task-execution.js';
+import { GoalTaskExecutionOwnership } from './task-execution-ownership.js';
 import type {
   PhaseEventMap,
   PhaseEventName,
@@ -82,6 +83,8 @@ export class PhaseOrchestrator {
   private terminalEventEmitted = false;
   private trackerCache = new Map<string, TaskTracker>();
   private taskRetryCounts = new Map<string, number>();
+  private readonly taskOwnership: GoalTaskExecutionOwnership;
+  private runInFlight = false;
 
   // ── Git-worktree isolation (optional) ──────────────────────────────────────
   private readonly worktrees?: WorktreeManager | undefined;
@@ -113,6 +116,10 @@ export class PhaseOrchestrator {
       taskTimeoutMs: opts.taskTimeoutMs ?? 600_000,
       events: this.events,
     };
+    this.taskOwnership = new GoalTaskExecutionOwnership(
+      opts.ctx.executeTask.bind(opts.ctx),
+      this.opts.maxConcurrentTasks,
+    );
   }
 
   // ─── Lifecycle ────────────────────────────────────────────────────────────
@@ -122,6 +129,17 @@ export class PhaseOrchestrator {
    * In autonomous mode, starts root phases and automatically starts the next phase when they finish.
    */
   async start(): Promise<void> {
+    if (this.runInFlight) throw new Error('This Goal run still owns unfinished workers.');
+    this.runInFlight = true;
+    try {
+      await this.run();
+    } finally {
+      await this.taskOwnership.drain();
+      this.runInFlight = false;
+    }
+  }
+
+  private async run(): Promise<void> {
     this.stopped = false;
     this.paused = false;
     this.terminalEventEmitted = false;
@@ -181,6 +199,7 @@ export class PhaseOrchestrator {
 
     if (this.isComplete()) {
       if (!(await this.runFinalVerification())) return;
+      if (this.stopped) return;
       this.onGraphComplete();
       return;
     }
@@ -227,16 +246,21 @@ export class PhaseOrchestrator {
   private async runFinalVerification(): Promise<boolean> {
     if (!this.ctx.verifyGoal) return true;
     this.emit('graph.verifying', { graphId: this.graph.id });
-    let verdict: { ok: boolean; output?: string | undefined };
+    let verdict: { ok: boolean; output?: string | undefined; skipped?: boolean | undefined };
     try {
       verdict = await this.ctx.verifyGoal(this.graph);
     } catch (err) {
       verdict = { ok: false, output: toErrorMessage(err) };
     }
+    if (this.stopped) return false;
     const checkedAt = Date.now();
     this.graph.updatedAt = checkedAt;
     if (verdict.ok) {
-      this.graph.finalVerification = { status: 'passed', checkedAt };
+      this.graph.finalVerification = {
+        status: 'passed',
+        checkedAt,
+        ...(verdict.skipped ? { skipped: true } : {}),
+      };
       return true;
     }
     const error = verdict.output ?? 'final merged-tree verification failed';
@@ -351,6 +375,9 @@ export class PhaseOrchestrator {
         return;
       }
       await this.executePhaseTasks(phase);
+      // A timeout's grace period is not worker settlement. Do not commit,
+      // verify, or release the run lease while an old worker can still write.
+      await this.taskOwnership.drain(phase.id);
 
       // stop() marks running phases 'paused' before the aborted batch
       // settles; continuing to the completion gate would overwrite that with
@@ -375,6 +402,7 @@ export class PhaseOrchestrator {
       // pass (typecheck/test/…) before we mark the phase done and merge it back.
       // Skipped entirely when no verifyPhase callback is wired (back-compat).
       const verdict = await this.runVerifyGate(phase);
+      if (this.stopped) return;
       if (!verdict.ok) {
         await this.failPhaseAfterTasks(
           phase,
@@ -439,6 +467,7 @@ export class PhaseOrchestrator {
       } catch (err) {
         verdict = { ok: false, output: toErrorMessage(err) };
       }
+      if (this.stopped) return { ok: false, output: 'stopped before verification completed' };
       if (verdict.ok) return { ok: true };
 
       this.emit('phase.verifyFailed', {
@@ -694,7 +723,11 @@ export class PhaseOrchestrator {
   // ─── Events ───────────────────────────────────────────────────────────────
 
   private emit<K extends PhaseEventName>(event: K, payload: PhaseEventMap[K]): void {
-    (this.events.emit as (event: string, payload: unknown) => void)(event, payload);
+    (this.events.emit as (event: string, payload: unknown) => void)(event, {
+      ...payload,
+      goalId: this.graph.id,
+      ...(this.graph.sessionId ? { sessionId: this.graph.sessionId } : {}),
+    });
   }
 
   private async waitWhilePaused(): Promise<void> {
@@ -708,21 +741,26 @@ export class PhaseOrchestrator {
   }
 
   private phaseTaskExecutionHost(): PhaseTaskExecutionHost {
-    // Check the complete helper contract while preserving the owner's identity and receivers.
-    void ({
-      getExecutableTasks: this.getExecutableTasks,
-      stopped: this.stopped,
+    const self = this;
+    return {
+      getExecutableTasks: (phase) => this.getExecutableTasks(phase),
+      get stopped() {
+        return self.stopped;
+      },
+      waitWhilePaused: () => this.waitWhilePaused(),
       opts: this.opts,
-      executeSingleTask: this.executeSingleTask,
-      markTaskCompleted: this.markTaskCompleted,
-      markTaskFailed: this.markTaskFailed,
-      getTrackerForPhase: this.getTrackerForPhase,
-      ctx: this.ctx,
-      emit: this.emit,
+      executeSingleTask: (task, phase) => this.executeSingleTask(task, phase),
+      markTaskCompleted: (phase, task) => this.markTaskCompleted(phase, task),
+      markTaskFailed: (phase, task, error) => this.markTaskFailed(phase, task, error),
+      getTrackerForPhase: (phase) => this.getTrackerForPhase(phase),
+      ctx: {
+        executeTask: this.taskOwnership.execute,
+        onTaskUpdate: (phase, task) => this.ctx.onTaskUpdate?.(phase, task),
+      },
+      emit: (event, payload) => this.emit(event, payload),
       phaseWorktrees: this.phaseWorktrees,
       stopController: this.stopController,
       taskRetryCounts: this.taskRetryCounts,
-    } satisfies PhaseTaskExecutionHost);
-    return this as unknown as PhaseTaskExecutionHost;
+    };
   }
 }

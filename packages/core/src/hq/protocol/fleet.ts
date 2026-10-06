@@ -42,6 +42,7 @@ export interface HqFleetEventPayload {
 export type HqWorktreeEventKind =
   | 'allocated'
   | 'committed'
+  | 'merging'
   | 'merged'
   | 'conflict'
   | 'released'
@@ -69,6 +70,8 @@ export interface HqWorktreeEventPayload {
   kept?: boolean;
   /** For `failed`: the error message. */
   error?: string;
+  /** For `failed`: which step failed (checkout creation, worktree commit, merge). */
+  stage?: 'allocate' | 'commit' | 'merge';
 }
 
 export interface HqWorklistSnapshotPayload {

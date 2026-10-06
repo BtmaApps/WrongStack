@@ -1,3 +1,4 @@
+import type { WorktreeTimelineEvent } from '@wrongstack/core/types/worktree-timeline';
 import type {
   KanbanBoard,
   KanbanBoardPresence,
@@ -153,6 +154,8 @@ export interface WorktreeHandleView {
   deletions: number;
   files: number;
   conflictFiles?: string[] | undefined;
+  /** Error of the last failed step (commit refused by a hook, merge failure…). */
+  lastError?: string | undefined;
   allocatedAt: number;
   lastEventAt: number;
   recentActivity: Array<{ kind: string; text: string; at: number }>;
@@ -168,6 +171,21 @@ export interface WSWorktreeState {
 export interface WSWorktreeEvent {
   type: 'worktree.event';
   payload: { kind: string; handleId: string; text: string; at: number };
+}
+
+/**
+ * Bounded lifecycle log on connect (survives release, unlike `worktree.state`).
+ * Events are `WorktreeTimelineEvent`s from `@wrongstack/core/types/worktree-timeline`.
+ */
+export interface WSWorktreeTimeline {
+  type: 'worktree.timeline';
+  payload: { events: WorktreeTimelineEvent[] };
+}
+
+/** One normalised lifecycle event appended to the timeline log. */
+export interface WSWorktreeTimelineEvent {
+  type: 'worktree.timeline_event';
+  payload: { event: WorktreeTimelineEvent };
 }
 
 /** One orphaned git artifact left by a previous/crashed run. */

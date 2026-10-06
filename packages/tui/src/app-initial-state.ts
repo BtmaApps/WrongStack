@@ -481,6 +481,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
     sddBoard: null,
     worktrees: {},
     worktreeMonitorOpen: false,
+    worktreeTimeline: [],
     coordinator: {
       goals: [],
       timeline: [],

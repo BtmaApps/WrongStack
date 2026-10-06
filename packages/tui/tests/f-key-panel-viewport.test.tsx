@@ -61,11 +61,7 @@ const panels = [
     'AGENTS',
     () => <AgentsMonitor entries={{}} totalCost={0} nowTick={1000} onClose={noop} />,
   ],
-  [
-    'F4',
-    'WORKTREES',
-    () => <WorktreeMonitor worktrees={{}} baseBranch="main" nowTick={1000} onClose={noop} />,
-  ],
+  ['F4', 'WORKTREES', () => <WorktreeMonitor events={[]} nowTick={1000} onClose={noop} />],
   [
     'F5',
     'PLAN',

@@ -1,4 +1,4 @@
-import { gitText, isGitRepo, runCmd } from './goal-commands.js';
+import { isGitRepo, runCmd } from './goal-commands.js';
 
 export { configureGoalPolicy, isGoalCommandAllowed, resetGoalPolicy } from './goal-commands.js';
 
@@ -31,6 +31,7 @@ import {
   type PhaseProgress,
   PhaseStore,
   prepareGoalGraphForResume,
+  prepareGoalWorkspace,
   verifyGoalProject,
 } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
@@ -50,6 +51,7 @@ function resolveTaskConcurrency(): number {
 }
 
 import type { MultiAgentHost } from './multi-agent.js';
+import { createWorktreeCommandHost } from './worktree-command-host.js';
 
 /** Default parallel-phase concurrency once worktree isolation is available. */
 const WORKTREE_PHASE_CONCURRENCY = 4;
@@ -66,6 +68,8 @@ export interface GoalHostDeps {
   storeDir: string;
   /** Project root — base for git-worktree isolation. */
   projectRoot: string;
+  /** SDD board snapshot dir — `/worktree clean` skips while an SDD run is live. */
+  sddBoardsDir?: string | undefined;
   /**
    * Enable per-phase git-worktree isolation (default true). When on and the
    * project is a git repo, parallelizable phases run in isolated worktrees and
@@ -145,7 +149,15 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
   const persistence = new GoalRunPersistence(store);
   let active: ActiveRun | null = null;
   let starting = false;
+  let startingAbort: AbortController | null = null;
   const log = deps.log ?? (() => {});
+  const worktreeHost = createWorktreeCommandHost({
+    projectRoot: deps.projectRoot,
+    events: deps.events,
+    isGoalRunActive: () => starting || Boolean(active?.orchestrator.isRunning()),
+    acquireGoalRunLease: (ownerId) => store.acquireRunLease(ownerId),
+    sddBoardsDir: deps.sddBoardsDir,
+  });
 
   /** Run a single prompt to completion in a throwaway subagent; return its text. */
   async function runOnce(
@@ -231,7 +243,9 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
    * all pass, or when verification cannot meaningfully run (no deps / no scripts) —
    * the gate never blocks on things it can't actually check.
    */
-  async function runVerify(cwd: string): Promise<{ ok: boolean; output?: string | undefined }> {
+  async function runVerify(
+    cwd: string,
+  ): Promise<{ ok: boolean; output?: string | undefined; skipped?: boolean | undefined }> {
     const custom = process.env['WRONGSTACK_GOAL_VERIFY_CMD']?.trim();
     if (custom) {
       const res = await runCmd(custom, [], cwd, true);
@@ -266,6 +280,8 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
       finished.unsubscribe();
       finalizing = (async () => {
         try {
+          await Promise.resolve();
+          await finished.runPromise?.catch(() => undefined);
           await persist(graph);
           await finished.releaseRunLease();
         } catch (err) {
@@ -276,11 +292,17 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
       })();
       return finalizing;
     };
-    const onDone = () => {
+    const onDone = (payload: unknown) => {
+      if ((payload as { graphId?: string })?.graphId !== graph.id) return;
+      graph.runState = 'completed';
       log(`🎉 Goal complete: ${graph.title}`);
       void finalize();
     };
-    const onFailed = () => void finalize();
+    const onFailed = (payload: unknown) => {
+      if ((payload as { graphId?: string })?.graphId !== graph.id) return;
+      graph.runState = 'failed';
+      void finalize();
+    };
     const bus = deps.events as unknown as {
       on(event: string, handler: (payload: unknown) => void): void;
       off(event: string, handler: (payload: unknown) => void): void;
@@ -302,18 +324,39 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
 
   return {
     async onGoalStart({ goal, projectContext }): Promise<GoalStartResult> {
-      if (starting || active?.orchestrator.isRunning()) {
+      if (starting || active) {
         return {
           ok: false,
           error: 'A Goal run is already in progress. Use /goal stop first.',
         };
       }
       starting = true;
+      const abort = new AbortController();
+      startingAbort = abort;
+      const goalId = crypto.randomUUID();
       const ownerSessionId = deps.getSessionId?.();
       let releaseRunLease: (() => Promise<void>) | undefined;
+      let planningGraph: PhaseGraph | undefined;
       try {
-        releaseRunLease = await store.acquireRunLease(`cli:${process.pid}:${crypto.randomUUID()}`);
-        const abort = new AbortController();
+        const isolated =
+          deps.worktrees !== false &&
+          process.env['WRONGSTACK_GOAL_WORKTREES'] !== '0' &&
+          (await isGitRepo(deps.projectRoot));
+        const ownerId = `cli:${process.pid}:${goalId}`;
+        releaseRunLease = isolated
+          ? await store.acquireGoalRunLease(goalId, ownerId)
+          : await store.acquireRunLease(ownerId);
+        if (abort.signal.aborted) return { ok: false, error: 'Goal start was stopped.' };
+        planningGraph = await new PhaseGraphBuilder({
+          title: goal,
+          description: goal,
+          phases: [],
+        }).build();
+        planningGraph.id = goalId;
+        planningGraph.sessionId = ownerSessionId;
+        planningGraph.runState = 'planning';
+        planningGraph.leaseScope = isolated ? 'goal' : 'project';
+        await persist(planningGraph);
         // Stable per-run worker identities, so the board can show "who is on what".
         const usedNicknames = new Set<string>();
 
@@ -324,7 +367,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
           const planner = new GoalPlanner({
             goal,
             projectContext,
-            runOnce: (p) => runOnce(p, 'goal-planner', abort.signal),
+            runOnce: (p) => runOnce(p, 'goal-planner', abort.signal, deps.projectRoot),
           });
           const result = await planner.plan();
           if (result.parseFailed || result.phases.length === 0) {
@@ -358,6 +401,14 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
           autonomous: true,
         }).build();
         graph.sessionId = ownerSessionId;
+        graph.id = goalId;
+        graph.runState = 'running';
+        graph.leaseScope = isolated ? 'goal' : 'project';
+        planningGraph = graph;
+        if (abort.signal.aborted) return { ok: false, error: 'Goal start was stopped.' };
+        const runRoot = isolated
+          ? await prepareGoalWorkspace(deps.projectRoot, graph, deps.events)
+          : deps.projectRoot;
         await persist(graph);
 
         // Per-phase git-worktree isolation. When enabled and inside a git repo,
@@ -367,11 +418,11 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
         const worktreesEnabled =
           deps.worktrees !== false && process.env['WRONGSTACK_GOAL_WORKTREES'] !== '0';
         let worktrees: WorktreeManager | undefined;
-        if (worktreesEnabled && (await isGitRepo(deps.projectRoot))) {
+        if (worktreesEnabled && isolated) {
           worktrees = new WorktreeManager({
-            projectRoot: deps.projectRoot,
+            projectRoot: runRoot,
             events: deps.events,
-            sessionId: deps.getSessionId,
+            sessionId: graph.sessionId,
           });
           log(
             `🌿 Worktree isolation on — up to ${deps.maxConcurrentPhases ?? WORKTREE_PHASE_CONCURRENCY} phases run in parallel.`,
@@ -387,6 +438,11 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
         graph.verifyTasks = verifyEnabled;
         if (worktrees) graph.runBase = (await worktrees.currentBase()) ?? undefined;
         await persist(graph);
+        if (abort.signal.aborted) {
+          graph.runState = 'stopped';
+          await persist(graph);
+          return { ok: false, error: 'Goal start was stopped.' };
+        }
         if (verifyEnabled) {
           log(`🔎 Verify gate on — phases must pass typecheck/lint before merging.`);
         }
@@ -418,13 +474,13 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
                 buildTaskPrompt(task, phaseName, goal),
                 `goal-${agentName}`.slice(0, 48),
                 signal ? AbortSignal.any([abort.signal, signal]) : abort.signal,
-                env?.cwd,
+                env?.cwd ?? runRoot,
               );
             },
             verifyPhase: verifyEnabled
-              ? async (_phase, env) => runVerify(env?.cwd ?? deps.projectRoot)
+              ? async (_phase, env) => runVerify(env?.cwd ?? runRoot)
               : undefined,
-            verifyGoal: verifyEnabled ? async () => runVerify(deps.projectRoot) : undefined,
+            verifyGoal: verifyEnabled ? async () => runVerify(runRoot) : undefined,
             repairPhase: verifyEnabled
               ? async (phase, failure, attempt, env) => {
                   log(`🔧 Repairing "${phase.name}" (attempt ${attempt}) after verify failure…`);
@@ -432,7 +488,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
                     buildRepairPrompt(phase.name, failure, goal),
                     `goal-repair-${phase.name}`.slice(0, 48),
                     abort.signal,
-                    env?.cwd,
+                    env?.cwd ?? runRoot,
                   );
                 }
               : undefined,
@@ -496,35 +552,54 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
               : `Goal start failed: ${err instanceof Error ? err.message : String(err)}`,
         };
       } finally {
+        if (releaseRunLease && planningGraph) {
+          planningGraph.runState = abort.signal.aborted ? 'stopped' : 'failed';
+          await persist(planningGraph);
+        }
         starting = false;
+        if (startingAbort === abort) startingAbort = null;
         await releaseRunLease?.();
       }
     },
 
     onGoalPause() {
       active?.orchestrator.pause();
+      if (active) {
+        active.graph.runState = 'paused';
+        void persist(active.graph);
+      }
     },
 
     onGoalResume() {
       active?.orchestrator.resume();
+      if (active) {
+        active.graph.runState = 'running';
+        void persist(active.graph);
+      }
     },
 
     onGoalResumeFromGraph: async (graph: PhaseGraph): Promise<GoalStartResult> => {
-      if (starting || active?.orchestrator.isRunning()) {
+      if (starting || active) {
         return {
           ok: false,
           error: 'A Goal run is already in progress. Use /goal stop first.',
         };
       }
       starting = true;
+      const abort = new AbortController();
+      startingAbort = abort;
       // Older saved graphs have no owner; attribute them to the resuming session.
       if (!graph.sessionId) graph.sessionId = deps.getSessionId?.();
       let releaseRunLease: (() => Promise<void>) | undefined;
       try {
-        releaseRunLease = await store.acquireRunLease(
-          `cli-resume:${process.pid}:${crypto.randomUUID()}`,
-        );
-        const abort = new AbortController();
+        const ownerId = `cli-resume:${process.pid}:${graph.id}`;
+        releaseRunLease = graph.workspace
+          ? await store.acquireGoalRunLease(graph.id, ownerId)
+          : await store.acquireRunLease(ownerId);
+        if (abort.signal.aborted) return { ok: false, error: 'Goal resume was stopped.' };
+        const runRoot = graph.workspace
+          ? await prepareGoalWorkspace(deps.projectRoot, graph, deps.events)
+          : deps.projectRoot;
         const usedNicknames = new Set<string>();
         const log = deps.log ?? (() => {});
         const title = graph.title;
@@ -534,14 +609,16 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
           deps.worktrees !== false &&
           process.env['WRONGSTACK_GOAL_WORKTREES'] !== '0';
         let worktrees;
-        if (worktreesEnabled && (await isGitRepo(deps.projectRoot))) {
+        if (worktreesEnabled && (await isGitRepo(runRoot))) {
           worktrees = new WorktreeManager({
-            projectRoot: deps.projectRoot,
+            projectRoot: runRoot,
             events: deps.events,
-            sessionId: deps.getSessionId,
+            sessionId: graph.sessionId,
           });
         }
         await prepareGoalGraphForResume(graph, worktrees);
+        if (abort.signal.aborted) return { ok: false, error: 'Goal resume was stopped.' };
+        graph.runState = 'running';
         await persist(graph);
         const verifyEnabled = graph.verifyTasks ?? process.env['WRONGSTACK_GOAL_VERIFY'] !== '0';
         const resolveEnabled = !!worktrees && process.env['WRONGSTACK_GOAL_RESOLVE'] !== '0';
@@ -562,13 +639,13 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
                 buildTaskPrompt(task, phaseName, title),
                 'goal-' + agentName.slice(0, 48),
                 signal ? AbortSignal.any([abort.signal, signal]) : abort.signal,
-                env?.cwd,
+                env?.cwd ?? runRoot,
               );
             },
             verifyPhase: verifyEnabled
-              ? async (_phase, env) => runVerify(env?.cwd ?? deps.projectRoot)
+              ? async (_phase, env) => runVerify(env?.cwd ?? runRoot)
               : undefined,
-            verifyGoal: verifyEnabled ? async () => runVerify(deps.projectRoot) : undefined,
+            verifyGoal: verifyEnabled ? async () => runVerify(runRoot) : undefined,
             repairPhase: verifyEnabled
               ? async (phase, failure, attempt, env) => {
                   log(
@@ -582,7 +659,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
                     buildRepairPrompt(phase.name, failure, title),
                     'goal-repair-' + phase.name.slice(0, 48),
                     abort.signal,
-                    env?.cwd,
+                    env?.cwd ?? runRoot,
                   );
                 }
               : undefined,
@@ -642,13 +719,16 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
         };
       } finally {
         starting = false;
+        if (startingAbort === abort) startingAbort = null;
         await releaseRunLease?.();
       }
     },
 
     onGoalStop() {
+      startingAbort?.abort();
       if (!active) return;
       const stopped = active;
+      stopped.graph.runState = 'stopped';
       stopped.abort.abort();
       stopped.orchestrator.stop();
       stopped.unsubscribe();
@@ -702,65 +782,6 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
       return ok;
     },
 
-    async onWorktree(action, target) {
-      const root = deps.projectRoot;
-      if (!(await isGitRepo(root))) return '⚠ Not a git repository — worktrees unavailable.';
-
-      switch (action) {
-        case 'list': {
-          const { out } = await gitText(['worktree', 'list'], root);
-          return out || 'No worktrees.';
-        }
-        case 'prune': {
-          await gitText(['worktree', 'prune'], root);
-          const { out } = await gitText(['worktree', 'list'], root);
-          return `Pruned stale worktree entries.\n${out}`;
-        }
-        case 'merge': {
-          if (!target) return 'Usage: /worktree merge <branch>';
-          if (target.startsWith('-')) return `Refusing unsafe branch name: ${target}`;
-          const base = (await gitText(['rev-parse', '--abbrev-ref', 'HEAD'], root)).out || 'HEAD';
-          // The rollback is `reset --hard`: with uncommitted tracked changes it
-          // would wipe them — including the very edits git refused to overwrite.
-          const dirty = await gitText(['status', '--porcelain', '--untracked-files=no'], root);
-          if (dirty.code !== 0 || dirty.out) {
-            return `⚠ Working tree has uncommitted changes — commit or stash them before merging "${target}".`;
-          }
-          const merge = await gitText(['merge', '--squash', target], root);
-          if (merge.code !== 0) {
-            const unmerged = await gitText(['diff', '--name-only', '--diff-filter=U'], root);
-            await gitText(['reset', '--hard', 'HEAD'], root);
-            const what = unmerged.out ? 'hit conflicts' : 'failed';
-            return `⚠ Merge of "${target}" into ${base} ${what} and was rolled back.\n${merge.out}`;
-          }
-          const commit = await gitText(['commit', '-m', `merge ${target} (squash)`], root);
-          // "nothing added to commit" is the same no-op when untracked files exist.
-          if (commit.code !== 0 && !/nothing (?:added )?to commit/i.test(commit.out)) {
-            await gitText(['reset', '--hard', 'HEAD'], root);
-            return `⚠ Merge of "${target}" into ${base} could not be committed and was rolled back.\n${commit.out}`;
-          }
-          return `✓ Merged "${target}" into ${base} (squash).`;
-        }
-        case 'clean': {
-          // Remove all wstack-managed worktrees + branches.
-          const list = (await gitText(['worktree', 'list', '--porcelain'], root)).out;
-          const dirs = list
-            .split('\n')
-            .filter((l) => l.startsWith('worktree '))
-            .map((l) => l.slice('worktree '.length))
-            .filter((d) => d.includes('.wrongstack') && d.includes('worktrees'));
-          for (const d of dirs) await gitText(['worktree', 'remove', '--force', d], root);
-          await gitText(['worktree', 'prune'], root);
-          const branches = (await gitText(['branch', '--list', 'wstack/ap/*'], root)).out
-            .split('\n')
-            .map((b) => b.replace(/^[*+]?\s*/, '').trim())
-            .filter(Boolean);
-          for (const b of branches) await gitText(['branch', '-D', b], root);
-          return `🧹 Removed ${dirs.length} worktree(s) and ${branches.length} branch(es).`;
-        }
-        default:
-          return `Unknown worktree action: ${action}`;
-      }
-    },
+    onWorktree: worktreeHost.onWorktree,
   };
 }

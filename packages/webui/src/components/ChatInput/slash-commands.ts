@@ -138,6 +138,11 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
     description: 'Goal: set <mission> | start <goal> | pause | resume | stop | status',
   },
   {
+    name: '/goals',
+    category: 'Agent',
+    description: 'My Goals — project goals, sessions, progress and phase status',
+  },
+  {
     name: '/goal-state',
     category: 'Agent',
     description: 'Show the current goal state (opens the Goal State dock chip)',

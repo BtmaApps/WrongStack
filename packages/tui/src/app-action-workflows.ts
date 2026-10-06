@@ -1,4 +1,5 @@
 import type { AutonomyStage } from '@wrongstack/core/types';
+import type { WorktreeTimelineEvent } from '@wrongstack/core/types/worktree-timeline';
 import type { SddBoardSnapshot } from '@wrongstack/sdd';
 import type { State } from './app-state.js';
 import type { GoalSummary } from './app-state-core-types.js';
@@ -139,6 +140,7 @@ export type AppActionWorkflows =
       baseBranch?: string | undefined;
     }
   | { type: 'worktreeRemove'; handleId: string }
+  | { type: 'worktreeTimelineEvent'; event: WorktreeTimelineEvent }
   | {
       type: 'collabBugFound';
       sessionId: string;

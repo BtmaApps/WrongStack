@@ -211,6 +211,7 @@ const workspacePanelActionTypes = [
   'sddBoardFocusPrev',
   'worktreeUpsert',
   'worktreeRemove',
+  'worktreeTimelineEvent',
   'toggleWorktreeMonitor',
 ] as const satisfies readonly Action['type'][];
 
@@ -221,6 +222,9 @@ const workspacePanelActionTypeSet = new Set<string>(workspacePanelActionTypes);
 export function isWorkspacePanelAction(action: Action): action is WorkspacePanelAction {
   return workspacePanelActionTypeSet.has(action.type);
 }
+
+/** Long sessions keep only the most recent worktree lifecycle events. */
+const MAX_WORKTREE_TIMELINE_EVENTS = 500;
 
 /** Reduces mutually exclusive workspace panels and goal/SDD/worktree views. */
 export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction): State {
@@ -586,6 +590,16 @@ export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction
       const next = { ...state.worktrees };
       delete next[action.handleId];
       return { ...state, worktrees: next };
+    }
+    case 'worktreeTimelineEvent': {
+      const log = [...state.worktreeTimeline, action.event];
+      return {
+        ...state,
+        worktreeTimeline:
+          log.length > MAX_WORKTREE_TIMELINE_EVENTS
+            ? log.slice(-MAX_WORKTREE_TIMELINE_EVENTS)
+            : log,
+      };
     }
     case 'toggleWorktreeMonitor': {
       const opening = !state.worktreeMonitorOpen;

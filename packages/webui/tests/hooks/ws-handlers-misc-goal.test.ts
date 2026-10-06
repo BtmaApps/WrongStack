@@ -288,13 +288,17 @@ describe('misc ws-handlers — goal run', () => {
       expect(run().status).toBe('running');
     });
 
-    it('reports failed on a failed phase', () => {
+    it('waits for a lifecycle verdict after a failed phase counter', () => {
       handleGoalProgress(msg('goal.progress', { failed: 1 }));
+      expect(run().status).toBe('running');
+      handleGoalLifecycle(msg('goal.failed', {}));
       expect(run().status).toBe('failed');
     });
 
-    it('reports failed on a failed task even with no failed phase', () => {
+    it('waits for a lifecycle verdict after a failed task counter', () => {
       handleGoalProgress(msg('goal.progress', { failed: 0, failedTasks: 2 }));
+      expect(run().status).toBe('running');
+      handleGoalLifecycle(msg('goal.failed', {}));
       expect(run().status).toBe('failed');
     });
   });

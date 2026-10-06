@@ -50,6 +50,10 @@
       "lines": 801,
       "relativeImports": 38
     },
+    "packages/core/src/worktree/worktree-manager.ts": {
+      "lines": 822,
+      "relativeImports": 9
+    },
     "packages/mcp/src/client.ts": {
       "lines": 876,
       "relativeImports": 16
@@ -119,7 +123,7 @@
       "relativeImports": 40
     },
     "packages/webui/src/components/ChatInput/slash-routing.ts": {
-      "lines": 917,
+      "lines": 962,
       "relativeImports": 2
     },
     "packages/webui/src/components/CodeMap.tsx": {
@@ -141,6 +145,10 @@
     "packages/webui/src/stores/session-tab-store.ts": {
       "lines": 813,
       "relativeImports": 19
+    },
+    "packages/webui-server/src/server/goal-ws-handler.ts": {
+      "lines": 973,
+      "relativeImports": 6
     },
     "packages/webui-server/src/server/start-webui.ts": {
       "lines": 839,

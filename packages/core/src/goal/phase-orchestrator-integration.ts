@@ -104,7 +104,8 @@ export async function commitAndEnqueueMerge(
   try {
     await int.worktrees.commitAll(handle, `goal(${phase.name}): ${phase.id}`);
   } catch {
-    // commit failure is non-fatal; the merge step will report a clean tree.
+    // A refused commit leaves the edits in the checkout; merge() then refuses
+    // the dirty worktree and the phase lands in needs_review with it kept.
   }
 
   const depPromises = phase.dependsOn
@@ -172,7 +173,14 @@ async function mergeOne(
       branch: handle.branch,
       worktreeDir: handle.dir,
       conflictFiles: result.conflictFiles,
+      error: result.ok || result.conflict ? undefined : result.stderr,
     });
+    if (!result.ok && !result.conflict) {
+      // An unresolved conflict (ok:false + conflict:true) is a park-and-
+      // continue outcome — handle kept needs-review, run continues — not a
+      // phase failure. Only a hard (non-conflict) merge failure fails it.
+      markPhaseMergeFailed(int, phase, result.stderr ?? 'Phase worktree was not integrated.');
+    }
     // merge() already emitted worktree.merged / worktree.conflict and set status.
     // Clean (or resolved) merge → remove the worktree; conflict → release(keep).
     await int.worktrees.release(handle, { keep: !result.ok });

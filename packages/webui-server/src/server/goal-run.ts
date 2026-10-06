@@ -7,6 +7,7 @@ import {
   type PhaseNode,
   PhaseOrchestrator,
   type PhaseTemplate,
+  prepareGoalWorkspace,
   verifyGoalProject,
 } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
@@ -33,6 +34,7 @@ function deriveTitle(goal: string): string {
 }
 
 export interface GoalRunHost {
+  readonly goalId?: string | undefined;
   abort: AbortController | null;
   planPhases(goal: string, signal?: AbortSignal): Promise<PhaseTemplate[]>;
   readonly stopping: boolean;
@@ -103,6 +105,23 @@ export async function startGoalRun(
   // run launched anyway.
   const runAbort = new AbortController();
   host.abort = runAbort;
+  const ownerSessionId =
+    resumeGraph?.sessionId ??
+    (typeof payload?.sessionId === 'string' ? payload.sessionId : host.context.session?.id);
+  if (host.goalId && !resumeGraph) {
+    const planningGraph = await new PhaseGraphBuilder({
+      title,
+      description: goal,
+      phases: [],
+    }).build();
+    planningGraph.id = host.goalId;
+    planningGraph.runState = 'planning';
+    planningGraph.leaseScope = 'goal';
+    planningGraph.sessionId = ownerSessionId;
+    host.graph = planningGraph;
+    await host.persistence.save(planningGraph);
+    host.broadcastState();
+  }
 
   // Phase plan resolution:
   //   1. explicit phases in the payload win (caller override);
@@ -118,6 +137,7 @@ export async function startGoalRun(
   // may not have interrupted the in-flight LLM call promptly, so the `stopping`
   // flag is the authoritative guard for the resolve-after-stop window.
   if (host.stopping || runAbort.signal.aborted) {
+    if (host.graph) host.graph.runState = 'stopped';
     host.broadcast({ type: 'goal.stopped', payload: { title } });
     return;
   }
@@ -126,6 +146,10 @@ export async function startGoalRun(
   if (!resumeGraph && (phases.length === 0 || taskCount === 0)) {
     host.abort = null;
     host.runStatus = 'failed';
+    if (host.graph) {
+      host.graph.runState = 'failed';
+      await host.persistence.save(host.graph);
+    }
     host.broadcast({
       type: 'goal.error',
       payload: {
@@ -150,7 +174,19 @@ export async function startGoalRun(
       verifyTasks,
       chimeraReview,
     }).build());
+  if (host.goalId && !resumeGraph) graph.id = host.goalId;
+  graph.sessionId = ownerSessionId;
+  graph.runState = 'running';
+  graph.leaseScope = host.goalId && !resumeGraph ? 'goal' : graph.leaseScope;
   host.graph = graph;
+  const runRoot =
+    (host.goalId && !resumeGraph) || graph.workspace
+      ? host.projectRoot
+        ? await prepareGoalWorkspace(host.projectRoot, graph, host.events)
+        : (() => {
+            throw new Error('An isolated Goal requires a git project root.');
+          })()
+      : host.projectRoot;
 
   // Per-phase git-worktree isolation, when enabled and inside a git repo.
   // The shared agent/context means we can't run phases in parallel here
@@ -165,11 +201,11 @@ export async function startGoalRun(
       process.env['WRONGSTACK_GOAL_WORKTREES'] !== '0');
   host.worktrees = null;
   host.runBase = null;
-  if (host.events && host.projectRoot && useWorktrees && (await isGitWorkTree(host.projectRoot))) {
+  if (host.events && runRoot && useWorktrees && (await isGitWorkTree(runRoot))) {
     host.worktrees = new WorktreeManager({
-      projectRoot: host.projectRoot,
+      projectRoot: runRoot,
       events: host.events,
-      sessionId: () => host.context.session?.id,
+      sessionId: graph.sessionId,
     });
   }
   if (resumeGraph?.worktrees && !host.worktrees) {
@@ -193,6 +229,8 @@ export async function startGoalRun(
   if (host.stopping || runAbort.signal.aborted) {
     // A resume sets 'running' after its own awaits, possibly after the stop.
     host.runStatus = 'stopped';
+    graph.runState = 'stopped';
+    await host.persistence.save(graph);
     host.broadcast({ type: 'goal.stopped', payload: { title } });
     return;
   }
@@ -204,10 +242,10 @@ export async function startGoalRun(
     verifyPhase?: PhaseExecutionContext['verifyPhase'];
     repairPhase?: PhaseExecutionContext['repairPhase'];
   } = {};
-  if (verifyTasks && host.projectRoot) {
+  if (verifyTasks && runRoot) {
     maybeVerify.verifyPhase = async (_phase, env) =>
       verifyGoalProject({
-        cwd: env?.cwd ?? host.projectRoot!,
+        cwd: env?.cwd ?? runRoot,
         projectRoot: host.projectRoot,
       });
     maybeVerify.repairPhase = (phase, failure, attempt, env) =>
@@ -219,24 +257,29 @@ export async function startGoalRun(
     ctx: {
       executeTask: async (task, phaseId, env, signal) => {
         host.logger.info(`[Goal] [${phaseId}] Executing: ${task.title}`);
-        const result = await host.executeTaskWithAgent(task, phaseId, env, signal);
+        const taskEnv = { ...env, cwd: env?.cwd ?? runRoot };
+        const result = await host.executeTaskWithAgent(task, phaseId, taskEnv, signal);
         host.logger.info(`[Goal] [${phaseId}] Completed: ${task.title}`);
 
         // This host owns one Agent. Await the review before the next task so
         // the Agent's single-flight guard cannot race a background review.
         if (chimeraReview) {
-          await host.runChimeraReview(task, phaseId, result, env?.cwd);
+          await host.runChimeraReview(task, phaseId, result, taskEnv.cwd);
         }
 
         return result;
       },
       ...maybeVerify,
       verifyGoal:
-        maybeVerify.verifyPhase && host.projectRoot
+        maybeVerify.verifyPhase && runRoot
           ? async () => {
-              const phase = Array.from(graph.phases.values()).at(-1);
-              if (!phase) return { ok: false, output: 'Goal graph has no phase to verify.' };
-              return maybeVerify.verifyPhase!(phase, { cwd: host.projectRoot });
+              // Empty-phase graphs (e.g. an empty saved graph resumed with
+              // verifyTasks on) have no phase context to verify — restored
+              // guard, previously `Array.from(graph.phases.values()).at(-1)`.
+              if (graph.phases.size === 0) {
+                return { ok: false, output: 'Goal graph has no phase to verify.' };
+              }
+              return verifyGoalProject({ cwd: runRoot, projectRoot: host.projectRoot });
             }
           : undefined,
       onTaskUpdate: () => {
@@ -278,6 +321,10 @@ export async function startGoalRun(
   void runPromise
     .then(async () => {
       if (host.orchestrator !== orchestrator) return;
+      graph.runState =
+        graph.failedPhaseIds.length > 0 || graph.finalVerification?.status === 'failed'
+          ? 'failed'
+          : 'completed';
       let saveError: string | undefined;
       try {
         await host.persistence.save(graph);
@@ -292,6 +339,7 @@ export async function startGoalRun(
         graph.finalVerification?.status === 'failed' ||
         saveError !== undefined;
       host.runStatus = failed ? 'failed' : 'completed';
+      graph.runState = host.runStatus;
       host.broadcast(
         failed
           ? { type: 'goal.failed', payload: { title, error: saveError } }
@@ -310,6 +358,7 @@ export async function startGoalRun(
       });
       if (host.orchestrator !== orchestrator) return;
       host.runStatus = 'failed';
+      graph.runState = 'failed';
       host.stopBroadcast();
       host.broadcast({ type: 'goal.failed', payload: { title, error: String(err) } });
       host.abort = null;

@@ -358,4 +358,54 @@ describe('worktree task runner', () => {
     // Should contain either 'kept' or 'released' from parkFailedWorktree
     expect(updates.some((s) => s === 'kept' || s === 'released')).toBe(true);
   });
+
+  /** Git that stages fine but whose pre-commit hook refuses every commit. */
+  function hookRefusingGit() {
+    return stubRunner((args) => {
+      if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'config') return { code: 0, stdout: 'T\n', stderr: '' };
+      // `diff --cached --quiet` exits 1 = there ARE staged changes.
+      if (args[0] === 'diff' && args.includes('--cached')) {
+        return { code: 1, stdout: '', stderr: '' };
+      }
+      if (args[0] === 'commit') return { code: 1, stdout: '', stderr: 'lint-staged failed\n' };
+      return { code: 0, stdout: '', stderr: '' };
+    });
+  }
+
+  it('a hook-refused commit fails the task and keeps the work instead of reporting no changes', async () => {
+    const { calls, run } = hookRefusingGit();
+    const worktrees = new WorktreeManager({ projectRoot: REPO, run });
+    const updates: Array<{ status: string; error?: string | undefined }> = [];
+    const wrapped = wrapSubagentRunnerWithWorktrees({
+      runner: vi.fn(async () => ({ result: 'done', iterations: 1, toolCalls: 1 })),
+      worktrees,
+      onUpdate: (u) => updates.push({ status: u.status, error: u.error }),
+    });
+
+    await expect(wrapped(task, makeCtx())).rejects.toBeInstanceOf(WorktreeIntegrationError);
+    expect(updates.map((u) => u.status)).toEqual(['allocated', 'failed']);
+    expect(updates[1]?.error).toContain('lint-staged failed');
+    // Never merged, never removed: the uncommitted work stays in the checkout.
+    expect(calls.some((c) => c.args[0] === 'merge')).toBe(false);
+    expect(calls.some((c) => c.args[0] === 'worktree' && c.args[1] === 'remove')).toBe(false);
+    expect(worktrees.get(task.id)?.status).toBe('failed');
+  });
+
+  it('a crashed task whose commit is refused reports its partial work as kept', async () => {
+    const { calls, run } = hookRefusingGit();
+    const worktrees = new WorktreeManager({ projectRoot: REPO, run });
+    const updates: string[] = [];
+    const wrapped = wrapSubagentRunnerWithWorktrees({
+      runner: vi.fn(async () => {
+        throw new Error('runner crashed');
+      }),
+      worktrees,
+      onUpdate: (u) => updates.push(u.status),
+    });
+
+    await expect(wrapped(task, makeCtx())).rejects.toThrow('runner crashed');
+    expect(updates).toEqual(['allocated', 'kept']);
+    expect(calls.some((c) => c.args[0] === 'worktree' && c.args[1] === 'remove')).toBe(false);
+  });
 });

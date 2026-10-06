@@ -1,5 +1,9 @@
+import type { WorktreeTimelineEvent } from '@wrongstack/core/types/worktree-timeline';
 import { create } from 'zustand';
 import type { WorktreeDiffSummary, WorktreeHandleView, WorktreeOrphanView } from '../types.js';
+
+/** Same bound as the server's log, so a long-lived tab never grows past it. */
+const MAX_TIMELINE_EVENTS = 1000;
 
 // ── Worktree store (live backend state; not persisted) ──────────────────────
 
@@ -42,6 +46,10 @@ interface WorktreeState {
   mergeResult: WorktreeMergeResult | null;
   /** Compact change summary per worktree dir (lazy, from "View changes"). */
   diffByDir: Record<string, WorktreeDiffSummary | null>;
+  /** Normalised lifecycle log the timeline view projects (kept after release). */
+  timelineEvents: WorktreeTimelineEvent[];
+  setTimeline: (events: WorktreeTimelineEvent[]) => void;
+  pushTimelineEvent: (event: WorktreeTimelineEvent) => void;
   setSnapshot: (worktrees: WorktreeHandleView[], baseBranch: string) => void;
   pushEvent: (e: WorktreeActivity) => void;
   setOrphans: (orphans: WorktreeOrphanView[], canClean: boolean, reason?: string) => void;
@@ -59,6 +67,10 @@ export const useWorktreeStore = create<WorktreeState>()((set) => ({
   cleanResult: null,
   mergeResult: null,
   diffByDir: {},
+  timelineEvents: [],
+  setTimeline: (events) => set({ timelineEvents: events.slice(-MAX_TIMELINE_EVENTS) }),
+  pushTimelineEvent: (event) =>
+    set((s) => ({ timelineEvents: [...s.timelineEvents, event].slice(-MAX_TIMELINE_EVENTS) })),
   setSnapshot: (worktrees, baseBranch) => set({ worktrees, baseBranch }),
   pushEvent: (e) => set((s) => ({ activity: [...s.activity, e].slice(-40) })),
   setOrphans: (orphans, canClean, cleanBlockedReason) =>

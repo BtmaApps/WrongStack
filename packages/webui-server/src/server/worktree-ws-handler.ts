@@ -1,6 +1,12 @@
-import { join, resolve, sep } from 'node:path';
+import { basename, join, resolve, sep } from 'node:path';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
+import {
+  normalizeWorktreeEvent,
+  WORKTREE_CLEANUP_ALL_HANDLE,
+  WORKTREE_EVENT_NAMES,
+  type WorktreeTimelineEvent,
+} from '@wrongstack/core/types/worktree-timeline';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { WorktreeManager } from '@wrongstack/core/worktree';
 import { cleanupStaleSddWorktrees } from '@wrongstack/sdd';
@@ -9,6 +15,8 @@ import type { WorktreeHandleView, WorktreeOrphanView, WSServerMessage } from './
 import { sendSerialized } from './ws-utils.js';
 
 const MAX_ACTIVITY = 6;
+/** Lifecycle events kept for the timeline (survive release, unlike `handles`). */
+const MAX_TIMELINE_EVENTS = 1000;
 
 /** Statuses that mean a worktree is actively owned by a live in-session run. */
 const ACTIVE_STATUSES = new Set(['allocating', 'active', 'committing', 'merging']);
@@ -42,10 +50,14 @@ interface WorktreeManagementDeps {
  * every worktree, and broadcasts:
  *   - `worktree.event` incrementally (drives the flowing activity strip)
  *   - `worktree.state`  on connect + on a 2s timer (drives swim-lanes/DAG)
+ *   - `worktree.timeline` on connect + `worktree.timeline_event` per event:
+ *     the normalised lifecycle log the timeline view projects. Unlike
+ *     `handles` it is not pruned on release, so finished runs stay visible.
  */
 export class WorktreeWebSocketHandler {
   private readonly clients = new Set<WebSocket>();
   private readonly handles = new Map<string, WorktreeHandleView>();
+  private readonly timeline: WorktreeTimelineEvent[] = [];
   private baseBranch = '';
   /**
    * Change-detection pair for the 2s resync interval: every state mutation
@@ -84,6 +96,7 @@ export class WorktreeWebSocketHandler {
     ws.on('close', () => this.clients.delete(ws));
     ws.on('error', () => this.clients.delete(ws));
     this.send(ws, this.stateMessage());
+    this.send(ws, { type: 'worktree.timeline', payload: { events: [...this.timeline] } });
     // Push the current orphan inventory to the freshly-connected client.
     void this.scanAndBroadcast();
   }
@@ -125,6 +138,7 @@ export class WorktreeWebSocketHandler {
     this.stopBroadcast();
     this.clients.clear();
     this.handles.clear();
+    this.timeline.length = 0;
     this.baseBranch = '';
     this.scanRescanNeeded = false;
   }
@@ -294,6 +308,12 @@ export class WorktreeWebSocketHandler {
       }
     }
     if (removedHandles > 0) this.stateVersion++;
+    // The sweep runs on a bus-less manager, so record it for the timeline here.
+    this.recordTimeline('worktree.released', {
+      handleId: WORKTREE_CLEANUP_ALL_HANDLE,
+      ownerId: WORKTREE_CLEANUP_ALL_HANDLE,
+      kept: false,
+    });
     this.broadcast({
       type: 'worktree.cleanup_result',
       payload: { ok: true, removed: res.removed },
@@ -352,6 +372,14 @@ export class WorktreeWebSocketHandler {
       }
     }
     if (removedMatching > 0) this.stateVersion++;
+    // Handle-free removal emits nothing; a checkout dir's basename is its handle id.
+    if (removed) {
+      this.recordTimeline('worktree.released', {
+        handleId: dir ? basename(resolve(dir)) : (branch ?? '').replace(/^wstack\/ap\//, ''),
+        ...(branch ? { branch } : {}),
+        kept: false,
+      });
+    }
     this.broadcast({
       type: 'worktree.cleanup_result',
       payload: {
@@ -389,6 +417,13 @@ export class WorktreeWebSocketHandler {
     }
     const wt = new WorktreeManager({ projectRoot: this.management.projectRoot });
     const res = await wt.mergeBranch(branch);
+    // Handle-free merge emits nothing; the managed branch's slug is its handle id.
+    if (res.ok) {
+      this.recordTimeline('worktree.merged', {
+        handleId: branch.replace(/^wstack\/ap\//, ''),
+        branch,
+      });
+    }
     this.broadcast({
       type: 'worktree.merge_result',
       payload: {
@@ -424,6 +459,12 @@ export class WorktreeWebSocketHandler {
       ev: string,
       fn: (p: unknown) => void,
     ) => () => void;
+
+    // Timeline log first, so a snapshot sent from a state handler below
+    // already contains the event that triggered it.
+    for (const name of WORKTREE_EVENT_NAMES) {
+      this.offs.push(on(name, (p) => this.recordTimeline(name, p)));
+    }
 
     this.offs.push(
       on('worktree.allocated', (p) => {
@@ -475,6 +516,12 @@ export class WorktreeWebSocketHandler {
           this.activity(e.handleId, 'committed', `+${e.insertions}/-${e.deletions} (${e.files}f)`);
         this.broadcastState();
       }),
+      on('worktree.merging', (p) => {
+        const e = p as { handleId: string; baseBranch: string };
+        this.patch(e.handleId, { status: 'merging' });
+        this.activity(e.handleId, 'merging', `→ ${e.baseBranch}`);
+        this.broadcastState();
+      }),
       on('worktree.merged', (p) => {
         const e = p as { handleId: string; baseBranch: string };
         this.patch(e.handleId, { status: 'merged' });
@@ -489,7 +536,7 @@ export class WorktreeWebSocketHandler {
       }),
       on('worktree.failed', (p) => {
         const e = p as { handleId: string; error: string };
-        this.patch(e.handleId, { status: 'failed' });
+        this.patch(e.handleId, { status: 'failed', lastError: e.error });
         this.activity(e.handleId, 'failed', e.error);
         this.broadcastState();
       }),
@@ -504,6 +551,17 @@ export class WorktreeWebSocketHandler {
         else this.broadcastState();
       }),
     );
+  }
+
+  /** Append one lifecycle event to the bounded timeline log and stream it. */
+  private recordTimeline(name: string, payload: unknown): void {
+    const event = normalizeWorktreeEvent(name, payload, Date.now());
+    if (!event) return;
+    this.timeline.push(event);
+    if (this.timeline.length > MAX_TIMELINE_EVENTS) {
+      this.timeline.splice(0, this.timeline.length - MAX_TIMELINE_EVENTS);
+    }
+    this.broadcast({ type: 'worktree.timeline_event', payload: { event } });
   }
 
   private upsert(id: string, view: WorktreeHandleView): void {

@@ -59,9 +59,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/goal": {
-      "files": 33,
-      "typeOnly": 13,
-      "runtimeOrMixed": 32
+      "files": 42,
+      "typeOnly": 17,
+      "runtimeOrMixed": 38
     },
     "@wrongstack/core/hooks": {
       "files": 14,
@@ -69,8 +69,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 159,
-      "typeOnly": 95,
+      "files": 160,
+      "typeOnly": 96,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -84,9 +84,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/kernel": {
-      "files": 343,
-      "typeOnly": 153,
-      "runtimeOrMixed": 210
+      "files": 349,
+      "typeOnly": 154,
+      "runtimeOrMixed": 215
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1347,
-      "typeOnly": 1188,
+      "files": 1348,
+      "typeOnly": 1189,
       "runtimeOrMixed": 409
     },
     "@wrongstack/core/types/limits": {
@@ -223,15 +223,20 @@
       "typeOnly": 18,
       "runtimeOrMixed": 1
     },
+    "@wrongstack/core/types/worktree-timeline": {
+      "files": 18,
+      "typeOnly": 8,
+      "runtimeOrMixed": 10
+    },
     "@wrongstack/core/typesafe": {
       "files": 26,
       "typeOnly": 7,
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 731,
+      "files": 732,
       "typeOnly": 67,
-      "runtimeOrMixed": 696
+      "runtimeOrMixed": 697
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -274,9 +279,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/worktree": {
-      "files": 18,
+      "files": 21,
       "typeOnly": 8,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 14
     }
   },
   "usages": [
@@ -5016,6 +5021,12 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/src/slash-commands/goals.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
       "file": "packages/cli/src/webui-server-options.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -5058,6 +5069,18 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/tests/goal-multiple-terminals.integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/tests/goal-resume-workspace-context.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
       "file": "packages/cli/tests/slash-autonomy.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -5065,6 +5088,18 @@
     {
       "specifier": "@wrongstack/core/goal",
       "file": "packages/cli/tests/slash-goal.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/tests/slash-goals.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/tests/worktree-command-host.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -5130,6 +5165,12 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/tests/goal-multiple-runs.integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
       "file": "packages/webui-server/tests/goal-ws-handler.gaps.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -5143,6 +5184,24 @@
     {
       "specifier": "@wrongstack/core/goal",
       "file": "packages/webui-server/tests/perf/goal-broadcast.bench.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui/src/hooks/ws-handlers/goal-handlers.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui/src/stores/goal-catalog-store.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui/tests/components/my-goals.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -6073,6 +6132,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/tests/components/transcript-turn.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/tests/components/worktree-view.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -7050,6 +7115,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/worktree-command-host.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/auth-profile-fallback.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7249,6 +7320,18 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/goal-host.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/goal-multiple-terminals.integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/goal-resume-workspace-context.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7459,6 +7542,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/wiring-slash-commands.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/worktree-command-host.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8520,6 +8609,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/goal-multiple-runs.integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/leader-auto-wake-host.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8581,6 +8676,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/worktree-ws-handler.gaps.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/worktree-ws-handler.timeline.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -14205,6 +14306,12 @@
       "file": "packages/cli/src/slash-commands/goal.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/goals.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -21461,6 +21568,114 @@
       "runtimeOrMixed": 0
     },
     {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/cli/src/boot/tui-goal-wiring.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/src/app-action-workflows.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/src/app-state.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/src/components/worktree-monitor.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/src/components/worktree-timeline-bars.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/src/hooks/use-tui-event-bridge.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/tests/helpers/monitor-panel-fixtures.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/tui/tests/worktree-timeline-bars.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui-hq/src/views/worktree.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui-server/src/server/worktree-ws-handler.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui-server/tests/worktree-ws-handler.timeline.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/src/components/WorktreeTimeline.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/src/hooks/useWorktreeActions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/src/hooks/useWorktreeTimeline.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/src/hooks/ws-handlers/fleet-handlers.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/src/stores/worktree-store.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/src/types/goal-kanban-worktree.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/worktree-timeline",
+      "file": "packages/webui/tests/components/worktree-timeline.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
       "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/src/config-doctor.ts",
       "typeOnly": 0,
@@ -23445,6 +23660,12 @@
       "file": "packages/cli/src/wiring/slash-commands.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/worktree-command-host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -26400,6 +26621,18 @@
     },
     {
       "specifier": "@wrongstack/core/worktree",
+      "file": "packages/cli/src/worktree-command-host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/worktree",
+      "file": "packages/cli/tests/worktree-command-host.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/worktree",
       "file": "packages/sdd/src/sdd-lifecycle.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -26473,6 +26706,12 @@
     {
       "specifier": "@wrongstack/core/worktree",
       "file": "packages/webui-server/tests/worktree-ws-handler.gaps.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/worktree",
+      "file": "packages/webui-server/tests/worktree-ws-handler.timeline.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     }

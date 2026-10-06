@@ -140,68 +140,61 @@ describe('F1–F10 monitor presentation', () => {
     view.unmount();
   });
 
-  it('renders F4 conflict-first worktree context', () => {
+  it('renders F4 worktree timeline with the conflict context of the selected lane', () => {
+    const base = { handleId: 'auth-fix', ownerId: 'implement', branch: 'wstack/ap/auth-fix' };
     const view = render(
       React.createElement(WorktreeMonitor, {
-        worktrees: {
-          auth: {
-            branch: 'wstack/ap/auth-fix',
-            baseBranch: 'main',
-            ownerLabel: 'implement',
-            status: 'needs-review',
+        events: [
+          { kind: 'allocated', at: 1_000, ...base, ownerLabel: 'implement', baseBranch: 'main' },
+          {
+            kind: 'committed',
+            at: 2_000,
+            ...base,
+            committed: true,
             insertions: 18,
             deletions: 4,
             files: 3,
-            allocatedAt: 1_000,
-            conflictFiles: ['src/auth.ts'],
           },
-        },
-        baseBranch: 'main',
+          { kind: 'merging', at: 3_000, ...base },
+          { kind: 'conflict', at: 3_500, ...base, conflictFiles: ['src/auth.ts'] },
+          { kind: 'released', at: 3_600, ...base, kept: true },
+        ],
         nowTick: 5_000,
         onClose: vi.fn(),
       }),
     );
     const frame = view.lastFrame() ?? '';
     expect(frame).toContain('WORKTREES');
-    expect(frame).toContain('NEEDS-REVIEW');
+    expect(frame).toContain('BASE main');
+    expect(frame).toContain('CONFLICT');
     expect(frame).toContain('conflicts');
     expect(frame).toContain('src/auth.ts');
+    // Each phase draws with its own glyph: working, waiting to merge, kept.
+    for (const glyph of ['▓', '▒', '░']) expect(frame).toContain(glyph);
     view.unmount();
   });
 
-  it('lets F4 inspect worktrees beyond the initial card window', async () => {
-    const worktrees = Object.fromEntries(
-      Array.from({ length: 9 }, (_, index) => {
-        const branch = `wstack/ap/branch-${index + 1}`;
-        return [
-          branch,
-          {
-            branch,
-            ownerLabel: 'implement',
-            status: 'active',
-            insertions: index + 1,
-            deletions: 0,
-            files: 1,
-            allocatedAt: 1_000,
-          },
-        ];
-      }),
-    );
+  it('lets F4 inspect worktrees beyond the initial lane window', async () => {
+    const events = Array.from({ length: 30 }, (_, index) => ({
+      kind: 'allocated' as const,
+      at: 1_000 + index,
+      handleId: `branch-${index + 1}`,
+      ownerId: 'implement',
+      ownerLabel: 'implement',
+      branch: `wstack/ap/branch-${index + 1}`,
+      baseBranch: 'main',
+    }));
     const view = render(
-      React.createElement(WorktreeMonitor, {
-        worktrees,
-        baseBranch: 'main',
-        nowTick: 5_000,
-        onClose: vi.fn(),
-      }),
+      React.createElement(WorktreeMonitor, { events, nowTick: 5_000, onClose: vi.fn() }),
     );
-    for (let index = 0; index < 6; index++) {
-      view.stdin.write('\u001B[B');
+    // Starts on the newest lane; walk back to the first ones.
+    for (let index = 0; index < 29; index++) {
+      view.stdin.write('[A');
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
     const frame = view.lastFrame() ?? '';
-    expect(frame).toContain('branch-7');
-    expect(frame).toContain('worktrees');
+    expect(frame).toContain('branch-1');
+    expect(frame).toContain('more worktrees');
     view.unmount();
   });
 

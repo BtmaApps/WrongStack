@@ -1,12 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useGoalRunStore } from '@/stores';
-import { cn } from '@/lib/utils';
 import { Columns3, Plus, Rows3 } from 'lucide-react';
-import { TaskCard, type TaskItem } from './TaskCard';
-import type { PhaseItem } from './PhasePanel';
+import { useCallback, useMemo, useState } from 'react';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { useGoalRunStore } from '@/stores';
+import { useGoalCatalogStore } from '@/stores/goal-catalog-store';
 import { promptModal } from './ConfirmModal';
+import type { PhaseItem } from './PhasePanel';
+import { TaskCard, type TaskItem } from './TaskCard';
 
 type BoardLayout = 'phase' | 'status';
 
@@ -69,7 +70,15 @@ export function BoardView(): React.ReactElement {
   );
 
   const send = useCallback(
-    (msg: Parameters<NonNullable<typeof client>['send']>[0]) => client?.send?.(msg),
+    (msg: Parameters<NonNullable<typeof client>['send']>[0]) => {
+      if (useGoalRunStore.getState().readOnly) return;
+      const goalId = useGoalCatalogStore.getState().selectedGoalId;
+      client?.send?.(
+        goalId && 'payload' in msg
+          ? ({ ...msg, payload: { ...msg.payload, goalId } } as typeof msg)
+          : msg,
+      );
+    },
     [client],
   );
 

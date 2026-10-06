@@ -389,6 +389,34 @@
       ]
     },
     {
+      "subpath": "./types/worktree-timeline",
+      "target": {
+        "types": "./dist/types/worktree-timeline.d.ts",
+        "import": "./dist/types/worktree-timeline.js"
+      },
+      "source": "packages/core/src/types/worktree-timeline.ts",
+      "declarations": [
+        "export const DEFAULT_WORKTREE_TIMELINE_LANES",
+        "export const WORKTREE_CLEANUP_ALL_HANDLE",
+        "export const WORKTREE_EVENT_NAMES",
+        "export function formatWorktreeDuration",
+        "export function normalizeWorktreeEvent",
+        "export function projectWorktreeTimeline",
+        "export function shortWorktreeBranch",
+        "export function worktreeTimelineTicks",
+        "export interface ProjectWorktreeTimelineOptions",
+        "export interface WorktreeLane",
+        "export interface WorktreeLaneSegment",
+        "export interface WorktreeTimeline",
+        "export interface WorktreeTimelineEvent",
+        "export type WorktreeEventName",
+        "export type WorktreeFailedStage",
+        "export type WorktreeLaneOutcome",
+        "export type WorktreeLanePhase",
+        "export type WorktreeTimelineEventKind"
+      ]
+    },
+    {
       "subpath": "./core/model-ref",
       "target": {
         "types": "./dist/core/model-ref.d.ts",
@@ -1421,8 +1449,10 @@
         "export { buildGoalRefinementPrompt, parseGoalRefinement, type RefinedMission, refineGoalHeuristic, refineGoalWithProvider, resolveRefinerTarget, } from './mission-refinement.js';",
         "export { createGoalRunnerFromTaskGraph, GoalRunner, type GoalRunnerOptions, } from './goal-runner.js';",
         "export { extractJSONArray as extractGoalJSONArray, GoalPlanner, type GoalPlannerOptions, type GoalPlanResult, } from './goal-planner.js';",
+        "export { prepareGoalWorkspace } from './goal-workspace.js';",
         "export { type Checkpoint, CheckpointManager, type CheckpointManagerOptions, } from './checkpoint.js';",
-        "export { type GoalProjectVerificationResult, type GoalProjectVerifierOptions, verifyGoalProject, } from './project-verifier.js';"
+        "export { type GoalProjectVerificationResult, type GoalProjectVerifierOptions, verifyGoalProject, } from './project-verifier.js';",
+        "export { type GoalSummary, summarizeGoal } from './goal-summary.js';"
       ]
     },
     {
@@ -1519,7 +1549,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 226,
-      "sourceLines": 60470
+      "sourceLines": 60484
     },
     {
       "directory": "core",
@@ -1553,8 +1583,8 @@
       "directory": "goal",
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
-      "sourceFiles": 19,
-      "sourceLines": 4307
+      "sourceFiles": 22,
+      "sourceLines": 4704
     },
     {
       "directory": "hooks",
@@ -1568,7 +1598,7 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 61,
-      "sourceLines": 12340
+      "sourceLines": 12368
     },
     {
       "directory": "infrastructure",
@@ -1582,7 +1612,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 22,
-      "sourceLines": 4427
+      "sourceLines": 4451
     },
     {
       "directory": "models",
@@ -1714,8 +1744,8 @@
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 84,
-      "sourceLines": 15930
+      "sourceFiles": 85,
+      "sourceLines": 16400
     },
     {
       "directory": "typesafe",
@@ -1750,7 +1780,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
       "sourceFiles": 8,
-      "sourceLines": 1481
+      "sourceLines": 1535
     }
   ]
 }

@@ -125,10 +125,10 @@ export class WorktreeManager {
         this.projectRoot,
       );
       if (res.code !== 0) {
-        return this.fail(handle, res.stderr || 'git worktree add failed');
+        return this.fail(handle, res.stderr || 'git worktree add failed', 'allocate');
       }
     } catch (err) {
-      return this.fail(handle, toErrorMessage(err));
+      return this.fail(handle, toErrorMessage(err), 'allocate');
     }
 
     this.setStatus(handle, 'active');
@@ -192,10 +192,24 @@ export class WorktreeManager {
     return handle;
   }
 
-  /** Stage everything and commit inside the worktree. */
-  async commitAll(handle: WorktreeHandle, message: string): Promise<{ committed: boolean }> {
+  /**
+   * Stage everything and commit inside the worktree. `error` is set when the
+   * commit was attempted and refused (a pre-commit hook — hooks live in the
+   * common git dir, so a repo's husky/lint-staged runs here too — or a locked
+   * index): the work is still uncommitted in `handle.dir`, which is NOT the
+   * same as "nothing to commit" and must never be treated as a no-op.
+   */
+  async commitAll(
+    handle: WorktreeHandle,
+    message: string,
+  ): Promise<{ committed: boolean; error?: string | undefined }> {
     this.setStatus(handle, 'committing');
-    await this.runGit(['add', '-A'], handle.dir);
+    const added = await this.runGit(['add', '-A'], handle.dir);
+    if (added.code !== 0) {
+      const error = added.stderr || added.stdout || 'git add failed';
+      this.fail(handle, error, 'commit');
+      return { committed: false, error };
+    }
 
     // `diff --cached --quiet` exits 1 when there are staged changes, 0 when none.
     const staged = await this.runGit(['diff', '--cached', '--quiet'], handle.dir);
@@ -207,8 +221,9 @@ export class WorktreeManager {
     const idArgs = await this.identityArgs(handle.dir);
     const committed = await this.runGit([...idArgs, 'commit', '-m', message], handle.dir);
     if (committed.code !== 0) {
-      this.fail(handle, committed.stderr || 'git commit failed');
-      return { committed: false };
+      const error = committed.stderr || committed.stdout || 'git commit failed';
+      this.fail(handle, error, 'commit');
+      return { committed: false, error };
     }
 
     const stats = await this.collectStats(handle.dir);
@@ -225,6 +240,23 @@ export class WorktreeManager {
   async merge(handle: WorktreeHandle, opts: MergeOpts = {}): Promise<MergeResult> {
     const squash = opts.squash ?? true;
     this.setStatus(handle, 'merging');
+    this.emit('worktree.merging', {
+      handleId: handle.id,
+      ownerId: handle.ownerId,
+      branch: handle.branch,
+      baseBranch: handle.baseBranch,
+    });
+
+    // Only committed work travels with the branch. Uncommitted edits left in
+    // the checkout (a refused commitAll) would make this merge a "successful"
+    // no-op and the caller's release() would then force-remove the only copy.
+    // Fail instead: a failed handle is kept on disk by release().
+    const pending = await this.runGit(['status', '--porcelain'], handle.dir);
+    if (pending.code === 0 && pending.stdout.trim().length > 0) {
+      const reason = `worktree ${handle.branch} has uncommitted changes — kept for review`;
+      this.fail(handle, reason, 'merge');
+      return { ok: false, stderr: reason };
+    }
 
     const status = await this.runGit(
       ['status', '--porcelain', '--untracked-files=no'],
@@ -232,13 +264,13 @@ export class WorktreeManager {
     );
     if (status.stdout.trim().length > 0) {
       const reason = 'working tree has uncommitted changes — commit or stash first';
-      this.fail(handle, reason);
+      this.fail(handle, reason, 'merge');
       return { ok: false, stderr: reason };
     }
 
     const checkout = await this.runGit(['checkout', handle.baseBranch], this.projectRoot);
     if (checkout.code !== 0) {
-      this.fail(handle, checkout.stderr || `checkout ${handle.baseBranch} failed`);
+      this.fail(handle, checkout.stderr || `checkout ${handle.baseBranch} failed`, 'merge');
       return { ok: false, stderr: checkout.stderr };
     }
 
@@ -274,7 +306,7 @@ export class WorktreeManager {
       // "resolve" an untouched tree, and the stage-everything that followed
       // committed unrelated files. Undo any partial state and report failure.
       await this.runGit(['reset', '--hard', 'HEAD'], this.projectRoot);
-      this.fail(handle, merged.stderr || merged.stdout || 'merge failed');
+      this.fail(handle, merged.stderr || merged.stdout || 'merge failed', 'merge');
       return { ok: false, stderr: merged.stderr };
     }
 
@@ -308,8 +340,12 @@ export class WorktreeManager {
       const idArgs = await this.identityArgs(this.projectRoot);
       const commit = await this.runGit([...idArgs, 'commit', '-m', msg], this.projectRoot);
       if (commit.code !== 0 && !NOTHING_TO_COMMIT.test(commit.stdout + commit.stderr)) {
-        this.fail(handle, commit.stderr || 'squash commit failed');
-        return { ok: false, stderr: commit.stderr };
+        // A refused squash commit (pre-commit hook) leaves the squash staged on
+        // base, which then blocks every later merge as "uncommitted changes".
+        // Base was clean before the merge and the work is on the branch.
+        await this.runGit(['reset', '--hard', 'HEAD'], this.projectRoot);
+        this.fail(handle, commit.stderr || commit.stdout || 'squash commit failed', 'merge');
+        return { ok: false, stderr: commit.stderr || commit.stdout };
       }
     }
 
@@ -438,8 +474,13 @@ export class WorktreeManager {
       return { ok: false, reason: 'invalid ref' };
     }
 
-    const status = await this.runGit(['status', '--porcelain'], this.projectRoot);
-    if (status.stdout.trim().length > 0) {
+    // Untracked files don't block: `merge --squash` refuses on its own to
+    // overwrite one, and the `reset --hard` rollbacks below leave them alone.
+    const status = await this.runGit(
+      ['status', '--porcelain', '--untracked-files=no'],
+      this.projectRoot,
+    );
+    if (status.code !== 0 || status.stdout.trim().length > 0) {
       return { ok: false, reason: 'working tree has uncommitted changes — commit or stash first' };
     }
     const co = await this.runGit(['checkout', base], this.projectRoot);
@@ -467,7 +508,9 @@ export class WorktreeManager {
       this.projectRoot,
     );
     if (commit.code !== 0 && !NOTHING_TO_COMMIT.test(commit.stdout + commit.stderr)) {
-      return { ok: false, reason: commit.stderr || 'squash commit failed' };
+      // Same rollback as merge(): never leave the squash staged on base.
+      await this.runGit(['reset', '--hard', 'HEAD'], this.projectRoot).catch(() => undefined);
+      return { ok: false, reason: commit.stderr || commit.stdout || 'squash commit failed' };
     }
     return { ok: true };
   }
@@ -694,13 +737,18 @@ export class WorktreeManager {
     });
   }
 
-  private fail(handle: WorktreeHandle, error: string): WorktreeHandle {
+  private fail(
+    handle: WorktreeHandle,
+    error: string,
+    stage: 'allocate' | 'commit' | 'merge',
+  ): WorktreeHandle {
     this.setStatus(handle, 'failed', { lastError: error });
     this.emit('worktree.failed', {
       handleId: handle.id,
       ownerId: handle.ownerId,
       branch: handle.branch,
       error,
+      stage,
     });
     return handle;
   }
@@ -720,10 +768,16 @@ export class WorktreeManager {
     payload: Parameters<EventBus['emit']>[1],
   ): void {
     const sessionId = this.currentSessionId();
+    // `at` is the emit time: listeners in other processes (HQ) and late
+    // subscribers (a WebUI tab opened mid-run) place lifecycle steps by it.
     this.events?.emit(
       event,
-      (sessionId && payload && typeof payload === 'object'
-        ? { ...(payload as Record<string, unknown>), sessionId }
+      (payload && typeof payload === 'object'
+        ? {
+            ...(payload as Record<string, unknown>),
+            at: Date.now(),
+            ...(sessionId ? { sessionId } : {}),
+          }
         : payload) as never,
     );
   }

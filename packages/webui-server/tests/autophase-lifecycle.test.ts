@@ -46,9 +46,9 @@ describe('GoalWebSocketHandler lifecycle', () => {
     // Start (do NOT await — it suspends inside planPhases), then Stop, then let
     // planning resolve and the start settle.
     const startP = h.handleMessage(ws, { type: 'goal.start', payload: { title: 'demo' } });
-    await h.handleMessage(ws, { type: 'goal.stop', payload: {} });
+    const stopP = h.handleMessage(ws, { type: 'goal.stop', payload: {} });
     release(undefined);
-    await startP;
+    await Promise.all([startP, stopP]);
 
     const types = sentTypes(ws);
     expect(types).toContain('goal.stopped');

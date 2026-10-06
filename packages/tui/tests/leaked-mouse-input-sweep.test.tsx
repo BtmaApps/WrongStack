@@ -48,7 +48,7 @@ import {
   cronSnapshot,
   goalFixture,
   renderMonitorPanel,
-  worktreeRows,
+  worktreeTimelineEvents,
 } from './helpers/monitor-panel-fixtures.js';
 
 // Monitor panels read their data through service modules rather than props, and
@@ -364,9 +364,8 @@ const CASES: SweepCase[] = [
       return {
         view: renderMonitorPanel(
           <WorktreeMonitor
-            worktrees={worktreeRows()}
-            baseBranch="main"
-            nowTick={0}
+            events={worktreeTimelineEvents()}
+            nowTick={Date.now()}
             onClose={onClose}
           />,
         ),

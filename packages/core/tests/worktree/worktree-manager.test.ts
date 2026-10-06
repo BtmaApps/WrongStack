@@ -3,6 +3,13 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { EventBus } from '../../src/kernel/events.js';
+import {
+  normalizeWorktreeEvent,
+  projectWorktreeTimeline,
+  WORKTREE_EVENT_NAMES,
+  type WorktreeTimelineEvent,
+} from '../../src/types/worktree-timeline.js';
 import {
   assertSafePath,
   parseConflictPaths,
@@ -1221,6 +1228,158 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       expect(m.ok).toBe(true);
       expect(h.status).toBe('merged');
       expect(await fs.readFile(path.join(base, 'seed.txt'), 'utf8')).toBe('ours\n');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  // Hooks live in the common git dir, so a repo's lint-staged/husky hook runs
+  // for commits inside the managed worktrees too.
+  async function installPreCommitHook(base: string, body: string): Promise<void> {
+    const hook = path.join(base, '.git', 'hooks', 'pre-commit');
+    await fs.mkdir(path.dirname(hook), { recursive: true });
+    await fs.writeFile(hook, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  }
+
+  it('commitAll reports a hook-refused commit as an error, not as "nothing to commit"', async () => {
+    const base = await makeRepo();
+    try {
+      await installPreCommitHook(base, 'echo "lint failed" >&2\nexit 1');
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'hooked' });
+      await fs.writeFile(path.join(h.dir, 'feature.txt'), 'work\n');
+
+      const c = await wm.commitAll(h, 'worker change');
+      expect(c.committed).toBe(false);
+      expect(c.error).toContain('lint failed');
+      expect(h.status).toBe('failed');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  // The Goal/SDD sequence is commitAll → merge → release(keep: !ok). A refused
+  // commit made the squash an empty "success" and release force-removed the
+  // checkout holding the only copy of the work.
+  it('merge refuses a worktree with uncommitted work, so release keeps it', async () => {
+    const base = await makeRepo();
+    try {
+      await installPreCommitHook(
+        base,
+        'git diff --cached --name-only | grep -q feature.txt && { echo "lint failed" >&2; exit 1; }\nexit 0',
+      );
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'unsaved' });
+      await fs.writeFile(path.join(h.dir, 'feature.txt'), 'agent work\n');
+      await wm.commitAll(h, 'worker change');
+
+      const m = await wm.merge(h, { squash: true });
+      expect(m.ok).toBe(false);
+      expect(m.stderr).toContain('uncommitted changes');
+      await wm.release(h, { keep: !m.ok });
+      expect(wm.get('p')).toBe(h);
+      expect(await fs.readFile(path.join(h.dir, 'feature.txt'), 'utf8')).toBe('agent work\n');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('a hook-refused squash commit rolls base back (merge and mergeBranch)', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'refused' });
+      await fs.writeFile(path.join(h.dir, 'seed.txt'), 'changed\n');
+      expect((await wm.commitAll(h, 'worker change')).committed).toBe(true);
+      // Installed after the worktree commit, so only the squash on base is refused.
+      await installPreCommitHook(base, 'echo "hook says no" >&2\nexit 1');
+      const status = () =>
+        spawnSync('git', ['-C', base, 'status', '--porcelain', '--untracked-files=no'], {
+          encoding: 'utf8',
+        }).stdout;
+
+      const viaBranch = await wm.mergeBranch(h.branch);
+      expect(viaBranch.ok).toBe(false);
+      expect(viaBranch.reason).toContain('hook says no');
+      expect(status()).toBe('');
+
+      const viaHandle = await wm.merge(h, { squash: true });
+      expect(viaHandle.ok).toBe(false);
+      expect(status()).toBe('');
+      // Nothing left staged on base, so a retry is not blocked by "uncommitted changes".
+      expect((await wm.mergeBranch(h.branch)).reason).toContain('hook says no');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('emits a timestamped lifecycle the timeline projects into working → queued → merging', async () => {
+    const base = await makeRepo();
+    try {
+      const events = new EventBus();
+      const seen: WorktreeTimelineEvent[] = [];
+      for (const name of WORKTREE_EVENT_NAMES) {
+        events.on(name, (p) => {
+          const e = normalizeWorktreeEvent(name, p, -1);
+          if (e) seen.push(e);
+        });
+      }
+      const wm = new WorktreeManager({ projectRoot: base, events, sessionId: 'sess-1' });
+      const h = await wm.allocate('p', { slugHint: 'timeline' });
+      await fs.writeFile(path.join(h.dir, 'new.txt'), 'hello\n');
+      await wm.commitAll(h, 'work');
+      expect((await wm.merge(h, { squash: true })).ok).toBe(true);
+      await wm.release(h, { keep: false });
+
+      expect(seen.map((e) => e.kind)).toEqual([
+        'allocated',
+        'committed',
+        'merging',
+        'merged',
+        'released',
+      ]);
+      // Stamped by the manager (never the -1 fallback), monotonic, session-tagged.
+      for (const [i, e] of seen.entries()) {
+        expect(e.at).toBeGreaterThan(0);
+        if (i > 0) expect(e.at).toBeGreaterThanOrEqual(seen[i - 1]!.at);
+        expect(e.sessionId).toBe('sess-1');
+      }
+      const lane = projectWorktreeTimeline(seen, { now: Date.now() }).lanes[0]!;
+      expect(lane.outcome).toBe('merged');
+      expect(lane.segments.map((s) => s.phase)).toEqual(['working', 'queued', 'merging']);
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('a hook-refused commit emits failed with stage "commit"', async () => {
+    const base = await makeRepo();
+    try {
+      await installPreCommitHook(base, 'exit 1');
+      const events = new EventBus();
+      const failed: Array<{ stage?: string | undefined }> = [];
+      events.on('worktree.failed', (p) => failed.push(p));
+      const wm = new WorktreeManager({ projectRoot: base, events });
+      const h = await wm.allocate('p', { slugHint: 'staged-fail' });
+      await fs.writeFile(path.join(h.dir, 'x.txt'), 'x\n');
+      await wm.commitAll(h, 'work');
+      expect(failed.map((f) => f.stage)).toEqual(['commit']);
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('mergeBranch is not blocked by untracked files on base', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'untracked-base' });
+      await fs.writeFile(path.join(h.dir, 'new.txt'), 'hello\n');
+      await wm.commitAll(h, 'worker change');
+      await fs.writeFile(path.join(base, 'scratch.log'), 'untracked\n');
+
+      expect(await wm.mergeBranch(h.branch)).toEqual({ ok: true });
+      expect(await fs.readFile(path.join(base, 'scratch.log'), 'utf8')).toBe('untracked\n');
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }

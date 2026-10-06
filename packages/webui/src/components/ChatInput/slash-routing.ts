@@ -1,6 +1,7 @@
 import { clearChatContext } from '@/lib/clear-chat-context';
 import { navigateToView, openMainView, showPanel } from '@/lib/view-navigation';
 import { useGoalRunStore, useLocalPrefs, useSessionStore, useUIStore } from '@/stores';
+import { useGoalCatalogStore } from '@/stores/goal-catalog-store';
 import { useSystemPromptStore } from '@/stores/system-prompt-store';
 import type { WSClientMessage } from '@/types';
 import { downloadChatAsMarkdown } from '../CommandPalette/export-utils.js';
@@ -42,6 +43,7 @@ type SlashRoutingClientMessage = Extract<
   | { type: 'goal.pause' }
   | { type: 'goal.resume' }
   | { type: 'goal.stop' }
+  | { type: 'goal.status' }
   | { type: 'config.doctor' }
   | { type: 'prefs.update' }
 >;
@@ -244,6 +246,15 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
       addMessage({ role: 'assistant', content: `🤖 Autonomy mode → **${mode}**.` });
       return true;
     }
+    case '/goals':
+      client?.send?.({ type: 'goal.list', payload: {} });
+      if (args.trim()) {
+        useGoalCatalogStore.getState().selectGoal(args.trim());
+        useGoalRunStore.getState().clear();
+        client?.send?.({ type: 'goal.status', payload: { goalId: args.trim() } });
+      }
+      openMainView('goal');
+      return true;
     case '/goal': // mission set/status + phase-run start/pause/resume/stop.
       {
         const [sub, ...rest] = args.split(/\s+/).filter(Boolean);
@@ -254,7 +265,13 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
             addMessage({ role: 'assistant', content: 'Usage: `/goal start <title>`' });
             return true;
           }
-          client?.send?.({ type: 'goal.start', payload: { title } });
+          const goalId = crypto.randomUUID();
+          useGoalCatalogStore.getState().selectGoal(goalId);
+          useGoalRunStore.getState().clear();
+          client?.send?.({
+            type: 'goal.start',
+            payload: client.withSession?.({ title, goalId }) ?? { title, goalId },
+          });
           openMainView('goal');
           return true;
         }
@@ -277,7 +294,10 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
           return true;
         }
         if (subcmd === 'save') {
-          client?.send?.({ type: 'goal.save', payload: {} });
+          client?.send?.({
+            type: 'goal.save',
+            payload: { goalId: useGoalCatalogStore.getState().selectedGoalId ?? undefined },
+          });
           return true;
         }
         if (subcmd === 'list') {
@@ -304,6 +324,22 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
           showPanel('chat');
           return true;
         }
+        if (subcmd === 'status' && rest.length > 0) {
+          const goalId = rest.join(' ').trim();
+          useGoalCatalogStore.getState().selectGoal(goalId);
+          useGoalRunStore.getState().clear();
+          client?.send?.({ type: 'goal.status', payload: { goalId } });
+          openMainView('goal');
+          return true;
+        }
+        if (subcmd === 'status' && useGoalCatalogStore.getState().selectedGoalId) {
+          client?.send?.({
+            type: 'goal.status',
+            payload: { goalId: useGoalCatalogStore.getState().selectedGoalId! },
+          });
+          openMainView('goal');
+          return true;
+        }
         if (subcmd === 'status' || subcmd === 'journal') {
           client?.send?.({ type: 'goal-state.get' });
           useUIStore.getState().setDockSection('goal-state');
@@ -314,7 +350,10 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
           const runStatus = useGoalRunStore.getState().status;
           client?.send?.(
             runStatus === 'running'
-              ? { type: 'goal.pause', payload: {} }
+              ? {
+                  type: 'goal.pause',
+                  payload: { goalId: useGoalCatalogStore.getState().selectedGoalId ?? undefined },
+                }
               : { type: 'goal-state.pause', payload: {} },
           );
           return true;
@@ -323,15 +362,21 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
           const { status: runStatus, graphId: savedGraphId } = useGoalRunStore.getState();
           client?.send?.(
             runStatus === 'paused'
-              ? { type: 'goal.resume', payload: {} }
+              ? {
+                  type: 'goal.resume',
+                  payload: { goalId: useGoalCatalogStore.getState().selectedGoalId ?? undefined },
+                }
               : (runStatus === 'stopped' || runStatus === 'failed') && savedGraphId
-                ? { type: 'goal.resume', payload: { graphId: savedGraphId } }
+                ? { type: 'goal.resume', payload: { graphId: savedGraphId, goalId: savedGraphId } }
                 : { type: 'goal-state.resume', payload: {} },
           );
           return true;
         }
         if (subcmd === 'stop') {
-          client?.send?.({ type: 'goal.stop', payload: {} });
+          client?.send?.({
+            type: 'goal.stop',
+            payload: { goalId: useGoalCatalogStore.getState().selectedGoalId ?? undefined },
+          });
           return true;
         }
         if (subcmd) {

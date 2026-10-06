@@ -1,7 +1,20 @@
+import type { GoalSummary } from '@wrongstack/core/goal';
 import type { PhaseItem } from '@/components/PhasePanel';
 import { toast } from '@/components/Toaster';
 import { useGoalRunStore, useGoalStateStore } from '@/stores';
+import { useGoalCatalogStore } from '@/stores/goal-catalog-store';
 import type { WSServerMessage } from '@/types';
+
+function acceptsGoal(payload: Record<string, unknown>): boolean {
+  // Broadcast-scope events (goal.error / goal.stopped / goal.cleared from the
+  // run controls) carry no routing key; they must reach the UI even when a
+  // goal is selected.
+  if (typeof payload.goalId !== 'string' && typeof payload.graphId !== 'string') return true;
+  const selected = useGoalCatalogStore.getState().selectedGoalId;
+  return selected
+    ? payload.goalId === selected || payload.graphId === selected
+    : typeof payload.goalId !== 'string';
+}
 
 function deriveGoalRunStatus(
   phases: PhaseItem[] | undefined,
@@ -40,6 +53,7 @@ function parseGoalProgress(value: unknown) {
 
 export function handleGoalState(msg: WSServerMessage) {
   const p = msg.payload as Record<string, unknown>;
+  if (!acceptsGoal(p)) return;
   const phases = Array.isArray(p.phases) ? (p.phases as PhaseItem[]) : undefined;
   const explicitStatus =
     typeof p.status === 'string' &&
@@ -71,6 +85,7 @@ export function handleGoalState(msg: WSServerMessage) {
     graphId: typeof p.graphId === 'string' ? p.graphId : p.graphId === null ? null : undefined,
     goal: typeof p.goal === 'string' ? p.goal : undefined,
     status,
+    readOnly: p.readOnly === true,
     multiBoard: p.multiBoard === true,
     progress,
     finalVerification,
@@ -80,6 +95,7 @@ export function handleGoalState(msg: WSServerMessage) {
 
 export function handleGoalProgress(msg: WSServerMessage) {
   const p = msg.payload as Record<string, unknown>;
+  if (!acceptsGoal(p)) return;
   const progress = {
     totalPhases: typeof p.totalPhases === 'number' ? p.totalPhases : 0,
     completed: typeof p.completed === 'number' ? p.completed : 0,
@@ -92,14 +108,19 @@ export function handleGoalProgress(msg: WSServerMessage) {
     progress,
     overallPercent:
       typeof p.percentComplete === 'number' ? Math.round(p.percentComplete) : undefined,
-    status: progress.failed > 0 || progress.failedTasks > 0 ? 'failed' : 'running',
+    status: useGoalRunStore.getState().status === 'idle' ? 'running' : undefined,
     lastEvent: 'progress',
   });
 }
 
 export function handleGoalLifecycle(msg: WSServerMessage) {
   const p = msg.payload as Record<string, unknown>;
+  if (!acceptsGoal(p)) return;
   const title = typeof p.title === 'string' && p.title ? p.title : 'Goal';
+  if (msg.type === 'goal.error' && p.controlOnly === true) {
+    toast.error(typeof p.message === 'string' ? p.message : 'Goal control unavailable');
+    return;
+  }
   const error = typeof p.error === 'string' && p.error ? p.error : undefined;
 
   if (msg.type === 'goal.paused') {
@@ -172,7 +193,9 @@ export function handleGoalLifecycle(msg: WSServerMessage) {
 export function handleGoalList(msg: WSServerMessage) {
   const p = msg.payload as {
     graphs?: Array<{ id: string; title: string; updatedAt: number; status: string }> | undefined;
+    goals?: GoalSummary[] | undefined;
   };
+  if (Array.isArray(p.goals)) useGoalCatalogStore.getState().setGoals(p.goals);
   useGoalRunStore.getState().setState({
     lastEvent: 'list',
     graphs: Array.isArray(p.graphs) ? p.graphs : [],

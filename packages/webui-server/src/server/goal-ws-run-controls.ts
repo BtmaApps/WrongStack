@@ -5,16 +5,19 @@ import {
   type PhaseOrchestrator,
   type PhaseStore,
   prepareGoalGraphForResume,
+  prepareGoalWorkspace,
 } from '@wrongstack/core/goal';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { WorktreeManager } from '@wrongstack/core/worktree';
 import { isGitWorkTree } from './git-process.js';
 import { commitsSince } from './goal-ws-run-controls-contracts.js';
 export interface GoalWsRunControlsHost {
+  readonly goalId?: string | undefined;
   startInFlight: boolean;
   orchestrator: PhaseOrchestrator | null;
   stopping: boolean;
   runPromise: Promise<void> | null;
+  setupPromise?: Promise<void> | null | undefined;
   broadcast(msg: { type: string; payload: unknown }): void;
   runStatus: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'stopped';
   releaseRunLease: (() => Promise<void>) | null;
@@ -39,7 +42,12 @@ export async function handleStart(
   host: GoalWsRunControlsHost,
   payload?: Record<string, unknown>,
 ): Promise<void> {
-  if (host.startInFlight || host.orchestrator?.isRunning() || (host.stopping && host.runPromise)) {
+  if (
+    host.startInFlight ||
+    host.runPromise ||
+    host.runStatus === 'running' ||
+    host.runStatus === 'paused'
+  ) {
     host.broadcast({
       type: 'goal.error',
       payload: { message: 'A Goal run is already in progress. Stop it before starting another.' },
@@ -51,13 +59,29 @@ export async function handleStart(
   // while the lease is being acquired must still be seen by startRun.
   host.stopping = false;
   host.runStatus = 'running';
+  let releaseRunLease: (() => Promise<void>) | undefined;
+  // Snapshot before the try: an early throw (e.g. GoalRunLeaseBusyError from
+  // the acquire below) must not persist the PREVIOUS run's graph as failed.
+  const priorGraph = host.graph;
   try {
-    host.releaseRunLease = await host.store.acquireRunLease(
-      `webui:${process.pid}:${crypto.randomUUID()}`,
-    );
+    const ownerId = `webui:${process.pid}:${host.goalId ?? crypto.randomUUID()}`;
+    releaseRunLease = host.goalId
+      ? await host.store.acquireGoalRunLease(host.goalId, ownerId)
+      : await host.store.acquireRunLease(ownerId);
+    if (!host.stopping) {
+      host.releaseRunLease = releaseRunLease;
+      releaseRunLease = undefined;
+    }
     await host.startRun(payload);
   } catch (err) {
-    host.runStatus = 'failed';
+    host.runStatus = host.stopping ? 'stopped' : 'failed';
+    // Only persist when this start actually replaced the graph; a graph left
+    // over from a previous completed/stopped run must keep its durable state.
+    if (host.graph && host.graph !== priorGraph) {
+      host.graph.runState = host.runStatus;
+      host.graph.runError = host.stopping ? undefined : toErrorMessage(err);
+      await host.persistence.save(host.graph).catch(() => undefined);
+    }
     host.broadcast({
       type: 'goal.error',
       payload: {
@@ -69,7 +93,10 @@ export async function handleStart(
     });
   } finally {
     host.startInFlight = false;
-    if (!host.orchestrator) await host.releaseActiveRunLease();
+    // A stop that completed while the lease was being acquired never saw this
+    // lease (it was not yet handed to the host), so release it here.
+    await releaseRunLease?.();
+    if (!host.orchestrator && !host.stopping) await host.releaseActiveRunLease();
   }
 }
 
@@ -93,17 +120,32 @@ export async function handleResumeGraph(
   host.stopping = false;
   let releaseRunLease: (() => Promise<void>) | undefined;
   try {
-    releaseRunLease = await host.store.acquireRunLease(
-      `webui-resume:${process.pid}:${crypto.randomUUID()}`,
-    );
-    const graph = host.graph?.id === graphId ? host.graph : await host.store.load(graphId);
+    const ownerId = `webui-resume:${process.pid}:${graphId}`;
+    const saved = host.graph?.id === graphId ? host.graph : await host.store.load(graphId);
+    const graph = saved;
+    // Validate before acquiring any lease: a missing graph must not briefly
+    // hold the legacy run lease or surface as a lease-busy error.
     if (!graph) throw new Error(`Saved Goal not found: ${graphId}`);
+    releaseRunLease = graph.workspace
+      ? await host.store.acquireGoalRunLease(graphId, ownerId)
+      : await host.store.acquireRunLease(ownerId);
     if (host.stopping) return;
+    const runRoot =
+      graph.workspace && host.projectRoot
+        ? await prepareGoalWorkspace(host.projectRoot, graph)
+        : host.projectRoot;
     const worktrees =
-      graph.worktrees !== false && host.projectRoot && (await isGitWorkTree(host.projectRoot))
-        ? new WorktreeManager({ projectRoot: host.projectRoot })
+      graph.worktrees !== false && runRoot && (await isGitWorkTree(runRoot))
+        ? new WorktreeManager({ projectRoot: runRoot })
         : undefined;
     await prepareGoalGraphForResume(graph, worktrees);
+    // A stop that landed during the setup awaits above already ran
+    // handleStop while host.releaseRunLease was still null, so nothing was
+    // released there. Handing the lease over now would strand it (startRun
+    // bails on its own stopping guard and the finally below is gated on
+    // !host.stopping). Return with the lease still local so the finally
+    // releases it — mirror of handleStart's guarded handoff.
+    if (host.stopping) return;
     host.graph = graph;
     host.orchestrator = null;
     host.runStatus = 'running';
@@ -132,23 +174,31 @@ export async function handleResumeGraph(
     await releaseRunLease?.();
     // startRun returned without launching (stopped mid-setup): the lease
     // handed to this.releaseRunLease above is not the run's to keep.
-    if (!host.orchestrator) await host.releaseActiveRunLease();
+    if (!host.orchestrator && !host.stopping) await host.releaseActiveRunLease();
   }
 }
 
 export async function handleStop(host: GoalWsRunControlsHost): Promise<void> {
+  // A start that is still acquiring its lease leaves host.releaseRunLease
+  // null; the stopped runState must still persist for that in-flight start.
+  const wasStarting = host.startInFlight;
   host.stopping = true;
   host.abort?.abort();
   host.assessAbort?.abort();
   host.assessAbort = null;
   const orchestrator = host.orchestrator;
   const runPromise = host.runPromise;
+  const setupPromise = host.setupPromise;
   orchestrator?.stop();
   host.orchestrator = null;
   host.runStatus = 'stopped';
   host.stopBroadcast();
+  await setupPromise?.catch(() => undefined);
   await runPromise?.catch(() => undefined);
-  if (host.graph) await host.persistence.save(host.graph).catch(() => undefined);
+  if (host.graph && (host.releaseRunLease || wasStarting)) {
+    host.graph.runState = 'stopped';
+    await host.persistence.save(host.graph).catch(() => undefined);
+  }
   if (host.runPromise === runPromise) host.runPromise = null;
   host.abort = null;
   await host.releaseActiveRunLease();

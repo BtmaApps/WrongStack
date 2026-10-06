@@ -320,6 +320,7 @@ export function createTestState(
     sddBoard: null,
     worktrees: {},
     worktreeMonitorOpen: false,
+    worktreeTimeline: [],
     coordinator: { goals: [], timeline: [], knowledgeCount: 0, monitorOpen: false, healthy: false },
     viewportRows: 0,
     historyScrolled: false,

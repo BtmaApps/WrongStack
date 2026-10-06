@@ -43,6 +43,7 @@ import {
 } from './git.js';
 import { buildGitIdCommand } from './gitid.js';
 import { buildGoalCommand } from './goal.js';
+import { buildGoalsCommand } from './goals.js';
 import { buildHealthCommand } from './health.js';
 import { buildHelpCommand } from './help.js';
 import { buildInitCommand } from './init.js';
@@ -164,6 +165,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildMouseCommand(opts),
     buildAutonomyCommand(opts),
     buildGoalCommand(opts),
+    buildGoalsCommand(opts),
     buildCoordinatorCommand(opts),
     buildBrainCommand(opts),
     buildBtwCommand(opts),

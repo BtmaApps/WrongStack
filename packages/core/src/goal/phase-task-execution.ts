@@ -7,6 +7,7 @@ import type { PhaseEventMap, PhaseEventName, PhaseExecutionContext, PhaseNode } 
 export interface PhaseTaskExecutionHost {
   getExecutableTasks(phase: PhaseNode): TaskNode[];
   stopped: boolean;
+  waitWhilePaused(): Promise<void>;
   opts: NormalizedGoalOptions;
   executeSingleTask(task: TaskNode, phase: PhaseNode): Promise<unknown>;
   markTaskCompleted(phase: PhaseNode, task: TaskNode): void;
@@ -26,6 +27,8 @@ export async function executePhaseTasks(
   const pendingTasks = host.getExecutableTasks(phase);
 
   while (pendingTasks.length > 0 && !host.stopped) {
+    await host.waitWhilePaused();
+    if (host.stopped) break;
     const batch = pendingTasks.splice(0, host.opts.maxConcurrentTasks);
 
     const results = await Promise.allSettled(
@@ -38,6 +41,10 @@ export async function executePhaseTasks(
       if (!result || !task) continue;
 
       if (result.status === 'fulfilled') {
+        // Record real completions even when a stop landed mid-batch:
+        // demoting a finished task back to pending (via markTaskFailed's
+        // stopped branch) would re-execute it on the next run — duplicate
+        // side effects on a task whose work already happened.
         host.markTaskCompleted(phase, task);
       } else {
         host.markTaskFailed(phase, task, result.reason);

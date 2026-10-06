@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import type { TaskEdge, TaskGraph, TaskNode } from '../types/task-graph.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
+import { type GoalSummary, summarizeGoal } from './goal-summary.js';
 import type { PhaseGraph, PhaseNode } from './types.js';
 
 export interface PhaseStoreOptions {
@@ -37,6 +39,10 @@ interface SerializedPhaseGraph {
   version: number;
   id: string;
   sessionId?: string | undefined;
+  runState?: PhaseGraph['runState'];
+  leaseScope?: PhaseGraph['leaseScope'];
+  runError?: PhaseGraph['runError'];
+  workspace?: PhaseGraph['workspace'];
   title: string;
   description: string;
   phases: SerializedPhaseNode[];
@@ -134,6 +140,49 @@ export class PhaseStore {
    * same repository even though they own separate in-memory orchestrators.
    */
   async acquireRunLease(ownerId: string): Promise<() => Promise<void>> {
+    await fsp.mkdir(this.baseDir, { recursive: true });
+    return withFileLock(path.join(this.baseDir, '.run-admission'), async () => {
+      const leaseRoot = path.join(this.baseDir, '.goal-leases');
+      let entries: import('node:fs').Dirent[];
+      try {
+        entries = await fsp.readdir(leaseRoot, { withFileTypes: true });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        entries = [];
+      }
+      for (const entry of entries) {
+        if (entry.isDirectory())
+          await this.assertLeaseInactive(path.join(leaseRoot, entry.name, RUN_LEASE_FILE));
+      }
+      return this.acquireLease(ownerId);
+    });
+  }
+
+  private async assertLeaseInactive(leasePath: string): Promise<void> {
+    const lease = await this.readRunLease(leasePath);
+    if (lease) {
+      if (this.isProcessAlive(lease.pid)) throw new GoalRunLeaseBusyError(lease.ownerId);
+      return;
+    }
+    let stat: import('node:fs').Stats | null = null;
+    try {
+      stat = await fsp.stat(leasePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw error;
+    }
+    // Unparseable lease body (a writer crashed between the `wx` open and
+    // writeFile): honor the same grace window as acquireLease, then self-heal
+    // by unlinking so a torn write cannot permanently block admission.
+    if (Date.now() - stat.mtimeMs < INCOMPLETE_LEASE_GRACE_MS) {
+      throw new GoalRunLeaseBusyError('unknown lease owner');
+    }
+    await fsp.unlink(leasePath).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== 'ENOENT') throw err;
+    });
+  }
+
+  private async acquireLease(ownerId: string): Promise<() => Promise<void>> {
     if (!ownerId.trim()) throw new Error('Goal run lease ownerId must not be empty.');
     await fsp.mkdir(this.baseDir, { recursive: true });
     const leasePath = path.join(this.baseDir, RUN_LEASE_FILE);
@@ -190,6 +239,51 @@ export class PhaseStore {
     await withFileLock(filePath, async () => {
       await atomicWrite(filePath, JSON.stringify(serialized, null, 2), { mode: 0o600 });
     });
+  }
+
+  /** Isolated goal checkouts can run concurrently, while one goal keeps one owner. */
+  async acquireGoalRunLease(goalId: string, ownerId: string): Promise<() => Promise<void>> {
+    const goalStore = this.goalLeaseStore(goalId);
+    await fsp.mkdir(this.baseDir, { recursive: true });
+    return withFileLock(path.join(this.baseDir, '.run-admission'), async () => {
+      await this.assertLeaseInactive(path.join(this.baseDir, RUN_LEASE_FILE));
+      return goalStore.acquireLease(ownerId);
+    });
+  }
+
+  async listGoals(): Promise<GoalSummary[]> {
+    const entries = await this.list();
+    const summaries: GoalSummary[] = [];
+    for (const entry of entries) {
+      const graph = await this.load(entry.id);
+      if (!graph) continue;
+      summaries.push(summarizeGoal(graph, await this.goalRunOwner(graph)));
+    }
+    return summaries;
+  }
+
+  async goalRunOwner(graph: PhaseGraph): Promise<string | null> {
+    const isolated = graph.workspace || graph.leaseScope === 'goal';
+    const leaseStore = isolated ? this.goalLeaseStore(graph.id) : this;
+    const leasePath = path.join(leaseStore.baseDir, RUN_LEASE_FILE);
+    const lease = await this.readRunLease(leasePath);
+    if (lease)
+      return this.isProcessAlive(lease.pid) && (isolated || lease.ownerId.endsWith(`:${graph.id}`))
+        ? lease.ownerId
+        : null;
+    try {
+      await fsp.stat(leasePath);
+      return 'unknown';
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw err;
+    }
+  }
+
+  private goalLeaseStore(goalId: string): PhaseStore {
+    this.getFilePath(goalId);
+    const key = createHash('sha256').update(goalId).digest('hex');
+    return new PhaseStore({ baseDir: path.join(this.baseDir, '.goal-leases', key) });
   }
 
   async load(graphId: string): Promise<PhaseGraph | null> {
@@ -371,6 +465,10 @@ export class PhaseStore {
       version: PHASE_STORE_VERSION,
       id: graph.id,
       sessionId: graph.sessionId,
+      runState: graph.runState,
+      leaseScope: graph.leaseScope,
+      runError: graph.runError,
+      workspace: graph.workspace,
       title: graph.title,
       description: graph.description,
       phases: Array.from(graph.phases.values()).map((p) => this.serializePhase(p)),
@@ -451,6 +549,10 @@ export class PhaseStore {
     return {
       id: serialized.id,
       sessionId: serialized.sessionId,
+      runState: serialized.runState,
+      leaseScope: serialized.leaseScope,
+      runError: serialized.runError,
+      workspace: serialized.workspace,
       title: serialized.title,
       description: serialized.description,
       phases,

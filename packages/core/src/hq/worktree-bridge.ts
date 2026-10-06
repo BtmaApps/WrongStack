@@ -69,6 +69,14 @@ type WorktreeFailed = {
   ownerId: string;
   branch?: string | undefined;
   error: string;
+  stage?: 'allocate' | 'commit' | 'merge' | undefined;
+};
+type WorktreeMerging = {
+  sessionId?: string | undefined;
+  handleId: string;
+  ownerId: string;
+  branch: string;
+  baseBranch: string;
 };
 
 /**
@@ -117,6 +125,21 @@ export function startWorktreeTelemetryBridge(opts: WorktreeTelemetryBridgeOption
           deletions: p.deletions,
           files: p.files,
           ...(p.sha !== undefined ? { sha: p.sha } : {}),
+        },
+        p.sessionId,
+      );
+    }),
+  );
+
+  ctx.track(
+    events.on('worktree.merging', (p: WorktreeMerging) => {
+      publish(
+        {
+          kind: 'merging',
+          handleId: p.handleId,
+          ownerId: p.ownerId,
+          branch: p.branch,
+          baseBranch: p.baseBranch,
         },
         p.sessionId,
       );
@@ -178,6 +201,7 @@ export function startWorktreeTelemetryBridge(opts: WorktreeTelemetryBridgeOption
           ownerId: p.ownerId,
           ...(p.branch !== undefined ? { branch: p.branch } : {}),
           error: p.error,
+          ...(p.stage !== undefined ? { stage: p.stage } : {}),
         },
         p.sessionId,
       );

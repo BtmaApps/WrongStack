@@ -268,7 +268,14 @@ const featuredUsage: Record<string, { usage: string[]; note?: string }> = {
     note: 'The /ctx alias reaches the same command.',
   },
   '/goal': {
-    usage: ['/goal set "ship the auth refactor"', '/goal pause', '/goal resume', '/goal journal'],
+    usage: [
+      '/goal start "ship the auth refactor"',
+      '/goals',
+      '/goal status <id>',
+      '/goal pause',
+      '/goal resume',
+      '/goal journal',
+    ],
   },
   '/fleet': {
     usage: [

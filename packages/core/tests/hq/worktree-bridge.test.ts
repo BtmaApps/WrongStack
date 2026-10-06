@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { parseHqEventPayload } from '../../src/hq/protocol/event-payload-validation.js';
 import type { HqWorktreeEventPayload } from '../../src/hq/protocol.js';
 import type { HqPublisher } from '../../src/hq/publisher.js';
 import { startWorktreeTelemetryBridge } from '../../src/hq/worktree-bridge.js';
@@ -92,6 +93,30 @@ describe('startWorktreeTelemetryBridge', () => {
     const payload: HqWorktreeEventPayload = spy.mock.calls[0]![0].payload;
     expect(payload.kind).toBe('failed');
     expect(payload.error).toBe('merge conflict');
+  });
+
+  it('forwards worktree.merging and the failed stage, both accepted by the HQ validator', () => {
+    const events = new EventBus();
+    const spy = vi.fn();
+    startWorktreeTelemetryBridge({ events, publisher: fakePublisher(spy) });
+    events.emit('worktree.merging', {
+      handleId: 'h1',
+      ownerId: 'p1',
+      branch: 'b',
+      baseBranch: 'main',
+    });
+    events.emit('worktree.failed', {
+      handleId: 'h1',
+      ownerId: 'p1',
+      error: 'lint-staged failed',
+      stage: 'commit',
+    });
+    const [merging, failed] = spy.mock.calls.map((c) => c[0].payload as HqWorktreeEventPayload);
+    expect(merging).toMatchObject({ kind: 'merging', baseBranch: 'main' });
+    expect(failed).toMatchObject({ kind: 'failed', stage: 'commit' });
+    for (const payload of [merging, failed]) {
+      expect(parseHqEventPayload('worktree.event', payload).ok).toBe(true);
+    }
   });
 
   it('forwards worktree.merged and worktree.released', () => {

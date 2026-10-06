@@ -12,7 +12,7 @@ export function GoalPage() {
             Full autonomy <span className="text-brand">across worktrees.</span>
           </>
         }
-        description="Goal combines a durable mission with autonomous phased runs. Each run can isolate phases in git worktrees, verify produced changes, and resume from persisted phase/task state."
+        description="Goal combines a durable mission with autonomous phased runs. My Goals tracks project runs by goal id and session, with task/phase progress, blockers and verification. Git-backed goals run in their own checkouts and retain branches for review before integration."
         aside={<ExternalDoc path="docs/goal.md">Open Goal docs</ExternalDoc>}
       />
 
@@ -43,7 +43,7 @@ export function GoalPage() {
             {
               icon: Target,
               title: 'Goal tracking',
-              body: 'The mission and its phase runs persist per project. Resume an interrupted Goal run from its saved board.',
+              body: 'My Goals and /goals track goal ids, owning sessions, phase status and task progress. Unknown reachability stays unknown until the result is verified.',
             },
           ].map(({ icon: Icon, title, body }) => (
             <div key={title} className="rounded-xl border border-line bg-card p-6">

@@ -40,6 +40,8 @@ export const SERVER_WORKSPACE_MESSAGE_TYPES = [
   'worktree.merge_result',
   'worktree.orphans',
   'worktree.state',
+  'worktree.timeline',
+  'worktree.timeline_event',
 ] as const;
 
 export const SERVER_CONFIGURATION_MESSAGE_TYPES = [

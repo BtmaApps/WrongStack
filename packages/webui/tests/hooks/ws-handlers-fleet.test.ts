@@ -82,6 +82,8 @@ describe('fleet ws-handler map', () => {
         'worktree.merge_result',
         'worktree.orphans',
         'worktree.state',
+        'worktree.timeline',
+        'worktree.timeline_event',
       ].sort(),
     );
   });

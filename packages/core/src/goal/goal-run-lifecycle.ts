@@ -36,7 +36,23 @@ export async function prepareGoalGraphForResume(
   const incomplete = Array.from(graph.phases.values()).filter(
     (phase) => phase.status !== 'completed' && phase.status !== 'skipped',
   );
-  if (incomplete.length === 0) throw new Error('This Goal is already complete.');
+  const finalOnly =
+    incomplete.length === 0 &&
+    graph.phases.size > 0 &&
+    graph.runState === 'stopped' &&
+    graph.completedAt === undefined;
+  if (incomplete.length === 0 && !finalOnly) throw new Error('This Goal is already complete.');
+  if (
+    finalOnly &&
+    graph.worktrees === true &&
+    [...graph.phases.values()].some(
+      (phase) => phase.status !== 'skipped' && phase.metadata?.['integrationStatus'] !== 'merged',
+    )
+  ) {
+    throw new Error(
+      'This Goal has an unmerged phase. Review its worktree before final verification.',
+    );
+  }
   if (graph.worktrees === true && !worktrees) {
     throw new Error('Saved Goal requires git worktrees, but this project is not a git checkout.');
   }
@@ -65,5 +81,6 @@ export async function prepareGoalGraphForResume(
   // A requeued task may have invalidated a previous terminal verdict. The
   // resumed orchestrator will rerun the merged-tree gate before completion.
   graph.completedAt = undefined;
+  graph.runError = undefined;
   graph.finalVerification = undefined;
 }

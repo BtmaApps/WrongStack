@@ -14,15 +14,15 @@
  * the sweep's `CASES` entry.
  */
 
+import type { WorktreeTimelineEvent } from '@wrongstack/core/types/worktree-timeline';
+import type { ContextBreakdown } from '@wrongstack/core/utils';
 import { render } from 'ink-testing-library';
 import type { ReactElement } from 'react';
 import type { GoalSummary } from '../../src/app-state.js';
 import type { ContextPanelData } from '../../src/components/context-panel.js';
 import type { CronListResult } from '../../src/components/cron-jobs.js';
 import { MonitorViewportProvider, PanelInputProvider } from '../../src/components/monitor-shell.js';
-import type { WorktreeRow } from '../../src/components/worktree-panel.js';
 import { emptyMemoryContextMonitor } from '../../src/memory-context-monitor.js';
-import type { ContextBreakdown } from '@wrongstack/core/utils';
 import { createTestState } from './create-test-state.js';
 
 /** Terminal the panels measure against; wide enough that no column is dropped. */
@@ -58,20 +58,26 @@ export function goalFixture(): NonNullable<GoalSummary> {
   };
 }
 
-/** `worktree-monitor` takes a map keyed by worktree path. */
-export function worktreeRows(): Record<string, WorktreeRow & { baseBranch?: string | undefined }> {
-  return {
-    '/tmp/wt-feature': {
-      branch: 'feature/leaked-mouse',
-      ownerLabel: 'agent-1',
-      status: 'active',
+/** `worktree-monitor` projects the normalised worktree lifecycle log. */
+export function worktreeTimelineEvents(): WorktreeTimelineEvent[] {
+  const at = Date.now() - 60_000;
+  const base = {
+    handleId: 'leaked-mouse-1',
+    ownerId: 'agent-1',
+    branch: 'wstack/ap/leaked-mouse-1',
+  };
+  return [
+    { kind: 'allocated', at, ...base, ownerLabel: 'agent-1', baseBranch: 'main' },
+    {
+      kind: 'committed',
+      at: at + 20_000,
+      ...base,
+      committed: true,
       insertions: 42,
       deletions: 7,
       files: 5,
-      allocatedAt: Date.now() - 60_000,
-      baseBranch: 'main',
     },
-  };
+  ];
 }
 
 /** One enabled job with a recent and a future run, so the list is non-empty. */

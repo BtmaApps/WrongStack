@@ -27,6 +27,7 @@ vi.mock('@wrongstack/core/goal', async (importOriginal) => {
       this.saved.push(graph);
     });
     list = vi.fn(async () => [{ id: 'g1', title: 'Saved Goal' }]);
+    listGoals = vi.fn(async () => []);
     load = vi.fn(async (id: string) => this.graphs.get(id) ?? null);
     acquireRunLease = vi.fn(async () => vi.fn(async () => undefined));
   }
@@ -342,9 +343,9 @@ describe('GoalWebSocketHandler — goal.start', () => {
       payload: { goal: 'slow plan' },
     });
     await new Promise((r) => setTimeout(r, 20));
-    await handler.handleMessage(ws as unknown as WebSocket, { type: 'goal.stop' });
+    const stopping = handler.handleMessage(ws as unknown as WebSocket, { type: 'goal.stop' });
     release();
-    await starting;
+    await Promise.all([starting, stopping]);
     const stopped = ws.sent.filter((m) => m.type === 'goal.stopped');
     expect(stopped.length).toBeGreaterThanOrEqual(1);
     // The planning resolve must not have launched the run: no state broadcast

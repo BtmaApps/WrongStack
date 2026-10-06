@@ -4,6 +4,8 @@ export type ClientMessageWorkflows =
       type: 'goal.start';
       payload: {
         title: string;
+        goalId?: string | undefined;
+        sessionId?: string | undefined;
         phases?: unknown[] | undefined;
         autonomous?: boolean | undefined;
         /** Per-run override of git-worktree isolation. Omitted → env default
@@ -18,41 +20,54 @@ export type ClientMessageWorkflows =
       };
     }
   | { type: 'goal.assess'; payload: { goal: string; seq?: number | undefined } }
-  | { type: 'goal.pause'; payload: Record<string, never> }
-  | { type: 'goal.resume'; payload: { graphId?: string | undefined } }
-  | { type: 'goal.stop'; payload: Record<string, never> }
-  | { type: 'goal.clear'; payload?: Record<string, never> }
-  | { type: 'goal.revert'; payload?: Record<string, never> }
-  | { type: 'goal.status'; payload?: Record<string, never> }
-  | { type: 'goal.save'; payload?: Record<string, never> }
+  | { type: 'goal.pause'; payload: { goalId?: string | undefined } }
+  | { type: 'goal.resume'; payload: { graphId?: string | undefined; goalId?: string | undefined } }
+  | { type: 'goal.stop'; payload: { goalId?: string | undefined } }
+  | { type: 'goal.clear'; payload?: { goalId?: string | undefined } }
+  | { type: 'goal.revert'; payload?: { goalId?: string | undefined } }
+  | { type: 'goal.status'; payload?: { goalId?: string | undefined } }
+  | { type: 'goal.save'; payload?: { goalId?: string | undefined } }
   | { type: 'goal.list'; payload?: Record<string, never> }
   | {
       type: 'goal.load';
       payload: {
         graphId?: string | undefined;
+        goalId?: string | undefined;
         query?: string | undefined;
         resume?: boolean | undefined;
       };
     }
-  | { type: 'goal.selectPhase'; payload: { phaseId: string } }
-  | { type: 'goal.taskStatus'; payload: { taskId: string; status: string } }
-  | { type: 'goal.moveTask'; payload: { taskId: string; toPhaseId: string } }
+  | { type: 'goal.selectPhase'; payload: { phaseId: string; goalId?: string | undefined } }
+  | {
+      type: 'goal.taskStatus';
+      payload: { taskId: string; status: string; goalId?: string | undefined };
+    }
+  | {
+      type: 'goal.moveTask';
+      payload: { taskId: string; toPhaseId: string; goalId?: string | undefined };
+    }
   | {
       type: 'goal.assignTask';
-      payload: { taskId: string; agentId?: string | undefined; agentName?: string | undefined };
+      payload: {
+        taskId: string;
+        agentId?: string | undefined;
+        agentName?: string | undefined;
+        goalId?: string | undefined;
+      };
     }
   | {
       type: 'goal.addTask';
       payload: {
         phaseId: string;
+        goalId?: string | undefined;
         title: string;
         description?: string | undefined;
         type?: string | undefined;
         priority?: string | undefined;
       };
     }
-  | { type: 'goal.retryTask'; payload: { taskId: string } }
-  | { type: 'goal.runTask'; payload: { taskId: string } }
+  | { type: 'goal.retryTask'; payload: { taskId: string; goalId?: string | undefined } }
+  | { type: 'goal.runTask'; payload: { taskId: string; goalId?: string | undefined } }
   | { type: 'sdd.board.get'; payload?: Record<string, never> }
   | { type: 'sdd.board.list'; payload?: Record<string, never> }
   | { type: 'sdd.board.pause'; payload?: { runId?: string | undefined } }

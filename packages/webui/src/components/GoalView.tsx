@@ -1,15 +1,29 @@
-import { Layers, Loader2, Pause, Play, Plus, Rocket, Square, Undo2, X } from 'lucide-react';
+import { Layers, Loader2, Pause, Play, Rocket, Square, Undo2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { showPanel } from '@/components/activity-bar/nav';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { useChatStore, useGoalAssessStore, useGoalRunStore, useWorktreeStore } from '@/stores';
+import {
+  useActiveSessionId,
+  useChatStore,
+  useGoalAssessStore,
+  useGoalRunStore,
+  useWorktreeStore,
+} from '@/stores';
+import { useGoalCatalogStore } from '@/stores/goal-catalog-store';
 import { BoardView } from './BoardView';
+import { MyGoals } from './MyGoals';
 import { Button } from './ui/button';
 import { WorktreeGraph } from './WorktreeGraph';
 import { WorktreeLanes } from './WorktreeLanes';
 import { WorktreeOrphans } from './WorktreeOrphans';
+import {
+  useSessionWorktreeCount,
+  WorktreeTimelineView,
+  type WorktreeViewMode,
+  WorktreeViewSwitch,
+} from './WorktreeTimeline';
 
 /**
  * GoalView — Full-screen goal phase view.
@@ -31,6 +45,7 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
   const graphId = useGoalRunStore((s) => s.graphId);
   const goalText = useGoalRunStore((s) => s.goal);
   const status = useGoalRunStore((s) => s.status);
+  const readOnly = useGoalRunStore((s) => s.readOnly);
   const lastError = useGoalRunStore((s) => s.lastError);
   const finalVerification = useGoalRunStore((s) => s.finalVerification);
   const graphs = useGoalRunStore((s) => s.graphs);
@@ -43,13 +58,15 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
 
   const worktrees = useWorktreeStore((s) => s.worktrees);
   const baseBranch = useWorktreeStore((s) => s.baseBranch);
+  const sessionId = useActiveSessionId() ?? undefined;
+  const runWorktreeCount = useSessionWorktreeCount(sessionId);
 
   const [goal, setGoal] = useState('');
   // The goal we submitted, kept until the first phase state arrives so the
   // start screen can show a persistent "planning…" state instead of silently
   // resetting the form (which read as "nothing happened").
   const [planningGoal, setPlanningGoal] = useState<string | null>(null);
-  const [showGraph, setShowGraph] = useState(false);
+  const [worktreeView, setWorktreeView] = useState<WorktreeViewMode>('timeline');
   // Per-run git-worktree isolation (vs running phases on the current branch).
   const [isolate, setIsolate] = useState(true);
   // Additional goal configuration options.
@@ -92,7 +109,8 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
   // Phases arrived (or the run was cleared) → planning is over.
   useEffect(() => {
     if (hasPhases) setPlanningGoal(null);
-  }, [hasPhases]);
+    if (status === 'failed' || status === 'stopped') setPlanningGoal(null);
+  }, [hasPhases, status]);
 
   const handleStart = useCallback(() => {
     const g = goal.trim();
@@ -107,10 +125,15 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
     });
     setPlanningGoal(g);
     setGoal('');
+    const goalId = crypto.randomUUID();
+    useGoalCatalogStore.getState().selectGoal(goalId);
+    useGoalRunStore.getState().clear();
     client?.send?.({
       type: 'goal.start',
       payload: {
         title: g,
+        goalId,
+        sessionId,
         autonomous: true,
         worktrees: isolate,
         multiBoard,
@@ -121,33 +144,36 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
     // Navigate to chat so the user sees the echoed goal and live agent
     // messages in the transcript.
     showPanel('chat');
-  }, [goal, planningGoal, client, isolate, multiBoard, verifyTasks, chimeraReview]);
+  }, [goal, planningGoal, client, isolate, multiBoard, verifyTasks, chimeraReview, sessionId]);
 
   const handleCancelPlanning = useCallback(() => {
-    client?.send?.({ type: 'goal.stop', payload: {} });
+    const goalId = useGoalCatalogStore.getState().selectedGoalId ?? undefined;
+    client?.send?.({ type: 'goal.stop', payload: { goalId } });
     setPlanningGoal(null);
   }, [client]);
 
   const handlePauseResume = useCallback(() => {
+    const goalId = useGoalCatalogStore.getState().selectedGoalId ?? undefined;
     client?.send?.(
       status === 'paused'
-        ? { type: 'goal.resume', payload: {} }
-        : { type: 'goal.pause', payload: {} },
+        ? { type: 'goal.resume', payload: { goalId } }
+        : { type: 'goal.pause', payload: { goalId } },
     );
   }, [client, status]);
 
   const handleResumeSaved = useCallback(() => {
-    if (graphId) client?.send?.({ type: 'goal.resume', payload: { graphId } });
+    if (graphId) client?.send?.({ type: 'goal.resume', payload: { graphId, goalId: graphId } });
   }, [client, graphId]);
 
   const handleStop = useCallback(() => {
-    client?.send?.({ type: 'goal.stop', payload: {} });
+    const goalId = useGoalCatalogStore.getState().selectedGoalId ?? undefined;
+    client?.send?.({ type: 'goal.stop', payload: { goalId } });
   }, [client]);
 
   // Reset to an empty board and start fresh. Clears locally too so the start
   // screen shows immediately, even before the server's cleared state arrives.
   const handleNew = useCallback(() => {
-    client?.send?.({ type: 'goal.clear', payload: {} });
+    useGoalCatalogStore.getState().selectGoal(null);
     useGoalRunStore.getState().clear();
     setPlanningGoal(null);
     setGoal('');
@@ -155,23 +181,30 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
 
   const [confirmRevert, setConfirmRevert] = useState(false);
   const handleRevert = useCallback(() => {
-    client?.send?.({ type: 'goal.revert', payload: {} });
+    const goalId = useGoalCatalogStore.getState().selectedGoalId ?? undefined;
+    client?.send?.({ type: 'goal.revert', payload: { goalId } });
     setConfirmRevert(false);
   }, [client]);
 
-  const isLive = status === 'running' || status === 'paused';
+  const isLive = !readOnly && (status === 'running' || status === 'paused');
   // A finished/halted run: offer New (reset) and Revert (undo the run's commits).
   const isDone = status === 'stopped' || status === 'completed' || status === 'failed';
 
   const handleSelectBoard = useCallback(
     (graphId: string) => {
-      if (graphId) client?.send?.({ type: 'goal.load', payload: { graphId } });
+      if (graphId) {
+        useGoalCatalogStore.getState().selectGoal(graphId);
+        useGoalRunStore.getState().clear();
+        client?.send?.({ type: 'goal.status', payload: { goalId: graphId } });
+        setPlanningGoal(null);
+      }
     },
     [client],
   );
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
+      <MyGoals sessionId={sessionId} onSelect={handleSelectBoard} onNew={handleNew} />
       {/* Header */}
       <header className="flex shrink-0 flex-col gap-2 border-b bg-card px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
@@ -205,18 +238,20 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
             <span
               className={cn(
                 'rounded border px-2 py-0.5 text-[11px] font-medium',
-                finalVerification.status === 'passed'
+                finalVerification.status === 'passed' && !finalVerification.skipped
                   ? 'border-success/40 bg-success/10 text-success'
                   : 'border-destructive/40 bg-destructive/10 text-destructive',
               )}
               title={finalVerification.error}
             >
               {t('activity:goalRun.verifyTasksLabel')}:{' '}
-              {t(
-                finalVerification.status === 'passed'
-                  ? 'activity:goal.statusDone'
-                  : 'activity:goal.statusFailed',
-              )}
+              {finalVerification.skipped
+                ? t('activity:myGoals.unknown')
+                : t(
+                    finalVerification.status === 'passed'
+                      ? 'activity:goal.statusDone'
+                      : 'activity:goal.statusFailed',
+                  )}
             </span>
           )}
         </div>
@@ -269,7 +304,7 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
               </button>
             </>
           )}
-          {hasPhases && isDone && (
+          {hasPhases && isDone && !readOnly && (
             <>
               {(status === 'stopped' || status === 'failed') && graphId && (
                 <button
@@ -281,14 +316,6 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
                   <Play className="h-3.5 w-3.5" /> {t('activity:goalRun.resume')}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleNew}
-                title={t('activity:goalRun.newTitle')}
-                className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-              >
-                <Plus className="h-3.5 w-3.5" /> {t('activity:goalRun.newLabel')}
-              </button>
               {confirmRevert ? (
                 <span className="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-xs">
                   <span className="text-warning">{t('activity:goalRun.revertConfirm')}</span>
@@ -456,7 +483,7 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
                 onChange={(e) => setIsolate(e.target.checked)}
                 className="h-3.5 w-3.5 accent-primary"
               />
-              {t('activity:goalRun.isolateLabel')}
+              {t('activity:myGoals.phaseIsolation')}
             </label>
 
             <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
@@ -532,45 +559,23 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              {t('activity:goalRun.ctrlHint')} ·{' '}
-              {isolate ? t('activity:goalRun.isolateOn') : t('activity:goalRun.isolateOff')}
+              {t('activity:goalRun.ctrlHint')} · {t('activity:myGoals.goalIsolation')}
             </p>
           </div>
         </div>
       )}
 
-      {/* Worktree visualization */}
-      {worktrees.length > 0 && (
+      {/* Worktree visualization — stays after the run so its history is inspectable. */}
+      {(worktrees.length > 0 || runWorktreeCount > 0) && (
         <div className="border-t bg-card/50 shrink-0">
           <div className="flex items-center justify-end gap-2 px-4 pt-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setShowGraph(false)}
-              className={cn(
-                'rounded px-2 py-0.5 border transition-colors',
-                !showGraph
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t('activity:goalRun.lanes')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowGraph(true)}
-              className={cn(
-                'rounded px-2 py-0.5 border transition-colors',
-                showGraph
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t('activity:goalRun.graph')}
-            </button>
+            <WorktreeViewSwitch value={worktreeView} onChange={setWorktreeView} />
           </div>
-          <div className="space-y-2 px-4 pb-3">
+          <div className="max-h-[45vh] space-y-2 overflow-y-auto px-4 pb-3">
             <WorktreeOrphans />
-            {showGraph ? (
+            {worktreeView === 'timeline' ? (
+              <WorktreeTimelineView sessionId={sessionId} />
+            ) : worktreeView === 'graph' ? (
               <WorktreeGraph worktrees={worktrees} baseBranch={baseBranch} />
             ) : (
               <WorktreeLanes worktrees={worktrees} baseBranch={baseBranch} />

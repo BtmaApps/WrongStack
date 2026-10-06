@@ -1,4 +1,5 @@
 import type { EventBus } from '@wrongstack/core/kernel';
+import { normalizeWorktreeEvent } from '@wrongstack/core/types/worktree-timeline';
 import type { SddBoardSnapshot } from '@wrongstack/sdd';
 import { useCallback, useEffect } from 'react';
 import type { Action, State } from '../app-reducer.js';
@@ -168,6 +169,10 @@ function useGoalEvents(
           ? (payload as { sessionId?: string | undefined }).sessionId
           : undefined;
       if (!isCurrentSession(sessionId)) return;
+      if (event.startsWith('worktree.')) {
+        const timelineEvent = normalizeWorktreeEvent(event, payload, Date.now());
+        if (timelineEvent) dispatch({ type: 'worktreeTimelineEvent', event: timelineEvent });
+      }
       switch (event) {
         case 'phase.started': {
           const p = payload as {
@@ -346,6 +351,11 @@ function useGoalEvents(
               status: 'committing',
             },
           });
+          break;
+        }
+        case 'worktree.merging': {
+          const p = payload as { handleId: string };
+          dispatch({ type: 'worktreeUpsert', handleId: p.handleId, row: { status: 'merging' } });
           break;
         }
         case 'worktree.merged': {

@@ -58,6 +58,12 @@ export interface PhaseNode {
 
 export interface PhaseGraph {
   id: string;
+  /** Durable control state; phase/task status alone cannot represent a paused run. */
+  runState?: 'planning' | 'running' | 'paused' | 'stopped' | 'completed' | 'failed' | undefined;
+  leaseScope?: 'goal' | 'project' | undefined;
+  runError?: string | undefined;
+  /** Dedicated goal checkout. Phase merges stay here until the operator integrates it. */
+  workspace?: { dir: string; branch: string; baseBranch: string } | undefined;
   /** Session that started this Goal run, retained when its graph is resumed. */
   sessionId?: string | undefined;
   /** Project title. */
@@ -92,6 +98,7 @@ export interface PhaseGraph {
         status: 'passed' | 'failed';
         checkedAt: number;
         error?: string | undefined;
+        skipped?: boolean | undefined;
       }
     | undefined;
   createdAt: number;
@@ -121,7 +128,7 @@ export interface PhaseProgress {
 
 // ─── Phase Event Map ────────────────────────────────────────────────────────
 
-export interface PhaseEventMap {
+interface PhaseEventPayloads {
   'phase.statusChange': { phaseId: string; from: PhaseStatus; to: PhaseStatus };
   'phase.started': {
     phaseId: string;
@@ -185,6 +192,13 @@ export interface PhaseEventMap {
   /** A task was added to a phase from an interactive board. */
   'phase.taskAdded': { phaseId: string; taskId: string; taskTitle: string };
 }
+
+export type PhaseEventMap = {
+  [K in keyof PhaseEventPayloads]: PhaseEventPayloads[K] & {
+    goalId?: string | undefined;
+    sessionId?: string | undefined;
+  };
+};
 
 export type PhaseEventName = keyof PhaseEventMap;
 
@@ -286,7 +300,9 @@ export interface PhaseExecutionContext {
   onTaskUpdate?: ((phase: PhaseNode, task: TaskNode) => void) | undefined;
   /** Verify the fully merged base tree before graph completion is announced. */
   verifyGoal?:
-    | ((graph: PhaseGraph) => Promise<{ ok: boolean; output?: string | undefined }>)
+    | ((
+        graph: PhaseGraph,
+      ) => Promise<{ ok: boolean; output?: string | undefined; skipped?: boolean | undefined }>)
     | undefined;
   /** Called on every tick in autonomous mode. */
   onTick?: ((ctx: { activePhases: PhaseNode[]; readyPhases: PhaseNode[] }) => void) | undefined;
