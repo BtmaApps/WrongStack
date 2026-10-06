@@ -1,19 +1,21 @@
-## Working-tree adjudication
+## Proven failure modes
 
-- Check claims that paired config changes are absent with `git status --short` on the named path. Adjudicate workflow-ratchet “red on HEAD” findings against the working tree: unstaged `.github/workflows/*.yml` edits can be missed by committed-state `git diff` and truncated sibling-file lists. If cited coordinates disagree, re-read the live YAML before patching.
-- Run the flagged suite from the repo root with `pnpm exec vitest run <file>`; if the `test` wrapper cannot resolve `vitest`, use `pnpm exec vitest run <path>`. For workflow hardening, run `pnpm exec vitest run packages/core/tests/architecture/workflow-hardening.test.ts`; for `packages/core/src/chronicle/tool-adapter.ts`, run `pnpm exec vitest run packages/core/tests/chronicle`. Treat a green run as falsifying an allegedly deterministic red finding in the current tree; record the command and `exitCode` under `verification_evidence`.
+- Never pass an arbitrary arrow-function predicate to Vitest 5 `toThrow`/`toThrowError`; it is treated as an error class, and the missing `prototype` causes `TypeError: Cannot read properties of undefined (reading 'constructor')`. Use `toThrow(/pattern/)`, as in `packages/mcp/tests/protocol-version-negotiation.test.ts`, or `try/catch` with explicit `toContain` assertions.
+- Before accepting “module does not exist,” run `git status --short`, not only grep/diff: the definition may be untracked while the paired `exports` edit in `packages/core/package.json` is unstaged.
 
-## Proxy receiver identity
+## Contract baselines and external edits
 
-- Re-read `packages/vector-memory/src/sage-port-wrapper.ts` immediately before patching; parallel workers may already have fixed it. Preserve `delegateWithOverrides`’s `result === target ? delegated : result` contract: methods returning the target must return the proxy, keeping `: this` methods such as `withTraceId()` in `packages/sage/src/memory-port.ts` wrapped.
-- Reproduce with `ClassInstancePort` in `packages/vector-memory/tests/sage-port-wrapper.test.ts`, especially “preserves prototype methods of a class-instance port.” Avoid object-literal-only regressions: own-property methods pass through unbound and conceal escapes; prototype methods exercise binding/re-mapping. Run `pnpm exec vitest run packages/vector-memory/tests/sage-port-wrapper.test.ts`.
+- For intentional behavior flips, derive the complete failing set with `pnpm exec vitest run <flagged files>` from the repo root rather than trusting cited assertions. For `packages/cli/src/wiring/dep-watcher-bridge.ts`, establish the red baseline with `pnpm exec vitest run packages/cli/tests/wiring-dep-watcher-bridge.test.ts`, then update stale tests to absent → enabled and `enabled: false` → skipped; do not revert the gate.
+- For `tools/call` refusal changes in `packages/mcp/src/server-dispatch.ts`, include every WS-026 pin in `packages/mcp/tests/server-transport-guards.test.ts` plus `packages/mcp/tests/server-defensive-branches.test.ts`. Reuse `expectToolRefusal`/`toolRefusalText` for SEP-1303 in-band `isError` results.
+- If `edit` reports external modification, re-read the file, preserve peer-settled bodies verbatim, and format only residual changes with `pnpm exec biome check --write <file>`.
 
-## Verification scope
+## Verification
 
-- Typecheck core test findings with `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/core/tsconfig.test.json`; use `packages/vector-memory/tsconfig.json` for vector-memory source findings. Lint touched files with `pnpm exec biome check <file>`.
-- Avoid root Vitest for `packages/webui/**`, which is excluded. Use `pnpm --filter @wrongstack/webui exec vitest run tests/components/<file>` (e.g. `tests/components/sage-tabs.test.tsx`).
+- Verify the CLI wiring change with `pnpm exec biome check packages/cli/tests/wiring-dep-watcher-bridge.test.ts`, `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/cli/tsconfig.json`, and `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/webui/tsconfig.json`.
+- Verify MCP dispatch changes with `pnpm exec vitest run packages/mcp/tests/server-defensive-branches.test.ts packages/mcp/tests/server-transport-guards.test.ts`, `pnpm exec vitest run packages/mcp/tests/server.test.ts`, the MCP typecheck via `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/mcp/tsconfig.json`, and scoped Biome checks.
+- Record exact command strings and numeric `exitCode` values under `verification_evidence`.
+- For `packages/webui/**`, do not use root Vitest; run `pnpm --filter @wrongstack/webui exec vitest run tests/components/<file>`.
 
-## Fixture and schema checks
+## Reentrant registry sweeps
 
-- Before claiming an event field is missing, search `packages/core/src/kernel/events/*.ts`, not `kernel/events.ts`, then typecheck.
-- Before accepting an unsatisfiable-assertion finding, evaluate fixture transformations: `replaceAll('SECRET','[REDACTED]')` can invalidate `rawPath.startsWith(scrubbedPrefix)`; assert against the scrubbed form.
+- For `packages/plugin-sdk/src/runtime/h1-state.ts`, add tests under `packages/plugin-sdk/tests/` that assert the rearming callback count with `toBe(1)` for both self-rearm termination and distinct-child sweep completeness.

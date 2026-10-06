@@ -1,15 +1,13 @@
 {
-  "consolidatedAt": "2026-10-04T17:06:37.041Z",
+  "consolidatedAt": "2026-10-05T18:44:35.656Z",
   "sourceEntryCount": 0,
   "sourceBytes": 405,
-  "consolidatedBytes": 6949,
-  "trigger": "manual",
-  "model": "gpt-6.1-sol",
+  "consolidatedBytes": 8049,
+  "trigger": "automatic",
+  "model": "space-bunny-free",
   "pruned": true,
-  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\explore-companion\\archive\\learned-2026-10-04T17-06-37-041Z.md",
+  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\explore-companion\\archive\\learned-2026-10-05T18-44-35-656Z.md",
   "skills": [
-    "codebase-navigation",
-    "node-modern",
-    "typescript-strict"
+    "codebase-navigation"
   ]
 }

@@ -1,21 +1,19 @@
-## Proven invariants
+## SSE AbortController supersession [applied 18×, 18 ok]
 
-- Don't flag the sandbox-gate asymmetry: a pass condition of `mode === 'off'` (deny everything else) is intentional fail-closed hardening versus the exec wrapper's `mode !== 'enforced'`. Confirm against the `SandboxMode` union (`packages/core/src/sandbox/types.ts`) and the pinning tests (`packages/core/tests/sandbox/mcp-gate.test.ts`) before flagging. [3/3 ok]
-- In `packages/mcp/src/transport-sse.ts`, `close()` aborts but does not replace `this.abortController`, so `this.abortController === controller` identity checks stay valid after close. Before flagging or approving, verify stale async paths (`readSSEBody` finally, SSE callbacks) skip shared cleanup — `streamSignal`, `rejectStreamPending`, state transitions — when identity fails, or they clobber the newer connection's state. [2/2 ok]
+- Before approving or flagging `close()` guards in `packages/mcp/src/transport-sse.ts`, verify whether `close()` aborts without replacing `this.abortController`; this can keep `this.abortController === controller` valid after close.
+- Require stale `readSSEBody` finally paths and SSE callbacks to skip `streamSignal`, `rejectStreamPending`, and state transitions whenever the identity check fails, so they do not clobber a newer connection. If all invariants hold, return exactly `{"findings": []}`.
 
-## Verification method
+## MCP constants, logging, and error reachability [applied 11×, 11 ok]
 
-- Anchor findings in live files, not bundle context or cached reads. For docs-only revisions whose citations are load-bearing, read the changed file's full live range in the first batch — recovery logs re-collapse the same middle.
-- If `read` elides a middle (`[artifact middle omitted]`) and rejects re-reads as "unchanged", read the log under `~/.wrongstack/tool-output/…-read-….log` directly (`read` accepts paths outside the root) or single-anchor `grep` with `context_lines` 40+.
-- Name uncovered `file:line` ranges and set `completion: "partial"` — never an all-clear. Emit ```json { "findings": [] }``` only when verification is complete and clean.
+- If a diff replaces `500 * 2 ** attempt` with `MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER`, read the live literal in `packages/mcp/src/constants.ts` before classifying it; only identical values are a behavior-preserving refactor, otherwise flag a timing regression.
+- Before flagging a suppressed `log.warn`, check whether `assertSupportedServerProtocolVersion` already emits a structured warn and whether the original `err` still reaches higher-level logging; do not report evidence loss when both signals survive.
+- For `err instanceof SomeErrorClass`, grep every throw site and confirm each throw sits inside the reviewed `try` around `client.connect()` and class identity survives intermediate wrappers; treat an unreachable instance check as inert.
 
-## Cross-file invariants
+## Teardown tracking and default-on gates [applied 9×, 9 ok]
 
-- Marker needles in `packages/bench/src/transcript-mine.ts` feed raw `serialise(...).includes(...)` in `retrievalPassed`/`matchesRecall` (`packages/bench/src/trace-eval.ts`): require verbatim or identically JSON-escaped needles; check `conciseMarker`/`JSON.stringify` for whitespace collapse and unescaped quotes/newlines.
-- `[agentId, id]` joins vs `SessionEventAttribution` (`packages/core/src/types/session-events.ts`) are per-writer: absent `agentId` (actor `''`) degrades symmetrically to plain id matching — don't flag it alone as dropped events.
-- Before flagging `discoverOpenAICompatibleModels` (`packages/providers/src/auto-discover.ts`), compare its error-code regex with `oauthFailure` (`packages/providers/src/oauth/http.ts`): `/^[a-z0-9_.-]{1,100}$/i` over `body.error` — require byte-identical regexes and code-first, HTTP-status-second test ordering.
+- For `trackAudit`/`boundAuditWait` in `packages/cli/src/wiring/dep-watcher.ts`, verify load-bearing behavior, not comments: each tracked promise must be a never-rejecting `then(_,_)` completion so `Promise.race` cannot reject into `waitUntil`; the bound timer must be `unref()`; sibling-API tracking promises must be called without `await` inside the spawn `try`.
+- For a `cfg?.['enabled'] === true` → `!== false` default-on flip, confirm the producer returns the raw fragment, not `undefined`, when disabled; every newly reachable `cfg['key']` read gained optional chaining; and sibling `packages/cli/src/wiring/dep-watcher-bridge.ts` flips identically. If these hold, return exactly `{"findings": []}`.
 
-## Config and architecture
+## Sandbox fail-closed asymmetry [applied 3×, 3 ok]
 
-- Don't call a Vitest `exclude` allowlist dead without reading `exclude:` in `vitest.config.ts` and checking whether `packages/webui/**` remains — exclusions are additive with no negative globs, so subtree exclusions hold once the broad entry is removed.
-- Require regeneration with any edit to `architecture/hotspots.json`; validate via `validateHotspotBaseline` (`scripts/lib/architecture-health.mjs`). Flag `lines`/`relativeImports` drift at or above `thresholdLines` (800), missing qualifying files, and entries below 800; ignore tail-row reflow in the fixed 50-row table (`docs/reports/architecture-health-current.md`).
+- Treat pass conditions using `mode === 'off'` against exec wrapper `mode !== 'enforced'` as intentional fail-closed hardening only after checking `SandboxMode` in `packages/core/src/sandbox/types.ts` and pinning tests in `packages/core/tests/sandbox/mcp-gate.test.ts`; return exactly `{"findings": []}` when the tests support the asymmetry.

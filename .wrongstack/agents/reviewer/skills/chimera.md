@@ -1,22 +1,16 @@
-# chimera — project addendum
+## Live diff, contracts, and state
+- Treat diff hunks as possibly incomplete. Before filing, read live range: `architecture/core-public-api-snapshot.json` may omit `"export { createPolicySandboxApprover } from './approver.js';"`, matching `packages/core/src/sandbox/index.ts:5`; verify `packages/core/src/sandbox/index.ts`, file `json { "findings": [] }` if clean.
+- Check producer→consumer contracts: `packages/core/src/coordination/dep-watcher.ts` `File:` must satisfy `packages/core/src/coordination/techstack-mailbox-consumer.ts` `acceptManifestCandidate` path form; a validator rejecting production input makes parsing inert. Validate regex against generator output: `manifest-deps.ts` `parseRequirementsTxt`/`pep508Entry` ranges contain spaces; `\S+` drops them and `length > 0` may over-scope. For in-session baseline/delta, name first event; baseline only in change handler is empty for first edit.
+- Inspect `pendingTasks.splice(0, host.opts.maxConcurrentTasks)` in `packages/core/src/goal/phase-task-execution.ts` against loop termination; `?? N` can hide `0`, causing microtask starvation. `satisfies PhaseTaskExecutionHost` is not proof; match members of `this as unknown as PhaseTaskExecutionHost`.
 
-`[N×]` = completed applications, all successful; proven checks lead.
+## Guards, imports, and cached board state
+- A `/i` regex behind `String.includes()`/`indexOf()` may be lowercase-only. In `packages/core/src/utils/next-steps.ts`, `<next_?steps\b[^>]*>` matches `<nextsteps-complete/>` because `\b` is between `s` and `-`; read actual stripper regex before crediting "every surface strips this token".
+- When `import type { X }` becomes `import { type X, VALUE }` on `@wrongstack/core/*`, add value to `export {}`, not `export type {}`; verify a real consumer imports it.
+- Clear cached `protocolVersionRefusal` on `ServerSlot` (`packages/mcp/src/registry-slots.ts`) at start of `attemptConnectSlot` (`packages/mcp/src/registry-connect-loop.ts`); stale errors leak through `ensureConnected` (`packages/mcp/src/registry-server-lifecycle.ts`).
+- Pair `Object.hasOwn` with `Object.defineProperty` for `Record` state like `lease.reviews` (`packages/kanban/src/manager/management.ts`); `??= Object.create(null)` may miss JSON-restored objects, and `obj['__proto__'] = x` corrupts.
 
-## Evidence before findings
-
-- Never file a finding sourced from a diff hunk alone — read the live file range even when the hunk looks current; hunks can omit on-disk lines (a hunk for `architecture/core-public-api-snapshot.json` missed `packages/core/src/sandbox/index.ts:5`'s `createPolicySandboxApprover` export). [13×]
-- Validate new spec-doc claims (config paths, symbol names) against sibling files from the same session: `tools.sandbox.image` must match the denial table in `packages/core/src/storage/config-loader/in-project-policy.ts` and the consuming backend's error string. [13×]
-
-## Real-bug patterns to check
-
-- Hardening `Record`-typed board state (`lease.reviews` in `packages/kanban/src/manager/management.ts`): require `Object.hasOwn` reads paired with `Object.defineProperty` writes — a JSON-restored plain object makes `??= Object.create(null)` a no-op, and `obj['__proto__'] = x` corrupts instead of creating an own property. [12×]
-- Rollbacks (`previous` restore) around a stateful send must capture a fresh array reference before any rebuild — in-place mutation makes the rollback a no-op (pattern: `subscribe()` in `packages/client/src/client.ts`). [13×]
-- A new positional parameter inserted before an optional trailing callback (`wrapMCPTool`'s `sandboxTrust` before `observer`): check every caller's argument order via `codebase-incoming-calls` — a truthy non-boolean mis-slotted into `trusted` identity-wraps through `createSandboxMcpGate({ trusted })`, a silent security-gate bypass. [6×]
-
-## Known non-bugs — verify before flagging
-
-- win32 quoting in `buildContainerRoute` (`packages/core/src/sandbox/backends/container.ts`): cmd.exe expands `%VAR%` inside double quotes but leaves `\"` to CommandLineToArgvW; `-v D:\path:/w0` works on Docker Desktop; `kind: 'argv'` keeps quote glyphs literal — check how `wrap.ts` executes `{argv}` (shell-join vs direct spawn) before alleging a bug. [4×]
-- Hardcoded `aria-expanded="true"` on a combobox in a Radix Dialog is accurate — `DialogContent` renders nothing while closed — but verify `aria-activedescendant` targets the exact array and ordering the renderer used to stamp option IDs. [1×]
-- In `packages/plugins/src/runtime/host-state.ts`, verify `remove()` deletes the `hosts` entry **before** `state.abort.abort()` — only that ordering keeps the `reset()` guard (`hosts.get(api)`) correct; `T extends HostState` makes `if (reentrant)` narrowing safe. [1×]
-- `withFileLock` from `@wrongstack/core/utils` must resolve via the `packages/core/src/utils/atomic-write.ts` re-export (`packages/core/package.json` `exports["./utils"]`); atomicWrite-inside-lock matches `packages/core/src/goal/phase-store.ts` and `packages/core/src/typesafe/settings.ts`, and `packages/core/tests/utils/atomic-write.test.ts` covers it — don't flag Windows-rename or lock-residue without new evidence. [1×]
-- For early-fire callbacks added to boot/init, map existing `finally` cleanup before flagging double-invocation: `startupOutput.stop()` in `packages/cli/src/cli-entry-main.ts` is already idempotent; ask instead which launch paths bypass the menu guard.
+## Wrapping, wiring, UI, and win32
+- For `wrapMCPTool` adding `sandboxTrust` before `observer`, check all callers via `codebase-incoming-calls`; truthy object in `trusted` bypasses `createSandboxMcpGate({ trusted })`.
+- Resolve teardown counts from push sites like `packages/cli/src/wiring/dep-watcher.ts`, not comments; migrated JSON-RPC→tool-result substrings must come from unchanged message producer.
+- A hardcoded `aria-expanded="true"` can be accurate inside `DialogContent` if closed renders nothing; ensure `aria-activedescendant` uses the exact renderer array/order; if verified, file `json { "findings": [] }`.
+- Do not flag `buildContainerRoute` (`packages/core/src/sandbox/backends/container.ts`) without context: cmd.exe expands `%VAR%` inside double quotes, leaves `\"` for target, and `-v D:\path:/w0` is accepted; for `kind: 'argv'`, check `wrap.ts` execution of `{argv}` because glyphs may stay literal.
