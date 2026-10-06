@@ -124,26 +124,6 @@ export function StatTile({
   );
 }
 
-/** Section eyebrow — the small uppercase label above a group of content. */
-export function Kicker({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        'font-display text-[10px] font-semibold uppercase tracking-[0.11em] text-muted-foreground',
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
 /** Copy-to-clipboard, flashing a tick. Silently does nothing without a clipboard. */
 export function CopyButton({
   value,

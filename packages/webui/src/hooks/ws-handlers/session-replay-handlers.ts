@@ -74,10 +74,6 @@ export function isRoutePinnedView(): boolean {
   );
 }
 
-export function contentToToolResult(content: unknown): string {
-  return typeof content === 'string' ? content : JSON.stringify(content);
-}
-
 export function providerResponseText(content: unknown): string {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';

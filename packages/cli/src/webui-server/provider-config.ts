@@ -6,21 +6,6 @@ import { loadConfigProviders, mutateConfigProviders } from '../provider-config-u
 
 const snapshots = new ProviderConfigSnapshots();
 
-// Re-export the provider-record transforms the webui handlers need, so
-// callers have a single import surface for
-// "webui provider config" instead of juggling this module *and*
-// ../provider-config-utils.js. The transforms themselves stay in the
-// broadly-shared provider-config-utils.js (auth-menu, slash-commands,
-// subcommands all use it); this is a facade re-export, not a move.
-// PR 4 follow-up of Issue #30.
-export {
-  expectDefined,
-  maskedKey,
-  normalizeKeys,
-  nowIso,
-  writeKeysBack,
-} from '../provider-config-utils.js';
-
 /**
  * PR 4 of Issue #30 (webui-server 8-PR refactor):
  * provider-config IO.

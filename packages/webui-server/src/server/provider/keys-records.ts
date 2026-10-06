@@ -6,5 +6,4 @@ export {
   removeProvider as removeProviderRecord,
   setActiveKey as setActiveKeyRecord,
   upsertKey as upsertKeyRecord,
-  writeKeysBack,
 } from '../provider-keys.js';

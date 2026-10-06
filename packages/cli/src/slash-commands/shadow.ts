@@ -359,5 +359,3 @@ function parseFlags(args: string[]): Record<string, string | true> {
   );
 }
 
-// Backwards-compatible export (slash-commands/index.ts imports this)
-export const shadowCommand = buildShadowCommand;

@@ -6,15 +6,6 @@ export interface QueryFilter {
   timeRange?: { start: string; end: string } | undefined;
 }
 
-export interface ToolInvocation {
-  ts: string;
-  name: string;
-  input: unknown;
-  output?: unknown | undefined;
-  error?: string | undefined;
-  durationMs: number;
-}
-
 export interface SessionError {
   ts: string;
   phase: string;

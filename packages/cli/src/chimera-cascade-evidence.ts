@@ -32,14 +32,6 @@ import {
   resolveWin32Command,
 } from '@wrongstack/tools/win32';
 
-// Re-exported so execution-chimera-cascade.ts and tests consume the shared
-// core shapes (produced here, persisted by the report store) — the element
-// shape must not drift between producer and consumer.
-export type {
-  CascadeEvidenceCheckResult,
-  CascadeEvidenceStatus,
-} from '@wrongstack/core/plugin';
-
 // ---------------------------------------------------------------------------
 // Evidence shape
 // ---------------------------------------------------------------------------

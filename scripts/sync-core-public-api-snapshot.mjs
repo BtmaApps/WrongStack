@@ -32,11 +32,11 @@ function readSourceFromDisk(file) {
 /**
  * Does an edit to `file` feed `core-public-api-{snapshot,usage}.json`?
  *
- * The generator reads exactly two things: the `packages/core` manifest and
- * `packages/core/src/**` (which become the snapshot inventory), and the census
+ * Inputs include the generator itself, its policy, the `packages/core` manifest
+ * and `packages/core/src/**` (which become the snapshot inventory), and the census
  * of `@wrongstack/core` imports across `packages`/`apps`/`scripts` (which
  * becomes the usage snapshot). So a file is an input only if it is one of the
- * first two, or its content actually imports the package.
+ * explicit inputs, or its content actually imports the package.
  *
  * The previous predicate was the bare path shape — every `.ts`/`.tsx`/`.js`
  * under `packages|apps|scripts` — which made the documented `skip` branch
@@ -50,7 +50,11 @@ function readSourceFromDisk(file) {
  * committed artifacts, which is the one failure this guard exists to prevent.
  */
 export function isSnapshotInput(file, readSource = readSourceFromDisk) {
-  if (file === 'packages/core/package.json' || file === 'architecture/core-api-policy.json') {
+  if (
+    file === 'packages/core/package.json' ||
+    file === 'architecture/core-api-policy.json' ||
+    file === 'scripts/snapshot-core-public-api.mjs'
+  ) {
     return true;
   }
   // The inventory walks `packages/core/src` unconditionally: every file there

@@ -36,8 +36,6 @@ import {
 
 export {
   SETTINGS_PICKER_JUMP_CHORDS,
-  type SettingsPickerJumpChord,
-  type SettingsPickerJumpMod,
   settingsPickerJumpByName,
   settingsPickerJumpField,
   settingsPickerJumpNames,

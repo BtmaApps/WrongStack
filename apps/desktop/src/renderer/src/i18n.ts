@@ -71,8 +71,6 @@ export function onLocaleChange(cb: () => void): () => void {
   };
 }
 
-export const SUPPORTED_LOCALES: DesktopLocale[] = ['en', 'tr', 'de', 'fr', 'it', 'es', 'pt-BR'];
-
 type Catalog = Record<string, string>;
 
 const en: Catalog = {

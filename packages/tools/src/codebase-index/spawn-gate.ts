@@ -34,7 +34,3 @@ export function withSpawnGate<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-/** Test helper — reset queue between cases. */
-export function resetSpawnGateForTests(): void {
-  chain = Promise.resolve();
-}

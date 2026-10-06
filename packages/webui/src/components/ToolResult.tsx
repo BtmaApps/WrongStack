@@ -10,13 +10,6 @@ import { extractSageBlock } from '@/lib/sage-block';
 const LONG_OUTPUT_THRESHOLD = 25;
 const LONG_PEEK_LINES = 12;
 
-/** Per-tool on-screen render mode. Mirrors the LLM-side descriptionMode
- *  (config `tools.descriptionMode[name]`) but is independent of token-saving
- *  tiers. `simple` collapses the body by default — meta only, content hidden
- *  until the user clicks "Show all". `extend` shows the full preview with the
- *  usual LONG_PEEK_LINES cap. */
-export type ToolResultRenderMode = 'simple' | 'extend';
-
 /**
  * Render `text` as a monospace block, auto-collapsing when it exceeds
  * LONG_OUTPUT_THRESHOLD lines. The first LONG_PEEK_LINES stay visible;

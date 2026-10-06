@@ -27,7 +27,6 @@ export {
   extractDiffPreview,
   extractMultiFileDiffs,
   extractReplaceDiffs,
-  formatDiffStats,
   formatMultiDiffSummary,
   MULTI_DIFF_MAX_FILES,
   MULTI_DIFF_MAX_ROWS,

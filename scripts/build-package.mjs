@@ -45,6 +45,7 @@ const coreEntries = entryMap([
   'src/index.ts',
   'src/kernel/index.ts',
   'src/core/index.ts',
+  'src/execution/refine-decisions.ts',
   'src/statusline/index.ts',
   // Plan 28: the exec-sandbox tier contract ships as its own subpath
   // (@wrongstack/core/sandbox) so tools and hosts import it without the core
@@ -497,7 +498,6 @@ const profiles = {
     entries: {
       index: 'src/index.ts',
       'server/entry': 'src/server/entry.ts',
-      'server/handlers': 'src/server/handlers/index.ts',
       // WS handshake policy. Its own entry so the CLI host can wire the same
       // `verifyClient` the standalone server uses instead of keeping a copy.
       'server/ws-auth': 'src/server/ws-auth.ts',

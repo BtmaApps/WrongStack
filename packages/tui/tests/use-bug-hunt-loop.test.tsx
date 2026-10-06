@@ -11,6 +11,70 @@ describe('useBugHuntLoop', () => {
     vi.useRealTimers();
   });
 
+  it.each([1, 7])('caps a 25-round hunt at round %s on stop and lets it finish', (round) => {
+    vi.useFakeTimers();
+    let state = createTestState();
+    const dispatch = (action: Action): void => {
+      state = reducer(state, action);
+    };
+    const submit = vi.fn<(command: string) => void>();
+    const { result } = renderHook(() => useBugHuntLoop(dispatch, submit));
+    act(() => result.current.onBugHuntStarted('/bughunt --rounds 25 packages/tui', 25));
+    for (let completed = 1; completed < round; completed++) {
+      act(() => result.current.onRunFinished('done'));
+      act(() => vi.runOnlyPendingTimers());
+      result.current.consumeReplay(submit.mock.lastCall![0]);
+    }
+    submit.mockClear();
+
+    act(() => result.current.stopAfterCurrentRound());
+    expect(state.bugHuntRunning).toEqual({ currentRound: round, totalRounds: round });
+    expect(result.current.shouldSuppressNextSteps()).toBe(true);
+    // Repeating stop must not spend a round or schedule a continuation.
+    act(() => result.current.stopAfterCurrentRound());
+    expect(submit).not.toHaveBeenCalled();
+
+    act(() => result.current.onRunFinished('done'));
+    act(() => vi.runOnlyPendingTimers());
+    expect(state.bugHuntRunning).toBeNull();
+    expect(submit).not.toHaveBeenCalled();
+    expect(result.current.shouldSuppressNextSteps()).toBe(false);
+
+    // The same original command can start a fresh hunt with its full budget.
+    act(() => result.current.onBugHuntStarted('/bughunt --rounds 25 packages/tui', 25));
+    expect(state.bugHuntRunning).toEqual({ currentRound: 1, totalRounds: 25 });
+  });
+
+  it('cancels a deferred next round when stop arrives between rounds', () => {
+    vi.useFakeTimers();
+    const dispatch = vi.fn<(action: Action) => void>();
+    const submit = vi.fn<(command: string) => void>();
+    const { result } = renderHook(() => useBugHuntLoop(dispatch, submit));
+    act(() => result.current.onBugHuntStarted('/bughunt --rounds 25', 25));
+    act(() => result.current.onRunFinished('done'));
+    act(() => result.current.stopAfterCurrentRound());
+    act(() => vi.runOnlyPendingTimers());
+    expect(submit).not.toHaveBeenCalled();
+    expect(result.current.shouldSuppressNextSteps()).toBe(false);
+    expect(result.current.consumeReplay("This is round 2/25; we're continuing the bug hunt.")).toBe(
+      false,
+    );
+    expect(dispatch).toHaveBeenCalledWith({ type: 'bugHuntRunningClose' });
+  });
+
+  it('reports stop with no active hunt and leaves later runs alone', () => {
+    const dispatch = vi.fn<(action: Action) => void>();
+    const submit = vi.fn<(command: string) => void>();
+    const { result } = renderHook(() => useBugHuntLoop(dispatch, submit));
+    act(() => result.current.stopAfterCurrentRound());
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'addEntry',
+      entry: { kind: 'info', text: 'No active Proof-Driven Bug Hunter run to stop.' },
+    });
+    expect(result.current.shouldSuppressNextSteps()).toBe(false);
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it.each(['clear', 'unmount', 'replacement', 'abort'] as const)(
     'cancels a scheduled continuation on %s before it can submit',
     (transition) => {

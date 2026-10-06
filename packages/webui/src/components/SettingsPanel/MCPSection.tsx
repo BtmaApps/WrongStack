@@ -16,11 +16,7 @@ import {
 import { ServerDialog } from './MCPServerDialog.js';
 import { OFFICIAL_SERVERS, type OfficialServer, toServerConfig } from './official-servers';
 
-export type { MCPServer } from './MCPServerCards.js';
-
 import type { MCPServerConfig, MCPToolHints } from './contracts.js';
-
-export type { MCPServerConfig };
 
 export function MCPSection(): ReactElement {
   const ws = useWebSocket();

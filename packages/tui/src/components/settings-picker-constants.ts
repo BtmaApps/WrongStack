@@ -3,10 +3,7 @@ import { TOTAL_SETTINGS_FIELD_COUNT } from '../ui-contracts.js';
 import { ANIMATION_STYLE_DESCS, ANIMATION_STYLES } from './animation-style.js';
 
 export {
-  DEFAULT_TOOL_RESULT_VIEW_MODE,
-  TOOL_RESULT_VIEW_MODE_DESCS,
   TOOL_RESULT_VIEW_MODES,
-  type ToolResultViewMode,
 } from '../tool-result-view-mode.js';
 
 /** Selectable presets for the auto-proceed delay, so the field is fully
@@ -170,7 +167,6 @@ export const MODE_DESC: Record<SettingsMode, string> = {
 export const SETTINGS_FIELD_COUNT = TOTAL_SETTINGS_FIELD_COUNT;
 export const THINKING_WORD_FIELD = 22;
 export const WRONGPROXY_URL_FIELD = 60;
-export const MULTI_DIFF_SUMMARY_THRESHOLD_FIELD = 21;
 
 export const THINKING_WORD_PRESETS = [
   'thinking',

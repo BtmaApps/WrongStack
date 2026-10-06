@@ -38,36 +38,20 @@ import type { StatuslineItem } from './statusline-picker.js';
 const STATUSLINE_SIDE_INSET = 1;
 
 export {
-  contextBarColor,
   fmtElapsed,
   hasTokenDisplay,
   nodeText,
   renderMeter,
   renderProgress,
-  shortenPath,
   stateChip,
-  type TokenDisplayTotals,
   tokenDisplayTotals,
   truncateChip,
 } from './status-bar-format.js';
 
-export {
-  chipColor,
-  SPINNER_INTERVAL_MS,
-  STACK_ORANGE,
-  STATUSLINE_ICONS,
-} from './status-bar-icons.js';
-
 export type {
   BrainStatusChip,
-  ContextWindow,
-  FleetAgentDetail,
-  FleetCounts,
   MailboxStatus,
-  PlanCounts,
   StatusBarProps,
-  TaskCounts,
-  TodoCounts,
 } from './status-bar-types.js';
 
 /**

@@ -46,15 +46,6 @@ export function viewLabel(view: string): string {
     .join(' ');
 }
 
-// `ServerProcessMetrics`, `formatCompactBytes` and `useServerProcessMetrics`
-// moved to `./SystemHealthChip` (the chip consumes them); re-exported here so
-// existing imports keep resolving.
-export {
-  formatCompactBytes,
-  type ServerProcessMetrics,
-  useServerProcessMetrics,
-} from './SystemHealthChip';
-
 // ── WorkbenchTopbar ─────────────────────────────────────────────────────────
 
 function VersionBadge({

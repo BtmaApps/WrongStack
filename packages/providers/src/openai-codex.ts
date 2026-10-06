@@ -141,7 +141,6 @@ export function refreshCodexAccessToken(
 // extractAccountId lives in openai-codex-account.ts so the oauth entry can
 // use it without bundling this provider. Re-exported for API compatibility.
 export { extractAccountId } from './openai-codex-account.js';
-export type { CodexLiveModel } from './openai-codex-model-policy.js';
 export { codexOutputCap } from './openai-codex-model-policy.js';
 export { parseOpenAIResponsesStream } from './openai-codex-stream.js';
 

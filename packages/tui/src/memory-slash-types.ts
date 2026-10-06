@@ -1,8 +1,4 @@
-import type { MemoryPort, MemoryPriority, MemoryScope, MemoryType } from '@wrongstack/core/types';
-
-export interface MemorySlashDeps {
-  memoryStore: MemoryPort;
-}
+import type { MemoryPriority, MemoryScope, MemoryType } from '@wrongstack/core/types';
 
 export const DEFAULT_MEMORY_LIMIT = 50;
 export const MAX_MEMORY_LIMIT = 500;

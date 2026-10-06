@@ -487,22 +487,42 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
   },
   'dead-code-scan': {
     longDescription:
-      'Analyze the indexed project for declarations that appear unreachable from configured entry points. Treat results as candidates for review, not automatic deletion instructions.',
+      'Find dead code in executable TS/JS sources: unreachable files, exports nothing imports, unused re-exports, test-only code and unused dependencies. Read-only; pass previewIds to see the exact cleanup diff.',
     params: [
       {
-        name: 'projectRoot',
-        type: 'string',
-        description: 'Project root (defaults to ctx.projectRoot).',
-      },
-      {
-        name: 'indexDir',
-        type: 'string',
-        description: 'Override index directory.',
-      },
-      {
-        name: 'entryPoints',
+        name: 'paths',
         type: 'string[]',
-        description: 'Additional entry-point file paths to seed the scan.',
+        description: 'Project-relative path prefixes to report on.',
+      },
+      {
+        name: 'categories',
+        type: "Array<'unreachable-file' | 'test-only-file' | 'dead-export' | 'unused-export' | 'unused-reexport' | 'test-only-export' | 'unused-local' | 'unused-dependency' | 'unused-public-export'>",
+        description: 'Only these categories.',
+      },
+      {
+        name: 'minConfidence',
+        type: "'high' | 'medium' | 'low'",
+        description: 'Lowest confidence to list (default low).',
+      },
+      {
+        name: 'includePublicApi',
+        type: 'boolean',
+        description: 'Also report published-package API that nothing in the repo imports.',
+      },
+      {
+        name: 'entries',
+        type: 'string[]',
+        description: 'Extra entry files/globs loaded outside the import graph.',
+      },
+      {
+        name: 'limit',
+        type: 'number',
+        description: 'Max findings listed (default 100).',
+      },
+      {
+        name: 'previewIds',
+        type: 'string[]',
+        description: 'Finding ids to preview as a diff (no writes).',
       },
     ],
     notes: [
@@ -528,6 +548,39 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         name: 'title',
         type: 'string',
         description: 'Short label for the result.',
+      },
+    ],
+  },
+  'dead-code-fix': {
+    longDescription:
+      'Remove dead code by dead-code-scan finding id: re-scans, applies, typechecks, rolls back on failure and keeps an undo backup. Only for ids the user chose after reviewing the scan.',
+    params: [
+      {
+        name: 'action',
+        type: "'apply' | 'undo' | 'backups'",
+        required: true,
+        description:
+          'apply = remove the given finding ids; undo = restore a backup; backups = list them.',
+      },
+      {
+        name: 'ids',
+        type: 'string[]',
+        description: 'Finding ids from dead-code-scan (apply).',
+      },
+      {
+        name: 'verify',
+        type: "'typecheck' | 'none'",
+        description: 'Post-apply verification (default typecheck).',
+      },
+      {
+        name: 'backupId',
+        type: 'string',
+        description: 'Backup to restore (undo).',
+      },
+      {
+        name: 'force',
+        type: 'boolean',
+        description: 'Undo even over files edited after the fix.',
       },
     ],
   },

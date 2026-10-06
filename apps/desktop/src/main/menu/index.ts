@@ -80,5 +80,3 @@ export function configureApplicationMenu(ctx: MenuBuilderContext): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// Re-export for backwards compatibility
-export type { MenuBuilderContext, ProjectMenuActions, ProjectMenuGroup } from './types.js';

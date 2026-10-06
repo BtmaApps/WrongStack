@@ -1,7 +1,5 @@
 import type { Request } from '@wrongstack/core/types';
 
-export type { Request };
-
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

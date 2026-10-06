@@ -36,18 +36,14 @@ import {
 } from './protocol-session-ops.js';
 
 export type {
-  AgentCapabilities,
   ClientCapabilities,
   McpServer,
-  PromptCapabilities,
   ProtocolHandlerOptions,
   RunTurn,
   RunTurnApi,
   RunTurnInput,
   RunTurnPermissionRequest,
   RunTurnResult,
-  SessionConfigOption,
-  SessionMode,
   SessionPersistence,
   SessionState,
 } from './protocol-contract.js';
@@ -531,6 +527,3 @@ export class ACPProtocolHandler {
     return `${this.nextId++}_${randomUUID().replaceAll('-', '')}`;
   }
 }
-
-/** Internal deterministic seam used by the per-file coverage suite. */
-export const protocolHandlerCoverage = { errorToJsonRpc };

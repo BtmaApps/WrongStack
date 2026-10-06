@@ -1,39 +1,18 @@
 export {
-  ACTIVITIES,
-  DOCK_SECTIONS,
-  SETTINGS_TABS,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
   VIEWS,
   coerceActivity,
-  coerceDockSection,
-  coerceSettingsTab,
-  coerceView,
 } from './ui-store-types.js';
 export type {
   Activity,
   DockSection,
   InspectorTab,
-  InspectorTarget,
   MailboxComposeRequest,
-  SessionChromeState,
-  UIState,
   View,
   WorkDashboardTab,
 } from './ui-store-types.js';
-
-// Re-export chrome helpers
-export {
-  defaultSessionChrome,
-  defaultSkillsState,
-  homeNavigationStatePatch,
-  isDesktopShellStorageContext,
-  parkChrome,
-  readSessionChrome,
-} from './ui-store-chrome.js';
-
-export { uiPersistOptions } from './ui-store-persist.js';
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';

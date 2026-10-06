@@ -20,14 +20,6 @@ export const MESSAGE_PANEL_BORDER_WIDTH = 1;
 export const MESSAGE_PANEL_CHROME_WIDTH = 2;
 
 /**
- * Margin on each side of bordered panels, in columns. Prevents the
- * last character of a full-width line from wrapping at the terminal edge
- * and leaking into scrollback. Content inside the panel is narrower by
- * twice this value (left + right).
- */
-export const MESSAGE_PANEL_MARGIN = 2;
-
-/**
  * Compute the real inner content width of an assistant panel.
  * termWidth - chrome (border+padding) only — no margin since panels are now full-width.
  */

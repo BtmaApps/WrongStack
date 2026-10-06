@@ -48,13 +48,9 @@ export const STATUSLINE_ICONS = {
   yolo: glyphs.warning,
 } as const satisfies Record<StatuslineItem, string>;
 
-export const COMPACT_THRESHOLD = 50;
-
 export function chipColor(color: string, isNoColor: boolean): string | undefined {
   return isNoColor ? undefined : color;
 }
-
-export const STACK_ORANGE = '#FD9F02';
 
 export const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 export const SPINNER_INTERVAL_MS = 1_000;

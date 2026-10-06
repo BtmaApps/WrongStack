@@ -14,13 +14,10 @@
 import {
   capSubject,
   compileUserRegex,
-  type CompileFail,
-  type CompileResult,
   MAX_SUBJECT_LEN,
 } from '@wrongstack/primitives';
 
-export { capSubject, compileUserRegex, MAX_SUBJECT_LEN };
-export type { CompileFail, CompileResult };
+export { capSubject, MAX_SUBJECT_LEN };
 
 export type SafeRegexResult = { ok: true; regex: RegExp } | { ok: false; reason: string };
 

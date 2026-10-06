@@ -603,6 +603,5 @@ export async function handleGitCommit(
   });
   await Promise.all([handleGitChanges(ws, projectRoot), handleGitInfo(ws, projectRoot)]);
 }
-export type { GitCommitFileStat, GitHistoryCommit, GitHistoryRef } from './git-history.js';
 export { handleGitCommitDetail, handleGitCommitFileDiff, handleGitHistory } from './git-history.js';
 export { repoRelativePrefix } from './git-paths.js';

@@ -33,11 +33,3 @@ export function parseSuggestionsFromOutput(
   return texts.length > 0 ? texts : null;
 }
 
-/**
- * Extract only the auto="true" items from next_steps output.
- * Used by YOLO+auto autonomy mode.
- */
-export function parseAutoSuggestionsFromOutput(finalText: string): string[] | null {
-  const { autoTexts } = parseNextSteps(finalText);
-  return autoTexts.length > 0 ? autoTexts : null;
-}

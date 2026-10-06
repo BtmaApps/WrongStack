@@ -236,8 +236,6 @@ function applyGenericReasoningEffort(
 // local use — `export … from` alone does not (the TUI typecheck taught us).
 import { GENERIC_EFFORT_FALLBACK } from './openai-shared.js';
 
-export { GENERIC_EFFORT_FALLBACK } from './openai-shared.js';
-
 /**
  * Drop `reasoning_effort` under tools for a gateway the user pinned.
  *

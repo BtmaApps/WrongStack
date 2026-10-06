@@ -289,6 +289,27 @@ describe('dead-code fixes', () => {
     expect(listDeadCodeBackups(root)).toHaveLength(backupsBefore);
   });
 
+  it('keeps edits made while verification ran when it rolls back', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const lazy = path.join(root, 'packages/app/src/lazy.ts');
+    const ids = [
+      find(r.findings, 'unreachable-file', 'packages/app/src/orphan.ts')!.id,
+      find(r.findings, 'dead-export', 'packages/app/src/lazy.ts', 'notRun')!.id,
+    ];
+    const res = await applyDeadCodeFixes(root, ids, {
+      verify: 'none',
+      verifyCommand: [
+        process.execPath,
+        '-e',
+        `require('fs').writeFileSync(${JSON.stringify(lazy)}, 'mine\\n');process.exit(1)`,
+      ],
+    });
+    expect(res.rolledBack).toBe(true);
+    expect(read('packages/app/src/lazy.ts')).toBe('mine\n');
+    expect(read('packages/app/src/orphan.ts')).toBe(FIXTURE['packages/app/src/orphan.ts']);
+    expect(undoDeadCodeFix(root, res.backupId!).conflicts).toEqual(['packages/app/src/lazy.ts']);
+  });
+
   it('skips ids that no longer exist and findings without a mechanical fix', async () => {
     const r = await analyzeDeadCode(root, { noCache: true });
     const testOnly = find(r.findings, 'test-only-file', 'packages/app/src/testonly.ts')!;
@@ -308,6 +329,24 @@ describe('dead-code fixes', () => {
     const plan = await planDeadCodeFixes(root, [internal.id]);
     expect(plan.changes).toEqual([]);
     expect(plan.skipped[0]?.reason).toContain('packages/lib/src/user.ts');
+  });
+
+  it('keeps what a file it will not delete still imports', async () => {
+    // user.ts (not selected) → mid.ts → internal.ts: keeping mid.ts keeps internal.ts.
+    fs.writeFileSync(
+      path.join(root, 'packages/lib/src/user.ts'),
+      "import { mid } from './mid.js';\nconsole.log(mid);\n",
+    );
+    fs.writeFileSync(
+      path.join(root, 'packages/lib/src/mid.ts'),
+      "import { internal } from './internal.js';\nexport const mid = internal;\n",
+    );
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const internal = find(r.findings, 'unreachable-file', 'packages/lib/src/internal.ts')!;
+    const mid = find(r.findings, 'unreachable-file', 'packages/lib/src/mid.ts')!;
+    const plan = await planDeadCodeFixes(root, [internal.id, mid.id]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped.map((s) => s.id).sort()).toEqual([internal.id, mid.id].sort());
   });
 
   it('will not delete a file a surviving file still loads via import.meta.glob', async () => {
@@ -475,5 +514,148 @@ describe('dead-code precision (patterns found on a real monorepo)', () => {
     expect(
       find(r.findings, 'unreachable-file', 'packages/app/src/routes/nested/deep.ts'),
     ).toBeDefined();
+  });
+
+  it('follows package.json "imports" (#subpath) to their targets', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({
+        name: 'p',
+        private: true,
+        main: './src/main.ts',
+        imports: { '#util': './src/util.ts', '#lib/*': './src/lib/*.ts' },
+      }),
+      'src/main.ts': "import { util } from '#util';\nimport { x } from '#lib/x';\nutil(x);\n",
+      'src/util.ts': 'export function util(_: unknown): void {}\n',
+      'src/lib/x.ts': 'export const x = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/util.ts')).toBeUndefined();
+    expect(find(r.findings, 'unreachable-file', 'src/lib/x.ts')).toBeUndefined();
+  });
+
+  it('keeps every member of a namespace object the module exports', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: './src/main.ts' }),
+      'src/main.ts':
+        "import api from './api.js';\nimport { mod } from './dyn.js';\napi.run();\nmod.go();\n",
+      'src/api.ts': "import * as impl from './impl.js';\nexport default impl;\n",
+      'src/dyn.ts': "export const mod = await import('./other.js');\n",
+      'src/impl.ts': 'export function run(): void {}\n',
+      'src/other.ts': 'export function go(): void {}\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'dead-export', 'src/impl.ts', 'run')).toBeUndefined();
+    expect(find(r.findings, 'dead-export', 'src/other.ts', 'go')).toBeUndefined();
+  });
+
+  it('credits the source of build output named by scripts and CI configs', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({
+        name: 'p',
+        private: true,
+        main: './dist/index.js',
+        scripts: { worker: 'node dist/worker.js' },
+      }),
+      '.github/workflows/ci.yml': 'steps:\n  - run: node dist/job.js\n',
+      'src/index.ts': 'export const x = 1;\n',
+      'src/worker.ts': 'console.log(1);\n',
+      'src/job.ts': 'console.log(2);\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/worker.ts')).toBeUndefined();
+    expect(find(r.findings, 'unreachable-file', 'src/job.ts')).toBeUndefined();
+  });
+
+  it('publishes what an exports pattern maps to, even under a different public key', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({
+        name: '@x/ui',
+        version: '1.0.0',
+        exports: { '.': './dist/index.js', './features/*': './dist/feat/*.js' },
+      }),
+      'src/index.ts': 'export const root = 1;\n',
+      'src/feat/a.ts': 'export const a = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/feat/a.ts')).toBeUndefined();
+  });
+
+  it('reads source folders named like build output (src/commands/build) as source', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: './src/main.ts' }),
+      'src/main.ts': "import { run } from './commands/build/index.js';\nrun();\n",
+      'src/commands/build/index.ts':
+        "import { helper } from '../../util/helper.js';\nexport function run(): void { helper(); }\n",
+      'src/util/helper.ts': 'export function helper(): void {}\n',
+      'build/out.js': 'console.log(1);\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/util/helper.ts')).toBeUndefined();
+    expect(r.findings.some((f) => f.file === 'build/out.js')).toBe(false);
+  });
+
+  it('keeps what .vue/.svelte components import, modules and dependencies alike', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({
+        name: 'p',
+        private: true,
+        main: './src/main.ts',
+        dependencies: { 'vue-router': '4.0.0' },
+      }),
+      'src/main.ts': "import App from './App.vue';\nconsole.log(App);\n",
+      'src/App.vue':
+        "<script setup lang=\"ts\">\nimport { useX } from './useX';\nimport { createRouter } from 'vue-router';\nuseX(createRouter);\n</script>\n",
+      'src/Widget.svelte': "<script>\n  import { w } from './w.js';\n</script>\n<p>{w}</p>\n",
+      'src/useX.ts': 'export function useX(_: unknown): void {}\n',
+      'src/w.ts': 'export const w = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/useX.ts')).toBeUndefined();
+    expect(find(r.findings, 'unreachable-file', 'src/w.ts')).toBeUndefined();
+    expect(find(r.findings, 'unused-dependency', 'package.json', 'vue-router')).toBeUndefined();
+  });
+
+  it('counts the automatic JSX runtime as a use of react', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({
+        name: 'p',
+        private: true,
+        main: './src/main.tsx',
+        dependencies: { react: '19.0.0', 'react-dom': '19.0.0' },
+      }),
+      'tsconfig.json': JSON.stringify({ compilerOptions: { jsx: 'react-jsx' } }),
+      'src/main.tsx':
+        "import { createRoot } from 'react-dom/client';\ncreateRoot(document.body).render(<div />);\n",
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unused-dependency', 'package.json', 'react')).toBeUndefined();
+  });
+
+  it('keeps files loaded by an import.meta.glob brace pattern alive', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: './src/main.ts' }),
+      'src/main.ts':
+        "export const routes = import.meta.glob('./routes/*.{ts,tsx}');\nconsole.log(routes);\n",
+      'src/routes/a.ts': 'export const a = 1;\n',
+      'src/routes/b.tsx': 'export const b = 1;\n',
+      'src/routes/c.js': 'export const c = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/routes/a.ts')).toBeUndefined();
+    expect(find(r.findings, 'unreachable-file', 'src/routes/b.tsx')).toBeUndefined();
+    expect(find(r.findings, 'unreachable-file', 'src/routes/c.js')).toBeDefined();
+  });
+
+  it('maps tsconfig paths through the longest matching pattern, not the first declared', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: './src/main.ts' }),
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: { paths: { '*': ['./types/*'], '@/*': ['./src/*'] } },
+      }),
+      'src/main.ts': "import { helper } from '@/helper';\nhelper();\n",
+      'src/helper.ts': 'export function helper(): void {}\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unreachable-file', 'src/helper.ts')).toBeUndefined();
   });
 });

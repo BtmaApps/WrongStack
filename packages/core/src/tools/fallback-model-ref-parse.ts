@@ -11,5 +11,4 @@
  * same `{ provider, model }` shape with identical parsing rules.
  */
 
-export type { ModelRef as ParsedRef } from '../core/model-ref.js';
 export { parseModelRef as parseRefInternal } from '../core/model-ref.js';

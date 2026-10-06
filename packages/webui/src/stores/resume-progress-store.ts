@@ -146,8 +146,3 @@ export function formatResumeBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-/** Selector-friendly read: is this tab still waiting for its transcript? */
-export function isResuming(sessionId: string | null | undefined): boolean {
-  if (!sessionId) return false;
-  return useResumeProgressStore.getState().startedAt[sessionId] !== undefined;
-}

@@ -220,7 +220,11 @@ function parseRequirementsTxt(
   content: string,
 ): Array<{ name: string; constraint: string | undefined }> {
   const deps: Array<{ name: string; constraint: string | undefined }> = [];
-  for (const raw of content.split('\n')) {
+  // pip joins a line ending in `\` with the next (pip-compile --generate-hashes
+  // writes `django==4.2.0 \` then indented `--hash=…` lines), and per-requirement
+  // options (`--hash`, `--config-settings`) are not part of the requirement.
+  for (const joined of content.replace(/\\\r?\n/g, ' ').split('\n')) {
+    const raw = joined.split(/\s+--/)[0]!;
     // An inline comment needs whitespace before `#` (`pkg==1  # why`); a bare
     // `#` inside a URL fragment (`#egg=`) is not one.
     const line = raw.replace(/\s+#.*$/, '').trim();

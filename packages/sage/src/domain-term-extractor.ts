@@ -106,11 +106,6 @@ const execFileAsync = promisify(execFile);
  * tag name.
  */
 export const DOMAIN_TERM_LOOKUP_TAG = 'domain-term';
-/** Companion tag from the old `['domain-term', 'glossary', 'project-jargon']`
- *  trio. Kept exported for the same reason as {@link DOMAIN_TERM_LOOKUP_TAG}. */
-export const GLOSSARY_LOOKUP_TAG = 'glossary';
-/** Companion tag from the old trio. Kept exported for the same reason. */
-export const PROJECT_JARGON_TAG = 'project-jargon';
 
 /** Cap entries rendered into the prompt block. */
 export const DEFAULT_MAX_GLOSSARY_ENTRIES = 24;

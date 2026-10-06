@@ -8,16 +8,6 @@ import type {
 import { autoWakeNoticeText, projectSessionTimeline } from '@wrongstack/webui-protocol';
 import type { ChatMessage, SimpleSubagent, ToolCallInfo } from '../types.js';
 
-/**
- * Re-exported, never re-declared.
- *
- * This module used to keep its OWN copy of the prefix list, which promptly
- * drifted: core stopped hiding the `[SESSION RESUME …]` notices (they are
- * written for the human, not the model) and this copy went on hiding them.
- * One list, in core.
- */
-export { isSystemInjectedMessage, SYSTEM_INJECTION_PREFIXES } from '@wrongstack/webui-protocol';
-
 export const SIMPLE_CHAT_MAX_MESSAGES = 600;
 export const SIMPLE_CHAT_MAX_RETAINED_BYTES = 32 * 1024 * 1024;
 export const SIMPLE_CHAT_MAX_TEXT_CHARS = 2 * 1024 * 1024;

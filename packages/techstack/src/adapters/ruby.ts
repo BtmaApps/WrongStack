@@ -27,38 +27,67 @@ function parseGemfile(content: string): Array<{
   name: string;
   version?: string | undefined;
   sourceType: 'registry' | 'git' | 'path';
+  scope: DependencyScope;
 }> {
   const gems: Array<{
     name: string;
     version?: string | undefined;
     sourceType: 'registry' | 'git' | 'path';
+    scope: DependencyScope;
   }> = [];
   const gemRegex = /gem\s+['"]([^'"]+)['"]([^\n]*)/g;
+  // Bundler groups: `group :development, :test do … end` blocks (nesting adds
+  // groups) and the inline `group:`/`groups:` option. A gem belongs to the
+  // union; it is a development dependency only when every group it is in is
+  // `development` or `test` — reporting those as runtime skewed triage.
+  const enclosing: Array<readonly string[]> = [];
   // A Gemfile declares dependencies through LIVE `gem '…'` calls; commented-out
   // text is not a declaration. Scanning the raw file inventoried
   // `# gem 'nokogiri'` as a real dependency and let a trailing comment forge the
   // source type (`gem 'redis' # git: …` came out as a git dependency).
   // `stripInlineComment` already understands quotes and escapes, so a `#` inside
   // a name, version or repository URL survives.
-  const code = content
-    .split('\n')
-    .map((line) => stripInlineComment(line))
-    .join('\n');
-  for (const match of code.matchAll(gemRegex)) {
-    const name = match[1]!;
-    // Preserve the existing `ruby` exclusion; Rails is an ordinary gem and
-    // must remain visible to inventory and advisory enrichment.
-    if (name === 'ruby') continue;
-    const tail = match[2] ?? '';
-    const version = /^\s*,\s*['"]([^'"]+)['"]/.exec(tail)?.[1];
-    const sourceType = /\b(?:git|github):/.test(tail)
-      ? 'git'
-      : /\bpath:/.test(tail)
-        ? 'path'
-        : 'registry';
-    gems.push({ name, version, sourceType });
+  for (const line of content.split('\n').map((raw) => stripInlineComment(raw))) {
+    if (/^\s*end\b/.test(line)) {
+      enclosing.pop();
+      continue;
+    }
+    // Every `end` closes one block, so statement blocks (`if … end`) count too.
+    if (
+      /\bdo\s*(?:\|[^|]*\|)?\s*$/.test(line) ||
+      /^\s*(?:if|unless|case|begin|while|until|def)\b/.test(line)
+    ) {
+      const group = /^\s*group\b(.*)\bdo\b/.exec(line);
+      enclosing.push(group ? gemGroupNames(group[1]!) : []);
+      continue;
+    }
+    for (const match of line.matchAll(gemRegex)) {
+      const name = match[1]!;
+      // Preserve the existing `ruby` exclusion; Rails is an ordinary gem and
+      // must remain visible to inventory and advisory enrichment.
+      if (name === 'ruby') continue;
+      const tail = match[2] ?? '';
+      const version = /^\s*,\s*['"]([^'"]+)['"]/.exec(tail)?.[1];
+      const sourceType = /\b(?:git|github):/.test(tail)
+        ? 'git'
+        : /\bpath:/.test(tail)
+          ? 'path'
+          : 'registry';
+      const inline = /(?:\bgroups?:|:groups?\s*=>)\s*(\[[^\]]*\]|:\w+|['"]\w+['"])/.exec(tail)?.[1];
+      const groups = [...enclosing.flat(), ...(inline ? gemGroupNames(inline) : [])];
+      const scope: DependencyScope =
+        groups.length > 0 && groups.every((group) => group === 'development' || group === 'test')
+          ? 'development'
+          : 'runtime';
+      gems.push({ name, version, sourceType, scope });
+    }
   }
   return gems;
+}
+
+/** `:development, :test` / `[:test]` / `'test'` → group names. */
+function gemGroupNames(text: string): string[] {
+  return [...text.matchAll(/:(\w+)|['"](\w+)['"]/g)].map((match) => match[1] ?? match[2]!);
 }
 
 /**
@@ -92,7 +121,10 @@ function parseGemfileLock(content: string): Map<string, string> {
     // the fifth space, so anchoring on exactly four keeps them out.
     const match = /^ {4}([\w-]+)\s+\(([^)]+)\)/.exec(line);
     if (match) {
-      const version = match[2]!.split(' ')[0] ?? match[2]!;
+      // A platform-specific spec is written `version-platform`
+      // (`nokogiri (1.16.0-x86_64-linux)`). A RubyGems version never contains
+      // `-`, so everything from it on is the platform, not part of the version.
+      const version = (match[2]!.split(' ')[0] ?? match[2]!).replace(/-.*$/, '');
       versions.set(match[1]!, version);
     }
   }
@@ -159,7 +191,7 @@ export class RubyAdapter implements EcosystemAdapter {
         name: gem.name,
         sourceType: gem.sourceType,
         direct: true,
-        scope: 'runtime' as DependencyScope,
+        scope: gem.scope,
         ...(gem.version ? { requested: gem.version } : {}),
         ...(locked ? { locked } : {}),
         status:

@@ -59,8 +59,6 @@ import type {
   KnowledgeGraph,
 } from './knowledge-graph.js';
 
-export type { BrainRisk };
-
 // ── Extended decision request types ─────────────────────────────────────
 
 export type AutonomousDecisionType =

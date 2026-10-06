@@ -14,7 +14,7 @@
  * one-off broadcast — an inline literal is how the seventh site starts.
  */
 
-import type { KanbanBoard, KanbanBoardSummary, KanbanTask } from '@wrongstack/kanban';
+import type { KanbanBoard, KanbanBoardSummary } from '@wrongstack/kanban';
 import type { WSServerMessage } from './types.js';
 
 /** A full board, for `kanban.get`. The client keys on `data.board`. */
@@ -25,11 +25,6 @@ export function kanbanBoardMessage(board: KanbanBoard): WSServerMessage {
 /** The board list, for `kanban.list`. `data` is the array itself, not `{ boards }`. */
 export function kanbanListMessage(boards: readonly KanbanBoardSummary[]): WSServerMessage {
   return { type: 'kanban.list', payload: { success: true, data: boards } };
-}
-
-/** A single task, for `kanban.task.update`. */
-export function kanbanTaskMessage(boardId: string, task: KanbanTask): WSServerMessage {
-  return { type: 'kanban.task.update', payload: { success: true, data: { boardId, task } } };
 }
 
 /** A removed board, for `kanban.delete`. */

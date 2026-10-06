@@ -332,13 +332,16 @@ export class PhaseStore {
             serialized.finalVerification?.status === 'failed' ||
             serialized.phases.some((phase) => phase.status === 'failed');
           const running = serialized.phases.some((phase) => phase.status === 'running');
+          // Finished phases are progress, not success: only a run that reached
+          // completion (completedAt, set after final verification) is completed.
+          const completed = total > 0 && done === total && serialized.completedAt !== undefined;
           graphs.push({
             id: serialized.id,
             title: serialized.title,
             updatedAt: serialized.updatedAt,
             status: failed
               ? 'failed'
-              : done === total
+              : completed
                 ? 'completed'
                 : running || done > 0
                   ? 'in_progress'

@@ -87,7 +87,8 @@ export function isSensitiveAgentStateBasename(basename: string): boolean {
 /**
  * Forward slashes, no trailing slash, no NTFS alternate-data-stream suffix on
  * the last segment (`config.json::$DATA` writes `config.json`), case-folded on
- * Windows.
+ * Windows. Windows also drops trailing dots and spaces from path segments
+ * (`cmd`/PowerShell write `config.local.json.` as `config.local.json`).
  */
 function normalizeAbs(value: string): string {
   const forward = value.replace(/\\/g, '/').replace(/\/+$/, '');
@@ -95,7 +96,12 @@ function normalizeAbs(value: string): string {
   const base = forward.slice(cut + 1);
   const colon = base.indexOf(':');
   const stripped = colon > 0 ? forward.slice(0, cut + 1) + base.slice(0, colon) : forward;
-  return process.platform === 'win32' ? stripped.toLowerCase() : stripped;
+  if (process.platform !== 'win32') return stripped;
+  return stripped
+    .split('/')
+    .map((seg) => seg.replace(/[. ]+$/, '') || seg)
+    .join('/')
+    .toLowerCase();
 }
 
 /** Realpath of `p`'s deepest existing ancestor with the missing tail re-joined. */

@@ -6,7 +6,6 @@ import type { ToolResultViewMode } from '../../tool-result-view-mode.js';
 export type {
   AutonomyAgentStatus,
   HistoryEntry,
-  MemoryActivationItem,
 } from '../../history-entry.js';
 
 // ============================================

@@ -355,4 +355,3 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'worktreeUpsert',
 ] as const);
 
-export type AllowedActionType = (typeof ALLOWED_ACTION_TYPES)[number];

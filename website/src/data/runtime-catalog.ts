@@ -567,7 +567,7 @@ export const toolCatalog = [
   {
     name: 'dead-code-scan',
     summary:
-      'Analyze the indexed project for declarations that appear unreachable from configured entry points. Treat results as candidates for review, not automatic deletion instructions.',
+      'Find dead code in executable TS/JS sources: unreachable files, exports nothing imports, unused re-exports, test-only code and unused dependencies. Read-only; pass previewIds to see the exact cleanup diff.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -579,6 +579,14 @@ export const toolCatalog = [
     permission: 'auto',
     mutating: false,
     category: 'Work & state',
+  },
+  {
+    name: 'dead-code-fix',
+    summary:
+      'Remove dead code by dead-code-scan finding id: re-scans, applies, typechecks, rolls back on failure and keeps an undo backup. Only for ids the user chose after reviewing the scan.',
+    permission: 'confirm',
+    mutating: true,
+    category: 'Discovery & index',
   },
 ] as const;
 
@@ -1400,7 +1408,7 @@ export const PLUGIN_COUNT = pluginCatalog.length;
  */
 // generated:tool-tier-counts
 export const TOOL_TIER_COUNTS = {
-  off: 71,
+  off: 72,
   minimal: 28,
   light: 28,
   medium: 51,

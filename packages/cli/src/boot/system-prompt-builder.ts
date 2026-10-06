@@ -100,8 +100,6 @@ interface PathJoiner {
  */
 import type { DomainGlossaryListProvider as DomainGlossaryAdapter } from '../wiring/domain-glossary.js';
 
-export type { DomainGlossaryListProvider } from '../wiring/domain-glossary.js';
-
 interface BindSystemPromptBuilderDeps {
   /**
    * The `container` from main(). The helper only calls

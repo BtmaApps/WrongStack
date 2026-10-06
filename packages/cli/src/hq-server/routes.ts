@@ -75,22 +75,13 @@ import * as HqServerUtils from './utils.js';
 
 // ── Re-exports for hq-server.ts backward compat ────────────────────────────
 
-export const setHqSecurityHeaders = HqServerAuth.setHqSecurityHeaders;
 export const hasTrustedBrowserOrigin = HqServerAuth.hasTrustedBrowserOrigin;
 export const authenticateBrowserRequest = HqServerAuth.authenticateBrowserRequest;
 export const isTokenAuth = HqServerAuth.isTokenAuth;
 export const isCookieAuth = HqServerAuth.isCookieAuth;
-export const hqAuthRequired = HqServerAuth.hqAuthRequired;
-export const setHqSessionCookie = HqServerAuth.setHqSessionCookie;
-export const clearHqSessionCookie = HqServerAuth.clearHqSessionCookie;
-export const serializeHqSessionCookie = HqServerAuth.serializeHqSessionCookie;
 export const parseHqSessionCookie = HqServerAuth.parseHqSessionCookie;
-export const parseCookieHeader = HqServerAuth.parseCookieHeader;
-export const HQ_SESSION_COOKIE = HqServerAuth.HQ_SESSION_COOKIE;
 
 export const decodePathSegment = HqServerUtils.decodePathSegment;
-export const readRequestBody = HqServerUtils.readRequestBody;
-export const writeInvalidBody = HqServerUtils.writeInvalidBody;
 export const sanitizeApiError = HqServerUtils.sanitizeApiError;
 export const buildHttpUrl = HqServerUtils.buildHttpUrl;
 export const buildBootstrapHttpUrl = HqServerUtils.buildBootstrapHttpUrl;
@@ -98,8 +89,6 @@ export const buildClientWsUrl = HqServerUtils.buildClientWsUrl;
 export const agentRingKey = HqServerUtils.agentRingKey;
 export const agentMessageToEntry = HqServerUtils.agentMessageToEntry;
 export const readLocalSubagentTranscript = HqServerUtils.readLocalSubagentTranscript;
-export const lanIPv4Addresses = HqServerUtils.lanIPv4Addresses;
-export const hqRuntimeMarkerPath = HqServerUtils.hqRuntimeMarkerPath;
 
 // ── Shared helpers used in routes ──────────────────────────────────────────
 
@@ -110,12 +99,8 @@ import type {
   ConnectedClient,
   HqRouterMutableAuth,
   HqSessionEntry,
-  HqSnapshotBroadcaster,
-  ProjectDetail,
   TranscriptRing,
 } from './types.js';
-
-export type { ConnectedClient, HqSnapshotBroadcaster, ProjectDetail, TranscriptRing };
 
 // ── Router dependency interface ────────────────────────────────────────────
 

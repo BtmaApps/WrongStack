@@ -29,9 +29,6 @@
       "webuiPrefsChangedSchema",
       "webuiReadyChangedSchema"
     ],
-    "packages/acp/src/agent/protocol-handler.ts": [
-      "protocolHandlerCoverage"
-    ],
     "packages/acp/src/agent/server-agent-turn.ts": [
       "disposeACPServerAgentTurn",
       "serverAgentTurnCoverage"

@@ -127,12 +127,37 @@ async function walkFiles(projectRoot: string): Promise<string[]> {
   return out;
 }
 
+/** Folder names the default globs treat as build output / docs. */
+const OUTPUT_DIR_NAMES = new Set(['dist', 'build', 'out', 'coverage', 'docs']);
+const DEFAULT_IGNORED = compileIgnore(DEFAULT_IGNORE_GLOBS);
+const DEFAULT_IGNORED_WITHOUT_OUTPUT = compileIgnore(
+  DEFAULT_IGNORE_GLOBS.filter(
+    (g) => !/^(?:\*\*\/)?(?:dist|dist-\*|build|out|coverage|docs)\/\*\*$/.test(g),
+  ),
+);
+
+/**
+ * A default-ignored path that is really source: inside a `src/` tree, `build/`,
+ * `out/` or `docs/` are feature folders (`src/commands/build/`), not output —
+ * hiding them hid their imports and made what they import look dead.
+ */
+function isDefaultIgnored(rel: string): boolean {
+  if (!DEFAULT_IGNORED(rel)) return false;
+  const dirs = rel.split('/').slice(0, -1);
+  const src = dirs.indexOf('src');
+  if (src === -1) return true;
+  const outsideSrc = dirs.slice(0, src);
+  if (outsideSrc.some((d) => OUTPUT_DIR_NAMES.has(d) || d.startsWith('dist-'))) return true;
+  return DEFAULT_IGNORED_WITHOUT_OUTPUT(rel);
+}
+
 export async function listProjectFiles(
   projectRoot: string,
   extraIgnore: readonly string[] = [],
 ): Promise<ProjectFiles> {
   const listed = gitListFiles(projectRoot) ?? (await walkFiles(projectRoot));
-  const isIgnored = compileIgnore([...DEFAULT_IGNORE_GLOBS, ...extraIgnore]);
+  const extraIgnored = compileIgnore(extraIgnore);
+  const isIgnored = (rel: string): boolean => isDefaultIgnored(rel) || extraIgnored(rel);
   const all: string[] = [];
   const code: string[] = [];
   for (const raw of listed) {

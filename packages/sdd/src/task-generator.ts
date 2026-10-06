@@ -1,4 +1,4 @@
-import type { TaskStore, TaskTracker } from '@wrongstack/core/tasking';
+import type { TaskTracker } from '@wrongstack/core/tasking';
 import type {
   Specification,
   SpecRequirement,
@@ -314,4 +314,3 @@ export class TaskGenerator {
   }
 }
 
-export type { TaskStore };

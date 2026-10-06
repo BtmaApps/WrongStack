@@ -41,8 +41,8 @@ export function buildNextStepsModeCommand(opts: SlashCommandContext): SlashComma
     help: [
       'Usage:',
       '  /nextsteps                     Show the current mode and auto-continue limit',
-      '  /nextsteps optional            Suggestions only when a concrete follow-on exists (default)',
-      '  /nextsteps required [limit]    Every finished turn ends with <nextsteps> or <nextsteps-complete/>',
+      '  /nextsteps optional            Suggestions only when a concrete follow-on exists',
+      '  /nextsteps required [limit]    Every finished turn ends with <nextsteps> or <nextsteps-complete/> (default)',
       '  /nextsteps limit <n>           Max consecutive automatic turns: 5 | 10 | 20 | 50 | 100 | unlimited',
       '',
       'In required mode a turn that ends with neither is asked once more for',

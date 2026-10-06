@@ -11,43 +11,6 @@
 // `tests/on-panel-open-bridge.test.ts`.
 
 import type { Action } from './app-reducer.js';
-import type { PluginPickerItem } from './components/plugin-picker.js';
-
-/**
- * Action strings that the bridge recognises. Mirrored from the reducer's
- * `Action` type union but kept as a string allow-list here so an unrecognised
- * action can return `false` (text fallback) without crashing.
- */
-export type PanelAction =
-  | 'pluginPickerOpen'
-  | 'mcpPickerOpen'
-  | 'toolsPickerOpen'
-  | 'brainOpen'
-  | 'helpOpen'
-  | 'shadowOpen'
-  | 'subagentModelsOpen'
-  | 'projectPickerOpen'
-  | 'statuslineOpen'
-  | 'authOpen'
-  | 'authOauthOpen'
-  | 'modePickerOpen'
-  | 'toggleMonitor'
-  | 'toggleAuditPanel'
-  | 'toggleAgentsMonitor'
-  | 'toggleWorktreeMonitor'
-  | 'togglePlanPanel'
-  | 'toggleKanbanPanel'
-  | 'toggleTodosMonitor'
-  | 'toggleQueuePanel'
-  | 'toggleProcessList'
-  | 'toggleCronMonitor'
-  | 'toggleContextPanel'
-  | 'toggleConnectionsPanel'
-  | 'toggleGoalPanel'
-  | 'toggleGoalKanbanPanel'
-  | 'toggleSessionsPanel'
-  | 'toggleCoordinatorMonitor'
-  | (string & {}); // forward-compatible: unknown strings return false
 
 export interface PanelOpenDeps {
   /**
@@ -193,9 +156,3 @@ export function createPanelOpenDispatcher(deps: PanelOpenDeps): (action: string)
   };
 }
 
-/**
- * Re-export PluginPickerItem so consumers of the dispatcher can construct
- * typed items without an extra import. Kept as a re-export rather than a
- * duplicate so the type lives in one place.
- */
-export type { PluginPickerItem };

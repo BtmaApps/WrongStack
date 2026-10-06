@@ -9,8 +9,8 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { classifyFile, isCodeFile, type PackageInfo } from './files.js';
-import type { DeadCodeResolver } from './resolve.js';
+import { classifyFile, isCodeFile, owningPackage, type PackageInfo } from './files.js';
+import { BUILD_DIRS, type DeadCodeResolver } from './resolve.js';
 
 export type EntryKind =
   | 'package-public'
@@ -37,7 +37,25 @@ const SKIP_TEXT_FILE =
 const PATH_TOKEN =
   /(?:^|[\s"'`=(,:[])((?:\.{1,2}\/|\/)?[\w@.~-][\w@.~/-]*\.(?:[cm]?[jt]sx?))(?=$|[\s"'`),;\]:])/gm;
 const SCRIPT_SRC = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+/** Single-file components whose `<script>` blocks import modules. */
+export const SFC_FILE = /\.(?:vue|svelte|astro)$/i;
+const SCRIPT_BLOCK = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+const SFC_IMPORT =
+  /\bfrom\s*(['"])([^'"\n]+)\1|\bimport\s*(['"])([^'"\n]+)\3|\bimport\s*\(\s*(['"])([^'"\n]+)\5\s*\)/g;
 const MAX_TEXT_BYTES = 512 * 1024;
+
+/** Module specifiers imported by a component's `<script>` blocks (Astro: its `---` frontmatter too). */
+export function sfcImportSpecs(text: string): string[] {
+  const code: string[] = [];
+  for (const m of text.matchAll(SCRIPT_BLOCK)) code.push(m[1] ?? '');
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+  if (frontmatter) code.push(frontmatter[1] ?? '');
+  const specs = new Set<string>();
+  for (const block of code) {
+    for (const m of block.matchAll(SFC_IMPORT)) specs.add((m[2] ?? m[4] ?? m[6])!);
+  }
+  return [...specs];
+}
 
 function readText(abs: string): string | null {
   try {
@@ -47,6 +65,24 @@ function readText(abs: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Every string in an `exports` value (conditions and fallback arrays included). */
+function stringTargets(value: unknown, depth = 0): string[] {
+  if (depth > 8 || value == null) return [];
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap((v) => stringTargets(v, depth + 1));
+  if (typeof value === 'object')
+    return Object.values(value).flatMap((v) => stringTargets(v, depth + 1));
+  return [];
+}
+
+/** Package-relative paths a source file may be published as: itself, or built into a build dir. */
+function builtSpellings(rel: string): string[] {
+  const stem = rel.replace(/\.[cm]?[jt]sx?$/, '');
+  const stems = [stem, ...BUILD_DIRS.map((dir) => `${dir}/${stem.replace(/^src\//, '')}`)];
+  const ext = rel.slice(stem.length);
+  return stems.flatMap((s) => [`${s}${ext}`, `${s}.js`, `${s}.mjs`, `${s}.cjs`, `${s}.d.ts`]);
 }
 
 export function collectPathTokens(text: string): string[] {
@@ -89,7 +125,18 @@ export function discoverEntries(input: EntryDiscoveryInput): Map<string, EntryIn
       ? [clean.slice(1)]
       : [path.posix.join(fromDir, clean), clean];
     for (const c of candidates) {
-      for (const f of resolver.resolveFileLike(c)) add(f, kind);
+      const hits = resolver.resolveFileLike(c);
+      for (const f of hits) add(f, kind);
+      if (hits.length > 0) continue;
+      // `node dist/worker.js` names build output: credit the source it is built from.
+      const owner = owningPackage(packages, c);
+      const ownDir = owner?.dir ?? '';
+      if (ownDir && !c.startsWith(`${ownDir}/`)) continue;
+      for (const f of resolver.sourceForPackageTarget(
+        ownDir,
+        ownDir ? c.slice(ownDir.length + 1) : c,
+      ))
+        add(f, kind);
     }
   };
 
@@ -107,8 +154,13 @@ export function discoverEntries(input: EntryDiscoveryInput): Map<string, EntryIn
       for (const sp of subpaths) {
         if (sp === './package.json') continue;
         if (sp.includes('*')) {
-          // Pattern subpath: every source file the pattern can reach.
+          // Pattern subpath: every source file the pattern can reach — through
+          // its public key AND through the build paths it maps to
+          // (`"./features/*": "./dist/feat/*.js"` publishes `src/feat/*`).
           const [prefix = '', suffix = ''] = sp.slice(2).split('*');
+          const targetPatterns = stringTargets((exportsField as Record<string, unknown>)[sp]).map(
+            (t) => t.replace(/^\.\//, '').split('*') as [string, string?],
+          );
           for (const f of input.codeFiles) {
             const ownDir = pkg.dir ? `${pkg.dir}/` : '';
             if (!f.startsWith(ownDir)) continue;
@@ -116,6 +168,22 @@ export function discoverEntries(input: EntryDiscoveryInput): Map<string, EntryIn
             const srcRel = rel.replace(/^src\//, '');
             const stem = srcRel.replace(/\.[cm]?[jt]sx?$/, '');
             if (stem.startsWith(prefix) && (suffix === '' || `${stem}.js`.endsWith(suffix))) {
+              publicTargets.add(f);
+              continue;
+            }
+            const built = builtSpellings(rel);
+            if (
+              targetPatterns.some(
+                ([tPrefix, tSuffix]) =>
+                  tSuffix !== undefined &&
+                  built.some(
+                    (b) =>
+                      b.length > tPrefix.length + tSuffix.length &&
+                      b.startsWith(tPrefix) &&
+                      b.endsWith(tSuffix),
+                  ),
+              )
+            ) {
               publicTargets.add(f);
             }
           }
@@ -163,6 +231,17 @@ export function discoverEntries(input: EntryDiscoveryInput): Map<string, EntryIn
   for (const rel of input.allFiles) {
     if (isCodeFile(rel) || SKIP_TEXT_FILE.test(rel)) continue;
     const dir = path.posix.dirname(rel) === '.' ? '' : path.posix.dirname(rel);
+    if (SFC_FILE.test(rel)) {
+      // Components are not parsed as code, but their <script> imports are real:
+      // what they import is loaded (kept alive like an HTML script tag).
+      const text = readText(path.join(projectRoot, rel));
+      if (!text) continue;
+      for (const spec of sfcImportSpecs(text)) {
+        const res = resolver.resolve(rel, spec);
+        if (res.type === 'file') for (const f of res.files) add(f, 'html');
+      }
+      continue;
+    }
     if (/\.html?$/i.test(rel)) {
       const text = readText(path.join(projectRoot, rel));
       if (!text) continue;

@@ -136,15 +136,7 @@ export interface KeyRouteContext extends AppKeyHandlerOptions {
 
 /** Re-exported for route modules that need the ref/callback shapes. */
 export type {
-  Action,
-  AppProps,
-  Director,
   Dispatch,
-  DOMElement,
-  HistoryScrollController,
   MutableRefObject,
-  PasteAccumState,
   SetStateAction,
-  StatusBarClickMap,
-  StatuslineItem,
 };

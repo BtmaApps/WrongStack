@@ -1,8 +1,8 @@
 import { render } from 'ink-testing-library';
 import React, { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BugHuntRunningPanel } from '../src/components/bug-hunt-running-panel.js';
 import { BugHuntContinuePanel } from '../src/components/bug-hunt-continue-panel.js';
+import { BugHuntRunningPanel } from '../src/components/bug-hunt-running-panel.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -20,6 +20,7 @@ describe('BugHuntRunningPanel', () => {
     expect(frame).toContain('BUG HUNTING STARTED');
     expect(frame).toContain('Round 2/5');
     expect(frame).toContain('proof-driven scan, reproduce, fix, verify');
+    expect(frame).toContain('/bughunt stop');
     view.unmount();
   });
 

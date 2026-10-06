@@ -41,8 +41,6 @@ import type { BrainInterventionKind, EventBus } from '../kernel/events.js';
 import type { BrainArbiter, BrainDecision, BrainDecisionRequest } from './brain.js';
 import { editedPaths } from './brain-monitor-paths.js';
 
-export type { BrainInterventionKind };
-
 export interface BrainInterventionInput {
   subject: string;
   body: string;

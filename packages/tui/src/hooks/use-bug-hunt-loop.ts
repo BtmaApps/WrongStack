@@ -162,7 +162,50 @@ export function useBugHuntLoop(
     return true;
   }, []);
 
+  const stopAfterCurrentRound = useCallback(() => {
+    const active = activeRef.current;
+    if (!active) {
+      dispatch({
+        type: 'addEntry',
+        entry: { kind: 'info', text: 'No active Proof-Driven Bug Hunter run to stop.' },
+      });
+      return;
+    }
+    // Between rounds there is no work left to finish. Cancel the deferred
+    // submission before it can start another round.
+    if (pendingSubmitRef.current !== null) {
+      cancelPendingSubmit();
+      activeRef.current = null;
+      dispatch({ type: 'bugHuntRunningClose' });
+      dispatch({
+        type: 'addEntry',
+        entry: {
+          kind: 'info',
+          text: `Proof-Driven Bug Hunter stopped after ${active.completedRounds} completed rounds.`,
+        },
+      });
+      return;
+    }
+    // Reuse the normal completion check without interrupting the running round.
+    const currentRound = active.completedRounds + 1;
+    active.totalRounds = currentRound;
+    dispatch({ type: 'bugHuntRunningOpen', info: { currentRound, totalRounds: currentRound } });
+    dispatch({
+      type: 'addEntry',
+      entry: {
+        kind: 'info',
+        text: `Proof-Driven Bug Hunter will stop after round ${currentRound} completes.`,
+      },
+    });
+  }, [dispatch, cancelPendingSubmit]);
+
   const shouldSuppressNextSteps = useCallback(() => activeRef.current !== null, []);
 
-  return { onBugHuntStarted, onRunFinished, consumeReplay, shouldSuppressNextSteps };
+  return {
+    onBugHuntStarted,
+    onRunFinished,
+    consumeReplay,
+    stopAfterCurrentRound,
+    shouldSuppressNextSteps,
+  };
 }

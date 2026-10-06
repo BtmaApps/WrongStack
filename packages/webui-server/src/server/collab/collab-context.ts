@@ -1,4 +1,4 @@
-import type { CollaborationBus, ConsumedInjectionInfo } from '@wrongstack/core/coordination';
+import type { CollaborationBus } from '@wrongstack/core/coordination';
 import type { AnnotationsStore, SessionReader } from '@wrongstack/core/storage';
 import type { Logger } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
@@ -66,8 +66,6 @@ export interface CollabContext {
    */
   removeSocket(ws: WebSocket): void;
 }
-
-export type { CollaborationBus, ConsumedInjectionInfo };
 
 /**
  * The 5-step guard boilerplate every privileged handler repeats, collapsed

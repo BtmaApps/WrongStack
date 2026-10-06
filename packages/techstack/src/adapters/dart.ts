@@ -18,9 +18,15 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripInlineComment } from './parse-utils.js';
 import { fileExists, lockfileEvidence, manifestEvidence, workspaceRoot } from './paths.js';
 
 // ── Minimal YAML parser (line-based, sufficient for pubspec.yaml) ────────
+
+/** A quoted YAML scalar (`'>=0.17.0 <0.20.0'`, `"^1.9.0"`) without its quotes. */
+function yamlScalar(value: string): string {
+  return /^(['"])(.*)\1$/.exec(value)?.[2] ?? value;
+}
 
 /**
  * Parse a pubspec.yaml to extract dependencies sections.
@@ -40,7 +46,10 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
   let currentName: string | undefined;
 
   for (const raw of content.split('\n')) {
-    const line = raw.trimEnd();
+    // A YAML comment starts at a whitespace-preceded `#` outside quotes; left
+    // in, it hid section headers (`dependencies: # runtime`) and became part
+    // of a constraint (`^1.18.0 # used by models`).
+    const line = stripInlineComment(raw.trimEnd(), ' #').trimEnd();
     const trimmed = line.trim();
     if (trimmed === '' || trimmed.startsWith('#')) continue;
 
@@ -62,10 +71,10 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
     const depMatch = trimmed.match(/^(\S[^:]*?):\s*(.*)$/);
     if (depMatch && line.startsWith('  ') && !line.startsWith('    ')) {
       currentName = depMatch[1]!.trim();
-      let constraint = depMatch[2]!.trim();
+      let constraint = yamlScalar(depMatch[2]!.trim());
       // A flow mapping carries the constraint inline: `intl: {version: ^0.19.0}`.
       if (constraint.startsWith('{')) {
-        constraint = /\bversion:\s*([^,}]+)/.exec(constraint)?.[1]?.trim() ?? '';
+        constraint = yamlScalar(/\bversion:\s*([^,}]+)/.exec(constraint)?.[1]?.trim() ?? '');
       }
       // `any` is pubspec's explicit "no constraint"; '' is either a bare
       // `name:` or a block/failed-map form whose `version:` arrives later.
@@ -85,13 +94,15 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
       if (!sec) continue;
       // Block-mapping constraint: `    version: ^3.4.0`.
       if (/^version:\s*\S/.test(trimmed)) {
-        const declared = trimmed.slice('version:'.length).trim();
+        const declared = yamlScalar(trimmed.slice('version:'.length).trim());
         sec.set(currentName, declared === 'any' ? '*' : declared);
       } else if (/^sdk:\s*\S/.test(trimmed)) {
         // `sdk: flutter` / `sdk: dart` — provided by an SDK, not a package.
-        sec.set(currentName, `sdk:${trimmed.slice('sdk:'.length).trim()}`);
-      } else if (/^git:\s*/.test(trimmed)) sec.set(currentName, `git:${trimmed.slice(4).trim()}`);
-      else if (/^path:\s*/.test(trimmed)) sec.set(currentName, `path:${trimmed.slice(5).trim()}`);
+        sec.set(currentName, `sdk:${yamlScalar(trimmed.slice('sdk:'.length).trim())}`);
+      } else if (/^git:\s*/.test(trimmed))
+        sec.set(currentName, `git:${yamlScalar(trimmed.slice(4).trim())}`);
+      else if (/^path:\s*/.test(trimmed))
+        sec.set(currentName, `path:${yamlScalar(trimmed.slice(5).trim())}`);
     }
   }
 
@@ -108,8 +119,14 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
  *   path:
  *     version: "2.0.0"
  */
-function parsePubspecLock(content: string): Map<string, string> {
+function parsePubspecLock(content: string): {
+  versions: Map<string, string>;
+  sources: Map<string, string>;
+} {
   const versions = new Map<string, string>();
+  // `source: hosted | path | git | sdk` — what pub actually resolved, which a
+  // `dependency_overrides` entry can change from what `dependencies` declares.
+  const sources = new Map<string, string>();
   const lines = content.split('\n');
   let currentPackage: string | undefined;
   let inPackages = false;
@@ -134,6 +151,8 @@ function parsePubspecLock(content: string): Map<string, string> {
 
     // Version: `    version: "1.2.0"`
     if (currentPackage) {
+      const sourceMatch = /^ {4}source:\s*"?(\w+)"?\s*$/.exec(raw);
+      if (sourceMatch) sources.set(currentPackage, sourceMatch[1]!);
       const verMatch = trimmed.match(/^version:\s*"?([^"\s]+)"?\s*$/);
       if (verMatch && raw.startsWith('    ')) {
         versions.set(currentPackage, verMatch[1]!);
@@ -142,7 +161,7 @@ function parsePubspecLock(content: string): Map<string, string> {
     }
   }
 
-  return versions;
+  return { versions, sources };
 }
 
 // ── Adapter ────────────────────────────────────────────────────────────────
@@ -179,10 +198,11 @@ export class DartAdapter implements EcosystemAdapter {
     // Parse pubspec.lock
     const lockPath = join(root, 'pubspec.lock');
     let lockVersions = new Map<string, string>();
+    let lockSources = new Map<string, string>();
     let lockEv: Evidence | undefined;
     try {
       const lockContent = readFileSync(lockPath, 'utf-8');
-      lockVersions = parsePubspecLock(lockContent);
+      ({ versions: lockVersions, sources: lockSources } = parsePubspecLock(lockContent));
       lockEv = lockfileEvidence(lockPath);
     } catch {
       // No lockfile
@@ -214,10 +234,13 @@ export class DartAdapter implements EcosystemAdapter {
         let status: DependencyObservation['status'] = 'current';
         let sourceType: Exclude<DependencyObservation['sourceType'], undefined> = 'registry';
 
-        if (constraint.startsWith('path:')) {
+        // The lock's `source` is what pub resolved — an override can turn a
+        // hosted declaration into a path/git one — so it wins when present.
+        const lockSource = lockSources.get(name);
+        if (lockSource === 'path' || (!lockSource && constraint.startsWith('path:'))) {
           status = 'local_path';
           sourceType = 'path';
-        } else if (constraint.startsWith('git:')) {
+        } else if (lockSource === 'git' || (!lockSource && constraint.startsWith('git:'))) {
           status = 'git_dependency';
           sourceType = 'git';
         }

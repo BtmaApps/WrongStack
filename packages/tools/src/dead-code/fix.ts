@@ -25,6 +25,7 @@ import {
   toErrorMessage,
   unifiedDiff,
 } from '@wrongstack/core/utils';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import {
   buildWin32CmdShimInvocation,
   isWinCmdShim,
@@ -491,26 +492,31 @@ export async function planDeadCodeFixesInternal(
   }
 
   const deletes = new Set(selected.filter((f) => f.fix === 'delete-file').map((f) => f.file));
-  // A deleted file must not stay imported by a surviving file.
-  for (const file of [...deletes]) {
-    const importers: string[] = [];
-    for (const node of analysis.nodes.values()) {
-      if (deletes.has(node.rel)) continue;
-      const hits =
-        node.imports.some((i) => i.targets.includes(file) && i.kind !== 'mock') ||
-        node.reexports.some((r) => r.targets.includes(file)) ||
-        // Glob loaders, dynamic-import prefixes and path literals reference
-        // files through extraEdges — there is no import statement to inspect.
-        node.extraEdges.includes(file);
-      if (hits) importers.push(node.rel);
-    }
-    if (importers.length > 0) {
-      deletes.delete(file);
-      const f = selected.find((s) => s.file === file && s.fix === 'delete-file')!;
-      skipped.push({
-        id: f.id,
-        reason: `Still imported by ${importers.slice(0, 3).join(', ')}${importers.length > 3 ? '…' : ''} — select those too.`,
-      });
+  // A deleted file must not stay imported by a surviving file. A file kept for
+  // that reason survives too, so what IT imports must stay: repeat to a fixpoint.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const file of [...deletes]) {
+      const importers: string[] = [];
+      for (const node of analysis.nodes.values()) {
+        if (deletes.has(node.rel)) continue;
+        const hits =
+          node.imports.some((i) => i.targets.includes(file) && i.kind !== 'mock') ||
+          node.reexports.some((r) => r.targets.includes(file)) ||
+          // Glob loaders, dynamic-import prefixes and path literals reference
+          // files through extraEdges — there is no import statement to inspect.
+          node.extraEdges.includes(file);
+        if (hits) importers.push(node.rel);
+      }
+      if (importers.length > 0) {
+        deletes.delete(file);
+        changed = true;
+        const f = selected.find((s) => s.file === file && s.fix === 'delete-file')!;
+        skipped.push({
+          id: f.id,
+          reason: `Still imported by ${importers.slice(0, 3).join(', ')}${importers.length > 3 ? '…' : ''} — select those too.`,
+        });
+      }
     }
   }
 
@@ -731,10 +737,15 @@ function writeBackup(projectRoot: string, plan: InternalPlan): BackupManifest {
   return manifest;
 }
 
-function restoreFromManifest(projectRoot: string, manifest: BackupManifest): string[] {
+function restoreFromManifest(
+  projectRoot: string,
+  manifest: BackupManifest,
+  skip: ReadonlySet<string> = new Set(),
+): string[] {
   const dir = path.join(backupRoot(projectRoot), manifest.id);
   const restored: string[] = [];
   for (const entry of manifest.files) {
+    if (skip.has(entry.file)) continue;
     const content = fs.readFileSync(path.join(dir, 'blobs', entry.blob), 'utf8');
     const abs = path.join(projectRoot, entry.file);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -787,6 +798,13 @@ export function undoDeadCodeFix(
   const file = path.join(backupRoot(projectRoot), backupId, 'manifest.json');
   if (!fs.existsSync(file)) throw new Error(`dead-code undo: no backup "${backupId}"`);
   const manifest = JSON.parse(fs.readFileSync(file, 'utf8')) as BackupManifest;
+  const conflicts = changedSinceFix(projectRoot, manifest);
+  if (conflicts.length > 0 && !opts.force) return { restored: [], conflicts };
+  return { restored: restoreFromManifest(projectRoot, manifest), conflicts };
+}
+
+/** Files no longer exactly as the fix left them (edited again, or a deleted file recreated). */
+function changedSinceFix(projectRoot: string, manifest: BackupManifest): string[] {
   const conflicts: string[] = [];
   for (const entry of manifest.files) {
     const abs = path.join(projectRoot, entry.file);
@@ -797,8 +815,7 @@ export function undoDeadCodeFix(
       if (current === null || sha(current) !== entry.afterHash) conflicts.push(entry.file);
     }
   }
-  if (conflicts.length > 0 && !opts.force) return { restored: [], conflicts };
-  return { restored: restoreFromManifest(projectRoot, manifest), conflicts };
+  return conflicts;
 }
 
 // ─── Verification ────────────────────────────────────────────────────────
@@ -849,7 +866,8 @@ function runCommand(
     child.stderr?.on('data', onData);
     const timer = setTimeout(() => {
       output += `\n[timed out after ${Math.round(timeoutMs / 1000)}s]`;
-      child.kill();
+      // A `.cmd` shim's real process is a grandchild: kill the whole tree.
+      treeKill(child, { force: true });
     }, timeoutMs);
     child.on('error', (err) => {
       clearTimeout(timer);
@@ -885,6 +903,31 @@ function findTscBin(projectRoot: string, dir: string): string | null {
   }
 }
 
+const BUILD_ONLY_FLAGS = new Set([
+  '--build',
+  '-b',
+  '--verbose',
+  '-v',
+  '--dry',
+  '-d',
+  '--force',
+  '-f',
+  '--clean',
+  '--stopBuildOnErrors',
+]);
+
+/**
+ * `tsc -b [project…]` as plain `tsc` argv lists: positional arguments name
+ * projects in build mode but source files otherwise (TS5112), and build-only
+ * flags are errors outside it.
+ */
+function withoutBuildMode(args: string[]): string[][] {
+  if (!args.includes('--build') && !args.includes('-b')) return [args];
+  const flags = args.filter((a) => a.startsWith('-') && !BUILD_ONLY_FLAGS.has(a));
+  const projects = args.filter((a) => !a.startsWith('-'));
+  return projects.length === 0 ? [flags] : projects.map((p) => ['-p', p, ...flags]);
+}
+
 /**
  * Side-effect-free typecheck commands for one package.
  *
@@ -914,7 +957,7 @@ function typecheckCommands(projectRoot: string, pkg: PackageInfo | undefined): T
       .split(/&&|\|\||;/)
       .map((seg) => seg.trim().split(/\s+/))
       .filter((argv) => argv[0] === 'tsc' || argv[0] === 'tsgo')
-      .map((argv) => argv.slice(1).filter((a) => a !== '--build' && a !== '-b'));
+      .flatMap((argv) => withoutBuildMode(argv.slice(1)));
     if (steps.length > 0) return steps.map(asCommand);
   }
   if (!fs.existsSync(path.join(dir, 'tsconfig.json'))) return [];
@@ -1130,7 +1173,35 @@ export async function applyDeadCodeFixes(
       };
     }
     progress('Verification failed — restoring every file…');
-    restoreFromManifest(projectRoot, manifest);
+    // Verification can run for minutes: a file edited meanwhile is someone
+    // else's work now. Keep it and the backup instead of overwriting it.
+    const conflicts = changedSinceFix(projectRoot, manifest);
+    restoreFromManifest(projectRoot, manifest, new Set(conflicts));
+    if (conflicts.length > 0) {
+      // The kept backup covers only what was not restored.
+      const kept = { ...manifest, files: manifest.files.filter((f) => conflicts.includes(f.file)) };
+      fs.writeFileSync(
+        path.join(backupRoot(projectRoot), manifest.id, 'manifest.json'),
+        JSON.stringify(kept, null, 2),
+      );
+      return {
+        ok: false,
+        backupId: manifest.id,
+        changed: [],
+        deleted: [],
+        rolledBack: true,
+        verify: lastSteps,
+        plan: {
+          ...lastPlan,
+          notes: [
+            ...lastPlan.notes,
+            `Not restored — changed while verification ran: ${conflicts.join(', ')}. Undo backup ${manifest.id} with force to restore them.`,
+          ],
+        },
+        excluded,
+        attempts,
+      };
+    }
     fs.rmSync(path.join(backupRoot(projectRoot), manifest.id), { recursive: true, force: true });
     if (opts.quarantine === false) {
       return {

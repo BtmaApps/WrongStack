@@ -1,5 +1,4 @@
 import type { WebSocket } from 'ws';
-import type { WSServerMessage } from '../types.js';
 import type { CollabContext } from './collab-context.js';
 import { requireJoinedRole } from './collab-context.js';
 import type { CollabFeature } from './dispatcher.js';
@@ -124,4 +123,3 @@ export class GrantControlFeature implements CollabFeature {
   }
 }
 
-export type { WSServerMessage };

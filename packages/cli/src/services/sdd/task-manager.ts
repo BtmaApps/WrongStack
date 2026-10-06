@@ -3,8 +3,6 @@ import { expectDefined } from '@wrongstack/core/utils';
 import { DefaultTaskStore, renderProgress, TaskTracker } from '@wrongstack/sdd';
 import { sddState } from './state.js';
 
-export type { TaskProgress };
-export { renderProgress };
 
 /**
  * Format elapsed milliseconds as a human-readable string.
@@ -104,31 +102,6 @@ export function getTaskProgress(): TaskProgress | null {
   const tracker = sddState.getTaskTracker();
   if (!tracker) return null;
   return tracker.getProgress();
-}
-
-export function getCurrentTask(): {
-  id: string;
-  title: string;
-  description: string;
-  priority: string;
-  estimateHours: number;
-  tags: string[];
-  startedAt: number | undefined;
-} | null {
-  const tracker = sddState.getTaskTracker();
-  if (!tracker) return null;
-  const nodes = tracker.getAllNodes({ status: ['in_progress'] });
-  if (nodes.length === 0) return null;
-  const n = expectDefined(nodes[0]);
-  return {
-    id: n.id,
-    title: n.title,
-    description: n.description,
-    priority: n.priority,
-    estimateHours: n.estimateHours ?? 0,
-    tags: n.tags ?? [],
-    startedAt: n.startedAt,
-  };
 }
 
 export function advanceToNextTask(): boolean {

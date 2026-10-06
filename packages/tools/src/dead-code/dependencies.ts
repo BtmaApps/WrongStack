@@ -34,9 +34,12 @@ export interface DependencyScanInput {
 const IMPLICIT_DEPS = new Set(['tslib', '@babel/runtime', 'regenerator-runtime', 'core-js']);
 /** Loaded by their host tool by convention (`coverage.provider: 'v8'` → `@vitest/coverage-v8`). */
 const IMPLICIT_DEP_PATTERNS = [/^@vitest\//, /-types$/];
-/** Configs and stylesheets (`@import "tailwindcss"`) name dependencies as strings. */
+/**
+ * Configs and stylesheets (`@import "tailwindcss"`) name dependencies as
+ * strings, and components (`.vue`/`.svelte`/`.astro`) import them.
+ */
 const CONFIG_TEXT =
-  /\.(?:json|jsonc|ya?ml|toml|css|scss|sass|less|pcss|html)$|(?:^|\/)\.[\w-]+rc$/i;
+  /\.(?:json|jsonc|ya?ml|toml|css|scss|sass|less|pcss|html|vue|svelte|astro)$|(?:^|\/)\.[\w-]+rc$/i;
 const MAX_CONFIG_BYTES = 256 * 1024;
 
 function binNames(projectRoot: string, pkgDir: string, dep: string): string[] {

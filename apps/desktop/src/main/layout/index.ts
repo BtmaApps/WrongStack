@@ -9,26 +9,6 @@ import { getSidebarWidth } from './sidebar.js';
 export { getSidebarWidth } from './sidebar.js';
 
 /**
- * Main layout function - updates both shell view and webui views.
- */
-export function layoutViews(
-  mainWindow: BaseWindow | null,
-  shellView: WebContentsView | null,
-  runtimeManager: IRuntimeManager,
-  shellSidebarCollapsed: boolean,
-  webuiViews: Map<string, { runtimeId: string; view: WebContentsView }>,
-): void {
-  if (!mainWindow || !shellView) return;
-
-  const size = mainWindow.getContentSize();
-  const width = size[0] ?? 0;
-  const height = size[1] ?? 0;
-
-  shellView.setBounds({ x: 0, y: 0, width, height });
-  layoutWebuiViews(mainWindow, runtimeManager, shellSidebarCollapsed, webuiViews, width, height);
-}
-
-/**
  * Layout all WebUI views within the main window.
  * Only the active runtime's view is visible, others are hidden.
  */
@@ -66,16 +46,3 @@ export function layoutWebuiViews(
   }
 }
 
-/**
- * Schedule a window state save with debouncing.
- */
-export function scheduleWindowStateSave(
-  saveState: () => Promise<void>,
-  timerRef: { current: ReturnType<typeof setTimeout> | null },
-): void {
-  if (timerRef.current) clearTimeout(timerRef.current);
-  timerRef.current = setTimeout(() => {
-    timerRef.current = null;
-    void saveState();
-  }, 350);
-}

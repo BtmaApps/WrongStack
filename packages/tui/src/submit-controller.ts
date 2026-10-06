@@ -111,6 +111,7 @@ export interface SubmitControllerHost {
     setRefineProvider(value: string | null): void;
     setRefineModel(value: string | null): void;
     onBugHuntStarted(command: string, totalRounds?: number): void;
+    stopBugHuntAfterCurrentRound(): void;
     consumeBugHuntReplay(command: string): boolean;
     /** Called after /clear dispatches clearHistory — app.tsx uses this to
      *  reset mutable refs that the reducer cannot reach (paste accumulator,
@@ -221,6 +222,7 @@ export function createSubmitController(host: SubmitControllerHost) {
       setRefineProvider: setRefineProviderId,
       setRefineModel,
       onBugHuntStarted,
+      stopBugHuntAfterCurrentRound,
       consumeBugHuntReplay,
       onAfterClear,
     },
@@ -268,6 +270,14 @@ export function createSubmitController(host: SubmitControllerHost) {
         dispatch({ type: 'historyPush', text: decision.trimmed });
       }
     };
+    // TUI workflow control must bypass prompt expansion and run/queue handling,
+    // including when a round is currently streaming.
+    if (/^\/bughunt\s+stop$/.test(trimmed)) {
+      pushSubmittedHistory();
+      clearDraft();
+      stopBugHuntAfterCurrentRound();
+      return;
+    }
     if (trimmed === '/image' || trimmed === '/paste-image') {
       pushSubmittedHistory();
       clearDraft();

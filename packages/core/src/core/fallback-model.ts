@@ -46,7 +46,6 @@ import { evaluateModelCalendar, logicalCalendarTarget } from './model-availabili
 import { isProviderFailureTracked } from './provider-runner.js';
 import { bindRequestProvider } from './request-provider-binding.js';
 
-export type { ModelRef } from './model-ref.js';
 // Compatibility: the canonical leaf implementation lives in model-ref.ts.
 export { formatModelRef, normalizeModelRef, parseModelRef } from './model-ref.js';
 

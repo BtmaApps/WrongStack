@@ -11,7 +11,7 @@ import { bumpContextHistoryVersion } from './context-history-version.js';
 
 // Roadmap 10A: the type surface lives in the types/conversation-state.ts leaf
 // (dependency-safe for AgentContext); re-exported here for existing import paths.
-export type { ConversationStateApi, ReadonlyConversationState, StateChange };
+export type { ReadonlyConversationState, StateChange };
 
 export type StateChangeHandler = (change: StateChange, state: ConversationStateApi) => void;
 

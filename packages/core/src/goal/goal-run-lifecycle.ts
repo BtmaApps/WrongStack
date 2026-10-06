@@ -36,10 +36,13 @@ export async function prepareGoalGraphForResume(
   const incomplete = Array.from(graph.phases.values()).filter(
     (phase) => phase.status !== 'completed' && phase.status !== 'skipped',
   );
+  // Every phase done but the run never completed: interrupted before or during
+  // final verification. A process that died (or paused) mid-verification left
+  // `running`/`paused` behind, not `stopped` — still unfinished, still resumable.
   const finalOnly =
     incomplete.length === 0 &&
     graph.phases.size > 0 &&
-    graph.runState === 'stopped' &&
+    (graph.runState === 'stopped' || graph.runState === 'running' || graph.runState === 'paused') &&
     graph.completedAt === undefined;
   if (incomplete.length === 0 && !finalOnly) throw new Error('This Goal is already complete.');
   if (

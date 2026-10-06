@@ -397,6 +397,30 @@ describe('NpmAdapter', () => {
     }
   });
 
+  it('locks a direct dependency to the hoisted install, not a nested private copy', async () => {
+    // npm sorts `packages` keys: a's private b sorts before the hoisted b.
+    const npmLock = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'npm-app' },
+        'node_modules/a': { version: '1.0.0' },
+        'node_modules/a/node_modules/b': { version: '1.0.0' },
+        'node_modules/b': { version: '2.0.0' },
+      },
+    });
+    const { dir, workspace } = makeTempWorkspace(
+      'npm-lock-nested',
+      { name: 'npm-app', dependencies: { a: '^1.0.0', b: '^2.0.0' } },
+      { filename: 'package-lock.json', content: npmLock },
+    );
+    try {
+      const deps = await new NpmAdapter().inventory(workspace, {});
+      expect(deps.find((d) => d.name === 'b' && d.direct)?.locked).toBe('2.0.0');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('strips version prefixes from npm lock versions', async () => {
     const npmLock = JSON.stringify({
       lockfileVersion: 2,

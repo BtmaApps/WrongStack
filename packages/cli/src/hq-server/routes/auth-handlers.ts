@@ -1,9 +1,5 @@
 export {
-  authorizeAuthAdmin,
   callerCanAdministerAuth,
-  HQ_AUTH_ADMIN_CAPABILITY,
-  isLoopbackRequest,
-  writeAuthAdminRequired,
   type ApplyHqAuthFile,
 } from './auth/common.js';
 

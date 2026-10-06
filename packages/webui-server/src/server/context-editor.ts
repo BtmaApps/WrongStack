@@ -530,7 +530,6 @@ export type {
   ContextEditorDiagnostics,
   ContextEditorMessage,
   ContextEditorMetrics,
-  ContextEditorRemoval,
   ContextEditorRepairPreview,
   ContextEditorSnapshot,
   ContextEditorValidationError,

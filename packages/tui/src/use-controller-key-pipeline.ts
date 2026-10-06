@@ -360,6 +360,7 @@ export function useControllerKeyPipeline({
     onBugHuntStarted: (command: string, totalRounds?: number | undefined) => void;
     onRunFinished: (status: 'done' | 'aborted' | 'failed' | 'max_iterations') => void;
     consumeReplay: (command: string) => boolean;
+    stopAfterCurrentRound: () => void;
     shouldSuppressNextSteps: () => boolean;
   };
 }) {
@@ -510,6 +511,7 @@ export function useControllerKeyPipeline({
     setRefineProviderId,
     setRefineModel,
     onBugHuntStarted: bugHuntLoop.onBugHuntStarted,
+    stopBugHuntAfterCurrentRound: bugHuntLoop.stopAfterCurrentRound,
     consumeBugHuntReplay: bugHuntLoop.consumeReplay,
     onBugHuntRunFinished: bugHuntLoop.onRunFinished,
     shouldSuppressBugHuntNextSteps: bugHuntLoop.shouldSuppressNextSteps,

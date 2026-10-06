@@ -8,18 +8,6 @@ type BridgeMessageType =
   | 'delegate'
   | 'budget_threshold';
 
-export interface BudgetThresholdPayload {
-  kind: 'iterations' | 'tool_calls' | 'tokens' | 'cost';
-  used: number;
-  limit: number;
-  /** Subagent's accumulated text so far — useful for partial result */
-  partialText: string;
-  /** Suggested action: extend limits or accept partial */
-  suggestion: 'extend' | 'stop';
-  /** Human-readable message */
-  message: string;
-}
-
 export interface BridgeMessage<T = unknown> {
   id: string;
   type: BridgeMessageType;

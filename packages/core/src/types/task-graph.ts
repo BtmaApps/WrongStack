@@ -149,22 +149,6 @@ export function computeTaskProgress(graph: TaskGraph): TaskProgress {
   };
 }
 
-export function findCriticalPath(graph: TaskGraph): CriticalPathResult {
-  const nodes = Array.from(graph.nodes.values());
-  const criticalNodes = nodes.filter((n) => n.priority === 'critical');
-  const bottleneckTasks = criticalNodes
-    .filter((n) => graph.edges.some((e) => e.to === n.id && e.type === 'depends_on'))
-    .map((n) => n.id);
-
-  const totalEstimateHours = criticalNodes.reduce((sum, n) => sum + (n.estimateHours ?? 0), 0);
-
-  return {
-    taskIds: criticalNodes.map((n) => n.id),
-    totalEstimateHours,
-    bottleneckTasks,
-  };
-}
-
 export function topologicalSort(graph: TaskGraph): string[] {
   const visited = new Set<string>();
   const inStack = new Set<string>();

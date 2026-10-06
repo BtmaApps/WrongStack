@@ -1067,7 +1067,14 @@ export function extractModuleFacts(ts: Ts, file: string, text: string): ModuleFa
   }
 
   // ── Whole-file walk: dynamic imports, requires, mocks, path literals ───
+  let usesJsx = false;
   const visit = (node: TS.Node): void => {
+    if (
+      !usesJsx &&
+      (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node))
+    ) {
+      usesJsx = true;
+    }
     if (ts.isCallExpression(node)) {
       const callee = node.expression;
       const arg0 = node.arguments[0];
@@ -1152,10 +1159,15 @@ export function extractModuleFacts(ts: Ts, file: string, text: string): ModuleFa
     ts.forEachChild(node, visit);
   };
   visit(sf);
+  // The automatic JSX runtime imports `react/jsx-runtime` with no import in the
+  // source. (A configured `jsxImportSource` is quoted in tsconfig and counted there.)
+  if (usesJsx) facts.packageLiterals.push('react/jsx-runtime');
 
-  // Namespace-shaped bindings: only the members actually read are used.
+  // Namespace-shaped bindings: only the members actually read are used — unless
+  // the module exports the binding itself, so importers may read any member.
+  const exportedBindings = new Set(facts.exports.map((e) => e.local));
   for (const { local, fact } of namespaceBindings) {
-    if ((refs.opaque.get(local) ?? 0) > 0 || fact.names === 'all') {
+    if ((refs.opaque.get(local) ?? 0) > 0 || fact.names === 'all' || exportedBindings.has(local)) {
       fact.names = 'all';
       continue;
     }

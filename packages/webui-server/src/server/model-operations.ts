@@ -319,6 +319,26 @@ export function createModelOperations(context: ModelOperationsContext) {
         text,
         history,
         contextSections,
+        onUsage: (usage, _passInfo) => {
+          // Journal the refiner's out-of-loop spend into the tab's session
+          // cost pipeline (tokenTotal). Best-effort: never fail the refine.
+          void targetCtx.session
+            .append({
+              type: 'enhance_usage',
+              ts: new Date().toISOString(),
+              usage,
+              provider: providerId,
+              model,
+            })
+            .catch(() => {
+              // Session logging is best-effort by contract.
+            });
+        },
+        onOutcome: (outcome) => {
+          context.log?.(
+            `✨ refine ${outcome.result} — ${outcome.passes} pass(es), ${outcome.parseRejections} parse rejection(s), ${outcome.durationMs}ms`,
+          );
+        },
         ...(payload.previousRefined
           ? {
               previousRefinement: {

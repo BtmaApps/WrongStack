@@ -2,19 +2,6 @@ import { derivePackageFromLayout } from './module-roots.js';
 import type { CallType, GraphEdge, GraphNode, SymbolKind, SymbolLang } from './schema.js';
 
 /**
- * Derive a monorepo package name from an absolute file path.
- * Handles both `packages/<name>/...` and `apps/<name>/...` layouts.
- *
- * This is the fallback only. The authoritative grouping is computed at index
- * time from each ecosystem's own manifests and stored on `files.package` —
- * see {@link createPackageLabeller}. A path-shape guess is all that is left
- * for a repo with no manifest at all.
- */
-export function derivePackage(filePath: string): string | undefined {
-  return derivePackageFromLayout(filePath);
-}
-
-/**
  * Build the `file → package` lookup the graph readers group by.
  *
  * `stored` comes from `files.package`, which the indexer filled from `go.mod`,

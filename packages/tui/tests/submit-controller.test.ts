@@ -179,6 +179,7 @@ function makeHost(
       setRefineProvider: vi.fn(),
       setRefineModel: vi.fn(),
       onBugHuntStarted: vi.fn(),
+      stopBugHuntAfterCurrentRound: vi.fn(),
       // Normal submissions are user initiated. The hook-specific tests cover
       // the one-shot replay path; this controller harness must still satisfy
       // the complete App action contract.
@@ -216,6 +217,23 @@ beforeEach(() => {
 });
 
 describe('createSubmitController — empty and special inputs', () => {
+  it.each(['idle', 'streaming', 'running'] as const)(
+    'handles /bughunt stop immediately while %s without expanding or queuing a prompt',
+    async (status) => {
+      const h = makeHost({ state: { status }, enhanceEnabled: true });
+      await h.submit(' /bughunt   stop ');
+      expect(h.actionFns['stopBugHuntAfterCurrentRound']).toHaveBeenCalledExactlyOnceWith();
+      expect(h.actionFns['clearDraft']).toHaveBeenCalled();
+      expect(h.slashRegistry.dispatch).not.toHaveBeenCalled();
+      expect(h.actionFns['onBugHuntStarted']).not.toHaveBeenCalled();
+      expect(h.actionFns['runBlocks']).not.toHaveBeenCalled();
+      expect(h.builder.appendText).not.toHaveBeenCalled();
+      expect(findAction(h, 'sendModePickerOpen')).toBeUndefined();
+      expect(findAction(h, 'queueAdd')).toBeUndefined();
+      expect(findAction(h, 'historyPush')?.text).toBe('/bughunt   stop');
+    },
+  );
+
   it('ignores an empty buffer without dispatching anything', async () => {
     const h = makeHost();
     await h.submit('');

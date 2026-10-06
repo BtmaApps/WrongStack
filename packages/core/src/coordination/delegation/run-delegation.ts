@@ -33,11 +33,8 @@ import type {
 } from './delegation-types.js';
 
 export {
-  launchPrefaceFor,
   makeDelegateCompletedEmitter,
-  type PreparedDelegation,
   prepareDelegation,
-  type ValidatedDelegation,
   validateDelegationInput,
 } from './delegation-preparation.js';
 
@@ -575,20 +572,13 @@ export function buildHandoffTask(
 }
 
 export {
-  buildDelegateSummary,
   buildDelegationResultExcerpt,
-  DELEGATION_RESULT_EXCERPT_CHARS,
   hintForKind,
-  readSubagentPartial,
 } from './delegation-results.js';
 export type {
-  DelegateCompletedPayload,
-  DelegateHandoff,
   DelegateHost,
   DelegateInput,
   DelegateMode,
   DelegateResult,
   DelegationRuntimeOptions,
-  StopReason,
-  SubagentPartial,
 } from './delegation-types.js';

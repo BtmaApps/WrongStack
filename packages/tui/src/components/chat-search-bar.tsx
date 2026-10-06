@@ -8,9 +8,6 @@ import { displayWidth, sanitizeTerminalText, truncateDisplay } from '../terminal
 import { theme } from '../theme.js';
 import { findTranscriptMatches, transcriptMatchSnippet } from '../transcript-search.js';
 
-/** Rows the bar always occupies, so the history viewport never jumps. */
-export const CHAT_SEARCH_BAR_ROWS = 2;
-
 const KEY_HINT = '↑/Enter older · ↓ newer · Ctrl+U clear · Esc close';
 
 interface ChatSearchBarProps {

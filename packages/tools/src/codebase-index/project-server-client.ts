@@ -23,14 +23,12 @@ import type { OpName, OpShapes } from './worker-protocol.js';
 
 export {
   getProjectIndexServerConnectionState,
-  isProjectIndexServerAvailable,
   onProjectIndexServerConnectionStateChange,
   type ProjectIndexDaemonAvailability,
   type ProjectIndexServerClientHealth,
   type ProjectIndexServerConnectionState,
   type ProjectIndexServerConnectionStatus,
   type ProjectIndexServerShutdownResult,
-  type ProjectServerCallOptions,
   projectIndexServerExpectedBuildId,
   resolveProjectIndexDaemonAvailability,
 };

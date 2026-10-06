@@ -5,8 +5,6 @@ import { useResourceSlashCommands } from './use-resource-slash-commands.js';
 import { useSessionSlashCommands } from './use-session-slash-commands.js';
 import { useSettingsSlashCommands } from './use-settings-slash-commands.js';
 
-export type { TuiSlashCommandOptions } from './tui-slash-command-options.js';
-
 /** Registers TUI-owned slash commands and releases them on dependency changes. */
 export function useTuiSlashCommands({
   slashRegistry,

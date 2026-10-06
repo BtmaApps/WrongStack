@@ -550,10 +550,11 @@ export function AgentsMonitor({
   // Left column: header(1) + roster cards(rosterLimit)
   const rosterLimit = Math.min(live.length, Math.max(1, maxColHeight - 1));
 
-  // Right column: border(1) + detail header(~4 rows: name/status,
-  //   runtime/throughput, alert/activity, recent tools) + border(1) = 6
-  // Remaining rows inside the right column = maxColHeight - 6
-  const detailRows = transcript ? Math.max(4, maxColHeight - 6) : 4;
+  // Reserve shell title/borders/footer, dashboard and split gaps, plus the
+  // detail's summary and both transcript borders/header. The shell clips its
+  // body when full; an oversized transcript would hide its newest rows even
+  // with scrollOffset=0. Leave one spare row for the optional recent-tools row.
+  const detailRows = transcript ? Math.max(1, maxPanelRows - 16) : 4;
 
   // ── Roster window ───────────────────────────────────────────────────
   const rosterWindow = panelWindow(live.length, Math.max(0, selectedIndex), rosterLimit);

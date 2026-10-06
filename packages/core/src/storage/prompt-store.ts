@@ -7,7 +7,7 @@ import { slugify } from '../utils/slug.js';
 import { ulid } from '../utils/ulid.js';
 import type { WstackPaths } from '../utils/wstack-paths.js';
 
-export type { PromptEntry, PromptSource, PromptVariable } from '../types/prompt.js';
+export type { PromptEntry } from '../types/prompt.js';
 
 export interface PromptStore {
   list(): Promise<PromptEntry[]>;

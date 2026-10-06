@@ -41,6 +41,3 @@ export const MAILBOX_TYPE_LABEL: Record<HqMailboxMessageType, MailboxTypeMeta> =
   control: { icon: Settings, tone: 'error' },
 };
 
-export const ALL_MAILBOX_TYPES: readonly HqMailboxMessageType[] = Object.keys(
-  MAILBOX_TYPE_LABEL,
-) as readonly HqMailboxMessageType[];

@@ -124,9 +124,3 @@ export function samePath(left: string, right: string): boolean {
   return os.platform() === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
-export {
-  desktopSettingsWorkspaceRoot,
-  preloadPath,
-  rendererIndexPath,
-  webuiPreloadPath,
-} from './runtime-manager-paths.js';

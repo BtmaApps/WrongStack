@@ -5,7 +5,7 @@ import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useActiveSessionId } from '@/stores';
 import { onLaneDisposed } from '@/stores/chat-lanes';
-import type { QueuedItem, QueueMode } from '@/stores/chat-store';
+import type { QueueMode } from '@/stores/chat-store';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 type SortDir = 'oldest' | 'newest';
@@ -254,6 +254,3 @@ export function QueuePanel({
   );
 }
 
-// Re-export for tests that want to inspect the item shape without
-// importing the store directly.
-export type { QueuedItem };

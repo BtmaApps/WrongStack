@@ -601,10 +601,3 @@ function stringValue(value: unknown): string | undefined {
 // Reconnect Event Type (for external consumers)
 // ============================================================================
 
-export interface DesktopBridgeReconnectEvent {
-  runtimeId: string;
-  status: 'connecting' | 'connected' | 'error' | 'scheduled' | 'exhausted';
-  attempt: number;
-  maxAttempts: number;
-  delay?: number;
-}

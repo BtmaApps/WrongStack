@@ -32,4 +32,3 @@ export interface SandboxEventMap {
   };
 }
 
-export type SandboxEventName = keyof SandboxEventMap;

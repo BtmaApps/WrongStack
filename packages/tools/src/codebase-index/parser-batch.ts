@@ -68,16 +68,6 @@ function batchTimeoutMs(fileCount: number): number {
   return Math.min(120_000, 15_000 + fileCount * 1_500);
 }
 
-let _goBatchScriptPath: string | null = null;
-let _pyBatchScriptPath: string | null = null;
-
-/**
- * Test-only: the cached batch-script paths, so a test can observe WHERE the
- * scripts were written without needing a toolchain.
- */
-export function __batchScriptPathsForTest(): { go: string | null; py: string | null } {
-  return { go: _goBatchScriptPath, py: _pyBatchScriptPath };
-}
 
 function batchPayload(files: readonly BatchFile[]): string {
   return JSON.stringify(files.map((f) => ({ file: f.file, content: f.content })));
@@ -110,7 +100,6 @@ export async function runGoBatch(
   if (files.length === 0) return new Map();
 
   const scriptPath = await privateScriptPath('ws-go-parse-', 'batch.go', GO_BATCH_SCRIPT);
-  _goBatchScriptPath = scriptPath;
 
   const result = await withSpawnGate(() =>
     runToolchainChild(
@@ -137,7 +126,6 @@ export async function runPyBatch(
   if (files.length === 0) return new Map();
 
   const scriptPath = await privateScriptPath('ws-py-parse-', 'batch.py', PY_BATCH_SCRIPT);
-  _pyBatchScriptPath = scriptPath;
 
   const result = await withSpawnGate(() =>
     runToolchainChild(

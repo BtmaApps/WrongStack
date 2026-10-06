@@ -151,6 +151,8 @@ function labelForEvent(e: SessionEvent): string {
       return 'LLM request';
     case 'llm_response':
       return 'LLM response';
+    case 'enhance_usage':
+      return 'Prompt refine';
     case 'tool_use':
       return `Tool: ${e.name}`;
     case 'tool_call_start':
@@ -276,6 +278,8 @@ function detailForEvent(e: SessionEvent): string {
       return `${e.model} · ${e.messageCount} msgs · ${e.toolCount ?? '?'} tools`;
     case 'llm_response':
       return `${e.stopReason} · ${e.usage.input ?? 0}+${e.usage.output ?? 0} tokens`;
+    case 'enhance_usage':
+      return `${e.model ?? 'refiner'} · ${e.usage.input ?? 0}+${e.usage.output ?? 0} tokens`;
     case 'tool_use':
       return `id: ${e.id}`;
     case 'tool_call_start':

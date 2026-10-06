@@ -31,8 +31,6 @@ export const BEHAVIOR_SECTION_KEYS = [
   'debugStream',
 ] as const;
 
-export type BehaviorSectionKey = (typeof BEHAVIOR_SECTION_KEYS)[number];
-
 /** Deep-copy the behavior sections out of a loaded config. */
 export function extractBehaviorSettings(config: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};

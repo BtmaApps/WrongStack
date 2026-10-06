@@ -138,9 +138,6 @@ export const MAX_HISTORY_ENTRIES = 200;
 /** Maximum number of pending LLM suggestions retained per record. */
 export const MAX_SUGGESTIONS = 100;
 
-/** Deterministic fallback summary length when no LLM summary is available. */
-export const DETERMINISTIC_SUMMARY_LENGTH = 240;
-
 /**
  * Default intake question catalog. Hosts may override via create options.
  * `field` values map to record properties through the answer pipeline

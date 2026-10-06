@@ -38,17 +38,6 @@ export function toWire(msg: WireMessage): ACPMessage {
 }
 
 export const WRONGSTACK_VERSION = ACP_PACKAGE_VERSION;
-/** What kinds of content the agent accepts in a prompt. */
-export interface PromptCapabilities {
-  image: boolean;
-  audio: boolean;
-  embeddedContext: boolean;
-}
-
-export interface AgentCapabilities {
-  loadSession: boolean;
-  promptCapabilities: PromptCapabilities;
-}
 
 export interface RunTurnInput {
   sessionId: string;

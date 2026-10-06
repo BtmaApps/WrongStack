@@ -34,7 +34,6 @@ export {
 export { makeMutationTestTool } from './director-mutation-test-tool.js';
 export { makeQualityGateTool } from './director-quality-gate-tool.js';
 export { makeSpawnTool } from './director-spawn-tool.js';
-export { applyMutation, parseMutationReport, planMutations } from './mutation-engine.js';
 
 export function makeKanbanQueueTool(
   director: Host.DirectorLeaseRecoveryPort,

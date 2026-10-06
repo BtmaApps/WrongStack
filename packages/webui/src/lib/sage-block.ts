@@ -16,12 +16,8 @@
  * `tests/lib/sage-block.test.ts` for the behavioral lock.
  */
 import {
-  SAGE_INJECTOR_HEADINGS,
   splitSageOutputBlock,
-  type SageOutputSplit,
 } from '@wrongstack/core/utils/sage-output-block';
-
-export { SAGE_INJECTOR_HEADINGS };
 
 export interface SageSplit {
   /** Tool result text with the SAGE block removed (trailing whitespace trimmed). */
@@ -44,4 +40,3 @@ export function extractSageBlock(output: string): SageSplit {
   return { cleanOutput: body, sageLines };
 }
 
-export type { SageOutputSplit };

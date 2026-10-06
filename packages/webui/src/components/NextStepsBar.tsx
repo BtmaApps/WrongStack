@@ -1,18 +1,15 @@
 import {
   type ParsedNextStep as NextStep,
-  type ParseNextStepsResult,
   parseNextSteps,
-  stripNextStepsBlock,
 } from '@wrongstack/tools/next-steps';
 import { ArrowRight, Check, Lightbulb, MousePointerClick, Timer } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 
-export type { ParseNextStepsResult };
 // Re-export the shared parser functions and types for back-compat with
 // downstream consumers that import them from this file.
-export { parseNextSteps, stripNextStepsBlock };
+export { parseNextSteps };
 
 /**
  * Fill the chat input textarea with the given text.

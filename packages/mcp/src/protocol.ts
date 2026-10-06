@@ -385,8 +385,16 @@ export interface MCPProgressNotification {
   message?: string | undefined;
 }
 
-/** Log levels `notifications/message` may carry. */
-export type MCPLogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error';
+/** Log levels `notifications/message` may carry (MCP `LoggingLevel`, RFC 5424 severities). */
+export type MCPLogLevel =
+  | 'debug'
+  | 'info'
+  | 'notice'
+  | 'warning'
+  | 'error'
+  | 'critical'
+  | 'alert'
+  | 'emergency';
 
 /** Parsed `notifications/message` (logging) payload. */
 export interface MCPLogMessageNotification {
@@ -403,6 +411,9 @@ const MCP_LOG_LEVELS: ReadonlySet<string> = new Set([
   'notice',
   'warning',
   'error',
+  'critical',
+  'alert',
+  'emergency',
 ]);
 
 /**

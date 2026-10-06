@@ -49,7 +49,6 @@ export {
   LIVE_TOOL_STREAM_COPY_ID,
   liveToolStreamCopyHit,
   resolveCopyPayload,
-  resolveInspectPayload,
   SELECTION_COPY_ID,
 } from './history/copy-geometry.js';
 // ── Re-exports from extracted modules ────────────────────────────────────
@@ -61,7 +60,6 @@ export {
   scrollOffsetForTrackRow,
   selectionHitAt,
 } from './history/scrollbar-geometry.js';
-export { Scrollbar } from './history/scrollbar-rail.js';
 export {
   assembleSelectionText,
   isOutOfBand,
@@ -662,4 +660,3 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   );
 });
 
-export type { HistoryEntry };

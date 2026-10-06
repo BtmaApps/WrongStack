@@ -16,8 +16,6 @@ import * as path from 'node:path';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
 import { color } from '@wrongstack/core/utils';
 
-export const PROJECT_SWITCH_EXIT_CODE = 42;
-
 export interface PendingProjectSwitch {
   root: string;
   name: string;

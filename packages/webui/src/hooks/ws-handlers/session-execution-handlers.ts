@@ -35,10 +35,6 @@ function toastIfForeground(chat: ChatLaneActions, emit: () => void): void {
   if (chat.sessionId === activeLaneId()) emit();
 }
 
-export function truncateLine(text: string, max = 140): string {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-}
-
 /**
  * A provider response carries the run's usage AND its final text. Both belong
  * to the session that produced them.

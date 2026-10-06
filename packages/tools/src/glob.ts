@@ -4,6 +4,7 @@ import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { compilePathGlob, DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
+import { expandBraceAlternation } from './_glob-braces.js';
 import { assertRealInsideRoot, makeRootRelativizer, safeResolveReal } from './_util.js';
 import { loadGitignoreMatcher } from './codebase-index/gitignore.js';
 
@@ -117,7 +118,15 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
     // rooted at the walk base — a project whose build output isn't in the
     // static DEFAULT_IGNORE list would otherwise be walked in full.
     const isGitIgnored = await loadGitignoreMatcher(base);
-    const re = compilePathGlob(input.pattern);
+    // `**/*.{ts,tsx}` alternates; core path globs read braces literally.
+    const globs = expandBraceAlternation(input.pattern).map((g) => compilePathGlob(g));
+    // The compiled globs are global regexes: reset `lastIndex` before EACH test
+    // or the next one resumes mid-string and misses.
+    const matchesGlob = (subject: string): boolean =>
+      globs.some((re) => {
+        re.lastIndex = 0;
+        return re.test(subject);
+      });
 
     const results: { rel: string; mtime: number }[] = [];
     const visitedRealDirs = new Set<string>();
@@ -212,15 +221,7 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
           subdirs.push({ full, rel });
         } else if (e.isFile()) {
           if (isGitIgnored(rel, false)) continue;
-          // `re` is global, so `lastIndex` must be reset before EACH test or the
-          // second one resumes mid-string and misses.
-          re.lastIndex = 0;
-          let matched = re.test(rel);
-          if (!matched) {
-            re.lastIndex = 0;
-            matched = re.test(name);
-          }
-          if (matched) {
+          if (matchesGlob(rel) || matchesGlob(name)) {
             matchedFiles.push(full);
           }
         } else if (e.isSymbolicLink()) {
@@ -241,13 +242,7 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
               if (isGitIgnored(rel, false)) continue;
               const real = await fs.realpath(full);
               await assertRealInsideRoot(real, ctx);
-              re.lastIndex = 0;
-              let linkMatched = re.test(rel);
-              if (!linkMatched) {
-                re.lastIndex = 0;
-                linkMatched = re.test(name);
-              }
-              if (linkMatched) matchedFiles.push(full);
+              if (matchesGlob(rel) || matchesGlob(name)) matchedFiles.push(full);
             }
           } catch {
             // Skip broken symlink, stat error, OR out-of-root target. All

@@ -8,5 +8,4 @@
  */
 export {
   buildWin32CmdShimInvocation,
-  type Win32CmdShimInvocation,
 } from '@wrongstack/core/utils';

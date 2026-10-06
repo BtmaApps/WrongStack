@@ -59,9 +59,6 @@ export const ALLOWED_KEY_EVENT_FIELDS = new Set([
   'fn',
 ]);
 
-/** Scroll direction for scrollPage. */
-export const ALLOWED_SCROLL_DIRS = new Set(['up', 'down']);
-
 /** Autonomy mode values. */
 export const ALLOWED_AUTONOMY_MODES = new Set([
   'off',
@@ -76,12 +73,6 @@ export const ALLOWED_SEND_MODES = new Set(['queue', 'steer', 'btw', 'direct']);
 
 /** FleetChat verbosity modes. */
 export const ALLOWED_FLEET_CHAT_MODES = new Set(['off', 'concise', 'full']);
-
-/** SDD lifecycle ops. */
-export const ALLOWED_SDD_OPS = new Set(['cleanup_worktrees', 'rollback', 'destroy']);
-
-/** Project picker item kinds. */
-export const ALLOWED_PICKER_KINDS = new Set(['project', 'action']);
 
 /** Collaboration verdicts. */
 export const ALLOWED_COLLAB_VERDICTS = new Set(['approve', 'needs_revision', 'reject']);

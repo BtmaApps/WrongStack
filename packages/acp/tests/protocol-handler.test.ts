@@ -12,11 +12,11 @@ import { describe, expect, it, vi } from 'vitest';
 import packageJson from '../package.json' with { type: 'json' };
 import {
   ACPProtocolHandler,
-  protocolHandlerCoverage,
   type RunTurn,
   type RunTurnResult,
   WRONGSTACK_VERSION,
 } from '../src/agent/protocol-handler.js';
+import { errorToJsonRpc } from '../src/agent/protocol-session-ops.js';
 import type { AgentServerTransport } from '../src/agent/stdio-transport.js';
 
 /**
@@ -2284,7 +2284,7 @@ describe('ACPProtocolHandler', () => {
     });
 
     it('maps every JSON-RPC error shape', () => {
-      const map = protocolHandlerCoverage.errorToJsonRpc;
+      const map = errorToJsonRpc;
       expect(map(null)).toEqual({ code: -32603, message: 'null' });
       expect(map({})).toEqual({ code: -32603, message: '[object Object]' });
       expect(map({ code: 'bad', message: 'x' })).toEqual({

@@ -113,6 +113,7 @@ export function buildAppPipelineArgs(params: {
   setRefineProviderId: S['actions']['setRefineProvider'];
   setRefineModel: S['actions']['setRefineModel'];
   onBugHuntStarted: S['actions']['onBugHuntStarted'];
+  stopBugHuntAfterCurrentRound: S['actions']['stopBugHuntAfterCurrentRound'];
   consumeBugHuntReplay: S['actions']['consumeBugHuntReplay'];
   onBugHuntRunFinished: R['capabilities']['onRunFinished'];
   shouldSuppressBugHuntNextSteps: () => boolean;
@@ -216,6 +217,7 @@ export function buildAppPipelineArgs(params: {
     setRefineProviderId,
     setRefineModel,
     onBugHuntStarted,
+    stopBugHuntAfterCurrentRound,
     consumeBugHuntReplay,
     onBugHuntRunFinished,
     shouldSuppressBugHuntNextSteps,
@@ -399,6 +401,7 @@ export function buildAppPipelineArgs(params: {
         setRefineProvider: setRefineProviderId,
         setRefineModel,
         onBugHuntStarted,
+        stopBugHuntAfterCurrentRound,
         consumeBugHuntReplay,
         onAfterClear: () => {
           pasteAccumRef.current = null;

@@ -28,7 +28,7 @@ import type { View } from '@/stores/ui-store';
 import { showPanel } from './activity-bar/nav';
 import { ErrorBoundary } from './ErrorBoundary';
 import { PanelSuspense } from './PanelSuspense';
-import { PANEL_CLOSE_TO_CHAT_SENTINEL, VIEW_REGISTRY, type ViewMeta } from './view-registry';
+import { PANEL_CLOSE_TO_CHAT_SENTINEL, VIEW_REGISTRY } from './view-registry';
 
 interface MainViewSlotProps {
   view: View;
@@ -83,5 +83,3 @@ export function defaultOnCloseToChat(): void {
   showPanel('chat');
 }
 
-// Re-export for callers that want to inspect the registry shape (mainly tests).
-export type { ViewMeta };

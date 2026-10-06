@@ -126,29 +126,6 @@ export function isPaletteId(value: unknown): value is PaletteId {
   return typeof value === 'string' && PALETTES.some((palette) => palette.id === value);
 }
 
-export function getPalette(value: unknown): PaletteDefinition {
-  const match = PALETTES.find((palette) => palette.id === value);
-  if (match) return match;
-  // `PALETTES` is a non-empty literal, but its element type is only known to
-  // the checker as `PaletteDefinition | undefined` at a computed index. Fall
-  // back through the declared default id rather than asserting.
-  const fallback = PALETTES.find((palette) => palette.id === DEFAULT_PALETTE);
-  if (fallback) return fallback;
-  throw new Error(`palette catalog is empty or missing its default "${DEFAULT_PALETTE}"`);
-}
-
-/** Guarded read of a persisted palette id; invalid/missing/blocked storage
- *  falls back to `fallback`. */
-export function readStoredPalette(storageKey: string, fallback: PaletteId): PaletteId {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const stored = window.localStorage.getItem(storageKey);
-    return isPaletteId(stored) ? stored : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 /** Apply a palette to <html> by setting `data-palette`; removes it for the default. */
 export function applyPalette(root: HTMLElement, palette: PaletteId): void {
   if (palette === DEFAULT_PALETTE) {

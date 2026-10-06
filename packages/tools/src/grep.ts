@@ -11,6 +11,7 @@ import {
   expectDefined,
 } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
+import { expandBraceAlternation } from './_glob-braces.js';
 import { capSubject, compileUserRegex } from './_regex.js';
 import { isBinaryBuffer, makeRootRelativizer, safeResolveReal } from './_util.js';
 import { loadGitignoreMatcher } from './codebase-index/gitignore.js';
@@ -561,7 +562,10 @@ async function runNative(
     });
   }
   const re = compiled.regex;
-  const globRe = input.glob ? compilePathGlob(input.glob) : null;
+  // `*.{ts,tsx}` alternates (ripgrep expands it); core path globs read braces literally.
+  const globs = input.glob
+    ? expandBraceAlternation(input.glob).map((g) => compilePathGlob(g))
+    : null;
   // rg honors .gitignore natively; give the fallback the same pruning so a
   // project whose artifacts aren't in DEFAULT_IGNORE isn't scanned in full.
   const isGitIgnored = await loadGitignoreMatcher(base);
@@ -574,12 +578,15 @@ async function runNative(
 
   const scanFile = async (full: string, name: string, rel: string): Promise<void> => {
     if (stopped || signal.aborted) return;
-    if (globRe) {
-      globRe.lastIndex = 0;
+    if (globs) {
       const normRel = rel.replace(/\\/g, '/');
       const normFull = full.replace(/\\/g, '/');
-      const matchesGlob = globRe.test(name) || globRe.test(normRel) || globRe.test(normFull);
-      globRe.lastIndex = 0;
+      const matchesGlob = globs.some((globRe) => {
+        globRe.lastIndex = 0;
+        const hit = globRe.test(name) || globRe.test(normRel) || globRe.test(normFull);
+        globRe.lastIndex = 0;
+        return hit;
+      });
       if (!matchesGlob) return;
     }
 

@@ -194,8 +194,13 @@ function unquote(value: string): string {
 /**
  * Parse package-lock.json (npm) to extract resolved versions.
  */
-function parseNpmLockVersions(lockContent: string): Map<string, string[]> {
+function parseNpmLockVersions(lockContent: string): {
+  versions: Map<string, string[]>;
+  /** Install path (`node_modules/b`, `node_modules/a/node_modules/b`) → version. */
+  installed: Map<string, string>;
+} {
   const versions = new Map<string, string[]>();
+  const installed = new Map<string, string>();
   /** Record one instance, ignoring duplicates of the same name+version. */
   const record = (name: string, version: string): void => {
     const existing = versions.get(name);
@@ -233,11 +238,12 @@ function parseNpmLockVersions(lockContent: string): Map<string, string[]> {
       const name = key.slice(marker + 'node_modules/'.length);
       if (!name) continue;
       record(name, pkgInfo.version);
+      installed.set(key, pkgInfo.version);
     }
   } catch {
     // Malformed lockfile — return empty map
   }
-  return versions;
+  return { versions, installed };
 }
 
 /** Name and range of a yarn lock key spec (`minimist@^1.2.0`, `@a/b@npm:^2`). */
@@ -525,12 +531,22 @@ export class NpmAdapter implements EcosystemAdapter {
     } else if (lockInfo.kind === 'npm') {
       try {
         const lockContent = await readFile(lockInfo.path, 'utf-8');
-        const parsed = parseNpmLockVersions(lockContent);
-        for (const [k, v] of parsed) {
-          // Direct rows report one resolved version; every instance is kept for
-          // the transitive pass below.
-          const first = v[0];
-          if (first) resolvedVersions.set(k, first);
+        const { versions, installed } = parseNpmLockVersions(lockContent);
+        const importer = relative(dirname(lockInfo.path), root)
+          .split(/[/\\]/)
+          .filter(Boolean)
+          .join('/');
+        for (const [k, v] of versions) {
+          // Direct rows report the instance Node resolves for THIS workspace:
+          // its own node_modules, then the hoisted root. The first instance in
+          // key order can be another package's private copy
+          // (`node_modules/a/node_modules/b` sorts before `node_modules/b`).
+          // Every instance is kept for the transitive pass below.
+          const direct =
+            (importer ? installed.get(`${importer}/node_modules/${k}`) : undefined) ??
+            installed.get(`node_modules/${k}`) ??
+            v[0];
+          if (direct) resolvedVersions.set(k, direct);
           allLockVersions.set(k, v);
         }
         lockEv = lockfileEvidence(lockInfo.path);

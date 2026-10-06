@@ -127,7 +127,7 @@
       "relativeImports": 5
     },
     "packages/tools/src/dead-code/parse.ts": {
-      "lines": 1180,
+      "lines": 1190,
       "relativeImports": 0
     },
     "packages/tui/src/use-app-controller.tsx": {

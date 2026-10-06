@@ -32,20 +32,9 @@ export function buildTimeline(messages: ChatMessage[], toolCalls: ToolCallInfo[]
   return entries;
 }
 
-/** Tool names that touch the filesystem — these appear inline in the chat
- *  timeline as file-operation entries. Non-filesystem tools (delegate, task,
- *  kanban, etc.) stay in the tool sidebar only. */
-const FILE_EDIT_TOOLS = new Set(['edit', 'write', 'patch', 'read', 'replace', 'glob', 'grep']);
-
 /** Tools that actually mutate files — gates the "Files changed" stat badge
  *  so completed read/glob/grep calls don't leak into fileCount. */
 const MUTATING_TOOLS = new Set(['edit', 'write', 'patch', 'replace']);
-
-/** Returns true when a tool call should appear inline in the chat timeline
- *  (filesystem tools that edit/read/search files). */
-export function isFileEditTool(toolCall: ToolCallInfo): boolean {
-  return FILE_EDIT_TOOLS.has(toolCall.name);
-}
 
 /** Count lines added/removed from a unified diff string.
  *  Returns null if the string doesn't look like a diff. */

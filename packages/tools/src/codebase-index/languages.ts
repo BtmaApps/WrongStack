@@ -247,10 +247,3 @@ export function languageFamily(lang: SymbolLang): LangFamily {
   return LANG_FAMILY[lang] ?? 'other';
 }
 
-/** Every language in the same resolution family as `lang`, including itself. */
-export function familyMembers(lang: SymbolLang): SymbolLang[] {
-  const family = languageFamily(lang);
-  return (Object.keys(LANG_FAMILY) as SymbolLang[]).filter(
-    (candidate) => LANG_FAMILY[candidate] === family,
-  );
-}

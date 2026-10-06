@@ -17,8 +17,6 @@ export function parseSymbols(opts: {
   }
 }
 
-export { detectLang } from './languages.js';
-
 // ─── Regex parser ───────────────────────────────────────────────────────────
 
 function regexParse(opts: { file: string; content: string; lang: SymbolLang }): FileSymbols {

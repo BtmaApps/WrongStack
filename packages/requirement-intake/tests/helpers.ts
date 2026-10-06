@@ -35,8 +35,6 @@ export const ALICE: IntakeContext = { id: 'user-alice', type: 'user', projectId:
 export const BOB: IntakeContext = { id: 'user-bob', type: 'user', projectId: 'proj_alpha' };
 /** User of a different project — used for cross-project access tests. */
 export const CAROL: IntakeContext = { id: 'user-carol', type: 'user', projectId: 'proj_beta' };
-/** Automation identity — must only receive minimum permissions. */
-export const BOT: IntakeContext = { id: 'agent-bot', type: 'automation', projectId: 'proj_alpha' };
 
 const registeredDirs: string[] = [];
 

@@ -23,7 +23,6 @@ import type { StatuslineItem } from './statusline-picker.js';
 export { buildAsyncChipEntries } from './status-bar-rails-async.js';
 // Re-exports for consumers
 export type { StatusBarRailBuildParams } from './status-bar-rails-common.js';
-export { densityBounds } from './status-bar-rails-common.js';
 export { buildSafetyWorkEntries } from './status-bar-rails-safety.js';
 
 export function buildWorkspaceChipEntries(

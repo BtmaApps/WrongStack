@@ -1578,7 +1578,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 69,
-      "sourceLines": 15739
+      "sourceLines": 15742
     },
     {
       "directory": "design",
@@ -1606,7 +1606,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 22,
-      "sourceLines": 4806
+      "sourceLines": 4809
     },
     {
       "directory": "hooks",
@@ -1718,7 +1718,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 35,
-      "sourceLines": 10636
+      "sourceLines": 10639
     },
     {
       "directory": "session-catalog",

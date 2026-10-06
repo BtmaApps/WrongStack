@@ -130,6 +130,18 @@ describe('absolute targets under a real root (links, extraction, patch)', () => 
     ).toBe(false);
   });
 
+  it.runIf(process.platform === 'win32')(
+    'Windows trailing dots/spaces name the same file (cmd/PowerShell drop them)',
+    () => {
+      const local = path.join(home, 'config.local.json.');
+      expect(isAgentStateWriteTarget(local)).toBe(true);
+      expect(isClearlyDestructiveBashCommand(`echo {} > "${local}"`, base)).toBe(true);
+      expect(isAgentStateWriteTarget(path.join(home, 'trust.json '))).toBe(true);
+      expect(isAgentStateWriteTarget(path.join(home, 'plugins.', 'x.js'))).toBe(true);
+      expect(isAgentStateWriteTarget(path.join(home, 'cache', 'notes.md.'))).toBe(false);
+    },
+  );
+
   it('ln and mv are judged by their source too (hard links hide from realpath)', () => {
     const trust = path.join(home, 'trust.json');
     const benign = path.join(home, 'cache', 't');

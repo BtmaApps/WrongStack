@@ -130,22 +130,6 @@ export function renderMeter(ratio: number, width: number): string {
   return '[' + bar + ']';
 }
 
-/**
- * Block-style meter for the sidebar — a solid fill (`█`) plus an empty track
- * (`░`). Returned as two segments so the caller can color the fill (e.g. by
- * context pressure via {@link contextBarColor}) independently of the dim track.
- * Width-safe: `filled.length + empty.length === max(1, width)` always holds.
- */
-export function blockMeter(ratio: number, width: number): { filled: string; empty: string } {
-  const clamped = Math.max(0, Math.min(1, ratio));
-  const w = Math.max(1, width);
-  const filledCount = Math.round(clamped * w);
-  return {
-    filled: '█'.repeat(filledCount),
-    empty: '░'.repeat(Math.max(0, w - filledCount)),
-  };
-}
-
 /** Eight block-element levels (U+2581…U+2588) used by {@link sparkline}. */
 const SPARK_LEVELS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 

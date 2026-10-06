@@ -27,21 +27,6 @@
  */
 import type { CodeAssistPreset, CodeAssistRunRequest } from '@wrongstack/webui-protocol';
 
-/** Guards against a preset that slipped past validation changing behaviour. */
-export function isCodeAssistPreset(value: unknown): value is CodeAssistPreset {
-  return (
-    value === 'overview' ||
-    value === 'explain' ||
-    value === 'quality' ||
-    value === 'bugs' ||
-    value === 'security' ||
-    value === 'tests' ||
-    value === 'impact' ||
-    value === 'fix' ||
-    value === 'custom'
-  );
-}
-
 interface PromptContext {
   projectRoot: string;
   allowEdits: boolean;

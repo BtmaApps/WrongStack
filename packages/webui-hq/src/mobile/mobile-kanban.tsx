@@ -39,7 +39,6 @@ export {
   canAssignKanbanTask,
   canDispatchKanbanTask,
   kanbanTransitionOptions,
-  type MobileKanbanAssignmentTarget,
   mobileKanbanAssignmentTargets,
   suggestedKanbanStage,
 } from '../domain/kanban-actions.js';

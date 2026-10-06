@@ -61,4 +61,3 @@ export function createRequestTool(deps: ToolDeps): Tool<Input, string> {
   };
 }
 
-export const requestCoverage = { BLOCKED_METHODS };

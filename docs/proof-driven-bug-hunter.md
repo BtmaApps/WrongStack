@@ -97,6 +97,10 @@ Each continuation retains the original scope and reviews previous reports to
 avoid counting the same root cause twice. Resolve or report incomplete
 verification before adding another fix.
 
+In the TUI, `/bughunt stop` reduces the budget to the current round (for example,
+`1/25` becomes `1/1`). The running round finishes normally and no further round
+starts. If the next round is still queued, it is cancelled immediately.
+
 The TUI cancels a queued continuation when history is replaced, the hook
 unmounts, another hunt replaces it, or the round aborts/fails. Duplicate
 completion notifications while the continuation is queued cannot spend another

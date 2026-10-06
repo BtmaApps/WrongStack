@@ -34,7 +34,7 @@ import {
   LEADER_MODEL_SET_TOOL_NAME,
 } from './fallback-leader-model-set-tool.js';
 import type { ModelTierSetToolOptions } from './model-tier-set-tool.js';
-import { createModelTierSetTool, LEADER_TIER_SET_TOOL_NAME } from './model-tier-set-tool.js';
+import { createModelTierSetTool } from './model-tier-set-tool.js';
 import { createSystemConfigViewTool } from './fallback-system-config-view-tool.js';
 
 export {
@@ -45,15 +45,10 @@ export {
   PROVIDER_MANAGE_TOOL_NAME,
   PROVIDER_KEY_SET_TOOL_NAME,
   LEADER_MODEL_SET_TOOL_NAME,
-  LEADER_TIER_SET_TOOL_NAME,
   validateProviderBaseUrl,
 };
 export * from './fallback-system-config-view-tool.js';
 export type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
-export type {
-  LeaderTierProposal,
-  ModelTierSetToolOptions,
-} from './model-tier-set-tool.js';
 
 /**
  * Create all 9 provider/model/fallback management tools that LLMs can call.

@@ -7,7 +7,6 @@ import type {
   DesktopOpenSessionsSnapshot,
   DesktopRuntimeRecord,
   DesktopWebuiCommand,
-  DesktopWebuiPrefs,
   DesktopWebuiStatusSnapshot,
 } from '../../shared/types.js';
 
@@ -163,31 +162,3 @@ export interface IpcHandlerContext {
 // Menu Context
 // ============================================================================
 
-export interface MenuBuilderContext {
-  getSnapshot(): {
-    runtimes: DesktopRuntimeRecord[];
-    activeRuntimeId: string | null;
-  };
-  getActiveRuntime(): DesktopRuntimeRecord | undefined;
-  getActiveWebuiPrefs(): DesktopWebuiPrefs | undefined;
-  getShellSidebarCollapsed(): boolean;
-  t(key: string): string;
-  getRuntimeManager(): {
-    getRuntimeUrlWithToken(id: string): string | undefined;
-    getRuntime(id: string): DesktopRuntimeRecord | undefined;
-  };
-  getWebuiViews(): Map<string, { status: { prefs?: DesktopWebuiPrefs } }>;
-  dispatchWebuiCommand(command: DesktopWebuiCommand): Promise<boolean>;
-  reloadActiveWebuiView(): Promise<boolean>;
-  activateRuntime(id: string): Promise<void>;
-  openProject(): Promise<void>;
-  registerProject(): Promise<void>;
-  openSettings(): Promise<void>;
-  openProjectSession(runtimeId?: string): Promise<void>;
-  closeRuntime(id: string): Promise<void>;
-  unregisterProject(root: string): Promise<void>;
-  getActiveRuntimeId(): string | null;
-  setShellSidebarCollapsed(collapsed: boolean): void;
-  openExternal(url: string): void;
-  revealInExplorer(root: string): void;
-}

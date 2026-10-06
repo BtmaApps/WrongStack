@@ -43,9 +43,6 @@ export interface RotatableSecretVault extends SecretVault {
   rotateKey(): { oldVersion: number; newVersion: number };
 }
 
-/** Legacy v1 prefix — values encrypted before key rotation was introduced. */
-export const ENCRYPTED_PREFIX = 'enc:v1:';
-
 /**
  * Match any versioned encrypted value prefix: `enc:v1:`, `enc:v2:`, etc.
  * Used by `isEncrypted()` and `decrypt()` to handle all versions uniformly.

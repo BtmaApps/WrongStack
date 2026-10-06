@@ -132,7 +132,7 @@ interface SessionReplayUpdate {
  * A `RunTurn` that also exposes the recorded per-session history so the
  * server can replay it on `session/load`.
  */
-export interface ACPServerAgentTurn {
+interface ACPServerAgentTurn {
   (
     input: Parameters<RunTurn>[0],
     emit: Parameters<RunTurn>[1],

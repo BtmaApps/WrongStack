@@ -78,7 +78,6 @@ export {
   filterCurrentCodexModelIds,
   generatePkce,
   isCodexCatalogModel,
-  type Pkce,
   parseAuthorizationInput,
   resolveCodexModels,
 } from '@wrongstack/providers/oauth';

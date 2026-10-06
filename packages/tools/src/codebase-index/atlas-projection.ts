@@ -40,7 +40,6 @@ import type {
   AtlasProjection,
   AtlasSymbol,
 } from './atlas-types.js';
-import type { FileRankRow } from './graph-rank.js';
 import { type IndexStore, indexStorePool } from './writer.js';
 import { posixIndexPath, resolveIndexDir } from './writer-helpers.js';
 import type { RankedFileRow } from './writer-rank.js';
@@ -537,5 +536,3 @@ export function exportProjectAtlasHtml(
   );
 }
 
-/** Re-exported for callers that render rank rows next to atlas output. */
-export type { FileRankRow };

@@ -12,11 +12,9 @@ import { Poller } from './poller.js';
 import { TelegramOutbox } from './outbox.js';
 
 export type {
-  TelegramBotOptions,
   TelegramBotResponse,
   TelegramIncomingMessage,
 } from './bot-types.js';
-export type { TelegramApprovalRequestInput, TelegramApprovalResult } from './approval-flow.js';
 export { escapeHtml, truncateForTelegram } from './text-format.js';
 
 export class TelegramBot {

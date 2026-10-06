@@ -4,16 +4,6 @@ export type ToolResultViewMode = (typeof TOOL_RESULT_VIEW_MODES)[number];
 
 export const DEFAULT_TOOL_RESULT_VIEW_MODE: ToolResultViewMode = 'normal';
 
-export const TOOL_RESULT_VIEW_MODE_DESCS: Record<ToolResultViewMode, string> = {
-  minimal: 'Header only (one line)',
-  normal: 'Bounded semantic preview (default)',
-  full: 'Expanded result, capped at 40 lines / 16 KiB',
-};
-
-export function normalizeToolResultViewMode(value: unknown): ToolResultViewMode {
-  return value === 'minimal' || value === 'full' ? value : 'normal';
-}
-
 export function shiftToolResultViewMode(
   mode: ToolResultViewMode,
   delta: -1 | 1,

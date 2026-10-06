@@ -508,7 +508,6 @@ export async function isKanbanServerAvailable(projectRoot: string): Promise<bool
   });
 }
 
-export type { KanbanServerEvent, KanbanServerMethod, KanbanServerOperations } from './protocol.js';
 export { KANBAN_PROJECT_SERVER_PROTOCOL_VERSION } from './protocol.js';
 
 function canonicalRoot(projectRoot: string): string {

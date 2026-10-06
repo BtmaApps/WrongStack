@@ -7,10 +7,7 @@
  */
 export {
   defaultHeapLogPath,
-  type HeapDiagnosticFields,
-  type HeapDiagnosticValue,
   type HeapSample,
-  type HeapWatchdogOptions,
   startHeapWatchdog,
   startSharedHeapWatchdog,
   takeHeapSample,

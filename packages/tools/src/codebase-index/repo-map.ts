@@ -30,7 +30,6 @@ import { type IndexStore, indexStorePool } from './writer.js';
 import { posixIndexPath, resolveIndexDir } from './writer-helpers.js';
 import type { RankedFileRow } from './writer-rank.js';
 
-export { generateFallbackRepoMap } from './repo-map-fallback.js';
 export type { RepoMapOptions, RepoMapResult } from './repo-map-types.js';
 
 /**

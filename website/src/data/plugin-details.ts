@@ -13,9 +13,6 @@ import { pluginDetailsPart6 } from './plugin-details-part-6';
 import { workflowPluginDetails } from './plugin-details-workflows';
 
 export type {
-  PluginToolParam,
-  PluginToolDetail,
-  PluginConfigOption,
   PluginDetail,
 } from './plugin-detail-types';
 

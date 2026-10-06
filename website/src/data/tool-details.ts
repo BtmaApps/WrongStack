@@ -11,8 +11,6 @@ import { toolDetailsPart2 } from './tool-details-part-2';
 import { toolDetailsPart3 } from './tool-details-part-3';
 import { toolDetailsPart4 } from './tool-details-part-4';
 
-export type { ToolDetail, ToolParamDetail } from './tool-detail-types';
-
 export const toolDetails: Record<string, ToolDetail> = {
   ...toolDetailsPart1,
   ...toolDetailsPart2,

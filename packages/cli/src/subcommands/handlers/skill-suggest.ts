@@ -19,9 +19,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   buildSuggesterFromConfig,
-  type LabeledRequest,
   parseEvalJsonl,
-  type ScoredCase,
   type SkillSuggester,
   type SkillSuggestionTrace,
   type SuggestionScore,
@@ -389,4 +387,3 @@ function truncate(text: string, max: number): string {
   return flat.length <= max ? flat : `${flat.slice(0, max - 1)}…`;
 }
 
-export type { LabeledRequest, ScoredCase };

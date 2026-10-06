@@ -50,8 +50,6 @@ import { hqAlertsCmd } from './hq-alerts.js';
 import { computeAuditHashField, hqAuditCmd } from './hq-audit.js';
 import { resolveDataDir } from './hq-data-dir.js';
 
-export { resolveAuditActor } from '../../hq-server/audit-actor.js';
-
 export const hqCmd: SubcommandHandler = async (args, deps) => {
   const sub = args[0];
 

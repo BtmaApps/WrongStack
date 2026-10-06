@@ -49,11 +49,7 @@ import {
 import { MemoryDrawer } from './MemoryManager/MemoryDrawer';
 
 export {
-  type ActivityRecord,
   analyzeFileActivity,
-  type DrawerTab,
-  type FileActivityAnalysis,
-  type FileLineageSummary,
   normalizeTrackedPath,
   pathsReferToSameFile,
   summarizeLineage,

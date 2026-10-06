@@ -108,6 +108,10 @@ type GoReplacement =
   | { kind: 'git' }
   | { kind: 'module'; modulePath: string; version: string };
 
+function replacementKey(modulePath: string, version: string): string {
+  return `${modulePath}@${version}`;
+}
+
 function parseGoReplacements(content: string): Map<string, GoReplacement> {
   const replacements = new Map<string, GoReplacement>();
   let inBlock = false;
@@ -122,19 +126,21 @@ function parseGoReplacements(content: string): Map<string, GoReplacement> {
       continue;
     }
     const candidate = inBlock ? line : line.startsWith('replace ') ? line.slice(8).trim() : '';
-    const match = candidate.match(/^(\S+)(?:\s+v\S+)?\s+=>\s+(\S+)(?:\s+(v\S+))?/);
+    const match = candidate.match(/^(\S+)(?:\s+(v\S+))?\s+=>\s+(\S+)(?:\s+(v\S+))?/);
     if (!match) continue;
     const modulePath = match[1];
-    const target = match[2];
+    const target = match[3];
     if (!modulePath || !target) continue;
     const local =
       target.startsWith('.') || target.startsWith('/') || /^[A-Za-z]:[\\/]/.test(target);
+    // A version on the left replaces ONLY that version (keyed `path@version`);
+    // without one, every version of the module is replaced.
     replacements.set(
-      modulePath,
+      match[2] ? replacementKey(modulePath, cleanGoVersion(match[2])) : modulePath,
       local
         ? { kind: 'path' }
-        : match[3]
-          ? { kind: 'module', modulePath: target, version: cleanGoVersion(match[3]) }
+        : match[4]
+          ? { kind: 'module', modulePath: target, version: cleanGoVersion(match[4]) }
           : { kind: 'git' },
     );
   }
@@ -245,7 +251,9 @@ export class GoAdapter implements EcosystemAdapter {
       // lowest-first, so reading it back returned an OLDER version than the same
       // manifest requires, and the purl built from it sent every OSV query to the
       // wrong component.
-      const replacement = replacements.get(req.modulePath);
+      const replacement =
+        replacements.get(replacementKey(req.modulePath, req.version)) ??
+        replacements.get(req.modulePath);
       // A version replacement is what gets built: its module and version are
       // the identity to check, not the `require` line it overrides.
       const replacedModule = replacement?.kind === 'module' ? replacement : undefined;

@@ -109,12 +109,6 @@ export interface ModelDescriptor {
   contextWindow?: number | undefined;
 }
 
-export interface ProviderModels {
-  provider: string;
-  label: string;
-  models: ModelDescriptor[];
-}
-
 export interface SimpleSubagent {
   id: string;
   name: string;

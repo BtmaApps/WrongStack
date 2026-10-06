@@ -90,6 +90,9 @@ function matchParts(
   return false;
 }
 
+/** Directory verdicts remembered by one compiled matcher's ancestor check. */
+const ANCESTOR_MEMO_LIMIT = 50_000;
+
 /** Compile a list of raw `.gitignore` lines into a matcher. */
 export function compileGitignore(lines: string[]): IgnoreMatcher {
   const rules: Rule[] = [];
@@ -143,8 +146,7 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
 
   const hasNegation = rules.some((r) => r.negated);
 
-  return (relPath: string, isDir: boolean): boolean => {
-    const p = relPath.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+  const evaluate = (p: string, isDir: boolean): boolean => {
     let ignored = false;
     for (const r of rules) {
       // A directory-only rule never matches a file by its own name; it only
@@ -156,6 +158,31 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
       }
     }
     return ignored;
+  };
+
+  // git: "It is not possible to re-include a file if a parent directory of
+  // that file is excluded." Without negation the rules already reach every
+  // path beneath a matched directory; with it, a later `!child` must not undo
+  // an excluded ancestor — so ancestors are checked first, shortest first.
+  const dirVerdicts = new Map<string, boolean>();
+  const ancestorIgnored = (p: string): boolean => {
+    for (let k = p.indexOf('/'); k !== -1; k = p.indexOf('/', k + 1)) {
+      const dir = p.slice(0, k);
+      let verdict = dirVerdicts.get(dir);
+      if (verdict === undefined) {
+        verdict = evaluate(dir, true);
+        if (dirVerdicts.size >= ANCESTOR_MEMO_LIMIT) dirVerdicts.clear();
+        dirVerdicts.set(dir, verdict);
+      }
+      if (verdict) return true;
+    }
+    return false;
+  };
+
+  return (relPath: string, isDir: boolean): boolean => {
+    const p = relPath.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+    if (hasNegation && ancestorIgnored(p)) return true;
+    return evaluate(p, isDir);
   };
 }
 

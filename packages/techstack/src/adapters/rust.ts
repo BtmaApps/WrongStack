@@ -19,7 +19,7 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
-import { parseTomlKeyValue } from './parse-utils.js';
+import { parseTomlKeyValue, stripInlineComment } from './parse-utils.js';
 import {
   fileExists,
   lockfileEvidence,
@@ -44,7 +44,9 @@ function parseTomlSections(content: string): TomlSection[] {
   for (const raw of content.split('\n')) {
     const line = raw.trim();
     if (line.startsWith('#') || line === '') continue;
-    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+    // A header may carry a trailing comment, and `[[bin]]`/`[[example]]` are
+    // array-table headers: both must still close the previous section.
+    const sectionMatch = stripInlineComment(line).match(/^\[\[?([^[\]]+)\]\]?$/);
     if (sectionMatch) {
       if (currentLines.length > 0) sections.push({ name: currentSection, lines: currentLines });
       currentSection = sectionMatch[1]!;
@@ -129,12 +131,15 @@ function extractTomlDeps(sectionLines: string[]): Array<{
   sourceType: 'registry' | 'path' | 'git';
   /** Inherited from the workspace root (`workspace = true`). */
   workspace?: boolean;
+  /** The crate a renamed dependency (`alias = { package = "crate" }`) resolves to. */
+  crate?: string;
 }> {
   const deps: Array<{
     name: string;
     version: string | undefined;
     sourceType: 'registry' | 'path' | 'git';
     workspace?: boolean;
+    crate?: string;
   }> = [];
   for (const raw of joinLogicalEntries(sectionLines)) {
     const line = raw.trim();
@@ -162,11 +167,13 @@ function extractTomlDeps(sectionLines: string[]): Array<{
           ? 'path'
           : 'registry';
       const workspace = /\bworkspace\s*=\s*true\b/.test(inner);
+      const crate = /(?:^|[,\s])package\s*=\s*"([^"]+)"/.exec(inner)?.[1];
       deps.push({
         name,
         version: versionMatch?.[1],
         sourceType,
         ...(workspace ? { workspace } : {}),
+        ...(crate ? { crate } : {}),
       });
       continue;
     }
@@ -178,6 +185,27 @@ function extractTomlDeps(sectionLines: string[]): Array<{
     }
   }
   return deps;
+}
+
+const TABLE_FORM_DEPENDENCY =
+  /^(.*?(?:^|\.)(?:dependencies|dev-dependencies|build-dependencies))\.("[^"]+"|'[^']+'|[A-Za-z0-9_-]+)$/;
+
+/**
+ * The table form of ONE dependency — `[dependencies.windows]` followed by its
+ * keys — rewritten as the equivalent inline entry `windows = { … }`, plus the
+ * dependency section it belongs to. TOML treats both spellings as the same
+ * value; matching only `[dependencies]` dropped the table form entirely.
+ */
+function splitTableFormDependency(
+  section: TomlSection,
+): { base: string; lines: string[] } | undefined {
+  const match = TABLE_FORM_DEPENDENCY.exec(section.name);
+  if (!match) return undefined;
+  const key = match[2]!.replace(/^(["'])(.*)\1$/, '$2');
+  const body = joinLogicalEntries(section.lines)
+    .map((entry) => stripInlineComment(entry).trim())
+    .filter((entry) => entry !== '');
+  return { base: match[1]!, lines: [`"${key}" = { ${body.join(', ')} }`] };
 }
 
 /** Record one `[[package]]` entry, keeping every version of a repeated name. */
@@ -359,14 +387,17 @@ export class RustAdapter implements EcosystemAdapter {
     const workspaceRootDir = findCargoWorkspaceRoot(root, options.projectRoot);
     const inherited = new Map<
       string,
-      { version: string | undefined; sourceType: 'registry' | 'path' | 'git' }
+      { version: string | undefined; sourceType: 'registry' | 'path' | 'git'; crate?: string }
     >();
     if (workspaceRootDir) {
       try {
         const rootManifest = readFileSync(resolveIn(workspaceRootDir, 'Cargo.toml'), 'utf-8');
         for (const section of parseTomlSections(rootManifest)) {
-          if (section.name !== 'workspace.dependencies') continue;
-          for (const dep of extractTomlDeps(section.lines)) inherited.set(dep.name, dep);
+          const tableForm = splitTableFormDependency(section);
+          if ((tableForm?.base ?? section.name) !== 'workspace.dependencies') continue;
+          for (const dep of extractTomlDeps(tableForm?.lines ?? section.lines)) {
+            inherited.set(dep.name, dep);
+          }
         }
       } catch {
         // Unreadable root manifest — inherited deps stay versionless.
@@ -395,7 +426,9 @@ export class RustAdapter implements EcosystemAdapter {
     for (const section of sections) {
       // Cargo.toml has [dependencies], [dev-dependencies], [build-dependencies]
       // Also [target.'cfg(...)'.dependencies] patterns
-      const sectionName = section.name;
+      // …and the table form `[dependencies.<name>]` of a single dependency.
+      const tableForm = splitTableFormDependency(section);
+      const sectionName = tableForm?.base ?? section.name;
       let matchedScope: string | undefined;
 
       for (const depSec of depSections) {
@@ -408,15 +441,25 @@ export class RustAdapter implements EcosystemAdapter {
       if (!matchedScope) continue;
 
       const scope = scopeForCargoSection(matchedScope);
-      const deps = extractTomlDeps(section.lines);
+      const deps = extractTomlDeps(tableForm?.lines ?? section.lines);
 
       for (const declared of deps) {
-        if (seen.has(declared.name)) continue;
-        seen.add(declared.name);
         const base = declared.workspace ? inherited.get(declared.name) : undefined;
-        const dep = base
-          ? { ...declared, version: declared.version ?? base.version, sourceType: base.sourceType }
-          : declared;
+        // A renamed dependency is the `package` crate under a local alias: the
+        // crate is what Cargo.lock, the purl, and every advisory query name.
+        const crate = declared.crate ?? base?.crate;
+        const dep = {
+          ...(base
+            ? {
+                ...declared,
+                version: declared.version ?? base.version,
+                sourceType: base.sourceType,
+              }
+            : declared),
+          ...(crate ? { name: crate } : {}),
+        };
+        if (seen.has(dep.name)) continue;
+        seen.add(dep.name);
 
         // Cargo.lock can hold several instances of one crate name; pick the one
         // this dependency's requirement actually selects, not the highest.

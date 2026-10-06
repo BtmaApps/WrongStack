@@ -287,10 +287,18 @@ describe('gitignore differential: boundary-predicate matcher vs. old composed re
     expect(cases).toBeGreaterThan(6000);
     // The historical oracle trims leading spaces. Git preserves them; the
     // leading-space regression suite checks the corrected behavior against Git.
-    // Keep exactly these two differences so every other corpus mismatch fails.
+    // It also let a `!child` re-include a path under an excluded directory;
+    // Git does not ("It is not possible to re-include a file if a parent
+    // directory of that file is excluded" — `git check-ignore` agrees for each
+    // `dist/keep` row below).
+    // Keep exactly these differences so every other corpus mismatch fails.
     expect(disagreements).toEqual([
       'rules=["  spaced  "] path="spaced" isDir=false: old=true new=false',
       'rules=["  spaced  "] path="spaced" isDir=true: old=true new=false',
+      'rules=["dist/","!dist/keep"] path="dist/keep" isDir=false: old=false new=true',
+      'rules=["dist/","!dist/keep"] path="dist/keep" isDir=true: old=false new=true',
+      'rules=["/build/output/","dist","*.log","!dist/keep"] path="dist/keep" isDir=false: old=false new=true',
+      'rules=["/build/output/","dist","*.log","!dist/keep"] path="dist/keep" isDir=true: old=false new=true',
     ]);
   });
 

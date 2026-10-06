@@ -250,14 +250,10 @@ export function KanbanPanel({
 
   // Todo/task/plan mirrors write directly to the shared board file. Keep the
   // TUI panel live without requiring the user to press R after every tool call.
-  // Throttled to 4 s (was 1.5 s) and skipped when the board's `updatedAt`
-  // matches the last-seen value, so an idle board costs zero IPC traffic.
+  // Poll every 4 s. External changes are visible only after reading the shared
+  // board; comparing the captured local updatedAt with itself skips all polls.
   useEffect(() => {
-    let lastSeenUpdatedAt = board?.updatedAt;
     const interval = setInterval(() => {
-      const current = board?.updatedAt;
-      if (current && current === lastSeenUpdatedAt) return;
-      lastSeenUpdatedAt = current;
       void load(selectedBoard, selectedTask, {
         quiet: true,
         boardId: board?.id,

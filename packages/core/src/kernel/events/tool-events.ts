@@ -391,7 +391,7 @@ export interface ToolEventMap {
    */
   'mcp.log': {
     name: string;
-    level: 'debug' | 'info' | 'notice' | 'warning' | 'error';
+    level: 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
     logger?: string | undefined;
     data?: string | undefined;
   };

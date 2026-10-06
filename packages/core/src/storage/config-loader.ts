@@ -34,7 +34,7 @@ export type {
   ConfigDefaultRepair,
   ConfigDefaultRepairReport,
 } from './config-loader/default-repair.js';
-export { fillMissingDefaults, repairConfigDefaults } from './config-loader/default-repair.js';
+export { repairConfigDefaults } from './config-loader/default-repair.js';
 export { CONFIG_BEHAVIOR_DEFAULTS } from './config-loader/defaults.js';
 export {
   assertInProjectAllowListComplete,

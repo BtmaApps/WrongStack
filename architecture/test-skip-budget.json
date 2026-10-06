@@ -152,6 +152,11 @@
       "fingerprint": "54bbd3213d32d6d0"
     },
     {
+      "file": "packages/core/tests/security/agent-state-sensitivity.test.ts",
+      "kind": "runIf",
+      "fingerprint": "99273386e319b329"
+    },
+    {
       "file": "packages/core/tests/security/file-permissions.test.ts",
       "kind": "skipIf",
       "fingerprint": "b16aeb2c1e88f226"

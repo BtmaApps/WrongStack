@@ -202,4 +202,35 @@ describe('RustAdapter', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('identifies a renamed dependency by its `package` crate, not its alias', async () => {
+    const { dir, ws } = mkWorkspace({
+      'Cargo.toml': `[package]\nname="x"\nversion="0.1.0"\n[dependencies]\nsj = { package = "serde_json", version = "1" }\n`,
+      'Cargo.lock': `[[package]]\nname="serde_json"\nversion="1.0.120"\n`,
+    });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {});
+      expect(deps.map((d) => [d.name, d.purl])).toEqual([
+        ['serde_json', 'pkg:cargo/serde_json@1.0.120'],
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads table-form dependencies and ignores array-table keys', async () => {
+    const { dir, ws } = mkWorkspace({
+      'Cargo.toml': `[package]\nname="x"\nversion="0.1.0"\n[dependencies] # runtime\nserde = "1.0"\n[[bin]]\nname = "tool"\npath = "src/bin/tool.rs"\n[dependencies.tokio]\nversion = "1.40"\nfeatures = [\n  "rt",\n]\n`,
+      'Cargo.lock': LOCK,
+    });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.purl)).toEqual([
+        'pkg:cargo/serde@1.0.215',
+        'pkg:cargo/tokio@1.40.0',
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

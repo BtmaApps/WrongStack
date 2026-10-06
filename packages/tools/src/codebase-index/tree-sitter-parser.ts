@@ -230,7 +230,12 @@ function isTreeSitterSupported(lang: SymbolLang): boolean {
   return resolveGrammarName(lang) !== undefined;
 }
 
-/** Visible for tests: the absolute path to a vendored grammar WASM. */
+/**
+ * Absolute path to a vendored grammar WASM. Consumed by
+ * `scripts/check-tools-package-smoke.mjs`, which imports the packed
+ * `tree-sitter-parser-*.js` chunk by file URL — a reference no static
+ * import graph can see, so keep this export.
+ */
 export function getGrammarWasmPath(lang: SymbolLang): string | undefined {
   const name = resolveGrammarName(lang);
   if (!name) return undefined;
@@ -293,42 +298,15 @@ export async function parseSymbols(opts: {
 }
 
 /**
- * Internal helper used by AST-shape inspectors and tests. Loads and caches
- * the tree-sitter `Language` for a given {@link SymbolLang} without parsing.
- * Not part of the public parser API — the indexer should always go through
- * {@link parseSymbols}.
+ * Loads and caches the tree-sitter `Language` for a given {@link SymbolLang}
+ * without parsing. Used by the packed-artifact smoke check (see
+ * {@link getGrammarWasmPath}); the indexer goes through {@link parseSymbols}.
  */
 export async function loadTreeSitterLanguage(
   lang: SymbolLang,
 ): Promise<import('web-tree-sitter').Language> {
   const cached = await loadLanguage(lang);
   return cached.Language;
-}
-
-/** Test-only helper: parse and return the root node type. Throws on failure. */
-export async function __smokeRootType(opts: {
-  content: string;
-  lang: SymbolLang;
-}): Promise<string> {
-  if (!isTreeSitterSupported(opts.lang)) {
-    throw new Error(`tree-sitter: no grammar registered for lang "${opts.lang}"`);
-  }
-  const { Parser } = await getRuntime();
-  const cached = await loadLanguage(opts.lang);
-  const parser = new Parser();
-  parser.setLanguage(cached.Language);
-  // Try/finally so the WASM-side native handles are always released. Each
-  // call leaks ~1KB of WASM heap otherwise — small per call, but the smoke
-  // test invokes this helper 10× per test file across the suite.
-  let tree: import('web-tree-sitter').Tree | null = null;
-  try {
-    tree = parser.parse(opts.content);
-    if (!tree) throw new Error('tree-sitter: parser.parse returned null');
-    return tree.rootNode.type;
-  } finally {
-    tree?.delete();
-    parser.delete();
-  }
 }
 
 /**

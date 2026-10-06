@@ -24,14 +24,12 @@
  */
 
 import { spawn } from 'node:child_process';
-import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
-import { type MailboxBridgeLock, readLiveLock } from '@wrongstack/core/coordination';
+import { readLiveLock } from '@wrongstack/core/coordination';
 import { buildWin32CmdShimInvocation } from './utils/win32-cmd.js';
 
 const MAILBOX_BRIDGE_BOOTSTRAP_TIMEOUT_MS = 5_000;
-export const MAILBOX_BRIDGE_HEALTHZ_PROBE_MS = 500;
 
 export interface MailboxBridgeHandle {
   /** Bound URL — empty string if we couldn't bring the bridge up. */
@@ -252,16 +250,3 @@ function defaultSpawn(args: string[], cwd: string): SpawnedChild {
   };
 }
 
-// Re-export for tests
-export { type MailboxBridgeLock, readLiveLock };
-
-// Helper to keep the fs import alive for future token-file fallback
-// reads (currently unused but exported for callers that want to
-// re-read the token without going through the lock).
-export async function readTokenFromFile(tokenPath: string): Promise<string | null> {
-  try {
-    return (await fsp.readFile(tokenPath, 'utf-8')).trim();
-  } catch {
-    return null;
-  }
-}

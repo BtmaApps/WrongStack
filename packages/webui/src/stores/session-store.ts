@@ -28,7 +28,6 @@ import {
   activeSessionLaneId,
   type CacheStats,
   type ContextLimitWarning,
-  createSessionLaneData,
   EMPTY_SESSION_LANE,
   SESSION_DEFAULT_LANE_ID,
   type SessionGlobals,
@@ -42,25 +41,7 @@ import {
 import type { SessionInfo } from './types.js';
 import { useUIStore } from './ui-store.js';
 
-export type {
-  CacheStats,
-  ContextLimitWarning,
-  SessionLaneData,
-  TodoItem,
-} from './session-lanes.js';
 export {
-  activeSessionLane,
-  activeSessionLaneId,
-  adoptDefaultSessionLane,
-  disposeSessionLane,
-  ensureSessionLane,
-  hasSessionLane,
-  readSessionLane,
-  type SessionLaneActions,
-  sessionLane,
-  sessionLaneIds,
-  setActiveSessionLane,
-  setSessionGlobals,
   useSessionLanes,
 } from './session-lanes.js';
 
@@ -460,4 +441,3 @@ export const memorySessionSnapshots = {
   },
 };
 
-export { createSessionLaneData };

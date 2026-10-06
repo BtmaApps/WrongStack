@@ -152,26 +152,6 @@ export function SectionIntro({
   );
 }
 
-export function ArrowLink({
-  href,
-  children,
-  className,
-}: {
-  href: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn('group inline-flex items-center gap-2 text-sm font-bold text-fg', className)}
-    >
-      {children}
-      <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-    </Link>
-  );
-}
-
 export function ExternalDoc({ path, children }: { path?: string; children: ReactNode }) {
   const href = path ? `${repoUrl}/blob/main/${path}` : docsUrl;
   return (

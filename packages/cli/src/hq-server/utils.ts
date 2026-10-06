@@ -399,4 +399,4 @@ export function recordTimeseriesSignal(persistence: HqPersistence, event: HqEven
  * it and forwarded `String(err)` verbatim instead. One implementation now
  * serves every server surface.
  */
-export { sanitizeApiError, scrubErrorDetail } from '@wrongstack/core/security';
+export { sanitizeApiError } from '@wrongstack/core/security';

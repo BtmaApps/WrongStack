@@ -6,7 +6,6 @@ import type { ContentBlock, TextBlock } from './blocks.js';
 // create a local binding, so the `setResultRenderMode` reference needs this
 // explicit import.
 import type { ToolResultRenderMode } from './config.js';
-export type { ToolResultRenderMode };
 
 export interface Renderer {
   write(text: string | TextBlock): void;

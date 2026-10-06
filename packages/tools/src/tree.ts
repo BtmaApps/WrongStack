@@ -7,6 +7,7 @@ import {
   expectDefined,
   toErrorMessage,
 } from '@wrongstack/core/utils';
+import { expandBraceAlternation } from './_glob-braces.js';
 import { safeResolveReal } from './_util.js';
 
 // Shared artifact/dependency dirs, plus tree-specific privacy dirs — tree can
@@ -134,7 +135,10 @@ export const treeTool: Tool<TreeInput, TreeOutput> = {
         .map((s) => s.trim().replace(/\\/g, '/').replace(/\/+$/, '').replace(/^\.\//, ''))
         .filter(Boolean),
     ]);
-    const globRe = input.glob ? compilePathGlob(input.glob) : undefined;
+    // `*.{ts,tsx}` alternates; core path globs read braces literally.
+    const globRe = input.glob
+      ? expandBraceAlternation(input.glob).map((g) => compilePathGlob(g))
+      : undefined;
     const maxEntries =
       typeof input.max_entries === 'number' &&
       Number.isFinite(input.max_entries) &&
@@ -226,8 +230,17 @@ export const treeTool: Tool<TreeInput, TreeOutput> = {
   },
 };
 
-/** Match a tree glob against the basename and a POSIX project-relative path. */
+/** Match a tree glob (any brace alternative) against the basename and a POSIX project-relative path. */
 function matchesTreeGlob(
+  globs: readonly RegExp[],
+  fileName: string,
+  absPath: string,
+  basePath: string,
+): boolean {
+  return globs.some((globRe) => matchesOneTreeGlob(globRe, fileName, absPath, basePath));
+}
+
+function matchesOneTreeGlob(
   globRe: RegExp,
   fileName: string,
   absPath: string,
@@ -255,7 +268,7 @@ interface WalkOptions {
   showFiles: boolean;
   showDirs: boolean;
   showHidden: boolean;
-  globRe?: RegExp | undefined;
+  globRe?: readonly RegExp[] | undefined;
   basePath: string;
   lines: string[];
   prefix: string;

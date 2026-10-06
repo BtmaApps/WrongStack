@@ -570,14 +570,30 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
       if (picked) {
         const prevProvider = config.provider;
         const prevModel = config.model;
-        config = patchConfig(config, { provider: picked.provider, model: picked.model });
-        if (picked.provider !== prevProvider || picked.model !== prevModel) {
-          const saved = await saveToGlobalConfig(profileConfigPath, picked.provider, picked.model);
+        const prevEffort = config.modelRuntime?.reasoning?.effort;
+        config = patchConfig(config, {
+          provider: picked.provider,
+          model: picked.model,
+          ...(picked.effort
+            ? {
+                modelRuntime: {
+                  ...config.modelRuntime,
+                  reasoning: { ...config.modelRuntime?.reasoning, effort: picked.effort },
+                },
+              }
+            : {}),
+        });
+        const effortChanged = picked.effort !== undefined && picked.effort !== prevEffort;
+        if (picked.provider !== prevProvider || picked.model !== prevModel || effortChanged) {
+          const label = `${picked.provider}/${picked.model}${picked.effort ? ` (effort ${picked.effort})` : ''}`;
+          const saved = await saveToGlobalConfig(profileConfigPath, picked.provider, picked.model, {
+            effort: picked.effort,
+          });
           if (saved) {
-            renderer.writeInfo(`Saved ${picked.provider}/${picked.model} as default.\n`);
+            renderer.writeInfo(`Saved ${label} as default.\n`);
           } else {
             renderer.writeWarning(
-              `Could not save ${picked.provider}/${picked.model} to config. Check permissions or disk space.\n`,
+              `Could not save ${label} to config. Check permissions or disk space.\n`,
             );
           }
         }

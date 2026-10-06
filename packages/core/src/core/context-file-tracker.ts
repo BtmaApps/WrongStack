@@ -2,15 +2,6 @@ import type { FileEventRecord } from '../types/file-event-record.js';
 import type { SessionWriter } from '../types/session.js';
 import type { SideEffect } from '../types/side-effect.js';
 
-export interface FileTrackerState {
-  readFiles: Set<string>;
-  writtenFiles: Set<string>;
-  fileMtimes: Map<string, number>;
-  fileHashes: Map<string, string>;
-  sideEffects: SideEffect[];
-  fileEvents: FileEventRecord[];
-}
-
 export function trimSet(set: Set<string>, max: number): void {
   while (set.size > max) {
     const oldest = set.values().next().value;

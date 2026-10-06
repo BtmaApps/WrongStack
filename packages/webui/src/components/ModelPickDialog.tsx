@@ -5,8 +5,6 @@ import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
-export type { ModelCandidate } from '@/hooks/useProviderModels';
-
 interface ModelPickDialogProps {
   open: boolean;
   /** Dialog title — say what the model is FOR ("Add council voter"). */

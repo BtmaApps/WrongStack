@@ -28,6 +28,18 @@ describe('glob tool', () => {
     expect(out.files.some((f) => f.endsWith('b.js'))).toBe(false);
   });
 
+  it('expands brace alternation instead of matching nothing', async () => {
+    for (const f of ['a.ts', 'b.tsx', 'c.md', '{id}.ts'])
+      await fs.writeFile(path.join(sb.dir, f), '');
+    const names = async (pattern: string) =>
+      (await globTool.execute({ pattern }, sb.ctx, { signal: newSignal() })).files
+        .map((f) => path.basename(f))
+        .sort();
+    expect(await names('*.{ts,tsx}')).toEqual(['a.ts', 'b.tsx', '{id}.ts']);
+    // A comma-less group is a literal file name.
+    expect(await names('{id}.ts')).toEqual(['{id}.ts']);
+  });
+
   it('throws for a non-existent base path instead of returning no files', async () => {
     await expect(
       globTool.execute({ pattern: '*.ts', path: 'does-not-exist' }, sb.ctx, {

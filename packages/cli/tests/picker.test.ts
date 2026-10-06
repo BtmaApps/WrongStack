@@ -1,5 +1,9 @@
 import { Writable } from 'node:stream';
-import type { ModelsDevModel, ResolvedProvider } from '@wrongstack/core/types';
+import {
+  type ModelsDevModel,
+  REASONING_EFFORT_LEVELS,
+  type ResolvedProvider,
+} from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyPickerKey,
@@ -13,6 +17,7 @@ import {
   runPicker,
   saveToGlobalConfig,
 } from '../src/picker.js';
+import { cycleStartupEffort, startupEffortOptions } from '../src/picker-effort.js';
 import { TerminalRenderer } from '../src/renderer.js';
 
 class CapStream extends Writable {
@@ -725,6 +730,69 @@ describe('renderLiveModelList', () => {
     expect(out).not.toContain('model-16');
     expect(out).toMatch(/more/i);
   });
+
+  it('renders no effort strip when none is passed', () => {
+    const out = renderLiveModelList('', models, 0, header);
+    expect(out).not.toContain('effort (←/→)');
+    expect(out).not.toContain('←→');
+  });
+
+  it('renders the effort strip with the chosen level bracketed and a ←→ hint', () => {
+    const out = renderLiveModelList('', models, 0, header, {
+      options: ['default', 'low', 'medium', 'high'],
+      choice: 'medium',
+    });
+    expect(out).toContain('effort (←/→)');
+    expect(out).toContain('[medium]');
+    expect(out).not.toContain('[low]');
+    expect(out).toContain('←→');
+  });
+
+  it('says the focused model has no adjustable effort and drops the ←→ hint', () => {
+    const out = renderLiveModelList('', models, 0, header, { options: [], choice: 'default' });
+    expect(out).toContain('not adjustable for this model');
+    expect(out).not.toContain('←→');
+  });
+});
+
+describe('startupEffortOptions', () => {
+  it('offers nothing for a non-reasoning model', () => {
+    expect(startupEffortOptions({ reasoning: false })).toEqual([]);
+    expect(startupEffortOptions(undefined)).toEqual([]);
+  });
+
+  it('offers the full canonical set, led by default, for an undocumented reasoner', () => {
+    expect(startupEffortOptions({ reasoning: true })).toEqual([
+      'default',
+      ...REASONING_EFFORT_LEVELS,
+    ]);
+  });
+
+  it('narrows to the documented levels in canonical order', () => {
+    expect(
+      startupEffortOptions({
+        reasoning: true,
+        reasoningConfig: { effortSupported: true, effortLevels: ['high', 'low'] } as never,
+      }),
+    ).toEqual(['default', 'low', 'high']);
+  });
+
+  it('offers nothing when the catalog documents no effort control', () => {
+    expect(
+      startupEffortOptions({
+        reasoning: true,
+        reasoningConfig: { effortSupported: false, effortLevels: [] } as never,
+      }),
+    ).toEqual([]);
+  });
+
+  it('cycles with wrap-around and falls back to default on an empty list', () => {
+    const opts = ['default', 'low', 'high'] as const;
+    expect(cycleStartupEffort(opts, 'default', 1)).toBe('low');
+    expect(cycleStartupEffort(opts, 'default', -1)).toBe('high');
+    expect(cycleStartupEffort(opts, 'high', 1)).toBe('default');
+    expect(cycleStartupEffort([], 'high', 1)).toBe('default');
+  });
 });
 
 describe('applyPickerKey', () => {
@@ -969,6 +1037,54 @@ describe('saveToGlobalConfig', () => {
       const content = JSON.parse(await fs.readFile(cfgPath, 'utf8')) as Record<string, unknown>;
       expect(content.provider).toBe('test-provider');
       expect(content.model).toBe('test-model');
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('writes a picked effort into modelRuntime.reasoning without dropping siblings', async () => {
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const tmpDir = path.join(os.tmpdir(), `wstack-picker-effort-${Date.now()}`);
+    await fs.mkdir(tmpDir, { recursive: true });
+    const cfgPath = path.join(tmpDir, 'config.json');
+    await fs.writeFile(
+      cfgPath,
+      JSON.stringify({
+        modelRuntime: { reasoning: { mode: 'on', effort: 'low' }, cache: { ttl: '1h' } },
+      }),
+    );
+    try {
+      const ok = await saveToGlobalConfig(cfgPath, 'p', 'm', {
+        effort: 'high',
+        homeFn: () => tmpDir,
+      });
+      expect(ok).toBe(true);
+      const content = JSON.parse(await fs.readFile(cfgPath, 'utf8')) as {
+        modelRuntime: { reasoning: Record<string, unknown>; cache: Record<string, unknown> };
+      };
+      expect(content.modelRuntime.reasoning).toEqual({ mode: 'on', effort: 'high' });
+      expect(content.modelRuntime.cache).toEqual({ ttl: '1h' });
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves the stored effort alone when none was picked', async () => {
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const tmpDir = path.join(os.tmpdir(), `wstack-picker-effort-keep-${Date.now()}`);
+    await fs.mkdir(tmpDir, { recursive: true });
+    const cfgPath = path.join(tmpDir, 'config.json');
+    await fs.writeFile(cfgPath, JSON.stringify({ modelRuntime: { reasoning: { effort: 'low' } } }));
+    try {
+      await saveToGlobalConfig(cfgPath, 'p', 'm', { homeFn: () => tmpDir });
+      const content = JSON.parse(await fs.readFile(cfgPath, 'utf8')) as {
+        modelRuntime: { reasoning: { effort: string } };
+      };
+      expect(content.modelRuntime.reasoning.effort).toBe('low');
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }

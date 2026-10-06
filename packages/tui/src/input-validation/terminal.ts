@@ -1,7 +1,6 @@
 import type { ValidationResult } from './result.js';
 import { MAX_PASTE_CHARS, MAX_PASTE_FRAGMENT_CHARS } from './limits.js';
 import {
-  ALLOWED_KEY_EVENT_FIELDS,
   ALLOWED_MOUSE_BUTTONS,
   ALLOWED_MOUSE_KINDS,
 } from './allow-lists.js';
@@ -200,58 +199,3 @@ export function validateMouseEvent(event: {
   };
 }
 
-/**
- * Validate a KeyEvent from stdin against the known allow-list.
- *
- * Every boolean field in a KeyEvent must be exactly `true` or `false`.
- * `fn` must be 1–12 when present. `wheelDeltaY` must be an integer.
- *
- * Rejects:
- *  - Unknown fields on the key event object
- *  - Non-boolean values for boolean fields
- *  - fn outside 1–12
- *  - wheelDeltaY that is not an integer
- */
-export function validateKeyEventFields(
-  key: Record<string, unknown>,
-): ValidationResult<Record<string, unknown>> {
-  for (const [k, v] of Object.entries(key)) {
-    // Allow only known fields
-    if (!ALLOWED_KEY_EVENT_FIELDS.has(k)) {
-      return {
-        valid: false,
-        error: `key.${k}: unknown field — not on the allow-list.`,
-      };
-    }
-
-    // Boolean fields must be boolean
-    if (typeof v !== 'boolean' && k !== 'fn' && k !== 'wheelDeltaY' && k !== 'mouse') {
-      return {
-        valid: false,
-        error: `key.${k}: expected boolean, got ${typeof v}.`,
-      };
-    }
-  }
-
-  // fn must be 1-12 when present
-  if (key.fn !== undefined && key.fn !== null) {
-    if (typeof key.fn !== 'number' || !Number.isInteger(key.fn) || key.fn < 1 || key.fn > 12) {
-      return {
-        valid: false,
-        error: `key.fn: ${key.fn} is not an integer in [1, 12].`,
-      };
-    }
-  }
-
-  // wheelDeltaY must be an integer when present
-  if (key.wheelDeltaY !== undefined && key.wheelDeltaY !== null) {
-    if (typeof key.wheelDeltaY !== 'number' || !Number.isInteger(key.wheelDeltaY)) {
-      return {
-        valid: false,
-        error: `key.wheelDeltaY: ${key.wheelDeltaY} is not an integer.`,
-      };
-    }
-  }
-
-  return { valid: true, value: key };
-}

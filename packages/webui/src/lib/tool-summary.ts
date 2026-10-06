@@ -7,11 +7,9 @@
 // there — a parity test guarantees the HQ browser transcription stays in sync.
 
 export {
-  FALLBACK_HEAD_FIELDS,
   summarizeToolInput,
   TOOLFLOW_LABEL,
   toolDisplayName,
   toolFlowInput,
-  toolFlowMetrics,
   toolFlowMetricsLabel,
 } from '@wrongstack/tools/tool-summary';

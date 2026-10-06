@@ -13,13 +13,10 @@ export function useHistoryViewportSync(input: {
   belowStatusBarRef: RefObject<DOMElement | null>;
   termRows: number;
   /**
-   * Measured height (rows) of the status chrome below the pickers: the
-   * status bar itself plus everything beneath it (mailbox panel, monitors).
-   * Pickers use it to size their window against the REAL
-   * space left after input + status chrome instead of the hardcoded
-   * 6-row `shellReservedRows` guess in use-windowed-picker.ts — the guess
-   * under-reserves whenever the input wraps or the status bar grows, which
-   * is exactly the "theme menu doesn't fit" overflow.
+   * Measured height of the status bar itself. The shared picker/monitor
+   * viewport reserves this chrome before sizing its content. Including the
+   * monitors here would subtract their own height from their next viewport,
+   * causing repeated expand/shrink updates when a function-key panel opens.
    */
   statusBarRows: number;
 } {
@@ -56,15 +53,15 @@ export function useHistoryViewportSync(input: {
     }
   });
 
-  // Measure the status chrome the pickers sit above. The status bar box and
-  // everything below it (mailbox panel, monitors) are separate
-  // siblings, so both refs must be measured and summed.
+  // Reserve only independent chrome. Panels below the bar consume the shared
+  // monitor viewport; measuring them here would feed their height back into
+  // their own size budget. bottomRegionRef still includes all panels when
+  // measuring the space left for history, and belowStatusBarRef remains
+  // available for status-bar pointer hit testing.
   useLayoutEffect(() => {
     const bar = statusBarWrapRef.current;
-    const below = belowStatusBarRef.current;
-    if (!bar && !below) return;
-    const height =
-      (bar ? measureElement(bar).height : 0) + (below ? measureElement(below).height : 0);
+    if (!bar) return;
+    const height = measureElement(bar).height;
     const rows = Math.max(1, Math.ceil(height));
     setStatusBarRows((prev) => (prev === rows ? prev : rows));
   });

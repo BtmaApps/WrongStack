@@ -5,7 +5,6 @@ import { DefaultSecretVault } from '@wrongstack/core/security';
 import type { Config } from '@wrongstack/core/types';
 import {
   type ConfigWriteLockHolder,
-  PREF_KEYS,
   persistPrefsToConfig,
   seedContextMeta,
   prefSnapshot as snapshotPrefs,
@@ -44,8 +43,6 @@ interface CliWebUIOptions {
 }
 
 type PrefSnapshot = Record<string, unknown>;
-
-export { PREF_KEYS };
 
 export async function seedConfigToMeta(opts: CliWebUIOptions): Promise<void> {
   let config = opts.appConfig as Config | undefined;

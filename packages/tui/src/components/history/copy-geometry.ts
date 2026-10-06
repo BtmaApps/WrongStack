@@ -12,9 +12,6 @@ import {
   copyableTextForEntry,
   INSPECT_COL_OFFSET,
   INSPECT_ICON_WIDTH,
-  inspectTextForEntries,
-  inspectTextForEntry,
-  inspectTitleForEntries,
 } from './copy-icon.js';
 import type { HistoryEntry } from './index.js';
 import { VIEW_CONTROL_HIT_WIDTH } from './tool-card-geometry.js';
@@ -127,34 +124,6 @@ export function resolveCopyPayload(
   return {
     entryId: hit.entryId,
     text: entries.length === 1 ? copyableTextForEntry(firstEntry) : copyableTextForEntries(entries),
-  };
-}
-
-/** Resolve a hit to the inspect overlay payload (title + full body). */
-export function resolveInspectPayload(
-  hit: CopyHit,
-  entriesById: ReadonlyMap<number, HistoryEntry>,
-  liveTool?: { name: string; text: string } | undefined,
-): { entryId: number; title: string; body: string } | null {
-  if (hit.entryId === LIVE_TOOL_STREAM_COPY_ID) {
-    if (!liveTool) return null;
-    return {
-      entryId: LIVE_TOOL_STREAM_COPY_ID,
-      title: `${liveTool.name}  streaming`,
-      body: liveTool.text.length > 0 ? liveTool.text : '(streaming…)',
-    };
-  }
-  const entryIds = hit.entryIds ?? [hit.entryId];
-  const entries = entryIds
-    .map((entryId) => entriesById.get(entryId))
-    .filter((entry): entry is HistoryEntry => entry !== undefined);
-  if (entries.length !== entryIds.length) return null;
-  const firstEntry = entries[0];
-  if (firstEntry === undefined) return null;
-  return {
-    entryId: hit.entryId,
-    title: inspectTitleForEntries(entries),
-    body: entries.length === 1 ? inspectTextForEntry(firstEntry) : inspectTextForEntries(entries),
   };
 }
 

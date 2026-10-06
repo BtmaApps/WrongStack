@@ -1,8 +1,14 @@
 import os from 'node:os';
-import type { Config, ModelsRegistry, ResolvedProvider } from '@wrongstack/core/types';
+import type {
+  Config,
+  ModelsRegistry,
+  ReasoningEffort,
+  ResolvedProvider,
+} from '@wrongstack/core/types';
 import { color, expectDefined, toErrorMessage, withFileLock } from '@wrongstack/core/utils';
 import { appendHistory, backupCurrent } from './config-history.js';
 import type { ReadlineInputReader } from './input-reader.js';
+import { EFFORT_KEEP } from './picker-effort.js';
 import { runLiveModelPicker } from './picker-model-picker.js';
 import { appendLocalPresetProviders, runLiveProviderPicker } from './picker-provider-list.js';
 import {
@@ -39,8 +45,13 @@ export async function saveToGlobalConfig(
   configPath: string,
   provider: string,
   model: string,
-  homeFn: () => string = () => process.env.HOME ?? os.homedir(),
+  options: {
+    /** Written to `modelRuntime.reasoning.effort` — the key `/effort` and the settings panel own. */
+    effort?: ReasoningEffort | undefined;
+    homeFn?: (() => string) | undefined;
+  } = {},
 ): Promise<boolean> {
+  const { effort, homeFn = () => process.env.HOME ?? os.homedir() } = options;
   try {
     return await withFileLock(configPath, async () => {
       const { atomicWrite } = await import('@wrongstack/core/utils');
@@ -57,6 +68,11 @@ export async function saveToGlobalConfig(
       const oldCfg = { ...existing };
       existing.provider = provider;
       existing.model = model;
+      if (effort) {
+        const modelRuntime = isPlainRecord(existing.modelRuntime) ? existing.modelRuntime : {};
+        const reasoning = isPlainRecord(modelRuntime.reasoning) ? modelRuntime.reasoning : {};
+        existing.modelRuntime = { ...modelRuntime, reasoning: { ...reasoning, effort } };
+      }
 
       // Backup before writing — best-effort (never blocks save)
       try {
@@ -105,6 +121,11 @@ export async function saveToGlobalConfig(
 export interface PickerResult {
   provider: string;
   model: string;
+  /**
+   * Reasoning effort chosen on the model's ←/→ strip. Absent when the user
+   * kept `default` (or the model has no strip) — the configured effort stays.
+   */
+  effort?: ReasoningEffort | undefined;
 }
 
 export async function runPicker(deps: {
@@ -408,10 +429,12 @@ async function pickModel(
       renderer.write(color.dim('Cancelled.\n'));
       return undefined;
     }
+    const effort = chosen.effort === EFFORT_KEEP ? undefined : chosen.effort;
+    const effortSuffix = effort ? color.dim(` · effort ${effort}`) : '';
     renderer.write(
-      `\n  ${color.green('✓')} ${color.bold(provider.id)} / ${color.bold(chosen.id)}\n\n`,
+      `\n  ${color.green('✓')} ${color.bold(provider.id)} / ${color.bold(chosen.model.id)}${effortSuffix}\n\n`,
     );
-    return { provider: provider.id, model: chosen.id };
+    return { provider: provider.id, model: chosen.model.id, ...(effort ? { effort } : {}) };
   }
 
   // Find default-model index for the "Enter = default" hint.
@@ -542,3 +565,7 @@ async function resolveModelSelection(
 }
 
 // --- Helpers ---
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

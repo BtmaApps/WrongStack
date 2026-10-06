@@ -29,8 +29,6 @@ import type { Tool } from '../types/tool.js';
 import { matchGlob } from '../utils/glob-match.js';
 import { hasShellSubject, matchesCommandTrust, matchesTrust } from './permission-helpers.js';
 
-export type { SessionPermissionOverride };
-
 export const SESSION_PERMISSION_OVERRIDES_META_KEY = 'permissionOverrides';
 
 type OverrideContext = {

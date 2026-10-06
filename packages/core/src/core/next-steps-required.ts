@@ -22,6 +22,7 @@ import { isTextBlock } from '../types/blocks.js';
 import { type NextStepsMode, resolveNextStepsMode } from '../types/config/autonomy.js';
 import type { Logger } from '../types/logger.js';
 import type { Provider, Request, Response } from '../types/provider.js';
+import { adaptDocumentsForModel } from '../utils/document-blocks.js';
 import { toErrorMessage } from '../utils/error.js';
 import { hasMeaningfulContent } from '../utils/message-invariants.js';
 import { hasNextStepsCompleteMarker, parseNextSteps } from '../utils/next-steps.js';
@@ -116,7 +117,9 @@ export async function maybeRequireNextSteps(
   const sideRequest: Request = {
     ...req,
     messages: [
-      ...req.messages,
+      // Adapted per provider exactly like the main attempt (provider-runner):
+      // a model without PDF input rejects document blocks.
+      ...adaptDocumentsForModel(req.messages, provider.capabilities?.pdf === true),
       ...(answer.length > 0 ? [{ role: 'assistant' as const, content: answer }] : []),
       { role: 'user', content: [{ type: 'text', text: NEXT_STEPS_REQUIRED_PROMPT }] },
     ],

@@ -16,10 +16,12 @@ overrides:
   # dompurify <=3.4.10: ALLOWED_ATTR pollution via setConfig (GHSA-cmwh-pvxp-8882).
   # dompurify <=3.4.12: IN_PLACE hook removal leaves a detached subtree
   # executable -> XSS (GHSA-55q2-fjhq-7xh7). Patched in 3.4.13.
+  # dompurify <=3.4.15: IN_PLACE rawtext XSS (GHSA-6688-9rhm-gjv2). Patched in 3.4.16.
   # Pulled in transitively by monaco-editor (webui).
-  dompurify: ">=3.4.13"
-  # sharp <0.35.0 libvips vulnerabilities (GHSA-f88m-g3jw-g9cj)
-  sharp: ">=0.35.0"
+  dompurify: ">=3.4.16"
+  # sharp <0.35.0 libvips vulnerabilities (GHSA-f88m-g3jw-g9cj).
+  # sharp <0.35.5: RCE via librsvg CVE-2026-96889 (GHSA-wq5f-xc86-pv6w). Patched in 0.35.5.
+  sharp: ">=0.35.5"
   # brace-expansion: DoS via uncontrolled recursion (nested groups,
   # parseCommaParts) and quadratic `{a},b}` expansion — fixed in 1.1.21 /
   # 2.1.7 / 5.0.12. Pinned PER MAJOR LINE, because each minimatch major
@@ -108,6 +110,9 @@ minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@agentclientprotocol/sdk@1.4.0"
   - "@datadog/pprof@5.18.1"
+  # GHSA-6688-9rhm-gjv2 (IN_PLACE rawtext XSS): 3.4.16 is the advisory fix,
+  # published 2026-10-06 and required by the >=3.4.16 override floor above.
+  - "dompurify@3.4.16"
 patchedDependencies:
   ink@7.1.1: patches/ink@7.1.1.patch
   http-cache-semantics@4.2.0: patches/http-cache-semantics@4.2.0.patch

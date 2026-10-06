@@ -2,7 +2,6 @@
 export {
   exchangeBootstrapIfNeeded,
   fetchHqCredentialCapabilities,
-  type HqTokenLoginResult,
   hasAuthenticatedHqBrowserSession,
   loginWithHqToken,
   upgradeStoredTokenToCookie,
@@ -12,7 +11,6 @@ export {
   clearHqToken,
   HQ_TOKEN_STORAGE_KEY,
   normalizeHqTokenInput,
-  readStoredToken,
   resolveHqToken,
   scrubTokenFromUrl,
   setHqToken,

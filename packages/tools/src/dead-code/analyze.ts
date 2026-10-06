@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { compilePathGlob, resolveWstackPaths } from '@wrongstack/core/utils';
+import { expandBraceAlternation } from '../_glob-braces.js';
 import { scanUnusedDependencies } from './dependencies.js';
 import { discoverEntries, type EntryInfo, type EntryKind } from './entries.js';
 import {
@@ -35,7 +36,7 @@ import type {
 } from './types.js';
 
 /** Bump when ModuleFacts' shape or extraction semantics change. */
-const FACTS_VERSION = 10;
+const FACTS_VERSION = 11;
 
 const USE_PROD = 1;
 const USE_TEST = 2;
@@ -247,21 +248,24 @@ export async function analyzeDeadCode(
     const { facts } = node;
     for (const imp of facts.imports) {
       if (imp.kind === 'glob') {
-        if (imp.spec.startsWith('/')) {
-          // Vite root-absolute glob ('/src/routes/*.ts'): the leading slash
-          // anchors at the project root — the same convention resolve() and
-          // entries.ts apply to leading-slash specifiers — not at the
-          // importing file's directory. The owning package root is tried too;
-          // extra edges only keep files alive, so the union errs safe.
-          for (const base of [node.pkg?.dir ?? '', '']) {
-            const re = compilePathGlob(path.posix.join(base, imp.spec.slice(1)));
-            node.extraEdges.push(...codeList.filter((f) => re.test(f)));
+        // Vite globs alternate with `{ts,tsx}`; the path glob compiler does not.
+        for (const spec of expandBraceAlternation(imp.spec)) {
+          if (spec.startsWith('/')) {
+            // Vite root-absolute glob ('/src/routes/*.ts'): the leading slash
+            // anchors at the project root — the same convention resolve() and
+            // entries.ts apply to leading-slash specifiers — not at the
+            // importing file's directory. The owning package root is tried too;
+            // extra edges only keep files alive, so the union errs safe.
+            for (const base of [node.pkg?.dir ?? '', '']) {
+              const re = compilePathGlob(path.posix.join(base, spec.slice(1)));
+              node.extraEdges.push(...codeList.filter((f) => re.test(f)));
+            }
+            continue;
           }
-          continue;
+          const pattern = path.posix.join(path.posix.dirname(node.rel), spec);
+          const re = compilePathGlob(pattern.replace(/^\.\//, ''));
+          node.extraEdges.push(...codeList.filter((f) => re.test(f)));
         }
-        const pattern = path.posix.join(path.posix.dirname(node.rel), imp.spec);
-        const re = compilePathGlob(pattern.replace(/^\.\//, ''));
-        node.extraEdges.push(...codeList.filter((f) => re.test(f)));
         continue;
       }
       recordBare(node, imp.spec);

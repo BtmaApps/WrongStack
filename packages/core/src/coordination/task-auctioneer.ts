@@ -49,8 +49,6 @@ import type { FleetBus } from './fleet-bus.js';
 import type { GoalNode, GoalPriority, GoalStatus, KnowledgeGraph } from './knowledge-graph.js';
 import type { Mailbox } from './mailbox-types.js';
 
-export type { GoalPriority, GoalStatus };
-
 // ── Task bid ─────────────────────────────────────────────────────────────
 
 export interface TaskBid {

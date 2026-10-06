@@ -24,6 +24,7 @@ import {
   trustDenyRef,
   trustScopedRef,
 } from './permission-rules.js';
+import { isYoloLockedOff } from './process-lockdown.js';
 import { isScopedApprovalPattern, matchingApprovalScope } from './scoped-approval.js';
 import {
   describeSessionPermissionOverride,
@@ -260,10 +261,12 @@ export function explainPermissionTrace(
   }
   add('yolo+', false, 'auto', 'yolo', 'YOLO+ is not active');
 
-  // Session rule allow (`/permissions allow`)
-  const sessionAllow = denyUnevaluated
-    ? undefined
-    : matchSessionPermissionOverride(overrides, 'allow', tool, subject ?? undefined);
+  // Session rule allow (`/permissions allow`) — not honoured under `--restricted`,
+  // exactly as evaluate() refuses it.
+  const sessionAllow =
+    denyUnevaluated || isYoloLockedOff()
+      ? undefined
+      : matchSessionPermissionOverride(overrides, 'allow', tool, subject ?? undefined);
   if (sessionAllow && (state.yolo || !state.isSensitiveReadCall(tool, input))) {
     const rule = describeSessionPermissionOverride(sessionAllow.override);
     const destructive =

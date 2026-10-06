@@ -37,6 +37,7 @@ interface ComposerLockPackage {
   readonly type?: string;
   readonly require?: Record<string, string>;
   readonly 'require-dev'?: Record<string, string>;
+  readonly dist?: { readonly type?: string };
 }
 
 interface ComposerLock {
@@ -47,17 +48,24 @@ interface ComposerLock {
 /**
  * Parse a composer.lock file to extract resolved versions.
  */
-function parseComposerLock(content: string): Map<string, string> {
+function parseComposerLock(content: string): {
+  versions: Map<string, string>;
+  pathPackages: Set<string>;
+} {
   const versions = new Map<string, string>();
+  // Installed from a `path` repository (a local directory): Composer's
+  // constraint (`*`, `dev-main`) carries no hint, only the lock's dist does.
+  const pathPackages = new Set<string>();
   try {
     const lock = JSON.parse(content) as ComposerLock;
     for (const pkg of [...(lock.packages ?? []), ...(lock['packages-dev'] ?? [])]) {
       versions.set(pkg.name, pkg.version);
+      if (pkg.dist?.type === 'path') pathPackages.add(pkg.name);
     }
   } catch {
     // Malformed lockfile
   }
-  return versions;
+  return { versions, pathPackages };
 }
 
 /**
@@ -144,10 +152,11 @@ export class PhpAdapter implements EcosystemAdapter {
     // Parse composer.lock for resolved versions
     const lockPath = join(root, 'composer.lock');
     let lockVersions = new Map<string, string>();
+    let pathPackages = new Set<string>();
     let lockEv: Evidence | undefined;
     try {
       const lockContent = readFileSync(lockPath, 'utf-8');
-      lockVersions = parseComposerLock(lockContent);
+      ({ versions: lockVersions, pathPackages } = parseComposerLock(lockContent));
       lockEv = lockfileEvidence(lockPath);
     } catch {
       // No lockfile
@@ -168,8 +177,9 @@ export class PhpAdapter implements EcosystemAdapter {
         seen.add(name);
 
         const locked = lockVersions.get(name);
-        const status = statusForComposerSpec(constraint);
-        const sourceType = sourceTypeForComposerSpec(constraint);
+        const fromPath = pathPackages.has(name);
+        const status = fromPath ? 'local_path' : statusForComposerSpec(constraint);
+        const sourceType = fromPath ? 'path' : sourceTypeForComposerSpec(constraint);
         const isRegistry = sourceType === 'registry';
 
         // constructPurl maps the ecosystem id to the canonical PURL type and

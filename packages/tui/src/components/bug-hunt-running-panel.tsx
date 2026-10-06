@@ -24,6 +24,7 @@ export function BugHuntRunningPanel({
         </Text>
         <Text dimColor>{'  · proof-driven scan, reproduce, fix, verify'}</Text>
       </Text>
+      <Text dimColor>{'/bughunt stop · finish this round, then stop'}</Text>
     </Box>
   );
 }

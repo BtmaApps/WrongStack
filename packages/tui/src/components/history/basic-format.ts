@@ -5,27 +5,6 @@ export function shortenPath(p: string, max: number): string {
   return truncateDisplayStart(p, max);
 }
 
-const MAX_PREVIEW = 120;
-
-export function previewArgs(input: unknown): string {
-  let s: string;
-  try {
-    s = typeof input === 'string' ? input : JSON.stringify(input);
-  } catch {
-    s = String(input);
-  }
-  return collapse(s, MAX_PREVIEW);
-}
-
-export function previewOutput(output: string): string {
-  return collapse(output, MAX_PREVIEW);
-}
-
-function collapse(s: string, max: number): string {
-  const oneLine = s.replace(/\r?\n/g, '↵').replace(/\s+/g, ' ').trim();
-  return truncateDisplay(oneLine, max);
-}
-
 export function fmtTok(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return '0';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

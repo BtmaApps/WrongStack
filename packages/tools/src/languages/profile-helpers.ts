@@ -1,7 +1,6 @@
 import type {
   CommandPlan,
   LanguageOperation,
-  LanguageProfileId,
   OperationPlanResult,
   ProfileContext,
 } from './types.js';
@@ -87,6 +86,3 @@ export function packageNames(ctx: ProfileContext): readonly string[] {
   return ctx.options.packages ?? [];
 }
 
-export function profileId(value: LanguageProfileId): LanguageProfileId {
-  return value;
-}

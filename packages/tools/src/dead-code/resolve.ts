@@ -32,7 +32,32 @@ const JS_TO_SOURCE: Record<string, readonly string[]> = {
   '.cjs': ['.cts', '.cjs', '.ts'],
 };
 const CODE_EXT_RE = /\.(?:[cm]?[jt]sx?)$/i;
-const BUILD_DIRS = ['dist', 'build', 'out', 'lib', 'esm', 'cjs'];
+export const BUILD_DIRS: readonly string[] = ['dist', 'build', 'out', 'lib', 'esm', 'cjs'];
+
+/** String targets of the `map` entry for `key`: the exact key, else every matching `*` pattern. */
+function patternTargets(map: Record<string, unknown>, key: string): string[] {
+  const targets: string[] = [];
+  const collect = (v: unknown, depth: number, star?: string): void => {
+    if (depth > 8 || v == null) return;
+    if (typeof v === 'string') targets.push(star === undefined ? v : v.replace(/\*/g, star));
+    else if (Array.isArray(v)) for (const x of v) collect(x, depth + 1, star);
+    else if (typeof v === 'object') for (const x of Object.values(v)) collect(x, depth + 1, star);
+  };
+  if (key in map) {
+    collect(map[key], 0);
+    return targets;
+  }
+  for (const k of Object.keys(map)) {
+    const star = k.indexOf('*');
+    if (star === -1) continue;
+    const prefix = k.slice(0, star);
+    const suffix = k.slice(star + 1);
+    if (key.startsWith(prefix) && key.endsWith(suffix) && key.length >= k.length - 1) {
+      collect(map[k], 0, key.slice(prefix.length, key.length - suffix.length));
+    }
+  }
+  return targets;
+}
 
 interface PathsConfig {
   /** Absolute-ish project-relative base for `paths` targets. */
@@ -91,7 +116,7 @@ export class DeadCodeResolver {
   }
 
   /** Map a build-output path inside a package back to its source file(s). */
-  private sourceForPackageTarget(pkgDir: string, target: string): string[] {
+  sourceForPackageTarget(pkgDir: string, target: string): string[] {
     const clean = target.replace(/^\.\//, '');
     const join = (p: string): string => (pkgDir ? `${pkgDir}/${p}` : p);
     const direct = this.resolveFileLike(join(clean.replace(/\.d\.([cm]?)ts$/, '.$1js')));
@@ -110,41 +135,15 @@ export class DeadCodeResolver {
   /** Every string target of a package.json `exports` value for one subpath. */
   private exportTargets(manifest: Record<string, unknown>, subpath: string): string[] {
     const exp = manifest.exports;
-    const targets: string[] = [];
-    const collect = (v: unknown, depth: number, star?: string): void => {
-      if (depth > 8 || v == null) return;
-      if (typeof v === 'string') targets.push(star === undefined ? v : v.replace(/\*/g, star));
-      else if (Array.isArray(v)) for (const x of v) collect(x, depth + 1, star);
-      else if (typeof v === 'object') for (const x of Object.values(v)) collect(x, depth + 1, star);
-    };
-    if (exp === undefined) return targets;
+    if (exp == null || (typeof exp !== 'object' && typeof exp !== 'string')) return [];
     const key = subpath ? `./${subpath}` : '.';
-    if (typeof exp === 'string' || Array.isArray(exp)) {
-      if (key === '.') collect(exp, 0);
-      return targets;
-    }
-    if (typeof exp !== 'object') return targets;
-    const map = exp as Record<string, unknown>;
-    const keys = Object.keys(map);
-    if (!keys.some((k) => k.startsWith('.'))) {
-      // Conditions at top level: `"exports": { "import": "./x.js" }`.
-      if (key === '.') collect(map, 0);
-      return targets;
-    }
-    if (key in map) {
-      collect(map[key], 0);
-      return targets;
-    }
-    for (const k of keys) {
-      const star = k.indexOf('*');
-      if (star === -1) continue;
-      const prefix = k.slice(0, star);
-      const suffix = k.slice(star + 1);
-      if (key.startsWith(prefix) && key.endsWith(suffix) && key.length >= k.length - 1) {
-        collect(map[k], 0, key.slice(prefix.length, key.length - suffix.length));
-      }
-    }
-    return targets;
+    // Sugar: a string, an array, or conditions at top level (`{ "import": "./x.js" }`).
+    const sugar =
+      typeof exp === 'string' ||
+      Array.isArray(exp) ||
+      !Object.keys(exp).some((k) => k.startsWith('.'));
+    if (sugar) return key === '.' ? patternTargets({ '.': exp }, '.') : [];
+    return patternTargets(exp as Record<string, unknown>, key);
   }
 
   /** Source files a package (sub)path names — used for imports AND entry discovery. */
@@ -232,26 +231,52 @@ export class DeadCodeResolver {
   private resolveAlias(fromFile: string, spec: string): string[] | null {
     const cfg = this.pathsConfigFor(path.posix.dirname(fromFile));
     if (!cfg) return null;
+    // TypeScript's choice: an exact pattern, else the wildcard with the longest
+    // prefix — not the first declared (`"*"` listed first must not hide `"@/*"`).
+    let best: PathsConfig['paths'][number] | undefined;
     for (const entry of cfg.paths) {
-      let star: string | null = null;
-      if (entry.wildcard) {
-        if (!spec.startsWith(entry.prefix) || !spec.endsWith(entry.suffix)) continue;
-        star = spec.slice(entry.prefix.length, spec.length - entry.suffix.length);
-      } else if (spec !== entry.prefix) {
-        continue;
+      if (!entry.wildcard) {
+        if (spec !== entry.prefix) continue;
+        best = entry;
+        break;
       }
-      for (const target of entry.targets) {
-        const t = star === null ? target : target.replace('*', star);
-        const hit = this.resolveFileLike(path.posix.join(cfg.base, t));
-        if (hit.length > 0) return hit;
+      if (
+        spec.length >= entry.prefix.length + entry.suffix.length &&
+        spec.startsWith(entry.prefix) &&
+        spec.endsWith(entry.suffix) &&
+        (!best || entry.prefix.length > best.prefix.length)
+      ) {
+        best = entry;
       }
-      return [];
     }
-    return null;
+    if (!best) return null;
+    const star = best.wildcard
+      ? spec.slice(best.prefix.length, spec.length - best.suffix.length)
+      : null;
+    for (const target of best.targets) {
+      const t = star === null ? target : target.replace('*', star);
+      const hit = this.resolveFileLike(path.posix.join(cfg.base, t));
+      if (hit.length > 0) return hit;
+    }
+    return [];
+  }
+
+  /** package.json `"imports"` (`#name`, `#lib/*`) of the importing file's package. */
+  private resolveSubpathImport(fromFile: string, spec: string): string[] {
+    const pkg = owningPackage(this.packages, fromFile);
+    const map = pkg?.manifest.imports;
+    if (!pkg || !map || typeof map !== 'object' || Array.isArray(map)) return [];
+    const targets: string[] = [];
+    for (const t of patternTargets(map as Record<string, unknown>, spec)) {
+      // A bare target (`"#dep": "some-pkg"`) names a dependency, not a file.
+      if (t.startsWith('./')) targets.push(...this.sourceForPackageTarget(pkg.dir, t));
+    }
+    return [...new Set(targets)];
   }
 
   resolve(fromFile: string, rawSpec: string): Resolution {
-    const spec = rawSpec.replace(/[?#].*$/, '');
+    // Drop a `?query` / `#hash` suffix — a LEADING `#` is a subpath import.
+    const spec = rawSpec.replace(/(?!^)[?#].*$/, '');
     if (!spec) return { type: 'unresolved' };
     if (spec.startsWith('.')) {
       const target = path.posix.join(path.posix.dirname(fromFile), spec);
@@ -277,7 +302,10 @@ export class DeadCodeResolver {
     if (alias !== null) {
       return alias.length > 0 ? { type: 'file', files: alias } : { type: 'unresolved' };
     }
-    if (spec.startsWith('#')) return { type: 'unresolved' };
+    if (spec.startsWith('#')) {
+      const files = this.resolveSubpathImport(fromFile, spec);
+      return files.length > 0 ? { type: 'file', files } : { type: 'unresolved' };
+    }
     const parts = spec.split('/');
     const pkgName = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]!;
     const subpath = parts.slice(spec.startsWith('@') ? 2 : 1).join('/');

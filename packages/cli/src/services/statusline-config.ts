@@ -365,7 +365,3 @@ export async function saveStatuslineLines(lines: StatuslineLines): Promise<void>
   await saveStatuslineLayout({ lines });
 }
 
-/** Back-compat-sized helper: persist only the custom chip order. */
-export async function saveStatuslineOrder(order: StatuslineOrder): Promise<void> {
-  await saveStatuslineLayout({ order });
-}

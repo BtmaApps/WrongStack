@@ -6,6 +6,12 @@ import {
   setRawMode,
   writeOut,
 } from '@wrongstack/core/utils';
+import {
+  cycleStartupEffort,
+  EFFORT_KEEP,
+  type StartupEffortChoice,
+  startupEffortOptions,
+} from './picker-effort.js';
 import { applyPickerKey, type ProviderPickerState } from './picker-key-state.js';
 import {
   boxBottom,
@@ -26,11 +32,37 @@ export function filterModels(query: string, models: ModelsDevModel[]): ModelsDev
   return models.filter((m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q));
 }
 
+/** Effort strip state for the focused row; omitted → no strip line at all. */
+export interface LiveModelEffortStrip {
+  options: readonly StartupEffortChoice[];
+  choice: StartupEffortChoice;
+}
+
+export interface LiveModelPick {
+  model: ModelsDevModel;
+  /** {@link EFFORT_KEEP} when the user left the configured effort alone. */
+  effort: StartupEffortChoice;
+}
+
+function renderEffortStrip(strip: LiveModelEffortStrip): string {
+  const label = color.dim('effort (←/→):');
+  if (strip.options.length === 0) {
+    return `${label} ${color.dim('not adjustable for this model')}`;
+  }
+  const levels = strip.options
+    .map((option) =>
+      option === strip.choice ? theme.accent(color.bold(`[${option}]`)) : color.dim(option),
+    )
+    .join(color.dim(' · '));
+  return `${label} ${levels}`;
+}
+
 export function renderLiveModelList(
   query: string,
   filtered: ModelsDevModel[],
   selectedIdx: number,
   header: string,
+  effort?: LiveModelEffortStrip,
 ): string {
   const ordered = [...filtered].sort((a, b) =>
     (b.release_date ?? '').localeCompare(a.release_date ?? ''),
@@ -68,10 +100,17 @@ export function renderLiveModelList(
     );
   }
   lines.push(boxDivider());
+  if (effort) {
+    lines.push(boxRow(renderEffortStrip(effort)));
+    lines.push(boxDivider());
+  }
   lines.push(
     boxRow(
       keyHints([
         ['↑↓', 'move'],
+        ...(effort && effort.options.length > 0
+          ? ([['←→', 'effort']] as Array<[string, string]>)
+          : []),
         ['Enter', 'select'],
         ['Esc', 'clear'],
         ['Ctrl+C', 'quit'],
@@ -82,10 +121,13 @@ export function renderLiveModelList(
   return lines.join('\n');
 }
 
+const ARROW_RIGHT = '\x1b[C';
+const ARROW_LEFT = '\x1b[D';
+
 export async function runLiveModelPicker(
   provider: ResolvedProvider,
   defaultModel?: string,
-): Promise<ModelsDevModel | undefined> {
+): Promise<LiveModelPick | undefined> {
   const stdin = process.stdin;
   const out = process.stdout;
   if (!stdin.isTTY || !out.isTTY) return undefined;
@@ -110,12 +152,28 @@ export async function runLiveModelPicker(
     if (state.selected >= visibleCount()) state.selected = Math.max(0, visibleCount() - 1);
   };
   clamp();
+  // The chosen effort belongs to ONE row: moving the focus (arrows or a filter
+  // edit) resets it to `default`, so a level picked on a sibling never rides
+  // along onto a model that cannot carry it — same rule as the `/model` strip.
+  let effortChoice: StartupEffortChoice = EFFORT_KEEP;
+  let effortOwner: string | undefined;
+  const effortStrip = (): {
+    options: readonly StartupEffortChoice[];
+    choice: StartupEffortChoice;
+  } => {
+    const focused = ordered[state.selected];
+    if (focused?.id !== effortOwner) {
+      effortOwner = focused?.id;
+      effortChoice = EFFORT_KEEP;
+    }
+    return { options: startupEffortOptions(focused), choice: effortChoice };
+  };
   const preamble = codexPickerPreamble(provider);
   if (preamble) writeOut(preamble);
-  let frame = renderLiveModelList(state.query, ordered, state.selected, header);
+  let frame = renderLiveModelList(state.query, ordered, state.selected, header, effortStrip());
   writeOut(frame);
 
-  return new Promise<ModelsDevModel | undefined>((resolve) => {
+  return new Promise<LiveModelPick | undefined>((resolve) => {
     const wasRaw = stdin.isRaw;
     const wasPaused = stdin.isPaused();
     setRawMode(stdin, true);
@@ -132,10 +190,17 @@ export async function runLiveModelPicker(
       writeOut(`\x1b[${ups}A\r\x1b[J`);
       ordered = order(filterModels(state.query, provider.models));
       clamp();
-      frame = renderLiveModelList(state.query, ordered, state.selected, header);
+      frame = renderLiveModelList(state.query, ordered, state.selected, header, effortStrip());
       writeOut(frame);
     };
     const onData = (chunk: string): void => {
+      if (chunk === ARROW_RIGHT || chunk === ARROW_LEFT) {
+        const { options } = effortStrip();
+        if (options.length === 0) return;
+        effortChoice = cycleStartupEffort(options, effortChoice, chunk === ARROW_RIGHT ? 1 : -1);
+        repaint();
+        return;
+      }
       ordered = order(filterModels(state.query, provider.models));
       state = applyPickerKey(state, chunk, visibleCount());
       ordered = order(filterModels(state.query, provider.models));
@@ -153,9 +218,11 @@ export async function runLiveModelPicker(
           return;
         }
         const pick = ordered[state.selected] ?? expectDefined(ordered[0]);
+        // Re-derived, not trusted: a row with no strip never carries a level.
+        const effort = startupEffortOptions(pick).length > 0 ? effortStrip().choice : EFFORT_KEEP;
         cleanup();
         writeOut('\n');
-        resolve(pick);
+        resolve({ model: pick, effort });
         return;
       }
       repaint();

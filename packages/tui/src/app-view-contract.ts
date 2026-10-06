@@ -55,9 +55,8 @@ interface AppViewRuntime {
   statusBarWrapRef: MutableRefObject<DOMElement | null>;
   belowStatusBarRef: MutableRefObject<DOMElement | null>;
   /**
-   * Measured rows consumed by the status chrome below the pickers (status
-   * bar + mailbox/monitors). Picker overlays use it to size their
-   * window against the real remaining space instead of a hardcoded guess.
+   * Measured rows consumed by the status bar. Picker and monitor overlays
+   * reserve this independent chrome when sizing their shared viewport.
    */
   statusBarRows: number;
   /** Chip click map published by StatusBar; consumed by the mouse hit-test. */
