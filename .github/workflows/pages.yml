@@ -6,26 +6,7 @@ name: Deploy Website
 # "GitHub Actions" in the repository settings for this to deploy.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'website/**'
-      # Workspace-owned tooling supplies the website verification dependencies.
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      # wrongstack.com/install.{sh,ps1} are emitted from these at build time.
-      - 'scripts/install/install.sh'
-      - 'scripts/install/install.ps1'
-      # The website build validates these source-owned catalogs. Trigger the
-      # deploy workflow when they change so stale operator pages fail visibly.
-      - 'packages/tools/src/builtin.ts'
-      - 'packages/tools/src/browser/tools.ts'
-      - 'packages/cli/src/plugin-management.ts'
-      - 'packages/core/src/types/mode.ts'
-      - 'packages/core/src/coordination/fleet.ts'
-      - 'packages/core/src/coordination/agents/phase*.ts'
-      - '.github/workflows/pages.yml'
+  # Manual only: pushes / PRs / schedules never start this workflow.
   workflow_dispatch:
 
 # WS-014: `pages: write` and `id-token: write` are declared per-job, not here.

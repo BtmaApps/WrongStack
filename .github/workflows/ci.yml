@@ -6,10 +6,7 @@ name: CI
 # because this workflow does not publish or deploy.
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  # Manual only: pushes / PRs / schedules never start this workflow.
   workflow_dispatch:
 
 permissions:

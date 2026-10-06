@@ -10,30 +10,7 @@
 name: Dependency Audit
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'apps/*/package.json'
-      - 'packages/*/package.json'
-      - 'website/package.json'
-      - 'website/package-lock.json'
-      - '.github/workflows/audit.yml'
-  pull_request:
-    paths:
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'apps/*/package.json'
-      - 'packages/*/package.json'
-      - 'website/package.json'
-      - 'website/package-lock.json'
-      - '.github/workflows/audit.yml'
-  schedule:
-    # Weekly, Mondays 03:23 UTC (odd minute avoids top-of-hour contention).
-    - cron: '23 3 * * 1'
+  # Manual only: pushes / PRs / schedules never start this workflow.
   workflow_dispatch:
 
 permissions:
