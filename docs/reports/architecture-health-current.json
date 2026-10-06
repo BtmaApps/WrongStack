@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:44:46.119Z",
+  "generatedAt": "2026-10-06T18:46:04.439Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4683,
+    "sourceFiles": 4692,
     "testFiles": 4160,
-    "sourceLines": 1072928,
+    "sourceLines": 1073297,
     "workspaceEdges": 133,
-    "moduleEdges": 15387,
+    "moduleEdges": 15440,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -380,7 +380,7 @@
     {
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
-      "sourceFiles": 54,
+      "sourceFiles": 63,
       "testFiles": 62,
       "workspaceDependencies": [
         "@wrongstack/core"
@@ -26273,16 +26273,6 @@
       "relativeImports": 24
     },
     {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 876,
-      "relativeImports": 16
-    },
-    {
-      "file": "packages/mcp/src/registry.ts",
-      "lines": 810,
-      "relativeImports": 23
-    },
-    {
       "file": "packages/plugins/src/accessibility-auditor/index.ts",
       "lines": 828,
       "relativeImports": 1
@@ -26440,11 +26430,6 @@
       "relativeImports": 36
     },
     {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 876,
-      "relativeImports": 16
-    },
-    {
       "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
       "lines": 861,
       "relativeImports": 0
@@ -26518,11 +26503,6 @@
       "file": "packages/cli/src/webui-server.ts",
       "lines": 810,
       "relativeImports": 24
-    },
-    {
-      "file": "packages/mcp/src/registry.ts",
-      "lines": 810,
-      "relativeImports": 23
     },
     {
       "file": "packages/simpleui/src/file-explorer.tsx",
@@ -26663,6 +26643,16 @@
       "file": "packages/cli/src/goal-host.ts",
       "lines": 788,
       "relativeImports": 4
+    },
+    {
+      "file": "packages/providers/src/trusted-presets.ts",
+      "lines": 788,
+      "relativeImports": 1
+    },
+    {
+      "file": "packages/tui/src/app-view-pickers.tsx",
+      "lines": 788,
+      "relativeImports": 50
     }
   ],
   "testOnlyExports": [

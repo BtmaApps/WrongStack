@@ -89,8 +89,8 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/kernel": {
-      "files": 350,
-      "typeOnly": 154,
+      "files": 351,
+      "typeOnly": 155,
       "runtimeOrMixed": 217
     },
     "@wrongstack/core/kernel/events.js": {
@@ -134,8 +134,8 @@
       "runtimeOrMixed": 49
     },
     "@wrongstack/core/registry": {
-      "files": 153,
-      "typeOnly": 65,
+      "files": 154,
+      "typeOnly": 66,
       "runtimeOrMixed": 91
     },
     "@wrongstack/core/replay": {
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1348,
-      "typeOnly": 1187,
+      "files": 1351,
+      "typeOnly": 1190,
       "runtimeOrMixed": 411
     },
     "@wrongstack/core/types/limits": {
@@ -7618,7 +7618,19 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/src/registry-internals.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/src/registry-reconnect.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/src/registry-runtime.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -7631,12 +7643,6 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/src/registry-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/kernel",
-      "file": "packages/mcp/src/registry.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -10156,6 +10162,18 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/src/registry-internals.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/src/registry-runtime.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/src/registry-server-lifecycle.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -10163,12 +10181,6 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/src/registry-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/registry",
-      "file": "packages/mcp/src/registry.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16144,6 +16156,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/registry-describe.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/src/registry-health.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16156,7 +16174,19 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/registry-internals.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/src/registry-reconnect.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/registry-runtime.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

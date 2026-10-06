@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T18:44:46.119Z
+**Generated:** 2026-10-06T18:46:04.439Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4683 |
-| Production source lines | 1072928 |
+| Production source files | 4692 |
+| Production source lines | 1073297 |
 | Test files | 4160 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15387 |
+| Relative module edges | 15440 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -38,7 +38,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/kanban | 104 | 82 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 54 | 62 | @wrongstack/core |
+| @wrongstack/mcp | 63 | 62 | @wrongstack/core |
 | @wrongstack/persistence | 8 | 19 | — |
 | @wrongstack/plug-lsp | 51 | 52 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
@@ -88,7 +88,6 @@ None.
 | 973 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 962 | `packages/webui/src/components/ChatInput/slash-routing.ts` |
 | 926 | `packages/tools/src/codebase-index/writer.ts` |
-| 876 | `packages/mcp/src/client.ts` |
 | 861 | `packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx` |
 | 856 | `packages/cli/src/cli-main.ts` |
 | 839 | `packages/webui-server/src/server/start-webui.ts` |
@@ -104,7 +103,6 @@ None.
 | 811 | `packages/plugins/src/cost-tracker/index.ts` |
 | 811 | `packages/webui/src/components/CodeMap.tsx` |
 | 810 | `packages/cli/src/webui-server.ts` |
-| 810 | `packages/mcp/src/registry.ts` |
 | 809 | `packages/simpleui/src/file-explorer.tsx` |
 | 807 | `packages/security-scanner/src/skill-generator.ts` |
 | 806 | `packages/simpleui/src/lib/message-handler.ts` |
@@ -133,6 +131,8 @@ None.
 | 789 | `packages/cli/src/slash-commands/memory.ts` |
 | 789 | `packages/core/src/coordination/brain-monitor.ts` |
 | 788 | `packages/cli/src/goal-host.ts` |
+| 788 | `packages/providers/src/trusted-presets.ts` |
+| 788 | `packages/tui/src/app-view-pickers.tsx` |
 
 ## Exports only tests reference
 

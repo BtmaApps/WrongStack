@@ -8,6 +8,15 @@ import type {
 } from './authorization-manager.js';
 import type { ServerSlot } from './registry-slots.js';
 
+/** Caller-supplied part of `MCPRegistry.beginAuthorization()`; the registry adds server + resource. */
+export interface MCPRegistryAuthorizationBeginInput {
+  clientId?: string | undefined;
+  redirectUri: string;
+  scopes?: readonly string[] | undefined;
+  challengeHeader?: string | null | undefined;
+  signal?: AbortSignal | undefined;
+}
+
 export function requireAuthorizationManager(
   manager: MCPAuthorizationManager | undefined,
 ): MCPAuthorizationManager {
@@ -47,13 +56,7 @@ export async function beginRegistryAuthorization(
   manager: MCPAuthorizationManager | undefined,
   cfg: MCPServerConfig,
   name: string,
-  input: {
-    clientId?: string | undefined;
-    redirectUri: string;
-    scopes?: readonly string[] | undefined;
-    challengeHeader?: string | null | undefined;
-    signal?: AbortSignal | undefined;
-  },
+  input: MCPRegistryAuthorizationBeginInput,
 ): Promise<MCPAuthorizationStartResult> {
   return requireAuthorizationManager(manager).begin({
     serverName: name,

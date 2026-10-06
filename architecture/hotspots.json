@@ -18,14 +18,6 @@
       "lines": 810,
       "relativeImports": 24
     },
-    "packages/mcp/src/client.ts": {
-      "lines": 876,
-      "relativeImports": 16
-    },
-    "packages/mcp/src/registry.ts": {
-      "lines": 810,
-      "relativeImports": 23
-    },
     "packages/plugins/src/accessibility-auditor/index.ts": {
       "lines": 828,
       "relativeImports": 1

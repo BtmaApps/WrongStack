@@ -184,3 +184,43 @@ export async function selectPromptForInsertion(
     policy,
   );
 }
+
+/**
+ * Body of `MCPRegistry.withConnectedClient()`: keep all remote requests awake
+ * and reject results from superseded clients.
+ */
+export async function runWithConnectedClient<T>(
+  self: Pick<RegistryCatalogOperationsHost, 'servers' | 'requireSlot'> & {
+    ensureConnected(name: string): Promise<import('./client.js').MCPClient>;
+  },
+  name: string,
+  run: (client: import('./client.js').MCPClient, assertCurrent: () => void) => Promise<T>,
+): Promise<T> {
+  const slot = self.requireSlot(name);
+  const generation = slot.startupGeneration;
+  slot.operations.inFlightCalls++;
+  slot.operations.peakInFlightCalls = Math.max(
+    slot.operations.peakInFlightCalls,
+    slot.operations.inFlightCalls,
+  );
+  try {
+    const client = await self.ensureConnected(name);
+    const assertCurrent = () => {
+      if (
+        self.servers.get(name) !== slot ||
+        slot.startupGeneration !== generation ||
+        slot.client !== client ||
+        slot.state !== 'connected'
+      ) {
+        throw new Error(`MCP server "${name}" connection changed during request`);
+      }
+    };
+    assertCurrent();
+    const result = await run(client, assertCurrent);
+    assertCurrent();
+    return result;
+  } finally {
+    slot.operations.inFlightCalls = Math.max(0, slot.operations.inFlightCalls - 1);
+    if (slot.startupGeneration === generation) slot.lastUsed = Date.now();
+  }
+}
