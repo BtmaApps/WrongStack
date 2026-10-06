@@ -284,7 +284,7 @@ describe('security helpers are wired, not just present', () => {
       'packages/webui-server/src/server/embedded-shell-git-routes.ts',
       'packages/webui-server/src/server/kanban-orchestration-routes.ts',
       'packages/webui-server/src/server/kanban-task-routes.ts',
-      'packages/webui-server/src/server/routes.ts',
+      'packages/webui-server/src/server/shell-git-route-table.ts',
       'packages/webui-server/src/server/session-handlers.ts',
       // The helper's own module: the match there is a validation *message*
       // naming the field, not a read of it.
@@ -321,7 +321,7 @@ describe('security helpers are wired, not just present', () => {
       'packages/webui-server/src/server/embedded-shell-git-routes.ts',
       'packages/webui-server/src/server/kanban-orchestration-routes.ts',
       'packages/webui-server/src/server/kanban-task-routes.ts',
-      'packages/webui-server/src/server/routes.ts',
+      'packages/webui-server/src/server/shell-git-route-table.ts',
       'packages/webui-server/src/server/session-handlers.ts',
       'packages/webui-server/src/server/ws-mailbox-validation.ts',
     ];

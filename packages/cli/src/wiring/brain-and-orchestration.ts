@@ -55,7 +55,7 @@ type AnyObj = any;
  * and the TUI Brain panel. `describe` fields are static wiring facts surfaced
  * in `/brain status`.
  */
-interface BrainRuntimeSettings {
+export interface BrainRuntimeSettings {
   maxAutoRisk: BrainAutoRisk;
   /** 'headless' = never block on a human; terminal policy resolves escalations. */
   mode: BrainEscalationMode;

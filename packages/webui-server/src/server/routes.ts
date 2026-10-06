@@ -22,20 +22,8 @@ import { handleJevRoute } from './jev-routes.js';
  */
 
 import path from 'node:path';
-import type { Context } from '@wrongstack/core/agent';
-import {
-  normalizeSubagentModelPlan,
-  seedSessionSubagentPolicy,
-  setSessionSubagentModelPlan,
-  setSessionSubagentPolicy,
-  subagentPolicyModeFrom,
-} from '@wrongstack/core/coordination';
-import { type DestructiveKind, resolveYoloConfirmKinds } from '@wrongstack/core/security';
-import { type ProviderConfig, resolveTokenSavingTier } from '@wrongstack/core/types';
-import { isOutsideProject, resolveWstackPaths } from '@wrongstack/core/utils';
-import { makeProviderFromConfig, withCatalogCapabilities } from '@wrongstack/providers';
-import type { WebSocket } from 'ws';
-import { createAutonomyRouteHandlers } from './autonomy-routes.js';
+import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { makeProviderFromConfig } from '@wrongstack/providers';
 import { patchConfig } from './boot.js';
 import type { BrainHandlerContext } from './brain-handlers.js';
 import { type BrainRouteHandlers, createBrainRouteHandlers } from './brain-routes.js';
@@ -44,84 +32,32 @@ import {
   type CodeAssistRouteHandlers,
   createCodeAssistRouteHandlers,
 } from './code-assist-routes.js';
-import { handleConfigDoctor } from './config-doctor.js';
-import { computeConfigPrefUpdates } from './config-pref-updates.js';
 import { emitFallbackChoice } from './fallback-choice.js';
 import { handleFallbackSuggest } from './fallback-suggest-handler.js';
-import {
-  handleGitChanges,
-  handleGitCommit,
-  handleGitCommitDetail,
-  handleGitCommitFileDiff,
-  handleGitDiff,
-  handleGitDiscard,
-  handleGitHistory,
-  handleGitInfo,
-  handleGitStage,
-  handleGitUnstage,
-} from './git-handlers.js';
 import type { GoalRouteHandlers } from './goal-routes.js';
 import { createMailboxRouteHandlers } from './mailbox-routes.js';
-import {
-  handleMcpAdd,
-  handleMcpAuthLogin,
-  handleMcpAuthLogout,
-  handleMcpAuthStatus,
-  handleMcpDisable,
-  handleMcpDiscover,
-  handleMcpEnable,
-  handleMcpList,
-  handleMcpPromptGet,
-  handleMcpPrompts,
-  handleMcpRemove,
-  handleMcpResourceRead,
-  handleMcpResources,
-  handleMcpRestart,
-  handleMcpSleep,
-  handleMcpUpdate,
-  handleMcpWake,
-} from './mcp-handlers.js';
+import { createMcpRouteTable } from './mcp-route-table.js';
 import type { McpRouteHandlers } from './mcp-routes.js';
 import { createModeHandlers } from './mode-handlers.js';
 import type { ModeRouteHandlers } from './mode-routes.js';
 import { createModelOperations } from './model-operations.js';
+import { createApplyModelSwitch, createSessionContextResolver } from './model-switch-core.js';
 import { resolvePendingConfirmsForSession } from './pending-confirms.js';
-import { prefSnapshot as prefSnapshotImpl } from './pref-helpers.js';
-import type { PrefsHandlerContext } from './prefs-handlers.js';
-import { createPrefsRouteHandlers } from './prefs-routes.js';
-import { authorizeWebUIAction } from './privileged-actions.js';
+import { createPrefsAndAutonomyRoutes } from './prefs-route-context.js';
 import { createProjectHandlers } from './project-handlers.js';
 import type { ProjectRouteHandlers } from './project-routes.js';
-import { loadSavedProviders } from './provider-config-io.js';
 import { createProviderHandlers } from './provider-handlers.js';
 import type { ProviderRouteHandlers } from './provider-routes.js';
-import {
-  applyWrongProxyPrefs as applyWrongProxyPrefsRuntime,
-  routeProviderCfgThroughProxy,
-} from './proxy-runtime.js';
 import type { AllRoutes, WebuiCallbacks, WebuiDeps, WebuiMutableState } from './route-contracts.js';
 import type { SddBoardRouteHandlers } from './sdd-board-routes.js';
 import type { SddWizardRouteHandlers } from './sdd-wizard-routes.js';
 import { createSessionHandlers } from './session-handlers.js';
 import type { SessionRouteHandlers } from './session-routes.js';
+import { createShellGitRoutes } from './shell-git-route-table.js';
 import type { ShellGitRouteHandlers } from './shell-git-routes.js';
-import {
-  handleShellOpen,
-  normalizeShellOpenTarget,
-  type ShellOpenResult,
-  type ShellOpenTarget,
-} from './shell-open.js';
 import type { SpecsRouteHandlers } from './specs-routes.js';
-import { rebuildSystemPrompt } from './system-prompt-rebuild.js';
-import {
-  validateGitCommitPayload,
-  validateGitDiffPayload,
-  validateGitDiscardPayload,
-  validateGitStagePayload,
-  validateGitUnstagePayload,
-  validateShellOpenPayload,
-} from './ws-payload-validation.js';
-import { broadcast, send, sendResult } from './ws-utils.js';
+import { createSystemPromptRouteAdapter } from './system-prompt-route-adapter.js';
+import { broadcast, send } from './ws-utils.js';
 
 /**
  * Build the 13 route records referenced by `handleProviderRoute`,
@@ -133,6 +69,11 @@ export function buildRoutes(
   deps: WebuiDeps,
   cb: WebuiCallbacks,
 ): AllRoutes {
+  // Session-context resolution + the live provider/model switch live in
+  // ./model-switch-core.ts; both are shared by several route records below.
+  const sessionContext = createSessionContextResolver(deps);
+  const applyModelSwitchCore = createApplyModelSwitch(state, deps, cb, sessionContext);
+
   // ---- Provider/Key management helpers (extracted to provider-handlers.ts) ----
   const providerHandlers = createProviderHandlers({
     profileConfigPath: deps.profileConfigPath,
@@ -150,106 +91,6 @@ export function buildRoutes(
     },
     applyModelSwitch: applyModelSwitchCore,
   });
-
-  // Apply a provider+model switch to the live session: sync config, rebuild the
-  // provider, refresh the auto-compaction denominator, persist, and broadcast a
-  // fresh session.start. Shared by the `model.switch` handler and the
-  // adopt-on-first-add path. Throws on provider-construction failure.
-  /**
-   * Resolve the Context a session-scoped operation should act on. Each WebUI
-   * tab owns its own Context (see backend-services' session agent registry);
-   * `deps.context` is only the ROOT one, which is a different tab's state as
-   * often as not once four sessions are live.
-   */
-  function sessionContext(sessionId?: string): Context {
-    if (!sessionId) return deps.context;
-    return deps.getAgent?.(sessionId)?.ctx ?? deps.context;
-  }
-
-  async function applyModelSwitchCore(
-    newProvider: string,
-    newModel: string,
-    sessionId?: string,
-  ): Promise<void> {
-    // Target the requesting tab's context. Without a sessionId (the
-    // adopt-first-provider boot path) this is still the root context.
-    const targetCtx = sessionContext(sessionId);
-    await targetCtx.runModelTransition(async () => {
-      // provider.add persists the record directly to the profile file
-      // (providerStore.save), while the credential watcher's state.setConfig
-      // refresh is debounced — the adopt-on-first-add path can read memory
-      // before that refresh lands and then persist the boot-stale (empty)
-      // providers map, clobbering the just-added record (the fresh-home
-      // setup-screen regression). Hydrate from the profile file first so the
-      // switch's persist cannot lose it.
-      if (!state.getConfig().providers?.[newProvider]) {
-        try {
-          const fresh = await loadSavedProviders(deps.profileConfigPath, deps.vault);
-          if (fresh[newProvider]) {
-            state.setConfig(patchConfig(state.getConfig(), { providers: fresh }));
-            deps.configStore.update({ providers: fresh });
-          }
-        } catch (err) {
-          deps.logger.warn(`model.switch provider hydration failed: ${String(err)}`);
-        }
-      }
-      const cur = state.getConfig();
-      const newCfg = patchConfig(cur, { provider: newProvider, model: newModel });
-      const providerCfg: ProviderConfig = newCfg.providers?.[newProvider] ?? { type: newProvider };
-      const factoryType = providerCfg.type ?? newProvider;
-      // WrongProxy / WrongTrace: rewrite the switched provider's base URL
-      // through the shared helper so the live WebUI session honors the
-      // proxy toggle, same as the CLI's `/model` switch path. `newCfg.baseUrl`
-      // is the fallback when the saved cfg carries no explicit baseUrl.
-      const routedCfg = routeProviderCfgThroughProxy(providerCfg, newCfg.baseUrl, newProvider);
-      const built = deps.providerRegistry.has(factoryType)
-        ? deps.providerRegistry.create({ ...routedCfg, type: newProvider } as never, factoryType)
-        : makeProviderFromConfig(newProvider, { ...routedCfg, type: factoryType });
-      // Overlay the target model's catalog facts. A freshly constructed provider
-      // only has the wire-family baseline, so without this the session keeps the
-      // previous model's context window and loses `maxOutput` entirely.
-      const newProv = deps.modelsRegistry
-        ? await withCatalogCapabilities(deps.modelsRegistry, newProvider, built, {
-            ...routedCfg,
-            type: newProvider,
-            model: newModel,
-          })
-        : built;
-      // Persist only after the target provider has been constructed. A failed
-      // build must leave both the live session and durable selection untouched.
-      await cb.updateGlobalConfig((config) => {
-        config.provider = newProvider;
-        config.model = newModel;
-      }, 'model.switch');
-
-      // The global config keeps tracking the most recent choice so it is the
-      // default a NEW tab starts from and survives a restart — but the LIVE
-      // swap lands only on the session that asked for it.
-      state.setConfig(newCfg);
-      deps.configStore.update({ provider: newProvider, model: newModel });
-      targetCtx.model = newModel;
-      targetCtx.provider = newProv;
-      // Capability refresh is best-effort after the atomic live swap. It must
-      // never sit on the acknowledgement boundary: refresh() may make a
-      // network request to models.dev, while the selected provider/model is
-      // already safe to use for the next turn. Keep the modal's result and the
-      // session re-announce on the fast path; apply revised context metadata
-      // when the background refresh completes.
-      // Pass the POST-rewrite routedCfg (the same config the provider was built
-      // from) so maxContext resolution sees the effective proxy-target URL.
-      void cb.updateAutoCompactionMaxContext(newProv, newProvider, routedCfg).catch((error) => {
-        deps.logger.warn(`model.switch capability refresh failed: ${String(error)}`);
-      });
-
-      broadcast(state.getClients(), {
-        type: 'session.start',
-        payload: await cb.sessionStartPayload(
-          sessionId ? { sessionId, model: newModel, provider: newProvider } : {},
-        ),
-      });
-    });
-  }
-
   const modelOperations = createModelOperations({
     context: deps.context,
     memoryStore: deps.memoryStore,
@@ -315,83 +156,7 @@ export function buildRoutes(
         send,
       }),
   };
-
-  const systemPromptAdapter = {
-    previewContext: (sessionId?: string) => {
-      const target = sessionContext(sessionId);
-      return {
-        toolNames: target.tools.map((tool) => tool.name),
-        tier: resolveTokenSavingTier(
-          state.getConfig().features?.tokenSavingMode,
-          (state.getModelCapabilities() as { maxContextTokens?: number } | undefined)
-            ?.maxContextTokens,
-        ),
-      };
-    },
-    paths: () => {
-      const wpaths = resolveWstackPaths({
-        projectRoot: state.getProjectRoot(),
-        globalRoot: deps.wpaths.globalRoot,
-      });
-      return {
-        globalDir: wpaths.globalInstructions,
-        projectDir: wpaths.inProjectInstructions,
-      };
-    },
-    profileConfigPath: deps.profileConfigPath,
-    current: () => state.getConfig().systemPrompt?.variant ?? 'default',
-    outsideProject: () => isOutsideProject(state.getProjectRoot()),
-    // Move the in-memory default too: `persistPrefsToConfig` writes the file,
-    // not the object, and everything that has no per-tab answer reads the
-    // object — `current()` for a picker in a tab that never chose, and the
-    // meta seed a NEWLY created session starts from.
-    //
-    // It is only a default. The rebuild below no longer reads it for a tab
-    // that has its own variant (see `variantForContext`), so a pick here
-    // cannot reach a tab that already made one.
-    applyVariant: async (variant: string, sessionId?: string) => {
-      const config = state.getConfig();
-      state.setConfig(
-        patchConfig(config, {
-          systemPrompt: { ...(config.systemPrompt ?? {}), variant: variant as never },
-        }),
-      );
-      // Rebuild the asking tab's prompt. The container rebind stays global on
-      // purpose: it only changes which builder NEW subagents are composed
-      // from, which is a default rather than live conversation state.
-      const targetCtx = sessionContext(sessionId);
-      const modeId =
-        typeof targetCtx.meta['modeId'] === 'string' && targetCtx.meta['modeId']
-          ? (targetCtx.meta['modeId'] as string)
-          : state.getModeId();
-      targetCtx.meta['systemPromptVariant'] = variant;
-      await rebuildSystemPrompt(
-        {
-          modeStore: deps.modeStore,
-          memoryStore: deps.memoryStore,
-          skillLoader: deps.skillLoader,
-          modelCapabilities: (() => state.getModelCapabilities()) as never,
-          context: targetCtx,
-          toolRegistry: deps.toolRegistry,
-          getConfig: state.getConfig,
-          projectRoot: state.getProjectRoot(),
-          globalRoot: deps.wpaths.globalRoot,
-          // Rebind the container ONLY when the tab that asked owns the root
-          // context. The rebound builder carries the rebuilding tab's mode
-          // and mode prompt as well as its variant, and `Agent`'s pre-run
-          // refresh resolves that one token for every conversation — so a
-          // rebind from tab A put tab A's MODE layer into tab B's prompt on
-          // B's next turn. `mode-handlers` already omits the container for
-          // this reason. Nothing is lost: the identity variant now travels
-          // per conversation in `ctx.meta`, which that refresh reads, and
-          // subagents compose from `host.deps.systemPromptBuilder` rather
-          // than the token.
-          ...(targetCtx === deps.context ? { container: deps.container } : {}),
-        },
-        modeId,
-      );
-    },
-  };
+  const systemPromptAdapter = createSystemPromptRouteAdapter(state, deps, sessionContext);
 
   const sessionRoutes: SessionRouteHandlers = createSessionHandlers({
     withSessionTransition: state.withSessionTransition,
@@ -484,195 +249,15 @@ export function buildRoutes(
     sessionStartPayload: cb.sessionStartPayload,
     getSessionContext: (sessionId?: string) => sessionContext(sessionId),
   });
+  const { prefsRoutes, autonomyRoutes } = createPrefsAndAutonomyRoutes(
+    state,
+    deps,
+    cb,
+    sessionContext,
+    systemPromptAdapter,
+  );
 
-  const prefsContext: PrefsHandlerContext = {
-    meta: deps.context.meta,
-    // Session-scoped prefs (autonomy, yolo, context strategy, prompt variant,
-    // reasoning) land on the calling tab's own context meta.
-    metaFor: (sessionId?: string) => sessionContext(sessionId).meta,
-    // Session-aware: the scoped keys live on that tab's own context meta.
-    snapshot: (sessionId?: string) => {
-      const target = sessionContext(sessionId);
-      seedSessionSubagentPolicy(target);
-      return sessionId ? prefSnapshotImpl(target.meta) : cb.prefSnapshot();
-    },
-    setSubagentsAllowed: (allowed, sessionId, companions) =>
-      setSessionSubagentPolicy(
-        sessionContext(sessionId),
-        subagentPolicyModeFrom(allowed, companions),
-      ),
-    setSubagentModelPlan: (plan, sessionId) =>
-      setSessionSubagentModelPlan(sessionContext(sessionId), normalizeSubagentModelPlan(plan)),
-    persist: cb.persistPrefsToConfig,
-    pendingConfirms: deps.pendingConfirms,
-    configStore: deps.configStore,
-    systemPrompt: systemPromptAdapter,
-    setYolo: (enabled) =>
-      (deps.permissionPolicy as { setYolo?: (value: boolean) => void }).setYolo?.(enabled),
-    setYoloConfirm: (preference) =>
-      (
-        deps.permissionPolicy as {
-          setYoloConfirmKinds?: (kinds: Iterable<DestructiveKind>) => void;
-        }
-      ).setYoloConfirmKinds?.(resolveYoloConfirmKinds(preference)),
-    applyConfigPrefs: (payload) => {
-      const config = state.getConfig();
-      const updates = computeConfigPrefUpdates(config, payload);
-      // No-op payloads must not churn the config identity — subscribers and
-      // equality checks downstream key on the object reference.
-      if (Object.keys(updates).length === 0) return;
-      state.setConfig(patchConfig(config, updates));
-    },
-    // WrongProxy / WrongTrace: reflect the standalone toggle/URL into the
-    // shared `ProxyConfig` singleton immediately and await the re-probe so
-    // `active` is fresh before a subsequent model.switch reads it. In the
-    // CLI-hosted path this same key is the CLI's `applyWrongProxyPrefs`; when
-    // running as its own process there is no CLI to inject it, so route it to
-    // the server-local runtime module.
-    applyWrongProxyPrefs: (payload) => applyWrongProxyPrefsRuntime(payload),
-    setAutoCompact: (enabled) => {
-      // Keep the middleware INSTALLED and let it decide per conversation.
-      // Adding and removing it on the shared pipeline was a process-wide
-      // switch driven by a per-tab preference: turning auto-compaction off in
-      // one tab stopped it for the three running beside it, and turning it
-      // back on re-armed it for all of them.
-      if (!deps.autoCompactor) return;
-      if (!deps.pipelines.contextWindow.list().includes('AutoCompaction')) {
-        deps.pipelines.contextWindow.use({
-          name: 'AutoCompaction',
-          handler: deps.autoCompactor.handler(),
-        });
-      }
-      deps.autoCompactor.setEnabled(enabled);
-    },
-    setLogLevel: (level) => {
-      (deps.logger as { level: string }).level = level;
-    },
-    send,
-    broadcast: (message) => broadcast(state.getClients(), message),
-  };
-  const doctorConfigHandler = (ws: WebSocket, apply: boolean) =>
-    handleConfigDoctor(ws, apply, {
-      profileConfigPath: deps.profileConfigPath,
-      vault: deps.vault,
-      updateConfig: cb.updateGlobalConfig,
-      applyRuntimeConfig: (next) => {
-        state.setConfig(next);
-        deps.configStore.update(next);
-      },
-    });
-  const prefsRoutes = createPrefsRouteHandlers(prefsContext, doctorConfigHandler);
-  const autonomyRoutes = createAutonomyRouteHandlers(prefsContext);
-
-  const shellGitRoutes: ShellGitRouteHandlers = {
-    gitInfo: async (ws) => {
-      await handleGitInfo(ws, state.getProjectRoot());
-    },
-    gitChanges: async (ws) => {
-      await handleGitChanges(ws, state.getProjectRoot());
-    },
-    gitHistory: async (ws, msg) => {
-      const payload = msg.payload as { ref?: unknown; limit?: unknown; skip?: unknown } | undefined;
-      await handleGitHistory(ws, state.getProjectRoot(), {
-        ref: typeof payload?.ref === 'string' ? payload.ref : undefined,
-        limit: typeof payload?.limit === 'number' ? payload.limit : undefined,
-        skip: typeof payload?.skip === 'number' ? payload.skip : undefined,
-      });
-    },
-    gitCommitDetail: async (ws, msg) => {
-      const payload = msg.payload as { hash?: unknown } | undefined;
-      await handleGitCommitDetail(
-        ws,
-        state.getProjectRoot(),
-        typeof payload?.hash === 'string' ? payload.hash : '',
-      );
-    },
-    gitCommitFileDiff: async (ws, msg) => {
-      const payload = msg.payload as
-        | { hash?: unknown; path?: unknown; previousPath?: unknown }
-        | undefined;
-      await handleGitCommitFileDiff(ws, state.getProjectRoot(), {
-        hash: typeof payload?.hash === 'string' ? payload.hash : '',
-        path: typeof payload?.path === 'string' ? payload.path : '',
-        previousPath: typeof payload?.previousPath === 'string' ? payload.previousPath : undefined,
-      });
-    },
-    gitDiff: async (ws, msg) => {
-      const parsed = validateGitDiffPayload(msg.payload);
-      if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
-        return;
-      }
-      await handleGitDiff(ws, state.getProjectRoot(), parsed.value.path);
-    },
-    gitStage: async (ws, msg) => {
-      const parsed = validateGitStagePayload(msg.payload);
-      if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
-        return;
-      }
-      await handleGitStage(ws, state.getProjectRoot(), parsed.value.paths);
-    },
-    gitUnstage: async (ws, msg) => {
-      const parsed = validateGitUnstagePayload(msg.payload);
-      if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
-        return;
-      }
-      await handleGitUnstage(ws, state.getProjectRoot(), parsed.value.paths);
-    },
-    gitDiscard: async (ws, msg) => {
-      const parsed = validateGitDiscardPayload(msg.payload);
-      if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
-        return;
-      }
-      await handleGitDiscard(ws, state.getProjectRoot(), parsed.value.paths);
-    },
-    gitCommit: async (ws, msg) => {
-      const parsed = validateGitCommitPayload(msg.payload);
-      if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
-        return;
-      }
-      await handleGitCommit(ws, state.getProjectRoot(), parsed.value.message);
-    },
-    shellOpen: async (ws, msg) => {
-      const parsed = validateShellOpenPayload(msg.payload);
-      if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
-        return;
-      }
-      // Normalize the wire-format target ('file'|'terminal') to the
-      // handler contract ('terminal'|'file-manager').
-      const normalizedTarget: ShellOpenTarget = normalizeShellOpenTarget(parsed.value.target);
-      const authorization = await authorizeWebUIAction(
-        deps.trustBoundary,
-        {
-          capability: normalizedTarget === 'terminal' ? 'process.spawn' : 'filesystem.open-native',
-          subject: {
-            kind: 'path',
-            id: parsed.value.path,
-            attributes: { target: normalizedTarget },
-          },
-          risk: 'elevated',
-          cwd: state.getProjectRoot(),
-          metadata: { transport: 'websocket' },
-        },
-        deps.logger,
-      );
-      if (!authorization.allowed) {
-        sendResult(ws, false, `Shell action denied: ${authorization.reason}`);
-        return;
-      }
-      const result: ShellOpenResult = await handleShellOpen(
-        { path: parsed.value.path, target: normalizedTarget },
-        deps.logger,
-        { projectRoot: state.getProjectRoot() },
-      );
-      sendResult(ws, result.success, result.message);
-    },
-  };
+  const shellGitRoutes: ShellGitRouteHandlers = createShellGitRoutes(state, deps);
 
   const mailboxRoutes = createMailboxRouteHandlers({
     getProjectRoot: state.getProjectRoot,
@@ -702,46 +287,8 @@ export function buildRoutes(
     send,
     log: (message) => deps.logger.warn(message),
   });
-
-  // ---- MCP route (handleMcpRoute) ----
-  // Issue #31 follow-on (after #118 PR 0 baseline, #119 prefs extraction).
-  // Each callback delegates to the matching handleMcpXxx in mcp-handlers.ts
-  // — that module already owns the WS-message logic, this is just the
-  // chain-of-responsibility wiring. The 10 cases were pure delegations
-  // inside the residual switch before this PR; now they're an explicit
-  // sibling in the chain.
-  const mcpRoutes: McpRouteHandlers = {
-    list: (ws, msg) => handleMcpList(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    // add/update are the spawn-capable pair — they take a `command`/`args`
-    // from the wire and start it. They go past the trust boundary (M1).
-    add: (ws, msg) =>
-      handleMcpAdd(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    update: (ws, msg) =>
-      handleMcpUpdate(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    remove: (ws, msg) => handleMcpRemove(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    enable: (ws, msg) =>
-      handleMcpEnable(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    disable: (ws, msg) =>
-      handleMcpDisable(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    sleep: (ws, msg) => handleMcpSleep(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    wake: (ws, msg) =>
-      handleMcpWake(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    restart: (ws, msg) =>
-      handleMcpRestart(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    discover: (ws, msg) => handleMcpDiscover(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    resources: (ws, msg) => handleMcpResources(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    prompts: (ws, msg) => handleMcpPrompts(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    resourceRead: (ws, msg) =>
-      handleMcpResourceRead(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    promptGet: (ws, msg) => handleMcpPromptGet(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    authStatus: (ws, msg) => handleMcpAuthStatus(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
-    // Binds a loopback port on this host and can mint a credential — same
-    // boundary the spawn-capable mutations go through.
-    authLogin: (ws, msg) =>
-      handleMcpAuthLogin(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    authLogout: (ws, msg) =>
-      handleMcpAuthLogout(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-  };
+  // ---- MCP route (handleMcpRoute) ---- delegations live in ./mcp-route-table.ts.
+  const mcpRoutes: McpRouteHandlers = createMcpRouteTable(deps);
 
   const brainContext: BrainHandlerContext = {
     send,

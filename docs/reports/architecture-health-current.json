@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:49:04.394Z",
+  "generatedAt": "2026-10-06T18:49:58.842Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4738,
+    "sourceFiles": 4778,
     "testFiles": 4160,
-    "sourceLines": 1074378,
+    "sourceLines": 1076089,
     "workspaceEdges": 133,
-    "moduleEdges": 15572,
+    "moduleEdges": 15712,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 968
+    "testOnlyExports": 967
   },
   "errors": [],
   "packageCycles": [],
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 587,
+      "sourceFiles": 608,
       "testFiles": 599,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -919,7 +919,7 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 273,
+      "sourceFiles": 292,
       "testFiles": 273,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -26253,26 +26253,6 @@
   "nonCommandSlashImports": [],
   "hotspotCandidates": [
     {
-      "file": "packages/cli/src/boot.ts",
-      "lines": 802,
-      "relativeImports": 29
-    },
-    {
-      "file": "packages/cli/src/cli-main.ts",
-      "lines": 856,
-      "relativeImports": 30
-    },
-    {
-      "file": "packages/cli/src/slash-commands/settings-mutations.ts",
-      "lines": 801,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/cli/src/webui-server.ts",
-      "lines": 810,
-      "relativeImports": 24
-    },
-    {
       "file": "packages/simpleui/src/file-explorer.tsx",
       "lines": 809,
       "relativeImports": 5
@@ -26321,25 +26301,10 @@
       "file": "packages/webui/src/stores/session-tab-store.ts",
       "lines": 813,
       "relativeImports": 19
-    },
-    {
-      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "lines": 973,
-      "relativeImports": 6
-    },
-    {
-      "file": "packages/webui-server/src/server/start-webui.ts",
-      "lines": 839,
-      "relativeImports": 35
     }
   ],
   "hotspots": [
     {
-      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "lines": 973,
-      "relativeImports": 6
-    },
-    {
       "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
       "lines": 962,
       "relativeImports": 2
@@ -26348,16 +26313,6 @@
       "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
       "lines": 861,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/cli/src/cli-main.ts",
-      "lines": 856,
-      "relativeImports": 30
-    },
-    {
-      "file": "packages/webui-server/src/server/start-webui.ts",
-      "lines": 839,
-      "relativeImports": 35
     },
     {
       "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
@@ -26380,11 +26335,6 @@
       "relativeImports": 13
     },
     {
-      "file": "packages/cli/src/webui-server.ts",
-      "lines": 810,
-      "relativeImports": 24
-    },
-    {
       "file": "packages/simpleui/src/file-explorer.tsx",
       "lines": 809,
       "relativeImports": 5
@@ -26400,34 +26350,9 @@
       "relativeImports": 0
     },
     {
-      "file": "packages/cli/src/boot.ts",
-      "lines": 802,
-      "relativeImports": 29
-    },
-    {
-      "file": "packages/cli/src/slash-commands/settings-mutations.ts",
-      "lines": 801,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
       "lines": 800,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/webui-server/src/server/mcp-handlers.ts",
-      "lines": 799,
-      "relativeImports": 4
-    },
-    {
-      "file": "packages/webui-server/src/server/routes.ts",
-      "lines": 799,
-      "relativeImports": 44
-    },
-    {
-      "file": "packages/cli/src/subcommands/handlers/acp.ts",
-      "lines": 798,
-      "relativeImports": 8
     },
     {
       "file": "packages/webui/src/lib/ws-client.ts",
@@ -26583,6 +26508,51 @@
       "file": "packages/core/src/coordination/provider-status-tracker.ts",
       "lines": 777,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
+      "lines": 776,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/webui-server/src/server/http-server/vector-memory-handlers.ts",
+      "lines": 776,
+      "relativeImports": 1
+    },
+    {
+      "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
+      "lines": 775,
+      "relativeImports": 16
+    },
+    {
+      "file": "packages/webui/src/components/FileExplorer.tsx",
+      "lines": 775,
+      "relativeImports": 9
+    },
+    {
+      "file": "packages/webui/src/components/RefinePanel.tsx",
+      "lines": 775,
+      "relativeImports": 1
+    },
+    {
+      "file": "packages/webui-hq/src/views/cockpit.tsx",
+      "lines": 774,
+      "relativeImports": 12
+    },
+    {
+      "file": "packages/cli/src/slash-commands/fallback.ts",
+      "lines": 773,
+      "relativeImports": 3
+    },
+    {
+      "file": "packages/providers/src/ai-gateway.ts",
+      "lines": 773,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/webui-server/src/server/http-server/api-handlers.ts",
+      "lines": 773,
+      "relativeImports": 0
     }
   ],
   "testOnlyExports": [
@@ -29761,10 +29731,6 @@
     {
       "file": "packages/webui-server/src/server/handlers/worklist-handlers.ts",
       "name": "handlePlanGet"
-    },
-    {
-      "file": "packages/webui-server/src/server/mcp-handlers.ts",
-      "name": "toView"
     },
     {
       "file": "packages/webui-server/src/server/provider-config-standalone.ts",

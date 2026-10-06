@@ -2,22 +2,6 @@
   "schemaVersion": 1,
   "thresholdLines": 800,
   "files": {
-    "packages/cli/src/boot.ts": {
-      "lines": 802,
-      "relativeImports": 29
-    },
-    "packages/cli/src/cli-main.ts": {
-      "lines": 856,
-      "relativeImports": 30
-    },
-    "packages/cli/src/slash-commands/settings-mutations.ts": {
-      "lines": 801,
-      "relativeImports": 8
-    },
-    "packages/cli/src/webui-server.ts": {
-      "lines": 810,
-      "relativeImports": 24
-    },
     "packages/simpleui/src/file-explorer.tsx": {
       "lines": 809,
       "relativeImports": 5
@@ -57,14 +41,6 @@
     "packages/webui/src/stores/session-tab-store.ts": {
       "lines": 813,
       "relativeImports": 19
-    },
-    "packages/webui-server/src/server/goal-ws-handler.ts": {
-      "lines": 973,
-      "relativeImports": 6
-    },
-    "packages/webui-server/src/server/start-webui.ts": {
-      "lines": 839,
-      "relativeImports": 35
     }
   }
 }

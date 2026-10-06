@@ -12,70 +12,49 @@
  *
  * Public surface: `runWebUI` plus WS message shapes.
  */
-import type { Server as HttpServer } from 'node:http';
 import * as path from 'node:path';
 import { createCompatibilityTrustBoundary, DefaultSecretScrubber } from '@wrongstack/core/security';
-import type { ProviderConfig, SessionWriter } from '@wrongstack/core/types';
-import {
-  addFatalSalvageHook,
-  startSharedHeapWatchdog,
-  wstackGlobalRoot,
-} from '@wrongstack/core/utils';
+import type { SessionWriter } from '@wrongstack/core/types';
+import { addFatalSalvageHook } from '@wrongstack/core/utils';
 import {
   buildWebUIAccessUrl,
   type CustomModeStore,
-  clientWantsSession,
   createCustomModeStore,
-  createDefaultFileWatcherMetrics,
-  createEmbeddedMessageRouter,
-  createEmbeddedProviderOperations,
-  createSessionAgentRegistry,
   createWebuiLeaderAutoWakeHost,
-  type EmbeddedProviderContext,
   envFlag,
   findFreePort,
-  findInstalledPackageJson,
-  isStrictPort,
   type PendingConfirm,
   resolveAuthToken,
   type SessionAgentRegistry,
-  sendSerialized,
-  stampDispatchSession,
   startTerminalDashboard,
-  webuiSessionFrameLog,
 } from '@wrongstack/webui-server';
-import { verifyClient as verifyWsClient } from '@wrongstack/webui-server/server/ws-auth';
-import { type WebSocket, WebSocketServer } from 'ws';
-import { WEBUI_SESSION_CHILD_CAPABILITIES } from './boot/webui-session-child.js';
+import type { WebSocket } from 'ws';
 import {
   createEmbeddedClientRegistration,
   startEmbeddedLiveStatusLogger,
 } from './webui-client-observability.js';
 import type { ConnectedClient } from './webui-server/connection-handler.js';
-import type {
-  WSClientMessage as EmbeddedWSClientMessage,
-  WSServerMessage as EmbeddedWSServerMessage,
-} from './webui-server/contracts.js';
-import { startWebuiCredentialWatcher } from './webui-server/credential-watcher.js';
+import type { WSServerMessage as EmbeddedWSServerMessage } from './webui-server/contracts.js';
 import { createWebuiDomainHandlers } from './webui-server/domain-handlers.js';
+import { resolveWebuiHostSettings } from './webui-server/host-settings.js';
+import { startWebuiHttpBridge } from './webui-server/http-bridge.js';
+import { registerEmbeddedWebuiInstance } from './webui-server/instance-registration.js';
 import { createCliKanbanHostRoutes } from './webui-server/kanban-host-adapter.js';
-import { createKanbanRunMirror } from './webui-server/kanban-run-mirror.js';
-import { createKanbanSupervisor } from './webui-server/kanban-supervisor.js';
-import { announceWebuiReady, registerWebuiInstance } from './webui-server/lifecycle.js';
-import { startDeferredHttpListen, startIpv6LoopbackProxy } from './webui-server/listen-helpers.js';
+import { createWebuiKanbanServices } from './webui-server/kanban-services.js';
 import { consoleLogger } from './webui-server/logger-shim.js';
+import { createCliEmbeddedMessageRouter } from './webui-server/message-router.js';
 import { createPrefsSeeding, seedConfigToMeta } from './webui-server/prefs-seeding.js';
-import { createProviderConfigStore, getVault } from './webui-server/provider-config.js';
+import { createEmbeddedProviderPlane } from './webui-server/provider-plane.js';
 import { createWebuiRouteContexts } from './webui-server/route-contexts.js';
-import { createSessionStartPayloadBuilder } from './webui-server/session-start-payload.js';
+import { createEmbeddedSessionAgents } from './webui-server/session-agents.js';
+import { createLiveSessionStartPayloadBuilder } from './webui-server/session-start-live.js';
 import { createSetupEvents } from './webui-server/setup-events.js';
-import { startStaticServe } from './webui-server/static-serve.js';
 import { createStreamCoalescer } from './webui-server/stream-coalescer.js';
+import { createWebuiTransport } from './webui-server/transport.js';
 import { runWebuiServerLifecycle } from './webui-server-lifecycle.js';
 import type { CliWebUIOptions } from './webui-server-options.js';
 import { setupWebuiSessionMaintenance } from './webui-session-maintenance.js';
 import { createWebuiSessionRetirement } from './webui-session-retirement.js';
-export type WSClientMessage = EmbeddedWSClientMessage;
 export type WSServerMessage = EmbeddedWSServerMessage;
 
 export type { CliWebUIOptions } from './webui-server-options.js';
@@ -83,13 +62,20 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   const trustBoundary =
     opts.trustBoundary ??
     createCompatibilityTrustBoundary({ policyId: 'cli-webui-trusted-host-compat-v1' });
-  const host = opts.host ?? process.env['WEBUI_HOST'] ?? process.env['WS_HOST'] ?? '127.0.0.1';
-  const publicUrl = opts.publicUrl ?? process.env['WEBUI_PUBLIC_URL'];
-  const publicWsUrl = opts.publicWsUrl ?? process.env['WEBUI_PUBLIC_WS_URL'];
-  const requireToken = opts.requireToken ?? envFlag('WEBUI_REQUIRE_TOKEN');
-  const surface = opts.surface ?? 'webui';
-  const surfaceDefaults = surface === 'simpleui' ? { http: 3466 } : { http: 3456 };
-  const requestedHttpPort = opts.httpPort ?? opts.port ?? surfaceDefaults.http;
+  const {
+    host,
+    publicUrl,
+    publicWsUrl,
+    requireToken,
+    surface,
+    requestedHttpPort,
+    strictPort,
+    globalRoot,
+    profileConfigPath,
+    profileDir,
+    rateLimitMax,
+    publicHostnames,
+  } = resolveWebuiHostSettings(opts);
   /**
    * One coordinator for the whole terminal: a fixed session-stats panel at
    * the bottom (live rows for every open tab, running or idle) plus an
@@ -106,22 +92,13 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     // authenticated access URL here even though startup logs remain redacted.
     getUrl: () => accessUrl,
   });
-  const strictPort = opts.strictPort ?? isStrictPort();
   let httpPort = requestedHttpPort;
   if (!strictPort) {
     httpPort = await findFreePort(host, requestedHttpPort);
   }
   let wsPort = httpPort;
-  const globalRoot = opts.globalConfigPath
-    ? path.dirname(opts.globalConfigPath)
-    : wstackGlobalRoot();
-  const profileConfigPath =
-    opts.profileConfigPath ?? opts.globalConfigPath ?? path.join(globalRoot, 'config.json');
-  const rawRateLimit = process.env['WEBUI_RATE_LIMIT']?.trim() ?? '';
-  const parsedRateLimit = /^\d+$/.test(rawRateLimit) ? Number(rawRateLimit) : Number.NaN;
-  const rateLimitMax =
-    Number.isSafeInteger(parsedRateLimit) && parsedRateLimit >= 0 ? parsedRateLimit : 600;
   const clients = new Map<WebSocket, ConnectedClient>();
+  const { send, broadcast, broadcastEveryone, sendResult } = createWebuiTransport(clients);
   const pendingConfirms = new Map<string, PendingConfirm>();
   const secretScrubber = new DefaultSecretScrubber();
   /**
@@ -136,7 +113,6 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
    */
   const abortControllers = new Map<string, AbortController>();
 
-  const profileDir = path.dirname(profileConfigPath);
   let customModeStoreP: Promise<CustomModeStore> | null = null;
   const getCustomModeStore = (): Promise<CustomModeStore> => {
     customModeStoreP ??= (async () => {
@@ -147,36 +123,10 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     return customModeStoreP;
   };
 
-  const kanbanRunMirror = opts.projectRoot
-    ? createKanbanRunMirror({
-        projectRoot: opts.projectRoot,
-        events: opts.events,
-        broadcast,
-        log: (m) => consoleLogger.info(m),
-      })
-    : null;
-  const kanbanSupervisor = opts.projectRoot
-    ? createKanbanSupervisor({
-        projectRoot: opts.projectRoot,
-        broadcast,
-        ...(opts.onKanbanDispatch ? { dispatchTask: opts.onKanbanDispatch } : {}),
-        log: (message) => consoleLogger.info(message),
-      })
-    : null;
-  const stopKanbanSupervisorMemoryStats = kanbanSupervisor
-    ? startSharedHeapWatchdog({
-        collectStats: () => {
-          const stats = kanbanSupervisor.getStats();
-          return {
-            kanbanSupervisorSnapshots: stats.snapshots,
-            kanbanSupervisorScheduledBoards: stats.scheduledBoards,
-            kanbanSupervisorAgentCooldowns: stats.agentCooldowns,
-            kanbanSupervisorRunningAgents: stats.runningAgents,
-          };
-        },
-      })
-    : undefined;
+  const { kanbanRunMirror, kanbanSupervisor, stopKanbanSupervisorMemoryStats } =
+    createWebuiKanbanServices(opts, broadcast);
 
+  const domainHandlers = createWebuiDomainHandlers(opts, trustBoundary, kanbanRunMirror);
   const {
     goalHandler,
     worktreeHandler,
@@ -184,7 +134,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     specsHandler,
     sddBoardHandler,
     sddWizardHandler,
-  } = createWebuiDomainHandlers(opts, trustBoundary, kanbanRunMirror);
+  } = domainHandlers;
 
   await seedConfigToMeta(opts);
   if (typeof opts.agent.ctx?.meta?.['yolo'] === 'boolean') {
@@ -201,26 +151,10 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
    * leader's.
    */
   let sessionAgentsRef: SessionAgentRegistry | undefined;
-  const buildSessionStartPayload = createSessionStartPayloadBuilder({
-    ...opts,
-    // Read through to the live `opts`, do NOT snapshot: `projects.select`
-    // re-roots the host by assigning `opts.projectRoot` / `opts.session` on
-    // this very object. A spread copy froze both at boot, so every
-    // `session.start` broadcast after a project switch still announced the
-    // previous project's root — the switch looked like it had not happened.
-    get projectRoot() {
-      return opts.projectRoot;
-    },
-    get session() {
-      return opts.session;
-    },
-    get appConfig() {
-      return opts.appConfig;
-    },
-    // `peek`, never `get`: building a payload must not materialise an agent
-    // for a session id that arrived from a stale browser tab.
-    getSessionContext: (sessionId) => sessionAgentsRef?.peek(sessionId)?.ctx,
-  });
+  const buildSessionStartPayload = createLiveSessionStartPayloadBuilder(
+    opts,
+    () => sessionAgentsRef,
+  );
 
   const { register: registerWebuiClient, unregister: unregisterWebuiClient } =
     createEmbeddedClientRegistration(opts, clients, abortControllers, () => sessionAgentsRef);
@@ -228,16 +162,6 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   registerWebuiClient();
 
   const wsToken = resolveAuthToken(opts.accessToken);
-  const publicHostnames = [publicUrl, publicWsUrl]
-    .map((value) => {
-      if (!value) return undefined;
-      try {
-        return new URL(value).hostname;
-      } catch {
-        return undefined;
-      }
-    })
-    .filter((value): value is string => Boolean(value));
   let accessUrl = buildWebUIAccessUrl({
     host,
     port: httpPort,
@@ -246,158 +170,28 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   });
 
   let fleetBroadcastCli: (() => Promise<void>) | null = null;
-  const httpServer = await startStaticServe({
-    getSessionProjectRoot: (sessionId) =>
-      sessionAgentsRef?.peek(sessionId)?.ctx.projectRoot ??
-      (opts.agent.ctx.session?.id === sessionId ? opts.agent.ctx.projectRoot : undefined),
+  const { httpServer, wss, ipv6LoopbackServer } = await startWebuiHttpBridge({
+    opts,
+    surface,
     host,
     httpPort,
+    strictPort,
     globalRoot,
-    distDir: opts.frontendDistDir,
-    ensureDistDeps: {
-      resolvePackageJson: (id) => {
-        const packageJson = findInstalledPackageJson(id, import.meta.url);
-        if (!packageJson) throw new Error(`Package not found: ${id}`);
-        return packageJson;
-      },
-    },
+    wsToken,
+    publicUrl,
+    publicWsUrl,
+    requireToken,
+    getSessionAgents: () => sessionAgentsRef,
     onFleetPing: () => {
       void fleetBroadcastCli?.();
     },
-    // Without this, /debug/watcher-metrics 503s and the Debug Dashboard has to
-    // report the watcher as "Unavailable". The CLI host runs no status watcher
-    // of its own, so this object stays all-zero and watcherActive reads false —
-    // which is the truthful state for an embedded host.
-    watcherMetrics: createDefaultFileWatcherMetrics(),
-    onTechStackEvent: (event) => broadcast(event),
-    getLlm: () =>
-      opts.agent.ctx.provider && opts.agent.ctx.model
-        ? { provider: opts.agent.ctx.provider, model: opts.agent.ctx.model }
-        : undefined,
-    projectRoot: opts.projectRoot,
-    publicWsUrl,
-    apiToken: wsToken,
-    requireToken,
-    deferListen: surface === 'simpleui',
-    strictPort,
-    // Resolve the same-origin health probes from live preferences, including
-    // changes made after boot, just like the standalone WebUI host.
-    getIntegrationTarget: (kind) => {
-      const meta = opts.agent.ctx.meta;
-      const enabledKey = kind === 'hq' ? 'hqEnabled' : 'wrongProxyEnabled';
-      const urlKey = kind === 'hq' ? 'hqUrl' : 'wrongProxyUrl';
-      return meta[enabledKey] === true && typeof meta[urlKey] === 'string'
-        ? (meta[urlKey] as string)
-        : undefined;
-    },
-    ...(opts.getVectorMemoryStore ? { getVectorMemoryStore: opts.getVectorMemoryStore } : {}),
-    ...(opts.vectorMemoryModelCacheDir
-      ? { vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir }
-      : {}),
-  });
-
-  // E5 (DOS-004): the previous CLI path constructed the
-  // `WebSocketServer` with no `verifyClient` callback, so a hostile
-  // page (or any random non-browser client) could complete the WS
-  // handshake and only then be rejected at the application-layer
-  // `authenticate` step. Every accepted handshake allocates a `ws`
-  // instance, two buffers, and a per-connection upgrade — the
-  // `for(;;) new WebSocket(...)` loop in a hostile tab is cheap
-  // memory/FD pressure on the agent host. The standalone server
-  // already wires `verifyClient`; mirror that on the CLI host.
-  // `WS-003` is left to its standalone setting (the Vite dev loop).
-  const verifyClient = (info: {
-    origin: string;
-    secure: boolean;
-    req: import('node:http').IncomingMessage;
-  }) =>
-    verifyWsClient({
-      origin: info.origin,
-      url: info.req.url ?? '',
-      hostHeader: info.req.headers.host,
-      remoteAddress: info.req.socket.remoteAddress,
-      cookieHeader: info.req.headers.cookie,
-      wsHost: host,
-      expectedToken: wsToken,
-      requireToken,
-      allowedHostnames: [publicUrl, publicWsUrl].filter((value): value is string => Boolean(value)),
-      allowBrowserUrlToken: Boolean(publicWsUrl),
-      allowCrossPortLoopbackCookie: process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'] === '1',
-    });
-
-  const wss = httpServer
-    ? new WebSocketServer({ server: httpServer.server, verifyClient, maxPayload: 20 * 1024 * 1024 })
-    : new WebSocketServer({ port: httpPort, host, verifyClient, maxPayload: 20 * 1024 * 1024 });
-
-  // Armed at construction, not at wiring time. Constructing a WebSocketServer
-  // with {server} makes `ws` forward that HTTP server's 'error' events onto
-  // this emitter, and the SimpleUI surface binds the HTTP server AFTER this
-  // point (deferListen). A bind error arriving while this emitter had no
-  // 'error' listener threw out of the emit loop as an uncaughtException,
-  // which skipped the remaining HTTP-server 'error' listeners — including
-  // listenWithRetry's — so the awaited bind never settled and startup hung
-  // forever. Bun on Windows reaches that window routinely (phantom
-  // EADDRINUSE on a free port), Node can reach it through a genuine
-  // probe-to-bind race.
-  wss.on('error', (err) => {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'webui_server.error',
-        message: err instanceof Error ? err.message : String(err),
-        timestamp: new Date().toISOString(),
-      }),
-    );
-  });
-
-  if (httpServer) {
-    const boundPort =
-      surface === 'simpleui'
-        ? await startDeferredHttpListen({
-            server: httpServer.server,
-            host,
-            httpPort,
-            logger: consoleLogger,
-            strictPort,
-          })
-        : httpServer.port;
-    if (boundPort !== httpPort) {
-      // The bind advanced past a TOCTOU competitor — every downstream
-      // consumer (access URL, WS bridge, instance registry, ready banner)
-      // must carry the actually-bound port.
-      httpPort = boundPort;
-      wsPort = boundPort;
+    broadcast,
+    onPortRebound: (port) => {
+      httpPort = port;
+      wsPort = port;
       accessUrl = buildWebUIAccessUrl({ host, port: httpPort, token: wsToken, publicUrl });
-    }
-  }
-
-  let ipv6LoopbackServer: HttpServer | null = null;
-  if (httpServer && host === '127.0.0.1') {
-    ipv6LoopbackServer = await startIpv6LoopbackProxy({
-      primary: httpServer.server,
-      httpPort,
-      logger: consoleLogger,
-    });
-  }
-
-  console.log(`[WebUI] WebSocket server starting on ws://${host}:${httpPort}`);
-
-  if (httpServer) {
-    announceWebuiReady({
-      surface,
-      server: httpServer.server,
-      host,
-      httpPort,
-      open: !!opts.open,
-      wsToken,
-      publicUrl,
-    });
-  } else {
-    console.warn(
-      `[WebUI] Frontend not served (run \`pnpm --filter @wrongstack/webui build\`). ` +
-        `WS bridge still active on ws://${host}:${httpPort}.`,
-    );
-  }
+    },
+  });
 
   /**
    * Which tab this host considers to be in front.
@@ -413,44 +207,16 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   const currentSessionId = (): string => foregroundSession.id;
 
   const registryBaseDir = globalRoot;
-  let webuiInstanceRegistered = false;
-  if (opts.projectRoot) {
-    const registration = Promise.resolve(
-      registerWebuiInstance({
-        pid: process.pid,
-        surface,
-        host,
-        httpPort,
-        publicUrl,
-        projectRoot: opts.projectRoot,
-        startedAt: new Date().toISOString(),
-        registryBaseDir,
-        authToken: wsToken,
-        ...(opts.webuiSessionChild
-          ? {
-              role: 'session-child' as const,
-              sessionId: currentSessionId(),
-              parentPid: opts.webuiSessionChild.parentPid,
-              parentShellId: opts.webuiSessionChild.parentShellId,
-              runtimeId: opts.webuiSessionChild.runtimeId,
-              attachable: opts.webuiSessionChild.attachable,
-              lastReadyAt: new Date().toISOString(),
-              protocolVersion: opts.webuiSessionChild.protocolVersion,
-              capabilities: [...WEBUI_SESSION_CHILD_CAPABILITIES],
-            }
-          : {}),
-      }),
-    ).then(
-      (value: unknown) => value !== false,
-      () => false,
-    );
-    if (opts.webuiSessionChild) {
-      webuiInstanceRegistered = await registration;
-    } else {
-      void registration;
-      webuiInstanceRegistered = true;
-    }
-  }
+  const webuiInstanceRegistered = await registerEmbeddedWebuiInstance({
+    opts,
+    surface,
+    host,
+    httpPort,
+    publicUrl,
+    registryBaseDir,
+    wsToken,
+    currentSessionId,
+  });
 
   const eventUnsubscribers: Array<() => void> = [];
 
@@ -495,62 +261,19 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     ...(opts.getFleetBudget ? { getFleetBudget: opts.getFleetBudget } : {}),
   });
 
-  const wsHandlerCtx: EmbeddedProviderContext = {
-    providerStore: createProviderConfigStore(
-      profileConfigPath,
-      () => (opts.appConfig?.providers as Record<string, ProviderConfig> | undefined) ?? {},
-    ),
-    modelsRegistry: opts.modelsRegistry,
-    providerAuthRegistry: opts.providerAuthRegistry,
-    getDisabledModels: () => opts.appConfig?.disabledModels ?? [],
-    getDisabledProviders: () => opts.appConfig?.disabledProviders ?? [],
-    send,
-    broadcast,
-    log: (m) => console.log(m),
-  };
-  const embeddedProviderOperations = createEmbeddedProviderOperations(wsHandlerCtx);
-
-  const credentialWatcherClose: (() => void) | undefined = startWebuiCredentialWatcher({
+  const { wsHandlerCtx, credentialWatcherClose } = createEmbeddedProviderPlane({
     opts,
     profileConfigPath,
+    send,
     broadcast,
-    broadcastSaved: (providers) =>
-      embeddedProviderOperations.broadcastSaved(providers as Record<string, ProviderConfig>),
   });
 
-  /**
-   * One Agent per open tab.
-   *
-   * The embedded host used to hand every tab the same leader Agent, so the
-   * second tab to start a run hit `Agent.run()`'s concurrency guard —
-   * "already in progress on this instance". Four tabs need four Agents; the
-   * registry clones the leader's wiring and gives each session its own
-   * `Context`, which is the state a run actually mutates.
-   */
-  const sessionAgents = createSessionAgentRegistry({
-    template: opts.agent,
-    ...(opts.modelsRegistry ? { modelsRegistry: opts.modelsRegistry } : {}),
-    isRunActive: (sessionId) => abortControllers.has(sessionId),
-    // A tab that is still on screen must outlive one that was closed, whatever
-    // order their agents were created in.
-    isDisplayed: (sessionId: string) => {
-      for (const client of clients.values()) {
-        if (client.sessionId === sessionId) return true;
-        if (client.sessionIds?.has(sessionId) === true) return true;
-      }
-      return false;
-    },
-  });
+  const { sessionAgents, isSessionDisplayed } = createEmbeddedSessionAgents(
+    opts,
+    clients,
+    abortControllers,
+  );
   sessionAgentsRef = sessionAgents;
-
-  /** Does any connected tab display this session right now? */
-  const isSessionDisplayed = (sessionId: string): boolean => {
-    for (const client of clients.values()) {
-      if (client.sessionId === sessionId) return true;
-      if (client.sessionIds?.has(sessionId) === true) return true;
-    }
-    return false;
-  };
 
   /**
    * Background-delegation auto-wake. The controller is the CLI's — one per
@@ -660,43 +383,21 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   let signalShutdown: (() => void) | undefined;
   const shutdown = (): void => signalShutdown?.();
   let embeddedAutoHealDispose: (() => void | Promise<void>) | null = null;
-  const handleMessage = createEmbeddedMessageRouter({
-    jevVault: getVault(opts.globalConfigPath ?? opts.profileConfigPath),
+  const handleMessage = createCliEmbeddedMessageRouter({
     trustBoundary,
     opts,
-    logger: consoleLogger,
     send,
     sendResult,
     sessionPayload,
     currentSessionId,
     shutdown,
-    // Auto-heal watchdog disposer — `disposeResources` awaits it (bounded) so
-    // an in-flight daemon restart drains before the host exits.
     onDispose: (dispose) => {
       embeddedAutoHealDispose = dispose;
     },
     providerCtx: wsHandlerCtx,
-    brainCtx: routeContexts.brainCtx,
-    introspectionCtx: routeContexts.introspectionCtx,
-    skillsCtx: routeContexts.skillsCtx,
-    promptsCtx: routeContexts.promptsCtx,
-    designCtx: routeContexts.designCtx,
-    agentConfigCtx: routeContexts.agentConfigCtx,
-    prefsCtx: routeContexts.prefsCtx,
-    projectCtx: routeContexts.projectsCtx,
-    mailboxRoutes: routeContexts.mailboxRoutes,
-    chimeraRoutes: routeContexts.chimeraRoutes,
-    codeAssistRoutes: routeContexts.codeAssistRoutes,
-    sessionCtx: routeContexts.sessionsCtx,
-    conversationCtx: routeContexts.connectionCtx,
-    goalHandler,
-    specsHandler,
-    sddBoardHandler,
-    sddWizardHandler,
-    worktreeHandler,
-    terminalHandler,
+    routeContexts,
+    domainHandlers,
     kanbanHostRoutes,
-    statusTracker: opts.statusTracker,
   });
 
   const { stopped } = runWebuiServerLifecycle({
@@ -758,52 +459,6 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     stopLiveStatusLogger,
     terminalLogView,
   });
-
-  function send(ws: WebSocket, msg: WSServerMessage): void {
-    // `stampDispatchSession` names the tab whose message is being handled on
-    // `key.operation_result` frames, which carry no session of their own. This
-    // host writes straight to `sendSerialized` rather than going through the
-    // shared `send`, so it has to apply the stamp itself or the CLI-embedded
-    // WebUI keeps mis-routing background tabs' result toasts. See B-05.
-    sendSerialized(ws, JSON.stringify(stampDispatchSession(msg)));
-  }
-
-  /**
-   * Broadcast, but session-aware: a frame whose payload names a session is
-   * delivered only to connections displaying that session (their declared
-   * `sessionIds` set from `session.subscribe`, or their single `sessionId`).
-   * The old loop pushed every tagged frame to every socket — delivery relied
-   * entirely on each client's goodwill to file it under the right tab, which
-   * is no isolation boundary at all.
-   *
-   * `targetSessionId` overrides the payload's id: a subagent's codemap frame
-   * names the SUBAGENT's session, which no tab subscribes to.
-   */
-  function broadcast(msg: WSServerMessage, targetSessionId?: string): void {
-    const payload = (msg as { payload?: unknown }).payload;
-    const sessionId =
-      targetSessionId ??
-      (payload &&
-      typeof payload === 'object' &&
-      typeof (payload as { sessionId?: unknown }).sessionId === 'string'
-        ? (payload as { sessionId: string }).sessionId
-        : undefined);
-    // Session frames are numbered for reconnect catch-up (session-frame-log).
-    const data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
-    for (const [ws, client] of clients) {
-      if (clientWantsSession(client, sessionId)) sendSerialized(ws, data);
-    }
-  }
-
-  /** Every connection, unfiltered — see `ProjectHandlersContext.broadcastEveryone`. */
-  function broadcastEveryone(msg: WSServerMessage): void {
-    const data = JSON.stringify(msg);
-    for (const [ws] of clients) sendSerialized(ws, data);
-  }
-
-  function sendResult(ws: WebSocket, success: boolean, message: string): void {
-    send(ws, { type: 'key.operation_result', payload: { success, message } });
-  }
 
   return stopped.finally(() => terminalLogView.stop());
 }

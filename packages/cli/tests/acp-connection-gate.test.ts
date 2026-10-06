@@ -120,7 +120,7 @@ describe('the gate is wired at the handshake, not after it (WS-001)', () => {
    * server never emits `connection`.
    */
   const SOURCE = readFileSync(
-    resolve(dirname(fileURLToPath(import.meta.url)), '../src/subcommands/handlers/acp.ts'),
+    resolve(dirname(fileURLToPath(import.meta.url)), '../src/subcommands/handlers/acp-server.ts'),
     'utf8',
   );
 

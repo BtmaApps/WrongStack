@@ -1,16 +1,47 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { toErrorMessage } from '@wrongstack/core/utils';
+import { DefaultLogger } from '@wrongstack/core/infrastructure';
+import { DefaultModelsRegistry, startCatalog } from '@wrongstack/core/models';
+import type { Config, ModelsRegistry, SecretVault } from '@wrongstack/core/types';
 import {
-  autoSelectSavedProvider,
+  color,
+  isStdinTTY,
+  toErrorMessage,
+  type WstackPaths,
+  writeErr,
+} from '@wrongstack/core/utils';
+import { parseArgs } from './arg-parser.js';
+import { resolveAppendedSystemPrompt } from './boot/append-system-prompt.js';
+import { discoverAndMergeProviders } from './boot/auto-discover-providers.js';
+import { maybeRestoreDefaultProfileFromBackup } from './boot/config-backup-recovery.js';
+import { applyGoalTuiDefault } from './boot/goal-tui-default.js';
+import { resolveLaunchMcpServers } from './boot/mcp-config-flag.js';
+import { activateRestrictedMode } from './boot/restricted-mode.js';
+import { announceSafeMode } from './boot/safe-mode.js';
+import { applySimpleUiFullAutoProfile, isSimpleUiFullAuto } from './boot/simpleui-full-auto.js';
+import { parseOutputFormat } from './boot/stream-json.js';
+import { resolveJsonSchemaFlag } from './boot/structured-output.js';
+import {
+  resolveLaunchAllowedTools,
+  resolveToolRestriction,
+} from './boot/tool-restriction-flags.js';
+import { bootConfig } from './boot-config.js';
+import { applyBootLaunchChoices } from './boot-launch-choices.js';
+import { resolveBootProviderModel } from './boot-provider-gate.js';
+import {
   checkGitInCwd,
   isHomeDirectory,
   resolveBundledOverlayFile,
-  resolveBundledPromptsDir,
-  resolveBundledSkillsDir,
-  shouldPrintYoloNotice,
-  validateSavedProviderModel,
 } from './boot-provider-selection.js';
+import { dispatchBootSubcommand } from './boot-subcommand-dispatch.js';
+import { ReadlineInputReader } from './input-reader.js';
+import { runProjectCheck } from './pre-launch.js';
+import { activeProfileConfigPath } from './profile-config-path.js';
+import { TerminalRenderer } from './renderer.js';
+import { runUpdateCommand } from './subcommands/handlers/update.js';
+import { subcommands } from './subcommands/index.js';
+import type { UpdateInfo } from './update-check.js';
+import { installProviderPersisters } from './wiring/provider-persisters.js';
 
 export {
   autoSelectSavedProvider,
@@ -30,53 +61,6 @@ export {
  */
 const GITHUB_PROVIDERS_OVERLAY_URL =
   'https://raw.githubusercontent.com/WrongStack/WrongStack/main/packages/cli/data/providers.json';
-
-import { DefaultLogger } from '@wrongstack/core/infrastructure';
-import { TOKENS } from '@wrongstack/core/kernel';
-import { DefaultModelsRegistry, startCatalog } from '@wrongstack/core/models';
-import { ToolRegistry } from '@wrongstack/core/registry';
-import type { Config, ModelsRegistry, SecretVault } from '@wrongstack/core/types';
-import { normalizeTokenSavingTier } from '@wrongstack/core/types';
-import { color, isStdinTTY, type WstackPaths, writeErr } from '@wrongstack/core/utils';
-import { isSetupProvider, SETUP_MODEL_ID, SETUP_PROVIDER_ID } from '@wrongstack/providers';
-import { createDefaultContainer } from '@wrongstack/runtime';
-import { registerBuiltinToolTier } from '@wrongstack/tools/tool-tier';
-import { parseArgs } from './arg-parser.js';
-import { resolveAppendedSystemPrompt } from './boot/append-system-prompt.js';
-import { discoverAndMergeProviders } from './boot/auto-discover-providers.js';
-import { maybeRestoreDefaultProfileFromBackup } from './boot/config-backup-recovery.js';
-import { applyGoalTuiDefault } from './boot/goal-tui-default.js';
-import { resolveLaunchMcpServers } from './boot/mcp-config-flag.js';
-import { activateRestrictedMode } from './boot/restricted-mode.js';
-import { announceSafeMode } from './boot/safe-mode.js';
-import { applySimpleUiFullAutoProfile, isSimpleUiFullAuto } from './boot/simpleui-full-auto.js';
-import { parseOutputFormat } from './boot/stream-json.js';
-import { resolveJsonSchemaFlag } from './boot/structured-output.js';
-import { maybeRunSystemPromptMenu } from './boot/system-prompt-menu.js';
-import {
-  resolveLaunchAllowedTools,
-  resolveToolRestriction,
-} from './boot/tool-restriction-flags.js';
-import { bootConfig } from './boot-config.js';
-import { ReadlineInputReader } from './input-reader.js';
-import { type PickerResult, runPicker, saveToGlobalConfig } from './picker.js';
-import {
-  hasAnyCredential,
-  isOutsideProject,
-  LaunchAbortedError,
-  persistLaunchChoices,
-  runFirstRunSetup,
-  runLaunchPrompts,
-  runProjectCheck,
-} from './pre-launch.js';
-import { activeProfileConfigPath } from './profile-config-path.js';
-import { TerminalRenderer } from './renderer.js';
-import { renderDeepHelp, renderFocusedHelp } from './subcommands/handlers/per-subcommand-help.js';
-import { runUpdateCommand } from './subcommands/handlers/update.js';
-import { subcommands } from './subcommands/index.js';
-import type { UpdateInfo } from './update-check.js';
-import { patchConfig } from './utils.js';
-import { installProviderPersisters } from './wiring/provider-persisters.js';
 
 export interface BootContext {
   config: Config;
@@ -289,56 +273,22 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   // fails with invalid_grant until the user signs in again. Re-installing later
   // is harmless — the second call replaces the first with an equivalent writer.
   installProviderPersisters({ config, paths: wpaths, vault, logger });
-  const subcommandHandler = first ? subcommands[first] : undefined;
-  if (first && subcommandHandler) {
-    if (flags['help'] === true || flags['h'] === true) {
-      const deepSub = positional[1];
-      if (deepSub && renderDeepHelp(`${first}:${deepSub}`, renderer)) {
-        await reader.close();
-        return 0;
-      }
-      if (renderFocusedHelp(first, renderer)) {
-        await reader.close();
-        return 0;
-      }
-    }
-
-    // Create container to get the SAME skillLoader instance that the main
-    // interactive CLI uses. This ensures cache invalidation after
-    // /skill-install propagates correctly to /skill and other commands.
-    const container = createDefaultContainer({
-      config,
-      wpaths,
-      logger,
-      modelsRegistry,
-      bundledSkillsDir: config.features.skills ? resolveBundledSkillsDir() : undefined,
-      bundledPromptsDir: config.features.prompts === false ? undefined : resolveBundledPromptsDir(),
-    });
-    const sessionStore = container.resolve(TOKENS.SessionStore);
-    const skillLoader = container.resolve(TOKENS.SkillLoader);
-    const toolRegistryForSubcmd = new ToolRegistry();
-    registerBuiltinToolTier({
-      registry: toolRegistryForSubcmd,
-      tier: normalizeTokenSavingTier(config.features.tokenSavingMode),
-    });
-    const code = await subcommandHandler(positional.slice(1), {
-      config,
-      renderer,
-      reader,
-      sessionStore,
-      skillLoader,
-      toolRegistry: toolRegistryForSubcmd,
-      modelsRegistry,
-      paths: wpaths,
-      vault,
-      cwd,
-      projectRoot,
-      userHome,
-      flags,
-    });
-    await reader.close();
-    return code;
-  }
+  const subcommandCode = await dispatchBootSubcommand({
+    first,
+    positional,
+    flags,
+    config,
+    vault,
+    wpaths,
+    cwd,
+    projectRoot,
+    userHome,
+    renderer,
+    reader,
+    logger,
+    modelsRegistry,
+  });
+  if (subcommandCode !== undefined) return subcommandCode;
 
   // Safety guard: refuse to start when the current working directory is the
   // user's home directory. Running wstack in ~ risks creating a .git repo at
@@ -425,197 +375,20 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   }
 
   // Provider + model selection
-  const providerFlag = typeof flags['provider'] === 'string' ? flags['provider'] : undefined;
-  const modelFlag = typeof flags['model'] === 'string' ? flags['model'] : undefined;
   // When --webui or --no-interactive is active, skip interactive picker and require config values
   const noInteractiveMode = flags['webui'] || flags['no-interactive'];
-  // Non-interactive surfaces can't run the picker, so adopt a saved provider
-  // (e.g. a custom one added via /auth) when the active pointers are unset —
-  // otherwise a custom-provider-only config fails the presence check below and
-  // shows "No provider or model configured". The TUI reaches the picker instead.
-  if (noInteractiveMode && (!config.provider || !config.model)) {
-    // Explicit --provider/--model flags surface into the live config so --webui
-    // boots into the ready state instead of the setup screen. Combined with the
-    // `if (!(!!providerFlag && !!modelFlag))` gate below skipping registry
-    // validation entirely in non-interactive mode, callers (notably CI E2E)
-    // can provide any id pair to skip the auth gate — downstream provider
-    // resolution is still typed, just unvalidated at boot.
-    if (providerFlag && modelFlag) {
-      config = patchConfig(config, { provider: providerFlag, model: modelFlag });
-    } else {
-      const picked = await autoSelectSavedProvider(config, modelsRegistry);
-      if (picked) config = patchConfig(config, picked);
-    }
-  }
-  if (!(!!providerFlag && !!modelFlag)) {
-    if (isStdinTTY() && !noInteractiveMode) {
-      let picked: PickerResult | undefined;
-      let skipPicker = false;
-
-      // --- First-run gate: nothing on this machine can reach a model ---
-      // Runs BEFORE the picker. The picker lists the ~190-entry models.dev
-      // catalog, none of which is usable without a credential, and cancelling
-      // it exits the process — so a newcomer could never reach the TUI to run
-      // `/auth`. This gate offers the four real ways in plus setup mode, so
-      // there is always a path that ends inside the app.
-      if (isSetupProvider(config.provider)) {
-        // Already opted into setup mode on an earlier launch. Re-showing the
-        // welcome screen every time would nag; a one-line reminder plus the
-        // `/auth` pointer is enough, and adding a credential retires this
-        // state on its own.
-        skipPicker = true;
-        renderer.write(
-          `\n  ${color.amber('▶')} ${color.bold('Setup mode')} ${color.dim('— no model connected. Run')} ${color.bold('/auth')} ${color.dim('to connect one.')}\n\n`,
-        );
-      } else if (!(await hasAnyCredential(config, modelsRegistry))) {
-        const outcome = await runFirstRunSetup({
-          renderer,
-          reader,
-          modelsRegistry,
-          vault,
-          profileConfigPath,
-          reloadConfig: async () => (await bootConfig(flags)).config,
-        });
-        if (outcome.kind === 'quit') {
-          await reader.close();
-          return 0;
-        }
-        if (outcome.kind === 'setup-mode') {
-          config = patchConfig(config, { provider: SETUP_PROVIDER_ID, model: SETUP_MODEL_ID });
-          // Persist so a relaunch goes straight back in rather than re-asking.
-          // Only the top-level pointers are written — never a `providers[]`
-          // entry — which is what makes the first real credential retire setup
-          // mode automatically (see clearStaleProviderDefaults).
-          await saveToGlobalConfig(profileConfigPath, SETUP_PROVIDER_ID, SETUP_MODEL_ID);
-          skipPicker = true;
-        } else {
-          // Credentials landed on disk; our in-memory copy is stale. Re-read it
-          // the same way the backup-restore path above does, then fall through
-          // to the normal picker — which now has something real to offer.
-          try {
-            const reloaded = await bootConfig(flags);
-            config = reloaded.config;
-            vault = reloaded.vault;
-          } catch (err) {
-            writeErr(`Config error after setup: ${toErrorMessage(err)}\n`);
-            await reader.close();
-            return 2;
-          }
-        }
-      }
-
-      // --- Summary gate: saved provider/model from last session ---
-      // Skipped when the first-run gate above already decided the surface —
-      // otherwise setup mode would be announced twice and then re-confirmed.
-      const savedProvider = config.provider;
-      const savedModel = config.model;
-      if (!skipPicker && savedProvider && savedModel) {
-        const savedStatus = await validateSavedProviderModel(config, modelsRegistry);
-        renderer.write(
-          `\n  ${color.dim('Last settings:')} ${color.bold(savedProvider)} / ${color.bold(savedModel)}\n`,
-        );
-        if (!savedStatus.ok) {
-          renderer.writeWarning(
-            `Saved provider/model is no longer usable (${savedStatus.reason ?? 'unknown reason'}); choose a provider.\n`,
-          );
-        } else {
-          const answer = (
-            await reader.readLine(
-              `  ${color.amber('?')} Continue with these? ${color.dim('[Y/n/q]')} ${color.dim('(auto Y in 5s)')} `,
-              { timeoutMs: 5000, defaultAnswer: 'y' },
-            )
-          )
-            .trim()
-            .toLowerCase();
-          if (answer === 'q') {
-            renderer.write(color.dim('  Goodbye!\n'));
-            await reader.close();
-            return 0;
-          }
-          if (answer !== 'n' && answer !== 'no') {
-            // Accepted — use saved values, skip the picker entirely
-            skipPicker = true;
-            renderer.write(
-              `\n  ${color.green('▶')} ${color.bold(savedProvider)} / ${color.bold(savedModel)}\n\n`,
-            );
-          }
-        }
-      }
-
-      if (!skipPicker) {
-        picked = await runPicker({
-          modelsRegistry,
-          renderer,
-          reader,
-          config,
-          defaultProvider: providerFlag ?? config.provider,
-          defaultModel: modelFlag ?? config.model,
-        });
-      }
-
-      if (!picked && !skipPicker) {
-        if (!config.provider || !config.model) {
-          // Cancelling the picker used to exit 2 with nothing printed, which
-          // reads as a crash. Say what happened and name both ways forward.
-          renderer.write(
-            `\n  ${color.dim('No provider selected.')}\n` +
-              `  ${color.dim('Run')} ${color.bold('wstack auth')} ${color.dim('to add a key or sign in, or start with no model:')}\n` +
-              `  ${color.bold(`wstack --provider ${SETUP_PROVIDER_ID} --model ${SETUP_MODEL_ID}`)}\n\n`,
-          );
-          await reader.close();
-          return 2;
-        }
-      }
-
-      if (picked) {
-        const prevProvider = config.provider;
-        const prevModel = config.model;
-        const prevEffort = config.modelRuntime?.reasoning?.effort;
-        config = patchConfig(config, {
-          provider: picked.provider,
-          model: picked.model,
-          ...(picked.effort
-            ? {
-                modelRuntime: {
-                  ...config.modelRuntime,
-                  reasoning: { ...config.modelRuntime?.reasoning, effort: picked.effort },
-                },
-              }
-            : {}),
-        });
-        const effortChanged = picked.effort !== undefined && picked.effort !== prevEffort;
-        if (picked.provider !== prevProvider || picked.model !== prevModel || effortChanged) {
-          const label = `${picked.provider}/${picked.model}${picked.effort ? ` (effort ${picked.effort})` : ''}`;
-          const saved = await saveToGlobalConfig(profileConfigPath, picked.provider, picked.model, {
-            effort: picked.effort,
-          });
-          if (saved) {
-            renderer.writeInfo(`Saved ${label} as default.\n`);
-          } else {
-            renderer.writeWarning(
-              `Could not save ${label} to config. Check permissions or disk space.\n`,
-            );
-          }
-        }
-      }
-    } else if (!config.provider || !config.model) {
-      writeErr(
-        'No provider or model configured. Run `wstack auth`, or pass --provider <id> --model <id>.\n' +
-          `To start the app with no model connected, pass --provider ${SETUP_PROVIDER_ID} --model ${SETUP_MODEL_ID}.\n`,
-      );
-      await reader.close();
-      return 2;
-    } else {
-      const savedStatus = await validateSavedProviderModel(config, modelsRegistry);
-      if (!savedStatus.ok) {
-        writeErr(
-          `Saved provider/model is no longer usable (${savedStatus.reason ?? 'unknown reason'}). Run \`wstack auth\` or pass --provider <id> --model <id>.\n`,
-        );
-        await reader.close();
-        return 2;
-      }
-    }
-  }
+  const providerGate = await resolveBootProviderModel({
+    flags,
+    config,
+    vault,
+    modelsRegistry,
+    renderer,
+    reader,
+    profileConfigPath,
+    noInteractiveMode,
+  });
+  if (providerGate.kind === 'exit') return providerGate.code;
+  ({ config, vault } = providerGate);
 
   // --webui serves the browser UI alongside the terminal REPL and is mutually
   // exclusive with the Ink TUI (both own stdout). Pin the surface to REPL so the
@@ -630,153 +403,19 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   // during bootConfig. No duplicate needed here.
 
   // Mode + YOLO + Director + Autonomy prompts
-  if (isInteractiveTTY) {
-    // System prompt (Lite / Standard / Pro). The gate itself lives in
-    // `maybeRunSystemPromptMenu` so the non-TTY skip is unit-testable —
-    // as a bare `if` here it was unreachable from any test.
-    const promptMenu = await maybeRunSystemPromptMenu({
-      isInteractiveTTY,
-      flags,
-      renderer,
-      reader,
-      profileConfigPath,
-      paths: {
-        globalDir: wpaths.globalInstructions,
-        projectDir: wpaths.inProjectInstructions,
-      },
-      outsideProject: await isOutsideProject(projectRoot),
-    });
-    if (promptMenu.aborted) {
-      await reader.close();
-      return 0;
-    }
-    if (promptMenu.changed && promptMenu.variant) {
-      config = patchConfig(config, { systemPrompt: { variant: promptMenu.variant } });
-    }
-    if (promptMenu.persistError) {
-      renderer.writeWarning(
-        `Could not save system prompt variant to config: ${toErrorMessage(promptMenu.persistError)}\n`,
-      );
-    }
-
-    let modePinned: 'tui' | 'repl' | undefined;
-    if (flags['no-tui']) modePinned = 'repl';
-    else if (flags['tui']) modePinned = 'tui';
-    const yoloPinned: boolean | undefined =
-      flags['no-yolo'] === true ? false : flags['yolo'] === true ? true : undefined;
-    let autonomyPinned: 'off' | 'auto' | undefined;
-    if (flags['no-autonomy'] === true) autonomyPinned = 'off';
-    else if (flags['eternal'] === true)
-      autonomyPinned = 'off'; // --eternal starts engine directly, skips launch-prompt autonomy
-    else if (typeof flags['autonomy'] === 'string') {
-      const v = (flags['autonomy'] as string).toLowerCase();
-      autonomyPinned = v === 'off' || v === 'no' || v === 'false' ? 'off' : 'auto';
-    } else if (flags['autonomy'] === true) {
-      autonomyPinned = 'auto';
-    }
-
-    // Build saved preferences from config so the prompt can offer a one-line
-    // "Continue with these?" summary instead of re-asking every question.
-    const lastChoices = config.launch
-      ? {
-          mode: config.launch.mode ?? 'tui',
-          yolo: config.yolo ?? true,
-          autonomy: config.launch.autonomy ?? 'auto',
-        }
-      : undefined;
-
-    let choices: Awaited<ReturnType<typeof runLaunchPrompts>>;
-    try {
-      choices = await runLaunchPrompts({
-        renderer,
-        reader,
-        modePinned,
-        yoloPinned,
-        autonomyPinned,
-        lastChoices,
-      });
-    } catch (err) {
-      if (err instanceof LaunchAbortedError) {
-        await reader.close();
-        return 0;
-      }
-      throw err;
-    }
-    if (choices.mode === 'tui') {
-      flags['tui'] = true;
-      flags['no-tui'] = false;
-    } else {
-      flags['tui'] = false;
-      flags['no-tui'] = true;
-    }
-    if (choices.yolo !== config.yolo) config = patchConfig(config, { yolo: choices.yolo });
-    flags['autonomy'] = choices.autonomy;
-
-    // First-run YOLO disclosure: when YOLO auto-enabled on the very first
-    // interactive launch and was not explicitly pinned via --yolo or
-    // --no-yolo, print a one-time notice to stderr so the user is aware
-    // that non-denied tool calls (shell, file writes, etc.) run without
-    // confirmation.
-    if (shouldPrintYoloNotice(lastChoices, yoloPinned, choices.yolo)) {
-      writeErr(
-        `\n  ${color.yellow('YOLO is on')}: non-denied tool calls, including shell and file writes, run without confirmation.\n` +
-          `  ${color.dim('Damaging calls and calls your deny rules forbid still ask. Use')} --no-yolo ${color.dim('or')} /yolo off ${color.dim('to require prompts.')}\n\n`,
-      );
-    }
-
-    // --skip-index / --skip suppresses startup codebase indexing.
-    if ((flags['skip-index'] || flags['skip']) && config.indexing) {
-      config = patchConfig(config, {
-        indexing: { ...config.indexing, onSessionStart: false },
-      });
-    }
-
-    // Persist launch preferences so the next boot remembers them.
-    // When --webui is active the mode is pinned to REPL (TUI owns stdout),
-    // but we must NOT persist that choice — the user's last non-webui mode
-    // (likely TUI) should survive so the next plain `wstack` session returns
-    // to their preferred surface instead of silently landing in REPL.
-    if (!simpleUiFullAuto) {
-      try {
-        const toPersist = flags['webui']
-          ? { ...choices, mode: lastChoices?.mode ?? config.launch?.mode ?? 'tui' }
-          : choices;
-        await persistLaunchChoices(profileConfigPath, toPersist);
-      } catch {
-        // Best-effort — never blocks launch.
-      }
-    }
-  } else {
-    // When skipping interactive prompts (--webui or --no-interactive), use saved
-    // preferences or sensible defaults. Director stays OFF in non-interactive mode.
-    // Autonomy defaults to the configured defaultMode (now 'auto') so non-interactive
-    // sessions self-drive too — unless the user explicitly opts out with --no-autonomy
-    // (or sets autonomy.defaultMode: 'off' in config).
-    // Launch autonomy only supports 'off' | 'auto' (no 'suggest' surface here).
-    // Respect an explicit opt-out (--no-autonomy or defaultMode 'off'); otherwise
-    // default to 'auto' so non-interactive sessions self-drive too.
-    const nonInteractiveAutonomy: 'off' | 'auto' =
-      !simpleUiFullAuto && (flags['no-autonomy'] === true || config.autonomy?.defaultMode === 'off')
-        ? 'off'
-        : 'auto';
-    const effectiveChoices = config.launch
-      ? {
-          mode: flags['no-tui'] ? 'repl' : (config.launch.mode ?? 'tui'),
-          yolo: config.yolo ?? true,
-          autonomy: nonInteractiveAutonomy,
-        }
-      : {
-          mode: 'repl',
-          yolo: true,
-          autonomy: nonInteractiveAutonomy,
-        };
-
-    if (effectiveChoices.mode === 'repl') {
-      flags['tui'] = false;
-      flags['no-tui'] = true;
-    }
-    flags['autonomy'] = effectiveChoices.autonomy;
-  }
+  const launch = await applyBootLaunchChoices({
+    isInteractiveTTY,
+    simpleUiFullAuto,
+    flags,
+    config,
+    renderer,
+    reader,
+    profileConfigPath,
+    wpaths,
+    projectRoot,
+  });
+  if (launch.kind === 'exit') return launch.code;
+  config = launch.config;
 
   applyGoalTuiDefault(flags, positional);
 

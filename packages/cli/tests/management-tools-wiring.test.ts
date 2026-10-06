@@ -155,7 +155,7 @@ describe('registerCliManagementTools', () => {
     const { join, dirname } = await import('node:path');
     const { fileURLToPath } = await import('node:url');
     const cliMain = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-main.ts'),
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-main-boot.ts'),
       'utf8',
     );
     const initialTools = readFileSync(
@@ -233,7 +233,7 @@ describe('registerCliManagementTools', () => {
     const { join, dirname } = await import('node:path');
     const { fileURLToPath } = await import('node:url');
     const cliMain = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-main.ts'),
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli-main-boot.ts'),
       'utf8',
     );
     const initialTools = readFileSync(
