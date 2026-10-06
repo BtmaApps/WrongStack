@@ -9,7 +9,9 @@ import type { SessionWriter } from '../types/session.js';
  * tests and lightweight embedders stub Context with partial objects whose
  * `session` may be missing despite the non-optional type.
  */
-export function resolveEventSessionId(ctx: AgentContext): string {
+export function resolveEventSessionId(
+  ctx: Pick<AgentContext, 'activeRunSessionId' | 'session'>,
+): string {
   if (ctx.activeRunSessionId) {
     return requireSessionId(ctx.activeRunSessionId, 'agent event emission');
   }

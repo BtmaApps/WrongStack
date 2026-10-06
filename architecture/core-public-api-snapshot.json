@@ -1563,22 +1563,22 @@
       "directory": "chronicle",
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
-      "sourceFiles": 44,
-      "sourceLines": 12449
+      "sourceFiles": 48,
+      "sourceLines": 12501
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 226,
-      "sourceLines": 60467
+      "sourceFiles": 229,
+      "sourceLines": 60614
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 69,
-      "sourceLines": 15742
+      "sourceFiles": 72,
+      "sourceLines": 15773
     },
     {
       "directory": "design",
@@ -1591,8 +1591,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 82,
-      "sourceLines": 22266
+      "sourceFiles": 90,
+      "sourceLines": 22482
     },
     {
       "directory": "extension",
@@ -1675,8 +1675,8 @@
       "directory": "plugins",
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
-      "sourceFiles": 24,
-      "sourceLines": 9550
+      "sourceFiles": 26,
+      "sourceLines": 9586
     },
     {
       "directory": "prompts",
@@ -1717,8 +1717,8 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 35,
-      "sourceLines": 10639
+      "sourceFiles": 36,
+      "sourceLines": 10654
     },
     {
       "directory": "session-catalog",
@@ -1745,8 +1745,8 @@
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
-      "sourceFiles": 113,
-      "sourceLines": 25487
+      "sourceFiles": 114,
+      "sourceLines": 25498
     },
     {
       "directory": "tasking",
@@ -1801,8 +1801,8 @@
       "directory": "worktree",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
-      "sourceFiles": 8,
-      "sourceLines": 1535
+      "sourceFiles": 9,
+      "sourceLines": 1542
     }
   ]
 }

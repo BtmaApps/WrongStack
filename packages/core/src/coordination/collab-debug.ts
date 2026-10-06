@@ -42,55 +42,17 @@ import {
 
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import * as fsp from 'node:fs/promises';
-import * as path from 'node:path';
 import type { SubagentConfig, TaskResult } from '../types/multi-agent.js';
-import { expandGlob } from '../utils/glob-expand.js';
 import type { CollabDirectorHost } from './collab-director-host.js';
-import { validateFleetEventEmission } from './fleet-event-validation.js';
+import {
+  collabOwnsSubagent,
+  collabRoleFromSubagentId,
+  emitCollabResultEvents,
+  wireCollabFleetBus,
+} from './collab-fleet-wiring.js';
+import { effectiveCollabFileLimit, readCollabSnapshotFiles } from './collab-snapshot.js';
 
-/**
- * Default maximum number of files a collab_debug session may target.
- * Each of the three agents (BugHunter, RefactorPlanner, Critic) receives
- * the full file snapshot as context — a large target causes token overflow
- * and timeout failures. Keep this low (20-30) for reliable sessions.
- * Used when neither `maxTargetFiles` nor `contextWindow` is provided.
- */
-export const DEFAULT_MAX_TARGET_FILES = 30;
-
-/**
- * Confine one collab target to the project root (WS-2026-09-17-01).
- *
- * Every sibling file tool routes through `ensureInsideRoot` /
- * `resolveRealInsideRoot`; this path had no equivalent, so a user who enabled
- * `tools.restrictToProjectRoot` got confinement on read/edit/grep/glob and not
- * here — and `collab_debug` embeds what it reads into three subagent prompts,
- * i.e. straight out to the provider.
- *
- * Resolution goes through `realpath`, so an in-root symlink aimed outside is
- * refused too (CWE-59). A path that does not exist resolves lexically: it would
- * fail the read anyway, and deciding it here keeps the answer stable.
- *
- * @returns the resolved path when reading it is allowed, `null` when refused.
- */
-export async function resolveCollabTargetInsideRoot(
-  filePath: string,
-  projectRoot: string | undefined,
-  allowOutsideProjectRoot: boolean | undefined,
-): Promise<string | null> {
-  // Unrestricted access, or no root to measure against: nothing to enforce.
-  // Mirrors `resolveRealInsideRoot`, which returns immediately in that case.
-  if (allowOutsideProjectRoot === true || !projectRoot) return filePath;
-  const realTarget = await fsp.realpath(filePath).catch(() => path.resolve(filePath));
-  const realRoot = await fsp.realpath(projectRoot).catch(() => path.resolve(projectRoot));
-  const rel = path.relative(realRoot, realTarget);
-  const inside =
-    rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
-  return inside ? realTarget : null;
-}
-
-/** ID prefixes for the three collab-debug agent roles. Used by ownsSubagent. */
-const COLLAB_ID_PREFIXES = ['bug-hunter-', 'refactor-planner-', 'critic-'];
+export { DEFAULT_MAX_TARGET_FILES, resolveCollabTargetInsideRoot } from './collab-snapshot.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -120,18 +82,14 @@ export { DirectorAlertLevel } from './collab-debug-types.js';
 
 import type {
   BugFinding,
-  BugFoundPayload,
   CollabDebugReport,
   CollabSessionOptions,
   CriticEvaluation,
-  CriticEvaluationPayload,
   DirectorAlert,
   DirectorCancelCollabPayload,
   RefactorPlan,
-  RefactorPlanPayload,
   SharedFileSnapshot,
 } from './collab-debug-types.js';
-import { DirectorAlertLevel } from './collab-debug-types.js';
 
 export class CollabSession extends EventEmitter {
   readonly sessionId: string;
@@ -208,81 +166,12 @@ export class CollabSession extends EventEmitter {
    * Priority: explicit `maxTargetFiles` > dynamic from `contextWindow` > `DEFAULT_MAX_TARGET_FILES`.
    */
   effectiveFileLimit(): number {
-    if (this.options.maxTargetFiles !== undefined) {
-      return this.options.maxTargetFiles;
-    }
-    if (this.options.contextWindow !== undefined) {
-      // Reserve 40% of context window for the file snapshot.
-      // Heuristic: ~2000 tokens per average source file.
-      return Math.max(5, Math.floor((this.options.contextWindow * 0.4) / 2000));
-    }
-    return DEFAULT_MAX_TARGET_FILES;
+    return effectiveCollabFileLimit(this.options);
   }
 
   async buildSnapshot(): Promise<SharedFileSnapshot> {
     if (this.snapshot.files.length > 0) return this.snapshot;
-    const allFiles: string[] = [];
-    for (const pattern of this.options.targetPaths) {
-      const expanded = await expandGlob(pattern);
-      for (const file of expanded) {
-        // The confinement check belongs HERE because this is the read site.
-        // `expandGlob` runs again in this method, so a check performed before
-        // the call is a TOCTOU window rather than a control (WS-2026-09-17-01).
-        const resolved = await resolveCollabTargetInsideRoot(
-          file,
-          this.options.projectRoot,
-          this.options.allowOutsideProjectRoot,
-        );
-        if (resolved === null) {
-          throw new Error(
-            `[collab_debug] refusing to read "${file}": it resolves outside the project root ` +
-              `(${this.options.projectRoot}). Targets must stay inside the project while ` +
-              `tools.restrictToProjectRoot is enabled.`,
-          );
-        }
-        allFiles.push(file);
-      }
-    }
-    const limit = this.effectiveFileLimit();
-    if (allFiles.length > limit) {
-      const hint = this.options.contextWindow
-        ? `contextWindow=${this.options.contextWindow} → calculated limit=${limit}`
-        : `default limit=${DEFAULT_MAX_TARGET_FILES}`;
-      throw new Error(
-        `[collab_debug] Target has ${allFiles.length} files, which exceeds the ` +
-          `limit (${hint}). Narrow the target or pass maxTargetFiles / contextWindow ` +
-          `to override. For large codebases, run package-by-package or ` +
-          `module-by-module sessions instead of targeting the entire repo.`,
-      );
-    }
-    for (const filePath of allFiles) {
-      try {
-        const [content, stat] = await Promise.all([
-          fsp.readFile(filePath, 'utf8'),
-          fsp.stat(filePath),
-        ]);
-        const ext = filePath.split('.').pop() ?? '';
-        const language =
-          ext === 'ts' || ext === 'tsx'
-            ? 'typescript'
-            : ext === 'js' || ext === 'jsx'
-              ? 'javascript'
-              : ext === 'md'
-                ? 'markdown'
-                : ext === 'json'
-                  ? 'json'
-                  : undefined;
-        this.snapshot.files.push({
-          path: filePath,
-          content,
-          language,
-          snapshotMtimeMs: stat.mtimeMs,
-          snapshotSizeBytes: stat.size,
-        });
-      } catch {
-        this.snapshot.files.push({ path: filePath, content: '', language: undefined });
-      }
-    }
+    await readCollabSnapshotFiles(this.snapshot, this.options, this.effectiveFileLimit());
     return this.snapshot;
   }
 
@@ -410,35 +299,13 @@ export class CollabSession extends EventEmitter {
     this.emit('session.done', report);
     return report;
   }
-
   private async parseAndEmit(result: TaskResult): Promise<void> {
-    if (result.status !== 'success' || result.result == null) return;
-    const text = typeof result.result === 'string' ? result.result : JSON.stringify(result.result);
-
-    for (const obj of this.extractJsonObjects(text)) {
-      const type =
-        'finding' in obj
-          ? 'bug.found'
-          : 'plan' in obj
-            ? 'refactor.plan'
-            : 'evaluation' in obj
-              ? 'critic.evaluation'
-              : null;
-      if (!type) continue;
-      const validationError = validateFleetEventEmission(
-        type,
-        obj,
-        this.roleFromSubagentId(result.subagentId) ?? undefined,
-      );
-      if (validationError) continue;
-      this.fleetBus.emit({
-        subagentId: result.subagentId,
-        taskId: result.taskId,
-        ts: Date.now(),
-        type,
-        payload: obj,
-      });
-    }
+    emitCollabResultEvents(
+      this.fleetBus,
+      result,
+      (text) => this.extractJsonObjects(text),
+      (id) => this.roleFromSubagentId(id),
+    );
   }
 
   private extractJsonObjects(text: string): Array<Record<string, unknown>> {
@@ -491,215 +358,36 @@ export class CollabSession extends EventEmitter {
   private buildCriticTask(): string {
     return buildCriticTaskFromHost.call(this.collabAgentTasksHost());
   }
-
   private wireFleetBus(): void {
-    // Track tool executions for progress-based timeout decisions.
-    // Ownership guard: only count THIS session's agents so a concurrent
-    // collab session's tool calls don't pollute the progress tracker.
-    const dTool = this.fleetBus.filter('tool.executed', (e) => {
-      if (!this.ownsSubagent(e.subagentId)) return;
-      this.progressBySubagent.set(
-        e.subagentId,
-        (this.progressBySubagent.get(e.subagentId) ?? 0) + 1,
-      );
-    });
-    this.disposers.push(dTool);
-
-    // budget.threshold_reached → Director's alert handler
-    // Ownership guard: only handle THIS session's agents. Without it a
-    // concurrent collab session's budget events would race here — both
-    // sessions' heartbeat gates would call extend/deny on the same event.
-    const dBudget = this.fleetBus.filter('budget.threshold_reached', (e) => {
-      if (!this.ownsSubagent(e.subagentId)) return;
-      const payload = e.payload as {
-        kind: 'timeout' | 'idle_timeout' | 'iterations' | 'tool_calls' | 'tokens' | 'cost';
-        used: number;
-        limit: number;
-        timeoutMs?: number | undefined;
-        extend: (extra: Record<string, unknown>) => void;
-        deny: () => void;
-      };
-      const role = this.roleFromSubagentId(e.subagentId);
-      if (!role) return;
-
-      // Gather /btw notes so the Director can inspect them before deciding
-      const btwNotes = this.director.getLeaderBtwNotes();
-
-      const alert: DirectorAlert = {
-        sessionId: this.sessionId,
-        subagentId: e.subagentId,
-        role,
-        level: DirectorAlertLevel.WARNING,
-        message: `${role} hit ${payload.kind} soft limit (${payload.used}/${payload.limit})`,
-        budgetKind: payload.kind,
-        // `used` is elapsed milliseconds for timeout kinds. `timeoutMs` is the
-        // negotiation response deadline (normally 60s), not agent runtime.
-        elapsedMs:
-          payload.kind === 'timeout' || payload.kind === 'idle_timeout' ? payload.used : undefined,
-        limit: payload.limit,
-        btwNotes,
-      };
-
-      this.alerts.push(alert);
-
-      this.fleetBus.emit({
-        subagentId: e.subagentId,
-        ts: Date.now(),
-        type: 'collab.warning',
-        payload: alert,
-      });
-
-      const decision = this.options.onBudgetWarning?.(alert) ?? 'ignore';
-
-      if (decision === 'cancel') {
-        this.cancel(`Director cancelled: ${role} ${payload.kind} threshold`);
-        return;
-      }
-
-      // Progress-based timeout handling: extend if agent is doing work,
-      // deny only if genuinely stuck (no tool calls since last grant).
-      // Both wall-clock timeout and idle timeout use this heartbeat-aware path.
-      if (payload.kind === 'timeout' || payload.kind === 'idle_timeout') {
-        const progress = this.progressBySubagent.get(e.subagentId) ?? 0;
-        const lastProgress = this.lastTimeoutProgress.get(e.subagentId) ?? -1;
-        if (progress <= lastProgress) {
-          payload.deny();
-          return;
+    const self = this;
+    wireCollabFleetBus({
+      sessionId: this.sessionId,
+      director: this.director,
+      fleetBus: this.fleetBus,
+      options: this.options,
+      alerts: this.alerts,
+      disposers: this.disposers,
+      progressBySubagent: this.progressBySubagent,
+      lastTimeoutProgress: this.lastTimeoutProgress,
+      bugs: this.bugs,
+      plans: this.plans,
+      evaluations: this.evaluations,
+      ownsSubagent: (id) => this.ownsSubagent(id),
+      roleFromSubagentId: (id) => this.roleFromSubagentId(id),
+      cancel: (reason) => this.cancel(reason),
+      markCancelledByDirector() {
+        self.cancelled = true;
+        if (self._timeoutTimer) {
+          clearTimeout(self._timeoutTimer);
+          self._timeoutTimer = undefined;
         }
-        this.lastTimeoutProgress.set(e.subagentId, progress);
-        // Extend the agent's current wall/idle limit. `payload.timeoutMs` is
-        // only how long the coordinator may take to answer this negotiation;
-        // using it here can shrink a 15-minute agent budget to 2 minutes.
-        const newLimit = Math.min(Math.ceil(payload.limit * 2), 24 * 60 * 60_000);
-        setImmediate(() => {
-          const field = payload.kind === 'timeout' ? 'timeoutMs' : 'idleTimeoutMs';
-          payload.extend({ [field]: newLimit });
-        });
-        return;
-      }
-
-      if (decision === 'extend') {
-        setImmediate(() => {
-          const base = Math.max(payload.limit, payload.used);
-          const extra: Record<string, unknown> = {};
-          switch (payload.kind) {
-            case 'iterations':
-              extra.maxIterations = Math.min(Math.ceil(base * 1.5), 50_000);
-              break;
-            case 'tool_calls':
-              extra.maxToolCalls = Math.min(Math.ceil(base * 1.5), 100_000);
-              break;
-            case 'tokens':
-              extra.maxTokens = Math.min(Math.ceil(base * 1.5), 5_000_000);
-              break;
-            case 'cost':
-              extra.maxCostUsd = Math.min(base * 1.5, 100);
-              break;
-          }
-          payload.extend(extra);
-        });
-        return;
-      }
-
-      // 'ignore' (or any unrecognized decision): apply a conservative
-      // auto-extension for the remaining non-timeout kinds so the session
-      // keeps making progress rather than hitting a hard limit. The Director
-      // sees the collab.warning event and can always call cancelCollabSession()
-      // if the pattern looks like a bad infinite loop.
-      //
-      // Both 'timeout' and 'idle_timeout' are already fully handled by the
-      // progress-based logic above (which returns), so TypeScript narrows
-      // payload.kind to exclude them here — the switch below only sees
-      // iterations / tool_calls / tokens / cost.
-      setImmediate(() => {
-        const base = Math.max(payload.limit, payload.used);
-        const extra: Record<string, unknown> = {};
-        switch (payload.kind) {
-          case 'iterations':
-            extra.maxIterations = Math.min(Math.ceil(base * 1.25), 50_000);
-            break;
-          case 'tool_calls':
-            extra.maxToolCalls = Math.min(Math.ceil(base * 1.25), 100_000);
-            break;
-          case 'tokens':
-            extra.maxTokens = Math.min(Math.ceil(base * 1.25), 5_000_000);
-            break;
-          case 'cost':
-            extra.maxCostUsd = Math.min(base * 1.25, 100);
-            break;
-        }
-        payload.extend(extra);
-      });
+      },
+      emit: (event, payload) => this.emit(event, payload),
     });
-    this.disposers.push(dBudget);
-
-    // Director cancel signal
-    const dCancel = this.fleetBus.filter('director.cancel_collab', (e) => {
-      const payload = e.payload as DirectorCancelCollabPayload;
-      if (payload.sessionId !== this.sessionId) return;
-      this.cancelled = true;
-      if (this._timeoutTimer) {
-        clearTimeout(this._timeoutTimer);
-        this._timeoutTimer = undefined;
-      }
-      this.fleetBus.emit({
-        subagentId: this.director.id,
-        ts: Date.now(),
-        type: 'collab.cancelled',
-        payload: { sessionId: this.sessionId, reason: payload.reason },
-      });
-    });
-    this.disposers.push(dCancel);
-
-    // bug.found → RefactorPlanner + Critic
-    // Ownership guard: only collect THIS session's findings. A concurrent
-    // collab session's bug-hunter emits the same event type — without this
-    // guard both sessions' reports contain the union of both sessions' bugs.
-    const d1 = this.fleetBus.filter('bug.found', (e) => {
-      if (!this.ownsSubagent(e.subagentId)) return;
-      const payload = e.payload as BugFoundPayload;
-      if (payload?.finding) {
-        this.bugs.set(payload.finding.id, payload.finding);
-        this.emit('bug.found', payload);
-      }
-    });
-    this.disposers.push(d1);
-
-    // refactor.plan → Critic
-    // Ownership guard: only collect THIS session's plans (same rationale).
-    const d2 = this.fleetBus.filter('refactor.plan', (e) => {
-      if (!this.ownsSubagent(e.subagentId)) return;
-      const payload = e.payload as RefactorPlanPayload;
-      if (payload?.plan) {
-        this.plans.set(payload.plan.id, payload.plan);
-        this.emit('refactor.plan', payload);
-      }
-    });
-    this.disposers.push(d2);
-
-    // critic.evaluation
-    // Ownership guard: only collect THIS session's evaluations (same rationale).
-    const d3 = this.fleetBus.filter('critic.evaluation', (e) => {
-      if (!this.ownsSubagent(e.subagentId)) return;
-      const payload = e.payload as CriticEvaluationPayload;
-      if (payload?.evaluation) {
-        this.evaluations.set(payload.evaluation.id, payload.evaluation);
-        this.emit('critic.evaluation', payload);
-      }
-    });
-    this.disposers.push(d3);
   }
 
   private roleFromSubagentId(subagentId: string): string | null {
-    // Fast path: check tracked subagentIds map first (normal case during session).
-    for (const [role, id] of this.subagentIds) {
-      if (id === subagentId) return role;
-    }
-    // Fallback: derive from id prefix pattern used in spawnAgent.
-    // Handles budget events that fire before subagentIds entry is populated
-    // (edge case at session start — race between first tool call and map insert).
-    const match = subagentId.match(/^(bug-hunter|refactor-planner|critic)/);
-    return match?.[1] ?? null;
+    return collabRoleFromSubagentId(this.subagentIds, subagentId);
   }
 
   /**
@@ -716,16 +404,8 @@ export class CollabSession extends EventEmitter {
    * spawn resolves, only accept the deterministic ids configured by
    * `spawnAgent` (`${role}-${sessionId}`); a broad role-prefix fallback would
    * admit events from an already-running collab or ordinary delegate.
-   */
-  private ownsSubagent(subagentId: string): boolean {
-    for (const id of this.subagentIds.values()) {
-      if (id === subagentId) return true;
-    }
-    // Startup race fallback: accept only the exact ids this session requested.
-    // Keep this fallback active until all three spawns settle: once the first
-    // agent is recorded, either sibling can still emit before spawn() returns
-    // its runtime id and records it in subagentIds.
-    return COLLAB_ID_PREFIXES.some((prefix) => subagentId === `${prefix}${this.sessionId}`);
+   */ private ownsSubagent(subagentId: string): boolean {
+    return collabOwnsSubagent(this.subagentIds, this.sessionId, subagentId);
   }
 
   private assembleReport(): CollabDebugReport {

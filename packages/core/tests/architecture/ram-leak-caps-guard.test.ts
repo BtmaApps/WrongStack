@@ -180,7 +180,7 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
   });
 
   it('core/file-observer: SCAN_HASH_CONCURRENCY = 32', () => {
-    const { value, file } = readConst('core', 'chronicle/file-observer.ts:SCAN_HASH_CONCURRENCY');
+    const { value, file } = readConst('core', 'chronicle/file-observer-scan.ts:SCAN_HASH_CONCURRENCY');
     expect(value, file).toBe('32');
   });
 

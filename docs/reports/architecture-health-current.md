@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T16:28:59.318Z
+**Generated:** 2026-10-06T18:44:46.119Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4660 |
-| Production source lines | 1072413 |
+| Production source files | 4683 |
+| Production source lines | 1072928 |
 | Test files | 4160 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15265 |
+| Relative module edges | 15387 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 587 | 599 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1057 | 927 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1080 | 927 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 45 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 44 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 104 | 82 | @wrongstack/persistence, @wrongstack/primitives |
@@ -87,23 +87,17 @@ None.
 | 1190 | `packages/tools/src/dead-code/parse.ts` |
 | 973 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 962 | `packages/webui/src/components/ChatInput/slash-routing.ts` |
-| 938 | `packages/core/src/execution/prompt-enhancer.ts` |
 | 926 | `packages/tools/src/codebase-index/writer.ts` |
 | 876 | `packages/mcp/src/client.ts` |
 | 861 | `packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx` |
 | 856 | `packages/cli/src/cli-main.ts` |
-| 855 | `packages/core/src/coordination/director.ts` |
-| 846 | `packages/core/src/security/permission-policy.ts` |
 | 839 | `packages/webui-server/src/server/start-webui.ts` |
-| 828 | `packages/core/src/plugins/skills-plugin.ts` |
 | 828 | `packages/plugins/src/accessibility-auditor/index.ts` |
 | 828 | `packages/sage/src/store-helpers.ts` |
 | 828 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 826 | `packages/sage/src/sqlite-store.ts` |
 | 825 | `packages/plugins/src/migration-planner/index.ts` |
 | 824 | `packages/webui/src/components/RepositoryHistoryView.tsx` |
-| 823 | `packages/core/src/execution/brain-runtime.ts` |
-| 822 | `packages/core/src/worktree/worktree-manager.ts` |
 | 822 | `packages/tui/src/use-app-controller.tsx` |
 | 817 | `packages/tools/src/bash-kill-guard.ts` |
 | 813 | `packages/webui/src/stores/session-tab-store.ts` |
@@ -112,31 +106,37 @@ None.
 | 810 | `packages/cli/src/webui-server.ts` |
 | 810 | `packages/mcp/src/registry.ts` |
 | 809 | `packages/simpleui/src/file-explorer.tsx` |
-| 807 | `packages/core/src/chronicle/file-observer.ts` |
 | 807 | `packages/security-scanner/src/skill-generator.ts` |
 | 806 | `packages/simpleui/src/lib/message-handler.ts` |
 | 805 | `packages/sdd/src/spec-builder.ts` |
 | 805 | `packages/tools/src/codebase-index/indexer.ts` |
-| 803 | `packages/core/src/coordination/collab-debug.ts` |
 | 803 | `packages/webui/src/components/SidePanel/SkillsList.tsx` |
 | 802 | `packages/cli/src/boot.ts` |
 | 801 | `packages/cli/src/slash-commands/settings-mutations.ts` |
-| 801 | `packages/core/src/storage/session-store.ts` |
 | 801 | `packages/sage/src/project-server.ts` |
-| 800 | `packages/core/src/core/context.ts` |
 | 800 | `packages/webui/src/hooks/ws-handlers/chat-handlers.ts` |
 | 799 | `packages/sage/src/project-server-client.ts` |
 | 799 | `packages/webui-server/src/server/mcp-handlers.ts` |
 | 799 | `packages/webui-server/src/server/routes.ts` |
 | 798 | `packages/cli/src/subcommands/handlers/acp.ts` |
-| 798 | `packages/core/src/chronicle/sqlite-journal.ts` |
-| 798 | `packages/core/src/core/system-prompt-builder.ts` |
-| 798 | `packages/core/src/execution/council-orchestrator.ts` |
-| 797 | `packages/core/src/execution/tool-executor.ts` |
+| 797 | `packages/webui/src/lib/ws-client.ts` |
+| 795 | `packages/tools/src/codebase-index/ast-invariant-engine.ts` |
+| 794 | `packages/core/src/plugins/review-claim-registry.ts` |
+| 793 | `packages/core/src/hq/publisher.ts` |
+| 793 | `packages/plugins/src/session-recap/index.ts` |
+| 792 | `packages/cli/src/boot/tui-settings-adapter.ts` |
+| 792 | `packages/core/src/session-catalog/project-server.ts` |
+| 791 | `packages/core/src/execution/compaction-elision.ts` |
+| 791 | `packages/core/src/storage/file-session-writer.ts` |
+| 790 | `packages/cli/src/slash-commands/session.ts` |
+| 790 | `packages/simpleui/src/settings-panel.tsx` |
+| 789 | `packages/cli/src/slash-commands/memory.ts` |
+| 789 | `packages/core/src/coordination/brain-monitor.ts` |
+| 788 | `packages/cli/src/goal-host.ts` |
 
 ## Exports only tests reference
 
-- 976 runtime exports are referenced by tests and by no other production file.
+- 968 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

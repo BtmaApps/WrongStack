@@ -18,46 +18,6 @@
       "lines": 810,
       "relativeImports": 24
     },
-    "packages/core/src/chronicle/file-observer.ts": {
-      "lines": 807,
-      "relativeImports": 8
-    },
-    "packages/core/src/coordination/collab-debug.ts": {
-      "lines": 803,
-      "relativeImports": 13
-    },
-    "packages/core/src/coordination/director.ts": {
-      "lines": 855,
-      "relativeImports": 45
-    },
-    "packages/core/src/core/context.ts": {
-      "lines": 800,
-      "relativeImports": 23
-    },
-    "packages/core/src/execution/brain-runtime.ts": {
-      "lines": 823,
-      "relativeImports": 20
-    },
-    "packages/core/src/execution/prompt-enhancer.ts": {
-      "lines": 938,
-      "relativeImports": 9
-    },
-    "packages/core/src/plugins/skills-plugin.ts": {
-      "lines": 828,
-      "relativeImports": 15
-    },
-    "packages/core/src/security/permission-policy.ts": {
-      "lines": 846,
-      "relativeImports": 23
-    },
-    "packages/core/src/storage/session-store.ts": {
-      "lines": 801,
-      "relativeImports": 38
-    },
-    "packages/core/src/worktree/worktree-manager.ts": {
-      "lines": 822,
-      "relativeImports": 9
-    },
     "packages/mcp/src/client.ts": {
       "lines": 876,
       "relativeImports": 16
