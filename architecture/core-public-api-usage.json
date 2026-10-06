@@ -169,9 +169,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 24,
+      "files": 25,
       "typeOnly": 3,
-      "runtimeOrMixed": 22
+      "runtimeOrMixed": 23
     },
     "@wrongstack/core/statusline": {
       "files": 27,
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1351,
-      "typeOnly": 1190,
-      "runtimeOrMixed": 411
+      "files": 1356,
+      "typeOnly": 1195,
+      "runtimeOrMixed": 412
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 741,
+      "files": 744,
       "typeOnly": 67,
-      "runtimeOrMixed": 705
+      "runtimeOrMixed": 707
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3802,15 +3802,15 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
+      "file": "packages/sdd/src/sdd-parallel-run-state.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
+      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -8116,15 +8116,15 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
-      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
+      "file": "packages/sdd/src/sdd-parallel-run-state.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 3
     },
     {
       "specifier": "@wrongstack/core/kernel",
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
+      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 3
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -11993,6 +11993,12 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/security-scanner/src/skill-generator.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/security-scanner/src/skill-rendering.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -16720,6 +16726,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/cost-tracker/cost-pricing.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/cost-tracker/cost-session.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/cost-tracker/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16853,6 +16871,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/migration-planner/index.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/migration-planner/migration-plan-input.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18466,6 +18490,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/sdd/src/sdd-parallel-run-state.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/sdd/src/sdd-parallel-run-types.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -18511,6 +18541,12 @@
       "file": "packages/sdd/src/sdd-worktree-integration.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/sdd/src/spec-builder-parsing.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -24748,9 +24784,27 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/sdd/src/spec-builder-parsing.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sdd/src/spec-builder-prompts.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sdd/src/spec-builder-session-file.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/sdd/src/spec-builder.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -26788,13 +26842,13 @@
     },
     {
       "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
+      "file": "packages/sdd/src/sdd-parallel-run-state.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
+      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

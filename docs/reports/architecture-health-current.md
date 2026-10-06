@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T18:48:12.334Z
+**Generated:** 2026-10-06T18:49:04.394Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4722 |
-| Production source lines | 1074123 |
+| Production source files | 4738 |
+| Production source lines | 1074378 |
 | Test files | 4160 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15539 |
+| Relative module edges | 15572 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -42,7 +42,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/persistence | 8 | 19 | — |
 | @wrongstack/plug-lsp | 51 | 52 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 134 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 144 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 11 | 10 | — |
 | @wrongstack/providers | 126 | 111 | @wrongstack/core |
 | @wrongstack/requirement-intake | 17 | 11 | @wrongstack/core |
@@ -50,8 +50,8 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/runtime | 28 | 24 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
 | @wrongstack/sage | 144 | 126 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
-| @wrongstack/sdd | 41 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
-| @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
+| @wrongstack/sdd | 45 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
+| @wrongstack/security-scanner | 21 | 31 | @wrongstack/core |
 | @wrongstack/simpleui | 115 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 49 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
@@ -88,19 +88,13 @@ None.
 | 861 | `packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx` |
 | 856 | `packages/cli/src/cli-main.ts` |
 | 839 | `packages/webui-server/src/server/start-webui.ts` |
-| 828 | `packages/plugins/src/accessibility-auditor/index.ts` |
-| 828 | `packages/sdd/src/sdd-parallel-run.ts` |
-| 825 | `packages/plugins/src/migration-planner/index.ts` |
 | 824 | `packages/webui/src/components/RepositoryHistoryView.tsx` |
 | 822 | `packages/tui/src/use-app-controller.tsx` |
 | 813 | `packages/webui/src/stores/session-tab-store.ts` |
-| 811 | `packages/plugins/src/cost-tracker/index.ts` |
 | 811 | `packages/webui/src/components/CodeMap.tsx` |
 | 810 | `packages/cli/src/webui-server.ts` |
 | 809 | `packages/simpleui/src/file-explorer.tsx` |
-| 807 | `packages/security-scanner/src/skill-generator.ts` |
 | 806 | `packages/simpleui/src/lib/message-handler.ts` |
-| 805 | `packages/sdd/src/spec-builder.ts` |
 | 803 | `packages/webui/src/components/SidePanel/SkillsList.tsx` |
 | 802 | `packages/cli/src/boot.ts` |
 | 801 | `packages/cli/src/slash-commands/settings-mutations.ts` |
@@ -133,6 +127,12 @@ None.
 | 785 | `packages/plugins/src/lint-gate/index.ts` |
 | 784 | `packages/core/src/coordination/agent-status-tracker.ts` |
 | 784 | `packages/tools/src/exec.ts` |
+| 783 | `packages/webui/src/stores/chat-lanes.ts` |
+| 782 | `packages/core/src/chronicle/project-server.ts` |
+| 781 | `packages/webui/src/components/context-dashboard-sections.tsx` |
+| 779 | `packages/core/src/chronicle/journal.ts` |
+| 778 | `packages/mailbox-mcp/src/adapter.ts` |
+| 777 | `packages/core/src/coordination/provider-status-tracker.ts` |
 
 ## Exports only tests reference
 

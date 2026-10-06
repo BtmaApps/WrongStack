@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:48:12.334Z",
+  "generatedAt": "2026-10-06T18:49:04.394Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4722,
+    "sourceFiles": 4738,
     "testFiles": 4160,
-    "sourceLines": 1074123,
+    "sourceLines": 1074378,
     "workspaceEdges": 133,
-    "moduleEdges": 15539,
+    "moduleEdges": 15572,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -464,7 +464,7 @@
     {
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
-      "sourceFiles": 134,
+      "sourceFiles": 144,
       "testFiles": 126,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -646,7 +646,7 @@
     {
       "name": "@wrongstack/sdd",
       "dir": "packages/sdd",
-      "sourceFiles": 41,
+      "sourceFiles": 45,
       "testFiles": 41,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -670,7 +670,7 @@
     {
       "name": "@wrongstack/security-scanner",
       "dir": "packages/security-scanner",
-      "sourceFiles": 19,
+      "sourceFiles": 21,
       "testFiles": 31,
       "workspaceDependencies": [
         "@wrongstack/core"
@@ -26273,36 +26273,6 @@
       "relativeImports": 24
     },
     {
-      "file": "packages/plugins/src/accessibility-auditor/index.ts",
-      "lines": 828,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/plugins/src/cost-tracker/index.ts",
-      "lines": 811,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/plugins/src/migration-planner/index.ts",
-      "lines": 825,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
-      "lines": 828,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/sdd/src/spec-builder.ts",
-      "lines": 805,
-      "relativeImports": 3
-    },
-    {
-      "file": "packages/security-scanner/src/skill-generator.ts",
-      "lines": 807,
-      "relativeImports": 6
-    },
-    {
       "file": "packages/simpleui/src/file-explorer.tsx",
       "lines": 809,
       "relativeImports": 5
@@ -26390,21 +26360,6 @@
       "relativeImports": 35
     },
     {
-      "file": "packages/plugins/src/accessibility-auditor/index.ts",
-      "lines": 828,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
-      "lines": 828,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/plugins/src/migration-planner/index.ts",
-      "lines": 825,
-      "relativeImports": 2
-    },
-    {
       "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
       "lines": 824,
       "relativeImports": 2
@@ -26418,11 +26373,6 @@
       "file": "packages/webui/src/stores/session-tab-store.ts",
       "lines": 813,
       "relativeImports": 19
-    },
-    {
-      "file": "packages/plugins/src/cost-tracker/index.ts",
-      "lines": 811,
-      "relativeImports": 1
     },
     {
       "file": "packages/webui/src/components/CodeMap.tsx",
@@ -26440,19 +26390,9 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/security-scanner/src/skill-generator.ts",
-      "lines": 807,
-      "relativeImports": 6
-    },
-    {
       "file": "packages/simpleui/src/lib/message-handler.ts",
       "lines": 806,
       "relativeImports": 22
-    },
-    {
-      "file": "packages/sdd/src/spec-builder.ts",
-      "lines": 805,
-      "relativeImports": 3
     },
     {
       "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
@@ -26613,6 +26553,36 @@
       "file": "packages/tools/src/exec.ts",
       "lines": 784,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/webui/src/stores/chat-lanes.ts",
+      "lines": 783,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/core/src/chronicle/project-server.ts",
+      "lines": 782,
+      "relativeImports": 20
+    },
+    {
+      "file": "packages/webui/src/components/context-dashboard-sections.tsx",
+      "lines": 781,
+      "relativeImports": 0
+    },
+    {
+      "file": "packages/core/src/chronicle/journal.ts",
+      "lines": 779,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/mailbox-mcp/src/adapter.ts",
+      "lines": 778,
+      "relativeImports": 2
+    },
+    {
+      "file": "packages/core/src/coordination/provider-status-tracker.ts",
+      "lines": 777,
+      "relativeImports": 6
     }
   ],
   "testOnlyExports": [

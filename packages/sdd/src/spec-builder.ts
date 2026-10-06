@@ -1,12 +1,29 @@
-import type { Specification, SpecRequirement, SpecSection } from '@wrongstack/core/types';
+import type { Specification } from '@wrongstack/core/types';
 import { ERROR_CODES, SddError } from '@wrongstack/core/types';
-import { expectDefined, toErrorMessage } from '@wrongstack/core/utils';
+import { expectDefined } from '@wrongstack/core/utils';
 import {
   type AISpecPhase,
   type AISpecSession,
   type AISpecSessionPersistence,
   isAISpecSession,
 } from './sdd-session-types.js';
+import {
+  extractJSONArrayFromText,
+  extractJSONFromText,
+  parseSpecificationJSON,
+} from './spec-builder-parsing.js';
+import {
+  buildExecutingPrompt,
+  buildImplementationPrompt,
+  buildQuestioningPrompt,
+  buildSpecReviewPrompt,
+  buildTaskReviewPrompt,
+} from './spec-builder-prompts.js';
+import {
+  deleteAISpecSessionFile,
+  readAISpecSessionFile,
+  writeAISpecSessionFile,
+} from './spec-builder-session-file.js';
 import type { SpecStore } from './spec-store.js';
 
 // ─── Session Types ────────────────────────────────────────────────────────────
@@ -33,215 +50,6 @@ export interface AISpecBuilderOptions {
   sessionPath?: string | undefined;
   /** Durable session owner. Takes precedence over `sessionPath`. */
   sessionPersistence?: AISpecSessionPersistence | undefined;
-}
-
-// ─── AI Prompts ───────────────────────────────────────────────────────────────
-
-function buildQuestioningPrompt(session: AISpecSession, min: number, max: number): string {
-  const answered = session.answers.length;
-  const remaining = Math.max(0, min - answered);
-  const budget = max - answered;
-
-  const lines: string[] = [
-    `═══ SDD Spec Builder ═══`,
-    `Feature: "${session.title}"`,
-    session.userIntent ? `Intent: ${session.userIntent}` : '',
-    `Phase: Questioning (${answered} answered, ${budget} remaining budget)`,
-    '',
-    '**Instructions for AI:**',
-    '',
-    'You are conducting a specification interview. Your job is to ask the user',
-    'intelligent, contextual questions to understand what they want to build.',
-    '',
-    `You have asked ${answered} questions so far.`,
-  ];
-
-  if (remaining > 0) {
-    lines.push(`You MUST ask at least ${remaining} more question(s) before generating the spec.`);
-  } else if (budget <= 0) {
-    lines.push('You have reached the maximum question budget. Generate the spec NOW.');
-  } else {
-    lines.push(
-      'You may ask more questions if needed, or generate the spec if you have enough information.',
-      'Ask a question ONLY if it reveals something you genuinely need to know.',
-    );
-  }
-
-  lines.push(
-    '',
-    '**Rules:**',
-    '- Ask ONE question at a time',
-    '- Questions must be specific and contextual — never generic',
-    '- Adapt based on previous answers',
-    '- Cover: scope, constraints, edge cases, integrations, security, performance as relevant',
-    '- When asking questions with distinct architectural or trade-off choices, include 2 to 4 recommended options as a list (e.g. 1. ... 2. ...) so the operator can quickly choose or customize',
-    '- When you have enough info, respond with the full specification in JSON format',
-    '- This is a planning interview: respond with TEXT ONLY (a question, or the spec JSON).',
-    '  Do NOT write or edit files, and do NOT run shell/terminal commands — the code is',
-    '  written later, after the plan is approved.',
-    '',
-    `**Question budget:** ${budget}/${max} remaining`,
-    `**Minimum required:** ${remaining > 0 ? remaining : 'met'}`,
-  );
-
-  if (session.projectContext) {
-    lines.push('', '**Project Context:**', '```', session.projectContext, '```');
-  }
-
-  if (answered > 0) {
-    lines.push('', '**Conversation so far:**');
-    for (let i = 0; i < answered; i++) {
-      const a = expectDefined(session.answers[i]);
-      lines.push(``, `Q${i + 1}: ${a.question}`, `A${i + 1}: ${a.answer}`);
-    }
-  }
-
-  lines.push(
-    '',
-    '---',
-    'Now either:',
-    `1. Ask your next question (if you need more info)`,
-    `2. Generate the complete specification as JSON (if ready)`,
-    '',
-    'If generating spec, output JSON inside ```json code block with this structure:',
-    '```json',
-    '{',
-    '  "title": "...",',
-    '  "overview": "...",',
-    '  "sections": [{ "type": "overview|requirements|architecture|api|data|security|acceptance", "title": "...", "content": "...", "level": 1 }],',
-    '  "requirements": [{ "id": "REQ-1", "type": "functional|non-functional|security|performance|ux", "priority": "critical|high|medium|low", "description": "...", "acceptanceCriteria": ["..."] }]',
-    '}',
-    '```',
-  );
-
-  return lines.filter(Boolean).join('\n');
-}
-
-function buildSpecReviewPrompt(session: AISpecSession): string {
-  const spec = session.spec;
-  if (!spec) return 'No spec generated yet.';
-
-  const reqSummary = spec.requirements.map((r) => `  [${r.priority}] ${r.description}`).join('\n');
-
-  return [
-    `═══ Spec Review ═══`,
-    `Feature: "${spec.title}"`,
-    `Requirements: ${spec.requirements.length}`,
-    '',
-    '**Specification:**',
-    spec.overview,
-    '',
-    '**Requirements:**',
-    reqSummary,
-    '',
-    '---',
-    'Approve this spec? The AI will then generate an implementation plan and tasks.',
-    'Say "approve" to proceed, or describe what needs to change.',
-  ].join('\n');
-}
-
-function buildImplementationPrompt(session: AISpecSession): string {
-  const spec = session.spec;
-  if (!spec) return 'No spec to implement.';
-
-  const reqList = spec.requirements.map((r) => `  - [${r.priority}] ${r.description}`).join('\n');
-
-  return [
-    `═══ Implementation Planning ═══`,
-    `Feature: "${spec.title}"`,
-    `Requirements: ${spec.requirements.length}`,
-    '',
-    '**Requirements to implement:**',
-    reqList,
-    '',
-    '**Instructions for AI:**',
-    'Generate a detailed implementation plan for this specification.',
-    'This is a PLANNING step — describe the plan and emit the task JSON as TEXT. Do NOT',
-    'create or edit files and do NOT run shell/terminal commands here; the tasks you list',
-    'are executed later, one by one, after you approve them.',
-    'Include:',
-    '1. Architecture decisions',
-    '2. File structure changes',
-    '3. Key implementation details',
-    '4. Dependency requirements',
-    '5. Testing strategy',
-    '',
-    '**IMPORTANT:** After the plan, you MUST generate executable tasks as a JSON array.',
-    'Each task should be a concrete, actionable step. Output the JSON inside a ```json code block:',
-    '```json',
-    '[',
-    '  {',
-    '    "id": "t1",',
-    '    "title": "Create auth middleware",',
-    '    "description": "Implement JWT verification middleware for protected routes",',
-    '    "type": "feature",',
-    '    "priority": "critical",',
-    '    "estimateHours": 3,',
-    '    "dependsOn": [],',
-    '    "tags": ["auth", "middleware"]',
-    '  },',
-    '  {',
-    '    "id": "t2",',
-    '    "title": "Write auth tests",',
-    '    "description": "Unit and integration tests for authentication flow",',
-    '    "type": "test",',
-    '    "priority": "high",',
-    '    "estimateHours": 2,',
-    '    "dependsOn": ["t1"],',
-    '    "tags": ["test", "auth"]',
-    '  }',
-    ']',
-    '```',
-    '',
-    'Rules:',
-    '- Give every task a short stable "id" (t1, t2, …). Reference prerequisites in "dependsOn"',
-    '  as a list of those ids — this builds the real dependency graph that drives parallel vs',
-    '  sequential execution.',
-    '- "dependsOn": [] means the task is independent and may run in parallel with other roots.',
-    '- A task with dependsOn runs ONLY after every listed task completes. Model true ordering:',
-    '  tests depend on the feature they test, docs/integration depend on the parts they cover.',
-    '- Do NOT create cycles (t1→t2→t1). Keep chains as shallow as correctness allows so',
-    '  independent work runs concurrently.',
-    '- Use type: "feature" for code, "test" for tests, "docs" for documentation, "chore" for config',
-    '- Use priority: "critical" for blockers, "high" for core features, "medium" for nice-to-haves, "low" for polish',
-  ].join('\n');
-}
-
-function buildTaskReviewPrompt(session: AISpecSession): string {
-  return [
-    `═══ Task Review ═══`,
-    `Feature: "${session.spec?.title ?? session.title}"`,
-    '',
-    session.implementation ?? 'No implementation plan yet.',
-    '',
-    '---',
-    'Ready to execute these tasks? Say "execute" to begin, or describe changes needed.',
-  ].join('\n');
-}
-
-function buildExecutingPrompt(session: AISpecSession): string {
-  return [
-    `═══ Task Execution ═══`,
-    `Feature: "${session.spec?.title ?? session.title}"`,
-    '',
-    '**Instructions for AI:**',
-    'Execute the tasks one by one in the order shown in the task list above.',
-    '',
-    'For each task:',
-    '1. Implement the code (create/modify files)',
-    '2. Write tests if applicable',
-    '3. After completing a task, tell the user to run: /sdd done <task number or title>',
-    '4. Then move to the next task',
-    '',
-    '**Important:**',
-    '- Focus on ONE task at a time',
-    '- After completing each task, explicitly state what you did',
-    '- Tell the user: "Run /sdd done <N> to mark this task complete"',
-    '- Then proceed to the next task automatically',
-    '- When ALL tasks are done, provide a summary of everything implemented',
-    '',
-    'Start executing the first pending task now.',
-  ].join('\n');
 }
 
 // ─── Spec Builder Class ───────────────────────────────────────────────────────
@@ -294,14 +102,7 @@ export class AISpecBuilder {
           await this.sessionPersistence.save(snapshot);
           return;
         }
-        const fsp = await import('node:fs/promises');
-        const path = await import('node:path');
-        const { atomicWrite } = await import('@wrongstack/core/utils');
-        const sessionPath = expectDefined(this.sessionPath);
-        await fsp.mkdir(path.dirname(sessionPath), { recursive: true });
-        // atomicWrite: torn save would corrupt the SDD session JSON and the
-        // next load would silently fall back to a fresh session.
-        await atomicWrite(sessionPath, JSON.stringify(snapshot, null, 2));
+        await writeAISpecSessionFile(expectDefined(this.sessionPath), snapshot);
       } catch (error) {
         // Best-effort persistence — don't crash if save fails
         console.warn(
@@ -328,16 +129,10 @@ export class AISpecBuilder {
       return false;
     }
     if (!this.sessionPath) return false;
-    try {
-      const fsp = await import('node:fs/promises');
-      const raw = await fsp.readFile(this.sessionPath, 'utf8');
-      const loaded = JSON.parse(raw) as AISpecSession;
-      if (isAISpecSession(loaded)) {
-        this.session = loaded;
-        return true;
-      }
-    } catch {
-      // No saved session or invalid file
+    const loaded = await readAISpecSessionFile(this.sessionPath);
+    if (loaded) {
+      this.session = loaded;
+      return true;
     }
     return false;
   }
@@ -353,12 +148,7 @@ export class AISpecBuilder {
       return;
     }
     if (!this.sessionPath) return;
-    try {
-      const fsp = await import('node:fs/promises');
-      await fsp.unlink(this.sessionPath);
-    } catch {
-      // File might not exist
-    }
+    await deleteAISpecSessionFile(this.sessionPath);
   }
 
   /** Auto-save helper. saveSession() already handles best-effort persistence. */
@@ -629,130 +419,14 @@ export class AISpecBuilder {
    * Validates and normalizes the structure.
    */
   parseSpecFromJSON(jsonStr: string): Specification {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch (e) {
-      throw new SddError({
-        message: 'Invalid JSON for spec',
-        code: ERROR_CODES.SDD_PARSE_FAILED,
-        cause: e,
-        context: { detail: toErrorMessage(e) },
-      });
-    }
-
-    if (!parsed || typeof parsed !== 'object') {
-      throw new SddError({
-        message: 'Spec JSON must be an object',
-        code: ERROR_CODES.SDD_VALIDATION_FAILED,
-        context: { actualType: typeof parsed },
-      });
-    }
-
-    const raw = parsed as Record<string, unknown>;
-    const now = Date.now();
-
-    const title = String(raw.title ?? this.session.title);
-    const overview = String(raw.overview ?? '');
-
-    // Validate overview is not empty
-    if (!overview || overview === 'undefined') {
-      throw new SddError({
-        message: 'Spec must have an overview',
-        code: ERROR_CODES.SDD_VALIDATION_FAILED,
-        context: { field: 'overview', title },
-      });
-    }
-
-    const rawSections = Array.isArray(raw.sections) ? raw.sections : [];
-    const sections: SpecSection[] = rawSections
-      .filter((s: unknown) => s && typeof s === 'object')
-      .map((s: Record<string, unknown>) => ({
-        type: ([
-          'overview',
-          'requirements',
-          'architecture',
-          'api',
-          'data',
-          'security',
-          'acceptance',
-        ].includes(String(s.type))
-          ? String(s.type)
-          : 'overview') as SpecSection['type'],
-        title: String(s.title ?? ''),
-        content: String(s.content ?? ''),
-        level: Number(s.level) || 1,
-      }));
-
-    const rawReqs = Array.isArray(raw.requirements) ? raw.requirements : [];
-    const requirements: SpecRequirement[] = rawReqs
-      .filter((r: unknown) => r && typeof r === 'object')
-      .map((r: Record<string, unknown>, i: number) => ({
-        id: String(r.id ?? `REQ-${i + 1}`),
-        type: (['functional', 'non-functional', 'security', 'performance', 'ux'].includes(
-          String(r.type),
-        )
-          ? String(r.type)
-          : 'functional') as SpecRequirement['type'],
-        priority: (['critical', 'high', 'medium', 'low'].includes(String(r.priority))
-          ? String(r.priority)
-          : 'medium') as SpecRequirement['priority'],
-        description: String(r.description ?? ''),
-        acceptanceCriteria: Array.isArray(r.acceptanceCriteria)
-          ? r.acceptanceCriteria.map(String)
-          : [],
-      }));
-
-    const spec: Specification = {
-      id: crypto.randomUUID(),
-      title,
-      version: '0.1.0',
-      status: 'draft',
-      overview,
-      sections,
-      requirements,
-      createdAt: now,
-      updatedAt: now,
-      metadata: {
-        generatedBy: 'AISpecBuilder',
-        sessionId: this.session.id,
-      },
-    };
-
-    return spec;
+    return parseSpecificationJSON(jsonStr, this.session.title, this.session.id);
   }
 
   /**
    * Extract JSON from AI output (handles ```json blocks and raw JSON).
    */
   extractJSON(text: string): string | null {
-    // Try ```json ... ``` first
-    const codeBlockMatch = text.match(/```json\s*([\s\S]*?)```/);
-    if (codeBlockMatch?.[1]) {
-      return codeBlockMatch[1].trim();
-    }
-
-    // Try ``` ... ``` without language tag
-    const genericBlockMatch = text.match(/```\s*([\s\S]*?)```/);
-    if (genericBlockMatch?.[1]) {
-      const trimmed = genericBlockMatch[1].trim();
-      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        return trimmed;
-      }
-    }
-
-    // Try raw JSON object
-    const jsonMatch = text.match(/(\{[\s\S]*\})/);
-    if (jsonMatch?.[1]) {
-      try {
-        JSON.parse(jsonMatch[1]);
-        return jsonMatch[1];
-      } catch {
-        // not valid JSON
-      }
-    }
-
-    return null;
+    return extractJSONFromText(text);
   }
 
   /**
@@ -783,22 +457,6 @@ export class AISpecBuilder {
    * Extract a JSON array from AI output (for task lists).
    */
   extractJSONArray(text: string): string | null {
-    const codeBlockMatch = text.match(/```json\s*([\s\S]*?)```/);
-    if (codeBlockMatch?.[1]) {
-      const trimmed = codeBlockMatch[1].trim();
-      if (trimmed.startsWith('[')) return trimmed;
-    }
-
-    const arrayMatch = text.match(/(\[[\s\S]*\])/);
-    if (arrayMatch?.[1]) {
-      try {
-        const parsed = JSON.parse(arrayMatch[1]);
-        if (Array.isArray(parsed)) return arrayMatch[1];
-      } catch {
-        // not valid
-      }
-    }
-
-    return null;
+    return extractJSONArrayFromText(text);
   }
 }
