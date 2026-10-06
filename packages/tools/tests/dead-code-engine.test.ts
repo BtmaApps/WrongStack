@@ -309,6 +309,22 @@ describe('dead-code fixes', () => {
     expect(plan.changes).toEqual([]);
     expect(plan.skipped[0]?.reason).toContain('packages/lib/src/user.ts');
   });
+
+  it('will not delete a file a surviving file still loads via import.meta.glob', async () => {
+    // x.ts is unreachable; the also-unreachable loader.ts still globs it at
+    // runtime. extraEdges references must block the deletion just like imports.
+    fs.mkdirSync(path.join(root, 'packages/lib/src/targets'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'packages/lib/src/loader.ts'),
+      "void import.meta.glob('./targets/*.ts');\n",
+    );
+    fs.writeFileSync(path.join(root, 'packages/lib/src/targets/x.ts'), 'export const x = 1;\n');
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const x = find(r.findings, 'unreachable-file', 'packages/lib/src/targets/x.ts')!;
+    const plan = await planDeadCodeFixes(root, [x.id]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped[0]?.reason).toContain('packages/lib/src/loader.ts');
+  });
 });
 
 describe('dead-code precision (patterns found on a real monorepo)', () => {
@@ -340,6 +356,27 @@ describe('dead-code precision (patterns found on a real monorepo)', () => {
     // Dead, not merely "needlessly exported": dropping `export` alone would leave it unused.
     expect(find(r.findings, 'dead-export', 'src/spawn.ts', 'EXIT_CODE')).toBeDefined();
     expect(find(r.findings, 'unused-export', 'src/spawn.ts', 'EXIT_CODE')).toBeUndefined();
+  });
+
+  it('never reports compile-time gates, and treats a UI kit as medium confidence', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
+      'src/main.ts':
+        "import { KINDS } from './kinds.js';\nimport { Button } from './components/ui/kit.js';\nconsole.log(KINDS, Button);\n",
+      'src/kinds.ts': [
+        "export const KINDS = ['a', 'b'] as const;",
+        "type Kind = 'a' | 'b';",
+        'type AssertNever<T extends never> = T;',
+        'export type KindCoverage = AssertNever<Exclude<Kind, (typeof KINDS)[number]>>;',
+        '',
+      ].join('\n'),
+      'src/components/ui/kit.ts': 'export const Button = 1;\nexport const DialogClose = 2;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(r.findings.some((f) => f.name === 'KindCoverage')).toBe(false);
+    expect(
+      find(r.findings, 'dead-export', 'src/components/ui/kit.ts', 'DialogClose')?.confidence,
+    ).toBe('medium');
   });
 
   it('tracks member reads of a dynamic import bound inside a function', async () => {
@@ -375,5 +412,68 @@ describe('dead-code precision (patterns found on a real monorepo)', () => {
     });
     const r = await analyzeDeadCode(dir, { noCache: true });
     expect(find(r.findings, 'unused-export', 'src/wiring.ts', 'Entry')?.confidence).toBe('low');
+  });
+
+  it('keeps files loaded by import.meta.glob alive, but only what the glob matches', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
+      'src/main.ts': "import { routes } from './globby.js';\nroutes();\n",
+      'src/globby.ts':
+        "export const routes = (): unknown => import.meta.glob('./routes/*.ts');\n",
+      'src/routes/one.ts': 'export const r1 = 1;\n',
+      'src/routes/two.ts': 'export const r2 = 1;\n',
+      // A single `*` does not cross `/`: unreachable even with a working glob.
+      'src/routes/nested/deep.ts': 'export const deep = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(r.findings.some((f) => f.file === 'src/routes/one.ts')).toBe(false);
+    expect(r.findings.some((f) => f.file === 'src/routes/two.ts')).toBe(false);
+    expect(find(r.findings, 'unreachable-file', 'src/routes/nested/deep.ts')).toBeDefined();
+  });
+
+  it('tracks import.meta.glob array form and import.meta.resolve as loads', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
+      'src/main.ts': "import { a, w } from './globby.js';\nconsole.log(a, w);\n",
+      'src/globby.ts': [
+        "export const a = (): unknown => import.meta.glob(['./arr/first.ts', './arr/second.ts']);",
+        "export const w = (): string => import.meta.resolve('./resolved.js');",
+        '',
+      ].join('\n'),
+      'src/arr/first.ts': 'export const f = 1;\n',
+      'src/arr/second.ts': 'export const s = 2;\n',
+      'src/resolved.ts': 'export const r = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    for (const live of ['src/arr/first.ts', 'src/arr/second.ts']) {
+      expect(r.findings.some((f) => f.file === live), live).toBe(false);
+    }
+    // resolve() references the file without importing its exports: the file must
+    // stay alive (no delete), while its unread exports may still be reported.
+    expect(find(r.findings, 'unreachable-file', 'src/resolved.ts')).toBeUndefined();
+  });
+
+  it('keeps files loaded by a root-absolute import.meta.glob alive', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true }),
+      'packages/app/package.json': JSON.stringify({
+        name: 'app',
+        private: true,
+        main: './src/main.ts',
+      }),
+      'packages/app/src/main.ts': "import { routes } from './globby.js';\nroutes();\n",
+      'packages/app/src/globby.ts':
+        "export const routes = (): unknown => import.meta.glob('/packages/app/src/routes/*.ts');\n",
+      'packages/app/src/routes/one.ts': 'export const r1 = 1;\n',
+      'packages/app/src/routes/two.ts': 'export const r2 = 1;\n',
+      // A single `*` never crosses `/`: unreachable even with a working glob.
+      'packages/app/src/routes/nested/deep.ts': 'export const deep = 1;\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(r.findings.some((f) => f.file === 'packages/app/src/routes/one.ts')).toBe(false);
+    expect(r.findings.some((f) => f.file === 'packages/app/src/routes/two.ts')).toBe(false);
+    expect(
+      find(r.findings, 'unreachable-file', 'packages/app/src/routes/nested/deep.ts'),
+    ).toBeDefined();
   });
 });

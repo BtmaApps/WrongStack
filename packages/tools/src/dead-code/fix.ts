@@ -498,7 +498,10 @@ export async function planDeadCodeFixesInternal(
       if (deletes.has(node.rel)) continue;
       const hits =
         node.imports.some((i) => i.targets.includes(file) && i.kind !== 'mock') ||
-        node.reexports.some((r) => r.targets.includes(file));
+        node.reexports.some((r) => r.targets.includes(file)) ||
+        // Glob loaders, dynamic-import prefixes and path literals reference
+        // files through extraEdges — there is no import statement to inspect.
+        node.extraEdges.includes(file);
       if (hits) importers.push(node.rel);
     }
     if (importers.length > 0) {

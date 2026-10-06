@@ -586,6 +586,17 @@ function calleeText(ts: Ts, expr: TS.Expression): string | null {
     const left = calleeText(ts, expr.expression);
     return left === null ? null : `${left}.${expr.name.text}`;
   }
+  if (expr.kind === ts.SyntaxKind.MetaProperty) {
+    // `import.meta.glob(...)` / `import.meta.resolve(...)`: `import.meta` is a
+    // MetaProperty whose only Identifier child is `meta` (the `import` / `new`
+    // base is a keyword token, not an Identifier node). Render the dotted name
+    // so the `import.meta.*` detection branches in the whole-file walk match.
+    let name: string | null = null;
+    ts.forEachChild(expr, (child) => {
+      if (ts.isIdentifier(child)) name = child.text;
+    });
+    return name === 'meta' ? 'import.meta' : null;
+  }
   return null;
 }
 
@@ -678,6 +689,48 @@ function collectSignatureTypeNames(
     }
   }
   return names;
+}
+
+const ASSERTION_NAME = /^(?:Assert|Expect)[A-Z_]/;
+
+/**
+ * Compile-time gates: `type Coverage = AssertNever<Unlisted>` exists only to
+ * fail `tsc` when something drifts. Nothing references it by design, and
+ * deleting it silently removes the guard. A gate is a type alias that
+ * instantiates a helper whose type parameter is constrained to `never`/`true`
+ * (or is named Assert…/Expect…).
+ */
+function compileTimeGates(ts: Ts, sf: TS.SourceFile): Set<string> {
+  const helpers = new Set<string>();
+  for (const stmt of sf.statements) {
+    if (!ts.isTypeAliasDeclaration(stmt)) continue;
+    const pinned = (stmt.typeParameters ?? []).some((tp) => {
+      const c = tp.constraint;
+      if (!c) return false;
+      if (c.kind === ts.SyntaxKind.NeverKeyword) return true;
+      return ts.isLiteralTypeNode(c) && c.literal.kind === ts.SyntaxKind.TrueKeyword;
+    });
+    if (pinned) helpers.add(stmt.name.text);
+  }
+  const gates = new Set<string>();
+  for (const stmt of sf.statements) {
+    if (!ts.isTypeAliasDeclaration(stmt) || helpers.has(stmt.name.text)) continue;
+    let isGate = false;
+    const visit = (node: TS.Node): void => {
+      if (isGate) return;
+      if (ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)) {
+        const n = node.typeName.text;
+        if (helpers.has(n) || ASSERTION_NAME.test(n)) {
+          isGate = true;
+          return;
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(stmt.type);
+    if (isGate) gates.add(stmt.name.text);
+  }
+  return gates;
 }
 
 export function extractModuleFacts(ts: Ts, file: string, text: string): ModuleFacts {
@@ -993,6 +1046,10 @@ export function extractModuleFacts(ts: Ts, file: string, text: string): ModuleFa
     );
     return false;
   });
+  const gates = compileTimeGates(ts, sf);
+  for (const exp of facts.exports) if (exp.local !== null && gates.has(exp.local)) exp.keep = true;
+  for (const local of facts.locals) if (gates.has(local.name)) local.keep = true;
+
   // Type names reachable from exported signatures (not bodies or initializers).
   const surfacedNames = collectSignatureTypeNames(ts, sf, exportedLocals);
   for (const exp of facts.exports) {

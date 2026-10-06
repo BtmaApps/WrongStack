@@ -35,11 +35,13 @@ import type {
 } from './types.js';
 
 /** Bump when ModuleFacts' shape or extraction semantics change. */
-const FACTS_VERSION = 8;
+const FACTS_VERSION = 10;
 
 const USE_PROD = 1;
 const USE_TEST = 2;
 const USE_PUBLIC = 4;
+
+const UI_KIT_DIR = /(?:^|\/)components\/ui\//;
 
 const TYPE_LIKE_KINDS: ReadonlySet<string> = new Set(['interface', 'type', 'class', 'enum']);
 
@@ -245,6 +247,18 @@ export async function analyzeDeadCode(
     const { facts } = node;
     for (const imp of facts.imports) {
       if (imp.kind === 'glob') {
+        if (imp.spec.startsWith('/')) {
+          // Vite root-absolute glob ('/src/routes/*.ts'): the leading slash
+          // anchors at the project root — the same convention resolve() and
+          // entries.ts apply to leading-slash specifiers — not at the
+          // importing file's directory. The owning package root is tried too;
+          // extra edges only keep files alive, so the union errs safe.
+          for (const base of [node.pkg?.dir ?? '', '']) {
+            const re = compilePathGlob(path.posix.join(base, imp.spec.slice(1)));
+            node.extraEdges.push(...codeList.filter((f) => re.test(f)));
+          }
+          continue;
+        }
         const pattern = path.posix.join(path.posix.dirname(node.rel), imp.spec);
         const re = compilePathGlob(pattern.replace(/^\.\//, ''));
         node.extraEdges.push(...codeList.filter((f) => re.test(f)));
@@ -400,7 +414,16 @@ export async function analyzeDeadCode(
     opaqueDirs.some((d) => d === '.' || file.startsWith(`${d}/`));
 
   const push = (f: Omit<DeadCodeFinding, 'id'>): void => {
-    findings.push({ id: findingId(f.category, f.file, f.name), ...f });
+    // A component kit (`components/ui/`, shadcn-style) is a library surface:
+    // unused parts are kept on purpose often enough that removal needs a look.
+    const kit = UI_KIT_DIR.test(f.file) && f.confidence === 'high';
+    findings.push({
+      id: findingId(f.category, f.file, f.name),
+      ...f,
+      ...(kit
+        ? { confidence: 'medium' as const, reason: `${f.reason} Part of a UI component kit.` }
+        : {}),
+    });
   };
 
   for (const node of nodes.values()) {
