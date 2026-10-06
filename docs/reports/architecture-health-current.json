@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:59:16.048Z",
+  "generatedAt": "2026-10-06T19:02:35.880Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4826,
+    "sourceFiles": 4829,
     "testFiles": 4161,
-    "sourceLines": 1078211,
+    "sourceLines": 1078364,
     "workspaceEdges": 133,
-    "moduleEdges": 15874,
+    "moduleEdges": 15890,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 958
+    "testOnlyExports": 957
   },
   "errors": [],
   "packageCycles": [],
@@ -874,7 +874,7 @@
     {
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
-      "sourceFiles": 125,
+      "sourceFiles": 128,
       "testFiles": 52,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -26257,19 +26257,8 @@
   ],
   "selfImports": [],
   "nonCommandSlashImports": [],
-  "hotspotCandidates": [
-    {
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
-      "lines": 845,
-      "relativeImports": 16
-    }
-  ],
+  "hotspotCandidates": [],
   "hotspots": [
-    {
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
-      "lines": 845,
-      "relativeImports": 16
-    },
     {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 797,
@@ -26514,6 +26503,11 @@
       "file": "packages/tools/src/todo.ts",
       "lines": 766,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/hq.ts",
+      "lines": 764,
+      "relativeImports": 12
     }
   ],
   "testOnlyExports": [
@@ -29640,10 +29634,6 @@
     {
       "file": "packages/webui-hq/src/domain/use-session-transcript.ts",
       "name": "coalesceStreamedText"
-    },
-    {
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
-      "name": "CommandLatencyCard"
     },
     {
       "file": "packages/webui-hq/src/views/events.tsx",

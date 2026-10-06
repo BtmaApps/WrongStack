@@ -1652,9 +1652,6 @@
     "packages/webui-hq/src/domain/use-session-transcript.ts": [
       "coalesceStreamedText"
     ],
-    "packages/webui-hq/src/views/cockpit.tsx": [
-      "CommandLatencyCard"
-    ],
     "packages/webui-hq/src/views/events.tsx": [
       "groupEventChains"
     ],

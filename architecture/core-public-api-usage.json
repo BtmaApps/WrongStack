@@ -74,8 +74,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 159,
-      "typeOnly": 95,
+      "files": 161,
+      "typeOnly": 97,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -6178,7 +6178,13 @@
     },
     {
       "specifier": "@wrongstack/core/hq",
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
+      "file": "packages/webui-hq/src/views/cockpit-cards.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/src/views/cockpit-sections.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -6215,6 +6221,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/src/views/trends.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/src/views/use-cockpit-data.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
