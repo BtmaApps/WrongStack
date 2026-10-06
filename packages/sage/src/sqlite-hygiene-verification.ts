@@ -39,22 +39,36 @@ export async function verifyHygieneMemories(inputs: {
     const reactivations = new Map<string, MemoryAnchor[]>();
 
     if (depth === 'existence') {
+      // Existence proves EXACTLY the anchor types that name a real path on
+      // disk: `file`/`symbol`/`test`/`git` and `directory`/`package`.
+      // `command` and `agent` carry no path and are left to the deep pass —
+      // naming them here would resolve an unrelated path and then judge the
+      // memory on it.
+      const isPathAnchorType = (
+        type: MemoryAnchor['type'],
+      ): type is 'file' | 'symbol' | 'test' | 'git' | 'directory' | 'package' =>
+        type === 'file' ||
+        type === 'symbol' ||
+        type === 'test' ||
+        type === 'git' ||
+        type === 'directory' ||
+        type === 'package';
+
       const anchorPaths = new Set<string>();
       for (const m of active) {
         for (const anchor of m.anchors) {
-          if (
-            anchor.path &&
-            (anchor.type === 'file' ||
-              anchor.type === 'symbol' ||
-              anchor.type === 'test' ||
-              anchor.type === 'git')
-          ) {
+          if (anchor.path && isPathAnchorType(anchor.type)) {
             anchorPaths.add(path.resolve(ctx.projectRoot, anchor.path));
           }
         }
       }
       const pathsToVerify = [...anchorPaths];
-      const existingPaths = new Set<string>();
+      // Resolved path -> whether it is a directory. Presence alone is not
+      // enough: `anchorsPresentOnDisk` (sqlite-hygiene-anchors.ts:90-91) and the
+      // deep pass (anchors/verify.ts:474-486) both demote a `directory`/`package`
+      // anchor whose path still resolves but is no longer a directory, so the
+      // cheap pass records the same fact rather than a bare existence flag.
+      const existingPaths = new Map<string, boolean>();
       const realRoot = await fs.promises.realpath(ctx.projectRoot).catch(() => undefined);
       let nextPath = 0;
       const verifyWorker = async (): Promise<void> => {
@@ -71,7 +85,8 @@ export async function verifyHygieneMemories(inputs: {
             ) {
               continue;
             }
-            existingPaths.add(anchorPath);
+            const stat = await fs.promises.stat(real);
+            existingPaths.set(anchorPath, stat.isDirectory());
           } catch {
             // Missing, inaccessible, or broken-link anchors are stale.
           }
@@ -82,17 +97,24 @@ export async function verifyHygieneMemories(inputs: {
       );
 
       for (const m of active) {
-        const allValid = m.anchors.every(
-          (anchor) =>
-            !anchor.path ||
-            !(
-              anchor.type === 'file' ||
-              anchor.type === 'symbol' ||
-              anchor.type === 'test' ||
-              anchor.type === 'git'
-            ) ||
-            existingPaths.has(path.resolve(ctx.projectRoot, anchor.path)),
-        );
+        // A `directory`/`package` anchor names a path too: it must be present
+        // AND still be a directory. Before this shared predicate existed, both
+        // types fell through the `!(file|symbol|test|git)` test as TRUE for any
+        // path, so a memory anchored to a deleted directory or package could
+        // never be demoted by the DEFAULT existence depth — while the deep
+        // pass (anchors/verify.ts), `existenceProvesAnchors` and
+        // `anchorsPresentOnDisk` all treat it as stale. `command`/`agent`
+        // anchors carry no path and stay out of existence's judgement.
+        const allValid = m.anchors.every((anchor) => {
+          if (!anchor.path) return true;
+          if (!isPathAnchorType(anchor.type)) return true;
+          const resolved = path.resolve(ctx.projectRoot, anchor.path);
+          const isDirectory = existingPaths.get(resolved);
+          if (isDirectory === undefined) return false; // missing or outside the root
+          // A `directory`/`package` anchor must still name a directory.
+          if (anchor.type === 'directory' || anchor.type === 'package') return isDirectory;
+          return true;
+        });
         verificationOutcomes.set(m.id, allValid);
         if (allValid) verified.push(m.id);
         else stale.push(m.id);

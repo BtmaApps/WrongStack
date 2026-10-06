@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T06:51:46.593Z",
+  "generatedAt": "2026-10-06T06:52:40.971Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4639,
-    "testFiles": 4112,
-    "sourceLines": 1063108,
+    "testFiles": 4113,
+    "sourceLines": 1063130,
     "workspaceEdges": 133,
     "moduleEdges": 15264,
     "nonCommandSlashImports": 0,
@@ -601,7 +601,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 132,
-      "testFiles": 125,
+      "testFiles": 126,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -616,7 +616,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 125
+          "testFiles": 126
         }
       ]
     },
@@ -14431,6 +14431,12 @@
       },
       {
         "file": "packages/sage/tests/hygiene-critical-importance-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/hygiene-existence-anchor-types.test.ts",
         "projects": [
           "root-node"
         ]
