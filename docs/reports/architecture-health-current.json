@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T06:50:49.237Z",
+  "generatedAt": "2026-10-06T06:51:46.593Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4639,
-    "testFiles": 4111,
-    "sourceLines": 1063084,
+    "testFiles": 4112,
+    "sourceLines": 1063108,
     "workspaceEdges": 133,
     "moduleEdges": 15264,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 961
+    "testOnlyExports": 962
   },
   "errors": [],
   "packageCycles": [],
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1047,
-      "testFiles": 907,
+      "testFiles": 908,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 907
+          "testFiles": 908
         }
       ]
     },
@@ -7249,6 +7249,12 @@
       },
       {
         "file": "packages/core/tests/core/fallback-model-kind-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/fallback-model-selection-abort.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27251,6 +27257,10 @@
     {
       "file": "packages/core/src/core/continue-to-next-iteration.ts",
       "name": "setAutonomousContinue"
+    },
+    {
+      "file": "packages/core/src/core/fallback-model-selection.ts",
+      "name": "isUsableModelResponse"
     },
     {
       "file": "packages/core/src/core/fallback-profile-manager.ts",

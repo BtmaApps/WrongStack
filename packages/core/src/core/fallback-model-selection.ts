@@ -65,10 +65,32 @@ export function ensureUsableModelResponse(
   response: Response,
   providerId: string,
   model: string,
+  signal?: AbortSignal | undefined,
 ): Response {
   const usable = isUsableModelResponse(response);
   // undefined content means the caller didn't provide a content field (e.g. test mocks) — let it through
   if (usable !== false) return response;
+
+  // A cancelled run yields no usable blocks because the stream was cut short,
+  // which is indistinguishable from a genuine empty response here. Reporting it
+  // as `overloaded` is wrong in KIND and in CONSEQUENCE: `overloaded` is
+  // fallback-eligible, so a run being torn down rotates through every configured
+  // model instead of stopping. Same shape as the streaming abort bug fixed in
+  // runFallbackChain (the `ctx_.signal?.aborted` checks) — an abort must never
+  // be laundered into a capacity error.
+  //
+  // Optional chaining throughout: test mocks supply partial Context objects
+  // without a `signal`.
+  if (signal?.aborted) {
+    throw new ProviderError(
+      `Empty response from ${providerId}/${model}: the run was aborted`,
+      499,
+      false,
+      providerId,
+      { kind: 'unknown' },
+    );
+  }
+
   throw new ProviderError(
     `Empty response from ${providerId}/${model}; trying the next configured model`,
     503,

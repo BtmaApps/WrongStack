@@ -449,6 +449,9 @@
       "clearAutonomousContinue",
       "setAutonomousContinue"
     ],
+    "packages/core/src/core/fallback-model-selection.ts": [
+      "isUsableModelResponse"
+    ],
     "packages/core/src/core/fallback-profile-manager.ts": [
       "MAX_LAST_RESORT_CANDIDATES"
     ],

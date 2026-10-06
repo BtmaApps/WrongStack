@@ -388,6 +388,7 @@ export function createFallbackModelExtension(deps: FallbackModelDeps): AgentExte
           await inner(ctx, request),
           ctx.provider.id,
           ctx.model,
+          ctx.signal,
         );
         // Record success in the tracker
         tracker?.recordSuccess(ctx.provider.id, ctx.model, {
@@ -706,6 +707,7 @@ export function createFallbackModelExtension(deps: FallbackModelDeps): AgentExte
               await inner_(ctx_, request_),
               ctx_.provider.id,
               ctx_.model,
+              ctx_.signal,
             );
             tracker?.recordSuccess(nextProvider.id, targetModel, {
               sessionId: resolveEventSessionId(ctx_),
