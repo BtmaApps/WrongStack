@@ -34,6 +34,8 @@ export interface HistoryScrollController {
   scrollToEntry(entryId: number): boolean;
   /** True while the viewport is scrolled away from the newest output. */
   isScrolled(): boolean;
+  /** Replay the logo intro when a cell is inside the visible banner. */
+  replayBannerAt?(row: number, col: number): boolean;
   /**
    * True when the viewport cell lands on a copyable card's copy icon. Lets the
    * mouse handler decide synchronously whether to consume the click before
@@ -135,6 +137,9 @@ export interface HistoryScrollController {
 }
 
 export interface ScrollableHistoryProps extends HistoryProps {
+  /** Intro timestamp, retained across viewport remounts until replayed or cleared. */
+  bannerAnimationStartedAt?: number | undefined;
+  onBannerReplay?: (() => void) | undefined;
   /** Height of the viewport in rows, computed by App from the bottom region. */
   viewportRows: number;
   /** Receives the imperative scroll controller. The component assigns on

@@ -115,8 +115,16 @@
       "relativeImports": 16
     },
     "packages/tools/src/codebase-index/writer.ts": {
-      "lines": 930,
+      "lines": 926,
       "relativeImports": 36
+    },
+    "packages/tools/src/dead-code/fix.ts": {
+      "lines": 1173,
+      "relativeImports": 5
+    },
+    "packages/tools/src/dead-code/parse.ts": {
+      "lines": 1121,
+      "relativeImports": 0
     },
     "packages/tui/src/use-app-controller.tsx": {
       "lines": 822,
@@ -129,6 +137,10 @@
     "packages/webui/src/components/CodeMap.tsx": {
       "lines": 811,
       "relativeImports": 13
+    },
+    "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx": {
+      "lines": 861,
+      "relativeImports": 0
     },
     "packages/webui/src/components/RepositoryHistoryView.tsx": {
       "lines": 824,

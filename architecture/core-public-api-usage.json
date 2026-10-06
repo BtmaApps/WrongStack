@@ -84,9 +84,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/kernel": {
-      "files": 349,
+      "files": 350,
       "typeOnly": 154,
-      "runtimeOrMixed": 215
+      "runtimeOrMixed": 217
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -104,9 +104,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/observability": {
-      "files": 12,
+      "files": 13,
       "typeOnly": 0,
-      "runtimeOrMixed": 12
+      "runtimeOrMixed": 13
     },
     "@wrongstack/core/performance": {
       "files": 1,
@@ -234,9 +234,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 732,
+      "files": 736,
       "typeOnly": 67,
-      "runtimeOrMixed": 697
+      "runtimeOrMixed": 701
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -7553,6 +7553,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/core/tests/architecture/core-public-api-snapshot-sync.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/src/registry-connect-loop.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -9036,6 +9042,12 @@
     {
       "specifier": "@wrongstack/core/observability",
       "file": "packages/cli/tests/wiring-metrics.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/observability",
+      "file": "packages/core/tests/architecture/core-public-api-snapshot-sync.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18971,7 +18983,7 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/tools/src/codebase-index/dead-code-scan.ts",
+      "file": "packages/tools/src/dead-code/tools.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
     },
@@ -25008,6 +25020,30 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/codebase-index/yaml-parser.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/analyze.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/files.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/fix.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/tools.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

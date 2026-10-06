@@ -90,7 +90,7 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     id: 'filesystem.write',
     pack: 'development',
     exposure: 'direct',
-    tools: ['write', 'edit', 'replace', 'patch', 'codebase-ast-replace'],
+    tools: ['write', 'edit', 'replace', 'patch', 'codebase-ast-replace', 'dead-code-fix'],
   },
   {
     id: 'execution.shell',

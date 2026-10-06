@@ -82,7 +82,7 @@ describe('includeTransitive', () => {
         'Cargo.lock': [
           '[[package]]',
           'name = "quote"',
-          'version = "1.0.35"',
+          'version = "1.0.34"',
           '[[package]]',
           'name = "quote"',
           'version = "1.0.36"',
@@ -115,7 +115,7 @@ describe('includeTransitive', () => {
         .filter((dep) => dep.name === 'quote')
         .map((dep) => dep.locked)
         .sort(),
-    ).toEqual(['1.0.35', '1.0.36']);
+    ).toEqual(['1.0.34', '1.0.36']);
     const purls = deps.flatMap((dep) => (dep.purl ? [dep.purl] : []));
     expect(new Set(purls).size).toBe(purls.length);
   });

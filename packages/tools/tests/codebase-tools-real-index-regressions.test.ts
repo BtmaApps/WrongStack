@@ -10,7 +10,6 @@ import { ToolValidationError } from '@wrongstack/core/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { codebaseAstReplaceTool } from '../src/codebase-index/codebase-ast-replace-tool.js';
 import { codebaseImpactAnalysisTool } from '../src/codebase-index/codebase-impact-analysis-tool.js';
-import { runDeadCodeScan } from '../src/codebase-index/dead-code-scan.js';
 import { runIndexer } from '../src/codebase-index/indexer.js';
 import { indexStorePool } from '../src/codebase-index/writer.js';
 
@@ -91,14 +90,6 @@ describe('codebase tools on a real index', () => {
     } finally {
       db.close();
     }
-  });
-
-  it('keeps members of a live TS class alive and ignores manifest keys', () => {
-    const store = indexStorePool.acquire(root, { indexDir });
-    const result = runDeadCodeScan(root, { store });
-    const dead = result.deadSymbols.map((s) => `${path.basename(s.file)}:${s.name}`).sort();
-    expect(dead).toEqual(['b.ts:unused']);
-    expect(result.deadFiles).toEqual([]);
   });
 
   it('rejects a missing ast-replace field as a validation error', async () => {

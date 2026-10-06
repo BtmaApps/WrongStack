@@ -1,38 +1,36 @@
 /**
- * Dead-Code Scan HTTP handlers.
+ * Dead-code HTTP handlers — the WebUI's surface over the dead-code engine.
  *
- * POST /api/deadcode/scan — runs `runDeadCodeScan` from @wrongstack/tools
- *   and returns structured results (deadSymbols, deadFiles, deadPackages).
+ *   POST /api/deadcode/scan     { paths?, includePublicApi? }      → findings
+ *   POST /api/deadcode/preview  { ids }                            → exact diffs, nothing written
+ *   POST /api/deadcode/apply    { ids, verify? }                   → re-scan, write, typecheck, rollback on failure
+ *   POST /api/deadcode/undo     { backupId, force? }               → restore a fix's backup
+ *   GET  /api/deadcode/backups                                     → available backups
  *
- * POST /api/deadcode/action-plan — converts scan results into an ordered
- *   action plan with priority-sorted file groups for LLM execution.
+ * Findings are addressed by id and every write re-scans first, so a UI holding
+ * an old report can never patch files at stale offsets.
  */
 
 import type * as http from 'node:http';
-import * as path from 'node:path';
-// Import from the subpath barrel so consuming packages resolve against
-// the already-built dist/codebase-index/index.js without rebuilding @wrongstack/tools.
 import { sanitizeApiError } from '@wrongstack/core/security';
-import type { DeadCodeScanOutput } from '@wrongstack/tools/codebase-index';
-import { runDeadCodeScan } from '@wrongstack/tools/codebase-index';
+import {
+  analyzeDeadCode,
+  applyDeadCodeFixes,
+  listDeadCodeBackups,
+  planDeadCodeFixes,
+  undoDeadCodeFix,
+} from '@wrongstack/tools/dead-code';
 import { errMessage } from './ws-utils.js';
 
 interface DeadCodeHandlerDeps {
   projectRoot: string;
-  indexDir?: string | undefined;
 }
 
-// ─── POST /api/deadcode/scan ───────────────────────────────────────────────
+/** Max accepted POST body size (1 MiB) — requests carry ids, not reports. */
+const MAX_BODY_BYTES = 1024 * 1024;
+const MAX_IDS = 5000;
 
-interface ScanRequestBody {
-  indexDir?: string | undefined;
-  entryPoints?: string[] | undefined;
-}
-
-/** Max accepted POST body size (10 MiB). Beyond this the connection is destroyed. */
-const MAX_BODY_BYTES = 10 * 1024 * 1024;
-
-function readJsonBody(req: http.IncomingMessage): Promise<string> {
+function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let total = 0;
@@ -40,223 +38,130 @@ function readJsonBody(req: http.IncomingMessage): Promise<string> {
       total += chunk.length;
       if (total > MAX_BODY_BYTES) {
         req.destroy(new Error('Request body too large'));
-        reject(new Error('Request body exceeds 10 MiB limit'));
+        reject(new Error('Request body exceeds 1 MiB limit'));
         return;
       }
       chunks.push(chunk);
     });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      if (!raw.trim()) return resolve({});
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        resolve(
+          parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>)
+            : {},
+        );
+      } catch {
+        reject(new BadRequest('Invalid JSON body'));
+      }
+    });
     req.on('error', (err) => reject(err));
   });
 }
 
-export async function handleDeadCodeScan(
+class BadRequest extends Error {}
+
+function send(res: http.ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
+
+function stringArray(v: unknown, field: string, max = MAX_IDS): string[] {
+  if (v === undefined) return [];
+  if (!Array.isArray(v) || v.some((x) => typeof x !== 'string') || v.length > max) {
+    throw new BadRequest(`${field} must be an array of at most ${max} strings`);
+  }
+  return v as string[];
+}
+
+function projectRelativePaths(v: unknown): string[] {
+  const paths = stringArray(v, 'paths', 200);
+  for (const p of paths) {
+    const norm = p.replace(/\\/g, '/');
+    if (norm.startsWith('/') || /^[a-zA-Z]:/.test(norm) || norm.split('/').includes('..')) {
+      throw new BadRequest(`paths must be project-relative: "${p}"`);
+    }
+  }
+  return paths;
+}
+
+/** Routes every `/api/deadcode/*` request. Returns false for unknown paths. */
+export async function handleDeadCodeRequest(
+  pathname: string,
+  req: http.IncomingMessage,
   res: http.ServerResponse,
   deps: DeadCodeHandlerDeps,
-  req: http.IncomingMessage,
-): Promise<void> {
+): Promise<boolean> {
+  const route = pathname.slice('/api/deadcode/'.length);
+  const method = req.method ?? 'GET';
   try {
-    let body: ScanRequestBody = {};
-    const raw = await readJsonBody(req);
-    if (raw) {
-      try {
-        body = JSON.parse(raw) as ScanRequestBody;
-      } catch {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
-        return;
-      }
+    if (route === 'backups' && method === 'GET') {
+      send(res, 200, { backups: listDeadCodeBackups(deps.projectRoot) });
+      return true;
     }
-
-    // Validate client-supplied indexDir resolves inside the project root
-    // to prevent path-traversal through the request body.
-    const scanIndexDir = body.indexDir ?? deps.indexDir;
-    if (scanIndexDir) {
-      const resolvedRoot = path.resolve(deps.projectRoot);
-      const resolvedIndex = path.resolve(deps.projectRoot, scanIndexDir);
-      if (resolvedIndex !== resolvedRoot && !resolvedIndex.startsWith(resolvedRoot + path.sep)) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid indexDir: must be within project root' }));
-        return;
+    if (method !== 'POST') return false;
+    switch (route) {
+      case 'scan': {
+        const body = await readJsonBody(req);
+        const {
+          nodes: _nodes,
+          fileHashes: _hashes,
+          ...result
+        } = await analyzeDeadCode(deps.projectRoot, {
+          paths: projectRelativePaths(body.paths),
+          includePublicApi: body.includePublicApi === true,
+        });
+        send(res, 200, result);
+        return true;
       }
+      case 'preview': {
+        const body = await readJsonBody(req);
+        const ids = stringArray(body.ids, 'ids');
+        if (ids.length === 0) throw new BadRequest('ids must not be empty');
+        send(res, 200, await planDeadCodeFixes(deps.projectRoot, ids));
+        return true;
+      }
+      case 'apply': {
+        const body = await readJsonBody(req);
+        const ids = stringArray(body.ids, 'ids');
+        if (ids.length === 0) throw new BadRequest('ids must not be empty');
+        const verify = body.verify === 'none' ? 'none' : 'typecheck';
+        send(res, 200, await applyDeadCodeFixes(deps.projectRoot, ids, { verify }));
+        return true;
+      }
+      case 'undo': {
+        const body = await readJsonBody(req);
+        if (typeof body.backupId !== 'string' || !/^[\w.-]+$/.test(body.backupId)) {
+          throw new BadRequest('backupId is required');
+        }
+        send(
+          res,
+          200,
+          undoDeadCodeFix(deps.projectRoot, body.backupId, { force: body.force === true }),
+        );
+        return true;
+      }
+      default:
+        return false;
     }
-
-    const result = runDeadCodeScan(deps.projectRoot, {
-      indexDir: scanIndexDir,
-      userEntryPoints: body.entryPoints,
-    });
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(result));
   } catch (err) {
+    if (err instanceof BadRequest) {
+      send(res, 400, { error: err.message });
+      return true;
+    }
     // Detail stays server-side; the body carries only a category.
     console.warn(
       JSON.stringify({
         level: 'warn',
-        event: 'deadcode.scan_failed',
+        event: 'deadcode.request_failed',
+        route,
         message: errMessage(err),
         timestamp: new Date().toISOString(),
       }),
     );
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(
-      JSON.stringify({
-        error: 'Dead-code scan failed',
-        detail: sanitizeApiError(err),
-      }),
-    );
+    send(res, 500, { error: `Dead-code ${route} failed`, detail: sanitizeApiError(err) });
+    return true;
   }
-}
-
-// ─── POST /api/deadcode/action-plan ────────────────────────────────────────
-
-interface ActionPlanFile {
-  file: string;
-  symbolCount: number;
-  /** The kind of symbols to remove (for the LLM prompt). */
-  symbols: string[];
-  /** Suggested priority: 0 = dead package (highest impact), 1 = dead file, 2 = dead symbol. */
-  priority: number;
-}
-
-interface ActionPlan {
-  summary: string;
-  files: ActionPlanFile[];
-  totalDeadSymbols: number;
-  totalDeadFiles: number;
-  totalDeadPackages: number;
-}
-
-export function handleDeadCodeActionPlan(
-  res: http.ServerResponse,
-  _deps: DeadCodeHandlerDeps,
-  req: http.IncomingMessage,
-): Promise<void> {
-  return readJsonBody(req)
-    .then((raw) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid scan result JSON' }));
-        return;
-      }
-
-      // Runtime shape check: buildActionPlan accesses deadPackages, deadFiles,
-      // deadSymbols, and stats.dead — verify they exist before trusting the cast.
-      if (
-        !parsed ||
-        typeof parsed !== 'object' ||
-        !Array.isArray((parsed as Record<string, unknown>).deadPackages) ||
-        !Array.isArray((parsed as Record<string, unknown>).deadFiles) ||
-        !Array.isArray((parsed as Record<string, unknown>).deadSymbols)
-      ) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(
-          JSON.stringify({
-            error:
-              'Invalid scan result: missing or malformed required fields ' +
-              '(deadPackages, deadFiles, deadSymbols)',
-          }),
-        );
-        return;
-      }
-
-      const result = parsed as DeadCodeScanOutput;
-      const plan = buildActionPlan(result);
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(plan));
-    })
-    .catch((err) => {
-      // Detail stays server-side; the body carries only a category.
-      console.warn(
-        JSON.stringify({
-          level: 'warn',
-          event: 'deadcode.action_plan_failed',
-          message: errMessage(err),
-          timestamp: new Date().toISOString(),
-        }),
-      );
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          error: 'Failed to read request body',
-          detail: sanitizeApiError(err),
-        }),
-      );
-    });
-}
-
-function buildActionPlan(result: DeadCodeScanOutput): ActionPlan {
-  const files = new Map<string, ActionPlanFile>();
-
-  // P0: Dead packages — all files in the package.
-  for (const dp of result.deadPackages) {
-    // The scan returns deadPackage objects; synthesize file entries.
-    const pseudoFile: ActionPlanFile = {
-      file: `${dp.package}/ (package)`,
-      symbolCount: dp.fileCount,
-      symbols: [`remove package ${dp.package} (${dp.fileCount} files, path: ${dp.path})`],
-      priority: 0,
-    };
-    files.set(pseudoFile.file, pseudoFile);
-  }
-
-  // P1: Dead files — all symbols are unreferenced.
-  for (const df of result.deadFiles) {
-    const existing = files.get(df.file);
-    if (existing) {
-      // Already queued as part of a dead package — keep the higher priority.
-      if (existing.priority > 1) existing.priority = 1;
-      existing.symbolCount += df.symbolCount;
-      continue;
-    }
-    files.set(df.file, {
-      file: df.file,
-      symbolCount: df.symbolCount,
-      symbols: [`entire file (${df.symbolCount} symbols) is dead`],
-      priority: 1,
-    });
-  }
-
-  // P2: Individual dead symbols in otherwise-alive files.
-  const deadInAliveFiles = new Map<string, string[]>();
-  const deadFileSet = new Set(result.deadFiles.map((df) => df.file));
-  for (const ds of result.deadSymbols) {
-    if (deadFileSet.has(ds.file)) continue; // already counted in deadFiles
-    const list = deadInAliveFiles.get(ds.file) ?? [];
-    list.push(`${ds.kind} ${ds.name} (line ${ds.line})`);
-    deadInAliveFiles.set(ds.file, list);
-  }
-  for (const [file, symbols] of deadInAliveFiles) {
-    const existing = files.get(file);
-    if (existing) {
-      existing.symbols.push(...symbols);
-      existing.symbolCount += symbols.length;
-      continue;
-    }
-    files.set(file, {
-      file,
-      symbolCount: symbols.length,
-      symbols,
-      priority: 2,
-    });
-  }
-
-  const sorted = [...files.values()].sort(
-    (a, b) => a.priority - b.priority || a.file.localeCompare(b.file),
-  );
-
-  return {
-    summary:
-      `Dead-code scan found ${result.stats.dead} dead symbols across ` +
-      `${result.deadFiles.length} dead files and ${result.deadPackages.length} dead packages. ` +
-      `Action plan has ${sorted.length} file group(s) to address.`,
-    files: sorted,
-    totalDeadSymbols: result.stats.dead,
-    totalDeadFiles: result.deadFiles.length,
-    totalDeadPackages: result.deadPackages.length,
-  };
 }

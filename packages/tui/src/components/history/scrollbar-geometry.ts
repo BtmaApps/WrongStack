@@ -5,8 +5,8 @@
  * Extracted from scrollable-history.tsx.
  */
 import type { EntryHeightCache } from '../../height-cache.js';
-import { isCopyableEntry } from './copy-icon.js';
 import { copyRegistryVisibleClip } from './copy-geometry.js';
+import { isCopyableEntry } from './copy-icon.js';
 import { type RenderGroup, renderGroupId } from './tool-group.js';
 
 /** Pure thumb geometry for the scrollbar: where the thumb starts and how many
@@ -71,6 +71,8 @@ export function buildMountedCardSpans(opts: {
   tailRows: number;
   viewportRows: number;
   showModelReasoning?: boolean | undefined;
+  /** Include banner hit spans for replay; callers keep these out of selection. */
+  includeBanner?: boolean | undefined;
 }): MountedCardSpan[] {
   const mountedGroupRows = opts.renderGroups.reduce(
     (rows, group) => rows + (opts.heightCache.getHeight(renderGroupId(group)) ?? 0),
@@ -96,8 +98,9 @@ export function buildMountedCardSpans(opts: {
     const entryIds =
       group.type === 'tool-group'
         ? group.data.entries.map((entry) => entry.id)
-        : isCopyableEntry(group.entry) &&
-            !(group.entry.kind === 'thinking' && opts.showModelReasoning === false)
+        : (opts.includeBanner && group.entry.kind === 'banner') ||
+            (isCopyableEntry(group.entry) &&
+              !(group.entry.kind === 'thinking' && opts.showModelReasoning === false))
           ? [group.entry.id]
           : [];
     const entryId = entryIds[0];

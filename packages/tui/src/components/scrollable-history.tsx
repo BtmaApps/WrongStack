@@ -89,6 +89,8 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   toolStream,
   streamingText,
   viewportRows,
+  bannerAnimationStartedAt,
+  onBannerReplay,
   controllerRef,
   onScrollInfo,
   maxWidth,
@@ -174,6 +176,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   const copyHitsRef = useRef<CopyHit[]>([]);
   const liveToolCopyHitRef = useRef<CopyHit | null>(null);
   const mountedGroupSpansRef = useRef<readonly MountedCardSpan[]>([]);
+  const bannerSpansRef = useRef<readonly MountedCardSpan[]>([]);
   const spansSignatureRef = useRef('');
   const selectionRef = useRef<{
     anchor: { row: number; col: number } | null;
@@ -362,6 +365,8 @@ export const ScrollableHistory = memo(function ScrollableHistory({
     copyHitsRef,
     liveToolCopyHitRef,
     mountedGroupSpansRef,
+    bannerSpansRef,
+    onBannerReplay,
     selectionRef,
     entriesByIdRef,
     groupIndexByEntryIdRef,
@@ -431,7 +436,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
     ? [...copyRegistry.hits, copyRegistry.liveHit]
     : copyRegistry.hits;
 
-  const nextSpans = buildMountedCardSpans({
+  const allSpans = buildMountedCardSpans({
     renderGroups,
     heightCache,
     scrolled,
@@ -439,7 +444,14 @@ export const ScrollableHistory = memo(function ScrollableHistory({
     tailRows: mountedTailRows,
     viewportRows: vp,
     showModelReasoning,
+    includeBanner: Boolean(onBannerReplay),
   });
+  bannerSpansRef.current = allSpans.filter(
+    (span) => entriesByIdRef.current.get(span.entryId)?.kind === 'banner',
+  );
+  const nextSpans = allSpans.filter(
+    (span) => entriesByIdRef.current.get(span.entryId)?.kind !== 'banner',
+  );
 
   const nextSignature = nextSpans
     .map((s) => `${s.entryId}:${s.viewportStartRow}:${s.viewportEndRow}`)
@@ -586,6 +598,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
                   entry={entry}
                   termWidth={termWidth}
                   termHeight={vp}
+                  bannerAnimationStartedAt={bannerAnimationStartedAt}
                   setSuggestions={setSuggestions}
                   autonomyMode={autonomyMode}
                   nextStepsAutoSubmitLabel={nextStepsAutoSubmitLabel}

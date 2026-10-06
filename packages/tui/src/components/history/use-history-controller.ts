@@ -40,6 +40,8 @@ interface UseHistoryControllerOptions {
   copyHitsRef: { current: CopyHit[] };
   liveToolCopyHitRef: { current: CopyHit | null };
   mountedGroupSpansRef: { current: readonly MountedCardSpan[] };
+  bannerSpansRef?: { current: readonly MountedCardSpan[] } | undefined;
+  onBannerReplay?: (() => void) | undefined;
   selectionRef: {
     current: {
       anchor: { row: number; col: number } | null;
@@ -80,6 +82,8 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
     copyHitsRef,
     liveToolCopyHitRef,
     mountedGroupSpansRef,
+    bannerSpansRef,
+    onBannerReplay,
     selectionRef,
     entriesByIdRef,
     groupIndexByEntryIdRef,
@@ -185,6 +189,12 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
         return true;
       },
       isScrolled: () => effectiveAnchorRef.current !== null,
+      replayBannerAt: (row, col) => {
+        if (!onBannerReplay || row < 0 || row >= vp || isOutOfBand(col, termWidth)) return false;
+        if (selectionHitAt(row, bannerSpansRef?.current ?? []) === null) return false;
+        onBannerReplay();
+        return true;
+      },
       hasCopyTargetAt: (row, col) =>
         findCopyHit(copyHitsRef.current, row, col) !== null ||
         findCopyHit(liveToolCopyHitRef.current ? [liveToolCopyHitRef.current] : [], row, col) !==
@@ -323,6 +333,8 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
       copyHitsRef,
       liveToolCopyHitRef,
       mountedGroupSpansRef,
+      bannerSpansRef,
+      onBannerReplay,
       selectionRef,
       entriesByIdRef,
       toolStreamRef,

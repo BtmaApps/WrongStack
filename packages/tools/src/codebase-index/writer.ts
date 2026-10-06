@@ -566,10 +566,6 @@ export class IndexStore {
     );
   }
 
-  findReachableSymbolIds(seedIds: number[]): Set<number> {
-    return writerGraphReader.findReachableSymbolIds((sql) => this.stmt(sql), seedIds);
-  }
-
   findRefsTo(symbolId: number): Ref[] {
     return writerGraphReader.findRefsToWithStatement((sql) => this.stmt(sql), symbolId);
   }

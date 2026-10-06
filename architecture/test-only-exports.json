@@ -388,7 +388,6 @@
       "chronicleSqliteAllocatedBytes"
     ],
     "packages/core/src/coordination/agents/agent-prompts.ts": [
-      "agentPrompt",
       "agentPromptCacheSize"
     ],
     "packages/core/src/coordination/agents/dispatch-log.ts": [
@@ -1013,9 +1012,6 @@
     "packages/runtime/src/automation/management.ts": [
       "readAutomationArtifact"
     ],
-    "packages/runtime/src/clipboard.ts": [
-      "MAX_TEXT_BYTES"
-    ],
     "packages/runtime/src/governance-bootstrap.ts": [
       "bootstrapGovernanceRuntimeWithFactory",
       "MAX_PENDING_GOVERNANCE_OBSERVATIONS",
@@ -1366,6 +1362,9 @@
     ],
     "packages/tui/src/components/help-overlay.tsx": [
       "helpSections"
+    ],
+    "packages/tui/src/components/history/banner-formation.ts": [
+      "BANNER_FORMATION_DURATION_MS"
     ],
     "packages/tui/src/components/history/banner.tsx": [
       "bannerGradientColor",

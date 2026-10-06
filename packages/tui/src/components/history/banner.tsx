@@ -4,6 +4,7 @@ import { Box, Text } from '../../ink.js';
 import { truncateDisplay } from '../../terminal-width.js';
 import { theme } from '../../theme.js';
 import { mixHex } from '../animation-style.js';
+import { pixelFormationLine, useBannerFormation } from './banner-formation.js';
 import type { AutonomyAgentStatus, HistoryEntry } from './types.js';
 import { shortenPath } from './utils.js';
 
@@ -43,7 +44,13 @@ export function brandMarkPinkRow(frame: number): 0 | 1 {
   return PINK_BOUNCE_FRAMES[index] ?? 1;
 }
 
-function BrandMark({ pinkRow = 1 }: { pinkRow?: 0 | 1 }): React.ReactElement {
+function BrandMark({
+  pinkRow = 1,
+  progress = 1,
+}: {
+  pinkRow?: 0 | 1;
+  progress?: number;
+}): React.ReactElement {
   const rows = Array.from({ length: 3 }, (_, row) =>
     Array.from({ length: MARK_COLS }, (_, column) => {
       if (column === PINK_HOME && (row === pinkRow || row === pinkRow + 1)) {
@@ -55,12 +62,12 @@ function BrandMark({ pinkRow = 1 }: { pinkRow?: 0 | 1 }): React.ReactElement {
   );
 
   return (
-    <Box flexDirection="column" alignItems="center">
+    <Box width={MARK_COLS * 3 - 1} flexDirection="column" alignItems="center">
       {rows.map((row, rowIndex) => (
         <Text key={rowIndex} bold>
           {row.map((color, columnIndex) => (
             <Text key={columnIndex} color={color ?? undefined}>
-              {color ? '██' : '  '}
+              {color ? pixelFormationLine('██', rowIndex, progress, columnIndex * 3) : '  '}
               {columnIndex < row.length - 1 ? ' ' : ''}
             </Text>
           ))}
@@ -141,12 +148,52 @@ function GradientText({ text }: { text: string }): React.ReactElement {
   );
 }
 
-function PixelWordmark(): React.ReactElement {
+function PixelWordmark({ progress = 1 }: { progress?: number }): React.ReactElement {
   return (
-    <Box flexDirection="column" alignItems="center">
+    <Box width={WORDMARK_WIDTH} flexDirection="column">
       {WORDMARK_LINES.map((line, row) => (
-        <GradientText key={row} text={line} />
+        <GradientText key={row} text={pixelFormationLine(line, row, progress)} />
       ))}
+    </Box>
+  );
+}
+
+function BannerIdentity({
+  compact,
+  contentWidth,
+  animationStartedAt,
+}: {
+  compact: boolean;
+  contentWidth: number;
+  animationStartedAt: number | undefined;
+}): React.ReactElement {
+  const elapsed = useBannerFormation(animationStartedAt);
+  return (
+    <Box flexDirection="column">
+      <Box justifyContent="center" marginTop={compact ? 0 : 1}>
+        <BrandMark progress={elapsed / 450} />
+      </Box>
+      {compact ? (
+        <>
+          <Box justifyContent="center" marginTop={1}>
+            <GradientText text="WrongStack" />
+          </Box>
+          <Box justifyContent="center">
+            <Text color={MUTED()}>{trunc('TERMINAL AI ENGINE', contentWidth)}</Text>
+          </Box>
+        </>
+      ) : (
+        <>
+          <Box justifyContent="center" marginTop={1}>
+            <PixelWordmark progress={(elapsed - 100) / 1_100} />
+          </Box>
+          <Box justifyContent="center" marginTop={1}>
+            <Text color={MUTED()} italic>
+              BUILT ON THE WRONG STACK. SHIPPED ANYWAY.
+            </Text>
+          </Box>
+        </>
+      )}
     </Box>
   );
 }
@@ -355,10 +402,13 @@ export function Banner({
   entry,
   termWidth = DEFAULT_TERM_WIDTH,
   termHeight,
+  animationStartedAt,
 }: {
   entry: Extract<HistoryEntry, { kind: 'banner' }>;
   termWidth?: number;
   termHeight?: number;
+  /** Shared boot timestamp; absent for committed native scrollback. */
+  animationStartedAt?: number | undefined;
 }): React.ReactElement | null {
   // Subscribe to active-theme changes so a `/theme` swap during a live
   // session re-paints the banner. Banner sits inside the memoized History
@@ -375,10 +425,6 @@ export function Banner({
   const cwd = shortenPath(entry.cwd, Math.max(1, contentWidth - (compact ? 9 : 12)));
   const version = trunc(entry.version, Math.max(1, contentWidth - 1));
   const route = `${entry.provider} › ${entry.model}`;
-
-  // This banner persists in history. Keep it static so an idle TUI never
-  // redraws the whole Ink tree solely for a decorative logo gesture.
-  const pinkRow = 1;
 
   // A not-yet-measured pane has no rows available. Rendering even the bare
   // identity line would leak outside its viewport.
@@ -422,31 +468,11 @@ export function Banner({
         ) : null}
       </Box>
 
-      <Box justifyContent="center" marginTop={compact ? 0 : 1}>
-        <BrandMark pinkRow={pinkRow} />
-      </Box>
-
-      {compact ? (
-        <>
-          <Box justifyContent="center" marginTop={1}>
-            <GradientText text="WrongStack" />
-          </Box>
-          <Box justifyContent="center">
-            <Text color={MUTED()}>{trunc('TERMINAL AI ENGINE', contentWidth)}</Text>
-          </Box>
-        </>
-      ) : (
-        <>
-          <Box justifyContent="center" marginTop={1}>
-            <PixelWordmark />
-          </Box>
-          <Box justifyContent="center" marginTop={1}>
-            <Text color={MUTED()} italic>
-              BUILT ON THE WRONG STACK. SHIPPED ANYWAY.
-            </Text>
-          </Box>
-        </>
-      )}
+      <BannerIdentity
+        compact={compact}
+        contentWidth={contentWidth}
+        animationStartedAt={animationStartedAt}
+      />
 
       <Box flexDirection="column">
         <Text color={BORDER()}>{'─'.repeat(contentWidth)}</Text>

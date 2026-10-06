@@ -134,6 +134,7 @@ export const Entry = React.memo(function Entry({
   entry,
   termWidth,
   termHeight,
+  bannerAnimationStartedAt,
   setSuggestions,
   autonomyMode,
   nextStepsAutoSubmitLabel,
@@ -148,6 +149,7 @@ export const Entry = React.memo(function Entry({
   termWidth: number;
   /** Available managed-history rows; used by height-aware entries such as the banner. */
   termHeight?: number | undefined;
+  bannerAnimationStartedAt?: number | undefined;
   /** Store parsed next steps in the shared suggestion store so /next 1 works. */
   setSuggestions?: ((steps: string[]) => void) | undefined;
   /** Current autonomy mode — when 'auto', first step shows an auto marker. */
@@ -625,6 +627,7 @@ export const Entry = React.memo(function Entry({
           entry={entry}
           termWidth={termWidth}
           {...(termHeight === undefined ? {} : { termHeight })}
+          animationStartedAt={bannerAnimationStartedAt}
         />
       );
     case 'subagent': {

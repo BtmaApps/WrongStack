@@ -52,13 +52,20 @@ describe('per-tool subpath exports (L3-A)', () => {
     expect(typeof tier.registerBuiltinToolTier).toBe('function');
   });
 
+  it('dead-code subpath exports the scan and fix tools and the engine', async () => {
+    const mod = await import('@wrongstack/tools/dead-code');
+    expect(mod.deadCodeScanTool.name).toBe('dead-code-scan');
+    expect(mod.deadCodeFixTool.name).toBe('dead-code-fix');
+    expect(typeof mod.analyzeDeadCode).toBe('function');
+    expect(typeof mod.applyDeadCodeFixes).toBe('function');
+  });
+
   it('codebase-index subpath exports all tools including calls tools', async () => {
     const mod = await import('@wrongstack/tools/codebase-index');
     // Existing tools
     expect(mod.codebaseIndexTool.name).toBe('codebase-index');
     expect(mod.codebaseSearchTool.name).toBe('codebase-search');
     expect(mod.codebaseStatsTool.name).toBe('codebase-stats');
-    expect(mod.deadCodeScanTool.name).toBe('dead-code-scan');
     // New calls tools
     expect(mod.codebaseIncomingCallsTool.name).toBe('codebase-incoming-calls');
     expect(mod.codebaseOutgoingCallsTool.name).toBe('codebase-outgoing-calls');

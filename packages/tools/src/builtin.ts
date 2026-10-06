@@ -17,8 +17,8 @@ import {
   codebaseSkeletonTool,
   codebaseStatsTool,
   codebaseTargetedTestTool,
-  deadCodeScanTool,
 } from './codebase-index/index.js';
+import { deadCodeFixTool, deadCodeScanTool } from './dead-code/index.js';
 import { designTool } from './design.js';
 import { diffTool } from './diff.js';
 import { e2ePlanTool } from './e2e.js';
@@ -154,7 +154,9 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   'codebase-index':
     'Build or refresh the local semantic codebase index, optionally for selected languages. Use it when index results are absent or stale; force performs a full reindex.',
   'dead-code-scan':
-    'Analyze the indexed project for declarations that appear unreachable from configured entry points. Treat results as candidates for review, not automatic deletion instructions.',
+    'Find dead code in executable TS/JS sources: unreachable files, exports nothing imports, unused re-exports, test-only code and unused dependencies. Read-only; pass previewIds to see the exact cleanup diff.',
+  'dead-code-fix':
+    'Remove dead code by dead-code-scan finding id: re-scans, applies, typechecks, rolls back on failure and keeps an undo backup. Only for ids the user chose after reviewing the scan.',
   replace:
     'Preview or apply a regular-expression replacement across selected project files. Start with dry_run, constrain files and globs carefully, then apply only reviewed changes.',
   glob: 'Find project files by glob pattern, respecting repository boundaries and ignore rules. Use it to locate candidate paths before reading or editing them.',
@@ -327,14 +329,14 @@ export const TIER2_TOOLS: Tool[] = [
 
 /**
  * Tier 3 tool set — specialized, administrative, and exploratory tools.
- * Adds 3 tools: outdated, logs, dead-code-scan.
+ * Adds 4 tools: outdated, logs, dead-code-scan, dead-code-fix.
  *
  * These tools are situational (log tailing, dependency maintenance, dead-code
  * sweeps). Omitting their schemas below tier `off` saves tokens; they stay
  * registered and executable, and the model reaches them through `tool_search`
  * / `tool_use` — which is why that pair lives in TIER1 rather than here.
  */
-export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool];
+export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool, deadCodeFixTool];
 
 const rawBuiltinTools: Tool[] = [
   presentArtifactTool,
@@ -362,6 +364,7 @@ const rawBuiltinTools: Tool[] = [
   codebaseOutgoingCallsTool,
   codebaseIndexTool,
   deadCodeScanTool,
+  deadCodeFixTool,
   replaceTool,
   globTool,
   grepTool,

@@ -10,6 +10,7 @@
  * shared-worktree work into the commit.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -20,15 +21,57 @@ const snapshotOutputs = [
   'architecture/core-public-api-usage.json',
 ];
 
-export function isSnapshotInput(file) {
+/** Any module specifier that resolves into `@wrongstack/core`. */
+const CORE_SPECIFIER = /@wrongstack\/core(?:\/|['"])/u;
+
+/** Default source reader: read the repo-relative path from disk. */
+function readSourceFromDisk(file) {
+  return readFileSync(path.join(repoRoot, file), 'utf8');
+}
+
+/**
+ * Does an edit to `file` feed `core-public-api-{snapshot,usage}.json`?
+ *
+ * The generator reads exactly two things: the `packages/core` manifest and
+ * `packages/core/src/**` (which become the snapshot inventory), and the census
+ * of `@wrongstack/core` imports across `packages`/`apps`/`scripts` (which
+ * becomes the usage snapshot). So a file is an input only if it is one of the
+ * first two, or its content actually imports the package.
+ *
+ * The previous predicate was the bare path shape — every `.ts`/`.tsx`/`.js`
+ * under `packages|apps|scripts` — which made the documented `skip` branch
+ * (`decideSnapshotAction`) unreachable for every non-Core package commit. A
+ * fenced commit that provably cannot move the artifacts was refused because
+ * unrelated peers had *some* TS file dirty.
+ *
+ * `readSource` is injectable so the decision stays testable without touching
+ * the filesystem. It FAILS CLOSED: any unreadable file is treated as an input,
+ * because a false negative would let a peer's in-flight edit reach the
+ * committed artifacts, which is the one failure this guard exists to prevent.
+ */
+export function isSnapshotInput(file, readSource = readSourceFromDisk) {
   if (file === 'packages/core/package.json' || file === 'architecture/core-api-policy.json') {
     return true;
   }
-  return /^(?:packages|apps|scripts)\/.+\.(?:[cm]?[jt]sx?)$/u.test(file);
+  // The inventory walks `packages/core/src` unconditionally: every file there
+  // contributes to the snapshot whether or not it imports the package.
+  if (file.startsWith('packages/core/src/')) {
+    return /\.(?:[cm]?[jt]sx?)$/u.test(file);
+  }
+  if (!/^(?:packages|apps|scripts)\/.+\.(?:[cm]?[jt]sx?)$/u.test(file)) {
+    return false;
+  }
+  let source;
+  try {
+    source = readSource(file);
+  } catch {
+    return true; // fail closed — see the docstring
+  }
+  return CORE_SPECIFIER.test(source);
 }
 
-export function changedSnapshotInputs(files) {
-  return [...new Set(files.filter(isSnapshotInput))].sort();
+export function changedSnapshotInputs(files, readSource = readSourceFromDisk) {
+  return [...new Set(files.filter((file) => isSnapshotInput(file, readSource)))].sort();
 }
 
 /**
@@ -83,6 +126,7 @@ export function main() {
     staged: git(['diff', '--cached', '--name-only', '--diff-filter=ACMRD']),
     unstaged: git(['diff', '--name-only', '--diff-filter=ACMRD']),
     untracked: git(['ls-files', '--others', '--exclude-standard']),
+    readSource: readSourceFromDisk,
   });
 
   if (decision.action === 'skip') {

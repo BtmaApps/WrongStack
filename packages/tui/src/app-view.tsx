@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppMainColumn } from './app-main-column.js';
 import { AppStatusRegion } from './app-status-region.js';
 import {
@@ -60,6 +60,18 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
     layoutStore,
     mailbox,
   } = runtime;
+  const [bannerAnimation, setBannerAnimation] = useState(() => ({
+    generation: state.historyGen,
+    startedAt: Date.now(),
+  }));
+  // A fresh history (/clear) starts the intro before the new viewport commits.
+  // Ordinary viewport remounts and scrolling retain the same timestamp.
+  if (bannerAnimation.generation !== state.historyGen) {
+    setBannerAnimation({ generation: state.historyGen, startedAt: Date.now() });
+  }
+  const replayBanner = useCallback(() => {
+    setBannerAnimation({ generation: state.historyGen, startedAt: Date.now() });
+  }, [state.historyGen]);
   const { workingTimeMs } = activity;
   const { autonomyLive } = environment;
   const { inputHint, composerStatus, composerAnimationStyle, inputHeight, hideInput } = viewState;
@@ -238,6 +250,10 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                   toolStream={state.toolStream}
                   streamingText={state.streamingText}
                   viewportRows={state.viewportRows}
+                  bannerAnimationStartedAt={
+                    composerAnimationStyle === 'static' ? undefined : bannerAnimation.startedAt
+                  }
+                  onBannerReplay={replayBanner}
                   maxWidth={mainColumnWidth}
                   controllerRef={historyScrollRef}
                   onScrollInfo={onScrollInfo}

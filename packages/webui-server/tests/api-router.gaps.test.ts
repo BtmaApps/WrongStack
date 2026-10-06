@@ -49,8 +49,7 @@ vi.mock('../src/server/codemap-handlers.js', () => ({
   handleCodemapSymbols: vi.fn(),
 }));
 vi.mock('../src/server/deadcode-handlers.js', () => ({
-  handleDeadCodeActionPlan: vi.fn(),
-  handleDeadCodeScan: vi.fn(),
+  handleDeadCodeRequest: vi.fn(async () => true),
 }));
 vi.mock('../src/server/memory-diagnostics.js', () => ({
   readRecentProcessMemoryDiagnostics: vi.fn(async () => [{ pid: 1 }]),
@@ -551,20 +550,18 @@ describe('handleApiRoutes — debug and deadcode routes', () => {
     expect(JSON.parse(out.res.body).error).toBe('Project root not configured');
   });
 
-  it('dispatches deadcode scan and action-plan', async () => {
-    await route('POST', '/api/deadcode/scan', { indexDir: '/idx' });
-    expect(deadcode['handleDeadCodeScan']).toHaveBeenCalledWith(
+  it('dispatches every deadcode route through the access-token gate', async () => {
+    await route('POST', '/api/deadcode/apply');
+    expect(deadcode['handleDeadCodeRequest']).toHaveBeenCalledWith(
+      '/api/deadcode/apply',
       expect.anything(),
-      { projectRoot: '/proj', indexDir: '/idx' },
       expect.anything(),
+      { projectRoot: '/proj' },
     );
-
-    await route('POST', '/api/deadcode/action-plan');
-    expect(deadcode['handleDeadCodeActionPlan']).toHaveBeenCalledWith(
-      expect.anything(),
-      { projectRoot: '/proj', indexDir: undefined },
-      expect.anything(),
-    );
+    deadcode['handleDeadCodeRequest']!.mockClear();
+    const denied = await route('POST', '/api/deadcode/apply', {}, { accessTokenOk: false });
+    expect(denied.res.statusCode).toBe(401);
+    expect(deadcode['handleDeadCodeRequest']).not.toHaveBeenCalled();
   });
 });
 

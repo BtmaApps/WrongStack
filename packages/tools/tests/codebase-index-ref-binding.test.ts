@@ -14,7 +14,6 @@ import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { Context } from '@wrongstack/core/agent';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runDeadCodeScan } from '../src/codebase-index/dead-code-scan.js';
 import { runIndexer } from '../src/codebase-index/indexer.js';
 import { MODULE_OWNER_NAME } from '../src/codebase-index/schema.js';
 import { IndexStore } from '../src/codebase-index/writer.js';
@@ -271,22 +270,6 @@ describe('symbol-less files', () => {
         const names = store.search(query, {}, { limit: 50 }).map((hit) => hit.name);
         expect(names, query).not.toContain(MODULE_OWNER_NAME);
       }
-    } finally {
-      store.close();
-    }
-  });
-
-  it('never reports a file owner as a dead declaration', async () => {
-    await write('package.json', '{ "name": "probe", "main": "src/lib.ts" }\n');
-    await write('src/lib.ts', 'export function helper() { return 1; }\n');
-    await write('src/lib.test.ts', testFile);
-    await index();
-
-    const store = new IndexStore(root, { indexDir });
-    try {
-      const scan = runDeadCodeScan(root, { indexDir, store });
-      expect(scan.deadSymbols.map((symbol) => symbol.name)).not.toContain(MODULE_OWNER_NAME);
-      expect(scan.deadFiles.map((file) => path.basename(file.file))).not.toContain('lib.test.ts');
     } finally {
       store.close();
     }

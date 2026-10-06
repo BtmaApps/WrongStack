@@ -321,6 +321,7 @@ export async function routePointerEvents(
       // the rail handlers below.
       if (region?.kind === 'history' && key.mouse.x <= historyWidth - SCROLLBAR_HIT_WIDTH) {
         if (key.mouse.kind === 'press') {
+          if (historyScrollRef.current?.replayBannerAt?.(region.row, key.mouse.x - 1)) return true;
           historyScrollRef.current?.beginSelection(region.row, key.mouse.x - 1);
           return true;
         }

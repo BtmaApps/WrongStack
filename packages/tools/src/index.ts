@@ -1,5 +1,4 @@
 export { mapWithConcurrency } from './_concurrency.js';
-export { type PresentArtifactInput, presentArtifactTool } from './present-artifact.js';
 export {
   type DangerAssessment,
   type DangerLevel,
@@ -106,11 +105,6 @@ export type {
   CodebaseTargetedTestInput,
   CodebaseTargetedTestOutput,
   CodeMapGraph,
-  DeadCodeScanInput,
-  DeadCodeScanOutput,
-  DeadFile,
-  DeadPackage,
-  DeadSymbol,
   GraphEdge,
   GraphNode,
   ImpactAnalysisInput,
@@ -158,7 +152,6 @@ export {
   codebaseSkeletonTool,
   codebaseStatsTool,
   codebaseTargetedTestTool,
-  deadCodeScanTool,
   type EmbeddingPort,
   type EmbedIndexMissing,
   type EmbedResult,
@@ -191,7 +184,6 @@ export {
   replaceSymbolInFile,
   resetIndexCircuitBreaker,
   resolveProjectIndexDaemonAvailability,
-  runDeadCodeScan,
   runStartupIndex,
   type SkeletonOptions,
   type SkeletonSymbolRange,
@@ -207,6 +199,23 @@ export {
   symbolGraphService,
   writeProjectAtlas,
 } from './codebase-index/index.js';
+export {
+  analyzeDeadCode,
+  applyDeadCodeFixes,
+  type DeadCodeApplyOptions,
+  type DeadCodeApplyResult,
+  type DeadCodeCategory,
+  type DeadCodeConfidence,
+  type DeadCodeFinding,
+  type DeadCodePlan,
+  type DeadCodeScanOptions,
+  type DeadCodeScanResult,
+  deadCodeFixTool,
+  deadCodeScanTool,
+  listDeadCodeBackups,
+  planDeadCodeFixes,
+  undoDeadCodeFix,
+} from './dead-code/index.js';
 export {
   type DesignInput,
   type DesignOutput,
@@ -386,6 +395,7 @@ export {
   type PlanOutput,
   planTool,
 } from './plan.js';
+export { type PresentArtifactInput, presentArtifactTool } from './present-artifact.js';
 export {
   getProcessGuardian,
   type ProcessGuardianConfig,

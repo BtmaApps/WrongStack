@@ -11,39 +11,43 @@ import { describe, expect, it } from 'vitest';
 // --- Static tools (no runtime injection required) ---
 import { auditTool } from '../src/audit.js';
 import { bashTool } from '../src/bash.js';
-import { browserOpenTool, browserCloseTool, browserStatusTool } from '../src/browser/tools.js';
-import { browserNavigateTool } from '../src/browser/tools.js';
-import { browserSnapshotTool } from '../src/browser/tools.js';
-import { browserClickTool } from '../src/browser/tools.js';
-import { browserTypeTool } from '../src/browser/tools.js';
-import { browserSelectTool } from '../src/browser/tools.js';
-import { browserPressTool } from '../src/browser/tools.js';
-import { browserHoverTool } from '../src/browser/tools.js';
-import { browserDragTool } from '../src/browser/tools.js';
-import { browserUploadTool } from '../src/browser/tools.js';
-import { browserScreenshotTool } from '../src/browser/tools.js';
-import { browserListTool } from '../src/browser/tools.js';
-import { browserWaitTool } from '../src/browser/tools.js';
-import { browserEvaluateTool } from '../src/browser/tools.js';
+import {
+  browserClickTool,
+  browserCloseTool,
+  browserDragTool,
+  browserEvaluateTool,
+  browserHoverTool,
+  browserListTool,
+  browserNavigateTool,
+  browserOpenTool,
+  browserPressTool,
+  browserScreenshotTool,
+  browserSelectTool,
+  browserSnapshotTool,
+  browserStatusTool,
+  browserTypeTool,
+  browserUploadTool,
+  browserWaitTool,
+} from '../src/browser/tools.js';
 import { clarifyTool } from '../src/clarify.js';
 import {
-  codebaseIndexTool,
-  codebaseSearchTool,
-  codebaseSkeletonTool,
-  codebaseStatsTool,
   codebaseAstReplaceTool,
   codebaseImpactAnalysisTool,
   codebaseIncomingCallsTool,
+  codebaseIndexTool,
+  codebaseInvariantCheckTool,
   codebaseOutgoingCallsTool,
   codebaseRepoMapTool,
-  codebaseInvariantCheckTool,
+  codebaseSearchTool,
+  codebaseSkeletonTool,
+  codebaseStatsTool,
   codebaseTargetedTestTool,
-  deadCodeScanTool,
 } from '../src/codebase-index/index.js';
+import { deadCodeFixTool, deadCodeScanTool } from '../src/dead-code/index.js';
 import { designTool } from '../src/design.js';
 import { diffTool } from '../src/diff.js';
-import { editTool } from '../src/edit.js';
 import { e2ePlanTool } from '../src/e2e.js';
+import { editTool } from '../src/edit.js';
 import { execTool } from '../src/exec.js';
 import { fetchTool } from '../src/fetch.js';
 import { formatTool } from '../src/format.js';
@@ -54,10 +58,11 @@ import { installTool } from '../src/install.js';
 import { jsonTool } from '../src/json.js';
 import { kanbanTool } from '../src/kanban.js';
 import { languageTool } from '../src/languages/execute-tool.js';
-import { languageInfoTool } from '../src/languages/tool.js';
 import { languagePackageTool } from '../src/languages/package-tool.js';
+import { languageInfoTool } from '../src/languages/tool.js';
 import { lintTool } from '../src/lint.js';
 import { logsTool } from '../src/logs.js';
+import { nextStepsTool } from '../src/next-steps-tool.js';
 import { outdatedTool } from '../src/outdated.js';
 import { patchTool } from '../src/patch.js';
 import { planTool } from '../src/plan.js';
@@ -72,7 +77,6 @@ import { todoTool } from '../src/todo.js';
 import { treeTool } from '../src/tree.js';
 import { typecheckTool } from '../src/typecheck.js';
 import { writeTool } from '../src/write.js';
-import { nextStepsTool } from '../src/next-steps-tool.js';
 
 /**
  * All static (non-factory) tool objects exported from the package.
@@ -110,6 +114,7 @@ const STATIC_TOOLS: Array<{ name: string; tool: { name: string; description: str
   { name: 'codebase-invariant-check', tool: codebaseInvariantCheckTool },
   { name: 'codebase-targeted-test', tool: codebaseTargetedTestTool },
   { name: 'dead-code-scan', tool: deadCodeScanTool },
+  { name: 'dead-code-fix', tool: deadCodeFixTool },
   { name: 'design', tool: designTool },
   { name: 'diff', tool: diffTool },
   { name: 'edit', tool: editTool },

@@ -70,6 +70,7 @@ const USEFUL_TOOLS = new Set([
   'scaffold',
   'document',
   'logs',
+  'dead-code-fix',
 ]);
 
 /** P4 — coordination and fleet tools (leader-only, but important when active). */

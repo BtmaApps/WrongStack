@@ -127,14 +127,6 @@ export {
   type TargetedTestInput,
   type TargetedTestOutput,
 } from './codebase-targeted-test-tool.js';
-export type {
-  DeadCodeScanInput,
-  DeadCodeScanOutput,
-  DeadFile,
-  DeadPackage,
-  DeadSymbol,
-} from './dead-code-scan.js';
-export { deadCodeScanTool, runDeadCodeScan } from './dead-code-scan.js';
 // Project-root .gitignore matcher. Re-exported here so non-indexer
 // consumers (e.g. `@wrongstack/webui-server`'s file tree builder) can
 // import it from the submodule barrel without reaching into the deep

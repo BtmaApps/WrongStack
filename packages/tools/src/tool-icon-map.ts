@@ -169,6 +169,7 @@ export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
   'codebase-outgoing-calls': 'index',
   'codebase-invariant-check': 'index',
   'dead-code-scan': 'index',
+  'dead-code-fix': 'edit',
   codebase_index: 'index',
   codebase_search: 'index',
   codebase_stats: 'index',

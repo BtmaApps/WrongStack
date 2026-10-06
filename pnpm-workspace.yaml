@@ -32,6 +32,12 @@ overrides:
   # fast-uri <3.1.8: inconsistent host case normalization via percent-encoding.
   # Transitive through ajv (webui-protocol, electron-builder).
   fast-uri@>=3.0.0 <3.1.8: ^3.1.8
+  # GHSA-68fv-2mgg-jv7q: indexed source-map offsets can block the event loop.
+  source-map-js@<1.2.2: 1.2.2
+  # GHSA-hp3w-g68c-fv3c: remove sprintf-js via the maintained proxy agent.
+  # @electron/get@3 calls bootstrap(), which global-agent@4 still exports.
+  # v4 replaces the roarr/sprintf-js logging dependency with its own logger.
+  "@electron/get@3.1.0>global-agent": 4.1.3
   wrongstack: link:apps/wrongstack
 peerDependencyRules:
   # TypeScript 7 was released before i18next/react-i18next widened their peer

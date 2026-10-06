@@ -1,0 +1,379 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  analyzeDeadCode,
+  applyDeadCodeFixes,
+  type DeadCodeFinding,
+  listDeadCodeBackups,
+  planDeadCodeFixes,
+  undoDeadCodeFix,
+} from '../src/dead-code/index.js';
+
+const FIXTURE: Record<string, string> = {
+  'package.json': JSON.stringify({
+    name: 'root',
+    private: true,
+    workspaces: ['packages/*'],
+    scripts: { build: 'node scripts/build.mjs' },
+    devDependencies: { 'left-pad': '1.0.0' },
+  }),
+  'scripts/build.mjs': "import { util } from './util.mjs';\nutil();\n",
+  'scripts/util.mjs': 'export function util() {}\n',
+  'scripts/orphan.mjs': 'console.log(1);\n',
+  'README.md': 'Run `node packages/app/src/orphan.ts` — docs never create entries.\n',
+  'docs/example.ts': "import { two } from '../packages/app/src/ns.js';\ntwo();\n",
+
+  'packages/lib/package.json': JSON.stringify({
+    name: '@x/lib',
+    exports: { '.': './dist/index.js', './extra': './dist/extra.js' },
+    dependencies: { zod: '1.0.0', kleur: '1.0.0' },
+  }),
+  'packages/lib/src/index.ts': "export * from './a.js';\nexport { b } from './b.js';\n",
+  'packages/lib/src/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+  'packages/lib/src/b.ts': 'export const b = 1;\nexport const bUnused = 2;\n',
+  'packages/lib/src/extra.ts': "import kleur from 'kleur';\nexport const extra = kleur;\n",
+  'packages/lib/src/internal.ts': 'export const internal = 1;\n',
+
+  'packages/app/package.json': JSON.stringify({
+    name: 'app',
+    private: true,
+    main: './dist/main.js',
+    dependencies: { '@x/lib': 'workspace:*', 'unused-dep': '1.0.0' },
+  }),
+  'packages/app/tsconfig.json': JSON.stringify({
+    compilerOptions: { paths: { '@/*': ['./src/*'] } },
+  }),
+  'packages/app/src/main.ts': [
+    "import { a } from '@x/lib';",
+    "import { helper } from '@/helpers';",
+    "import * as ns from './ns.js';",
+    "const lazy = await import('./lazy.js');",
+    'const UNUSED_LOCAL = 1;',
+    'ns.one();',
+    'lazy.run();',
+    'helper(a);',
+    "new URL('./worker.ts', import.meta.url);",
+    '',
+  ].join('\n'),
+  'packages/app/src/helpers/index.ts':
+    "export { helper } from './helper.js';\nexport { unusedRe } from './helper.js';\n",
+  'packages/app/src/helpers/helper.ts': [
+    "import { join } from 'node:path';",
+    "import { basename } from 'node:path';",
+    '',
+    'const SECRET = 1;',
+    '',
+    '/** Only deadFn calls this. */',
+    'function privateHelper(): number {',
+    '  return SECRET;',
+    '}',
+    '',
+    'export function helper(x: unknown): unknown {',
+    '  return basename(String(x));',
+    '}',
+    '',
+    'export function deadFn(): number {',
+    "  return privateHelper() + join('a').length;",
+    '}',
+    '',
+    'export function unusedRe(): void {}',
+    '',
+    'export const localUse = 5;',
+    'console.log(localUse);',
+    '',
+  ].join('\n'),
+  'packages/app/src/ns.ts': 'export function one(): void {}\nexport function two(): void {}\n',
+  'packages/app/src/lazy.ts': 'export function run(): void {}\nexport function notRun(): void {}\n',
+  'packages/app/src/worker.ts': 'self.postMessage(1);\n',
+  'packages/app/src/testonly.ts': 'export const t = 1;\n',
+  'packages/app/src/orphan.ts': 'export const o = 1;\n',
+  'packages/app/src/keep.ts': '// dead-code-ignore-file\nexport const kept = 1;\n',
+  'packages/app/tests/main.test.ts':
+    "import { t } from '../src/testonly.js';\nimport { one } from '../src/ns.js';\nconsole.log(t, one);\n",
+};
+
+let root: string;
+let home: string;
+let prevHome: string | undefined;
+
+function writeFixture(): void {
+  fs.rmSync(root, { recursive: true, force: true });
+  for (const [rel, content] of Object.entries(FIXTURE)) {
+    const abs = path.join(root, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content);
+  }
+}
+
+function find(
+  findings: DeadCodeFinding[],
+  category: DeadCodeFinding['category'],
+  file: string,
+  name?: string,
+): DeadCodeFinding | undefined {
+  return findings.find((f) => f.category === category && f.file === file && f.name === name);
+}
+
+beforeAll(() => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-deadcode-'));
+  root = path.join(base, 'repo');
+  home = path.join(base, 'home');
+  prevHome = process.env.WRONGSTACK_HOME;
+  process.env.WRONGSTACK_HOME = home;
+});
+
+afterAll(() => {
+  if (prevHome === undefined) delete process.env.WRONGSTACK_HOME;
+  else process.env.WRONGSTACK_HOME = prevHome;
+  fs.rmSync(path.dirname(root), { recursive: true, force: true });
+});
+
+beforeEach(() => writeFixture());
+
+describe('dead-code analysis', () => {
+  it('reports exactly the dead things, with the right categories', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const f = r.findings;
+
+    expect(find(f, 'unreachable-file', 'packages/app/src/orphan.ts')?.confidence).toBe('high');
+    expect(find(f, 'unreachable-file', 'packages/lib/src/internal.ts')).toBeDefined();
+    expect(find(f, 'unreachable-file', 'scripts/orphan.mjs')?.confidence).toBe('low');
+    expect(find(f, 'test-only-file', 'packages/app/src/testonly.ts')).toBeDefined();
+
+    expect(find(f, 'dead-export', 'packages/app/src/helpers/helper.ts', 'deadFn')?.fix).toBe(
+      'remove-declaration',
+    );
+    expect(find(f, 'dead-export', 'packages/app/src/helpers/helper.ts', 'unusedRe')).toBeDefined();
+    expect(
+      find(f, 'unused-reexport', 'packages/app/src/helpers/index.ts', 'unusedRe'),
+    ).toBeDefined();
+    expect(find(f, 'unused-export', 'packages/app/src/helpers/helper.ts', 'localUse')?.fix).toBe(
+      'remove-export-keyword',
+    );
+    // Namespace member reads and `const m = await import()` member reads are tracked.
+    expect(find(f, 'dead-export', 'packages/app/src/ns.ts', 'two')).toBeDefined();
+    expect(find(f, 'dead-export', 'packages/app/src/lazy.ts', 'notRun')).toBeDefined();
+    expect(find(f, 'unused-local', 'packages/app/src/main.ts', 'UNUSED_LOCAL')).toBeDefined();
+    expect(find(f, 'dead-export', 'packages/lib/src/b.ts', 'bUnused')).toBeDefined();
+
+    expect(find(f, 'unused-dependency', 'packages/app/package.json', 'unused-dep')).toBeDefined();
+    expect(find(f, 'unused-dependency', 'packages/lib/package.json', 'zod')).toBeDefined();
+    expect(find(f, 'unused-dependency', 'package.json', 'left-pad')?.confidence).toBe('low');
+
+    const files = new Set(f.map((x) => x.file));
+    // Live code, public API of a published package, ignored and doc files stay out.
+    for (const live of [
+      'packages/app/src/worker.ts',
+      'packages/app/src/keep.ts',
+      'packages/lib/src/a.ts',
+      'packages/lib/src/extra.ts',
+      'scripts/util.mjs',
+      'docs/example.ts',
+      'packages/app/tests/main.test.ts',
+    ]) {
+      expect(files.has(live), live).toBe(false);
+    }
+    expect(find(f, 'unused-dependency', 'packages/lib/package.json', 'kleur')).toBeUndefined();
+    expect(find(f, 'dead-export', 'packages/app/src/ns.ts', 'one')).toBeUndefined();
+  });
+
+  it('keeps finding ids stable across scans and scopes findings by path', async () => {
+    const a = await analyzeDeadCode(root, {});
+    const b = await analyzeDeadCode(root, { paths: ['packages/lib'] });
+    expect(b.stats.cachedFiles).toBeGreaterThan(0);
+    expect(b.findings.every((f) => f.file.startsWith('packages/lib/'))).toBe(true);
+    for (const f of b.findings) expect(a.findings.some((x) => x.id === f.id)).toBe(true);
+  });
+
+  it('includes published API only when asked', async () => {
+    fs.writeFileSync(
+      path.join(root, 'packages/lib/src/a.ts'),
+      'export function a() {}\nexport function pub() {}\n',
+    );
+    const off = await analyzeDeadCode(root, { noCache: true });
+    expect(off.findings.some((f) => f.name === 'pub')).toBe(false);
+    const on = await analyzeDeadCode(root, { noCache: true, includePublicApi: true });
+    expect(find(on.findings, 'unused-public-export', 'packages/lib/src/a.ts', 'pub')).toBeDefined();
+  });
+});
+
+describe('dead-code fixes', () => {
+  const read = (rel: string): string => fs.readFileSync(path.join(root, rel), 'utf8');
+
+  it('removes a dead export and everything only it used', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const dead = find(r.findings, 'dead-export', 'packages/app/src/helpers/helper.ts', 'deadFn')!;
+    const res = await applyDeadCodeFixes(root, [dead.id], { verify: 'none' });
+    expect(res.ok).toBe(true);
+    const after = read('packages/app/src/helpers/helper.ts');
+    expect(after).not.toContain('deadFn');
+    expect(after).not.toContain('privateHelper');
+    expect(after).not.toContain('SECRET');
+    expect(after).not.toContain('Only deadFn calls this');
+    expect(after).not.toContain('import { join }');
+    // Untouched: still-used import and declarations.
+    expect(after).toContain("import { basename } from 'node:path';");
+    expect(after).toContain('export function helper');
+    expect(after).not.toMatch(/\n\n\n/);
+  });
+
+  it('removes barrel re-exports together with the declaration they point at', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const dead = find(r.findings, 'dead-export', 'packages/app/src/helpers/helper.ts', 'unusedRe')!;
+    const plan = await planDeadCodeFixes(root, [dead.id]);
+    expect(plan.changes.map((c) => c.file).sort()).toEqual([
+      'packages/app/src/helpers/helper.ts',
+      'packages/app/src/helpers/index.ts',
+    ]);
+    // Planning writes nothing.
+    expect(read('packages/app/src/helpers/index.ts')).toContain('unusedRe');
+    await applyDeadCodeFixes(root, [dead.id], { verify: 'none' });
+    expect(read('packages/app/src/helpers/index.ts')).toBe(
+      "export { helper } from './helper.js';\n",
+    );
+  });
+
+  it('drops only the export keyword when the file still uses the binding', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const f = find(r.findings, 'unused-export', 'packages/app/src/helpers/helper.ts', 'localUse')!;
+    await applyDeadCodeFixes(root, [f.id], { verify: 'none' });
+    expect(read('packages/app/src/helpers/helper.ts')).toContain('\nconst localUse = 5;\n');
+  });
+
+  it('deletes unreachable files, edits manifests, and undo restores everything', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const orphan = find(r.findings, 'unreachable-file', 'packages/app/src/orphan.ts')!;
+    const dep = find(r.findings, 'unused-dependency', 'packages/app/package.json', 'unused-dep')!;
+    const beforeManifest = read('packages/app/package.json');
+    const res = await applyDeadCodeFixes(root, [orphan.id, dep.id], { verify: 'none' });
+    expect(res.deleted).toEqual(['packages/app/src/orphan.ts']);
+    expect(JSON.parse(read('packages/app/package.json')).dependencies).toEqual({
+      '@x/lib': 'workspace:*',
+    });
+    expect(listDeadCodeBackups(root)[0]?.id).toBe(res.backupId);
+
+    const undo = undoDeadCodeFix(root, res.backupId!);
+    expect(undo.conflicts).toEqual([]);
+    expect(read('packages/app/src/orphan.ts')).toBe(FIXTURE['packages/app/src/orphan.ts']);
+    expect(read('packages/app/package.json')).toBe(beforeManifest);
+  });
+
+  it('refuses to undo over files edited after the fix unless forced', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const f = find(r.findings, 'dead-export', 'packages/app/src/ns.ts', 'two')!;
+    const res = await applyDeadCodeFixes(root, [f.id], { verify: 'none' });
+    fs.appendFileSync(path.join(root, 'packages/app/src/ns.ts'), '// user edit\n');
+    expect(undoDeadCodeFix(root, res.backupId!).conflicts).toEqual(['packages/app/src/ns.ts']);
+    expect(read('packages/app/src/ns.ts')).toContain('// user edit');
+    undoDeadCodeFix(root, res.backupId!, { force: true });
+    expect(read('packages/app/src/ns.ts')).toBe(FIXTURE['packages/app/src/ns.ts']);
+  });
+
+  it('rolls every file back when verification fails', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const backupsBefore = listDeadCodeBackups(root).length;
+    const ids = [
+      find(r.findings, 'unreachable-file', 'packages/app/src/orphan.ts')!.id,
+      find(r.findings, 'dead-export', 'packages/app/src/lazy.ts', 'notRun')!.id,
+    ];
+    const res = await applyDeadCodeFixes(root, ids, {
+      verify: 'none',
+      verifyCommand: [process.execPath, '-e', 'process.exit(3)'],
+    });
+    expect(res.ok).toBe(false);
+    expect(res.rolledBack).toBe(true);
+    expect(read('packages/app/src/orphan.ts')).toBe(FIXTURE['packages/app/src/orphan.ts']);
+    expect(read('packages/app/src/lazy.ts')).toBe(FIXTURE['packages/app/src/lazy.ts']);
+    expect(listDeadCodeBackups(root)).toHaveLength(backupsBefore);
+  });
+
+  it('skips ids that no longer exist and findings without a mechanical fix', async () => {
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const testOnly = find(r.findings, 'test-only-file', 'packages/app/src/testonly.ts')!;
+    const plan = await planDeadCodeFixes(root, ['000000000000', testOnly.id]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped.map((s) => s.id).sort()).toEqual(['000000000000', testOnly.id].sort());
+  });
+
+  it('will not delete a file a surviving file still imports', async () => {
+    // internal.ts is unreachable; make another unreachable file import it and select only internal.ts.
+    fs.writeFileSync(
+      path.join(root, 'packages/lib/src/user.ts'),
+      "import { internal } from './internal.js';\nconsole.log(internal);\n",
+    );
+    const r = await analyzeDeadCode(root, { noCache: true });
+    const internal = find(r.findings, 'unreachable-file', 'packages/lib/src/internal.ts')!;
+    const plan = await planDeadCodeFixes(root, [internal.id]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped[0]?.reason).toContain('packages/lib/src/user.ts');
+  });
+});
+
+describe('dead-code precision (patterns found on a real monorepo)', () => {
+  const scratch = (): string => path.join(path.dirname(root), 'precision');
+  const project = (files: Record<string, string>): string => {
+    const dir = scratch();
+    fs.rmSync(dir, { recursive: true, force: true });
+    for (const [rel, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(dir, rel), text);
+    }
+    return dir;
+  };
+
+  it('does not count a shadowing inner declaration as a use of the top-level one', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
+      'src/main.ts': "import { run } from './spawn.js';\nrun(1);\n",
+      'src/spawn.ts': [
+        'export const EXIT_CODE = 42;',
+        'export function run(code: number): boolean {',
+        '  const EXIT_CODE = 42;',
+        '  return code === EXIT_CODE;',
+        '}',
+        '',
+      ].join('\n'),
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    // Dead, not merely "needlessly exported": dropping `export` alone would leave it unused.
+    expect(find(r.findings, 'dead-export', 'src/spawn.ts', 'EXIT_CODE')).toBeDefined();
+    expect(find(r.findings, 'unused-export', 'src/spawn.ts', 'EXIT_CODE')).toBeUndefined();
+  });
+
+  it('tracks member reads of a dynamic import bound inside a function', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
+      'src/main.ts': [
+        'export async function load(): Promise<void> {',
+        "  const mod = await import('./dyn.js');",
+        '  mod.used();',
+        '}',
+        'void load();',
+        '',
+      ].join('\n'),
+      'src/dyn.ts': 'export function used(): void {}\nexport function unused(): void {}\n',
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'dead-export', 'src/dyn.ts', 'unused')).toBeDefined();
+    expect(r.findings.some((f) => f.file === 'src/dyn.ts' && f.name === 'used')).toBe(false);
+  });
+
+  it('marks types reachable from an exported signature as low confidence, even through private types', async () => {
+    const dir = project({
+      'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
+      'src/main.ts': "import { wire } from './wiring.js';\nconsole.log(wire());\n",
+      'src/wiring.ts': [
+        'export interface Entry { at: number }',
+        'interface Result { ring: Entry[] }',
+        'export function wire(): Result {',
+        '  return { ring: [] };',
+        '}',
+        '',
+      ].join('\n'),
+    });
+    const r = await analyzeDeadCode(dir, { noCache: true });
+    expect(find(r.findings, 'unused-export', 'src/wiring.ts', 'Entry')?.confidence).toBe('low');
+  });
+});

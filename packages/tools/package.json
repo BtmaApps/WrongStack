@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/tools",
-  "version": "1.0.33",
+  "version": "1.0.34",
   "license": "MIT",
   "description": "WrongStack built-in tools: read/write/edit, bash/exec, grep/glob, git, fetch, test, lint, and more.",
   "repository": {
@@ -227,6 +227,10 @@
     "./codebase-index": {
       "types": "./dist/codebase-index/index.d.ts",
       "import": "./dist/codebase-index/index.js"
+    },
+    "./dead-code": {
+      "types": "./dist/dead-code/index.d.ts",
+      "import": "./dist/dead-code/index.js"
     },
     "./e2e": {
       "types": "./dist/e2e.d.ts",

@@ -10,7 +10,7 @@ import {
   handleCodemapPackages,
   handleCodemapSymbols,
 } from '../codemap-handlers.js';
-import { handleDeadCodeActionPlan, handleDeadCodeScan } from '../deadcode-handlers.js';
+import { handleDeadCodeRequest } from '../deadcode-handlers.js';
 import { readRecentProcessMemoryDiagnostics } from '../memory-diagnostics.js';
 import { handleProjectKitRead } from '../project-kit-handlers.js';
 import {
@@ -591,7 +591,9 @@ export async function handleApiRoutes(
     return true;
   }
 
-  if (url.pathname === '/api/deadcode/scan' && req.method === 'POST') {
+  // Dead-code engine: scan / preview / apply / undo / backups. `apply` and
+  // `undo` write project files, so the access-token gate covers every route.
+  if (url.pathname.startsWith('/api/deadcode/')) {
     if (requireAccessToken && !accessTokenOk) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -602,15 +604,9 @@ export async function handleApiRoutes(
       res.end(JSON.stringify({ error: 'Project root not configured' }));
       return true;
     }
-    await handleDeadCodeScan(
-      res,
-      {
-        projectRoot: deps.projectRoot,
-        indexDir: deps.indexDir,
-      },
-      req,
-    );
-    return true;
+    if (await handleDeadCodeRequest(url.pathname, req, res, { projectRoot: deps.projectRoot })) {
+      return true;
+    }
   }
 
   const vectorForgetMatch = /^\/api\/vector-memory\/store\/([^/]+)$/.exec(url.pathname);
@@ -707,23 +703,6 @@ export async function handleApiRoutes(
       return true;
     }
     await handleMemorySearch(res, url, () => deps.getMemoryStore?.());
-    return true;
-  }
-
-  if (url.pathname === '/api/deadcode/action-plan' && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
-    await handleDeadCodeActionPlan(
-      res,
-      {
-        projectRoot: deps.projectRoot ?? '',
-        indexDir: deps.indexDir,
-      },
-      req,
-    );
     return true;
   }
 

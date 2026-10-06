@@ -3,13 +3,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { enrichConcepts, type SummarizerPort } from '../src/codebase-index/concept-enrichment.js';
-import { discoverEntryPoints } from '../src/codebase-index/dead-code-scan.js';
 import {
   buildWiringGraph,
   CONTRADICTED_VISIBILITY_WEIGHT,
 } from '../src/codebase-index/graph-rank.js';
 import { createImplicitVisibility } from '../src/codebase-index/graph-rank-pass.js';
 import { IndexStore } from '../src/codebase-index/writer.js';
+import { analyzeDeadCode } from '../src/dead-code/index.js';
 
 describe('rank visibility', () => {
   const edge = [{ fromId: 1, toId: 2, callType: 'call' }];
@@ -53,29 +53,30 @@ describe('dead-code entry-point discovery', () => {
     const root = await tempProject({
       'package.json': JSON.stringify({
         name: 'x',
+        private: true,
         workspaces: { packages: ['packages/*'] },
       }),
       'packages/sugar/package.json': JSON.stringify({ name: 's', exports: './src/lib.ts' }),
-      'packages/sugar/src/lib.ts': '',
+      'packages/sugar/src/lib.ts': 'export const lib = 1;\n',
       'packages/nested/package.json': JSON.stringify({
         name: 'n',
         exports: { '.': { import: { types: './types.ts', default: './main.ts' } } },
       }),
-      'packages/nested/types.ts': '',
-      'packages/nested/main.ts': '',
+      'packages/nested/types.ts': 'export type T = 1;\n',
+      'packages/nested/main.ts': 'export const main = 1;\n',
+      'packages/nested/orphan.ts': 'export const orphan = 1;\n',
     });
+    const prevHome = process.env.WRONGSTACK_HOME;
+    process.env.WRONGSTACK_HOME = path.join(root, '.home');
     try {
-      const entries = discoverEntryPoints(root, undefined).map((f) =>
-        path.relative(root, f).split(path.sep).join('/'),
-      );
-      expect(entries).toEqual(
-        expect.arrayContaining([
-          'packages/sugar/src/lib.ts',
-          'packages/nested/types.ts',
-          'packages/nested/main.ts',
-        ]),
-      );
+      const result = await analyzeDeadCode(root, { noCache: true });
+      const unreachable = result.findings
+        .filter((f) => f.category === 'unreachable-file')
+        .map((f) => f.file);
+      expect(unreachable).toEqual(['packages/nested/orphan.ts']);
     } finally {
+      if (prevHome === undefined) delete process.env.WRONGSTACK_HOME;
+      else process.env.WRONGSTACK_HOME = prevHome;
       await fs.rm(root, { recursive: true, force: true });
     }
   });

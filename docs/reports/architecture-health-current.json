@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T09:33:10.084Z",
+  "generatedAt": "2026-10-06T10:47:26.557Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4656,
-    "testFiles": 4147,
-    "sourceLines": 1068636,
+    "sourceFiles": 4665,
+    "testFiles": 4151,
+    "sourceLines": 1072355,
     "workspaceEdges": 133,
-    "moduleEdges": 15319,
+    "moduleEdges": 15338,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 969
+    "testOnlyExports": 968
   },
   "errors": [],
   "packageCycles": [],
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1054,
-      "testFiles": 920,
+      "testFiles": 922,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 920
+          "testFiles": 922
         }
       ]
     },
@@ -765,7 +765,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 284,
+      "sourceFiles": 292,
       "testFiles": 297,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -789,8 +789,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 467,
-      "testFiles": 414,
+      "sourceFiles": 468,
+      "testFiles": 415,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -813,7 +813,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 414
+          "testFiles": 415
         }
       ]
     },
@@ -844,7 +844,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 680,
-      "testFiles": 467,
+      "testFiles": 468,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 467
+          "testFiles": 468
         }
       ]
     },
@@ -5586,6 +5586,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/architecture/architecture-health-repo-root.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/architecture/architecture-health-script.test.ts",
         "projects": [
           "root-node"
@@ -5677,6 +5683,12 @@
       },
       {
         "file": "packages/core/tests/architecture/daemon-metadata-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/dependency-advisory-guards.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17094,12 +17106,6 @@
         ]
       },
       {
-        "file": "packages/tools/tests/codebase-index-dead-code.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/tools/tests/codebase-index-directory-events.test.ts",
         "projects": [
           "root-node"
@@ -17413,6 +17419,12 @@
       },
       {
         "file": "packages/tools/tests/danger-detect.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/dead-code-engine.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18625,6 +18637,12 @@
       },
       {
         "file": "packages/tui/tests/background-strip.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/banner-formation.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -23508,6 +23526,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/dead-code-scan-panel.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/debug-dashboard-index-server.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -26316,8 +26340,18 @@
     },
     {
       "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 930,
+      "lines": 926,
       "relativeImports": 36
+    },
+    {
+      "file": "packages/tools/src/dead-code/fix.ts",
+      "lines": 1173,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/tools/src/dead-code/parse.ts",
+      "lines": 1121,
+      "relativeImports": 0
     },
     {
       "file": "packages/tui/src/use-app-controller.tsx",
@@ -26333,6 +26367,11 @@
       "file": "packages/webui/src/components/CodeMap.tsx",
       "lines": 811,
       "relativeImports": 13
+    },
+    {
+      "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
+      "lines": 861,
+      "relativeImports": 0
     },
     {
       "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
@@ -26367,6 +26406,16 @@
   ],
   "hotspots": [
     {
+      "file": "packages/tools/src/dead-code/fix.ts",
+      "lines": 1173,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/tools/src/dead-code/parse.ts",
+      "lines": 1121,
+      "relativeImports": 0
+    },
+    {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
       "lines": 973,
       "relativeImports": 6
@@ -26378,13 +26427,18 @@
     },
     {
       "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 930,
+      "lines": 926,
       "relativeImports": 36
     },
     {
       "file": "packages/mcp/src/client.ts",
       "lines": 876,
       "relativeImports": 16
+    },
+    {
+      "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
+      "lines": 861,
+      "relativeImports": 0
     },
     {
       "file": "packages/cli/src/cli-main.ts",
@@ -26599,21 +26653,6 @@
     {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 797,
-      "relativeImports": 13
-    },
-    {
-      "file": "packages/tools/src/codebase-index/ast-invariant-engine.ts",
-      "lines": 795,
-      "relativeImports": 3
-    },
-    {
-      "file": "packages/core/src/plugins/review-claim-registry.ts",
-      "lines": 794,
-      "relativeImports": 4
-    },
-    {
-      "file": "packages/core/src/hq/publisher.ts",
-      "lines": 793,
       "relativeImports": 13
     }
   ],
@@ -27377,10 +27416,6 @@
     {
       "file": "packages/core/src/chronicle/sqlite-compaction.ts",
       "name": "chronicleSqliteAllocatedBytes"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/agent-prompts.ts",
-      "name": "agentPrompt"
     },
     {
       "file": "packages/core/src/coordination/agents/agent-prompts.ts",
@@ -28603,10 +28638,6 @@
       "name": "readAutomationArtifact"
     },
     {
-      "file": "packages/runtime/src/clipboard.ts",
-      "name": "MAX_TEXT_BYTES"
-    },
-    {
       "file": "packages/runtime/src/governance-bootstrap.ts",
       "name": "bootstrapGovernanceRuntimeWithFactory"
     },
@@ -29257,6 +29288,10 @@
     {
       "file": "packages/tui/src/components/help-overlay.tsx",
       "name": "helpSections"
+    },
+    {
+      "file": "packages/tui/src/components/history/banner-formation.ts",
+      "name": "BANNER_FORMATION_DURATION_MS"
     },
     {
       "file": "packages/tui/src/components/history/banner.tsx",

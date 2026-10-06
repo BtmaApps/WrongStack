@@ -349,9 +349,7 @@ export function findOutgoingCallsByName(
 // dependency cycles automatically — a graph with A→B→C→A terminates after 3
 // rows rather than looping forever.
 //
-// Per the proposal §Phase 4, these replace the in-memory BFS in
-// `dead-code-scan.ts` and add depth-aware variants to the existing
-// single-level call queries.
+// They add depth-aware variants to the existing single-level call queries.
 
 /**
  * Run a recursive CTE over a potentially large seed-ID set.
@@ -472,7 +470,7 @@ export function findTransitiveIncomingCallsByName(
   // For large seed sets (>900), chunkedIdQuery would run the CTE per chunk
   // with each chunk building an independent transitive tree — cross-chunk
   // edges are silently dropped. The temp-table approach runs a single CTE
-  // over the full seed set. Mirrors findReachableSymbolIds.
+  // over the full seed set.
   // Under a widened file filter the first hop comes from the evidence-filtered
   // direct callers, so the tree does not grow from callers of another file's
   // same-named symbol; otherwise the CTE anchors on the ref edges itself.
@@ -608,67 +606,6 @@ export function findTransitiveOutgoingCallsByName(
     typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
   const calls = rows.map(mapCallSiteRow).slice(0, safeOutgoingLimit);
   return { calls, symbolFound: true, unresolvedCount, totalMatches: rows.length };
-}
-
-/**
- * Compute the set of symbol IDs reachable from a set of seed IDs using a
- * recursive CTE. Replaces the in-memory BFS in `dead-code-scan.ts`.
- *
- * The `UNION` (not `UNION ALL`) deduplication breaks dependency cycles
- * automatically: A→B→C→A terminates after 3 rows.
- *
- * Returns a `Set<number>` of all transitively-reachable symbol IDs (including
- * the seeds themselves). Callers subtract this from the full symbol set to
- * find dead code.
- */
-export function findReachableSymbolIds(stmt: PrepareStatement, seedIds: number[]): Set<number> {
-  if (seedIds.length === 0) return new Set();
-
-  // For large seed sets (>900), chunkedIdQuery would run the CTE per chunk,
-  // but each CTE builds its own independent reachability tree — transitive
-  // edges that cross chunk boundaries are silently dropped. Instead, load
-  // all seeds into a temp table and run a single CTE over the full set.
-  if (seedIds.length > 900) {
-    stmt('DROP TABLE IF EXISTS _seeds').run();
-    try {
-      stmt('CREATE TEMP TABLE _seeds (id INTEGER PRIMARY KEY)').run();
-      for (let i = 0; i < seedIds.length; i += 500) {
-        const chunk = seedIds.slice(i, i + 500);
-        const ph = chunk.map(() => '(?)').join(',');
-        stmt(`INSERT OR IGNORE INTO _seeds (id) VALUES ${ph}`).run(...chunk);
-      }
-      const rows = stmt(
-        `WITH RECURSIVE reachable(id) AS (
-           SELECT id FROM _seeds
-           UNION
-           SELECT r.to_id
-           FROM refs r
-           JOIN reachable ON r.from_id = reachable.id
-           WHERE r.to_id IS NOT NULL
-         )
-         SELECT DISTINCT id FROM reachable`,
-      ).all() as Array<{ id: number }>;
-      return new Set(rows.map((r) => r.id));
-    } finally {
-      stmt('DROP TABLE IF EXISTS _seeds').run();
-    }
-  }
-
-  // Small seed set: single CTE with placeholder IN-list
-  const ph = seedIds.map(() => '?').join(',');
-  const rows = stmt(
-    `WITH RECURSIVE reachable(id) AS (
-       SELECT id FROM symbols WHERE id IN (${ph})
-       UNION
-       SELECT r.to_id
-       FROM refs r
-       JOIN reachable ON r.from_id = reachable.id
-       WHERE r.to_id IS NOT NULL
-     )
-     SELECT DISTINCT id FROM reachable`,
-  ).all(...seedIds) as Array<{ id: number }>;
-
-  return new Set(rows.map((r) => r.id));
 }
 
 export function findRefsToWithStatement(stmt: PrepareStatement, symbolId: number): Ref[] {

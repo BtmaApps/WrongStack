@@ -187,6 +187,7 @@ const toolEntries = entryMap([
   'src/win32.ts',
   'src/e2e.ts',
   'src/codebase-index/index.ts',
+  'src/dead-code/index.ts',
   'src/codebase-index/worker.ts',
   'src/codebase-index/project-server.ts',
   // Emitted standalone so the parser pool can spawn it from dist — without

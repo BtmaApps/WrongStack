@@ -2,8 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { deadCodeScanTool } from '../src/codebase-index/dead-code-scan.js';
-import { indexStorePool } from '../src/codebase-index/writer.js';
+import { deadCodeScanTool } from '../src/dead-code/index.js';
 import {
   codebaseAstReplaceTool,
   codebaseInvariantCheckTool,
@@ -85,29 +84,13 @@ describe('codebase tool path confinement (H-5/H-6 / VF-06, VF-07)', () => {
     ).rejects.toThrow(/outside project root/);
   });
 
-  it('dead-code-scan refuses an out-of-root projectRoot and entry point', async () => {
+  it('dead-code-scan refuses report paths outside the project', async () => {
     await expect(
-      deadCodeScanTool.execute({ projectRoot: outsideDir }, ctx(), execOpts),
-    ).rejects.toThrow(/outside project root/);
+      deadCodeScanTool.execute({ paths: ['../elsewhere'] }, ctx(), execOpts),
+    ).rejects.toThrow(/project-relative/);
     await expect(
-      deadCodeScanTool.execute({ entryPoints: [outside()] }, ctx(), execOpts),
-    ).rejects.toThrow(/outside project root/);
-  });
-
-  it('dead-code-scan fails on a missing entry point and on an empty index', async () => {
-    await expect(
-      deadCodeScanTool.execute({ entryPoints: ['missing.ts'] }, ctx(), execOpts),
-    ).rejects.toThrow(/entry point not found: "missing.ts"/);
-
-    // An empty index used to report "0 dead symbols" as a real answer.
-    const indexDir = path.join(projectDir, '.idx');
-    try {
-      await expect(deadCodeScanTool.execute({ indexDir }, ctx(), execOpts)).rejects.toThrow(
-        /has no symbols\. Run codebase-index/,
-      );
-    } finally {
-      indexStorePool.evict(projectDir, indexDir);
-    }
+      deadCodeScanTool.execute({ paths: [outsideDir] }, ctx(), execOpts),
+    ).rejects.toThrow(/project-relative/);
   });
 
   it('in-root targets still resolve (skeleton reads the project file)', async () => {

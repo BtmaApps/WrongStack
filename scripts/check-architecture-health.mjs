@@ -4,6 +4,22 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Repository root, resolved from THIS FILE's own location.
+ *
+ * It used to be `process.cwd()`, which made the measured tree depend on where
+ * the command happened to be invoked. `.githooks/pre-commit` runs this script
+ * with the repo root as cwd, so the hook itself looked correct — but any run
+ * from a subdirectory (or a wrapper/tool that chdirs first) measured that
+ * subdirectory instead. That is how an architecture-evidence commit absorbed a
+ * teammate's UNTRACKED `packages/tui` file: the regenerated
+ * `architecture/test-only-exports.json` and the `docs/reports/*` pair recorded
+ * working-tree state that was never committed. Anchoring to `import.meta.url`
+ * makes the measurement a property of the script, not of the shell.
+ */
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 import {
   buildArchitectureHealth,
   committedEvidenceMatchesReport,
@@ -48,7 +64,6 @@ for (const arg of args) {
   }
 }
 
-const repoRoot = process.cwd();
 const { registry, exceptions, hotspots, testOnlyExports } = await loadArchitectureInputs(repoRoot);
 const report = await buildArchitectureHealth({
   repoRoot,
