@@ -7,6 +7,21 @@ export interface HostSpawnOptions {
   allowedCapabilities?: readonly string[] | undefined;
   shadowIntervalMs?: number | undefined;
   /**
+   * Opt into model-driven completion (mirrors the Chimera reviewer policy).
+   *
+   * At the leader's session end, `finalizeExecutionCleanup` calls
+   * `director.requestFinish()`, which notifies ONLY the subagents that set
+   * this. An opted-in worker receives an in-band `subagent.finish_requested`
+   * between tool batches and is granted a grace window to finish and deliver
+   * its result during the drain that precedes `director.terminateAll()`.
+   *
+   * Without it the subagent is skipped by that notification and then hard-
+   * aborted by the terminal sweep — its work is lost mid-flight. Required for
+   * background auditors whose deliverable is a mailbox report rather than a
+   * value the leader is still awaiting.
+   */
+  gracefulFinish?: boolean | { graceMs?: number | undefined } | undefined;
+  /**
    * Conversation on whose behalf this spawn happens.
    *
    * The coordinator captures it once and the worker keeps it for life, so

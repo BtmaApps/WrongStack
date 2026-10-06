@@ -23,7 +23,14 @@ interface SetupDepWatcherBridgeDeps {
 }
 
 interface SetupDepWatcherBridgeResult {
-  /** Parsed dep-watcher config fragment (or undefined when absent/disabled). */
+  /**
+   * Parsed dep-watcher config fragment — the RAW host config, or undefined when
+   * the namespace is absent.
+   *
+   * `undefined` does NOT mean "off": the gate below defaults to enabled, so an
+   * absent block starts the bridge. Only an explicit `enabled: false` opts out.
+   * (Behaviour change 2026-10-05.)
+   */
   dwCfg: Record<string, unknown> | undefined;
 }
 
@@ -36,7 +43,18 @@ export function setupDepWatcherBridge(
   const dwCfg = fwCfg?.['depWatcher'] as Record<string, unknown> | undefined;
   let depWatcherDispose: (() => void) | undefined;
 
-  if (dwCfg?.['enabled'] === true) {
+  // Default-on (behaviour change, 2026-10-05).
+  //
+  // This reads the HOST config, not the plugin's resolved options: the loader
+  // merges `defaultConfig` into `opts.pluginOptions` (loader.ts:417) and never
+  // into `config.extensions`. So flipping the plugin's own `enabled` default
+  // would leave `dwCfg` undefined here and the gate shut — the flip has to be
+  // expressed at the gate too, or it is a silent no-op.
+  //
+  // Opt back out with `extensions."file-watcher".depWatcher.enabled = false`.
+  const depWatcherEnabled = dwCfg?.['enabled'] !== false;
+
+  if (depWatcherEnabled) {
     try {
       const projectDir = path.join(wpaths.globalRoot, 'projects', wpaths.projectSlug);
       const dwMailbox = getSharedProjectMailbox(projectDir, events);
@@ -44,9 +62,9 @@ export function setupDepWatcherBridge(
         events,
         mailbox: dwMailbox,
         projectRoot,
-        targetAgent: (dwCfg['targetAgent'] as string) ?? 'tech-stack',
+        targetAgent: (dwCfg?.['targetAgent'] as string) ?? 'tech-stack',
         watcherAgentId: 'dep-watcher',
-        debounceMs: (dwCfg['debounceMs'] as number) ?? 3000,
+        debounceMs: (dwCfg?.['debounceMs'] as number) ?? 3000,
       });
       logger.info(
         'Dep-watcher bridge activated — dependency changes will trigger tech-stack audits',

@@ -365,16 +365,20 @@ urllib3 = ">=1.21.1,<3"
     }
   });
 
-  it('normalizes raw-spelling names in the purl while keeping the raw row name', async () => {
+  it('normalizes raw-spelling names in the purl AND in the row name', async () => {
     const { dir, ws } = mkWorkspace({ 'requirements.txt': 'Django==5.2.1\n' });
     try {
       const deps = await new PythonAdapter().inventory(ws, {});
-      const django = deps.find((d) => d.name === 'Django');
+      const django = deps.find((d) => d.name === 'django');
       expect(django).toBeDefined();
       // Regression (round r24): the purl used to carry the raw spelling
       // (`pkg:pypi/Django@5.2.1`) — an identity OSV can never match.
       expect(django!.purl).toBe('pkg:pypi/django@5.2.1');
-      expect(django!.name).toBe('Django');
+      // Round r2-pep503: the emitted `name`/`id` used to keep the raw `Django`
+      // spelling, contradicting the canonical purl and dedupe key for the very
+      // same package. Name, id and purl now all carry the PEP 503 form.
+      expect(django!.name).toBe('django');
+      expect(django!.id).toBe(`dep-${ws.id}-django`);
       expect(parsePurlEcosystem(django!.purl!)).toEqual({
         ecosystem: 'python',
         name: 'django',
@@ -472,8 +476,11 @@ dependencies = ["Flask__Admin>=1.6"]
   // ── git+ dependencies ─────────────────────────────────────────────────
 
   it('classifies git+ deps as git_dependency', async () => {
-    // PEP 508 URL form `name @ url` ends up as constraint `@ git+...`
-    // which does NOT start with `git+`, so status stays `current`.
+    // A PEP 508 direct reference (`name @ git+…`) keeps its target, so the
+    // shared non-registry predicate sees a VCS scheme and classifies it as a
+    // git dependency. This assertion used to expect `current`, documenting the
+    // defect where the reference target was discarded and the dep fell through
+    // to the registry branch.
     const GIT_PYPROJECT = `[project]
 name = "test-git"
 dependencies = [
@@ -484,9 +491,9 @@ dependencies = [
     try {
       const deps = await new PythonAdapter().inventory(ws, {});
       expect(deps).toHaveLength(1);
-      // PEP 508 URL form has constraint `@ git+…` which doesn't start with `git+`
-      expect(deps[0]!.status).toBe('current');
-      // No constraint starts with git+, so locked version is not resolved
+      expect(deps[0]!.status).toBe('git_dependency');
+      expect(deps[0]!.sourceType).toBe('git');
+      expect(deps[0]!.purl).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -551,8 +558,10 @@ dependencies = [
     });
     try {
       const deps = await new PythonAdapter().inventory(ws, {});
+      // One row, and it carries the canonical PEP 503 spelling (round r2-pep503)
+      // rather than whichever raw form the manifest happened to list first.
       const rows = deps.filter((d) => canon(d.name) === 'django');
-      expect(rows.map((d) => d.name)).toEqual(['Django']);
+      expect(rows.map((d) => d.name)).toEqual(['django']);
       expect(rows[0]!.locked).toBe('5.2.1');
       expect(deps.map((d) => d.id)).toEqual([...new Set(deps.map((d) => d.id))]);
     } finally {

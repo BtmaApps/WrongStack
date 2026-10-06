@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-05T11:59:16.602Z",
+  "generatedAt": "2026-10-06T06:50:49.237Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4638,
-    "testFiles": 4101,
-    "sourceLines": 1061997,
+    "sourceFiles": 4639,
+    "testFiles": 4111,
+    "sourceLines": 1063084,
     "workspaceEdges": 133,
-    "moduleEdges": 15263,
+    "moduleEdges": 15264,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 583,
-      "testFiles": 590,
+      "testFiles": 592,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 590
+          "testFiles": 592
         }
       ]
     },
@@ -243,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1046,
-      "testFiles": 903,
+      "sourceFiles": 1047,
+      "testFiles": 907,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 903
+          "testFiles": 907
         }
       ]
     },
@@ -721,7 +721,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 51,
-      "testFiles": 44,
+      "testFiles": 47,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -736,7 +736,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 44
+          "testFiles": 47
         }
       ]
     },
@@ -920,7 +920,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 276,
-      "testFiles": 267,
+      "testFiles": 268,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -946,7 +946,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 267
+          "testFiles": 268
         }
       ]
     },
@@ -4962,6 +4962,18 @@
         ]
       },
       {
+        "file": "packages/cli/tests/tech-stack-audit-session-end.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tech-stack-audit-survives-teardown.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/telegram-pairing.test.ts",
         "projects": [
           "root-node"
@@ -6330,6 +6342,18 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/dep-watcher-bridge-paths.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/dep-watcher-e2e.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/dep-watcher.test.ts",
         "projects": [
           "root-node"
@@ -6744,6 +6768,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/manifest-deps.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/model-matrix.test.ts",
         "projects": [
           "root-node"
@@ -7033,6 +7063,12 @@
       },
       {
         "file": "packages/core/tests/coordination/techstack-mailbox-consumer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/techstack-report-loop.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16002,6 +16038,18 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/adapters/python-canonical-identity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/adapters/python-nonregistry-classification.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/adapters/rust-adapter.test.ts",
         "projects": [
           "root-node"
@@ -16051,6 +16099,12 @@
       },
       {
         "file": "packages/techstack/tests/fixture-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/gradle-configuration-alias.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22675,6 +22729,12 @@
       },
       {
         "file": "packages/webui-server/tests/start-webui-remediation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/start-webui-session-maintenance.test.ts",
         "projects": [
           "root-node"
         ]

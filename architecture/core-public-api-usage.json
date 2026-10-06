@@ -84,9 +84,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/kernel": {
-      "files": 339,
+      "files": 340,
       "typeOnly": 153,
-      "runtimeOrMixed": 206
+      "runtimeOrMixed": 207
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -7345,6 +7345,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/subagent-model-lanes-e2e.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/tech-stack-audit-session-end.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

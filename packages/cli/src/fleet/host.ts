@@ -344,6 +344,9 @@ export class MultiAgentHost {
       fallbackModels: opts?.fallbackModels,
       tools: opts?.tools,
       allowedCapabilities: opts?.allowedCapabilities,
+      ...(opts?.gracefulFinish !== undefined
+        ? { gracefulFinish: opts.gracefulFinish }
+        : {}),
       ...(opts?.originSessionId ? { originSessionId: opts.originSessionId } : {}),
     };
     const { subagentId, taskId } = await this._spawnAndAssign(subagentConfig, description, {

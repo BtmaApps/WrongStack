@@ -22,7 +22,15 @@
  * @module dep-watcher
  */
 
+import * as fs from 'node:fs/promises';
 import type { Mailbox } from './mailbox-types.js';
+import {
+  type DeclaredDependencyMap,
+  type DependencyDelta,
+  diffDeclaredDependencies,
+  hasDependencyChanges,
+  parseDeclaredDependencies,
+} from './manifest-deps.js';
 
 // ── Dependency file patterns ─────────────────────────────────────────────
 
@@ -163,12 +171,72 @@ export function makeDependencyWatcherConfig(
   // Deduplicate
   const unique = [...new Set(watchPaths)];
 
+  // Absolute paths arrive from the file-watcher plugin; tests and the
+  // watch_start tool hand over project-relative ones. Accept both.
+  function isAbsolutePath(p: string): boolean {
+    const normalized = p.replaceAll('\\', '/');
+    return normalized.startsWith('/') || /^[a-zA-Z]:\//.test(normalized);
+  }
+
+  /**
+   * Subject line. When the delta names new packages they lead the subject, so
+   * the notification is legible in a mailbox list — and so a consumer that can
+   * only read the subject still learns *what* was added, not just which file
+   * changed.
+   */
+  function describeSubject(
+    fileName: string,
+    added: readonly { readonly name: string; readonly range: string }[],
+  ): string {
+    if (added.length === 1) {
+      const only = added[0]!;
+      return `Dependency added: ${only.name}@${only.range || 'unspecified'} (${fileName})`;
+    }
+    if (added.length > 1) {
+      const names = added
+        .slice(0, 3)
+        .map((d) => d.name)
+        .join(', ');
+      const rest = added.length - 3;
+      return `Dependencies added: ${names}${rest > 0 ? ` +${rest} more` : ''} (${fileName})`;
+    }
+    return `Dependency file changed: ${fileName}`;
+  }
+
   const isMultiRecipient =
     targetAgent === '*' || targetAgent === '@session' || targetAgent.startsWith('@session:');
 
   // Globe matcher for wildcard patterns
   const globPatterns = patterns.filter((p) => p.includes('*'));
   const plainPatterns = patterns.filter((p) => !p.includes('*'));
+
+  /**
+   * Read the manifest and diff it against the stored baseline.
+   *
+   * The first time a manifest is seen there is no baseline, so the delta is
+   * empty and the notification degrades to the file-level event it always was.
+   * That is deliberate: treating "unknown" as "everything is new" would make
+   * every session start by auditing the entire repository. From the SECOND
+   * change onward the delta is real and names the actual packages.
+   *
+   * Never throws — an unreadable or half-written manifest yields an empty
+   * delta rather than breaking the watcher.
+   */
+  async function readDelta(manifestPath: string): Promise<DependencyDelta> {
+    const key = manifestPath.replaceAll('\\', '/');
+    try {
+      const absolute = isAbsolutePath(manifestPath)
+        ? manifestPath
+        : `${projectRoot}/${manifestPath.replaceAll('\\', '/')}`;
+      const content = await fs.readFile(absolute, 'utf8');
+      const current = parseDeclaredDependencies(content, key);
+      const delta = diffDeclaredDependencies(baselines.get(key), current);
+      baselines.set(key, current);
+      return delta;
+    } catch {
+      return { added: [], changed: [], removed: [] };
+    }
+  }
 
   function matchesPattern(filePath: string): boolean {
     const basename = filePath.split('/').pop()?.split('\\').pop() ?? '';
@@ -183,6 +251,9 @@ export function makeDependencyWatcherConfig(
 
   // Debounce state — keyed by file path
   const pending = new Map<string, ReturnType<typeof setTimeout>>();
+
+  // Last-known declared dependency set per manifest, used to compute the delta.
+  const baselines = new Map<string, DeclaredDependencyMap>();
 
   return {
     watchPaths: unique,
@@ -214,6 +285,52 @@ export function makeDependencyWatcherConfig(
           pending.delete(key);
           try {
             const fileName = entry.path.split('/').pop()?.split('\\').pop() ?? entry.path;
+            const delta = await readDelta(entry.path);
+            const body: string[] = [
+              `Manifest: ${entry.path}`,
+              `File: ${entry.path}`,
+              `Event: ${entry.event}`,
+              `Timestamp: ${entry.timestamp}`,
+            ];
+
+            // Name the packages when the manifest tells us what changed. Without
+            // this the receiving agent only learns "a file changed" and has to
+            // re-derive the delta itself — which is how a version bump and a
+            // brand-new dependency became indistinguishable downstream.
+            if (hasDependencyChanges(delta)) {
+              if (delta.added.length > 0) {
+                body.push(
+                  '',
+                  `Added packages (${delta.added.length}):`,
+                  ...delta.added.map(
+                    (d) => `- ${d.name}@${d.range || 'unspecified'} (${d.section})`,
+                  ),
+                );
+              }
+              if (delta.changed.length > 0) {
+                body.push(
+                  '',
+                  `Version changes (${delta.changed.length}):`,
+                  ...delta.changed.map(
+                    (c) => `- ${c.name}: ${c.from || 'unspecified'} -> ${c.to || 'unspecified'}`,
+                  ),
+                );
+              }
+            }
+
+            body.push(
+              '',
+              `Action: Run a tech-stack audit on the changed dependency file.`,
+              `Validate any new packages, check versions, flag deprecated or prehistoric packages.`,
+              // Addressee matters: `package-outdated-watcher` polls
+              // `{ to: 'pkg-outdated-watcher', type: 'result' }` and is the ONLY
+              // component that turns an audit into a notification to the agent
+              // who added the package. The line used to say "report findings
+              // back via mailbox (type: result)" with no addressee, so results
+              // were addressed to whoever the audit chose and never reached it.
+              `Report: send type='result' to 'pkg-outdated-watcher', AND type='note' to 'leader'.`,
+            );
+
             await mailbox.send({
               from: watcherAgentId,
               to: targetAgent,
@@ -224,16 +341,8 @@ export function makeDependencyWatcherConfig(
               // made every notification throw straight into the catch below
               // and vanish. Fan-out goes out as a broadcast instead.
               type: isMultiRecipient ? 'broadcast' : 'assign',
-              subject: `Dependency file changed: ${fileName}`,
-              body: [
-                `File: ${entry.path}`,
-                `Event: ${entry.event}`,
-                `Timestamp: ${entry.timestamp}`,
-                '',
-                `Action: Run a tech-stack audit on the changed dependency file.`,
-                `Validate any new packages, check versions, flag deprecated or prehistoric packages.`,
-                `Report findings back via mailbox (type: result).`,
-              ].join('\n'),
+              subject: describeSubject(fileName, delta.added),
+              body: body.join('\n'),
               priority: 'high',
               taskContext: {
                 agentRole: 'tech-stack',

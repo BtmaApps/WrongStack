@@ -1680,6 +1680,32 @@ project config. Store it in the active profile or private `config.local.json`.
 
 Each key is a plugin name. The value is a free-form object validated by the plugin's `configSchema`. Plugins read their namespace via `configStore.getExtension(pluginName)`.
 
+### `file-watcher` — dependency-change auditing (ON by default)
+
+> **Behaviour change (2026-10-05).** `depWatcher` now defaults to **enabled**.
+> Editing `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `Gemfile`, `composer.json`, or `pubspec.yaml` spawns a TechStack audit agent that researches the newly added package(s) and reports version status to the leader, to the agent that added them, and — for critical/high advisories — to everyone.
+> Opt out with `enabled: false`.
+
+```jsonc
+{
+  "extensions": {
+    "file-watcher": {
+      "depWatcher": {
+        "enabled": false,        // default: true
+        "targetAgent": "tech-stack",
+        "debounceMs": 3000
+      }
+    }
+  }
+}
+```
+
+**Why this was off before.** The dep-watcher bridge is wired from the **host** `config.extensions["file-watcher"]` namespace, not from the plugin's resolved options — the plugin loader merges `defaultConfig` into `opts.pluginOptions` and never into `config.extensions`. While the default read `false` and most projects configured nothing, the gate saw an absent block and stayed shut, so no filesystem watch was ever established on the manifests. The pipeline was fully wired and permanently dormant.
+
+Because of that split, the default is expressed in **two** places that must agree: the plugin's `defaultConfig`/`configSchema` (the documented contract) and the CLI gate in `packages/cli/src/wiring/dep-watcher.ts` + `dep-watcher-bridge.ts`, which treats "absent" as enabled and only honours an explicit `false`. Changing one alone silently does nothing.
+
+**Cost.** One debounced mailbox message per manifest save, and one TechStack audit subagent per *newly added* dependency. Version bumps and lockfile churn do not spawn an audit — the watcher diffs declared dependencies and only fires on additions or range changes. The first change to a manifest in a session establishes a baseline and fires no audit, so a cold start never audits the whole repository.
+
 ### `wstack-chimera` — post-session code review
 
 See [`/chimera`](slash/chimera.md) for full usage. The Chimera plugin runs a read-only review subagent at session end over all changed files.

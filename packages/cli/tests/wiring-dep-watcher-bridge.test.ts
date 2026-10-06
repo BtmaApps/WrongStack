@@ -5,7 +5,7 @@
  *   - Enabled with default targetAgent/debounceMs
  *   - Enabled with custom targetAgent and debounceMs from config
  *   - Disabled (enabled === false) — no bridge created
- *   - Missing config entirely — no-op, dwCfg undefined
+ *   - Default-on: absent depWatcher config still registers the bridge
  *   - attachDepWatcherBridge throws — logged as warning
  *   - Teardown handler registered on successful creation
  *   - Returns dwCfg for downstream use by setupDepWatcherConsumers
@@ -135,7 +135,11 @@ describe('setupDepWatcherBridge', () => {
     expect(t.attachDepWatcherBridgeMock).not.toHaveBeenCalled();
   });
 
-  it('does nothing when file-watcher config is missing entirely', () => {
+  // Behaviour change (2026-10-05): an absent block now means ENABLED.
+  // `dwCfg` is still returned undefined — that is the raw host config, and this
+  // function does not mutate it — but the gate defaults to on so the documented
+  // `defaultConfig.enabled = true` is actually reachable from the CLI.
+  it('creates the bridge when file-watcher config is missing entirely', () => {
     const deps = makeDeps({
       config: { extensions: {} },
     });
@@ -143,11 +147,10 @@ describe('setupDepWatcherBridge', () => {
     const result = setupDepWatcherBridge(deps);
 
     expect(result.dwCfg).toBeUndefined();
-    expect(t.getSharedProjectMailboxMock).not.toHaveBeenCalled();
-    expect(t.attachDepWatcherBridgeMock).not.toHaveBeenCalled();
+    expect(t.attachDepWatcherBridgeMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does nothing when extensions config is missing', () => {
+  it('creates the bridge when extensions config is missing', () => {
     const deps = makeDeps({
       config: {},
     });
@@ -155,8 +158,7 @@ describe('setupDepWatcherBridge', () => {
     const result = setupDepWatcherBridge(deps);
 
     expect(result.dwCfg).toBeUndefined();
-    expect(t.getSharedProjectMailboxMock).not.toHaveBeenCalled();
-    expect(t.attachDepWatcherBridgeMock).not.toHaveBeenCalled();
+    expect(t.attachDepWatcherBridgeMock).toHaveBeenCalledTimes(1);
   });
 
   it('logs warning when attachDepWatcherBridge throws', () => {
@@ -186,8 +188,15 @@ describe('setupDepWatcherBridge', () => {
 
   it('does not register teardown handler when bridge is not created', () => {
     const teardownHandlers: Array<() => void> = [];
+    // Only an explicit opt-out skips creation now that the bridge is default-on.
     const deps = makeDeps({
-      config: { extensions: {} },
+      config: {
+        extensions: {
+          'file-watcher': {
+            depWatcher: { enabled: false },
+          },
+        },
+      },
       teardownHandlers,
     });
 

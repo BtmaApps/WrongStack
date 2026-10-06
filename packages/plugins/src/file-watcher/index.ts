@@ -87,7 +87,20 @@ const plugin: Plugin = {
     autoIndex: false,
     indexProjectRoot: '',
     depWatcher: {
-      enabled: false,
+      // ON by default (behaviour change, 2026-10-05).
+      //
+      // This block was inert for its whole life: the dep-watcher bridge is
+      // wired from `config.extensions['file-watcher']`, which the loader does
+      // NOT merge into — `defaultConfig` only reaches `opts.pluginOptions`
+      // (loader.ts:417). With `enabled: false` here and no user override, the
+      // CLI gate read an absent config and never armed, so no filesystem watch
+      // was ever established on the dependency manifests. The pipeline was
+      // fully wired and permanently dormant.
+      //
+      // It is now live: an edit to package.json / go.mod / Cargo.toml / … wakes
+      // the tech-stack audit. Opt back out with
+      // `extensions."file-watcher".depWatcher.enabled = false`.
+      enabled: true,
       targetAgent: 'tech-stack',
       debounceMs: 3000,
     },
@@ -111,11 +124,11 @@ const plugin: Plugin = {
       },
       depWatcher: {
         type: 'object',
-        default: { enabled: false, targetAgent: 'tech-stack', debounceMs: 3000 },
+        default: { enabled: true, targetAgent: 'tech-stack', debounceMs: 3000 },
         description:
-          'Bridge dependency file changes (package.json, go.mod, etc.) to the inter-agent mailbox for tech-stack audits. Requires the mailbox tool to be registered.',
+          'Bridge dependency file changes (package.json, go.mod, etc.) to the inter-agent mailbox for tech-stack audits. Enabled by default since 2026-10-05 — set enabled:false to opt out. Requires the mailbox tool to be registered.',
         properties: {
-          enabled: { type: 'boolean', default: false },
+          enabled: { type: 'boolean', default: true },
           targetAgent: { type: 'string', default: 'tech-stack' },
           debounceMs: { type: 'number', default: 3000 },
         },

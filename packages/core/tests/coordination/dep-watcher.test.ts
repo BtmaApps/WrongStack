@@ -36,6 +36,23 @@ function makeEntry(over: Partial<DepWatchEntry> & { path: string }): DepWatchEnt
   };
 }
 
+/**
+ * Wait until the watcher has actually published.
+ *
+ * The send path became async when added-package detection landed: the debounce
+ * timer callback now reads the manifest to compute the dependency delta before
+ * calling `mailbox.send`. That makes the gap between `onChange` and the send
+ * depend on filesystem latency, so a fixed `setTimeout` turned into a race —
+ * these tests passed alone and failed when the suite ran in parallel. Polling
+ * for the observable effect is deterministic at any load.
+ */
+async function waitForSend(spy: { mock: { calls: unknown[][] } }, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (spy.mock.calls.length === 0 && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 5));
+  }
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────
 
 describe('DEPENDENCY_FILE_PATTERNS', () => {
@@ -151,8 +168,7 @@ describe('makeDependencyWatcherConfig', () => {
 
       await cfg.onChange(makeEntry({ path: 'package.json', event: 'change' }));
 
-      // Wait for debounce timer
-      await new Promise((r) => setTimeout(r, 50));
+      await waitForSend(spy);
 
       expect(spy).toHaveBeenCalledTimes(1);
       const callArgs = spy.mock.calls[0]![0] as Record<string, unknown>;
@@ -175,7 +191,7 @@ describe('makeDependencyWatcherConfig', () => {
       const spy = vi.spyOn(mailbox, 'send');
 
       await cfg.onChange(makeEntry({ path: 'package.json', event: 'change' }));
-      await new Promise((r) => setTimeout(r, 50));
+      await waitForSend(spy);
 
       const callArgs = spy.mock.calls[0]![0];
       expect(callArgs.to).toBe('tech-stack');
@@ -192,7 +208,7 @@ describe('makeDependencyWatcherConfig', () => {
       });
 
       await cfg.onChange(makeEntry({ path: 'go.mod' }));
-      await new Promise((r) => setTimeout(r, 50));
+      await waitForSend(spy);
 
       expect(spy).toHaveBeenCalledTimes(1);
       const args = spy.mock.calls[0]![0] as Record<string, unknown>;

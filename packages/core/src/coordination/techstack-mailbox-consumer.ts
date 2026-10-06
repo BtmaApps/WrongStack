@@ -13,10 +13,10 @@
  * @module techstack-mailbox-consumer
  */
 
+import { toErrorMessage } from '../utils/error.js';
+import { type FileAuthorTrackerOptions, recordFileAction } from './file-author-tracker.js';
 import type { Mailbox, MailboxMessage } from './mailbox-types.js';
 import { isMailboxSenderInFamily } from './mailbox-types.js';
-import { toErrorMessage } from '../utils/error.js';
-import { recordFileAction, type FileAuthorTrackerOptions } from './file-author-tracker.js';
 
 export interface TechStackConsumerOptions {
   /** The mailbox to poll. */
@@ -248,6 +248,15 @@ function extractManifestPath(msg: MailboxMessage): string | undefined {
   const manifestMatch = body.match(/Manifest:\s*(.+)/i);
   if (manifestMatch?.[1]) candidates.push(manifestMatch[1].trim());
 
+  // `File: <path>` — the field `makeDependencyWatcherConfig` actually emits
+  // (dep-watcher.ts). It was never parsed, so the only reason the path survived
+  // at all was the subject fallback, which carries the BASENAME only. A nested
+  // monorepo manifest therefore reached the spawned agent as a bare
+  // "package.json", and the audit read the workspace root instead of the file
+  // that actually changed.
+  const fileMatch = body.match(/^File:\s*(.+)$/im);
+  if (fileMatch?.[1]) candidates.push(fileMatch[1].trim());
+
   // Look for markdown table row with the manifest path
   const tableMatch = body.match(/\|\s*[^|]+\|\s*([^|]+)\|/);
   if (tableMatch?.[1]) candidates.push(tableMatch[1].trim());
@@ -259,6 +268,26 @@ function extractManifestPath(msg: MailboxMessage): string | undefined {
   if (subjectPath?.[1]) candidates.push(subjectPath[1]);
 
   return candidates.find(acceptManifestCandidate);
+}
+
+/**
+ * Parse the `- name@range (section)` lines the dep-watcher writes under
+ * "Added packages" / "Version changes".
+ *
+ * Returns them so the spawned task can name the packages explicitly instead of
+ * asking the agent to re-derive the delta by re-reading the manifest.
+ */
+function extractAddedPackages(msg: MailboxMessage): { name: string; range: string }[] {
+  const body = msg.body ?? '';
+  const section = /Added packages[^:]*:\r?\n([\s\S]*?)(?:\r?\n\r?\n|$)/i.exec(body)?.[1];
+  if (!section) return [];
+
+  const out: { name: string; range: string }[] = [];
+  for (const line of section.split(/\r?\n/)) {
+    const match = /^-\s+(\S+?)(?:@(\S+))?\s*(?:\([^)]*\))?\s*$/.exec(line.trim());
+    if (match?.[1]) out.push({ name: match[1], range: match[2] ?? 'unspecified' });
+  }
+  return out;
 }
 
 /**
@@ -333,6 +362,7 @@ function pathBasename(p: string): string {
 }
 
 function buildTechStackTask(msg: MailboxMessage, manifestPath: string): string {
+  const added = extractAddedPackages(msg);
   return [
     `Dependency manifest changed: ${manifestPath}`,
     '',
@@ -352,11 +382,35 @@ function buildTechStackTask(msg: MailboxMessage, manifestPath: string): string {
     '----- END NOTIFICATION -----',
     '',
     'Your task:',
-    '1. Read the manifest file.',
-    '2. Detect the ecosystem and extract dependency names/versions.',
-    '3. For each dependency, fetch the latest stable version from the registry.',
-    '4. Compare installed vs latest. Flag outdated packages.',
-    '5. Send warning messages via mailbox to the agent that last edited this file.',
-    '6. If the file author is unknown, broadcast to "*".',
+    added.length > 0
+      ? `1. Audit ONLY these newly added dependencies in ${manifestPath}:`
+      : `1. Read the manifest file at ${manifestPath}.`,
+    ...(added.length > 0
+      ? added.map((d) => `   - ${d.name} (declared ${d.range})`)
+      : [
+          '2. Detect the ecosystem and extract dependency names/versions.',
+          '3. For each dependency, fetch the latest stable version from the registry.',
+        ]),
+    added.length > 0
+      ? [
+          '2. For EACH one, research it properly:',
+          '   - latest stable version from the registry, and whether this version',
+          '     is current, behind, or ahead of it',
+          '   - known security advisories affecting THIS version',
+          '   - license, deprecation, and maintenance status',
+          '   - whether it overlaps with or replaces a dependency already present',
+          '3. Produce a version-status report: one section per package with a',
+          '   findings table (Package | Declared | Latest | Status | Advisories | License).',
+        ]
+      : ['4. Compare installed vs latest. Flag outdated packages.'],
+    '',
+    'Report the results — this is required, not optional:',
+    '- Send type="result" to "pkg-outdated-watcher". It resolves the agent who',
+    '  added each package and notifies them; a result sent anywhere else is lost.',
+    '- Send type="note" to "leader" summarising the version status of each new package.',
+    '- If a package has a critical or high advisory, also broadcast to "*".',
+    '',
+    'Also send a warning via mailbox to the agent that last edited this file, and',
+    'if the file author is unknown, broadcast to "*".',
   ].join('\n');
 }

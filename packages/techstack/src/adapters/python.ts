@@ -115,15 +115,24 @@ function extractTomlArray(sectionLines: string[], key: string): string[] {
   return result;
 }
 
+/**
+ * PEP 508 direct reference: `name @ <target>`, where the target is a URL,
+ * archive path, or VCS location rather than a version constraint.
+ */
+const PEP508_DIRECT_REFERENCE = /^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*@\s*(\S.*)$/;
+
 function parsePep508(spec: string): { name: string; constraint: string | undefined } {
   // Environment markers (`; python_version < "3.10"`) are not part of the
   // version constraint.
   let s = spec.split(';')[0]!.trim();
   s = s.replace(/\[.*?\]/g, '');
-  // A PEP 508 direct reference (`name @ https://…`) names the package but
-  // carries no registry constraint.
-  const direct = /^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*@/.exec(s);
-  if (direct) return { name: direct[1]!, constraint: undefined };
+  // A PEP 508 direct reference (`name @ https://…`) names the package and
+  // KEEPS its target. Discarding it here made every direct reference look
+  // constraint-free, so the classifier below read it as a plain registry
+  // package and minted a `pkg:pypi/…` identity for a package PyPI never
+  // resolves.
+  const direct = PEP508_DIRECT_REFERENCE.exec(s);
+  if (direct) return { name: direct[1]!, constraint: direct[2]!.trim() };
   const match = s.match(/^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*(.*)$/);
   if (!match) return { name: s, constraint: undefined };
   // PEP 508 allows the version spec in parentheses — Poetry 2 writes
@@ -219,7 +228,7 @@ function parseRequirementsTxt(
     // URLs, VCS references and local paths are valid requirement lines but no
     // registry package: they became dependencies named "git", "https" or
     // "./vendor/lib".
-    if (NON_REGISTRY_REQUIREMENT.test(line)) continue;
+    if (isNonRegistryRequirement(line)) continue;
     const { name, constraint } = parsePep508(line);
     if (name) deps.push({ name, constraint });
   }
@@ -229,6 +238,36 @@ function parseRequirementsTxt(
 /** `git+https://…`, `https://…/x.whl`, `./lib`, `../lib`, `/abs`, `C:\x`, `.`, `x.whl`. */
 const NON_REGISTRY_REQUIREMENT =
   /^(?:[a-z][a-z0-9+.-]*:\/\/|(?:git|hg|svn|bzr)\+|\.{1,2}(?:[\\/]|$)|[\\/]|[a-z]:[\\/]|\S+\.(?:whl|zip|tar\.gz|tgz)$)/i;
+
+/** A VCS scheme prefix (`git+`, `hg+`, `svn+`, `bzr+`) — a remote checkout. */
+const VCS_REQUIREMENT = /^(?:git|hg|svn|bzr)\+/i;
+
+/**
+ * A local source: pip's `file:` URL and `-e` editable install. The old inline
+ * classifier knew these two; `NON_REGISTRY_REQUIREMENT` never listed them, so
+ * the unified predicate must carry them explicitly or a local reference would
+ * be reclassified as a registry package.
+ */
+const LOCAL_PATH_REQUIREMENT = /^(?:file:|-e(?:\s|$))/i;
+
+/**
+ * THE one predicate for "this requirement is not a plain PyPI package".
+ *
+ * Both the requirements.txt collector and the inventory classifier derive
+ * their decision from this function. They used to keep private copies of the
+ * rule that disagreed: the collector tested {@link NON_REGISTRY_REQUIREMENT}
+ * against the raw line while the classifier knew only `file:` / `git+` / `-e`.
+ * A PEP 508 direct reference (`name @ hg+https://…`) therefore slipped past
+ * both — the collector's pattern is `^`-anchored and never sees past the name,
+ * and the classifier read the reference's discarded url as "no constraint" —
+ * so a VCS dependency was inventoried as `sourceType: 'registry'` carrying a
+ * `pkg:pypi/…` purl that no registry can resolve and no OSV query can match.
+ */
+function isNonRegistryRequirement(spec: string): boolean {
+  const direct = PEP508_DIRECT_REFERENCE.exec(spec.trim());
+  const target = (direct?.[2] ?? spec).trim();
+  return LOCAL_PATH_REQUIREMENT.test(target) || NON_REGISTRY_REQUIREMENT.test(target);
+}
 
 // ── Pipfile parser ────────────────────────────────────────────────────────
 
@@ -431,11 +470,7 @@ export class PythonAdapter implements EcosystemAdapter {
       seen.add(depKey);
 
       const locked = lockVersions.get(normalizePkgName(dep.name));
-      const isRegistry =
-        !dep.constraint ||
-        (!dep.constraint.startsWith('file:') &&
-          !dep.constraint.startsWith('git+') &&
-          !dep.constraint.startsWith('-e'));
+      const isRegistry = !dep.constraint || !isNonRegistryRequirement(dep.constraint);
 
       // constructPurl maps the ecosystem id to the canonical PURL type
       // (`pkg:pypi/…`). The low-level buildPurl with the raw id emitted
@@ -453,19 +488,18 @@ export class PythonAdapter implements EcosystemAdapter {
       if (manifestEv) evidence.push(manifestEv);
       if (lockEv && locked) evidence.push(lockEv);
 
-      const status: DependencyObservation['status'] =
-        dep.constraint && (dep.constraint.startsWith('file:') || dep.constraint.startsWith('-e'))
-          ? 'local_path'
-          : dep.constraint?.startsWith('git+')
-            ? 'git_dependency'
-            : 'current';
+      const status: DependencyObservation['status'] = isRegistry
+        ? 'current'
+        : dep.constraint && VCS_REQUIREMENT.test(dep.constraint)
+          ? 'git_dependency'
+          : 'local_path';
 
       observations.push({
-        id: `dep-${workspace.id}-${dep.name}`,
+        id: `dep-${workspace.id}-${depKey}`,
         workspaceId: workspace.id,
         ...(purl ? { purl } : {}),
         ecosystem: 'python',
-        name: dep.name,
+        name: depKey,
         sourceType: isRegistry ? 'registry' : status === 'local_path' ? 'path' : 'git',
         direct: true,
         scope: dep.scope,
@@ -477,7 +511,13 @@ export class PythonAdapter implements EcosystemAdapter {
     }
 
     if (options.includeTransitive && lockEv) {
-      for (const [name, locked] of lockVersions) {
+      for (const [rawName, locked] of lockVersions) {
+        // Canonical identity, the SAME key the direct pass stored in `seen`.
+        // The lockfile key is raw (`Django`), so testing it directly missed the
+        // direct pass's canonical `django` entry and emitted a duplicate row for
+        // one package — the advisory double-count this adapter must never
+        // produce.
+        const name = normalizePkgName(rawName);
         if (seen.has(name)) continue;
         seen.add(name);
         observations.push({

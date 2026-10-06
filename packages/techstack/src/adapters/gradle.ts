@@ -32,6 +32,31 @@ function scopeForConfiguration(configuration: string): DependencyScope {
   return 'runtime';
 }
 
+/**
+ * Every Gradle configuration this adapter recognises, in ONE list.
+ *
+ * `parseGradleManifest` collects the same dependency through two different
+ * syntaxes — a literal coordinate (`implementation("g:a:1.0")`) and a version
+ * catalog alias (`implementation(libs.x)`). Both collectors are built from this
+ * list because spelling the configuration names inline in both regex literals
+ * let them drift apart: `coordinateRegex` carried `annotationProcessor` while
+ * `aliasRegex` did not, so `annotationProcessor(libs.x)` was collected by
+ * NEITHER collector and the processor silently vanished from the inventory
+ * (and therefore from every purl OSV advisory query).
+ */
+const GRADLE_CONFIGURATIONS = [
+  'implementation',
+  'api',
+  'compileOnly',
+  'runtimeOnly',
+  'testImplementation',
+  'testRuntimeOnly',
+  'annotationProcessor',
+] as const;
+
+/** Alternation over {@link GRADLE_CONFIGURATIONS}, shared by both collectors. */
+const GRADLE_CONFIGURATION_ALTERNATION = GRADLE_CONFIGURATIONS.join('|');
+
 function parseVersionCatalog(content: string): Map<string, string> {
   const versions = new Map<string, string>();
   const libraries = new Map<string, string>();
@@ -84,8 +109,10 @@ function parseGradleManifest(
   catalog: ReadonlyMap<string, string>,
 ): GradleDependency[] {
   const deps: GradleDependency[] = [];
-  const coordinateRegex =
-    /\b(implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|annotationProcessor)\s*(?:\(|\s)\s*["']([^"']+)["']/g;
+  const coordinateRegex = new RegExp(
+    `\\b(${GRADLE_CONFIGURATION_ALTERNATION})\\s*(?:\\(|\\s)\\s*["']([^"']+)["']`,
+    'g',
+  );
   for (const match of content.matchAll(coordinateRegex)) {
     const configuration = match[1];
     const value = match[2];
@@ -101,8 +128,10 @@ function parseGradleManifest(
 
   // Kotlin DSL calls `implementation(libs.x)`; Groovy also allows the
   // parenthesis-free `implementation libs.x`, which real Gradle resolves too.
-  const aliasRegex =
-    /\b(implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly)(?:\s*\(\s*libs\.([\w.]+)\s*\)|\s+libs\.([\w.]+))/g;
+  const aliasRegex = new RegExp(
+    `\\b(${GRADLE_CONFIGURATION_ALTERNATION})(?:\\s*\\(\\s*libs\\.([\\w.]+)\\s*\\)|\\s+libs\\.([\\w.]+))`,
+    'g',
+  );
   for (const match of content.matchAll(aliasRegex)) {
     const configuration = match[1];
     const alias = match[2] ?? match[3];
