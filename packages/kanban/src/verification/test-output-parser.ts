@@ -177,7 +177,14 @@ export function tryParseTestJson(
               ? 0
               : 1
             : 0;
-      const numSkipped = typeof numSkippedTestsValue === 'number' ? numSkippedTestsValue : 0;
+      // vitest and jest report skipped tests as `numPendingTests` (+ `numTodoTests`)
+      // and never emit `numSkippedTests`, so reading only that key recorded 0.
+      const pending = parsed['numPendingTests'];
+      const todo = parsed['numTodoTests'];
+      const numSkipped =
+        typeof numSkippedTestsValue === 'number'
+          ? numSkippedTestsValue
+          : (isTestCount(pending) ? pending : 0) + (isTestCount(todo) ? todo : 0);
       return {
         testPattern: pattern,
         passed: numPassed,

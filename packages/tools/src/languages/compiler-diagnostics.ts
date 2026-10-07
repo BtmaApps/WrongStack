@@ -71,7 +71,10 @@ export function parseGo(text: string, root: string): LanguageDiagnostic[] {
     /^\s*(?:vet(?:\.exe)?:\s+)?(.*?\.go):(\d+)(?::(\d+))?:\s*(.+)$/gm,
     root,
     'go',
-    (_match, message) => ({ message, severity: /warning/i.test(message) ? 'warning' : 'error' }),
+    // Go itself has no warnings; only a cgo/gcc preamble diagnostic says
+    // `warning:` — right after the location. Matching the word anywhere
+    // downgraded errors that merely mention it (`undefined: logWarning`).
+    (_match, message) => ({ message, severity: /^warning:/i.test(message) ? 'warning' : 'error' }),
   );
 }
 

@@ -18,13 +18,16 @@ export function parseDotnetTestFailures(text: string, root: string): LanguageDia
   const diagnostics: LanguageDiagnostic[] = [];
   const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
-    const failed = /^\s*Failed (\S+) \[[^\]]*\]$/.exec(lines[i]!);
+    // The logger prints the DISPLAY name, which for parameterized tests has
+    // spaces: xUnit `Add(a: 1, b: 2)`, MSTest DataRow `Add (1,2)`. `\S+`
+    // dropped every parameterized failure.
+    const failed = /^\s*Failed (\S.*?) \[[^\]]*\]$/.exec(lines[i]!);
     if (!failed) continue;
     let message = '';
     let location: RegExpExecArray | null = null;
     for (let j = i + 1; j < lines.length && j <= i + 40; j++) {
       const line = lines[j]!;
-      if (/^\s*Failed \S+ \[/.test(line)) break;
+      if (/^\s*Failed \S.*? \[[^\]]*\]$/.test(line)) break;
       if (!message && /^\s*Error Message:\s*$/.test(line)) {
         message = lines[j + 1]?.trim() ?? '';
         continue;

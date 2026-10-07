@@ -411,6 +411,24 @@ export async function runTests(
     const failures: string[] = [];
     if (data.testResults) {
       for (const fileResult of data.testResults) {
+        // A file that fails to load (bad import, syntax error) has no failed
+        // assertion; its reason is only in the file-level `message`.
+        const fileFailedOnly =
+          fileResult.status === 'failed' &&
+          !(fileResult.assertionResults ?? []).some(
+            (a: { status?: string }) => a.status === 'failed',
+          );
+        if (fileFailedOnly && typeof fileResult.message === 'string') {
+          const reason = fileResult.message
+            .replace(/\x1b\[[0-9;]*m/g, '')
+            .split('\n')
+            .map((l: string) => l.trim())
+            .find((l: string) => l !== '' && !/^●\s*Test suite failed to run$/.test(l));
+          if (reason) {
+            failures.push(`${fileResult.name ?? 'test file'}: ${reason.slice(0, 200)}`);
+            if (failures.length >= 5) break;
+          }
+        }
         for (const assertion of fileResult.assertionResults ?? []) {
           if (assertion.status === 'failed') {
             const fullName = assertion.fullName ?? assertion.title ?? 'unknown';

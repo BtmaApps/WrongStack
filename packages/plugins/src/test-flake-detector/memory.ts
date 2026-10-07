@@ -42,7 +42,7 @@ export function isTestCommand(command: string): boolean {
 }
 
 /** A trailing duration (`12ms`, `1.2s`, `(0.01s)`) varies between runs of one test. */
-function stripDuration(name: string): string {
+export function stripDuration(name: string): string {
   return name
     .replace(/\s+\(?\d+(?:\.\d+)?\s?m?s\)?$/, '')
     .replace(/\s+\[\s*\d+(?:\.\d+)?\s?m?s\]$/, '')

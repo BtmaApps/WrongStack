@@ -41,6 +41,7 @@ import {
   isTestCommand,
   parseFailedTests,
   runCompleted,
+  stripDuration,
   treeFingerprint,
 } from './memory.js';
 
@@ -144,7 +145,10 @@ function parseTestOutput(output: string): ParsedRun {
     // vitest / mocha / tap style: "✓ test name" or "✔ test name"
     const passMatch = line.match(/^[✓✔]\s+(.+)/);
     if (passMatch) {
-      const name = passMatch[1]!.trim();
+      // Duration-stripped: jest prints `(3 ms)` on every test and vitest/mocha
+      // on slow ones, so one test was a different name in each run and a
+      // pass/fail flip never registered as a flake.
+      const name = stripDuration(passMatch[1]!.trim());
       if (!seen.has(`p:${name}`)) {
         seen.add(`p:${name}`);
         passed.push(name);
@@ -155,7 +159,7 @@ function parseTestOutput(output: string): ParsedRun {
     // vitest / mocha style: "✕ test name" / "✗ test name" / "× test name"
     const failMatch = line.match(/^[✕✗×]\s+(.+)/);
     if (failMatch) {
-      const name = failMatch[1]!.trim();
+      const name = stripDuration(failMatch[1]!.trim());
       if (!seen.has(`f:${name}`)) {
         seen.add(`f:${name}`);
         failed.push(name);
@@ -166,7 +170,7 @@ function parseTestOutput(output: string): ParsedRun {
     // jest style: "● test name"
     const jestFailMatch = line.match(/^●\s+(.+)/);
     if (jestFailMatch) {
-      const name = jestFailMatch[1]!.trim();
+      const name = stripDuration(jestFailMatch[1]!.trim());
       if (!seen.has(`f:${name}`)) {
         seen.add(`f:${name}`);
         failed.push(name);
