@@ -279,7 +279,15 @@ export function discoverEntries(input: EntryDiscoveryInput): Map<string, EntryIn
   // ── Packages with no explicit entry: conventional names ────────────────
   for (const pkg of packages) {
     const prefix = pkg.dir ? `${pkg.dir}/` : '';
-    const hasEntry = [...entries.keys()].some((f) => f.startsWith(prefix) && pkg.dir !== '');
+    // A tool config (`vitest.config.ts`) is loaded by its tool, not an entry to
+    // the package's own code: counted, adding one flipped a convention-started
+    // package to "every file unreachable".
+    const hasEntry = [...entries.values()].some(
+      (info) =>
+        info.file.startsWith(prefix) &&
+        pkg.dir !== '' &&
+        [...info.kinds].some((kind) => kind !== 'tool'),
+    );
     if (hasEntry) continue;
     for (const name of [
       'src/index',

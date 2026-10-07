@@ -13,7 +13,7 @@
 
 import { collectCallSiteFacts } from './parse-call-sites.js';
 import type { ModuleFacts } from './parse-facts.js';
-import { buildRefIndex, createSource } from './parse-refs.js';
+import { buildRefIndex, createSource, lineOf } from './parse-refs.js';
 import { collectStatementFacts } from './parse-statements.js';
 
 type Ts = typeof import('@typescript/typescript6');
@@ -62,8 +62,29 @@ export function extractModuleFacts(ts: Ts, file: string, text: string): ModuleFa
     parseErrors: (sf as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics?.length ?? 0,
   };
 
+  // `/// <reference path>` puts a file into the program without importing it;
+  // unread, an ambient `globals.ts` named only there read as unreachable.
+  // Declaration files are never code nodes, so they are not followed.
+  for (const ref of sf.referencedFiles) {
+    const target = ref.fileName.replace(/\\/g, '/');
+    if (!target || target.startsWith('/') || /\.d\.[cm]?tsx?$/i.test(target)) continue;
+    facts.imports.push({
+      spec: /^\.\.?\//.test(target) ? target : `./${target}`,
+      kind: 'side-effect',
+      names: [],
+      line: lineOf(sf, ref.pos),
+    });
+  }
+
   const { namespaceBindings, consumedLiterals } = collectStatementFacts(ts, sf, refs, facts);
   collectCallSiteFacts(ts, sf, facts, consumedLiterals, namespaceBindings);
+
+  // A .ts/.tsx file without import/export is a global script: its top-level
+  // declarations are visible to every file of the program, so "nothing in
+  // its file references it" does not make one unused.
+  if (/\.tsx?$/i.test(file) && !ts.isExternalModule(sf)) {
+    for (const local of facts.locals) local.keep = true;
+  }
 
   // Namespace-shaped bindings: only the members actually read are used — unless
   // the module exports the binding itself, so importers may read any member.

@@ -197,6 +197,56 @@ describe('dead-code analysis', () => {
     const on = await analyzeDeadCode(root, { noCache: true, includePublicApi: true });
     expect(find(on.findings, 'unused-public-export', 'packages/lib/src/a.ts', 'pub')).toBeDefined();
   });
+
+  it('follows /// <reference path> and keeps global-script declarations', async () => {
+    // The reference is the only thing that puts globals.ts in the program, and
+    // its top-level declarations are global: main.ts uses them.
+    fs.writeFileSync(
+      path.join(root, 'packages/app/src/main.ts'),
+      [
+        '/// <reference path="./globals.ts" />',
+        fs.readFileSync(path.join(root, 'packages/app/src/main.ts'), 'utf8'),
+        'console.log(APP_VERSION, formatVersion());',
+        '',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(root, 'packages/app/src/globals.ts'),
+      'declare const APP_VERSION: string;\nfunction formatVersion(): string {\n  return APP_VERSION;\n}\n',
+    );
+    const r = await analyzeDeadCode(root, { noCache: true });
+    expect(r.findings.filter((f) => f.file === 'packages/app/src/globals.ts')).toEqual([]);
+  });
+
+  it('keeps conventional entries when the package only has a tool config', async () => {
+    // vitest.config.ts is loaded by vitest, not an entry to svc's code; it used
+    // to switch off the src/server convention and mark the whole package dead.
+    for (const [rel, content] of Object.entries({
+      'packages/svc/package.json': JSON.stringify({ name: 'svc', private: true }),
+      'packages/svc/vitest.config.ts': 'export default {};\n',
+      'packages/svc/src/server.ts': "import { routes } from './routes.js';\nroutes();\n",
+      'packages/svc/src/routes.ts': 'export function routes(): void {}\n',
+    })) {
+      fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+      fs.writeFileSync(path.join(root, rel), content);
+    }
+    const r = await analyzeDeadCode(root, { noCache: true });
+    expect(r.findings.filter((f) => f.file.startsWith('packages/svc/src/'))).toEqual([]);
+  });
+
+  it('falls back to package resolution when a catch-all paths alias resolves nothing', async () => {
+    // TypeScript keeps resolving after a `paths` miss; `"*"` used to swallow
+    // the `@x/lib` import, so `a` (which main.ts uses) read as unused.
+    fs.writeFileSync(
+      path.join(root, 'packages/app/tsconfig.json'),
+      JSON.stringify({ compilerOptions: { paths: { '*': ['./types/*'], '@/*': ['./src/*'] } } }),
+    );
+    const r = await analyzeDeadCode(root, { noCache: true, includePublicApi: true });
+    expect(r.findings.some((f) => f.file === 'packages/lib/src/a.ts' && f.name === 'a')).toBe(
+      false,
+    );
+    expect(find(r.findings, 'dead-export', 'packages/lib/src/b.ts', 'bUnused')).toBeDefined();
+  });
 });
 
 describe('dead-code fixes', () => {
@@ -457,8 +507,7 @@ describe('dead-code precision (patterns found on a real monorepo)', () => {
     const dir = project({
       'package.json': JSON.stringify({ name: 'p', private: true, main: 'src/main.ts' }),
       'src/main.ts': "import { routes } from './globby.js';\nroutes();\n",
-      'src/globby.ts':
-        "export const routes = (): unknown => import.meta.glob('./routes/*.ts');\n",
+      'src/globby.ts': "export const routes = (): unknown => import.meta.glob('./routes/*.ts');\n",
       'src/routes/one.ts': 'export const r1 = 1;\n',
       'src/routes/two.ts': 'export const r2 = 1;\n',
       // A single `*` does not cross `/`: unreachable even with a working glob.
@@ -485,7 +534,10 @@ describe('dead-code precision (patterns found on a real monorepo)', () => {
     });
     const r = await analyzeDeadCode(dir, { noCache: true });
     for (const live of ['src/arr/first.ts', 'src/arr/second.ts']) {
-      expect(r.findings.some((f) => f.file === live), live).toBe(false);
+      expect(
+        r.findings.some((f) => f.file === live),
+        live,
+      ).toBe(false);
     }
     // resolve() references the file without importing its exports: the file must
     // stay alive (no delete), while its unread exports may still be reported.

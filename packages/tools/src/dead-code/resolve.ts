@@ -298,10 +298,11 @@ export class DeadCodeResolver {
     if (spec.startsWith('node:') || BUILTINS.has(spec) || BUILTINS.has(spec.split('/')[0]!)) {
       return { type: 'builtin' };
     }
+    // A `paths` match that resolves nothing falls back to normal resolution,
+    // as TypeScript does: a catch-all `"*": ["./types/*"]` otherwise swallowed
+    // every workspace-package import, and the files only it used read as dead.
     const alias = this.resolveAlias(fromFile, spec);
-    if (alias !== null) {
-      return alias.length > 0 ? { type: 'file', files: alias } : { type: 'unresolved' };
-    }
+    if (alias !== null && alias.length > 0) return { type: 'file', files: alias };
     if (spec.startsWith('#')) {
       const files = this.resolveSubpathImport(fromFile, spec);
       return files.length > 0 ? { type: 'file', files } : { type: 'unresolved' };

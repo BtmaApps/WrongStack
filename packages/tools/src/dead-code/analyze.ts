@@ -36,7 +36,7 @@ import type {
 } from './types.js';
 
 /** Bump when ModuleFacts' shape or extraction semantics change. */
-const FACTS_VERSION = 11;
+const FACTS_VERSION = 12;
 
 const USE_PROD = 1;
 const USE_TEST = 2;
