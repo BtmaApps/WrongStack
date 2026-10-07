@@ -177,24 +177,51 @@ describe('runNpmAudit', () => {
 // ── pip-audit ─────────────────────────────────────────────────────────
 
 describe('runPipAudit', () => {
-  it('parses pip-audit JSON output', async () => {
+  it('parses the real pip-audit JSON report (exit 1 when vulnerable)', async () => {
     const { runPipAudit } = await import('../../src/advisory/native-audit.js');
+    // Shape of pip_audit/_format/json.py: findings nest per dependency, carry
+    // no severity, and pip-audit exits 1 when it found any.
     mockResult(
-      JSON.stringify([
-        {
-          name: 'requests',
-          id: 'GHSA-1',
-          severity: 'high',
-          description: 'SSRF in requests',
-          fix_version: '2.32.0',
-        },
-      ]),
+      JSON.stringify({
+        dependencies: [
+          {
+            name: 'requests',
+            version: '2.25.0',
+            vulns: [
+              {
+                id: 'PYSEC-2023-74',
+                fix_versions: ['2.31.0'],
+                aliases: ['CVE-2023-32681'],
+                description: 'Proxy-Authorization leak',
+              },
+            ],
+          },
+          { name: 'six', version: '1.16.0', vulns: [] },
+          { name: 'mylocal', skip_reason: 'Dependency not found on PyPI' },
+        ],
+        fixes: [],
+      }),
+      1,
+      'Found 1 known vulnerability in 1 package',
     );
     const result = await runPipAudit('/fake');
     expect(result.advisories).toHaveLength(1);
-    expect(result.advisories[0]!.packageName).toBe('requests');
-    expect(result.advisories[0]!.severity).toBe('high');
-    expect(result.advisories[0]!.fixVersion).toBe('2.32.0');
+    expect(result.advisories[0]).toMatchObject({
+      id: 'PYSEC-2023-74',
+      packageName: 'requests',
+      severity: 'info',
+      summary: 'Proxy-Authorization leak',
+      fixVersion: '2.31.0',
+      aliases: ['CVE-2023-32681'],
+    });
+  });
+
+  it('invokes pip-audit without a bogus `audit` positional', async () => {
+    const { runPipAudit } = await import('../../src/advisory/native-audit.js');
+    mockResult(JSON.stringify({ dependencies: [], fixes: [] }));
+    await runPipAudit('/fake');
+    // pip-audit has no subcommands: `audit` would be its project_path.
+    expect(mockedExec.mock.calls[0]![1]).toEqual(['--format', 'json']);
   });
 
   it('handles pip-audit error exit', async () => {
@@ -233,6 +260,42 @@ describe('runCargoAudit', () => {
     expect(result.advisories[0]!.packageName).toBe('openssl');
     expect(result.advisories[0]!.severity).toBe('critical');
     expect(result.advisories[0]!.fixVersion).toBe('>=1.2.0');
+  });
+
+  // Real cargo-audit (rustsec Report): `advisory.cvss` is a CVSS VECTOR and the
+  // patched ranges sit in `versions.patched`. Taking the vector's first `/`
+  // segment ("CVSS:3.1") downgraded every advisory to `info`.
+  it('scores the real cargo-audit CVSS vector and reads versions.patched', async () => {
+    const { runCargoAudit } = await import('../../src/advisory/native-audit.js');
+    mockResult(
+      JSON.stringify({
+        vulnerabilities: {
+          found: true,
+          count: 1,
+          list: [
+            {
+              advisory: {
+                id: 'RUSTSEC-2023-0001',
+                package: 'tokio',
+                title: 'reject_remote_clients configuration corruption',
+                cvss: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+              },
+              versions: { patched: ['>=1.18.4, <1.19.0', '>=1.23.1'], unaffected: [] },
+              affected: null,
+              package: { name: 'tokio', version: '1.18.0' },
+            },
+          ],
+        },
+      }),
+      1,
+    );
+    const result = await runCargoAudit('/fake');
+    expect(result.advisories[0]).toMatchObject({
+      id: 'RUSTSEC-2023-0001',
+      packageName: 'tokio',
+      severity: 'critical',
+      fixVersion: '>=1.18.4, <1.19.0',
+    });
   });
 
   it('handles cargo audit error exit', async () => {
@@ -433,11 +496,11 @@ describe('runNativeAudit dispatch', () => {
     );
 
     mockedExec.mockClear();
-    mockResult(JSON.stringify([]));
+    mockResult(JSON.stringify({ dependencies: [], fixes: [] }));
     await runNativeAudit('python', '/fake');
     expect(mockedExec).toHaveBeenCalledWith(
       'pip-audit',
-      expect.arrayContaining(['audit']),
+      expect.arrayContaining(['--format', 'json']),
       expect.anything(),
       expect.any(Function),
     );

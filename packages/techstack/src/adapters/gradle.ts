@@ -1,7 +1,7 @@
 /** Gradle dependency inventory for Groovy/Kotlin DSL and dependency locking. */
 
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
@@ -11,6 +11,7 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripSlashComments } from './parse-utils.js';
 import {
   fileExistsAsync,
   lockfileEvidence,
@@ -105,9 +106,11 @@ function parseVersionCatalog(content: string): Map<string, string> {
 }
 
 function parseGradleManifest(
-  content: string,
+  source: string,
   catalog: ReadonlyMap<string, string>,
 ): GradleDependency[] {
+  // A commented-out declaration is not a dependency.
+  const content = stripSlashComments(source);
   const deps: GradleDependency[] = [];
   const coordinateRegex = new RegExp(
     `\\b(${GRADLE_CONFIGURATION_ALTERNATION})\\s*(?:\\(|\\s)\\s*["']([^"']+)["']`,
@@ -122,6 +125,26 @@ function parseGradleManifest(
     deps.push({
       name: `${group}:${artifact}`,
       requested: version,
+      scope: scopeForConfiguration(configuration),
+    });
+  }
+
+  // Map notation: Groovy `implementation group: 'g', name: 'a', version: 'v'`
+  // and Kotlin `implementation(group = "g", name = "a", version = "v")`. The
+  // coordinate collector needs a quote right after the configuration, so these
+  // declarations were silently missing from the inventory.
+  const mapRegex = new RegExp(
+    `\\b(${GRADLE_CONFIGURATION_ALTERNATION})\\s*\\(?\\s*group\\s*[:=]\\s*["']([^"']+)["']\\s*,\\s*name\\s*[:=]\\s*["']([^"']+)["'](?:\\s*,\\s*version\\s*[:=]\\s*["']([^"']+)["'])?`,
+    'g',
+  );
+  for (const match of content.matchAll(mapRegex)) {
+    const configuration = match[1];
+    const group = match[2];
+    const artifact = match[3];
+    if (!configuration || !group || !artifact) continue;
+    deps.push({
+      name: `${group}:${artifact}`,
+      requested: match[4],
       scope: scopeForConfiguration(configuration),
     });
   }
@@ -147,6 +170,34 @@ function parseGradleManifest(
     });
   }
   return deps;
+}
+
+/**
+ * The version catalog belongs to the ROOT build: `gradle/libs.versions.toml`
+ * next to `settings.gradle(.kts)`. A subproject workspace (`app/`) has no
+ * `gradle/` directory of its own, so probing only the workspace root dropped
+ * every `libs.*` dependency of every subproject. Walk up to the settings file,
+ * never above the analyzed project.
+ */
+async function findVersionCatalog(
+  root: string,
+  projectRoot: string | undefined,
+): Promise<string | undefined> {
+  const stop = projectRoot ? resolve(projectRoot) : undefined;
+  let dir = root;
+  for (;;) {
+    const candidate = join(dir, 'gradle', 'libs.versions.toml');
+    if (await fileExistsAsync(candidate)) return candidate;
+    if (
+      (await fileExistsAsync(join(dir, 'settings.gradle.kts'))) ||
+      (await fileExistsAsync(join(dir, 'settings.gradle')))
+    ) {
+      return undefined;
+    }
+    const parent = dirname(dir);
+    if (parent === dir || dir === stop) return undefined;
+    dir = parent;
+  }
 }
 
 function parseGradleLock(content: string): Map<string, string> {
@@ -175,8 +226,8 @@ export class GradleAdapter implements EcosystemAdapter {
         : join(root, 'build.gradle'));
     if (!(await fileExistsAsync(resolveIn(root, manifestPath)))) return [];
 
-    const catalogPath = join(root, 'gradle', 'libs.versions.toml');
-    const catalog = (await fileExistsAsync(catalogPath))
+    const catalogPath = await findVersionCatalog(root, options.projectRoot);
+    const catalog = catalogPath
       ? parseVersionCatalog(await readFile(catalogPath, 'utf8'))
       : new Map<string, string>();
     const direct = parseGradleManifest(

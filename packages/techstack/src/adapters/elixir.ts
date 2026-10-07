@@ -17,6 +17,7 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripInlineComment } from './parse-utils.js';
 import { lockfileEvidence, manifestEvidence } from './paths.js';
 
 /**
@@ -26,21 +27,41 @@ function parseMixExsDeps(content: string): Array<{
   name: string;
   version?: string | undefined;
   sourceType: 'registry' | 'git' | 'path';
+  scope: DependencyScope;
 }> {
   const deps: Array<{
     name: string;
     version?: string | undefined;
     sourceType: 'registry' | 'git' | 'path';
+    scope: DependencyScope;
   }> = [];
+  // A `# {:old, "~> 1.0"}` line is a comment, not a declaration.
+  const live = content
+    .split('\n')
+    .map((line) => stripInlineComment(line))
+    .join('\n');
   // Match: {:name, "version"} or {:name, "~> x.y"} or {:name, github: "..."} or {:name, path: "..."}
   const depRegex = /\{:(\w+),\s*([^}]+)\}/g;
-  for (const match of content.matchAll(depRegex)) {
+  for (const match of live.matchAll(depRegex)) {
     const name = match[1];
     const value = match[2];
     if (!name || !value) continue;
     const version = /^\s*["']([^"']+)["']/.exec(value)?.[1];
-    const sourceType = /\bgit:/.test(value) ? 'git' : /\bpath:/.test(value) ? 'path' : 'registry';
-    deps.push({ name, version, sourceType });
+    // `github:` is Mix shorthand for a git source; `in_umbrella: true` is a
+    // sibling umbrella app on disk. Neither comes from Hex.
+    const sourceType = /\b(?:git|github):/.test(value)
+      ? 'git'
+      : /\bpath:|\bin_umbrella:\s*true\b/.test(value)
+        ? 'path'
+        : 'registry';
+    // `only: :test` / `only: [:dev, :test]` limits the dep to those envs.
+    const only = /\bonly:\s*(\[[^\]]*\]|:\w+)/.exec(value)?.[1];
+    const envs = only ? [...only.matchAll(/:(\w+)/g)].map((env) => env[1]) : [];
+    const scope: DependencyScope =
+      envs.length > 0 && envs.every((env) => env === 'dev' || env === 'test')
+        ? 'development'
+        : 'runtime';
+    deps.push({ name, version, sourceType, scope });
   }
   return deps;
 }
@@ -114,7 +135,10 @@ export class ElixirAdapter implements EcosystemAdapter {
       seen.add(dep.name);
 
       const locked = lockVersions.get(dep.name);
-      const version = locked ?? dep.version;
+      // Without a lock pin only an exact `"1.4.1"` is a version; a requirement
+      // (`~> 1.7.0`, `>= 1.14.0 and < 2.0.0`) is not, and leaked into the purl.
+      const version =
+        locked ?? (dep.version && /^\d[\w.+-]*$/.test(dep.version) ? dep.version : undefined);
       const purl =
         dep.sourceType === 'registry' && version
           ? buildPurl({ type: 'hex', name: dep.name, version })
@@ -133,7 +157,7 @@ export class ElixirAdapter implements EcosystemAdapter {
         name: dep.name,
         sourceType: dep.sourceType,
         direct: true,
-        scope: 'runtime' as DependencyScope,
+        scope: dep.scope,
         ...(dep.version ? { requested: dep.version } : {}),
         ...(locked ? { locked } : {}),
         status:

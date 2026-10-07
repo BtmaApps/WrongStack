@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:40:05.683Z
+**Generated:** 2026-10-07T07:41:15.259Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4829 |
-| Production source lines | 1078596 |
-| Test files | 4164 |
+| Production source lines | 1079081 |
+| Test files | 4165 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15892 |
+| Relative module edges | 15897 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -53,7 +53,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/sdd | 45 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 21 | 31 | @wrongstack/core |
 | @wrongstack/simpleui | 123 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
-| @wrongstack/techstack | 51 | 49 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
+| @wrongstack/techstack | 51 | 50 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 311 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 477 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
@@ -84,6 +84,7 @@ None.
 | Lines | File |
 |---:|---|
 | 808 | `packages/core/src/security/directory-permission-policy.ts` |
+| 799 | `packages/techstack/src/advisory/native-audit.ts` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
 | 795 | `packages/cli/src/goal-host.ts` |
 | 795 | `packages/tools/src/codebase-index/ast-invariant-engine.ts` |
@@ -132,7 +133,6 @@ None.
 | 768 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 767 | `packages/core/src/goal/phase-orchestrator.ts` |
 | 767 | `packages/webui-server/src/server/ws-payload-preferences.ts` |
-| 766 | `packages/tools/src/todo.ts` |
 
 ## Exports only tests reference
 

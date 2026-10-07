@@ -169,6 +169,31 @@ dependencies = ["requests[socks]>=2.32", "flask>=3.0"]
     }
   });
 
+  // A specifier list is comma-separated inside ONE string; splitting the array
+  // text on commas made `<5.0` a dependency and cut django's upper bound.
+  it('reads array items as TOML strings: specifier commas, comments, literal strings', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': `[project]
+name = "items-py"
+dependencies = ["django>=4.2,<5.0", 'flask>=3', "rich",  # tty
+  "a>=1", "b>=2,<3",
+]
+`,
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      expect(deps.map((d) => `${d.name}|${d.requested ?? ''}`).sort()).toEqual([
+        'a|>=1',
+        'b|>=2,<3',
+        'django|>=4.2,<5.0',
+        'flask|>=3',
+        'rich|',
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('has manifest evidence on every dep', async () => {
     const { dir, ws } = mkWorkspace({ 'pyproject.toml': PYPROJECT });
     try {

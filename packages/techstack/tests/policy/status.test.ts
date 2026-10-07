@@ -60,6 +60,21 @@ describe('compareVersions', () => {
     expect(compareVersions('1.0.0', '1.0.0-alpha')).toBe(1);
     expect(compareVersions('1.0.0-alpha', '1.0.0-beta')).toBe(-1);
   });
+
+  it('orders PEP 440 post/pre/dev releases instead of throwing', () => {
+    // These threw, and classifyStatus then called the outdated dep current.
+    expect(compareVersions('2.8.2', '2.9.0.post0')).toBe(-1);
+    expect(compareVersions('1.0.post1', '1.0')).toBe(1);
+    expect(compareVersions('5.0rc1', '5.0')).toBe(-1);
+    expect(compareVersions('1.0.dev0', '1.0a1')).toBe(-1);
+    expect(compareVersions('1.0a1', '1.0b2')).toBe(-1);
+    expect(
+      classifyStatus(
+        makeDep({ locked: '2.8.2', requested: '>=2.8', ecosystem: 'python' }) as never,
+        { latestStable: '2.9.0.post0' },
+      ),
+    ).toBe('update_available_safe');
+  });
 });
 
 // ── classifyStatus — Source type rules ─────────────────────────────────────

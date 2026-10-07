@@ -132,8 +132,15 @@ export function parseNpmOutdated(text: string): ParsedPackageReports {
       };
     }
   }
-  for (const [name, info] of Object.entries(payload)) {
-    const entry = info as {
+  const seen = new Set<string>();
+  // npm turns a package's value into an ARRAY when several dependents have it
+  // outdated (workspaces, nested copies); read as one object it had no
+  // `latest`, so exactly those packages vanished from the report.
+  const rows = Object.entries(payload).flatMap(([name, info]) =>
+    (Array.isArray(info) ? info : [info]).map((item) => [name, item] as const),
+  );
+  for (const [name, info] of rows) {
+    const entry = (info ?? {}) as {
       current?: string;
       latest?: string;
       wanted?: string;
@@ -143,6 +150,9 @@ export function parseNpmOutdated(text: string): ParsedPackageReports {
       location?: string;
     };
     if (!entry.latest || entry.latest === entry.current) continue;
+    const key = `${name}\0${entry.current ?? ''}\0${entry.latest}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     outdated.push({
       name,
       previous: entry.current,

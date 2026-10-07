@@ -27,6 +27,51 @@ export function stripInlineComment(line: string, marker = '#'): string {
   return line;
 }
 
+/**
+ * Drop `// …` and `/* … *\/` comments from a C-family manifest (Gradle
+ * Groovy/Kotlin, Package.swift). A commented-out declaration is not a
+ * dependency, but the collectors matched the raw text. Quote-aware, so the `//`
+ * in `uri("https://…")` survives; a newline ends any open single-line string so
+ * one stray quote cannot swallow the file.
+ */
+export function stripSlashComments(content: string): string {
+  let out = '';
+  let quote: string | undefined;
+  for (let index = 0; index < content.length; index++) {
+    const character = content.charAt(index);
+    if (quote) {
+      out += character;
+      if (character === '\\') {
+        out += content.charAt(index + 1);
+        index++;
+      } else if (character === quote || character === '\n') {
+        quote = undefined;
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      out += character;
+      continue;
+    }
+    if (character === '/' && content.charAt(index + 1) === '/') {
+      const end = content.indexOf('\n', index);
+      if (end < 0) break;
+      index = end - 1;
+      continue;
+    }
+    if (character === '/' && content.charAt(index + 1) === '*') {
+      const end = content.indexOf('*/', index + 2);
+      if (end < 0) break;
+      out += ' ';
+      index = end + 1;
+      continue;
+    }
+    out += character;
+  }
+  return out;
+}
+
 export interface TomlKeyValue {
   readonly key: string;
   readonly value: string;
@@ -50,6 +95,15 @@ export function parseXmlAttributes(source: string): ReadonlyMap<string, string> 
     if (key !== undefined && value !== undefined) attributes.set(key, decodeXmlEntities(value));
   }
   return attributes;
+}
+
+/**
+ * MSBuild and Maven ignore `<!-- … -->`; a commented-out item is not a
+ * declaration, and matching the raw text inventoried removed packages as live
+ * dependencies (and let a commented property override the live one).
+ */
+export function stripXmlComments(content: string): string {
+  return content.replace(/<!--[\s\S]*?-->/g, '');
 }
 
 export function xmlTagValue(source: string, tag: string): string | undefined {

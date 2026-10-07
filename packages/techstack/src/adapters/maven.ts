@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { constructPurl } from '../registry/purl.js';
 import type { DependencyObservation, DependencyScope, EcosystemId, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
-import { xmlTagValue } from './parse-utils.js';
+import { stripXmlComments, xmlTagValue } from './parse-utils.js';
 import { manifestEvidence, resolveIn, workspaceRoot } from './paths.js';
 
 interface MavenDependency {
@@ -54,7 +54,8 @@ function resolveProperties(value: string, properties: ReadonlyMap<string, string
  * Minimal XML parser for `<dependency>` blocks inside pom.xml.
  * Does not handle inheritance/dependencyManagement — this is Tier B partial.
  */
-function parsePomDependencies(xml: string): MavenDependency[] {
+function parsePomDependencies(source: string): MavenDependency[] {
+  const xml = stripXmlComments(source);
   const deps: MavenDependency[] = [];
   const properties = new Map<string, string>();
   const propertiesBlock = /<properties>([\s\S]*?)<\/properties>/.exec(xml)?.[1] ?? '';

@@ -39,6 +39,61 @@ export function parsePipAudit(text: string): ParsedPackageReports {
   return { diagnostics, vulnerabilities, outdated: [] };
 }
 
+/**
+ * `bundle audit --format=json` (bundler-audit `Report#to_h`):
+ * `{results: [{type: 'unpatched_gem', gem: {name, version}, advisory: {id, url,
+ * title, patched_versions, criticality}}, {type: 'insecure_source', source}]}`.
+ * The Ruby profile named this parser but no case handled it, so every finding
+ * was dropped and the run (bundle-audit exits 1 on findings) read as failed.
+ */
+export function parseBundlerAudit(text: string): ParsedPackageReports {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const vulnerabilities: LanguagePackageVulnerability[] = [];
+  const document = parseJsonDocument(text) as { results?: unknown } | null;
+  const results = Array.isArray(document?.results) ? document.results : [];
+  for (const raw of results) {
+    const result = raw as {
+      type?: string;
+      source?: string;
+      gem?: { name?: string; version?: string };
+      advisory?: {
+        id?: string;
+        url?: string;
+        title?: string;
+        patched_versions?: unknown[];
+        criticality?: string | null;
+      };
+    };
+    if (result.type === 'insecure_source') {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'insecure-source',
+        message: `Insecure gem source: ${result.source ?? 'unknown'}.`,
+        source: 'bundler-audit',
+      });
+      continue;
+    }
+    const name = result.gem?.name;
+    const advisory = result.advisory;
+    if (!name || !advisory?.id) continue;
+    const fixedIn = advisory.patched_versions?.find((v): v is string => typeof v === 'string');
+    vulnerabilities.push({
+      package: name,
+      advisory: advisory.title ?? advisory.id,
+      severity: mapSeverity(advisory.criticality ?? undefined),
+      ...(fixedIn ? { fixedIn } : {}),
+      ...(advisory.url ? { url: advisory.url } : {}),
+    });
+    diagnostics.push({
+      severity: 'warning',
+      code: advisory.id,
+      message: `${name} ${result.gem?.version ?? ''} is affected by ${advisory.id}${fixedIn ? ` (fixed in ${fixedIn})` : ''}.`,
+      source: 'bundler-audit',
+    });
+  }
+  return { diagnostics, vulnerabilities, outdated: [] };
+}
+
 export function parseCargoAudit(text: string): ParsedPackageReports {
   const diagnostics: LanguageDiagnostic[] = [];
   const vulnerabilities: LanguagePackageVulnerability[] = [];
@@ -48,28 +103,42 @@ export function parseCargoAudit(text: string): ParsedPackageReports {
   } catch {
     return { diagnostics, vulnerabilities, outdated: [] };
   }
-  const findings = (root as { vulnerabilities?: { found?: unknown } }).vulnerabilities?.found;
-  if (!Array.isArray(findings)) return { diagnostics, vulnerabilities, outdated: [] };
+  // Real `cargo audit --json` (rustsec `Report`) carries `vulnerabilities:
+  // {found: boolean, count, list: [{advisory: {id, package, title, url}, versions:
+  // {patched}, package: {name}}]}`. Reading only `found` as the array parsed
+  // every real report as clean; the flat `found: [...]` shape is kept as well.
+  const info = (root as { vulnerabilities?: { found?: unknown; list?: unknown } }).vulnerabilities;
+  const findings = Array.isArray(info?.list)
+    ? info.list
+    : Array.isArray(info?.found)
+      ? info.found
+      : undefined;
+  if (!findings) return { diagnostics, vulnerabilities, outdated: [] };
   for (const finding of findings) {
     const item = finding as {
       id?: string;
-      package?: string;
+      package?: string | { name?: string };
       title?: string;
       severity?: string;
       patched_versions?: string[];
-      url?: { long?: string; short?: string };
-      advisory?: { id?: string };
+      url?: string | { long?: string; short?: string };
+      advisory?: { id?: string; package?: string; title?: string; url?: string };
+      versions?: { patched?: string[] };
     };
-    const name = item.package ?? 'unknown';
+    const name =
+      (typeof item.package === 'string' ? item.package : item.package?.name) ??
+      item.advisory?.package ??
+      'unknown';
     const advisory = item.id ?? item.advisory?.id ?? 'cargo-audit';
+    const title = item.title ?? item.advisory?.title;
+    const patched = item.patched_versions ?? item.versions?.patched;
+    const url = typeof item.url === 'string' ? item.url : (item.url?.short ?? item.advisory?.url);
     vulnerabilities.push({
       package: name,
-      ...(item.title ? { advisory: item.title } : { advisory }),
+      ...(title ? { advisory: title } : { advisory }),
       severity: mapSeverity(item.severity),
-      ...(item.patched_versions && item.patched_versions.length > 0
-        ? { fixedIn: item.patched_versions[0] }
-        : {}),
-      ...(item.url?.short ? { url: item.url.short } : {}),
+      ...(patched && patched.length > 0 ? { fixedIn: patched[0] } : {}),
+      ...(url ? { url } : {}),
     });
     diagnostics.push({
       severity:
@@ -77,7 +146,7 @@ export function parseCargoAudit(text: string): ParsedPackageReports {
           ? 'error'
           : 'warning',
       code: advisory,
-      message: item.title ?? `${name} reported by cargo-audit.`,
+      message: title ?? `${name} reported by cargo-audit.`,
       source: 'cargo-audit',
     });
   }

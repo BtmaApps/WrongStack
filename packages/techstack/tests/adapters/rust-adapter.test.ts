@@ -116,6 +116,20 @@ describe('RustAdapter', () => {
     }
   });
 
+  // Joined into one logical line, a `# comment` on a wrapped line commented out
+  // the rest of the entry, the table never closed and the crate vanished.
+  it('keeps a wrapped inline table whose lines carry comments', async () => {
+    const cargo = CARGO_WRAPPED.replace('"rt-multi-thread",', '"rt-multi-thread", # runtime');
+    const { dir, ws } = mkWorkspace({ 'Cargo.toml': cargo, 'Cargo.lock': LOCK_WRAPPED });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.name).sort()).toEqual(['criterion', 'serde', 'tokio']);
+      expect(deps.find((d) => d.name === 'tokio')?.requested).toBe('1.40');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   // Cargo.lock legitimately lists several instances of one crate; the last
   // entry is the highest version, which the manifest requirement may not be
   // able to select (`syn = "1.0"` is a caret requirement).

@@ -40,6 +40,11 @@ interface GoRequireStmt {
   readonly indirect?: boolean;
 }
 
+/** go.mod may quote a module path (`require "example.com/m" v1.0.0`). */
+function unquoteGo(token: string): string {
+  return token.replace(/^"(.*)"$/, '$1');
+}
+
 /**
  * Parse a go.mod file to extract require statements.
  * Handles:
@@ -56,10 +61,16 @@ function parseGoMod(content: string): GoRequireStmt[] {
   let inRequireBlock = false;
 
   for (const raw of lines) {
-    const line = raw.trim();
+    // Any go.mod line may end in a `//` comment — a block's `)` and a
+    // single-line require included — so structure is read from the code part.
+    const line = raw
+      .trim()
+      .replace(/\/\/.*$/, '')
+      .trim();
+    const indirect = /\/\/\s*indirect\b/.test(raw);
 
     // Skip comments and empty lines
-    if (line === '' || line.startsWith('//')) continue;
+    if (line === '') continue;
 
     // Track require blocks (with or without space before paren)
     if (/^require\s*\(/.test(line)) {
@@ -69,10 +80,7 @@ function parseGoMod(content: string): GoRequireStmt[] {
     if (line.startsWith('require ') && !line.includes('(')) {
       // Single-line require
       const m = line.match(/^require\s+(\S+)\s+(\S+)/);
-      if (m) {
-        const indirect = raw.includes('// indirect');
-        deps.push({ modulePath: m[1]!, version: cleanGoVersion(m[2]!), indirect });
-      }
+      if (m) deps.push({ modulePath: unquoteGo(m[1]!), version: cleanGoVersion(m[2]!), indirect });
       continue;
     }
 
@@ -83,10 +91,7 @@ function parseGoMod(content: string): GoRequireStmt[] {
       }
       // Module path v1.2.3 // indirect
       const m = line.match(/^(\S+)\s+(\S+)/);
-      if (m) {
-        const indirect = raw.includes('// indirect');
-        deps.push({ modulePath: m[1]!, version: cleanGoVersion(m[2]!), indirect });
-      }
+      if (m) deps.push({ modulePath: unquoteGo(m[1]!), version: cleanGoVersion(m[2]!), indirect });
       continue;
     }
 

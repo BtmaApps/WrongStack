@@ -40,14 +40,17 @@ function parseGemfile(content: string): Array<{
   // groups) and the inline `group:`/`groups:` option. A gem belongs to the
   // union; it is a development dependency only when every group it is in is
   // `development` or `test` — reporting those as runtime skewed triage.
-  const enclosing: Array<readonly string[]> = [];
+  // `git '…' do` / `github '…' do` / `path '…' do` blocks also set the source
+  // of every gem inside them — those gems never come from rubygems.org.
+  const enclosing: Array<{ readonly groups: readonly string[]; readonly source?: 'git' | 'path' }> =
+    [];
   // A Gemfile declares dependencies through LIVE `gem '…'` calls; commented-out
   // text is not a declaration. Scanning the raw file inventoried
   // `# gem 'nokogiri'` as a real dependency and let a trailing comment forge the
   // source type (`gem 'redis' # git: …` came out as a git dependency).
   // `stripInlineComment` already understands quotes and escapes, so a `#` inside
   // a name, version or repository URL survives.
-  for (const line of content.split('\n').map((raw) => stripInlineComment(raw))) {
+  for (const line of logicalGemfileLines(content)) {
     if (/^\s*end\b/.test(line)) {
       enclosing.pop();
       continue;
@@ -58,7 +61,15 @@ function parseGemfile(content: string): Array<{
       /^\s*(?:if|unless|case|begin|while|until|def)\b/.test(line)
     ) {
       const group = /^\s*group\b(.*)\bdo\b/.exec(line);
-      enclosing.push(group ? gemGroupNames(group[1]!) : []);
+      const source = /^\s*(?:git|github)\b/.test(line)
+        ? 'git'
+        : /^\s*path\b/.test(line)
+          ? 'path'
+          : undefined;
+      enclosing.push({
+        groups: group ? gemGroupNames(group[1]!) : [],
+        ...(source ? { source } : {}),
+      });
       continue;
     }
     for (const match of line.matchAll(gemRegex)) {
@@ -68,13 +79,20 @@ function parseGemfile(content: string): Array<{
       if (name === 'ruby') continue;
       const tail = match[2] ?? '';
       const version = /^\s*,\s*['"]([^'"]+)['"]/.exec(tail)?.[1];
+      const blockSource = enclosing.reduce<'git' | 'path' | undefined>(
+        (source, block) => block.source ?? source,
+        undefined,
+      );
       const sourceType = /\b(?:git|github):/.test(tail)
         ? 'git'
         : /\bpath:/.test(tail)
           ? 'path'
-          : 'registry';
+          : (blockSource ?? 'registry');
       const inline = /(?:\bgroups?:|:groups?\s*=>)\s*(\[[^\]]*\]|:\w+|['"]\w+['"])/.exec(tail)?.[1];
-      const groups = [...enclosing.flat(), ...(inline ? gemGroupNames(inline) : [])];
+      const groups = [
+        ...enclosing.flatMap((block) => block.groups),
+        ...(inline ? gemGroupNames(inline) : []),
+      ];
       const scope: DependencyScope =
         groups.length > 0 && groups.every((group) => group === 'development' || group === 'test')
           ? 'development'
@@ -83,6 +101,25 @@ function parseGemfile(content: string): Array<{
     }
   }
   return gems;
+}
+
+/**
+ * Comment-stripped Gemfile lines, with a call continued after a trailing comma
+ * (`gem 'devise',` ⏎ `  git: '…'`) joined into one line — read line by line,
+ * the continuation's `git:`/`path:`/`group:` options and version were lost.
+ */
+function logicalGemfileLines(content: string): string[] {
+  const lines: string[] = [];
+  let pending = '';
+  for (const raw of content.split('\n')) {
+    const line = stripInlineComment(raw);
+    pending = pending ? `${pending.trimEnd()} ${line.trim()}` : line;
+    if (/,\s*$/.test(pending)) continue;
+    lines.push(pending);
+    pending = '';
+  }
+  if (pending) lines.push(pending);
+  return lines;
 }
 
 /** `:development, :test` / `[:test]` / `'test'` → group names. */

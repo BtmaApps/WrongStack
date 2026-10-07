@@ -454,16 +454,27 @@ function scopeForSection(section: string): DependencyScope {
 }
 
 /**
- * Determine status: local_path for file: / link: / workspace:,
- * git_dependency for git+ / github: / git:, registry otherwise.
+ * npm's spec grammar (npm-package-arg) for what is NOT a registry package. A
+ * prefix list (file:/link:/workspace:/git+/github:/git:) missed paths written
+ * without `file:` (`../lib`), hosted shorthands (`user/repo#tag`, `gitlab:u/r`),
+ * scp-style git (`git@host:u/r.git`) and tarball URLs — each was inventoried as
+ * `pkg:npm/<manifest key>`, a public package that is not what gets installed.
+ */
+const NPM_LOCAL_SPEC =
+  /^(?:file:|link:|workspace:|portal:|\.{1,2}(?:[\\/]|$)|~[\\/]|[\\/]|[a-z]:[\\/])|\.(?:tgz|tar\.gz|tar)$/i;
+const NPM_GIT_SPEC =
+  /^(?:git\+|git:|github:|gitlab:|bitbucket:|gist:|[^@\s/:]+@[^\s/:]+:|[^\s@/:#]+\/[^\s/:#]+(?:#.*)?$)|^https?:\/\/\S+\.git(?:#.*)?$/i;
+/** A remote tarball; recorded like a local archive, as the other adapters do. */
+const NPM_URL_SPEC = /^https?:\/\//i;
+
+/**
+ * Determine status: local_path for a path, workspace link or tarball,
+ * git_dependency for a git URL or hosted shorthand, registry otherwise.
  */
 function statusForSpec(spec: string): DependencyStatus {
-  if (spec.startsWith('file:') || spec.startsWith('link:') || spec.startsWith('workspace:')) {
-    return 'local_path';
-  }
-  if (spec.startsWith('git+') || spec.startsWith('github:') || spec.startsWith('git:')) {
-    return 'git_dependency';
-  }
+  if (NPM_LOCAL_SPEC.test(spec)) return 'local_path';
+  if (NPM_GIT_SPEC.test(spec)) return 'git_dependency';
+  if (NPM_URL_SPEC.test(spec)) return 'local_path';
   return 'current';
 }
 
@@ -471,14 +482,7 @@ function statusForSpec(spec: string): DependencyStatus {
  * Check if a spec is a local/git reference (not resolvable to a registry version).
  */
 function isRegistrySpec(spec: string): boolean {
-  return (
-    !spec.startsWith('file:') &&
-    !spec.startsWith('link:') &&
-    !spec.startsWith('workspace:') &&
-    !spec.startsWith('git+') &&
-    !spec.startsWith('github:') &&
-    !spec.startsWith('git:')
-  );
+  return statusForSpec(spec) === 'current';
 }
 
 // ── Adapter ──────────────────────────────────────────────────────────────

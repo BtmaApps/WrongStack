@@ -12,6 +12,7 @@ import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { EcosystemId, Evidence } from '../types.js';
+import { cvssBaseScore } from './cvss.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,24 @@ function npmSeverity(s: string): NativeAdvisory['severity'] {
 }
 
 /** Map cargo-audit severity strings */
-function cargoSeverity(s: string): NativeAdvisory['severity'] {
+/**
+ * Real cargo-audit advisories carry a CVSS VECTOR in `cvss`
+ * (`CVSS:3.1/AV:N/…`), never a severity word; taking the first `/` segment
+ * read "CVSS:3.1" and every advisory fell through to `info`. Score the vector
+ * (same calculator OSV severities use) and band it; a bare word still maps.
+ */
+function cargoSeverity(cvss: string): NativeAdvisory['severity'] {
+  if (/^CVSS:3\.[01]\//i.test(cvss)) {
+    const score = cvssBaseScore('CVSS_V3', cvss);
+    if (score !== undefined) {
+      if (score >= 9) return 'critical';
+      if (score >= 7) return 'high';
+      if (score >= 4) return 'medium';
+      if (score > 0) return 'low';
+      return 'info';
+    }
+  }
+  const s = cvss.split('/')[0] ?? '';
   switch (s.toLowerCase()) {
     case 'critical':
       return 'critical';
@@ -202,7 +220,10 @@ export async function runPipAudit(
     }
   }
 
-  const args = ['audit', '--format', 'json'];
+  // pip-audit has no subcommands: a leading `audit` became its positional
+  // `project_path`, which `-r` rejects as mutually exclusive and which
+  // otherwise names a directory that does not exist.
+  const args = ['--format', 'json'];
   if (reqFlag) {
     args.push(...reqFlag.split(' '));
   }
@@ -215,20 +236,46 @@ function parsePipAuditOutput(result: AuditCommandResult): NativeAuditResult {
   const advisories: NativeAdvisory[] = [];
   let detailLines: string[] = [];
 
-  if (result.status === 0 || result.stdout?.trim().startsWith('[')) {
+  // pip-audit exits 1 when it found vulnerabilities, with the report on stdout.
+  const stdout = result.stdout?.trim() ?? '';
+  if (result.status === 0 || stdout.startsWith('{') || stdout.startsWith('[')) {
     try {
-      const json = JSON.parse(result.stdout || '[]') as Array<Record<string, unknown>>;
-      for (const entry of json) {
-        advisories.push({
-          id: (entry.id as string) ?? (entry.vulnerability_id as string) ?? 'unknown',
-          packageName: (entry.name as string) ?? '',
-          severity: npmSeverity((entry.severity as string) ?? 'info'),
-          summary:
-            (entry.description as string) ?? (entry.vulnerability_id as string) ?? 'No summary',
-          fixVersion: (entry.fix_version as string) ?? undefined,
-          url: (entry.advisory_url as string) ?? undefined,
-          aliases: (entry.aliases as string[]) ?? [],
-        });
+      // Real JSON format (pip_audit/_format/json.py): `{dependencies: [{name,
+      // version, vulns: [{id, fix_versions, aliases, description}]} | {name,
+      // skip_reason}], fixes}` — findings are nested per dependency and carry
+      // no severity. A bare array of dependencies is accepted too.
+      const json = JSON.parse(stdout || '{}') as unknown;
+      const dependencies = (
+        Array.isArray(json) ? json : ((json as { dependencies?: unknown }).dependencies ?? [])
+      ) as Array<{
+        name?: unknown;
+        vulns?: Array<{
+          id?: unknown;
+          fix_versions?: unknown;
+          aliases?: unknown;
+          description?: unknown;
+        }>;
+      }>;
+      for (const dep of dependencies) {
+        if (typeof dep?.name !== 'string' || !Array.isArray(dep.vulns)) continue;
+        for (const vuln of dep.vulns) {
+          if (typeof vuln?.id !== 'string') continue;
+          const fixVersions = Array.isArray(vuln.fix_versions) ? vuln.fix_versions : [];
+          const description =
+            typeof vuln.description === 'string' && vuln.description.trim() !== ''
+              ? vuln.description
+              : undefined;
+          advisories.push({
+            id: vuln.id,
+            packageName: dep.name,
+            severity: 'info',
+            summary: description ?? vuln.id,
+            fixVersion: typeof fixVersions[0] === 'string' ? fixVersions[0] : undefined,
+            aliases: Array.isArray(vuln.aliases)
+              ? vuln.aliases.filter((alias): alias is string => typeof alias === 'string')
+              : [],
+          });
+        }
       }
     } catch {
       detailLines = ['Failed to parse pip-audit JSON output'];
@@ -279,9 +326,16 @@ function parseCargoAuditOutput(result: AuditCommandResult): NativeAuditResult {
           advisories.push({
             id: (advisory.id as string) ?? 'unknown',
             packageName: (pkg?.name as string) ?? '',
-            severity: cargoSeverity(((advisory.cvss as string) ?? '').split('/')?.[0] ?? 'info'),
+            severity: cargoSeverity((advisory.cvss as string) ?? ''),
             summary: (advisory.title as string) ?? (advisory.description as string) ?? 'No summary',
-            fixVersion: (advisory.patched_versions as string) ?? undefined,
+            // rustsec puts the patched ranges beside the advisory, in
+            // `versions.patched`; `advisory.patched_versions` never exists.
+            fixVersion:
+              ((adv.versions as { patched?: unknown[] } | undefined)?.patched?.find(
+                (v): v is string => typeof v === 'string',
+              ) ??
+                (advisory.patched_versions as string)) ||
+              undefined,
             url: (advisory.url as string) ?? undefined,
             aliases: (advisory.aliases as string[]) ?? [],
           });

@@ -85,6 +85,12 @@ export function compareVersions(a: string, b: string): number {
     aBaseSegments.some((segment) => !/^\d+$/.test(segment)) ||
     bBaseSegments.some((segment) => !/^\d+$/.test(segment))
   ) {
+    // PEP 440 forms the semver split cannot read — post-releases
+    // (`2.9.0.post0`), hyphen-less pre-releases (`5.0rc1`), `.devN` — used to
+    // throw here, and classifyStatus then reported the outdated dependency
+    // as `current`.
+    const pep = comparePep440(a, b);
+    if (pep !== undefined) return pep;
     throw new Error('Invalid numeric version segment');
   }
   const aBaseParts = aBaseSegments.map(BigInt);
@@ -121,6 +127,64 @@ export function compareVersions(a: string, b: string): number {
     }
     if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
     return aId > bId ? 1 : -1;
+  }
+  return 0;
+}
+
+const PEP440_VERSION =
+  /^(?:(\d+)!)?(\d+(?:\.\d+)*)(?:[-_.]?(a|alpha|b|beta|c|rc|pre|preview)[-_.]?(\d*))?(?:-(\d+)|[-_.]?(post|rev|r)[-_.]?(\d*))?(?:[-_.]?(dev)[-_.]?(\d*))?$/i;
+const PEP440_PRE_RANK: Readonly<Record<string, number>> = {
+  a: 0,
+  alpha: 0,
+  b: 1,
+  beta: 1,
+  c: 2,
+  rc: 2,
+  pre: 2,
+  preview: 2,
+};
+
+/** `packaging.version` sort key (local labels excluded); undefined when not PEP 440. */
+function pep440Key(version: string): bigint[] | undefined {
+  const m = PEP440_VERSION.exec(version);
+  if (!m) return undefined;
+  const release = m[2]!.split('.').map(BigInt);
+  while (release.length > 1 && release[release.length - 1] === 0n) release.pop();
+  const hasPre = m[3] !== undefined;
+  const hasPost = m[5] !== undefined || m[6] !== undefined;
+  const hasDev = m[8] !== undefined;
+  const NEG = -1n;
+  const POS = BigInt(Number.MAX_SAFE_INTEGER);
+  // A dev-only release sorts before its pre-releases; no pre sorts after them.
+  const pre: [bigint, bigint] = hasPre
+    ? [BigInt(PEP440_PRE_RANK[m[3]!.toLowerCase()]!), BigInt(m[4] || '0')]
+    : !hasPost && hasDev
+      ? [NEG, NEG]
+      : [POS, POS];
+  const post = hasPost ? BigInt(m[5] ?? (m[7] || '0')) : NEG;
+  const dev = hasDev ? BigInt(m[9] || '0') : POS;
+  // Fixed layout: epoch, release length, release…, pre, post, dev — release is
+  // compared element-wise below, so the key carries its length first.
+  return [BigInt(m[1] ?? '0'), BigInt(release.length), ...release, ...pre, post, dev];
+}
+
+/** Compare two PEP 440 versions; undefined when either is not PEP 440. */
+function comparePep440(a: string, b: string): number | undefined {
+  const ka = pep440Key(a);
+  const kb = pep440Key(b);
+  if (!ka || !kb) return undefined;
+  if (ka[0] !== kb[0]) return ka[0]! > kb[0]! ? 1 : -1;
+  const la = Number(ka[1]);
+  const lb = Number(kb[1]);
+  for (let i = 0; i < Math.max(la, lb); i++) {
+    const x = i < la ? ka[2 + i]! : 0n;
+    const y = i < lb ? kb[2 + i]! : 0n;
+    if (x !== y) return x > y ? 1 : -1;
+  }
+  const ta = ka.slice(2 + la);
+  const tb = kb.slice(2 + lb);
+  for (let i = 0; i < ta.length; i++) {
+    if (ta[i] !== tb[i]) return ta[i]! > tb[i]! ? 1 : -1;
   }
   return 0;
 }

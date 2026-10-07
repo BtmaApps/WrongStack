@@ -204,7 +204,9 @@ function parseGoMod(content: string): DeclaredDependency[] {
   let inBlock = false;
 
   for (const rawLine of content.split(/\r?\n/)) {
-    const line = stripTomlComment(rawLine).trim();
+    // go.mod comments are `//` (not `#`): a commented-out line inside a
+    // `require ( … )` block used to come back as a dependency named "//".
+    const line = rawLine.replace(/\/\/.*$/, '').trim();
     if (!line) continue;
 
     if (inBlock) {
@@ -233,8 +235,17 @@ function parseGoMod(content: string): DeclaredDependency[] {
 function parseRequirementsTxt(content: string): DeclaredDependency[] {
   const out: DeclaredDependency[] = [];
   for (const rawLine of content.split(/\r?\n/)) {
-    const line = stripTomlComment(rawLine).trim();
+    // pip: `#` starts a comment only at line start or after whitespace — the
+    // `#egg=` fragment of a VCS/URL requirement is not a comment.
+    const line = rawLine.replace(/(^|\s)#.*$/, '').trim();
     if (!line || line.startsWith('-')) continue;
+    // `git+https://…#egg=pkg` / `https://…/pkg.whl`: not `name<op>version`.
+    // Reading the scheme as a package name reported a dependency "git".
+    if (/^(?:(?:git|hg|svn|bzr)\+|[a-z][a-z0-9+.-]*:\/\/)/i.test(line)) {
+      const egg = /[#&]egg=([A-Za-z0-9._-]+)/.exec(line)?.[1];
+      if (egg) out.push({ name: egg, range: line.replace(/#.*$/, ''), section: 'dependencies' });
+      continue;
+    }
     const entry = /^([A-Za-z0-9._-]+)\s*(\[[^\]]*\])?\s*(.*)$/.exec(line);
     const name = entry?.[1];
     if (!name) continue;

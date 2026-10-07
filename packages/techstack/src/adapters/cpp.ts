@@ -9,28 +9,114 @@
 
 import { readFileSync } from 'node:fs';
 import { buildPurl } from '../registry/purl.js';
-import type { DependencyObservation, EcosystemId, Workspace } from '../types.js';
+import type { DependencyObservation, DependencyScope, EcosystemId, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripInlineComment } from './parse-utils.js';
 import { manifestEvidence } from './paths.js';
+
+interface CppDependency {
+  name: string;
+  version?: string | undefined;
+  minimumVersion?: boolean;
+  scope?: DependencyScope;
+}
+
+/**
+ * A Conan reference `name/version[@user/channel][#revision]`. The user/channel
+ * and the recipe revision are not part of the version; left in, they produced
+ * `pkg:conan/boost@1.80.0%40conan`.
+ */
+function parseConanReference(reference: string): CppDependency | undefined {
+  const trimmed = reference.trim();
+  if (!trimmed) return undefined;
+  const slash = trimmed.indexOf('/');
+  if (slash < 0) return { name: trimmed };
+  const version = trimmed.slice(slash + 1).replace(/[@#].*$/, '');
+  return { name: trimmed.slice(0, slash), ...(version ? { version } : {}) };
+}
 
 /**
  * Parse conanfile.txt `[requires]` section.
+ *
+ * Sections are whole `[name]` lines. Ending the section at the next `[`
+ * anywhere cut it at a version range (`openssl/[>=3.0 <4]`), dropping that
+ * dependency's range and every dependency listed after it.
  */
-function parseConanTxt(content: string): Array<{ name: string; version?: string | undefined }> {
-  const deps: Array<{ name: string; version?: string | undefined }> = [];
-  const requiresMatch = /\[requires\]\s*\n([\s\S]*?)(?:\[|$)/;
-  const block = requiresMatch.exec(content)?.[1];
-  if (!block) return deps;
-
-  for (const line of block.split('\n')) {
+function parseConanTxt(content: string): CppDependency[] {
+  const deps: CppDependency[] = [];
+  let inRequires = false;
+  for (const line of content.split('\n')) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const parts = trimmed.split('/');
-    if (parts.length >= 2) {
-      deps.push({ name: parts[0]!, version: parts[1] });
-    } else {
-      deps.push({ name: trimmed });
+    const section = /^\[([\w-]+)\]$/.exec(trimmed);
+    if (section) {
+      inRequires = section[1] === 'requires';
+      continue;
     }
+    if (!inRequires || !trimmed || trimmed.startsWith('#')) continue;
+    const dep = parseConanReference(trimmed);
+    if (dep) deps.push(dep);
+  }
+  return deps;
+}
+
+/** The quoted strings of a Python value starting at `start`: `"a", "b"`, `("a", "b")`, `["a"]`. */
+function quotedValuesAt(source: string, start: number): string[] {
+  const values: string[] = [];
+  let depth = 0;
+  for (let index = start; index < source.length; index++) {
+    const character = source.charAt(index);
+    if (character === '"' || character === "'") {
+      const end = source.indexOf(character, index + 1);
+      if (end < 0) break;
+      values.push(source.slice(index + 1, end));
+      index = end;
+    } else if (character === '(' || character === '[') {
+      depth++;
+    } else if (character === ')' || character === ']') {
+      if (--depth <= 0) break;
+    } else if (character === '\n' && depth === 0) {
+      break;
+    } else if (!/[\s,]/.test(character)) {
+      break;
+    }
+  }
+  return values;
+}
+
+const CONAN_REQUIREMENT_SCOPE: Readonly<Record<string, DependencyScope>> = {
+  requires: 'runtime',
+  test_requires: 'development',
+  tool_requires: 'build',
+  build_requires: 'build',
+};
+
+/**
+ * Parse a conanfile.py recipe: the `requires = …` class attributes (and the
+ * test/tool/build variants) and `self.requires("…")` calls. The recipe used to
+ * go through the conanfile.txt parser, which looks for a `[requires]` section a
+ * Python file never has, so every recipe inventoried as empty.
+ */
+function parseConanPy(source: string): CppDependency[] {
+  const content = source
+    .split('\n')
+    .map((line) => stripInlineComment(line))
+    .join('\n');
+  const deps: CppDependency[] = [];
+  const push = (kind: string, reference: string): void => {
+    const dep = parseConanReference(reference);
+    if (dep) deps.push({ ...dep, scope: CONAN_REQUIREMENT_SCOPE[kind] ?? 'runtime' });
+  };
+  for (const match of content.matchAll(
+    /^[ \t]*(requires|test_requires|tool_requires|build_requires)[ \t]*=[ \t]*/gm,
+  )) {
+    for (const reference of quotedValuesAt(content, match.index + match[0].length)) {
+      push(match[1]!, reference);
+    }
+  }
+  for (const match of content.matchAll(
+    /\bself\.(requires|test_requires|tool_requires|build_requires)\(\s*(["'])([^"']+)\2/g,
+  )) {
+    push(match[1]!, match[3]!);
   }
   return deps;
 }
@@ -38,10 +124,8 @@ function parseConanTxt(content: string): Array<{ name: string; version?: string 
 /**
  * Parse vcpkg.json `dependencies` array.
  */
-function parseVcpkgJson(
-  content: string,
-): Array<{ name: string; version?: string | undefined; minimumVersion?: boolean }> {
-  const deps: Array<{ name: string; version?: string | undefined; minimumVersion?: boolean }> = [];
+function parseVcpkgJson(content: string): CppDependency[] {
+  const deps: CppDependency[] = [];
   try {
     const json = JSON.parse(content) as {
       dependencies?: Array<string | { name: string; version?: string; 'version>='?: string }>;
@@ -82,10 +166,11 @@ export class CppAdapter implements EcosystemAdapter {
       }
 
       const manifestEv = manifestEvidence(manifestPath);
-      let deps: Array<{ name: string; version?: string | undefined; minimumVersion?: boolean }> =
-        [];
+      let deps: CppDependency[] = [];
 
-      if (manifestPath.includes('conanfile')) {
+      if (manifestPath.endsWith('conanfile.py')) {
+        deps = parseConanPy(content);
+      } else if (manifestPath.includes('conanfile')) {
         deps = parseConanTxt(content);
       } else if (manifestPath.includes('vcpkg.json')) {
         deps = parseVcpkgJson(content);
@@ -97,8 +182,9 @@ export class CppAdapter implements EcosystemAdapter {
         if (seen.has(dep.name)) continue;
         seen.add(dep.name);
 
+        // A Conan range (`[>=3.0 <4]`) is a constraint, not a version.
         const purl =
-          dep.version && !dep.minimumVersion
+          dep.version && !dep.minimumVersion && !dep.version.startsWith('[')
             ? buildPurl({ type: 'conan', name: dep.name, version: dep.version })
             : buildPurl({ type: 'conan', name: dep.name });
 
@@ -110,7 +196,7 @@ export class CppAdapter implements EcosystemAdapter {
           name: dep.name,
           sourceType: 'registry',
           direct: true,
-          scope: 'runtime',
+          scope: dep.scope ?? 'runtime',
           ...(dep.version ? { requested: dep.version } : {}),
           // Tier C — we cannot verify current/version status
           status: 'unknown',

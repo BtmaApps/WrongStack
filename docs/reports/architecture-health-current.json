@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T07:40:05.683Z",
+  "generatedAt": "2026-10-07T07:41:15.259Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4829,
-    "testFiles": 4164,
-    "sourceLines": 1078596,
+    "testFiles": 4165,
+    "sourceLines": 1079081,
     "workspaceEdges": 133,
-    "moduleEdges": 15892,
+    "moduleEdges": 15897,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -721,7 +721,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 51,
-      "testFiles": 49,
+      "testFiles": 50,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -736,7 +736,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 49
+          "testFiles": 50
         }
       ]
     },
@@ -16230,6 +16230,12 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/adapters/gradle-subproject-catalog.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/adapters/gradle-swift.test.ts",
         "projects": [
           "root-node"
@@ -26289,6 +26295,11 @@
       "relativeImports": 8
     },
     {
+      "file": "packages/techstack/src/advisory/native-audit.ts",
+      "lines": 799,
+      "relativeImports": 2
+    },
+    {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 797,
       "relativeImports": 13
@@ -26527,11 +26538,6 @@
       "file": "packages/webui-server/src/server/ws-payload-preferences.ts",
       "lines": 767,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/tools/src/todo.ts",
-      "lines": 766,
-      "relativeImports": 2
     }
   ],
   "testOnlyExports": [

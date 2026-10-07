@@ -249,13 +249,19 @@ export class DartAdapter implements EcosystemAdapter {
         // `*` means "any version" — there is no declared version to report, and
         // it must not leak into the purl as `@*`.
         const declared = constraint === '*' ? undefined : constraint;
-        // Strip caret/tilde/>= for PURL — use locked if available
+        // Strip caret/tilde/>= for PURL — use locked if available. A range with
+        // more than one comparator (`>=0.17.0 <0.20.0`) has no single version to
+        // stand in; stripping only its leading operator wrote the whole range
+        // into the purl (`pkg:pub/intl@0.17.0%20%3C0.20.0`).
+        const declaredVersion = declared?.replace(/^[\^~>=<\s]+/, '');
+        const purlVersion =
+          locked || (declaredVersion && !/\s/.test(declaredVersion) ? declaredVersion : undefined);
         // constructPurl maps the ecosystem id to the canonical PURL type
         // (`pkg:pub/…`); the raw id (`pkg:dart/…`) is unresolvable by this
         // package's own parsePurlEcosystem and by OSV advisory queries.
         const purl =
-          isRegistry && (locked || declared)
-            ? constructPurl('dart', name, locked || declared!.replace(/^[\^~>=<\s]+/, ''))
+          isRegistry && purlVersion
+            ? constructPurl('dart', name, purlVersion)
             : isRegistry
               ? constructPurl('dart', name)
               : undefined;

@@ -5,6 +5,7 @@ import { basename, join } from 'node:path';
 import { buildPurl } from '../registry/purl.js';
 import type { DependencyObservation, EcosystemId, Evidence, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripSlashComments } from './parse-utils.js';
 import { fileExists, lockfileEvidence, manifestEvidence, workspaceRoot } from './paths.js';
 
 interface SwiftManifestDependency {
@@ -37,7 +38,8 @@ function parsePackageSwift(content: string): SwiftManifestDependency[] {
   // their LOWER bound, the version the manifest actually asks for.
   const packageRegex =
     /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:(?:from|exact|branch|revision):\s*["']([^"']+)["']|\.(?:upToNextMajor|upToNextMinor|exact|branch|revision)\s*\(\s*(?:from:\s*)?["']([^"']+)["']\s*\)|["']([^"']+)["']\s*\.\.(?:\.|<?)?\s*["'][^"']*["']))?\s*\)/g;
-  for (const match of content.matchAll(packageRegex)) {
+  // A commented-out `.package(…)` is not a dependency.
+  for (const match of stripSlashComments(content).matchAll(packageRegex)) {
     const location = match[2];
     if (!location) continue;
     deps.push({

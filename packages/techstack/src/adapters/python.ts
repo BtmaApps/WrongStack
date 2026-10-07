@@ -52,67 +52,65 @@ function parseTomlSections(content: string): TomlSection[] {
 }
 
 /**
- * Index of the first `]` that closes the TOML array, or -1.
- *
- * A PEP 508 requirement may carry extras — `"requests[socks]>=2.32"` — so the
- * first `]` on the line is usually part of the requirement string, not the
- * array terminator. Taking it anyway closed the array on the extras entry and
- * dropped every later dependency from the inventory. Quoted spans are skipped
- * so only an unquoted `]` terminates.
+ * Items of the TOML array that opens at `text[0]` (just after `[`), read the
+ * way TOML reads them. A PEP 508 requirement may carry extras
+ * (`"requests[socks]>=2.32"`) and a comma-separated specifier list
+ * (`"django>=4.2,<5.0"`), so neither the first `]` nor every `,` is
+ * structural: splitting a one-line array on commas turned `<5.0` into a
+ * dependency of its own and cut django's upper bound. Strings (basic and
+ * literal) are the items; `#` comments are skipped; an inline table
+ * (`{ include-group = "dev" }`) is returned raw so callers can recognise it.
  */
-function arrayCloseIndex(text: string): number {
-  let quote: '"' | "'" | undefined;
-  for (let i = 0; i < text.length; i++) {
-    const character = text[i];
-    if (quote !== undefined) {
-      if (character === quote) quote = undefined;
-      continue;
+function scanTomlArray(text: string): string[] {
+  const items: string[] = [];
+  let i = 0;
+  const readString = (quote: string): string => {
+    let out = '';
+    i++;
+    while (i < text.length && text[i] !== quote) {
+      if (quote === '"' && text[i] === '\\' && i + 1 < text.length) i++;
+      out += text[i];
+      i++;
     }
+    i++;
+    return out;
+  };
+  while (i < text.length) {
+    const character = text[i]!;
+    if (character === ']') return items;
     if (character === '"' || character === "'") {
-      quote = character;
-      continue;
+      items.push(readString(character).trim());
+    } else if (character === '#') {
+      while (i < text.length && text[i] !== '\n') i++;
+    } else if (character === '{') {
+      const begin = i;
+      let depth = 0;
+      while (i < text.length) {
+        const c = text[i]!;
+        if (c === '"' || c === "'") {
+          readString(c);
+          continue;
+        }
+        if (c === '{') depth++;
+        else if (c === '}' && --depth === 0) break;
+        i++;
+      }
+      i++;
+      items.push(text.slice(begin, i));
+    } else {
+      i++;
     }
-    if (character === ']') return i;
   }
-  return -1;
+  return items;
 }
 
 function extractTomlArray(sectionLines: string[], key: string): string[] {
-  const result: string[] = [];
-  let inArray = false;
-  for (const line of sectionLines) {
-    const trimmed = line.trim();
-    if (!inArray) {
-      const match = trimmed.match(new RegExp(`^${key}\\s*=\\s*\\[`));
-      if (match) {
-        inArray = true;
-        const rest = trimmed.slice(match[0].length);
-        const closeIdx = arrayCloseIndex(rest);
-        if (closeIdx >= 0) {
-          const items = rest.slice(0, closeIdx).trim();
-          for (const item of items.split(',')) {
-            const cleaned = item.trim().replace(/^"|"$/g, '').trim();
-            if (cleaned) result.push(cleaned);
-          }
-          inArray = false;
-        }
-      }
-    } else {
-      const closeIdx = arrayCloseIndex(trimmed);
-      if (closeIdx >= 0) {
-        const items = trimmed.slice(0, closeIdx).trim();
-        for (const item of items.split(',')) {
-          const cleaned = item.trim().replace(/^"|"$/g, '').trim();
-          if (cleaned) result.push(cleaned);
-        }
-        inArray = false;
-      } else {
-        const cleaned = trimmed.replace(/,$/, '').trim().replace(/^"|"$/g, '').trim();
-        if (cleaned) result.push(cleaned);
-      }
-    }
-  }
-  return result;
+  const keyRe = new RegExp(`^${key}\\s*=\\s*\\[`);
+  const start = sectionLines.findIndex((line) => keyRe.test(line.trim()));
+  if (start < 0) return [];
+  const first = sectionLines[start]!.trim();
+  const body = [first.slice(first.match(keyRe)![0].length), ...sectionLines.slice(start + 1)];
+  return scanTomlArray(body.join('\n')).filter((item) => item !== '');
 }
 
 /**

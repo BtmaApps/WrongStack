@@ -12,7 +12,7 @@ import { dirname, join, resolve } from 'node:path';
 import { constructPurl } from '../registry/purl.js';
 import type { DependencyObservation, EcosystemId, Evidence, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
-import { parseXmlAttributes, xmlTagValue } from './parse-utils.js';
+import { parseXmlAttributes, stripXmlComments, xmlTagValue } from './parse-utils.js';
 import { lockfileEvidence, manifestEvidence, workspaceRoot } from './paths.js';
 
 // ── Minimal XML parser for .csproj ────────────────────────────────────────
@@ -45,7 +45,7 @@ function isConcreteVersion(declaration: string): boolean {
 function parseCsproj(content: string): CsprojPackageRef[] {
   const refs: CsprojPackageRef[] = [];
   const regex = /<PackageReference\b([^>]*?)(?:\/>|>([\s\S]*?)<\/PackageReference>)/gi;
-  for (const match of content.matchAll(regex)) {
+  for (const match of stripXmlComments(content).matchAll(regex)) {
     const attributes = match[1] ?? '';
     const body = match[2] ?? '';
     const parsedAttributes = parseXmlAttributes(attributes);
@@ -83,7 +83,7 @@ async function readCentralPackageVersions(projectDir: string): Promise<Map<strin
     }
     if (content !== undefined) {
       const regex = /<PackageVersion\b([^>]*?)(?:\/>|>([\s\S]*?)<\/PackageVersion>)/gi;
-      for (const match of content.matchAll(regex)) {
+      for (const match of stripXmlComments(content).matchAll(regex)) {
         const attributes = parseXmlAttributes(match[1] ?? '');
         const name = attributes.get('Include');
         const version = attributes.get('Version') ?? xmlTagValue(match[2] ?? '', 'Version');
@@ -120,7 +120,7 @@ function parseProjectAssetsJson(content: string): Map<string, string> {
           const name = key.slice(0, sepIndex);
           const version = key.slice(sepIndex + 1);
           if (name && version) {
-            versions.set(name, version);
+            versions.set(name.toLowerCase(), version);
           }
         }
       }
@@ -132,6 +132,10 @@ function parseProjectAssetsJson(content: string): Map<string, string> {
 }
 
 /**
+ * Both restore-graph parsers key by lowercased id: NuGet ids are
+ * case-insensitive, and the graph records the package's canonical casing
+ * (`Newtonsoft.Json`) whatever casing the project file used.
+ *
  * Parse NuGet's `packages.lock.json`:
  * `{ dependencies: { "<tfm>": { "<id>": { type, requested, resolved } } } }`.
  * Project references carry no `resolved` and are skipped.
@@ -143,8 +147,8 @@ function parseNuGetPackagesLock(content: string): Map<string, string> {
   };
   for (const frameworkDeps of Object.values(json.dependencies ?? {})) {
     for (const [name, entry] of Object.entries(frameworkDeps ?? {})) {
-      if (typeof entry?.resolved === 'string' && !versions.has(name)) {
-        versions.set(name, entry.resolved);
+      if (typeof entry?.resolved === 'string' && !versions.has(name.toLowerCase())) {
+        versions.set(name.toLowerCase(), entry.resolved);
       }
     }
   }
@@ -256,9 +260,9 @@ export class DotNetAdapter implements EcosystemAdapter {
       // reachable; this keeps the fallback from reporting a constraint). The
       // declaration itself is always surfaced as `requested` below.
       const declared = ref.version ?? centralVersions.get(ref.name.toLowerCase());
+      const lockedFromGraph = lockVersions.get(ref.name.toLowerCase());
       const locked =
-        lockVersions.get(ref.name) ??
-        (declared && isConcreteVersion(declared) ? declared : undefined);
+        lockedFromGraph ?? (declared && isConcreteVersion(declared) ? declared : undefined);
 
       // .NET PackageReferences are always registry (NuGet)
       // constructPurl maps the ecosystem id to the canonical PURL type
@@ -269,7 +273,7 @@ export class DotNetAdapter implements EcosystemAdapter {
         : constructPurl('dotnet', ref.name);
 
       const evidence: Evidence[] = [manifestEv];
-      if (lockEv && lockVersions.has(ref.name)) evidence.push(lockEv);
+      if (lockEv && lockedFromGraph) evidence.push(lockEv);
 
       observations.push({
         id: `dep-${workspace.id}-${ref.name}`,

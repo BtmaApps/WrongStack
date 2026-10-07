@@ -20,6 +20,7 @@ import {
 } from './diagnostic-normalization.js';
 import type { ParsedPackageReports } from './package-report-types.js';
 import {
+  parseBundlerAudit,
   parseCargoAudit,
   parseComposerAudit,
   parseComposerOutdated,
@@ -189,6 +190,8 @@ export function parsePackageReports(
       return parseCargoAudit(json);
     case 'pip-audit':
       return parsePipAudit(json);
+    case 'bundler-audit':
+      return parseBundlerAudit(json);
     case 'composer-audit':
       return parseComposerAudit(json);
     case 'composer-outdated':

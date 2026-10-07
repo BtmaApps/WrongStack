@@ -174,6 +174,79 @@ describe('parsePackageReports', () => {
     ]);
   });
 
+  // Real `cargo audit --json` is rustsec's `Report`: `vulnerabilities.found` is a
+  // BOOLEAN and the findings live in `vulnerabilities.list`. Reading `found` as
+  // the array parsed every real report as clean.
+  it('parses the real cargo-audit report shape (vulnerabilities.list)', () => {
+    const payload = JSON.stringify({
+      lockfile: { 'dependency-count': 120 },
+      vulnerabilities: {
+        found: true,
+        count: 1,
+        list: [
+          {
+            advisory: {
+              id: 'RUSTSEC-2020-0071',
+              package: 'time',
+              title: 'Potential segfault in the time crate',
+              url: 'https://github.com/time-rs/time/issues/293',
+              cvss: 'CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H',
+            },
+            versions: { patched: ['>=0.2.23'], unaffected: [] },
+            affected: null,
+            package: { name: 'time', version: '0.1.45' },
+          },
+        ],
+      },
+      warnings: {},
+    });
+    const result = parsePackageReports('cargo-audit', payload, '');
+    expect(result.vulnerabilities).toEqual([
+      expect.objectContaining({
+        package: 'time',
+        advisory: 'Potential segfault in the time crate',
+        fixedIn: '>=0.2.23',
+        url: 'https://github.com/time-rs/time/issues/293',
+      }),
+    ]);
+    expect(result.diagnostics[0]?.code).toBe('RUSTSEC-2020-0071');
+  });
+
+  // The Ruby profile runs `bundle audit --format=json` with parser
+  // 'bundler-audit', which used to have no case at all: every finding was
+  // dropped. Shape from bundler-audit's Report/UnpatchedGem/Advisory#to_h.
+  it('parses bundler-audit JSON reports', () => {
+    const payload = JSON.stringify({
+      version: '0.9.2',
+      created_at: '2026-10-06 21:00:00 +0000',
+      results: [
+        {
+          type: 'unpatched_gem',
+          gem: { name: 'rack', version: '2.0.7' },
+          advisory: {
+            id: 'CVE-2019-16782',
+            url: 'https://github.com/rack/rack/security/advisories/GHSA-hrqr-hxpp-chr3',
+            title: 'Possible information leak / session hijack vulnerability',
+            cvss_v3: 6.3,
+            patched_versions: ['~> 1.6.12', '>= 2.0.8'],
+            criticality: 'medium',
+          },
+        },
+        { type: 'insecure_source', source: 'http://rubygems.org/' },
+      ],
+    });
+    const result = parsePackageReports('bundler-audit', payload, '');
+    expect(result.vulnerabilities).toEqual([
+      expect.objectContaining({
+        package: 'rack',
+        advisory: 'Possible information leak / session hijack vulnerability',
+        severity: 'moderate',
+        fixedIn: '~> 1.6.12',
+      }),
+    ]);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['CVE-2019-16782', 'insecure-source']);
+  });
+
   it('parses Composer audit JSON lines', () => {
     const lines = [
       JSON.stringify({

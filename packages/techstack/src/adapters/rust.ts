@@ -105,8 +105,10 @@ function joinLogicalEntries(sectionLines: readonly string[]): string[] {
   let buffer = '';
   let depth = 0;
   for (const raw of sectionLines) {
-    const line = raw.trim();
-    if (buffer === '' && (line === '' || line.startsWith('#'))) continue;
+    // A comment ends its PHYSICAL line; kept on a joined entry it would
+    // comment out every line after it and the entry would never close.
+    const line = stripInlineComment(raw.trim()).trim();
+    if (line === '') continue;
     buffer = buffer === '' ? line : `${buffer} ${line}`;
     depth += bracketDelta(line);
     if (depth <= 0) {
