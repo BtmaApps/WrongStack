@@ -1,55 +1,57 @@
 # explore-companion Role Instructions
 
-## Evidence and Submission
+## Evidence and Reporting
 
 - Submit findings with `submit_result`; this role has no submission `mailbox`. Keep fields ASCII-only; on validation failure, shorten narrative and `files_examined` before dropping evidence.
-- Separate confirmed findings from inconclusive checks. Tool errors, ignored paths, stale indexes, truncation, denied reads, skipped scopes, and unvalidated zero-hit searches do not prove absence.
-- Read named targets directly and verify declarations, re-exports, imports, assertions, collector wiring, and runtime paths. Treat `codebase-skeleton`, impact reports, and incoming-call graphs as leads, not authority.
-- Treat volatile or gitignored content as current-state evidence. Capture before editing; a read after an unread edit is a surviving record, not a pre-edit baseline.
+- Separate confirmed dependencies, behavioral coupling, historical references, and inconclusive checks. Tool errors, ignored paths, stale indexes, truncation, denied reads, and unvalidated zero-hit searches do not prove absence.
+- Read named targets directly. Treat `codebase-skeleton`, `codebase-impact-analysis`, and `codebase-incoming-calls` as leads, not authority; verify declarations, imports, re-exports, runtime wiring, and reported caller enclosures.
+- Revalidate prior “zero importers” findings on every invocation with module-path and exported-symbol searches; scaffolding can acquire consumers between sessions.
 - Never retry or bypass denied reads of `.npmrc`, `.env*`, `.pypirc`, or `.netrc`; report the restriction.
-- Content search does not search filenames. State scope and spelling; confirm unexpected zeros with direct reads or simpler filename searches.
 
-## Search and Consumer Closure
+## Consumer Closure
 
-- Enumerate matches with case-sensitive `files_with_matches` at `truncated=false` before `content`; never cite truncated output as closure.
-- Close module consumers with three passes: repo-wide full-path/subpath, sibling-relative `from ['"]\.{1,2}/<stem>(\.js)?['"]`, and repo-wide exported symbol. Report all untruncated; each catches references the others miss.
-- For `packages/tools/src/<feature>/tools.ts`, search exports such as `deadCodeScanTool|deadCodeFixTool`, not only `<feature>/tools`; `builtin.ts`, barrels, and tests often import through `<feature>/index.ts` or package roots.
-- Scope generic stems and test names to their package, then pair with a repo-wide package/subpath search. Search a proof round's full directory name, not generic `proof.test.ts`.
-- Follow barrels and facades one hop, separating declarations, re-exports, value imports, and `import type`. Check `architecture/core-public-api-snapshot.json`, `architecture/test-only-exports.json`, package `exports`, and relevant barrels before API claims.
-- Search dynamic imports, source strings, subprocess arguments, and non-TypeScript harnesses, including `spawn` and `exec` bodies. Verify impact-report hits and `line: 0` sites with literal search; comments and historical evidence are not runtime consumers.
+- Classify the target before choosing tools: type-only modules, top-level scripts, tests, configuration, JSON baselines, and logs require search or runner evidence rather than call graphs.
+- Close source consumers with repo-wide module-path/subpath, relative-specifier, and exported-symbol searches; include dynamic imports and inline types such as `import('@wrongstack/core/types').SomeOption['field']`.
+- Enumerate files with case-sensitive `files_with_matches` and `truncated=false`; when content output says `count=N` but shows only a few matches, read the enclosing range instead of retrying pattern variants.
+- Resolve generic stems and duplicate symbols by import source and exported names; a matching `./fix.js`, `index.ts`, or local type declaration is not sufficient evidence of dependency.
+- Follow barrels and facades, checking package `exports` and the actual re-export form before claiming an API is public; documentation and module headers do not establish wiring.
+- Verify high impact ratings against direct call sites and untruncated searches; transitive barrel closure alone does not establish direct consumers.
+- Search source strings, subprocess arguments, `spawn`/`exec` bodies, and non-TypeScript harnesses; comments and recorded architecture entries are not runtime consumers.
+- Check `packages/webui-server/src/server/*-adapter.ts` when exploring CLI slash commands; adapters may mirror behavior through `@wrongstack/core/*` without importing CLI code.
+- Verify slash-command test `vi.mock('../src/.../<module>.js')` paths against live imports and files in `packages/cli/src/slash-commands/`; stale mocks may intercept nothing.
 
-## Ignored and Scratch Files
+## Project Wiring Anchors
 
-- Treat zero from `glob`, brace alternation, or path-scoped grep as unproved until a simple `*`, explicit package scope, and direct reads agree. Use a known-positive scope control.
-- Search tracked and ignored namespaces separately. `rg` honors `.gitignore` even with an explicit path, so use direct `read`, exact `tree`, or the full tree listing before claiming zero under `.temp_files`.
-- Read scratch files before classifying them: `_ts_baseline.txt` can be `git status --porcelain`. Inspect `.mjs` imports, `readFileSync`, `spawn`, and `exec`; a hardcoded-file reader has data coupling, not code blast radius.
+- Classify `scripts/build-package.mjs` as a zero-export build script; trace exact-filename references through package build scripts and `scripts/build.mjs`, then inspect `packageJson.name` dispatch and `profiles` invariants.
+- Close `packages/cli/src/subcommands/` handlers through the lazy-import registry in `packages/cli/src/subcommands/index.ts` plus filename and symbol searches, not incoming calls alone.
+- Trace WebUI route views through `packages/webui/src/components/view-registry.ts` and HQ views through `packages/webui-hq/src/components/hq/view-router.tsx`; dynamic-import registries and view keys define their contracts.
+- Keep `@xyflow/react` inside HQ lazy chunks and check `packages/webui-hq/tests/components/views-smoke.test.tsx` when assessing HQ view changes.
+- For `packages/kanban/src/types.ts`, use quote-anchored relative-specifier searches and the `packages/kanban/src/index.ts` barrel; external access is through `@wrongstack/kanban`, not a `./types` subpath.
+- Disambiguate project memory `.wrongstack/AGENTS.md` using `WstackPaths.inProjectAgentsFile` and the literal path; root, user-home, and directory `AGENTS.md` files serve different instruction scopes.
+- Treat `architecture/*.json` as data ratchets; trace exact filenames to guarding scripts, `scripts/lib/architecture-health.mjs`, and root `check:architecture` / `check:architecture:sync`.
+- Distinguish `scripts/snapshot-core-public-api.mjs` from `scripts/sync-core-public-api-snapshot.mjs` by full filename; inspect root scripts and `.githooks/pre-commit` separately.
+- Trace `.githooks/pre-commit` through root `setup:hooks`, `git config core.hooksPath .githooks`, and architecture tests that read the hook; an empty symbol index does not imply disconnection.
 
-## Volatile Proof Harnesses
+## Tests and Gates
 
-- On first contact with `.temp_files/proof-driven-bug-hunter/<round>/`, request `vitest.proof.config.ts`, `proof.test.ts`, `run.mjs`, and logs in parallel; preserve config → test → logs interpretation order. On ENOENT, re-tree the parent once, stop retrying vanished files, and treat captured content as the surviving record.
-- Always inspect sibling `vitest.proof.config.ts`; not every round uses `run.mjs`. `test.include` pins the test, while `path.resolve(__dirname, '..','..','..')` and `../../../packages/...` require the round to remain exactly three levels below repo root; keep config and test at matching depth.
-- To close a proof config's blast radius, use two untruncated checks: grep the full round-directory name in tracked scope and verify root `vitest.config.ts` excludes `.temp_files`. The shared depth assumption is the remaining fragility.
-- Treat header-comment and inline-error coordinates in a proof round as pre-fix history. Re-anchor the live module with `codebase-skeleton`; close consumers with the full round-directory name.
-- If the target is absent initially, run direct `read`, exact-directory `tree`, wildcard stem `glob`, and repo-wide grep of the full round name before reporting absence. Require a re-stat of the absolute path or isolated worktree root to verify an edit's landing; never map a phantom.
-- A `red.log` with only a RUN header and no PASS/FAIL is an aborted capture; report missing verdict lines, never RED or GREEN.
+- Before predicting test collection or blast radius, read package `package.json`, local and root `vitest.config.ts`, and `tsconfig.test.json`; include coverage thresholds and test typechecking even when a spec has no source importers.
+- Check whether test helpers use load-bearing `as never` or `as unknown` casts that bypass the actual options type.
+- HQ specs use root `packages/**/tests/**/*.test.{ts,tsx}` collection and package `include: ["src/**/*", "tests/**/*"]`; root coverage excludes `packages/webui-hq/src/**`, so do not invent an HQ coverage gate.
+- Treat `protocolHandlerCoverage` in `packages/acp/src/agent/protocol-handler.ts` as a test-only seam; verify `packages/acp/tests/protocol-handler.test.ts` and package coverage configuration.
+- Root Vitest has `globals: false`; hooks and reset helpers require explicit imports.
+- `packages/kanban-mcp` has no local Vitest configuration; inspect root collection and package `tsconfig.test.json`, including source-versus-`dist/` alias resolution before predicting test/typecheck disagreement.
+
+## Ignored Files and Proof Harnesses
+
+- Read `.temp_files/**` directly; ignore-aware `glob` or grep can return false zeros even for explicit paths. Search tracked consumers separately using the full filename or proof-round directory.
+- Mark post-edit reads explicitly: untracked, gitignored files have no git pre-edit baseline, and a surviving read cannot establish a before/after comparison.
+- Inspect a proof round's actual configuration, test, runner, and logs before predicting execution; on ENOENT, re-tree the parent once and stop retrying vanished files.
+- A `vitest.proof.config.mjs` round without `run.mjs` uses manual `pnpm exec vitest run -c <config>`; inspect root-directory depth, relative package imports, and Windows `replaceAll('\\', '/')` normalization.
+- Close proof configuration references with the full round-directory search and root Vitest exclusions; header coordinates and inline error locations may describe pre-fix history.
 
 ## Logs and Diagnostics
 
-- Locate `%TEMP%/<tool>-<scenario>-<TAG>.log` producers with body-token `grep` in tracked scope plus a `.temp_files` filename-stem tree. Shell redirects create no source reference; matching harness stems are clues, while `*<TAG>*` filename zero is inconclusive because tags come from `argv`.
-- Map log lines to `console.log` and inspect early exits. A guard ending at `### DONE` proves later DB, `SUMMARY=`, and `VERDICT=` phases did not run; report absent verdicts explicitly.
-- Re-anchor truncated lint diagnostics using exact cited-line content against live source. If a log grows, mark it live and tail-check before reporting a final count or verdict.
-
-## Project Wiring
-
-- For `.githooks/pre-commit`, an empty symbol index is not disconnection. Check `package.json` (`git config core.hooksPath .githooks` under `setup:hooks`), tests such as `packages/core/tests/architecture/workflow-hardening.test.ts` that `readFileSync` the hook, invoker comments, and a repo-wide `.githooks` grep.
-- Mailbox evidence lives at `~/.wrongstack/projects/<dir>/_mailbox.sqlite`: `messages(from_id, to_id, type, data)`, with JSON `data` containing `subject` and `body`. Open read-only via `node:sqlite` `DatabaseSync` and `{ readOnly: true }`.
-- Root `package.json` is a private script surface without `exports`; read membership from `pnpm-workspace.yaml`. `packages/mcp/src/server.ts` is a pure barrel; exposure continues through `packages/mcp/src/index.ts` and package exports.
-- Validate subpaths against manifests: sandbox uses `@wrongstack/core/sandbox`, not `@wrongstack/core`. Treat `docs/adr/*.md` signatures as historical and current policy from `packages/core/src/storage/config-loader/in-project-policy.ts`.
-
-## Test Collection and Gates
-
-- Before predicting collection, read package `package.json`, local `vitest.config.ts` if any, root `vitest.config.ts`, and relevant `tsconfig.test.json`.
-- `packages/kanban-mcp` has no local Vitest config; `scripts.test` echoes `pnpm exec vitest run packages/kanban-mcp/tests` from workspace root. Root `vitest.config.ts` and `packages/kanban-mcp/tsconfig.test.json` govern collection.
-- In kanban tests, `@wrongstack/tools/*` aliases may resolve to `src/` while `tsconfig.test.json` resolves to `dist/`; read comments in `packages/kanban-mcp/tests/adapter.test.ts` and check `dist/` freshness before predicting test/typecheck disagreement.
-- `packages/mcp/vitest.config.ts` requires 100% lines, functions, statements, and branches on `src/**` except explicit exclusions; `contracts.ts` is excluded there but may remain public. Root Vitest has `globals: false`, so hooks and reset helpers need explicit imports.
-- `docs/reports/architecture-health-current.json` may be stale. Confirm live collectors; leaf tests have no import graph, so inspect scripts, gates, coverage, typecheck baselines, and skip budgets.
+- Treat `~/.wrongstack/tool-output/<ISO-timestamp>-<tool>-<uuid>.log` as command-output artifacts; read the absolute path directly and inspect command/exit metadata rather than searching for repository importers.
+- When a spool contains `git diff`, inspect touched modules live and close their consumers separately; path-filtered diffs may omit related changes.
+- Require explicit PASS/FAIL or verdict evidence; a RUN-only log is an aborted capture, not RED or GREEN.
+- Re-anchor diagnostic coordinates against live source; tail-check growing logs before reporting final counts or verdicts.

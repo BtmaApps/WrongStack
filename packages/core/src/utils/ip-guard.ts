@@ -75,6 +75,15 @@ export function isPrivateIPv6(raw: string): boolean {
     return isPrivateIPv4(`${a}.${b}.${c}.${d}`);
   }
 
+  // Private IPv6 ranges first: an embedded-IPv4 match below must not vouch
+  // for them. ISATAP's `…:5efe:<ipv4>` interface ID is valid under ANY prefix
+  // (`fe80::5efe:8.8.8.8` is the standard ISATAP link-local form), and a
+  // public embedded IPv4 used to return "not private" before these ran.
+  const high = groups[0] ?? 0;
+  if ((high & 0xfe00) === 0xfc00) return true; // fc00::/7 unique local (fc..fd)
+  if ((high & 0xffc0) === 0xfe80) return true; // fe80::/10 link-local
+  if ((high & 0xff00) === 0xff00) return true; // ff00::/8 multicast
+
   // Other transition formats that carry an IPv4 address inside an IPv6 one.
   // Each was reachable past the mapped-address branch above, so a private or
   // link-local IPv4 could be smuggled through in IPv6 clothing — most sharply
@@ -86,10 +95,6 @@ export function isPrivateIPv6(raw: string): boolean {
   const embedded = embeddedIPv4(groups);
   if (embedded) return isPrivateIPv4(embedded);
 
-  const high = groups[0] ?? 0;
-  if ((high & 0xfe00) === 0xfc00) return true; // fc00::/7 unique local (fc..fd)
-  if ((high & 0xffc0) === 0xfe80) return true; // fe80::/10 link-local
-  if ((high & 0xff00) === 0xff00) return true; // ff00::/8 multicast
   return false;
 }
 

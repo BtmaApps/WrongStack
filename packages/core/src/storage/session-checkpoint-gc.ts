@@ -126,6 +126,14 @@ export async function sweepCheckpointCas(opts: {
   // it, or when it is younger than the floor. Every surviving manifest's blobs
   // are recorded so pass 2 cannot delete them.
   const liveBlobs = new Set<string>();
+  // Set when a surviving manifest could not be read: its blobs are live but
+  // unnamed, so no object can be proven garbage this run.
+  let liveBlobsIncomplete = false;
+  const markLive = async (file: string) => {
+    const blobs = await readManifestBlobHashes(file, result);
+    if (blobs === null) liveBlobsIncomplete = true;
+    else for (const blob of blobs) liveBlobs.add(blob);
+  };
   for (const entry of await readDirSafe(manifestsDir, result)) {
     if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
     result.manifestsScanned++;
@@ -135,7 +143,7 @@ export async function sweepCheckpointCas(opts: {
     const young = await isNewerThan(file, opts.keepNewerThanMs, result);
     const keep = young || !HASH_RE.test(hash) || opts.reachableManifestHashes.has(hash);
     if (keep) {
-      for (const blob of await readManifestBlobHashes(file, result)) liveBlobs.add(blob);
+      await markLive(file);
       continue;
     }
 
@@ -145,8 +153,12 @@ export async function sweepCheckpointCas(opts: {
       result.bytesReclaimed += size;
     } else {
       // Failed to delete: assume it lives, so its blobs are not swept either.
-      for (const blob of await readManifestBlobHashes(file, result)) liveBlobs.add(blob);
+      await markLive(file);
     }
+  }
+  if (liveBlobsIncomplete) {
+    result.errors.push('Object sweep skipped: a kept manifest could not be read');
+    return result;
   }
 
   // Pass 2 — objects, stored as `objects/<first 2 hex>/<rest>`.
@@ -205,7 +217,10 @@ async function listTranscripts(
   return { files: found, unreadable };
 }
 
-async function readManifestBlobHashes(file: string, result: CheckpointGcResult): Promise<string[]> {
+async function readManifestBlobHashes(
+  file: string,
+  result: CheckpointGcResult,
+): Promise<string[] | null> {
   try {
     const parsed = JSON.parse(await fsp.readFile(file, 'utf8')) as {
       entries?: Array<{ blobHash?: unknown }>;
@@ -216,9 +231,9 @@ async function readManifestBlobHashes(file: string, result: CheckpointGcResult):
       .filter((hash): hash is string => typeof hash === 'string' && HASH_RE.test(hash));
   } catch (err) {
     // An unreadable manifest is kept, and so are its blobs — but we cannot
-    // name them, so record it rather than silently under-protecting.
+    // name them, so the caller must not sweep objects at all.
     result.errors.push(`${path.basename(file)}: ${toErrorMessage(err)}`);
-    return [];
+    return null;
   }
 }
 

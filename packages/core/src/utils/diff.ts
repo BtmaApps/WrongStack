@@ -134,6 +134,25 @@ function backtrack(
   return edits.reverse();
 }
 
+/**
+ * A last line without a trailing newline is a different line from the same
+ * text with one — otherwise dropping or adding the final newline diffs as
+ * "no change". The marker is internal; {@link showLine} renders it as the
+ * standard `\ No newline at end of file` line.
+ */
+const NO_EOL = '\u0000no-eol';
+
+function markNoEol(lines: string[]): void {
+  const last = lines.length - 1;
+  if (last >= 0) lines[last] = `${lines[last]}${NO_EOL}`;
+}
+
+function showLine(line: string): string {
+  return line.endsWith(NO_EOL)
+    ? `${line.slice(0, -NO_EOL.length)}\n\\ No newline at end of file`
+    : line;
+}
+
 export interface UnifiedDiffOptions {
   context?: number | undefined;
   fromFile?: string | undefined;
@@ -151,7 +170,9 @@ export function unifiedDiff(
   const b = newText.replace(/\r\n/g, '\n').split('\n');
   // Handle trailing newline: split adds an empty string we don't want to diff
   if (a[a.length - 1] === '') a.pop();
+  else markNoEol(a);
   if (b[b.length - 1] === '') b.pop();
+  else markNoEol(b);
   const edits = myersDiff(a, b);
   if (edits.every((e) => e.op === 'equal')) return '';
 
@@ -189,16 +210,16 @@ export function unifiedDiff(
       if (e.op === 'equal') {
         if (firstA === null) firstA = e.a + 1;
         if (firstB === null) firstB = e.b + 1;
-        lines.push(` ${e.line}`);
+        lines.push(` ${showLine(e.line)}`);
         aCount++;
         bCount++;
       } else if (e.op === 'delete') {
         if (firstA === null) firstA = e.a + 1;
-        lines.push(`-${e.line}`);
+        lines.push(`-${showLine(e.line)}`);
         aCount++;
       } else {
         if (firstB === null) firstB = e.b + 1;
-        lines.push(`+${e.line}`);
+        lines.push(`+${showLine(e.line)}`);
         bCount++;
       }
       cursor++;

@@ -179,9 +179,7 @@ describe('checkpoint CAS garbage collection', () => {
 
   it('surfaces a kept manifest whose blob list could not be read', async () => {
     // A manifest that survives but cannot be parsed is the dangerous case: its
-    // blobs are unknown, so they are not marked live and the object pass could
-    // delete data a live checkpoint needs. The sweep cannot prevent that on its
-    // own, so it must at least say so instead of reporting a clean run.
+    // blobs are unknown, so it must say so instead of reporting a clean run.
     const badHash = sha('bad');
     await fs.writeFile(path.join(cas, 'manifests', `${badHash}.json`), '{ not json');
     await writeTranscript('2020-01-01/bad.jsonl', [badHash]);
@@ -195,6 +193,31 @@ describe('checkpoint CAS garbage collection', () => {
 
     expect(result.manifestsDeleted).toBe(0);
     expect(result.errors.join(' ')).toContain(badHash);
+  });
+
+  it('sweeps no object while a kept manifest cannot be read', async () => {
+    // Its blobs are live but unnamed, so no object can be proven garbage: an
+    // unreadable live manifest (a transient EBUSY, say) must not cost its blobs.
+    const badHash = sha('bad');
+    await fs.writeFile(path.join(cas, 'manifests', `${badHash}.json`), '{ not json');
+    await writeTranscript('2020-01-01/bad.jsonl', [badHash]);
+    const orphan = await writeCheckpoint('orphan', ['orphan content']);
+    await age(store);
+
+    const result = await sweepCheckpointCas({
+      casRoot: cas,
+      reachableManifestHashes: await collectReachableManifestHashes(store),
+      keepNewerThanMs: floorNow(),
+    });
+
+    expect(result.manifestsDeleted).toBe(1);
+    expect(result.objectsDeleted).toBe(0);
+    expect(result.errors.join(' ')).toContain('Object sweep skipped');
+    await expect(fs.stat(path.join(cas, 'manifests', `${orphan}.json`))).rejects.toBeDefined();
+    const blob = sha('orphan content');
+    await expect(
+      fs.stat(path.join(cas, 'objects', blob.slice(0, 2), blob.slice(2))),
+    ).resolves.toBeDefined();
   });
 
   it('deletes an unreadable manifest that nothing references', async () => {

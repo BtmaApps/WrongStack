@@ -147,4 +147,11 @@ describe('completePartialObject', () => {
     expect(completePartialObject(input)).toBe(expected);
     expect(() => JSON.parse(expected)).not.toThrow();
   });
+
+  it('drops a key cut mid-name instead of letting it overwrite an earlier field', () => {
+    // `"n` is the start of the next key `"no"`; completed as `"n":null` the
+    // duplicate would win in JSON.parse and erase the complete `n`.
+    expect(JSON.parse(completePartialObject('{"n":5,"n'))).toEqual({ n: 5 });
+    expect(JSON.parse(completePartialObject('{"pa'))).toEqual({});
+  });
 });

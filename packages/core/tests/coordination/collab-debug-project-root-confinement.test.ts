@@ -164,4 +164,24 @@ describe('collab_debug honours project-root confinement', () => {
       expect(isSensitiveReadCall(tool, { targetPaths: ['src/index.ts'] })).toBe(false);
     });
   });
+
+  it('resolves relative targets against the session working directory, not process.cwd()', async () => {
+    let seen: readonly string[] = [];
+    const director = {
+      spawnCollab: async (opts: { targetPaths: readonly string[] }) => {
+        seen = opts.targetPaths;
+        return { sessionId: 's', bugs: [], refactorPlans: [], evaluations: [], summary: '' };
+      },
+    };
+    const tool = makeCollabDebugTool(director as never);
+    const ctx = { projectRoot: root, workingDir: root, cwd: root, allowOutsideProjectRoot: false };
+    const origCwd = process.cwd();
+    process.chdir(base); // the process cwd is NOT the session's working directory
+    try {
+      await tool.execute({ targetPaths: ['in.ts'] }, ctx as never);
+    } finally {
+      process.chdir(origCwd);
+    }
+    expect(seen).toEqual([path.join(root, 'in.ts')]);
+  });
 });

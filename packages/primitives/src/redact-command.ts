@@ -114,6 +114,19 @@ const OUTBOUND_SHORT_FLAG_SECRET_PATTERN =
 /** Shared: high-entropy value behind a secret-looking flag name. */
 const HIGH_ENTROPY_FLAG_PATTERN =
   /--[\w-]*(?:token|key|secret|password|passwd|auth|credential)[\w-]*[=\s,]\s*[A-Za-z0-9+/=]{32,}/g;
+/**
+ * Shared: an HTTP Authorization header value (`curl -H "Authorization: Bearer
+ * …"`, `Basic …`, `token …`) — the most common way a credential sits on a
+ * command line, and no flag name marks it. The match starts at the header
+ * name, so the separator rule renders `Authorization:[REDACTED]`.
+ */
+const AUTHORIZATION_HEADER_PATTERN = /\bAuthorization\s*:\s*(?:[A-Za-z]+\s+)?[^\s"',]+/gi;
+/**
+ * Shared: the password in URL userinfo (`https://user:TOKEN@host`,
+ * `postgres://app:PW@db`). Look-arounds keep `scheme://` and `@host` out of the
+ * match, so it renders as `user:[REDACTED]` and the URL stays readable.
+ */
+const URL_USERINFO_PASSWORD_PATTERN = /(?<=:\/\/)[^\s/:@]+:[^\s/@]+(?=@)/g;
 
 /**
  * Secret keywords are matched as the FINAL hyphen-separated segment of a
@@ -152,6 +165,8 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   // `S3_SECRET_KEY`); without them the most common inline credential printed verbatim.
   /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
+  AUTHORIZATION_HEADER_PATTERN,
+  URL_USERINFO_PASSWORD_PATTERN,
 ];
 
 /** Telegram outbound notifications: the highest-risk exfiltration surface. */
@@ -176,6 +191,8 @@ const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // the phone verbatim while `/ps` redacted them.
   /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
+  AUTHORIZATION_HEADER_PATTERN,
+  URL_USERINFO_PASSWORD_PATTERN,
 ];
 
 export const COMMAND_REDACTION_PROFILE: RedactionProfile = {

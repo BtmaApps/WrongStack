@@ -72,4 +72,24 @@ describe('mapWithConcurrency', () => {
     expect(result).toEqual([2, 4, 6]);
     expect(result.every((v) => v !== undefined)).toBe(true);
   });
+
+  it('starts no new item once one has failed', async () => {
+    // A `replace` worker rewrites a file per item: items started after the
+    // caller was rejected would modify files nobody reports.
+    let release!: () => void;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const started: number[] = [];
+    const run = mapWithConcurrency([0, 1, 2, 3, 4, 5], 2, async (i) => {
+      started.push(i);
+      if (i === 0) throw new Error('EBUSY');
+      if (i === 1) await held;
+      return i;
+    });
+    await expect(run).rejects.toThrow('EBUSY');
+    release();
+    for (let k = 0; k < 50; k++) await Promise.resolve();
+    expect(started).toEqual([0, 1]);
+  });
 });

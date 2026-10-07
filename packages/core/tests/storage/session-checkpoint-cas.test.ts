@@ -152,6 +152,31 @@ describe('SessionCheckpointCas', () => {
     expect(second?.manifestHash).toBe(first?.manifestHash);
   });
 
+  it('makes a reused object and manifest young again so a concurrent GC keeps them', async () => {
+    // The checkpoint GC spares only what is younger than its age floor. A new
+    // checkpoint that dedups onto an old object must not leave it looking old.
+    await fsp.writeFile(path.join(project, 'src', 'a.ts'), 'same bytes', 'utf8');
+    const cas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(git({ tracked: ['src/a.ts'] })),
+    });
+    const first = await cas.capture('old-session', 1);
+    const old = new Date('2020-01-01T00:00:00.000Z');
+    const files = (await fsp.readdir(casRoot, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map((entry) => path.join(entry.parentPath, entry.name));
+    for (const file of files) await fsp.utimes(file, old, old);
+
+    const before = Date.now() - 1000;
+    const second = await cas.capture('new-session', 2);
+
+    expect(second?.manifestHash).toBe(first?.manifestHash);
+    for (const file of files) {
+      expect((await fsp.stat(file)).mtimeMs, file).toBeGreaterThanOrEqual(before);
+    }
+  });
+
   it('allows parent-root materialization but still rejects base mismatch and tampering', async () => {
     await fsp.writeFile(path.join(project, 'src', 'a.ts'), 'value', 'utf8');
     const runGit = git({ tracked: ['src/a.ts'] });

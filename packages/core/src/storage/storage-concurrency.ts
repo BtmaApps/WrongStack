@@ -18,13 +18,21 @@ export async function mapWithConcurrency<T, R>(
   const limit = Number.isFinite(concurrency) ? Math.max(1, Math.floor(concurrency)) : 1;
   const results = new Array<R>(items.length);
   let next = 0;
+  // Once a mapper has failed the caller is rejected; starting further items
+  // would run them unobserved (their effects never reported).
+  let failed = false;
 
   async function worker(): Promise<void> {
-    while (true) {
+    while (!failed) {
       const index = next;
       next++;
       if (index >= items.length) return;
-      results[index] = await mapper(items[index] as T, index);
+      try {
+        results[index] = await mapper(items[index] as T, index);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
     }
   }
 

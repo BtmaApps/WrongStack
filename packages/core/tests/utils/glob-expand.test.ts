@@ -103,4 +103,11 @@ describe('expandGlob', () => {
     const globstar = (await expandGlob('./**/*.ts')).map(base).sort();
     expect(globstar).toEqual(expect.arrayContaining(['a.ts', 'b.ts', 'd.ts']));
   });
+
+  it('returns an existing path whose name holds glob characters (Next.js routes)', async () => {
+    await fs.mkdir(path.join(dir, 'app', '[id]'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'app', '[id]', 'page.tsx'), '');
+    expect(await expandGlob('app/[id]/page.tsx')).toEqual(['app/[id]/page.tsx']);
+    expect(await expandGlob('app/[nope]/page.tsx')).toEqual([]);
+  });
 });

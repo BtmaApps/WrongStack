@@ -77,6 +77,17 @@ function toProjectRelative(repoRoot: string, projectRoot: string, relative: stri
   return relative.startsWith(`${prefix}/`) ? relative.slice(prefix.length + 1) : null;
 }
 
+/**
+ * Mark a deduplicated CAS file as just used. The checkpoint GC spares anything
+ * younger than its age floor, so a new checkpoint that reuses an old object or
+ * manifest must make it young again — otherwise a sweep running concurrently
+ * deletes what the new checkpoint references.
+ */
+async function touch(file: string): Promise<void> {
+  const now = new Date();
+  await fsp.utimes(file, now, now).catch(() => undefined);
+}
+
 function isWrongStackWorktreePath(relative: string): boolean {
   return relative === '.wrongstack/worktrees' || relative.startsWith('.wrongstack/worktrees/');
 }
@@ -326,6 +337,7 @@ export class SessionCheckpointCas {
     try {
       const existing = await fsp.readFile(target);
       if (sha256(existing) !== hash) throw new Error(`Corrupt CAS object collision: ${hash}`);
+      await touch(target);
       return;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
@@ -351,6 +363,7 @@ export class SessionCheckpointCas {
         if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
         const existing = await fsp.readFile(target);
         if (sha256(existing) !== hash) throw new Error(`Corrupt CAS object collision: ${hash}`);
+        await touch(target);
       }
     } finally {
       await handle?.close().catch(() => undefined);
@@ -364,6 +377,7 @@ export class SessionCheckpointCas {
     if (existing) {
       if (sha256(existing) !== hash)
         throw new Error(`Corrupt checkpoint manifest collision: ${hash}`);
+      await touch(target);
       return;
     }
     await atomicWrite(target, encoded, { mode: 0o600 });

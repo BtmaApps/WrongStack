@@ -218,3 +218,16 @@ describe('assertNotPrivateHost', () => {
     await expect(assertNotPrivateHost('nope.invalid')).resolves.toBeUndefined();
   });
 });
+
+describe('private IPv6 prefixes with an ISATAP-shaped interface ID', () => {
+  // `…:5efe:<ipv4>` is valid under any prefix; a public embedded IPv4 must not
+  // vouch for a link-local / unique-local / multicast destination.
+  it('stays blocked whatever IPv4 the interface ID embeds', async () => {
+    for (const addr of ['fe80::5efe:808:808', 'fd00::200:5efe:808:808', 'ff02::5efe:808:808']) {
+      expect(isPrivateIPv6(addr), addr).toBe(true);
+    }
+    expect(isPrivateIPv6('2001:db8::5efe:808:808')).toBe(false);
+    lookupMock.mockResolvedValue([{ address: 'fe80::5efe:808:808', family: 6 }] as never);
+    await expect(assertNotPrivateHost('isatap.example.com')).rejects.toThrow(/resolved to private/);
+  });
+});

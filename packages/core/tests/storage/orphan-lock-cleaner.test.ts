@@ -55,4 +55,18 @@ describe('cleanOrphanLocks', () => {
     expect(res.cleanedWorktrees).toContain(wtDir);
     await expect(fsp.stat(lockFile)).rejects.toThrow();
   });
+
+  it('keeps an old worktree .lock that records no pid — it is not provably ours', async () => {
+    const wtDir = path.join(tmpDir, '.wrongstack', 'worktrees', 'phase-1');
+    await fsp.mkdir(wtDir, { recursive: true });
+    const lockFile = path.join(wtDir, '.lock');
+    await fsp.writeFile(lockFile, 'tracked checkout content\n');
+    const pastTime = (Date.now() - 3600 * 1000) / 1000;
+    await fsp.utimes(lockFile, pastTime, pastTime);
+
+    const res = await cleanOrphanLocks(tmpDir, { maxLockAgeMs: 60 * 1000 });
+
+    expect(res.cleanedWorktrees).toHaveLength(0);
+    expect((await fsp.stat(lockFile)).isFile()).toBe(true);
+  });
 });

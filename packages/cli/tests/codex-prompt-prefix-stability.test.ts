@@ -1,10 +1,8 @@
 /**
- * The openai-codex wire has no cache breakpoints: `instructions` + `tools` +
- * the input array form ONE prefix, matched from the front. A block rebuilt per
- * turn anywhere in the first two segments therefore re-bills the third — which,
- * by the time it matters, is the entire conversation. There is no partial
- * credit and no error message; the only symptom is a quota that drains faster
- * than it should.
+ * Subscription Responses cache reuse needs a stable rendered prefix and an
+ * eligible backend boundary. Keep instructions, tools and every earlier input
+ * item unchanged, including request-only live state. Local character overlap
+ * is transport evidence; it does not measure backend hits or subscription quota.
  *
  * That makes prefix stability an invariant of the request-assembly path rather
  * than a property of the provider, and it cannot be asserted from either side
@@ -15,9 +13,8 @@
  * tool loop — and inspects the bytes that actually reach the transport.
  *
  * A failure here means someone added per-turn content to a cache-stable layer.
- * The fix is to tag the block volatile (`markVolatileSystemBlock` /
- * `EPOCH_VOLATILE_SOURCES`) so it rides after the conversation, not to relax
- * the assertion.
+ * Volatile blocks must be marked and replayed at their original positions,
+ * with changed state appended rather than rewriting the previous endpoint.
  */
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
@@ -38,12 +35,13 @@ import { DefaultSessionStore } from '@wrongstack/core/storage';
 import type { Capabilities, Provider, Request, Response } from '@wrongstack/core/types';
 import { diffCacheProbe, fingerprintCacheProbe, OpenAICodexProvider } from '@wrongstack/providers';
 import { afterEach, describe, expect, it } from 'vitest';
+import { OpenAIResponsesProvider } from '../../providers/src/openai-responses.js';
 
 const TURNS = 3;
 
 /** Replays a fixed script and keeps every Request the agent assembled. */
 class RecordingProvider implements Provider {
-  readonly id = 'openai-codex';
+  constructor(readonly id = 'openai-codex') {}
   readonly capabilities: Capabilities = {
     tools: true,
     parallelTools: true,
@@ -111,7 +109,11 @@ function fakeTool(name: string, output: string) {
   };
 }
 
-async function runSession(tmp: string, owningSessionId?: string): Promise<Request[]> {
+async function runSession(
+  tmp: string,
+  owningSessionId?: string,
+  providerId = 'openai-codex',
+): Promise<Request[]> {
   const container = new Container();
   container.bind(TOKENS.Logger, () => new DefaultLogger({ level: 'error', stderr: false }));
   container.bind(TOKENS.RetryPolicy, () => new DefaultRetryPolicy());
@@ -143,10 +145,10 @@ async function runSession(tmp: string, owningSessionId?: string): Promise<Reques
   tools.register(fakeTool('read', `file body\n${'line of source\n'.repeat(40)}`) as never);
   tools.register(fakeTool('bash', `command output\n${'stdout line\n'.repeat(40)}`) as never);
 
-  const provider = new RecordingProvider();
+  const provider = new RecordingProvider(providerId);
   const events = new EventBus();
   const sessionStore = new DefaultSessionStore({ dir: path.join(tmp, 'sessions') });
-  const session = await sessionStore.create({ id: '', model: 'gpt-5.4', provider: 'openai-codex' });
+  const session = await sessionStore.create({ id: '', model: 'gpt-5.4', provider: providerId });
 
   const ctx = new Context({
     systemPrompt: [{ type: 'text', text: 'placeholder — replaced by the first refresh' }],
@@ -189,39 +191,51 @@ async function runSession(tmp: string, owningSessionId?: string): Promise<Reques
 }
 
 /** Serialize the captured requests through the real transport. */
-async function wireBodies(requests: readonly Request[]): Promise<Record<string, unknown>[]> {
+async function wireBodies(
+  requests: readonly Request[],
+  providerId = 'openai-codex',
+): Promise<Record<string, unknown>[]> {
   const bodies: string[] = [];
   const sse =
     'data: {"type":"response.completed","response":{"status":"completed","usage":{"input_tokens":10,"output_tokens":1}}}\n\n' +
     'data: [DONE]\n\n';
-  const provider = new OpenAICodexProvider({
-    credentials: { accessToken: 'tok' },
-    fetchImpl: (async (
-      _url: string,
-      init: { body?: string | Uint8Array; headers?: Record<string, string> },
-    ) => {
-      // Real-sized turns are zstd-compressed on the wire, as for the backend.
-      bodies.push(
-        typeof init.body === 'string' || init.body === undefined
-          ? (init.body ?? '')
-          : init.headers?.['content-encoding'] === 'zstd'
-            ? zstdDecompressSync(init.body).toString('utf8')
-            : Buffer.from(init.body).toString('utf8'),
-      );
-      return {
-        ok: true,
-        status: 200,
-        headers: new Headers(),
-        text: async () => '',
-        body: new ReadableStream<Uint8Array>({
-          start(c) {
-            c.enqueue(new TextEncoder().encode(sse));
-            c.close();
-          },
-        }),
-      };
-    }) as unknown as typeof fetch,
-  });
+  const fetchImpl = (async (
+    _url: string,
+    init: { body?: string | Uint8Array; headers?: Record<string, string> },
+  ) => {
+    // Real-sized turns are zstd-compressed on the wire, as for the backend.
+    bodies.push(
+      typeof init.body === 'string' || init.body === undefined
+        ? (init.body ?? '')
+        : init.headers?.['content-encoding'] === 'zstd'
+          ? zstdDecompressSync(init.body).toString('utf8')
+          : Buffer.from(init.body).toString('utf8'),
+    );
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      text: async () => '',
+      body: new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(sse));
+          c.close();
+        },
+      }),
+    };
+  }) as unknown as typeof fetch;
+  const provider =
+    providerId === 'openai-chatgpt'
+      ? new OpenAIResponsesProvider({
+          id: providerId,
+          apiKey: 'tok',
+          baseUrl: 'https://api.openai.com/v1',
+          store: false,
+          replayReasoning: true,
+          chatGPTPlan: true,
+          fetchImpl,
+        })
+      : new OpenAICodexProvider({ credentials: { accessToken: 'tok' }, fetchImpl });
   const signal = new AbortController().signal;
   for (const req of requests) {
     for await (const _ev of provider.stream(req, { signal })) {
@@ -282,38 +296,36 @@ describe('openai-codex prompt prefix stability', () => {
     expect(new Set(bodies.map((body) => body['instructions'])).size).toBe(1);
   });
 
-  it('grows the input array by appending, never by rewriting history', async () => {
-    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-codex-prefix-'));
-    const bodies = await wireBodies(await runSession(tmp));
+  it.each(['openai-codex', 'openai-chatgpt'])(
+    '%s preserves every previous input item including the live-context endpoint',
+    async (providerId) => {
+      tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-codex-prefix-'));
+      const bodies = await wireBodies(await runSession(tmp, undefined, providerId), providerId);
 
-    const fingerprint = (b: Record<string, unknown>) =>
-      fingerprintCacheProbe({
-        instructions: String(b['instructions'] ?? ''),
-        tools: b['tools'] as readonly unknown[] | undefined,
-        items: (b['input'] as readonly unknown[]) ?? [],
-      });
+      const fingerprint = (b: Record<string, unknown>) =>
+        fingerprintCacheProbe({
+          instructions: String(b['instructions'] ?? ''),
+          tools: b['tools'] as readonly unknown[] | undefined,
+          items: (b['input'] as readonly unknown[]) ?? [],
+        });
 
-    for (let i = 1; i < bodies.length; i++) {
-      const prev = fingerprint(bodies[i - 1] as Record<string, unknown>);
-      const cur = fingerprint(bodies[i] as Record<string, unknown>);
-      const diff = diffCacheProbe(prev, cur);
+      for (let i = 1; i < bodies.length; i++) {
+        const prev = fingerprint(bodies[i - 1] as Record<string, unknown>);
+        const cur = fingerprint(bodies[i] as Record<string, unknown>);
+        const diff = diffCacheProbe(prev, cur);
 
-      expect(diff.instructionsChanged).toBe(false);
-      expect(diff.toolsChanged).toBe(false);
-      // The one sanctioned rewrite: the live-context tail rides the trailing
-      // message of a request and is absent from the durable history, so the
-      // last item of the PREVIOUS request legitimately differs. Anything
-      // deeper than that is history being rewritten under the cache.
-      if (diff.firstDivergentItem !== null) {
-        expect(diff.firstDivergentItem).toBeGreaterThanOrEqual(prev.items.length - 1);
+        expect(diff.instructionsChanged).toBe(false);
+        expect(diff.toolsChanged).toBe(false);
+        expect(diff.firstDivergentItem).toBeNull();
+        const previousInput = bodies[i - 1]!['input'] as unknown[];
+        const currentInput = bodies[i]!['input'] as unknown[];
+        expect(currentInput.slice(0, previousInput.length)).toEqual(previousInput);
       }
-    }
-  });
+    },
+  );
 
-  it('holds the per-request uncached cost flat while the conversation grows', async () => {
-    // The real guarantee is not "the prefix matches" but "the part that does
-    // not match stops growing" — that is what makes the hit ratio climb toward
-    // the cost of one turn instead of tracking the size of the history.
+  it('keeps the new serialized suffix bounded while the conversation grows', async () => {
+    // This bounds changed request characters, not backend uncached tokens or cost.
     tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-codex-prefix-'));
     const bodies = await wireBodies(await runSession(tmp));
 

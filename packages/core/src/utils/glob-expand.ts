@@ -192,5 +192,8 @@ export async function expandGlob(pattern: string): Promise<string[]> {
   }
 
   await walk(base === '.' ? '.' : base, relPat);
+  // `[` and `?` are legal in file names (`app/[id]/page.tsx`): like a shell,
+  // a pattern that matched nothing but names an existing path is that path.
+  if (results.size === 0 && (await fsp.lstat(pattern).catch(() => null))) return [pattern];
   return [...results];
 }

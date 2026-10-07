@@ -110,6 +110,8 @@ export class CircuitBreaker {
   private halfOpenProbeInFlight = false;
   /** Timestamp when the breaker was opened (for cooldown calculation). */
   private openedAt: number | null = null;
+  /** When the breaker last tripped; calls that started earlier are not the probe. */
+  private lastTripAt: number | null = null;
 
   /**
    * Master enable flag. When false the breaker is bypassed: `beforeCall`
@@ -224,6 +226,10 @@ export class CircuitBreaker {
     const now = Date.now();
 
     if (this.state === 'half-open') {
+      // Only the probe decides. A call admitted before the last trip that is
+      // only now finishing says nothing about recovery, and letting its
+      // success close the breaker re-admitted the burst mid-probe.
+      if (this.lastTripAt !== null && now - durationMs < this.lastTripAt) return;
       // First call through after cooldown — if it failed, go back to open.
       if (failed) {
         this._trip();
@@ -285,6 +291,7 @@ export class CircuitBreaker {
     if (this.state === 'open') return; // already open
     this.state = 'open';
     this.openedAt = Date.now();
+    this.lastTripAt = this.openedAt;
     this.consecutiveSlowCalls = 0;
     this.halfOpenProbeInFlight = false;
     // P3 #23 (before-release.md): clear the window on trip. Old records are

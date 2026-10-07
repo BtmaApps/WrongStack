@@ -18,6 +18,7 @@ export async function cleanOrphanLocks(
   projectRoot: string,
   options?: {
     isPidAlive?: (pid: number) => boolean;
+    /** Ignored: age never attributes a pid-less `.lock` to us. */
     maxLockAgeMs?: number;
   },
 ): Promise<OrphanLockCleanResult> {
@@ -28,8 +29,6 @@ export async function cleanOrphanLocks(
   };
 
   const pidAlive = options?.isPidAlive ?? isPidAlive;
-  const maxAgeMs = options?.maxLockAgeMs ?? 10 * 60 * 1000; // 10 minutes default max age for stale locks
-  const now = Date.now();
 
   // `.git/index.lock` is Git's writer mutex, not a WrongStack artifact.
   // Age is not liveness: a long `git add`/`gc`/LFS fetch, or a git
@@ -63,16 +62,9 @@ export async function cleanOrphanLocks(
                 );
               }
             }
-          } else if (now - lockStat.mtimeMs > maxAgeMs) {
-            try {
-              await fsp.unlink(lockPath);
-              result.cleanedWorktrees.push(wtPath);
-            } catch (unlinkErr) {
-              result.errors.push(
-                `Failed removing expired lock ${lockPath}: ${toErrorMessage(unlinkErr)}`,
-              );
-            }
           }
+          // No recorded pid (unreadable, or a checkout file that happens to
+          // be named `.lock`): not provably ours, so it stays.
         }
       } catch (err) {
         result.errors.push(`Failed inspecting worktree ${entry.name}: ${toErrorMessage(err)}`);

@@ -65,3 +65,22 @@ describe('cloud access-key env spellings', () => {
     expect(redactSecrets(input)).toBe(expected);
   });
 });
+
+describe('credentials no flag name marks', () => {
+  it.each([
+    [
+      'curl -H "Authorization: Bearer sk-live-abc123" https://x',
+      'curl -H "Authorization:[REDACTED]" https://x',
+    ],
+    [
+      'git clone https://user:ghp_secret@github.com/a/b',
+      'git clone https://user:[REDACTED]@github.com/a/b',
+    ],
+    ['psql postgres://app:hunter2@db:5432/x', 'psql postgres://app:[REDACTED]@db:5432/x'],
+    ['curl http://host:8080/path', 'curl http://host:8080/path'],
+    ['git clone ssh://git@github.com/a/b', 'git clone ssh://git@github.com/a/b'],
+  ])('%s', (input, expected) => {
+    expect(redactCommand(input)).toBe(expected);
+    expect(redactSecrets(input)).toBe(expected);
+  });
+});

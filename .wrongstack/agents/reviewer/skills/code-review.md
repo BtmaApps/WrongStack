@@ -1,26 +1,24 @@
-## SSE AbortController supersession [applied 18×, 18 ok]
+## SSE supersession
 
-- In `packages/mcp/src/transport-sse.ts`, distinguish shutdown from supersession: `close()` aborts without replacing `this.abortController`, so `this.abortController === controller` can remain valid after `close()`.
-- Require `readSSEBody` cleanup and SSE callbacks to skip `streamSignal`, `rejectStreamPending`, and state transitions whenever the identity check fails; stale work must not clobber a newer connection.
+- In `packages/mcp/src/transport-sse.ts`, distinguish shutdown from supersession: `close()` aborts without replacing `this.abortController`, so `this.abortController === controller` can still hold after shutdown.
+- Require `readSSEBody` cleanup and SSE callbacks to skip `streamSignal`, `rejectStreamPending`, and state transitions when controller identity differs; stale work must not overwrite a newer connection.
 
-## MCP constants, logging, and reachability [applied 11×, 11 ok]
+## MCP constants and diagnostics
 
-- For `500 * 2 ** attempt` → `MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER`, read the live literal in `packages/mcp/src/constants.ts` and compare it with the removed multiplier before calling the change behavior-preserving; a mismatch is a timing regression.
-- Before flagging a newly suppressed `log.warn`, inspect `assertSupportedServerProtocolVersion` for its structured warn and trace whether the original `err` reaches a higher-level log; flag evidence loss only when that evidence is actually absent.
-- For `err instanceof SomeErrorClass`, grep every throw site and confirm it is reachable inside the `try` around `client.connect()` and that class identity survives intermediate wrappers; an unreachable `instanceof` gate is inert.
+- For `500 * 2 ** attempt` → `MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER`, compare the live literal in `packages/mcp/src/constants.ts` with the removed multiplier before declaring behavior preserved.
+- Before flagging suppressed `log.warn`, inspect `assertSupportedServerProtocolVersion` for its structured warning and trace whether the original `err` reaches higher-level logging; report evidence loss only if absent.
+- For `err instanceof SomeErrorClass`, inspect every throw site for reachability within the `try` around `client.connect()` and verify class identity survives wrappers; unreachable gates are inert.
 
-## Teardown tracking and default-on gates [applied 9×, 9 ok]
+## Teardown and default-on gates
 
-- For `trackAudit`/`boundAuditWait` in `packages/cli/src/wiring/dep-watcher.ts`, require every tracked promise to be a never-rejecting `then(_,_)` completion so `Promise.race` cannot reject into `waitUntil`; require the bound timer to be `unref()`'d, and require sibling tracking calls to remain unawaited inside the spawn `try`—`await` can turn tracking rejection into a dropped successful spawn.
-- For `cfg?.['enabled'] === true` → `!== false`, verify the producer returns the raw fragment rather than `undefined` when disabled, every newly reachable `cfg['key']` read uses optional chaining, and the sibling gate in `packages/cli/src/wiring/dep-watcher-bridge.ts` makes the same change.
+- For `trackAudit`/`boundAuditWait` in `packages/cli/src/wiring/dep-watcher.ts`, require tracked promises to use never-rejecting `then(_,_)` completions, preventing `Promise.race` rejection into `waitUntil`; require the bound timer’s `unref()`. Keep sibling tracking calls unawaited inside the spawn `try`, lest tracking rejection discard a successful spawn.
+- For `cfg?.['enabled'] === true` → `!== false`, verify the producer preserves the raw disabled fragment, newly reachable `cfg['key']` reads use optional chaining, and the sibling gate in `packages/cli/src/wiring/dep-watcher-bridge.ts` changes consistently.
 
-## Sandbox fail-closed gates [applied 3×, 3 ok]
+## Local preferences
 
-- Treat `mode === 'off'` (denying every other value) as intentional fail-closed hardening, not automatically a bug against the exec wrapper's `mode !== 'enforced'`; check `SandboxMode` in `packages/core/src/sandbox/types.ts` and the pinning tests in `packages/core/tests/sandbox/mcp-gate.test.ts`.
+- When adding a required nested-interface field in `packages/webui-hq/src/data/local-prefs.ts`, inspect `DEFAULT_PREFS` and `mergeWithDefaults`: require the annotated default literal to include it to avoid TS2741, and require explicit per-field type validation so persisted values survive normalization.
 
-When these targeted invariants hold and no finding remains, return exactly `{"findings": []}`.
+## Sandbox and output
 
-- When a diff adds a required field to a nested interface, immediately read the same module's default-prefs literal and merge/normalization function (`packages/webui-hq/src/data/local-prefs.ts`: `DEFAULT_PREFS`, `mergeWithDefaults`) — an annotated literal missing the new field is an unconditional TS2741 compile break, and the merge function needs explicit per-field type validation or persisted values are silently dropped. (anchors: `packages/webui-hq/src/data/local-prefs.ts`, `DEFAULT_PREFS`, `mergeWithDefaults`)
-
----
-*Distilled 2026-10-07T09:17:50.414Z · 1 new directive*
+- Treat `mode === 'off'`, denying all other values, as intentional fail-closed behavior rather than automatically conflicting with the exec wrapper’s `mode !== 'enforced'`; consult `SandboxMode` in `packages/core/src/sandbox/types.ts` and pinning tests in `packages/core/tests/sandbox/mcp-gate.test.ts`.
+- When these targeted invariants hold and no finding remains, return exactly `{"findings": []}`.

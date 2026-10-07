@@ -192,7 +192,17 @@ export function classifyTransportAddress(address: string, family: number): Trans
     const groups = expandIPv6(v6);
     if (groups !== null) {
       const embedded = embeddedIPv4(groups);
-      if (embedded !== undefined) return classifyTransportAddress(embedded, 4);
+      if (embedded !== undefined) {
+        const inner = classifyTransportAddress(embedded, 4);
+        // ISATAP's `…:5efe:<v4>` interface ID is valid under ANY prefix: a
+        // public embedded IPv4 must not turn a unique-local (fc00::/7) or
+        // multicast (ff00::/8) destination into 'public'. It may only make
+        // the verdict stricter.
+        const high = groups[0] ?? 0;
+        const privatePrefix = (high & 0xfe00) === 0xfc00 || (high & 0xff00) === 0xff00;
+        if (privatePrefix && inner !== 'blocked') return 'private';
+        return inner;
+      }
     }
     return isPrivateIPv6(v6) ? 'private' : 'public';
   }

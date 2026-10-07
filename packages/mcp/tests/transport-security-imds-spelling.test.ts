@@ -40,3 +40,17 @@ describe('IMDS IPv6 literal is blocked regardless of spelling', () => {
     );
   });
 });
+
+describe('ISATAP-shaped interface IDs under a private IPv6 prefix', () => {
+  // `…:5efe:<v4>` is valid under any prefix; the embedded IPv4 may only make
+  // a unique-local / multicast verdict stricter, never 'public' or 'loopback'.
+  it('keeps unique-local and multicast addresses out of the public/loopback classes', () => {
+    expect(classifyTransportAddress('fd00::200:5efe:808:808', 6)).toBe('private');
+    expect(classifyTransportAddress('ff02::5efe:808:808', 6)).toBe('private');
+    expect(classifyTransportAddress('fd00::200:5efe:7f00:1', 6)).toBe('private');
+    expect(classifyTransportAddress('fd00::200:5efe:a9fe:a9fe', 6)).toBe('blocked');
+    expect(() =>
+      assertTransportAddressAllowed('fd00::200:5efe:808:808', 6, 'isatap.example', false),
+    ).toThrow();
+  });
+});

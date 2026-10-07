@@ -377,4 +377,18 @@ describe('CircuitBreaker', () => {
       expect(resets).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('lets only the half-open probe decide, not a call admitted before the trip', () => {
+    const cb = new CircuitBreaker({ maxConsecutiveFailures: 1, cooldownMs: 1_000 });
+    expect(cb.beforeCall()).toBe(true); // S: long call admitted while closed
+    cb.beforeCall();
+    cb.afterCall(5, true); // trip
+    vi.advanceTimersByTime(1_000);
+    expect(cb.beforeCall()).toBe(true); // the probe
+    cb.afterCall(60_000, false); // S finishes: it started before the trip
+    expect(cb.snapshot().state).toBe('half-open');
+    expect(cb.beforeCall()).toBe(false); // probe still in flight
+    cb.afterCall(1, false); // the probe succeeds
+    expect(cb.snapshot().state).toBe('closed');
+  });
 });

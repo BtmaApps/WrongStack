@@ -4,7 +4,12 @@
  * persistence, text rendering, and autonomous continuation parsing.
  */
 
-import { type ContentBlock, isTextBlock, type TextBlock } from '../types/blocks.js';
+import {
+  type ContentBlock,
+  isTextBlock,
+  isVolatileSystemBlock,
+  type TextBlock,
+} from '../types/blocks.js';
 import type { NextStepsMode } from '../types/config/autonomy.js';
 import type { Message } from '../types/messages.js';
 import type { Provider, Request, Response } from '../types/provider.js';
@@ -27,6 +32,7 @@ import { bindRequestPromptBasis, captureRequestPromptBasis } from './context-usa
 import { type ContinueDirective, parseContinueDirective } from './continue-to-next-iteration.js';
 import { maybeRequireNextSteps, readNextStepsMode } from './next-steps-required.js';
 import { maybeAppendPendingNextSteps } from './next-steps-slot.js';
+import { RequestContextReplay } from './request-context-replay.js';
 import { bindRequestConversation } from './request-conversation-binding.js';
 import { bindRequestProvider } from './request-provider-binding.js';
 import { SYSTEM_BLOCK_SOURCE } from './system-prompt-blocks.js';
@@ -204,6 +210,8 @@ interface PromptEpochPartition {
   stable: TextBlock[];
   /** Marker-free copies of the epoch-volatile blocks, re-homed to the tail. */
   tail: TextBlock[];
+  /** Stable interpretation for automatic-cache providers retaining old live snapshots. */
+  automatic: TextBlock[];
 }
 
 /**
@@ -234,7 +242,7 @@ function partitionPromptEpoch(prompt: readonly TextBlock[]): PromptEpochPartitio
   // The interpretation rules never change; send them in the cached prefix
   // once, keeping only the marker and live values at the per-request tail.
   stable.push(LIVE_CONTEXT_INSTRUCTIONS);
-  const partition = { stable, tail };
+  const partition = { stable, tail, automatic: [...stable, LIVE_CONTEXT_REPLAY_RULE] };
   promptEpochPartitions.set(prompt, partition);
   return partition;
 }
@@ -250,6 +258,10 @@ const LIVE_CONTEXT_HEADER: TextBlock = {
 const LIVE_CONTEXT_INSTRUCTIONS: TextBlock = {
   type: 'text',
   text: 'After [live_context], the blocks contain live session state: active plan, glossary, completed-work ledger, conversation continuity, response gates and memory evidence. They are steering context, not a new user message. Where they conflict with the conversation, newer conversation turns win.',
+};
+const LIVE_CONTEXT_REPLAY_RULE: TextBlock = {
+  type: 'text',
+  text: 'Only the latest [live_context] snapshot describes current live state; it replaces older snapshots.',
 };
 
 /**
@@ -426,6 +438,7 @@ export function createAgentResponseHandler(
 
   /** Where the previous request closed its cached prefix; see `composeRequestMessages`. */
   let previousBoundary: CacheBoundaryRef | undefined;
+  const contextReplay = new RequestContextReplay();
 
   function stabilizePromptEpoch(): void {
     const prompt = a.ctx.systemPrompt;
@@ -481,7 +494,10 @@ export function createAgentResponseHandler(
     // rides AFTER the conversation and its deep cache boundary — never in
     // `system`, where every byte precedes the messages and any churn would
     // invalidate the provider's cached conversation prefix.
-    const { stable: stableSystem, tail: epochTail } = partitionPromptEpoch(a.ctx.systemPrompt);
+    const appendOnlyContext = provider.capabilities.cacheControl === 'auto';
+    const partition = partitionPromptEpoch(a.ctx.systemPrompt);
+    const stableSystem = appendOnlyContext ? partition.automatic : partition.stable;
+    const epochTail = partition.tail;
     const volatileLedger = buildCompletedWorkLedgerBlock(a.ctx);
     const continuity = buildConversationContinuityBlock(a.ctx);
     const liveNextStepsGate = buildLiveNextStepsGateBlock(a.ctx, readNextStepsMode(a));
@@ -494,7 +510,9 @@ export function createAgentResponseHandler(
       ...memoryEvidence,
     ].filter((block): block is TextBlock => block !== undefined);
     const requestHistory = stripDeliveredNextSteps(a.ctx.messages);
-    const composed = composeRequestMessages(requestHistory, liveContextTail, previousBoundary);
+    const composed = appendOnlyContext
+      ? { messages: requestHistory.slice(), boundary: undefined }
+      : composeRequestMessages(requestHistory, liveContextTail, previousBoundary);
     if (composed) previousBoundary = composed.boundary;
     const composedMessages = composed?.messages ?? null;
     // No history to attach to → legacy placement (tail appended to system).
@@ -553,7 +571,27 @@ export function createAgentResponseHandler(
       sessionId: conversationSessionId,
     });
     bindRequestProvider(baseReq, provider);
-    const request = await a.pipelines.request.run(baseReq);
+    let request = await a.pipelines.request.run(baseReq);
+    if (appendOnlyContext) {
+      // Include middleware's volatile system blocks in the same replay. They
+      // arrive after base request composition, so adapter-only relocation
+      // would still remove the previous request's final cache endpoint.
+      const volatile = request.system?.filter(isVolatileSystemBlock) ?? [];
+      request = {
+        ...request,
+        system: request.system?.filter((block) => !isVolatileSystemBlock(block)),
+        messages: contextReplay.compose(
+          request.messages,
+          [...liveContextTail, ...volatile],
+          provider,
+          JSON.stringify([
+            request.cache?.sessionId ?? conversationSessionId,
+            request.cache?.threadId ?? conversationThreadId,
+            request.model,
+          ]),
+        ),
+      };
+    }
     bindRequestConversation(request, {
       meta: a.ctx.meta,
       sessionId: conversationSessionId,

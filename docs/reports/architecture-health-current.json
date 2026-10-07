@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T09:35:21.801Z",
+  "generatedAt": "2026-10-07T13:11:34.562Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4830,
-    "testFiles": 4177,
-    "sourceLines": 1080093,
+    "sourceFiles": 4831,
+    "testFiles": 4179,
+    "sourceLines": 1080310,
     "workspaceEdges": 133,
-    "moduleEdges": 15904,
+    "moduleEdges": 15908,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -243,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1080,
-      "testFiles": 927,
+      "sourceFiles": 1081,
+      "testFiles": 928,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 927
+          "testFiles": 928
         }
       ]
     },
@@ -721,7 +721,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 51,
-      "testFiles": 50,
+      "testFiles": 51,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -736,7 +736,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 50
+          "testFiles": 51
         }
       ]
     },
@@ -7513,6 +7513,12 @@
       },
       {
         "file": "packages/core/tests/core/queued-messages.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/request-context-replay.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16489,6 +16495,12 @@
       },
       {
         "file": "packages/techstack/tests/research/triage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/sbom-installed-version.test.ts",
         "projects": [
           "root-node"
         ]

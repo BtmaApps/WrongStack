@@ -39,6 +39,7 @@ function repairTruncated(s: string): string {
   let isKey = false;
   let prevSig = ''; // last significant char seen outside of a string
   let contentEnd = 0; // index just past the last significant char
+  let stringStart = 0; // index of the opening quote of the latest string
 
   for (let i = 0; i < s.length; i++) {
     const ch = expectDefined(s[i]);
@@ -63,6 +64,7 @@ function repairTruncated(s: string): string {
     contentEnd = i + 1;
     if (ch === '"') {
       inString = true;
+      stringStart = i;
       sawKey = true;
       isKey = stack[stack.length - 1] === '{' && (prevSig === '{' || prevSig === ',');
       prevSig = '"';
@@ -88,7 +90,14 @@ function repairTruncated(s: string): string {
   // Drop trailing whitespace that sits outside any string.
   let result = s.slice(0, contentEnd);
 
-  if (inString) {
+  if (inString && isKey) {
+    // A key cut mid-name is not a field: completing it as `"<prefix>":null`
+    // invents one, and when the prefix equals an earlier key the duplicate
+    // wins in JSON.parse and erases that complete field. Drop it instead.
+    result = s.slice(0, stringStart).trimEnd();
+    if (result.endsWith(',')) result = result.slice(0, -1).trimEnd();
+    isKey = false;
+  } else if (inString) {
     // A dangling lone backslash can't begin a valid escape — drop it.
     if (escaped) {
       result = result.slice(0, -1);
@@ -103,10 +112,6 @@ function repairTruncated(s: string): string {
       }
     }
     result += '"';
-    if (isKey) {
-      result += ':null';
-      isKey = false;
-    }
   } else if (isKey) {
     // An object key with no colon or value (e.g. `{"k"` or `{"a": 1, "b"`)
     result += ':null';

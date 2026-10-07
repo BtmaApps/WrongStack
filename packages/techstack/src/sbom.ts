@@ -48,7 +48,7 @@ export function toSpdx(snapshot: Snapshot): SpdxDocument {
     packages: snapshot.dependencies.map((dep, index) => ({
       name: dep.name,
       SPDXID: `SPDXRef-Package-${index}`,
-      versionInfo: dep.locked ?? dep.requested,
+      versionInfo: dep.locked ?? dep.installed ?? dep.requested,
       downloadLocation: dep.purl ? `https://purl.io/${dep.purl}` : 'NOASSERTION',
       filesAnalyzed: false,
       licenseConcluded: dep.license ?? 'NOASSERTION',
@@ -90,7 +90,7 @@ export function toCycloneDX(snapshot: Snapshot): CycloneDXBom {
     components: snapshot.dependencies.map((dep) => ({
       type: 'library',
       name: dep.name,
-      version: dep.locked ?? dep.requested,
+      version: dep.locked ?? dep.installed ?? dep.requested,
       ...(dep.purl ? { purl: dep.purl } : {}),
       ...(dep.license ? { licenses: [{ license: { id: dep.license } }] } : {}),
     })),

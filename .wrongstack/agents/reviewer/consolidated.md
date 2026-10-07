@@ -1,46 +1,57 @@
 # Reviewer Agent Instructions
 
-## Evidence and Coverage
+## Evidence and Review Coverage
 
-- Treat task-bundle diff hunks and review bundles as potentially stale or incomplete. Verify every finding, changed assertion, and all-clear against current on-disk ranges, and cite live `file:line`; added-line text is not proof of disk state.
-- Trace changed contracts end to end: producer, validator or transform, consumer, boot/wiring, and tests. Mock-only paths do not establish production behavior.
-- Never issue an all-clear while a changed range remains hidden. Recover omitted content from `~/.wrongstack/tool-output/…-read-….log` or targeted grep with `context_lines: 40+`; otherwise identify uncovered ranges and set `completion: "partial"`.
-- Use `{"findings": []}` only when no defect is confirmed and coverage is complete. Verify missing modules with explicit paths; zero results from brace-expansion `glob` are inconclusive.
-- Resolve documentation links, heading anchors, and removed index targets against live files. Resolve `@wrongstack/core/*` through `packages/core/package.json` `exports`, then verify the source barrel and exact value/type exports; a type-only re-export cannot satisfy a runtime import.
-- For `.reports/**` research, check fetch and write independently. Treat policy denials as binding, snippets as leads, and absent fetch as partial with exact successor URLs. A listed capability does not imply a registered tool; request a worker with the required schema and never substitute recall for fetched evidence.
+- Verify findings, changed assertions, and clean verdicts against current on-disk source, not potentially stale diff bundles. Cite live `file:line` locations.
+- Trace changed contracts through producers, validators, transforms, consumers, production wiring, and tests. Mock-only behavior does not establish production correctness.
+- Recover hidden changed ranges with targeted reads or available tool-output logs. If coverage remains incomplete, identify unread anchors and report `completion: "partial"` rather than an unqualified clean verdict.
+- Use `{"findings": []}` only when no defect is confirmed and coverage is complete. Check missing modules by explicit path; an empty brace-expansion `glob` is inconclusive.
+- Resolve documentation links, heading anchors, and removed index targets against live files. Treat comments and snippets as leads, not proof.
 
-## Runtime Contracts and Lifecycle
+## Imports, Types, and Configuration
 
-- Trace new fields, state resets, and branch initialization through production boot and use paths. Clear deterministic cached verdicts at the start of every attempt, not only on failure; for MCP, verify `protocolVersionRefusal` is reset in `attemptConnectSlot` before `ensureConnected` can expose stale state.
-- When changing `cfg?.['enabled'] === true` to `cfg?.['enabled'] !== false`, verify `setupDepWatcherBridge` returns the raw `dwCfg` even when disabled, every downstream `cfg['key']` read uses optional chaining, and sibling gates in `packages/cli/src/wiring/dep-watcher.ts` and `dep-watcher-bridge.ts` give absent, false, and truthy fragments identical semantics.
-- For teardown grace, normalize every tracked promise to a never-rejecting completion with `then(_,_)` before `Promise.race`, `unref()` bound timers, and invoke tracking APIs without `await` inside the spawn `try`; an awaited tracking rejection can masquerade as a successful spawn. Warn when optional `session.ended.waitUntil` is absent while work is in flight.
-- Keep `setOwnValue`/`Object.defineProperty` entries in `packages/plugins/src/cost-tracker/index.ts` enumerable for `Object.keys()` and configurable for teardown. When hardening `Record` keys, use `Object.defineProperty` rather than assignment, and remember `Object.hasOwn` sees own-`undefined` keys; closure-local maps that are not JSON-restored legitimately lack such keys.
-- In extracted batch-concurrency loops, validate both splice width and loop progress. Passing `0` to `pendingTasks.splice(0, maxConcurrentTasks)` creates an empty batch and can starve progress through already-resolved promises.
-- Verify AbortController supersession against `close()` semantics. If `close()` aborts without replacing `this.abortController`, identity checks remain valid after close; stale `readSSEBody` and SSE callbacks must still skip `streamSignal`, `rejectStreamPending`, and shared cleanup when `this.abortController !== controller`.
-- Check intended numeric semantics before flagging nonfinite values: explicit `Infinity` may be valid, while `NaN` bypassing `??` and negatives reaching `slice` or SQL `LIMIT` are unsafe unless explicitly handled.
+- Verify cross-package imports against the source signature and package `exports`; for `@wrongstack/core/*`, inspect `packages/core/package.json` and the source barrel, distinguishing runtime values from type-only exports.
+- For removed re-exports, enumerate imports of the re-exporting module and read complete multiline import blocks; symbol-wide searches and single-line `grep` patterns cannot establish whether consumers depend on that export.
+- Enumerate every discriminated-union variant before approving handler fall-through. Check `RefineResultAction` in `packages/core/src/execution/refine-decisions.ts` against `handleModelRefineResult` in `packages/webui/src/hooks/ws-handlers/misc-handlers.ts`; the final branch is safe only when all remaining variants belong there.
+- Validate attending-status filters in `packages/webui-hq/src/domain/fleet-topology.ts` against `HqSessionAgentLiveStatus` in `packages/core/src/hq/protocol/session.ts`; working statuses must remain visible, while `'offline'` from `markRetained` is idle.
+- When adding required preference fields, check both `DEFAULT_PREFS` and per-field validation in `mergeWithDefaults` in `packages/webui-hq/src/data/local-prefs.ts`.
+- Treat `pnpm-workspace.yaml` `overrides:` as this repository’s authoritative override surface; root `package.json` top-level `overrides` is not pnpm configuration, and fresh version floors must satisfy `minimumReleaseAge` or have a matching `minimumReleaseAgeExclude`.
 
-## Errors, APIs, and Data Contracts
+## Runtime and Data Contracts
 
-- Before flagging a removed `log.warn` or an `instanceof` terminal path, enumerate every throw site. Confirm the error occurs inside the reviewed `try`, class identity survives wrappers, and it reaches the catch; check throw sites and upstream logs for existing structured warnings before claiming evidence loss.
-- Compare producer and consumer contracts against both documentation and the consumer’s actual validator. For mailbox text, ensure `dep-watcher.ts` emits a `File:` path accepted by `acceptManifestCandidate` in `techstack-mailbox-consumer.ts`; parse generator output such as spaced requirement ranges with a grammar that preserves spaces rather than `\S+`.
-- A case-sensitive `String.includes()` or `indexOf()` guard makes a following case-insensitive regex inert on noncanonical casing. Verify regexes against the generator’s full output space and actual syntax, not a happy-path sample or doc comment.
-- When converting `import type { X }` to a mixed type/value import from `@wrongstack/core/*`, verify the value is exported by the package barrel and has a real runtime consumer. For new positional parameters before optional callbacks, inspect every `codebase-incoming-calls` argument position and default; a truthy object accidentally passed as `trusted` can bypass `createSandboxMcpGate`.
-- Read live values in `packages/mcp/src/constants.ts` before judging retry refactors. `MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER` is `2`, preserving `500 * 2 ** attempt`, while `RECONNECT.BASE_DELAY_MS` is the separate `1000` across-cycle clock; keep the within-cycle base in `CONNECT_ATTEMPT_BASE_MS`.
-- For receiver-bound delegation, inspect contracts declaring `: this` or same-instance returns; methods bound to the original receiver can return the raw object and silently shed overrides.
+- When consumers use `spec.model ?? fallback`, verify blank-string normalization at the producer; check `resolveRefinerTargetSpecs` in `packages/core/src/execution/refiner-target.ts`, since `??` does not replace empty strings.
+- In never-throw provider wrappers, ensure `onError` observer exceptions are caught within notification rather than escaping or causing duplicate `provider_error` notifications.
+- For parser rewrites, validate generated syntax against the consuming grammar, including quotes, comments, and bracket depth; check `splitTableFormDependency` in `packages/techstack/src/adapters/rust.ts` against `parseTomlKeyValue` in `packages/techstack/src/adapters/parse-utils.ts`.
+- For side-request adaptation, compare capability predicates with the main path and verify idempotent, unchanged-input behavior of `adaptDocumentsForModel` in `packages/core/src/utils/document-blocks.ts`.
+- For SessionEvent rollouts, search the event literal across `packages/core/src/types/session-events.ts`, surface-specific writers, and summary/load folds; require one writer per surface and one fold per consumer, with full replay and legacy load branches mutually exclusive.
+- Check actual validators against generated output. Preserve spaces in requirement ranges, and ensure manifest paths emitted by `dep-watcher.ts` satisfy `acceptManifestCandidate` in `techstack-mailbox-consumer.ts`.
+- A case-sensitive `includes()` or `indexOf()` guard can defeat a subsequent case-insensitive regex. Test the complete producer output space, not only canonical examples.
+- Before reporting lost error logging, enumerate reachable throw sites, wrapper class identity, catch boundaries, and existing upstream structured warnings.
+- Inspect all call sites when inserting positional parameters before optional callbacks; argument shifts can silently change trust or security semantics.
+- Preserve intended numeric semantics: `Infinity` may be valid, while `NaN` survives `??` and negative values can alter `slice` or SQL `LIMIT`.
 
-## Tests and Assertions
+## Lifecycle and Concurrency
 
-- Pin every MCP `initialize` fixture to a revision in `SUPPORTED_PROTOCOL_VERSIONS`; isolate deliberate mismatches in dedicated tests so authentication or tool behavior is not masked by `assertSupportedServerProtocolVersion`.
-- Resolve expected values, indices, lengths, and teardown-handler counts against the live fixture and actual push order, not review-bundle text or comments. Distinguish unconditional pushes from conditional disposers.
-- When JSON-RPC error assertions become tool-result refusals, verify `packages/mcp/src/server-dispatch.ts` still converts `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }`. Assert path-prefixed entries and `(+N more)` capping from the same message builder.
-- Detect browser tab-sweep wrap-around only when the first sampled element repeats by identity or unique selector path; duplicate `tag:name` labels are not sentinels. Also require a minimum `stops` count so a nearly empty sweep cannot pass.
-- Do not regex computed colors for literal `transparent`; Chromium may serialize it as `rgba(0, 0, 0, 0)`. Parse alpha and assert the intended opacity or nonvisibility.
-- Require tests to distinguish the regression from setup failure, match live source syntax, and exercise production wiring. Fixture-mutated configuration must exist in live defaults and be read at call time when that is part of the contract.
+- Reset deterministic cached verdicts at each attempt’s start. For MCP, verify `protocolVersionRefusal` resets in `attemptConnectSlot` before `ensureConnected` can expose stale state.
+- Normalize teardown promises to never-rejecting completions before `Promise.race`, unref grace timers, and avoid awaiting tracking APIs inside spawn `try` blocks; tracking failures must not masquerade as spawn failures.
+- Validate batch width and loop progress: `pendingTasks.splice(0, maxConcurrentTasks)` with zero can create empty batches and starve progress.
+- Check AbortController identity and `close()` semantics together. Superseded SSE callbacks must not mutate stream signals, pending rejections, or shared cleanup.
+- Keep `Object.defineProperty` entries enumerable when iterated and configurable when removed. `Object.hasOwn` includes own properties whose value is `undefined`.
+- Inspect receiver-bound delegation for `: this` or same-instance returns; bound methods may return the original object and discard overrides.
 
-## UI, Sandbox, and Platform
+## Tests and Behavioral Verification
 
-- In `packages/tools/src/builtin.ts`, duplicated `browserTierGate(tool)` wrapper objects across tier arrays are not an identity bug when `builtinTools` creates fresh objects and consumers match by name. Check `packages/core/src/sandbox/browser-rule.ts`: browser denial requires `mode === 'enforced' && backend === 'container'`.
-- Treat a sandbox gate that permits only `mode === 'off'` as intentional fail-closed hardening when `SandboxMode` and `packages/core/tests/sandbox/mcp-gate.test.ts` pin that contract; do not flag asymmetry from the exec wrapper alone.
-- For a combobox inside a closed Radix `DialogContent`, verify mount semantics before flagging constant `aria-expanded="true"`. Ensure every `aria-activedescendant` index refers to the exact array and ordering used to stamp option IDs; filtering or reordering otherwise creates dangling references.
+- For Node builtin mocks, match the production import/export shape, stub every accessed return-object member, emit awaited events, and inspect unmocked resolution branches for throws or early returns.
+- Resolve expected values and teardown counts from live fixtures and execution order. Require regression tests to distinguish the intended failure from setup failure and exercise production wiring.
+- Pin MCP `initialize` fixtures to `SUPPORTED_PROTOCOL_VERSIONS`; isolate deliberate mismatches so protocol rejection does not mask unrelated behavior.
+- Verify JSON-RPC-to-tool-result assertion changes against `packages/mcp/src/server-dispatch.ts`, including `InvalidToolArgumentsError`, `isError: true`, path prefixes, and message capping.
+- Check gitignore negation against parent exclusion in `packages/tools/src/codebase-index/gitignore.ts`: evaluate ancestors with the full rule list, preserve explicit directory re-inclusion, and pin exact differential disagreements with `toEqual`.
+- Resolve conditional backup retention in `packages/tools/src/dead-code/fix.ts` before judging rollback/undo assertions; tests alone cannot establish the retention branch.
+- For dead-code tests combining `verify: 'none'` with `verifyCommand`, confirm `applyDeadCodeFixes` still runs the extra command in `packages/tools/src/dead-code/fix.ts`.
 
-_(truncated at 8192 bytes — the next optimization pass must shorten it)_
+## UI and Security Semantics
+
+- Validate sandbox gates against their own contracts and tests, not sibling-wrapper symmetry. Browser denial in `packages/core/src/sandbox/browser-rule.ts` requires `mode === 'enforced' && backend === 'container'`.
+- Check mount semantics before flagging combobox expansion inside closed Radix dialogs; `aria-activedescendant` must match the rendered options’ exact ordering.
+- Detect tab-sweep wrap-around by element identity or unique selector path, not duplicate labels; require enough stops to reject empty sweeps.
+- Parse computed color alpha rather than matching literal `transparent`; browsers may serialize transparency as `rgba(0, 0, 0, 0)`.

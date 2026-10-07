@@ -24,12 +24,21 @@ export async function mapWithConcurrency<T, R>(
   const effectiveLimit = Math.max(1, Math.min(parsedLimit, items.length));
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
+  // Fail-fast also means no NEW item starts once one failed: the caller has
+  // already been rejected, so later `fn` calls (a `replace` worker rewriting
+  // files) would run unobserved after the error was reported.
+  let failed = false;
 
   const worker = async (): Promise<void> => {
-    while (true) {
+    while (!failed) {
       const i = nextIndex++;
       if (i >= items.length) return;
-      results[i] = await fn(items[i] as T);
+      try {
+        results[i] = await fn(items[i] as T);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
     }
   };
 

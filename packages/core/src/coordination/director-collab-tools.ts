@@ -1,4 +1,5 @@
 import { promises as fsp } from 'node:fs';
+import * as path from 'node:path';
 import { ToolCapabilities } from '../security/capabilities.js';
 import { ToolValidationError } from '../types/errors.js';
 import type { Tool } from '../types/tool.js';
@@ -107,8 +108,15 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
       // site too; this tool never saw `ctx` at all before (WS-2026-09-17-01).
       const projectRoot = ctx?.projectRoot;
       const allowOutsideProjectRoot = ctx?.allowOutsideProjectRoot;
+      // Relative targets mean what they mean to every other file tool: the
+      // session's working directory, not this process's cwd (they differ
+      // after a `cd`, in a worktree subagent, or in a multi-session host).
+      const base = ctx?.workingDir ?? ctx?.cwd ?? projectRoot;
+      const targetPaths = base
+        ? i.targetPaths.map((p) => (path.isAbsolute(p) ? p : path.join(base, p)))
+        : i.targetPaths;
       const { readable, refused } = await anyReadableTarget(
-        i.targetPaths,
+        targetPaths,
         projectRoot,
         allowOutsideProjectRoot,
       );
@@ -131,7 +139,7 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
         });
       }
       const options: CollabSessionOptions = {
-        targetPaths: i.targetPaths,
+        targetPaths,
         timeoutMs: i.timeoutMs,
         maxTargetFiles: i.maxTargetFiles,
         contextWindow: i.contextWindow,

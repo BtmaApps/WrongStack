@@ -62,4 +62,13 @@ describe('unifiedDiff', () => {
     expect(d).toContain('-b');
     expect(d).toContain('+B');
   });
+
+  it('reports a change to the final newline with the standard marker', () => {
+    expect(unifiedDiff('a\nb\n', 'a\nb')).toBe(
+      '--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+b\n\\ No newline at end of file\n',
+    );
+    expect(unifiedDiff('a', 'a\n')).toBe(
+      '--- a\n+++ b\n@@ -1,1 +1,1 @@\n-a\n\\ No newline at end of file\n+a\n',
+    );
+  });
 });

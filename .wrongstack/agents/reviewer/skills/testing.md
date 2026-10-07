@@ -1,18 +1,17 @@
 ## Dead-code tests [applied 5×, 5 ok]
-- Before crediting a `packages/tools/tests/dead-code-engine.test.ts` case passing both `verify: 'none'` and `verifyCommand` to `applyDeadCodeFixes`, read the apply-time gate in `packages/tools/src/dead-code/fix.ts` and confirm the extra command actually runs when the mode is `'none'` (the doc says "after the typecheck") — a mode-gated skip makes `rolledBack` untestable.
+- Before crediting tests in `packages/tools/tests/dead-code-engine.test.ts` passing `verify: 'none'` and `verifyCommand` to `applyDeadCodeFixes`, inspect the apply-time gate in `packages/tools/src/dead-code/fix.ts`. Confirm extra commands run in mode `'none'` despite the “after the typecheck” documentation; a mode-gated skip leaves `rolledBack` untested.
 
 ## Vitest builtin mocks
-- For a new file mocking a Node builtin, match the factory's export surface to the production import style (named vs namespace — `import { spawn } from 'node:child_process'` in `packages/cli/src/boot/tui-project-spawn.ts`) and stub every member production code touches on the mocked return value (`child.on`, `child.unref`): an unstubbed member throws; an awaited event the mock never emits hangs the suite.
-- Verify no unmocked real code between the guard and the mock (resolution/fallback branches) can throw or return early under the test runner.
+- Match mock-factory exports to production imports: `import { spawn } from 'node:child_process'` in `packages/cli/src/boot/tui-project-spawn.ts` requires a named export. Stub touched return-value members (`child.on`, `child.unref`) and emit awaited events to prevent throws or hangs. Check that unmocked resolution/fallback branches between the guard and mock cannot throw or return early under Vitest.
 
 ## MCP server tests
-- Pin every fixture answering `initialize` to a revision in `SUPPORTED_PROTOCOL_VERSIONS` (`packages/mcp/src/constants.ts`), or `assertSupportedServerProtocolVersion` fails before the connect behavior under test; reserve `'2025-11-25'` for deliberate protocol-mismatch tests.
-- When error-code assertions become tool-result refusals, confirm `packages/mcp/src/server-dispatch.ts` maps `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }` and assert only substrings of that same `err.message` (`${error.path}: ${error.message}`, `(+N more)` cap from `MAX_REPORTED_SCHEMA_ERRORS`).
-- Judge a changed assertion against the live test and fixture, not review-bundle text: in `packages/mcp/tests/server.test.ts`, `toContain('target')` matches `arguments: [{ name: 'target', required: true }]`; `toContain('path')` is stale — never report it as an inconsistency.
+- Use `SUPPORTED_PROTOCOL_VERSIONS` from `packages/mcp/src/constants.ts` for `initialize` fixtures; reserve `'2025-11-25'` for deliberate mismatch tests. Otherwise `assertSupportedServerProtocolVersion` fails before the intended connect behavior.
+- For tool-result refusals, verify `packages/mcp/src/server-dispatch.ts` maps `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }`. Assert substrings of `err.message`, respecting `${error.path}: ${error.message}` and the `(+N more)` cap from `MAX_REPORTED_SCHEMA_ERRORS`.
+- Check live fixtures rather than review-bundle text: in `packages/mcp/tests/server.test.ts`, `arguments: [{ name: 'target', required: true }]` supports `toContain('target')`; do not report stale `toContain('path')` as a live inconsistency.
 
 ## In-project exports
-- Before approving an export consumed by a literal dotted-path walker, read the full `IN_PROJECT_DENIED_PATHS` table in `packages/core/src/storage/config-loader/in-project-policy.ts` (a truncated `path:` grep misses entries) and keep `listInProjectDeniedPaths()` in sync with the hand-maintained `filterSafeForProject` mirror in `packages/cli/src/settings-menu.ts` — wildcard-shaped entries otherwise go silently inert.
-- In allow-list-driven absence tests, confirm the stripped field's top-level parent is itself in `PROJECT_SAFE_FIELDS` (`packages/cli/src/settings-menu.ts`); otherwise the assertion only proves the field was never copied.
+- Read the full `IN_PROJECT_DENIED_PATHS` table in `packages/core/src/storage/config-loader/in-project-policy.ts`, not a truncated `path:` grep. Keep `listInProjectDeniedPaths()` synchronized with `filterSafeForProject` in `packages/cli/src/settings-menu.ts`; check wildcard-shaped entries against literal dotted-path traversal.
+- In absence tests, confirm the stripped field’s parent belongs to `PROJECT_SAFE_FIELDS` in `packages/cli/src/settings-menu.ts`; otherwise absence only proves it was never copied.
 
 ## Browser audits
-- Never test outline color with `/transparent/.test(getComputedStyle(el).outlineColor)` — Chromium serializes `transparent` as `rgba(0, 0, 0, 0)`; parse alpha to assert visible opacity, and use hue alone to accept fully transparent focus rings.
+- Avoid `/transparent/.test(getComputedStyle(el).outlineColor)`: Chromium serializes transparency as `rgba(0, 0, 0, 0)`. Parse alpha when asserting outline visibility; hue alone cannot establish opacity.
