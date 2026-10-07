@@ -5,6 +5,10 @@
     "packages/core/src/security/directory-permission-policy.ts": {
       "lines": 808,
       "relativeImports": 8
+    },
+    "packages/plugins/src/dep-guard/index.ts": {
+      "lines": 897,
+      "relativeImports": 2
     }
   }
 }

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:44:13.397Z
+**Generated:** 2026-10-07T07:45:11.584Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4829 |
-| Production source lines | 1079189 |
+| Production source lines | 1079316 |
 | Test files | 4165 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 15897 |
@@ -83,6 +83,7 @@ None.
 
 | Lines | File |
 |---:|---|
+| 897 | `packages/plugins/src/dep-guard/index.ts` |
 | 808 | `packages/core/src/security/directory-permission-policy.ts` |
 | 799 | `packages/techstack/src/advisory/native-audit.ts` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
@@ -125,7 +126,6 @@ None.
 | 773 | `packages/providers/src/ai-gateway.ts` |
 | 773 | `packages/webui-server/src/server/http-server/api-handlers.ts` |
 | 772 | `packages/core/src/utils/term.ts` |
-| 772 | `packages/plugins/src/dep-guard/index.ts` |
 | 772 | `packages/tools/src/replace.ts` |
 | 771 | `packages/core/src/core/agent-loop.ts` |
 | 771 | `packages/plug-lsp/src/slash-commands/lsp.ts` |

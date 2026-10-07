@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const depGuardPlugin = (await import('../src/dep-guard/index.js')).default;
-const { parseInstallCommands, editDistance, typosquatOf } = await import(
+const { parseInstallCommands, isTreeInstallCommand, editDistance, typosquatOf } = await import(
   '../src/dep-guard/index.js'
 );
 
@@ -301,8 +301,10 @@ describe('cross-plugin install parse parity (issue #364)', () => {
         .flatMap((e) => e.packages.map((p) => p.name))
         .sort();
       expect(parsePackageNames(command).sort()).toEqual(fromDep);
+      // The audit trigger is dep-guard's grammar too: a named install, or a
+      // package-less one (`npm install`) that re-resolves the whole tree.
       expect(isInstallCommand({ toolName: 'bash', toolInput: { command } })).toBe(
-        parseInstallCommands(command).length > 0,
+        parseInstallCommands(command).length > 0 || isTreeInstallCommand(command),
       );
     }
   });

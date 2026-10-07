@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T07:44:13.397Z",
+  "generatedAt": "2026-10-07T07:45:11.584Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4829,
     "testFiles": 4165,
-    "sourceLines": 1079189,
+    "sourceLines": 1079316,
     "workspaceEdges": 133,
     "moduleEdges": 15897,
     "nonCommandSlashImports": 0,
@@ -26286,9 +26286,19 @@
       "file": "packages/core/src/security/directory-permission-policy.ts",
       "lines": 808,
       "relativeImports": 8
+    },
+    {
+      "file": "packages/plugins/src/dep-guard/index.ts",
+      "lines": 897,
+      "relativeImports": 2
     }
   ],
   "hotspots": [
+    {
+      "file": "packages/plugins/src/dep-guard/index.ts",
+      "lines": 897,
+      "relativeImports": 2
+    },
     {
       "file": "packages/core/src/security/directory-permission-policy.ts",
       "lines": 808,
@@ -26498,11 +26508,6 @@
       "file": "packages/core/src/utils/term.ts",
       "lines": 772,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/plugins/src/dep-guard/index.ts",
-      "lines": 772,
-      "relativeImports": 2
     },
     {
       "file": "packages/tools/src/replace.ts",

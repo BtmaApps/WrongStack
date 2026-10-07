@@ -231,6 +231,121 @@ const INSTALL_RE = new RegExp(
 );
 
 /**
+ * A JS install that names no package — `npm install`, `npm i`, `npm ci`,
+ * `pnpm install`, `bun install`, bare `yarn` / `yarn install`. It restores or
+ * re-resolves the whole tree from package.json, so tree-wide checks (the
+ * vulnerability audit) apply to it; INSTALL_RE needs an argument and never
+ * reports these. Bare `yarn` takes value-less options only, so `yarn -s build`
+ * stays a script run.
+ */
+const TREE_INSTALL_RE = new RegExp(
+  [
+    String.raw`${START}(?:npm|pnpm|bun)${PM_OPTIONS}\s+(?:install|i)\s*(?=$|[;&|(){}\n\r])`,
+    String.raw`${START}yarn(?:${PM_OPTIONS}\s+install|(?:\s+-${PM_WORD}+)*)\s*(?=$|[;&|(){}\n\r])`,
+    String.raw`${START}npm${PM_OPTIONS}\s+(?:ci|clean-install)(?=\s|$|[;&|(){}\n\r])`,
+  ].join('|'),
+  'i',
+);
+
+/** True when `command` runs a package-less JS install (see TREE_INSTALL_RE). */
+export function isTreeInstallCommand(command: string): boolean {
+  return TREE_INSTALL_RE.test(command);
+}
+
+/**
+ * Options whose VALUE is the next token, per manager family. Read as package
+ * names, those values became phantom dependencies — `pip install -r
+ * requirements.txt` "installed" a package named `requirements.txt`, which was
+ * then registry-checked and reported as a hallucinated name on the most common
+ * pip command; `cargo add serde --features derive` added `derive`.
+ * The `--opt=value` spelling is a single `-`-prefixed token and needs no entry.
+ */
+const VALUE_OPTIONS: Readonly<Record<'js' | 'pip' | 'cargo', ReadonlySet<string>>> = {
+  js: new Set([
+    '-w',
+    '--workspace',
+    '--prefix',
+    '--registry',
+    '--tag',
+    '--cache',
+    '--userconfig',
+    '--filter',
+    '-F',
+    '--cwd',
+    '-C',
+    '--dir',
+    '--omit',
+    '--include',
+    '--save-prefix',
+    '--install-strategy',
+  ]),
+  pip: new Set([
+    '-r',
+    '--requirement',
+    '-c',
+    '--constraint',
+    '-e',
+    '--editable',
+    '-i',
+    '--index-url',
+    '--extra-index-url',
+    '--index',
+    '-f',
+    '--find-links',
+    '-t',
+    '--target',
+    '--prefix',
+    '--root',
+    '--src',
+    '--platform',
+    '--python-version',
+    '--implementation',
+    '--abi',
+    '--upgrade-strategy',
+    '--progress-bar',
+    '--log',
+    '--cert',
+    '--client-cert',
+    '--proxy',
+    '--trusted-host',
+    '--no-binary',
+    '--only-binary',
+    '-C',
+    '--config-settings',
+    '-p',
+    '--python',
+    '--group',
+    '--extra',
+    '--optional',
+  ]),
+  cargo: new Set([
+    '-F',
+    '--features',
+    '-p',
+    '--package',
+    '--rename',
+    '--path',
+    '--git',
+    '--branch',
+    '--tag',
+    '--rev',
+    '--registry',
+    '--manifest-path',
+    '--target',
+    '--lockfile-path',
+    '--color',
+    '--config',
+    '-Z',
+  ]),
+};
+
+function valueOptionsFor(manager: string): ReadonlySet<string> {
+  if (manager === 'cargo') return VALUE_OPTIONS.cargo;
+  if (manager === 'pip' || manager === 'pip3' || manager === 'uv') return VALUE_OPTIONS.pip;
+  return VALUE_OPTIONS.js;
+}
+
+/**
  * Parse a shell command for dependency installs. Returns one entry
  * per install segment found (compound commands can contain several).
  * Bare `npm install` (restore from lockfile, no packages) yields an
@@ -244,8 +359,18 @@ export function parseInstallCommands(command: string): ParsedInstall[] {
     const manager = (m[1] ?? m[3] ?? m[5] ?? m[7] ?? '').toLowerCase();
     const argString = m[2] ?? m[4] ?? m[6] ?? m[8] ?? '';
     const packages: ParsedInstall['packages'] = [];
+    const valueOptions = valueOptionsFor(manager);
+    let skipValue = false;
     for (const token of argString.split(/\s+/)) {
-      if (!token || token.startsWith('-')) continue;
+      if (!token) continue;
+      if (skipValue) {
+        skipValue = false;
+        continue;
+      }
+      if (token.startsWith('-')) {
+        skipValue = valueOptions.has(token);
+        continue;
+      }
       // Skip local paths / URLs / archives.
       if (/^(\.|\/|file:|git\+|https?:)/i.test(token) || token.endsWith('.tgz')) continue;
       const cleaned = token.replace(/^['"]|['"]$/g, '');
