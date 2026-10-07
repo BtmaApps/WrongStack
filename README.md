@@ -55,34 +55,27 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.34
+### What's new in 1.0.35
 
-- **[Project goals](docs/architecture/project-goals.md):** `/goals` and WebUI
-  **My Goals** track owning sessions, tasks, phases, blockers and verification.
-  New git-backed goals use dedicated checkouts and retain their branches for
-  review before integration. Observing another terminal's goal does not grant control.
-- **[Explicit continuation](docs/slash/nextsteps.md):** require a next action
-  or completion marker and cap consecutive automatic turns. **[YOLO+](docs/slash/yolo.md)**
-  removes confirmation prompts per conversation, including its subagents;
-  user-authored refusal rules and tool-declared denials still apply.
-- **[Dead-code workflow](docs/tools/dead-code.md):** scan TypeScript reachability,
-  inspect confidence and planned diffs, then apply selected fixes with fresh
-  analysis, default package typechecks, rollback and conflict-aware backup undo.
-- **[MCP visibility](docs/mcp-protocol-conformance.md):** inspect negotiated
-  revision, capabilities, server instructions, advisory tool hints and correlated
-  progress/log notifications. Unsupported revisions fail without endless reconnects.
-- **Refinement and HQ:** prompt/goal refinement shares target selection and
-  recorded outcomes across TUI/WebUI. The startup model picker adds supported
-  reasoning-effort choices. HQ gains bookmarkable navigation, operator context,
-  attention shortcuts, explicit quick-action targets and Kanban filters.
-- **Maintenance:** smaller source modules, dependency-audit/parser fixes,
-  replayable TUI wordmark formation, stronger goal lifecycle handling and a
-  reorganized documentation set with
-  source-derived catalogs and `pnpm docs:check`.
+- **Guard and secret hardening:** process-kill and path guards see through
+  `cmd /c`, launchers and every `taskkill`/`Stop-Process` target; redaction
+  covers prefixed names, any-case bearer schemes and secrets across the scan
+  boundary; vault key rotation re-encrypts nested ciphertext.
+- **Dependency audits that match the ecosystem:** package-less installs are
+  audited as tree installs, option values are no longer read as packages, and
+  manifests plus real `pip-audit`/`cargo-audit`/`bundler-audit` reports parse
+  as their tools define them.
+- **Cache-stable ChatGPT/Codex prompts:** volatile system blocks follow durable
+  history, so turn-specific context keeps the cached prefix intact. See
+  [OpenAI cache management](docs/openai-cache-management.md).
+- **HQ Hide idle:** Fleet Map and Cockpit share a persisted toggle that hides
+  idle agents and reports how many are hidden.
+- **Fixes** across ignore/glob matching, edit nesting, dead-code entries, goal
+  resume/stop, MCP request ids, effort pickers, SAGE kinds and WebUI recovery.
 
-1.0.33 added complete [ChatGPT account catalogs](docs/chatgpt-model-catalog.md)
-and coordinated OAuth token rotation. Scout, optional execution sandbox tiers
-and [post-edit LSP feedback](docs/agent-feedback.md) remain available.
+1.0.34 added [project goals](docs/architecture/project-goals.md),
+[explicit continuation](docs/slash/nextsteps.md), [YOLO+](docs/slash/yolo.md)
+and the [dead-code workflow](docs/tools/dead-code.md).
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -743,7 +736,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.34** — current repository version; semver from 1.0.0 onward
+- **v1.0.35** — current repository version; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

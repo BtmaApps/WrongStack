@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.35] — 2026-10-07
+
+A hardening release. Command guards, secret redaction and dependency audits
+close bypasses found in an evidence-led audit; ChatGPT/Codex requests keep
+their cached prompt prefix stable; and dependency manifests and native audit
+reports parse as their ecosystems define them. HQ gains an idle-agent filter.
+
+### Added
+
+- **Hide idle agents in HQ.** Fleet Map and Cockpit share a **Hide idle** toggle that keeps attention on active agents. The preference persists across both views, and agent statistics report how many idle agents are hidden.
+
+### Changed
+
+- **Cache-stable ChatGPT/Codex prompts.** The ChatGPT and Codex adapters send volatile system blocks after durable history instead of folding them into `instructions`, so turn-specific context no longer invalidates the cached prefix. Reasoning summary parts replay in server order. See [OpenAI cache management](docs/openai-cache-management.md).
+- **Smaller source modules.** TUI settings, goal host, fallback, memory purge, live session status and chronicle journal partitions are split into focused modules; WebUI refine-panel states and session panel lists become separate components.
+
+### Fixed
+
+- **Process-kill and path guards.** Kill guards unwrap `cmd /c`, launchers and path/`.exe` command heads, and collect every `taskkill /PID` and positional `Stop-Process` id in both `bash` and `exec`. The path guard unwraps `cmd /c` and recognizes `erase` and `ri`. WebUI `mcp.discover` passes the trust boundary like its spawn-capable siblings.
+- **Secret handling.** Evidence analysis and browser redaction cover prefixed secret names, bearer schemes in any letter case and long single-line secrets that straddle the 64 KB scan boundary. Over-deep scanner input is flagged instead of passing unscanned. Vault key rotation re-encrypts ciphertext inside arrays and decrypted fields whose names are not secret keys, and refuses a version-255 key without touching its ciphertext.
+- **Dependency gates.** Package-less installs (`npm install`, `npm ci`, `pnpm install`, bare `yarn`) re-resolve the whole tree and are audited as such. Option values such as `pip install -r requirements.txt` or `cargo add serde --features derive` are no longer read as package names. The license audit inspects the actual install directory (`cd`, `--prefix`, `-C`, `--dir`, `--cwd`).
+- **Dependency manifests and audit reports.** Gradle subprojects resolve `libs.*` aliases against the root build's version catalog without crossing into another build. Python array items are read as TOML strings (commas inside specifiers, comments, literal strings), and PEP 440 post/pre/dev releases order instead of throwing. C++, Dart, .NET, Elixir, Go, Maven, npm, Ruby, Rust and Swift adapters handle further manifest edge cases. Real `pip-audit`, `cargo-audit` and `bundler-audit` reports parse correctly, including cargo CVSS vectors and patched versions.
+- **Ignore and glob matching.** Nested `.gitignore` files apply relative to their own directory, trailing-slash directory patterns act as globs, and bracket expressions match one character from a set. `glob-expand` returns existing paths whose names contain glob characters.
+- **Edit and verification results.** Indent-insensitive edit tiers refuse a block whose nesting differs, and the lint gate checks `replace_all` results. Test reports retain skipped counts and normalize file-level failures; Go diagnostics no longer downgrade errors that merely mention `warning`.
+- **Dead-code analysis.** `/// <reference path>` directives and global-script declarations stay reachable; conventional entries survive a tool-only package config, and package resolution is used when a catch-all `paths` alias resolves nothing.
+- **Git and release plugins.** Attached message flags (`-m"…"`, `-am'…'`) are validated, `BREAKING CHANGE` footers mark a commit as breaking, and semver, changelog and release-notes helpers follow release version semantics.
+- **Goals and MCP.** A stop issued while resume is persisting the running graph is honored, and supervisor split verdicts apply to in-progress nodes. MCP aborts the original call when a second in-flight request reuses its id.
+- **Models and launch.** Effort pickers stay hidden for models documented without effort control and offer only documented levels otherwise; provider-qualified favorites are honored. Launch choices preserve the saved TUI preference and explicit REPL mode, and a failed preference write no longer blocks startup.
+- **Core runtime.** Hook context stays within the per-iteration tool output budget. Session pruning keeps date shards still inside retention; checkpoint CAS/GC, orphan-lock cleanup, diff trailing-newline marking, ISATAP IPv6 private-address detection and mid-key JSON repair are corrected. Codex `/wham/usage` selects the blocking window the same way response headers do.
+- **SAGE.** Memory kinds share one vocabulary, so every documented kind is accepted and an unknown kind names the full list. Hint metadata escapes tags and anchors, and an explicit status list containing only unknown names returns an empty page instead of the default view.
+- **WebUI and TUI.** WebUI shutdown closes the current live session after a session swap. Failed sends restore the composer draft, skill refresh/save/uninstall exchanges recover when an acknowledgement never arrives, and tab and locale state recover. Instant worktree lifecycle steps stay visible in the TUI timeline.
+
 ## [1.0.34] — 2026-10-06
 
 Project-owned goal runs, explicit continuation controls and a TypeScript
