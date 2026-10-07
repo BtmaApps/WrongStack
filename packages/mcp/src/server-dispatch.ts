@@ -183,7 +183,11 @@ export class MCPServer {
 
     const requestId = expectDefined(msg.id);
     const controller = new AbortController();
+    // One id has one abort handle. A retry that reuses the id must not orphan
+    // the call already running under it: cancellation is keyed only by id.
+    const displaced = this.inFlightRequests.get(requestId);
     this.inFlightRequests.set(requestId, controller);
+    displaced?.abort(new Error('MCP request id reused by a newer in-flight call'));
     try {
       const result = await this.dispatch(msg.method, msg.params, controller.signal);
       if (result === METHOD_NOT_FOUND_SENTINEL) {

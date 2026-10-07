@@ -141,6 +141,51 @@ describe('MCPServer.handleMessage', () => {
     expect(response.error?.message).toContain('operator cancelled');
   });
 
+  it('aborts the original call when a second in-flight request reuses its id', async () => {
+    const started = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+    const signals: AbortSignal[] = [];
+    let n = 0;
+    const server = new MCPServer({
+      host: makeHost({
+        callTool: async (_name, _args, opts) => {
+          const index = n++;
+          const signal = opts?.signal;
+          if (!signal) return { content: 'missing cancellation signal', isError: true };
+          signals[index] = signal;
+          started[index]!.resolve();
+          await new Promise<void>((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+          });
+          return { content: 'unreachable', isError: false };
+        },
+      }),
+    });
+    const request = {
+      jsonrpc: '2.0',
+      id: 41,
+      method: 'tools/call',
+      params: { name: 'echo', arguments: {} },
+    };
+    const first = server.handleMessage(JSON.stringify(request));
+    await started[0]!.promise;
+    const second = server.handleMessage(JSON.stringify(request));
+    await started[1]!.promise;
+    expect(signals[0]?.aborted).toBe(true);
+    const notification = await server.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'notifications/cancelled',
+        params: { requestId: 41, reason: 'operator cancelled' },
+      }),
+    );
+    expect(notification).toBeNull();
+    expect(signals[1]?.aborted).toBe(true);
+    const firstResponse = JSON.parse((await first) ?? '') as { error?: { message?: string } };
+    const secondResponse = JSON.parse((await second) ?? '') as { error?: { message?: string } };
+    expect(firstResponse.error?.message).toContain('reused');
+    expect(secondResponse.error?.message).toContain('operator cancelled');
+  });
+
   it('passes the call through when the host cannot enumerate tools', async () => {
     // assertArgumentsMatchSchema: a host whose listTools() rejects must not
     // block the call — the real failure surfaces from callTool itself
