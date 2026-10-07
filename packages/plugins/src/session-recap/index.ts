@@ -44,6 +44,8 @@
  */
 import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
 import { releaseHandle } from '../runtime/index.js';
+import { formatDuration, topN, truncate } from './recap-format.js';
+import { readTranscriptTail } from './transcript-tail.js';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -199,125 +201,6 @@ function toFiniteUsage(value: number): number {
 
 function bumpToolCount(name: string): void {
   state.toolCounts.set(name, (state.toolCounts.get(name) ?? 0) + 1);
-}
-
-function formatDuration(startedAt: string | null, lastActivityAt: string | null): string {
-  if (!startedAt) return '0s';
-  const start = Date.parse(startedAt);
-  const end = lastActivityAt ? Date.parse(lastActivityAt) : Date.now();
-  const ms = Math.max(0, end - start);
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return `${sec}s`;
-  const min = Math.floor(sec / 60);
-  const remSec = sec % 60;
-  if (min < 60) return `${min}m${remSec}s`;
-  const hr = Math.floor(min / 60);
-  const remMin = min % 60;
-  return `${hr}h${remMin}m`;
-}
-
-function topN<T>(map: Map<string, T>, n: number): Array<[string, T]> {
-  return [...map.entries()]
-    .sort((a, b) => {
-      // Sort by numeric value when possible
-      const av = a[1] as unknown;
-      const bv = b[1] as unknown;
-      if (typeof av === 'number' && typeof bv === 'number') return bv - av;
-      return 0;
-    })
-    .slice(0, n);
-}
-
-interface TranscriptEvent {
-  type?: string;
-  ts?: string;
-  role?: string;
-  content?: string | unknown;
-  [k: string]: unknown;
-}
-
-const TRANSCRIPT_TAIL_READ_BYTES = 1024 * 1024;
-const TRANSCRIPT_TAIL_CHUNK_BYTES = 64 * 1024;
-
-async function readTranscriptTail(
-  transcriptPath: string | undefined,
-  n: number,
-): Promise<TranscriptEvent[]> {
-  if (!transcriptPath || n <= 0) return [];
-  let handle: import('node:fs/promises').FileHandle | undefined;
-  try {
-    const { open } = await import('node:fs/promises');
-    handle = await open(transcriptPath, 'r');
-    const size = (await handle.stat()).size;
-    if (size === 0) return [];
-    // Read backward in chunks until either the file is exhausted or we
-    // have collected enough complete lines to satisfy the requested
-    // count. We overshoot by one extra line so the chunk boundary never
-    // falls inside the last event we are about to return — without that
-    // margin, `slice(-n)` can drop the most recent event when the read
-    // budget stops between two adjacent events. The first chunk may
-    // contribute a partial head fragment when the budget saturates; we
-    // drop that fragment before parsing so JSON.parse cannot choke on a
-    // truncated event.
-    let position = size;
-    let retainedBytes = 0;
-    let newlines = 0;
-    const chunks: Buffer[] = [];
-    while (position > 0 && retainedBytes < TRANSCRIPT_TAIL_READ_BYTES) {
-      const length = Math.min(
-        TRANSCRIPT_TAIL_CHUNK_BYTES,
-        position,
-        TRANSCRIPT_TAIL_READ_BYTES - retainedBytes,
-      );
-      position -= length;
-      const buffer = Buffer.allocUnsafe(length);
-      const { bytesRead } = await handle.read(buffer, 0, length, position);
-      if (bytesRead === 0) break;
-      const chunk = bytesRead === length ? buffer : buffer.subarray(0, bytesRead);
-      chunks.unshift(chunk);
-      retainedBytes += bytesRead;
-      // Count newlines in the chunk we just appended. We use `indexOf`
-      // repeatedly so the cost stays linear in the chunk size; a per-byte
-      // `for...of` loop would be O(n²) at the budget ceiling.
-      let offset = chunk.indexOf(0x0a);
-      while (offset !== -1) {
-        newlines++;
-        offset = chunk.indexOf(0x0a, offset + 1);
-      }
-      if (position === 0) break;
-      // Keep reading until we have more than n newlines in the buffered
-      // suffix. The +1 overshoot guarantees that even when the read
-      // budget stops between two adjacent events, `slice(-n)` below will
-      // land on event boundaries rather than byte boundaries.
-      if (newlines > n) break;
-    }
-    const joined = Buffer.concat(chunks).toString('utf8');
-    // If the read loop bailed before reaching the file head, the very
-    // first element after split('\n') is a partial event (no terminating
-    // \n at its start). Drop it so JSON.parse does not throw on a
-    // truncated JSON object — keeping only complete event lines.
-    const truncatedHead = position > 0;
-    const allLines = joined.split('\n');
-    const candidateLines = truncatedHead ? allLines.slice(1) : allLines;
-    const tail = candidateLines.filter((line) => line.length > 0).slice(-n);
-    const out: TranscriptEvent[] = [];
-    for (const l of tail) {
-      try {
-        out.push(JSON.parse(l) as TranscriptEvent);
-      } catch {
-        // Skip malformed lines (e.g. mid-write corruption).
-      }
-    }
-    return out;
-  } catch {
-    return [];
-  } finally {
-    await handle?.close().catch(() => undefined);
-  }
-}
-
-function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max) + `\n\n[truncated ${s.length - max} chars]` : s;
 }
 
 // ---------------------------------------------------------------------------

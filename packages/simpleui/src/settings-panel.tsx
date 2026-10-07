@@ -2,27 +2,20 @@ import { Search, Settings, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { PALETTES, type PaletteId } from './lib/palettes.js';
-import {
-  AUTONOMY_MODES,
-  type AutonomyMode,
-  MAX_SUBAGENT_LANES,
-  type SimplePrefs,
-  type SubagentLane,
-} from './lib/prefs-model.js';
+import { AUTONOMY_MODES, type AutonomyMode, type SimplePrefs } from './lib/prefs-model.js';
 import { groupCatalog, matchesQuery } from './lib/settings-catalog.js';
 import {
   AUTONOMY_HINT,
-  DEFAULT_SUBAGENT_LANES,
   GroupCount,
   laneFromValue,
-  laneValue,
   modelOptionValues,
   PassthroughOption,
   PRE_REFINE_COUNTDOWN_PRESETS,
   presetOptions,
-  TG_POLL_INTERVAL_PRESETS,
   ToggleRow,
 } from './settings-panel-controls.js';
+import { SubagentModelLanes } from './settings-subagent-lanes.js';
+import { SettingsTelegramSection } from './settings-telegram-section.js';
 import type { AgentMode } from './types.js';
 
 interface SettingsPanelProps {
@@ -79,59 +72,9 @@ export function SettingsPanel({
   // raw string on the controlled input avoids losing keystrokes while the
   // debounce timer is in flight, and keeps the visible input value in sync
   // with the clear button.
-  // Subagent model lanes. A plan the server has never stored arrives with no
-  // lanes; show the default eight so the editor has rows to pin without a
-  // separate "create" step. Every write sends the WHOLE plan because the pref
-  // channel replaces the value rather than deep-merging it.
-  const plan = prefs.subagentModelPlan;
-  const lanes: SubagentLane[] =
-    plan.slots.length > 0 ? plan.slots : Array.from({ length: DEFAULT_SUBAGENT_LANES }, () => ({}));
-  const patchPlan = (next: Partial<SimplePrefs['subagentModelPlan']>) =>
-    onPrefChange({ subagentModelPlan: { ...plan, slots: lanes, ...next } });
-  const setLane = (index: number, lane: SubagentLane) =>
-    patchPlan({ slots: lanes.map((existing, i) => (i === index ? lane : existing)) });
-  const setLaneCount = (count: number) => {
-    const next = Math.max(1, Math.min(MAX_SUBAGENT_LANES, count));
-    patchPlan({
-      slots:
-        next <= lanes.length
-          ? lanes.slice(0, next)
-          : [...lanes, ...Array.from({ length: next - lanes.length }, (): SubagentLane => ({}))],
-    });
-  };
-
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  // Telegram chat ID is free text, so it holds a draft and commits on blur /
-  // Enter. Sending on every keystroke would put "-" or "12abc" on the wire,
-  // and `validatePreferenceValue` rejects the WHOLE prefs.update payload on
-  // one bad key — leaving the optimistic local value on screen while config
-  // never changed.
-  const [tgChatDraft, setTgChatDraft] = useState(prefs.tgChatId);
-  const [tgChatInvalid, setTgChatInvalid] = useState(false);
-  useEffect(() => {
-    // Re-seed only from a non-empty server value, so a write the server
-    // refused (e.g. a group chat without allowGroupChats) does not wipe what
-    // the user typed.
-    if (prefs.tgChatId !== '') setTgChatDraft(prefs.tgChatId);
-  }, [prefs.tgChatId]);
-  // Mirrors validateTelegramChatId in webui-server ws-payload-preferences.ts:
-  // empty clears, otherwise a non-zero safe integer.
-  const commitTgChat = () => {
-    const trimmed = tgChatDraft.trim();
-    if (trimmed !== '' && !/^-?\d+$/.test(trimmed)) {
-      setTgChatInvalid(true);
-      return;
-    }
-    const chatId = Number(trimmed);
-    if (trimmed !== '' && (!Number.isSafeInteger(chatId) || chatId === 0)) {
-      setTgChatInvalid(true);
-      return;
-    }
-    setTgChatInvalid(false);
-    if (trimmed !== prefs.tgChatId) onPrefChange({ tgChatId: trimmed });
-  };
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedQuery(query), 150);
     return () => window.clearTimeout(handle);
@@ -567,92 +510,13 @@ export function SettingsPanel({
               settingId="session.solo"
               hidden={rowHidden('session.solo')}
             />
-            <div
-              className="settings-subagent-models"
-              data-setting-id="session.subagentModels"
-              style={rowHidden('session.subagentModels') ? { display: 'none' } : undefined}
-            >
-              <div className="settings-toggle-copy">
-                <strong>Subagent models</strong>
-                <small>
-                  Each running subagent takes the first free lane, so parallel workers run on
-                  different models. "Use my model" runs them all on this session's model instead.
-                  This session only — restored by resume.
-                </small>
-              </div>
-              <div className="settings-subagent-controls">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={plan.followSessionModel}
-                    disabled={offline}
-                    onChange={(event) => patchPlan({ followSessionModel: event.target.checked })}
-                  />
-                  Use my model
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={plan.enabled}
-                    disabled={offline}
-                    onChange={(event) => patchPlan({ enabled: event.target.checked })}
-                  />
-                  Enabled
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={plan.lock}
-                    disabled={offline}
-                    onChange={(event) => patchPlan({ lock: event.target.checked })}
-                  />
-                  Override the leader
-                </label>
-                <label>
-                  Lanes
-                  <input
-                    type="number"
-                    min={1}
-                    max={MAX_SUBAGENT_LANES}
-                    value={lanes.length}
-                    disabled={offline || plan.followSessionModel}
-                    onChange={(event) => setLaneCount(Number.parseInt(event.target.value, 10) || 1)}
-                  />
-                </label>
-              </div>
-              {lanes.map((lane, index) => (
-                <div
-                  // Lane identity IS its position, so the index is the stable key.
-                  key={`lane-${index}`}
-                  className="settings-subagent-lane"
-                >
-                  <span>#{index + 1}</span>
-                  <select
-                    aria-label={`Lane ${index + 1} model`}
-                    value={laneValue(lane)}
-                    disabled={offline || plan.followSessionModel}
-                    onChange={(event) => setLane(index, laneFromValue(event.target.value))}
-                  >
-                    <option value="">inherit — routing / session model</option>
-                    {(modelOptions ?? []).map((option) => (
-                      <option
-                        key={`${option.provider}/${option.model}`}
-                        value={`${option.provider}/${option.model}`}
-                      >
-                        {option.provider}/{option.model}
-                      </option>
-                    ))}
-                    {/* A lane pinned elsewhere (TUI, WebUI) — to a tier, a profile, or a
-                        concrete pair this catalog does not contain — keeps its
-                        value visible instead of silently reading as "inherit". */}
-                    <PassthroughOption
-                      value={laneValue(lane)}
-                      offered={modelOptionValues(modelOptions)}
-                    />
-                  </select>
-                </div>
-              ))}
-            </div>
+            <SubagentModelLanes
+              plan={prefs.subagentModelPlan}
+              offline={offline}
+              hidden={rowHidden('session.subagentModels')}
+              modelOptions={modelOptions}
+              onPrefChange={onPrefChange}
+            />
             <ToggleRow
               label="Tool Coach"
               hint="Suggest enabled tools during tasks and guide recovery after tool errors. On by default."
@@ -709,73 +573,14 @@ export function SettingsPanel({
             />
           </section>
 
-          <section
-            className="settings-group"
-            aria-label="Telegram"
-            data-group-id="telegram"
-            style={groupHidden('telegram') ? { display: 'none' } : undefined}
-          >
-            <h2>
-              TELEGRAM
-              <GroupCount groupId="telegram" label={groupCountLabel('telegram')} />
-            </h2>
-            <label
-              className="settings-field"
-              data-setting-id="telegram.pollInterval"
-              style={rowHidden('telegram.pollInterval') ? { display: 'none' } : undefined}
-            >
-              <span>Polling interval</span>
-              {/* A select can only ever emit a valid value, so the 1–60 bound
-                  the server enforces needs no client-side guard here — unlike
-                  a free number input, which would have to reject and revert. */}
-              <select
-                value={String(prefs.tgPollIntervalSec)}
-                disabled={offline}
-                onChange={(event) =>
-                  onPrefChange({ tgPollIntervalSec: Number(event.target.value) })
-                }
-              >
-                {presetOptions(TG_POLL_INTERVAL_PRESETS, prefs.tgPollIntervalSec, 1).map(
-                  (seconds) => (
-                    <option key={seconds} value={String(seconds)}>
-                      {seconds === 1 ? '1 second' : `${seconds} seconds`}
-                    </option>
-                  ),
-                )}
-              </select>
-              <small className="settings-hint">
-                How often the bot checks Telegram for new messages. Lower is more responsive but
-                makes more API calls.
-              </small>
-            </label>
-            <label
-              className="settings-field"
-              data-setting-id="telegram.chatId"
-              style={rowHidden('telegram.chatId') ? { display: 'none' } : undefined}
-            >
-              <span>Notification chat</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={tgChatDraft}
-                disabled={offline}
-                aria-invalid={tgChatInvalid}
-                onChange={(event) => {
-                  setTgChatDraft(event.target.value);
-                  if (tgChatInvalid) setTgChatInvalid(false);
-                }}
-                onBlur={commitTgChat}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') event.currentTarget.blur();
-                }}
-              />
-              <small className="settings-hint">
-                {tgChatInvalid
-                  ? 'Enter a non-zero integer chat ID, or leave empty.'
-                  : 'Default chat for notifications. A positive ID pairs your private chat with the bot; group IDs are refused unless allowGroupChats is set in the config. Leave empty to clear.'}
-              </small>
-            </label>
-          </section>
+          <SettingsTelegramSection
+            prefs={prefs}
+            offline={offline}
+            onPrefChange={onPrefChange}
+            groupHidden={groupHidden}
+            rowHidden={rowHidden}
+            groupCountLabel={groupCountLabel}
+          />
 
           {isFiltering && !hasResults && (
             <p className="settings-empty" role="status" aria-live="polite">

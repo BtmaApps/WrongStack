@@ -21,6 +21,15 @@ import {
   type EternalAutonomyDirectivesHost,
 } from './eternal-autonomy-directives.js';
 import { BRAINSTORM_DONE } from './eternal-autonomy-directives-types.js';
+import {
+  type DecidedAction,
+  type DirectiveOutcome,
+  DONE_DELIVERABLE_MARKER,
+  GOAL_CLEAR_MARKER,
+  GOAL_COMPLETE_MARKER,
+  iterationUsageDelta,
+  runDirective,
+} from './eternal-autonomy-run.js';
 import type { EternalCompletionHost } from './eternal-completion.js';
 import {
   clearGoalManually as clearGoalManuallyFromHost,
@@ -54,33 +63,6 @@ import type {
   EternalEngineState,
   IterationStage,
 } from './eternal-autonomy-types.js';
-
-interface DecidedAction {
-  source: JournalEntry['source'];
-  task: string;
-  directive: string;
-  /** Set when source === 'todo' so the engine can attribute failures. */
-  todoId?: string | undefined;
-}
-
-/**
- * Free-text marker the model can emit (on its own line) to declare the
- * overall mission accomplished. Detected in the successful iteration's
- * `finalText`. When present, the engine flips `goalState='completed'`
- * and stops — the model has explicitly claimed completion AND the
- * iteration succeeded, which together is the most reliable stop signal
- * we can get without a separate verifier round-trip.
- */
-const GOAL_COMPLETE_MARKER = /^\s*\[goal[_\s-]*complete\]\s*$/im;
-/** Optional per-deliverable completion marker consumed by the coordination loop. */
-const DONE_DELIVERABLE_MARKER = /\[done:\s*[^\]]+\]/i;
-
-/**
- * Free-text marker for the `/goal clear` command equivalent — when the
- * model emits this, the engine treats it as a manual goal clear (not just
- * completion) so the goal file is removed and onEternalStop fires.
- */
-const GOAL_CLEAR_MARKER = /^\s*\[\/?goal\s*clear\]\s*$/im;
 
 export class EternalAutonomyEngine {
   private state: EternalEngineState = 'idle';
@@ -245,77 +227,25 @@ export class EternalAutonomyEngine {
     const ctrl = new AbortController();
     this.currentCtrl = ctrl;
     const timer = setTimeout(() => ctrl.abort(), this.opts.iterationTimeoutMs ?? 5 * 60_000);
-    let status: JournalEntry['status'] = 'success';
-    let note: string | undefined;
-    let finalText = '';
-    // Captured from `result.error?.recoverable` when the agent.run returns
-    // a recoverable WrongStackError (ProviderError sets this for 429/529
-    // /5xx/network). Drives the engine's exponential backoff so a
-    // transient rate-limit storm doesn't burn the failure budget in
-    // seconds. Permanent errors leave this false and trip the normal
-    // consecutiveFailures path.
-    let isTransientFailure = false;
-
     // Snapshot usage before so the iteration delta can be journaled.
     // Token counter is optional in mock/test contexts — guard accordingly.
     const tc = this.opts.agent.ctx?.tokenCounter;
     const beforeUsage = tc?.total?.();
     const beforeCost = tc?.estimateCost?.().total;
 
+    let outcome: DirectiveOutcome;
     try {
-      const result = await this.opts.agent.run(
-        [{ type: 'text' as const, text: action.directive }],
-        {
-          signal: ctrl.signal,
-          // Enable per-call autonomous continuation so the agent can chain
-          // multiple internal tool/response cycles end-to-end on one
-          // directive instead of returning to the engine after a single
-          // round-trip. The model uses `[continue]` / `[done]` markers
-          // (or the `continue_to_next_iteration` tool) to control the
-          // inner loop. Without this flag the engine produced shallow
-          // iterations and almost never let a real task finish.
-          autonomousContinue: true,
-          // Cap the inner loop so a runaway agent.run can't burn through
-          // the iteration timeout — the engine's own outer loop is the
-          // long-running thing, each tick should be bounded.
-          maxIterations: this.opts.iterationMaxAgentSteps ?? 500,
-        },
+      outcome = await runDirective(
+        this.opts.agent,
+        action.directive,
+        ctrl.signal,
+        this.opts.iterationMaxAgentSteps ?? 500,
       );
-
-      if (result.status === 'aborted') {
-        status = 'aborted';
-        note = 'stopped by user';
-      } else if (result.status === 'failed') {
-        status = 'failure';
-        note = result.error?.describe?.() ?? 'agent run failed';
-        isTransientFailure = result.error?.recoverable === true;
-      } else if (result.status === 'max_iterations') {
-        status = 'failure';
-        note = `max iterations (${result.iterations})`;
-      } else {
-        status = 'success';
-        finalText = result.finalText ?? '';
-        const tail = finalText.slice(0, 240).replace(/\s+/g, ' ').trim();
-        if (tail) note = tail;
-      }
-    } catch (err) {
-      const isAbort =
-        err instanceof Error && (err.name === 'AbortError' || err.message.includes('abort'));
-      status = isAbort ? 'aborted' : 'failure';
-      note = toErrorMessage(err);
-      // Surface .recoverable on the thrown WrongStackError too — provider
-      // errors that escape the agent's catch (rare; usually wrapped into
-      // result.error) still classify correctly.
-      if (
-        !isAbort &&
-        typeof (err as { recoverable?: unknown | undefined })?.recoverable === 'boolean'
-      ) {
-        isTransientFailure = (err as { recoverable: boolean }).recoverable;
-      }
     } finally {
       clearTimeout(timer);
       this.currentCtrl = null;
     }
+    const { status, note, finalText, isTransientFailure } = outcome;
 
     // Per-todo attempt accounting. On failure of a todo-sourced action,
     // bump the persistent counter so `decide()` can rotate past it once
@@ -326,22 +256,12 @@ export class EternalAutonomyEngine {
       await this.bumpTodoAttempt(action.todoId);
     }
 
-    // Capture per-iteration usage delta. Cost is always non-negative;
-    // if the counter wraps or resets mid-iteration we clamp to 0 so the
-    // journal never shows negative spend.
-    const afterUsage = tc?.total?.();
-    const afterCost = tc?.estimateCost?.().total;
-    const tokens =
-      beforeUsage && afterUsage
-        ? {
-            input: Math.max(0, afterUsage.input - beforeUsage.input),
-            output: Math.max(0, afterUsage.output - beforeUsage.output),
-          }
-        : undefined;
-    const costUsd =
-      typeof beforeCost === 'number' && typeof afterCost === 'number'
-        ? Math.max(0, afterCost - beforeCost)
-        : undefined;
+    const { tokens, costUsd } = iterationUsageDelta(
+      beforeUsage,
+      tc?.total?.(),
+      beforeCost,
+      tc?.estimateCost?.().total,
+    );
 
     await this.appendIterationEntry({
       source: action.source,

@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { RunController } from '../kernel/run-controller.js';
 import { TOKENS } from '../kernel/tokens.js';
-import { drainLeaderDeliveries } from '../leader-delivery-attach.js';
 import { attachFleetPulse, attachMailboxChecker } from '../mailbox-attach.js';
 import { attachSessionNotes } from '../session-note-attach.js';
 import { armRequiredSkills } from '../skills/required-skill-gate.js';
@@ -17,6 +16,7 @@ import { getCalibrationState, recordActualUsage } from '../utils/token-estimate.
 import type { AgentInternals } from './agent-internals.js';
 import { createAgentLoopContextManager } from './agent-loop-context.js';
 import { AgentLoopDetector } from './agent-loop-detector.js';
+import { createAgentLoopInjectors } from './agent-loop-injectors.js';
 import {
   abortedRunError,
   recordAutonomousContinue,
@@ -27,18 +27,14 @@ import {
 import type { AgentResponseHandler } from './agent-response.js';
 import type { AgentToolHandler } from './agent-tools.js';
 import type { RunResult, UserInputPayload } from './agent-types.js';
-import { buildBtwBlock, consumeBtwNotes } from './btw.js';
-import { type RunOptions, resolveEventSessionId, resolveOwningSessionId } from './context.js';
+import { type RunOptions, resolveEventSessionId } from './context.js';
 import { contextHistoryVersion, requestHistoryVersion } from './context-history-version.js';
 import { recordContextUsageAnchor, requestPromptStillCurrent } from './context-usage-anchor.js';
 import { consumeAutonomousContinue } from './continue-to-next-iteration.js';
-import { requestLimitExtension } from './iteration-limit.js';
 import { injectPendingMailboxMessages, removeInjectedMailboxBlocks } from './mailbox-loop.js';
 import { clearPendingNextSteps } from './next-steps-slot.js';
 import { runProviderWithRetry } from './provider-runner.js';
-import { buildQueuedMessagesBlock, consumeQueuedMessagesUpdate } from './queued-messages.js';
 import { providerBoundToRequest } from './request-provider-binding.js';
-import { buildSessionNoteBlock, consumeSessionNotes } from './session-notes.js';
 import { createToolCoach, isToolCoachEnabled } from './tool-coach.js';
 import { createTurnToolGuidance } from './turn-tool-guidance.js';
 
@@ -80,116 +76,15 @@ export function createAgentLoopHandler(
 
   const loopContext = createAgentLoopContextManager(a, handlers);
 
-  function foldBlockIntoConversation(block: TextBlock): void {
-    if (!a.ctx.state.appendBlockToLastUserMessage(block)) {
-      a.ctx.state.appendMessage({ role: 'user', content: [block], origin: 'runtime' });
-    }
-  }
-
-  function injectPendingBtwNotes(onMailboxBlock?: (block: TextBlock) => void): void {
-    const notes = consumeBtwNotes(a.ctx);
-    if (notes.length === 0) return;
-    const mailboxNotes = notes.filter((note) => note.startsWith('[MAILBOX BTW]'));
-    const regularNotes = notes.filter((note) => !note.startsWith('[MAILBOX BTW]'));
-    if (regularNotes.length > 0) {
-      foldBlockIntoConversation({ type: 'text', text: buildBtwBlock(regularNotes) });
-    }
-    if (mailboxNotes.length > 0) {
-      const block: TextBlock = { type: 'text', text: buildBtwBlock(mailboxNotes) };
-      foldBlockIntoConversation(block);
-      onMailboxBlock?.(block);
-    }
-  }
-
-  function injectPendingSessionNotes(): void {
-    const notes = consumeSessionNotes(a.ctx);
-    if (notes.length === 0) return;
-    foldBlockIntoConversation({ type: 'text', text: buildSessionNoteBlock(notes) });
-  }
-
-  /** Session ids this agent answers for: the run-pinned one and its owner. */
-  function ownSessionIds(): string[] {
-    const ids = new Set<string>();
-    try {
-      ids.add(resolveEventSessionId(a.ctx));
-    } catch {
-      /* no session bound */
-    }
-    try {
-      ids.add(resolveOwningSessionId(a.ctx));
-    } catch {
-      /* no session bound */
-    }
-    return [...ids].filter((id) => typeof id === 'string' && id.length > 0);
-  }
-
-  /**
-   * Fold results owed to this session's leader (settled background
-   * `delegate` calls) into the conversation. Leader only: workers share this
-   * loop handler, and a worker of the same session must never drain the
-   * leader's results. Bounded per iteration; the rest wait for the next one.
-   */
-  async function injectPendingDeliveries(): Promise<void> {
-    await drainLeaderDeliveries(a, ownSessionIds(), foldBlockIntoConversation);
-  }
-
-  function injectQueueAwareness(): void {
-    const items = consumeQueuedMessagesUpdate(a.ctx);
-    if (!items) return;
-    foldBlockIntoConversation({ type: 'text', text: buildQueuedMessagesBlock(items) });
-  }
-
-  async function checkIterationLimit(
-    iterationIndex: number,
-    limit: number,
-    hasHardLimit: boolean,
-    currentIterations: number,
-    delegateSummaries: Array<{ summary: string; ok: boolean }>,
-    extensionsUsed: number,
-  ): Promise<{ limit: number; exit?: RunResult | undefined; extended?: boolean }> {
-    if (hasHardLimit && iterationIndex >= limit) {
-      // The auto-grant is BOUNDED. `requestLimitExtension` resolves to +100
-      // whenever `autoExtend` is true and no listener denies synchronously —
-      // and no shipped listener ever denies (the only subscribers are a
-      // metrics counter and two UI forwarders). Passing `autoExtend: true`
-      // unconditionally therefore turned every configured `maxIterations`
-      // into "no limit at all": each overrun bought another 100 turns, for
-      // ever. Once this run has spent its extension allowance, stop asking
-      // and let the run end at `max_iterations` — that is the only thing
-      // that makes a configured iteration budget mean anything.
-      const allowanceLeft = extensionsUsed < a.maxAutoExtensions;
-      const extendBy = await requestLimitExtension({
-        events: a.events,
-        sessionId: resolveEventSessionId(a.ctx),
-        currentIterations,
-        currentLimit: limit,
-        autoExtend: a.autoExtendLimit && allowanceLeft,
-        // With the allowance spent there is nothing to wait for: no listener
-        // grants today, so the default 30s window would only stall the exit.
-        ...(allowanceLeft ? {} : { timeoutMs: 0 }),
-      });
-      if (extendBy > 0) {
-        const newLimit = limit + extendBy;
-        a.logger.info(
-          `Iteration limit extended by ${extendBy} (new limit: ${newLimit}, ` +
-            `extension ${extensionsUsed + 1}/${a.maxAutoExtensions})`,
-        );
-        return { limit: newLimit, extended: true };
-      }
-      if (!allowanceLeft) {
-        a.logger.warn(
-          `Iteration limit reached at ${currentIterations} turns after ` +
-            `${extensionsUsed} extension(s) — stopping. Raise tools.maxIterations or ` +
-            'tools.maxAutoExtensions if this task legitimately needs more turns.',
-        );
-      }
-      return {
-        limit,
-        exit: { status: 'max_iterations', iterations: currentIterations, delegateSummaries },
-      };
-    }
-    return { limit };
-  }
+  const {
+    foldBlockIntoConversation,
+    injectPendingBtwNotes,
+    injectPendingSessionNotes,
+    injectPendingDeliveries,
+    injectQueueAwareness,
+    ownSessionIds,
+    checkIterationLimit,
+  } = createAgentLoopInjectors(a);
 
   async function runInner(
     inputPayload: UserInputPayload,

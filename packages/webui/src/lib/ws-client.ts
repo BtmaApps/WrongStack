@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import {
   createSurfaceConnectionState,
   decodeProtocolMessage,
@@ -5,11 +6,9 @@ import {
   markConnectionActivity,
   markConnectionConnecting,
   markConnectionOpen,
-  negotiateProtocol,
   type SurfaceConnectionState,
   stopConnection,
 } from '@wrongstack/webui-protocol';
-import { toErrorMessage } from '@wrongstack/core/utils/error';
 import type { WSClientMessage, WSServerMessage, WSUserMessageImage } from '../types';
 import { streamCoalescer } from './stream-coalescer';
 import { installWsClientActionMethods, type WsClientActionMethods } from './ws-client-actions';
@@ -21,6 +20,7 @@ import {
   type WsClientDomainMethods,
 } from './ws-client-domain-methods';
 import { WsClientEchoSuppression } from './ws-client-echo';
+import { emitToHandlers, routeInboundMessage, type WsClientInboundHost } from './ws-client-inbound';
 import { enqueueMessage, flushMessageQueueHelper } from './ws-client-queue';
 import {
   installWsClientSessionMethods,
@@ -418,83 +418,11 @@ class WrongStackWebSocketClientBase {
   }
 
   private handleMessage(msg: WSServerMessage) {
-    if (msg.type === 'session.frames_resumed') {
-      this.frameResume.onFramesResumed(msg);
-      return;
-    }
-    if (msg.type === 'session.start') msg = this.frameResume.onSessionStart(msg);
-    if (msg.type === 'tool.confirm_needed') {
-      const payload = msg.payload as never as {
-        id: string;
-        toolName: string;
-        input: unknown;
-        suggestedPattern: string;
-      };
-
-      // Sweep expired entries before adding the new one so the map never
-      // grows past the active-prompt surface. Done inline (rather than on
-      // a timer) because the per-insert cost is bounded by the number of
-      // prompts the user could plausibly have open at once, and that's
-      // also the natural upper bound for the map itself.
-      this.sweepExpiredPendingConfirms(Date.now());
-      this.pendingConfirms.set(payload.id, {
-        expiresAtMs: Date.now() + WrongStackWebSocketClientBase.PENDING_CONFIRM_TTL_MS,
-      });
-      this.emit(msg);
-      return;
-    }
-
-    if (msg.type === 'tool.confirm_resolved') {
-      const payload = msg.payload as { id?: unknown };
-      if (typeof payload.id === 'string') this.pendingConfirms.delete(payload.id);
-      this.emit(msg);
-      return;
-    }
-
-    if (msg.type === 'session.start') {
-      // C-2 fix: the `wsToken` field has been removed from the
-      // `session.start` payload. The token is delivered via the
-      // HttpOnly cookie set by `/ws-auth` (preferred) or via the
-      // `?token=…` query param on the WS URL. There is no
-      // client-side persistence of the token (no sessionStorage,
-      // no localStorage) — every reconnect re-derives it from
-      // the URL or relies on the cookie. See ws-auth.ts.
-      const payload = msg.payload as {
-        sessionId: string;
-        reset?: boolean;
-        protocolVersion?: number;
-        protocolCapabilities?: string[];
-      };
-      const negotiation = negotiateProtocol(payload);
-      this.sessionId = payload.sessionId;
-      this.protocolVersion = negotiation.version;
-      this.protocolCapabilities = new Set(negotiation.capabilities);
-      // Did THIS client ask for THIS session? `session.start` also arrives
-      // unrequested (boot, model switch, a server-side re-announce, another
-      // tab's answer landing late), and an unrequested one must update its own
-      // lane WITHOUT yanking the user out of the tab they are working in.
-      //
-      // Matching is by session id, never "a swap was outstanding": an answer
-      // for some other session must leave the outstanding grant alone so the
-      // tab the user actually clicked can still claim it.
-      this.requestedSwitchSessionId = this.matchesPendingSwap(payload) ? payload.sessionId : null;
-      if (this.requestedSwitchSessionId) this.pendingSwapTarget = null;
-      this.rememberSeenSession(payload.sessionId);
-      this.emit(msg);
-      // Handlers have now bound and replayed this session's lane — the right
-      // moment to replay a message the server refused with `session_not_ready`
-      // while the session was not open in the runtime. One-shot: see
-      // `armNotReadyResend` / `consumeArmedResend`.
-      this.consumeArmedResend(payload.sessionId);
-      return;
-    } else if (
-      msg.type === 'error' &&
-      (msg.payload.phase === 'session.new' || msg.payload.phase === 'session.resume')
-    ) {
-      this.pendingSwapTarget = null;
-    }
-
-    this.emit(msg);
+    routeInboundMessage(
+      this as unknown as WsClientInboundHost,
+      msg,
+      WrongStackWebSocketClientBase.PENDING_CONFIRM_TTL_MS,
+    );
   }
 
   /**
@@ -506,11 +434,11 @@ class WrongStackWebSocketClientBase {
    * `reset` keeps an unrelated first-sight announcement (a background tab the
    * server announces on its own) from consuming the grant.
    */
-  private matchesPendingSwap(payload: { sessionId: string; reset?: boolean }): boolean {
+  matchesPendingSwap(payload: { sessionId: string; reset?: boolean }): boolean {
     return matchesPendingSwap(this.pendingSwapTarget, this.seenSessionIds, payload);
   }
 
-  private rememberSeenSession(sessionId: string): void {
+  rememberSeenSession(sessionId: string): void {
     rememberSeenSession(this.seenSessionIds, sessionId);
   }
 
@@ -556,7 +484,7 @@ class WrongStackWebSocketClientBase {
    * Guarded on the lane still existing: a tab closed while the retry was
    * parked must not start a server-side run nobody is watching.
    */
-  private consumeArmedResend(sessionId: string): void {
+  consumeArmedResend(sessionId: string): void {
     consumeArmedResendHelper(this.armedResends, sessionId, (c, img, fc, s) => {
       (this as unknown as WsClientSessionMethods).sendMessage(c, img, fc, s);
     });
@@ -575,29 +503,12 @@ class WrongStackWebSocketClientBase {
    * concurrently) and is also called from `disconnect()` during
    * teardown.
    */
-  private sweepExpiredPendingConfirms(now: number): void {
+  sweepExpiredPendingConfirms(now: number): void {
     sweepExpiredPendingConfirmsHelper(this.pendingConfirms, now);
   }
 
-  private emit(msg: WSServerMessage) {
-    const handlers = this.handlers.get(msg.type);
-    if (handlers) {
-      for (const handler of handlers) {
-        try {
-          handler(msg);
-        } catch (err) {
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              event: 'ws_client.handler_error',
-              messageType: msg.type,
-              message: err instanceof Error ? err.message : String(err),
-              timestamp: new Date().toISOString(),
-            }),
-          );
-        }
-      }
-    }
+  emit(msg: WSServerMessage) {
+    emitToHandlers(this.handlers, msg);
   }
 
   send(message: WSClientMessage, options: WSSendOptions = {}): boolean {
@@ -770,24 +681,7 @@ export const WrongStackWebSocketClient =
 
 let client: WrongStackWebSocketClient | null = null;
 
-/**
- * Default WS URL derived from the page's host.
- *
- * Subtle gotcha on Windows: when the page is loaded from `http://localhost:3456`,
- * the browser resolves `localhost` *itself* and on Windows it tries IPv6 `[::1]`
- * before IPv4 `127.0.0.1`. If the backend listens only on `127.0.0.1`, every
- * connection attempt to `ws://localhost:3456` first hits the IPv6 socket
- * (refused) and then either gives up or flaps — symptom: "ws disconnect hep".
- *
- * Fix: when the page is on a loopback host (`localhost` / `127.0.0.1` / `::1`),
- * force the WS URL to use the literal IPv4 loopback address. That bypasses the
- * DNS dance entirely. For any other hostname (LAN IP, custom WS_HOST override)
- * we keep the page's hostname so things still "just work".
- *
- * The WS port matches the HTTP port (single-port design): the browser
- * derives it from `window.location` rather than a separate meta tag, so
- * several WebUI instances can run on different ports at once.
- */
+/** Process-wide client singleton; `url` only applies to the first call. */
 export function getWSClient(url?: string): WrongStackWebSocketClient {
   if (!client) {
     client = new WrongStackWebSocketClient(url);

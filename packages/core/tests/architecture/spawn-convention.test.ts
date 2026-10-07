@@ -137,7 +137,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'plugins/src/format-on-save/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/git-autocommit/git-operations.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/import-organizer/index.ts': REASON_PLUGIN_RUNNER,
-  'plugins/src/lint-gate/index.ts': REASON_PLUGIN_RUNNER,
+  'plugins/src/lint-gate/linter-runner.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/loop-breaker/loop-breaker-fingerprint.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/pr-drafter/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/release-notes-generator/index.ts': REASON_PLUGIN_RUNNER,
@@ -149,7 +149,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'core/src/plugins/chimera-plugin.ts': REASON_PLUGIN_RUNNER,
   'core/src/plugins/review-context-builder.ts': REASON_PLUGIN_RUNNER,
   'security-scanner/src/package-audit.ts': REASON_PLUGIN_RUNNER,
-  'techstack/src/advisory/native-audit.ts': REASON_PLUGIN_RUNNER,
+  'techstack/src/advisory/native-audit-command.ts': REASON_PLUGIN_RUNNER,
   // ── Interactive user terminals ──
   'acp/src/client/terminal-server.ts': REASON_USER_TERMINAL,
   'webui-server/src/server/terminal-ws-handler.ts': REASON_USER_TERMINAL,

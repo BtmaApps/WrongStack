@@ -28,7 +28,15 @@ import {
   chronicleProjectServerEndpoint,
   chronicleProjectServerMetadataPath,
 } from './project-server-endpoint.js';
-import { type ClientState, encodeResponse, parseArgs } from './project-server-options.js';
+import {
+  type ClientState,
+  encodeResponse,
+  legacyPartitionPath,
+  parseArgs,
+  pruneJournals,
+  resolveChronicleServerTimings,
+  useSqliteStore,
+} from './project-server-options.js';
 import {
   CHRONICLE_MAX_APPEND_BATCH,
   CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS,
@@ -40,13 +48,13 @@ import {
   type ChronicleProjectServerMetadata,
   type ChronicleServerOperations,
 } from './project-server-protocol.js';
+import { armChronicleSignalGuard } from './project-server-signal-guard.js';
 import { ChronicleQueryEngine } from './query.js';
 import type { ChronicleEventSink } from './sink.js';
 import { type ChronicleQuarantinedFamily, ChronicleSqliteJournal } from './sqlite-journal.js';
 import type { ChronicleSqliteQueryEngine } from './sqlite-query.js';
 import type { ChronicleEvent, ChronicleEventInput } from './types.js';
 
-const DEFAULT_IDLE_MS = 5 * 60_000;
 /** Re-exported name kept local for readability; the bound is the protocol's. */
 const MAX_APPEND_BATCH = CHRONICLE_MAX_APPEND_BATCH;
 
@@ -58,31 +66,9 @@ const parsed = parseArgs(process.argv.slice(2));
 const chronicleDirectory = path.join(parsed.projectDir, 'chronicle');
 const endpoint = chronicleProjectServerEndpoint(parsed.projectDir);
 const metadataPath = chronicleProjectServerMetadataPath(parsed.projectDir);
-const idleInput = Number(process.env['WRONGSTACK_CHRONICLE_SERVER_IDLE_MS']);
-const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : DEFAULT_IDLE_MS;
-/**
- * A socket that connects and then never sends a single byte pins this daemon
- * open forever: `clients.size` stays above zero, so `scheduleIdleStop()`
- * returns early and the idle shutdown is never armed. Measured before this
- * existed — with idle=2s, a silent connection kept the daemon alive past 20s,
- * three runs out of three. It needs no auth token either, because
- * `clients.add` happens on connect, before any message is validated.
- *
- * Reaping ONLY sockets that have never spoken is what makes this safe. A real
- * client sends its first frame immediately; one that goes quiet after working
- * has spoken and keeps its connection. Dropping a never-spoken socket cannot
- * fail a caller: nothing can be in flight on it, and the client re-establishes
- * on its next request (`ensureConnected` in the project-server client).
- *
- * The sweep deliberately does NOT call `scheduleIdleStop()` — that is the
- * re-arm starvation fixed in the mailbox and kanban daemons. `destroy()` fires
- * `close`, and the existing close handler owns the idle bookkeeping.
- */
-const DEFAULT_SILENT_CLIENT_MS = 120_000;
-const silentInput = Number(process.env['WRONGSTACK_CHRONICLE_SERVER_SILENT_CLIENT_MS']);
-const silentClientMs =
-  Number.isFinite(silentInput) && silentInput >= 1_000 ? silentInput : DEFAULT_SILENT_CLIENT_MS;
-const silentSweepMs = Math.min(30_000, Math.max(1_000, Math.floor(silentClientMs / 4)));
+// `silentClientMs` reaps sockets that connected and never spoke; see
+// resolveChronicleServerTimings for why that keeps idle shutdown reachable.
+const { idleMs, silentClientMs, silentSweepMs } = resolveChronicleServerTimings(process.env);
 const startedAt = new Date().toISOString();
 /**
  * Per-process auth token. WS-027: this daemon owns the project's chronicle —
@@ -147,49 +133,6 @@ const stopMemoryWatchdog = startSharedHeapWatchdog({
     cachedQuery: cachedQuery !== undefined,
   }),
 });
-
-/**
- * Days of journal to keep open. Yesterday stays available because events can
- * still arrive for it right after midnight; anything older can only accumulate.
- */
-const MAX_OPEN_JOURNAL_DAYS = 2;
-
-/**
- * Drop journals for days we will not write to again.
- *
- * `journals` was only ever `get`/`set`/iterated — there was no `delete` and no
- * cap — so a daemon that lived across midnight kept one open `ChronicleJournal`
- * (with its write buffer and file handle) per day, forever. These daemons
- * routinely stay up for many hours.
- */
-function pruneJournals(currentDay: string): void {
-  if (journals.size <= MAX_OPEN_JOURNAL_DAYS) return;
-  const keep = new Set([...journals.keys()].sort().reverse().slice(0, MAX_OPEN_JOURNAL_DAYS));
-  keep.add(currentDay);
-  for (const [day, journal] of journals) {
-    if (keep.has(day)) continue;
-    journals.delete(day);
-    // Flush what is still buffered before letting it go. Detached, so a slow
-    // disk cannot stall an append — but never unhandled.
-    void journal.flush().catch(() => {
-      /* best-effort: the daemon is dropping this day either way */
-    });
-  }
-}
-
-/** Compose the legacy partition path a `ChronicleJournal` writes to. */
-function legacyPartitionPath(location: { chronicleDirectory: string; day: string }): string {
-  return path.join(location.chronicleDirectory, `${location.day}.events.jsonl`);
-}
-
-/**
- * SQLite is the daemon's store; `WRONGSTACK_CHRONICLE_STORE=jsonl` restores the
- * partition writer. This is the production write path — the inline one only
- * runs in explicit recovery mode — so the cut-over lives here.
- */
-function useSqliteStore(): boolean {
-  return process.env['WRONGSTACK_CHRONICLE_STORE'] !== 'jsonl';
-}
 
 let sqliteStore: Promise<ChronicleSqliteJournal> | undefined;
 
@@ -256,7 +199,7 @@ function journalForToday(): ChronicleJournal {
       retentionDays: parsed.retentionDays,
     });
     journals.set(day, journal);
-    pruneJournals(day);
+    pruneJournals(journals, day);
   }
   return journal;
 }
@@ -731,51 +674,4 @@ void (async () => {
   scheduleIdleStop();
 })();
 
-/**
- * One SIGINT/SIGTERM pair per PROCESS, not per module instance.
- *
- * The in-process test harness imports this module once per test case with a
- * `?case=<n>` query URL, so every case evaluates this module body fresh; a
- * bare top-level `process.once(signal, ...)` pair accumulates one handler
- * per case until Node raises MaxListenersExceededWarning in every coverage
- * run. The guard lives on globalThis under a Symbol.for key: the first
- * evaluation registers the pair, every evaluation re-targets it at its own
- * `stop`, and a fired signal removes the pair (once semantics).
- */
-interface ChronicleSignalGuard {
-  arm(stop: (signal: string) => Promise<void>): void;
-}
-const SIGNAL_GUARD: unique symbol = Symbol.for('wrongstack.chronicle.project-server.signalGuard');
-
-const signalGuardStore = globalThis as typeof globalThis & {
-  [SIGNAL_GUARD]?: ChronicleSignalGuard | undefined;
-};
-let signalGuard = signalGuardStore[SIGNAL_GUARD];
-if (!signalGuard) {
-  let current: (signal: string) => Promise<void> = async () => undefined;
-  let armed = false;
-  const handlers = new Map<string, () => void>();
-  const disarm = (): void => {
-    if (!armed) return;
-    armed = false;
-    for (const [signal, handler] of handlers) process.removeListener(signal, handler);
-    handlers.clear();
-  };
-  signalGuard = {
-    arm(next) {
-      current = next;
-      if (armed) return;
-      armed = true;
-      for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-        const handler = (): void => {
-          disarm();
-          void current(signal);
-        };
-        handlers.set(signal, handler);
-        process.on(signal, handler);
-      }
-    },
-  };
-  signalGuardStore[SIGNAL_GUARD] = signalGuard;
-}
-signalGuard.arm(stop);
+armChronicleSignalGuard(stop);

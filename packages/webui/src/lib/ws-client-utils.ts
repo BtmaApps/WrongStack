@@ -420,6 +420,24 @@ export function resolvePublicWsUrl(): string | null {
   }
 }
 
+/**
+ * Default WS URL derived from the page's host.
+ *
+ * Subtle gotcha on Windows: when the page is loaded from `http://localhost:3456`,
+ * the browser resolves `localhost` *itself* and on Windows it tries IPv6 `[::1]`
+ * before IPv4 `127.0.0.1`. If the backend listens only on `127.0.0.1`, every
+ * connection attempt to `ws://localhost:3456` first hits the IPv6 socket
+ * (refused) and then either gives up or flaps — symptom: "ws disconnect hep".
+ *
+ * Fix: when the page is on a loopback host (`localhost` / `127.0.0.1` / `::1`),
+ * force the WS URL to use the literal IPv4 loopback address. That bypasses the
+ * DNS dance entirely. For any other hostname (LAN IP, custom WS_HOST override)
+ * we keep the page's hostname so things still "just work".
+ *
+ * The WS port matches the HTTP port (single-port design): the browser
+ * derives it from `window.location` rather than a separate meta tag, so
+ * several WebUI instances can run on different ports at once.
+ */
 export function defaultWsUrl(): string {
   const publicWsUrl = resolvePublicWsUrl();
   if (publicWsUrl) return publicWsUrl;

@@ -38,8 +38,9 @@ const REALPATH_REQUIRED = [
   // realpath form like the other content-opening tools.
   'diff.ts',
   // Rewrites every file it resolves — a mutating tool must never follow an
-  // in-root link out of the root.
-  'replace.ts',
+  // in-root link out of the root. Its path resolution lives in
+  // replace-file-resolution.ts (split out of replace.ts).
+  'replace-file-resolution.ts',
   // Walks and lists a tree; a junction as the base enumerated names outside
   // the root (the `grep` case, one tool over).
   'tree.ts',

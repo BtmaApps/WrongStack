@@ -6,6 +6,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deferred, goalGitFixture } from '../../core/tests/goal/helpers/goal-git-fixture.js';
 import { createGoalHost } from '../src/goal-host.js';
 
+const GIT_SETTLE_MS = 30_000;
+
 afterEach(() => vi.unstubAllEnvs());
 it('two terminal goals run independently and integrate only into their own goal branches', async () => {
   vi.stubEnv('WRONGSTACK_GOAL_VERIFY', '0');
@@ -81,11 +83,14 @@ it('two terminal goals run independently and integrate only into their own goal 
     const store = new PhaseStore({ baseDir: fixture.storeDir });
     expect((await store.listGoals()).map((goal) => goal.status)).toEqual(['running', 'running']);
     firstRelease.resolve();
-    await vi.waitFor(() => expect(first.getGoalRunner()).toBeNull(), { timeout: 10_000 });
+    // The runner clears only after drainMerges() — real git commit, squash-merge
+    // and worktree cleanup. Under a saturated release:check run those git
+    // spawns stretched past 10s (phase completed, graph.completed not yet out).
+    await vi.waitFor(() => expect(first.getGoalRunner()).toBeNull(), { timeout: GIT_SETTLE_MS });
     expect(second.getGoalRunner()).not.toBeNull();
     expect(await fs.readFile(path.join(a.graph.workspace!.dir, 'first.txt'), 'utf8')).toBe('first');
     secondRelease.resolve();
-    await vi.waitFor(() => expect(second.getGoalRunner()).toBeNull(), { timeout: 10_000 });
+    await vi.waitFor(() => expect(second.getGoalRunner()).toBeNull(), { timeout: GIT_SETTLE_MS });
     expect(await fixture.git('rev-parse', 'HEAD')).toBe(fixture.baseline);
     expect(await fixture.git('status', '--porcelain')).toBe('');
     const summaries = await store.listGoals();
@@ -104,4 +109,4 @@ it('two terminal goals run independently and integrate only into their own goal 
     await vi.waitFor(() => expect(first.getGoalRunner() || second.getGoalRunner()).toBeNull());
     await fixture.dispose();
   }
-});
+}, 120_000);

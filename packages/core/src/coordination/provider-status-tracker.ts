@@ -43,10 +43,18 @@
  */
 
 import type { EventBus } from '../kernel/events.js';
-import { MAX_RESET_HINT_MS, type ProviderErrorKind, parseResetHintMs } from '../types/provider.js';
+import type { ProviderErrorKind } from '../types/provider.js';
 import { ROUTE_SCOPED_QUOTA_RE } from '../types/quota-regex.js';
 
 export * from './provider-status-tracker-types.js';
+
+import {
+  countFailure,
+  effectiveRetryAfterMs,
+  failureTransition,
+  type ProviderFailureMeta,
+  pushErrorHistory,
+} from './provider-status-failure.js';
 
 import {
   buildProviderStatusSnapshot,
@@ -59,7 +67,6 @@ import {
   isQuotaExhausted,
   KEY_SEP,
   type MutableProviderModelStatus,
-  NON_QUOTA_HINT_CAP_FACTOR,
   type ProviderModelState,
   type ProviderModelStatus,
   type ProviderStatusSnapshot,
@@ -140,11 +147,7 @@ export class ProviderModelStatusTracker {
     kind: ProviderErrorKind,
     status: number,
     message: string,
-    meta?: {
-      sessionId?: string | undefined;
-      agentId?: string | undefined;
-      retryAfterMs?: number | undefined;
-    },
+    meta?: ProviderFailureMeta,
   ): ProviderModelState {
     ({ providerId, model } = statusIdentity(providerId, model));
     const key = pairKey(providerId, model);
@@ -152,142 +155,48 @@ export class ProviderModelStatusTracker {
     const now = Date.now();
     const previousExpiry = s.stateExpiresAt;
 
-    s.consecutiveFailures += 1;
-    s.totalFailures += 1;
-    s.consecutiveSuccesses = 0;
-    s.lastFailureAt = now;
-    s.lastErrorKind = kind;
-    s.lastErrorMessage = message;
-    s.lastErrorStatus = status;
-    if (meta?.sessionId) s.lastSessionId = meta.sessionId;
-    if (meta?.agentId) s.lastAgentId = meta.agentId;
-    if (s.firstFailureAt === null) s.firstFailureAt = now;
-
-    // Per-kind counters
-    switch (kind) {
-      case 'rate_limit':
-      case 'quota_exhausted':
-        s.rateLimitHits += 1;
-        break;
-      case 'overloaded':
-        s.overloadedHits += 1;
-        break;
-      case 'server':
-      case 'stream_hang':
-        s.serverErrors += 1;
-        break;
-      default:
-        s.otherErrors += 1;
-    }
+    countFailure(s, kind, status, message, meta, now);
 
     // A depleted account/plan is not a transient burst-rate signal. Waiting
     // for two more doomed requests wastes time and can fan the same failure
     // out through subagents, so quarantine this model on the first response.
     const quotaExhausted = kind === 'quota_exhausted' || isQuotaExhausted(kind, status, message);
     const providerWideQuota = quotaExhausted && !ROUTE_SCOPED_QUOTA_RE.test(message);
-
-    // Effective wait-room hint: an explicit structured Retry-After wins;
-    // otherwise, for quota/rate-limit failures, parse the provider's prose
-    // reset hint ("try again in 6h12m", "resets at <ISO>") so weekly caps
-    // hold until their real reset instead of the fixed default block.
-    const proseHintMs =
-      quotaExhausted || kind === 'rate_limit' ? parseResetHintMs(message, now) : undefined;
-    const rawHintMs = meta?.retryAfterMs && meta.retryAfterMs > 0 ? meta.retryAfterMs : proseHintMs;
-    // For NON-quota kinds the hint only extends the transient cooldown, and
-    // only up to a small multiple of the base block: providers quote the
-    // plan/weekly reset horizon on ordinary burst 429s, and honoring it
-    // verbatim parked models for hours (the "stuck in the waiting room"
-    // regression). Quota kinds keep the full hint — it is the actual reset.
-    const effectiveRetryAfterMs =
-      rawHintMs && rawHintMs > 0
-        ? quotaExhausted
-          ? // Quota keeps the provider-published reset, but a corrupt or
-            // absurd structured Retry-After still cannot park a model
-            // beyond the prose-hint maximum.
-            Math.min(rawHintMs, MAX_RESET_HINT_MS)
-          : Math.min(rawHintMs, this.cfg.blockDurationMs * NON_QUOTA_HINT_CAP_FACTOR)
-        : undefined;
-
-    // Push error history (newest first, capped)
-    const entry: ErrorHistoryEntry = Object.freeze({
-      timestamp: now,
+    const retryAfterMs = effectiveRetryAfterMs(
       kind,
-      status,
+      quotaExhausted,
       message,
-      sessionId: meta?.sessionId,
-      agentId: meta?.agentId,
-      retryAfterMs: effectiveRetryAfterMs,
-    });
-    s.recentErrors.unshift(entry);
-    if (s.recentErrors.length > this.cfg.maxErrorHistory) {
-      s.recentErrors = s.recentErrors.slice(0, this.cfg.maxErrorHistory);
-    }
-
-    // ── State machine transitions ──
-
-    let newState: ProviderModelState = s.state;
-    let reason = '';
+      now,
+      meta?.retryAfterMs,
+      this.cfg.blockDurationMs,
+    );
+    pushErrorHistory(
+      s,
+      {
+        timestamp: now,
+        kind,
+        status,
+        message,
+        sessionId: meta?.sessionId,
+        agentId: meta?.agentId,
+        retryAfterMs,
+      },
+      this.cfg.maxErrorHistory,
+    );
 
     // API endpoint unreachable (502 with connection-refused / upstream-down
     // message) is equally non-transient: the provider's upstream is offline
     // and retrying will fail until it comes back. Block immediately instead
     // of exhausting the failure-threshold chain.
     const endpointUnreachable = isEndpointUnreachable(kind, status, message);
-
-    if (quotaExhausted) {
-      newState = 'blocked';
-      reason = 'quota_exhausted';
-      // Repeated quota blocks escalate: block expiry → available again →
-      // quota-exhausted again means the reset did not actually free budget,
-      // so back off progressively (15 min → 30 min → capped at 1 h) instead
-      // of re-probing at the same interval forever.
-      s.quotaBlockStreak += 1;
-      s.stateExpiresAt = now + this.quotaBlockDurationForStreak(s.quotaBlockStreak);
-    } else if (endpointUnreachable) {
-      newState = 'blocked';
-      reason = 'endpoint_unreachable';
-      s.stateExpiresAt = now + this.cfg.quotaBlockDurationMs;
-    }
-
-    if (!quotaExhausted && !endpointUnreachable && s.state === 'healthy') {
-      // healthy → degraded (consecutive failures >= threshold)
-      if (s.consecutiveFailures >= this.cfg.degradedAfterFailures) {
-        newState = 'degraded';
-        reason = `consecutive_failures_${s.consecutiveFailures}`;
-        s.stateExpiresAt = now + this.cfg.degradedDurationMs;
-      }
-    }
-
-    if (
-      !quotaExhausted &&
-      !endpointUnreachable &&
-      (s.state === 'degraded' || s.state === 'healthy')
-    ) {
-      // → blocked (rate-limit threshold or consecutive failures threshold)
-      if (s.rateLimitHits >= this.cfg.blockAfterRateLimitHits) {
-        newState = 'blocked';
-        reason = `rate_limit_threshold_${this.cfg.blockAfterRateLimitHits}`;
-        s.stateExpiresAt = now + this.cfg.blockDurationMs;
-      } else if (s.consecutiveFailures >= this.cfg.blockAfterFailures) {
-        newState = 'blocked';
-        reason = `consecutive_failures_${s.consecutiveFailures}`;
-        s.stateExpiresAt = now + this.cfg.blockDurationMs;
-      }
-    }
-
-    // If the provider sent a Retry-After hint (structured header or a prose
-    // reset time parsed from the message). For quota failures the hint IS
-    // the known reset/reopen time, so close the pair until exactly that
-    // moment instead of stacking it onto the fixed block; for every other
-    // failure kind the hint only extends the computed cooldown.
-    if (newState !== 'healthy' && effectiveRetryAfterMs && effectiveRetryAfterMs > 0) {
-      const hintExpiry = now + effectiveRetryAfterMs;
-      if (quotaExhausted) {
-        s.stateExpiresAt = hintExpiry;
-      } else if (s.stateExpiresAt === null || hintExpiry > s.stateExpiresAt) {
-        s.stateExpiresAt = hintExpiry;
-      }
-    }
+    const { newState, reason } = failureTransition(
+      s,
+      this.cfg,
+      { quotaExhausted, endpointUnreachable },
+      now,
+      retryAfterMs,
+      (streak) => this.quotaBlockDurationForStreak(streak),
+    );
 
     if (
       this.cfg.quarantineSiblingsOnQuotaExhausted &&

@@ -247,9 +247,6 @@
     "packages/cli/src/slash-commands/sdd-format.ts": [
       "taskStatusIcon"
     ],
-    "packages/cli/src/slash-commands/session.ts": [
-      "isSafeSessionKillPid"
-    ],
     "packages/cli/src/slash-commands/slash-deep-help.ts": [
       "resolveSlashSubcommand",
       "slashesWithFocusedHelp",
@@ -407,7 +404,6 @@
       "EXPLORE_COMPANION_TOOLS"
     ],
     "packages/core/src/coordination/mailbox-codecs.ts": [
-      "MailboxValidationError",
       "parseMailboxHeartbeatInput",
       "parseMailboxRegistrationInput",
       "SEND_ALLOWED_FIELDS"
@@ -939,9 +935,6 @@
     "packages/plugins/src/license-audit-gate/index.ts": [
       "parsePackageNames"
     ],
-    "packages/plugins/src/lint-gate/index.ts": [
-      "resolveLocalLinter"
-    ],
     "packages/plugins/src/llm-cache/index.ts": [
       "fingerprintRequest",
       "isDeterministic"
@@ -972,8 +965,6 @@
       "windowSpend"
     ],
     "packages/providers/src/ai-gateway.ts": [
-      "convertProviderOptions",
-      "convertResponseFormat",
       "resolveGatewayWireBaseUrl"
     ],
     "packages/providers/src/error-parse.ts": [
@@ -1131,9 +1122,6 @@
     ],
     "packages/techstack/src/advisory/native-audit.ts": [
       "runCargoAudit",
-      "runComposerAudit",
-      "runDotnetAudit",
-      "runGoVulncheck",
       "runPipAudit"
     ],
     "packages/techstack/src/discovery/index.ts": [

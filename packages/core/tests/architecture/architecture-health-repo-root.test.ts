@@ -59,7 +59,9 @@ describe('architecture health resolves the repository root from its own location
 
       // `packages/tools` is not under `packages/techstack` at all — a relative
       // reference that can only resolve when repoRoot is the repository root.
-      expect(stdout).toContain('packages/tools/src/exec.ts');
+      // Match the directory, not one file: which files make the largest-files
+      // table shifts every time a hotspot is split.
+      expect(stdout).toContain('packages/tools/src/');
     },
     300_000,
   );

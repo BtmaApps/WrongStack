@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import * as v8 from 'node:v8';
 import type { Mailbox, MailboxAgentStatus, MailboxMessage } from '../coordination/mailbox-types.js';
 import type { Logger } from '../types/logger.js';
-import { isLoopbackHost } from './exposure.js';
 import {
   createMailboxEventPayload,
   createMailboxSnapshotPayloadFromMailbox,
@@ -30,7 +28,19 @@ import {
   type HqSessionSnapshotPayload,
   type HqTranscriptAppendPayload,
 } from './protocol.js';
-import { CommandTracker, IN_FLIGHT_COMMAND } from './publisher-command-tracker.js';
+import { CommandTracker, runCommandBatch } from './publisher-command-tracker.js';
+import {
+  DEFAULT_COMMAND_POLL_INTERVAL_MS,
+  DEFAULT_COMMAND_POLL_LIMIT,
+  DEFAULT_DISCOVERY_POLL_MS,
+  DEFAULT_HEARTBEAT_INTERVAL_MS,
+  DEFAULT_MAX_QUEUED_BYTES,
+  DEFAULT_MAX_QUEUED_MESSAGES,
+  DEFAULT_RECONNECT_BASE_MS,
+  DEFAULT_RECONNECT_MAX_MS,
+  MAX_TRACKED_COMMANDS,
+  TRANSCRIPT_EVENT_TYPES,
+} from './publisher-defaults.js';
 import { MailboxSnapshotMemory } from './publisher-mailbox-memory.js';
 import { PublisherQueue, queuedFrameCoalesceKey } from './publisher-queue.js';
 import { parseHqServerMessage } from './publisher-server-message.js';
@@ -55,6 +65,7 @@ import {
   emitConnectWarning,
   resetHqPublisherWarningStateForTests,
   warnedEndpoints,
+  warnIfShippingRawContentInClear,
 } from './publisher-warnings.js';
 import { redactHqEvent, resolveHqRedactionPolicy } from './redaction.js';
 
@@ -67,36 +78,6 @@ export {
   type HqSocketLike,
   resetHqPublisherWarningStateForTests,
 };
-
-/** Event types that carry full chat turns rather than telemetry summaries. */
-const TRANSCRIPT_EVENT_TYPES = new Set<string>(['session.transcript', 'agent.message']);
-
-const DEFAULT_RECONNECT_BASE_MS = 1_000;
-const DEFAULT_RECONNECT_MAX_MS = 30_000;
-const DEFAULT_DISCOVERY_POLL_MS = 5_000;
-const DEFAULT_MAX_QUEUED_MESSAGES = 2000;
-/**
- * Hard byte cap on the enqueue to prevent unbounded RAM growth when HQ is offline.
- *
- * Heap-relative: `min(16 MiB, heap_limit * 0.10)`. The lower bound keeps the cap
- * small in typical V8 configurations (e.g. ~512 MiB limit → 16 MiB cap), while
- * the upper bound prevents the cap from exceeding 10 % of the V8 heap limit in
- * small-container or `--max-old-space-size` scenarios. Operators can override
- * via the `maxQueuedBytes` option — the override takes precedence over this
- * default and is the right escape hatch for long offline periods.
- */
-const DEFAULT_MAX_QUEUED_BYTES = Math.min(
-  16 * 1024 * 1024,
-  Math.floor(v8.getHeapStatistics().heap_size_limit * 0.1),
-);
-// Commands originate from an interactive operator console. Keep delivery
-// close to WebSocket-real-time while retaining the existing bounded poll
-// protocol (which also provides replay after a brief disconnect).
-const DEFAULT_COMMAND_POLL_INTERVAL_MS = 500;
-/** Upper bound on the redelivery ledger (server queues at most 200 per client). */
-const MAX_TRACKED_COMMANDS = 500;
-const DEFAULT_COMMAND_POLL_LIMIT = 25;
-const DEFAULT_HEARTBEAT_INTERVAL_MS = 25_000;
 
 export class HqPublisher {
   private readonly socketFactory: HqSocketFactory;
@@ -154,64 +135,6 @@ export class HqPublisher {
     this.logger = options.logger;
   }
 
-  /**
-   * Warn when this publisher is about to send unredacted content over a
-   * cleartext link to another machine.
-   *
-   * `DEFAULT_HQ_REDACTION_POLICY` is `{rawContent: true, toolArgs: 'full',
-   * paths: 'full'}` — the most open setting available. That is defensible for
-   * the normal case, where HQ is on the same machine and the console is the
-   * product. It is not defensible when the endpoint is remote and the transport
-   * is plain `ws:`, because the payload then includes prompts, thinking blocks,
-   * verbatim tool arguments and absolute paths, in the clear, to anyone on the
-   * path.
-   *
-   * This warns rather than silently clamping. A clamp would be the stronger
-   * control, but it changes what an operator sees in a topology they chose
-   * deliberately (HQ over a VPN on `ws:` is a legitimate setup), and a console
-   * that quietly starts showing `[REDACTED]` reads as a bug. Making the
-   * exposure visible to the person who can decide is the honest half; changing
-   * the default is an owner decision, recorded in the security report.
-   *
-   * Deduplicated per endpoint via the same `warnedEndpoints` set the connection
-   * warnings use, so a reconnect loop cannot turn this into a log flood.
-   */
-  private warnIfShippingRawContentInClear(url: string): void {
-    const policy = this.resolvedRedactionPolicy;
-    const disclosesContent =
-      policy.rawContent || policy.toolArgs === 'full' || policy.paths === 'full';
-    if (!disclosesContent) return;
-
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      return; // Unparseable endpoints are already reported by the connect path.
-    }
-    // `wss:`/`https:` is encrypted; loopback never leaves the machine.
-    if (parsed.protocol === 'wss:' || parsed.protocol === 'https:') return;
-    const host = parsed.hostname.replace(/^\[|\]$/g, '');
-    if (isLoopbackHost(host) || host === 'localhost' || host.endsWith('.localhost')) return;
-
-    const key = `raw-content-in-clear:${parsed.host}`;
-    if (warnedEndpoints.has(key)) return;
-    warnedEndpoints.add(key);
-    this.logger?.warn?.(
-      JSON.stringify({
-        level: 'warn',
-        event: 'hq.publisher.raw_content_over_cleartext',
-        endpoint: `${parsed.protocol}//${parsed.host}`,
-        rawContent: policy.rawContent,
-        toolArgs: policy.toolArgs,
-        paths: policy.paths,
-        message:
-          'Publishing unredacted session content (prompts, tool arguments, absolute paths) ' +
-          'to a remote HQ over an unencrypted connection. Use wss:// (terminate TLS in front ' +
-          'of HQ), or set a stricter redactionPolicy for this publisher.',
-      }),
-    );
-  }
-
   connect(): void {
     if (this.socket !== null || this.stopped) return;
     // A retry / discovery poll is already scheduled — let it fire instead of
@@ -245,7 +168,7 @@ export class HqPublisher {
     const onOpen = () => {
       this.reconnectAttempt = 0;
       this.connectWarningEmitted = false;
-      this.warnIfShippingRawContentInClear(url);
+      warnIfShippingRawContentInClear(url, this.resolvedRedactionPolicy, this.logger);
       if (this.lastAttempt?.url) {
         warnedEndpoints.delete(this.lastAttempt.url);
       }
@@ -699,49 +622,12 @@ export class HqPublisher {
   private async handleCommandBatch(message: HqServerCommandBatchMessage): Promise<void> {
     const handler = this.options.onCommand;
     if (handler === undefined) return;
-
-    for (const command of message.commands) {
-      // Redelivery guard. `lastCommandId` only advances AFTER a command is
-      // handled (see below), while `command_poll` fires on a fixed timer — so
-      // any handler slower than the poll interval is re-sent the SAME command
-      // and, without this, runs it twice. `spawn` and `abort` routinely take
-      // seconds; a duplicate there means a second subagent or a second kill.
-      const seen = this.commandTracker.get(command.commandId);
-      if (seen !== undefined) {
-        // Still running: the original invocation owns the ack. Already
-        // finished: replay the SAME ack so the server's audit row converges
-        // on the real outcome instead of being overwritten by a placeholder.
-        if (seen !== IN_FLIGHT_COMMAND) this.ackCommand(seen);
-        this.lastCommandId = command.commandId;
-        continue;
-      }
-      this.commandTracker.remember(command.commandId, IN_FLIGHT_COMMAND);
-      try {
-        const result = await handler(command);
-        const ack: HqPublisherCommandResult = result ?? {
-          commandId: command.commandId,
-          status: 'accepted',
-        };
-        this.commandTracker.remember(command.commandId, ack);
-        if (result !== undefined) this.ackCommand(result);
-        else if (command.requiresAck) this.ackCommand(ack);
-      } catch (err) {
-        const ack: HqPublisherCommandResult = {
-          commandId: command.commandId,
-          status: 'failed',
-          message: err instanceof Error ? err.message : String(err),
-        };
-        this.commandTracker.remember(command.commandId, ack);
-        this.ackCommand(ack);
-      }
-      // Advance the poll cursor only AFTER the command is handled and acked.
-      // Advancing it before `await handler` meant a socket flap mid-handler
-      // left the next command_poll asking for commands AFTER this one — so an
-      // operator command (steer/abort/broadcast) that never ran was silently
-      // skipped and never re-fetched. At-least-once (a possible duplicate on
-      // reconnect, which these commands tolerate) beats losing one outright.
-      this.lastCommandId = command.commandId;
-    }
+    await runCommandBatch(message, handler, this.commandTracker, {
+      ack: (result) => this.ackCommand(result),
+      advanceCursor: (commandId) => {
+        this.lastCommandId = commandId;
+      },
+    });
   }
 
   private scheduleReconnect(): void {

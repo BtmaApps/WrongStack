@@ -15,28 +15,38 @@ import type {
   TaskSpec,
 } from '../types/multi-agent.js';
 import { classifySubagentError } from './coordinator/error-classifier.js';
+import { applyRosterBudget } from './fleet.js';
 import {
   handleRecordCompletionState,
   isCoordinatorDone,
   pushAndTrimCompletedResult,
 } from './multi-agent-completion-helpers.js';
-import { executeRemoveSubagent, executeStopSession } from './multi-agent-lifecycle-helpers.js';
-import { applyRosterBudget } from './fleet.js';
+import {
+  executeRemoveSubagent,
+  executeStopSession,
+  markSubagentStopped,
+  notifyRunningSubagentsToFinish,
+} from './multi-agent-lifecycle-helpers.js';
 import {
   createPendingAbortedResult,
   hasLiveSubagentInMap,
   type SubagentEntry,
   takeNextDispatchableTaskFromQueue,
 } from './multi-agent-queue-helpers.js';
-import { createSubagentTaskBudget, executeSubagentTask } from './multi-agent-runner-helpers.js';
+import {
+  beginSubagentTask,
+  createSubagentTaskBudget,
+  createTerminatedBeforeStartResult,
+  executeSubagentTask,
+} from './multi-agent-runner-helpers.js';
 import {
   buildCoordinatorStatus,
+  type CoordinatorStatsSnapshot,
   computeCoordinatorStats,
   emitCoordinatorStatsEvent,
 } from './multi-agent-stats-helpers.js';
 import { awaitCoordinatorTasks, awaitCoordinatorTasksAny } from './multi-agent-waiters.js';
 import type { BudgetSessionIdSource } from './subagent-budget.js';
-import { resolveGracefulFinish } from './subagent-finish.js';
 import { applyCoordinatorNickname } from './subagent-nicknames.js';
 
 export interface MultiAgentCoordinatorOptions {
@@ -311,33 +321,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
     const subagent = this.subagents.get(subagentId);
     if (!subagent) return;
 
-    // Mark terminating BEFORE the abort so a synchronous tryDispatchNext
-    // observation in another callback path sees the intent and skips
-    // this subagent. Cleared by recordCompletion once the runner's
-    // catch block lands the terminal TaskResult.
-    this.terminating.add(subagentId);
-
-    // Abort any in-flight run, then sever the bridge so further messages fail
-    // fast instead of silently queueing on a dead subagent.
-    subagent.abortController.abort();
-    subagent.status = 'stopped';
-    subagent.currentTask = undefined;
-    subagent.context.parentBridge = null;
-
-    this.emit('subagent.stopped', { subagentId, reason: 'stopped by coordinator' });
-
-    const sessionId = subagent.sessionId;
-    this.fleetBus?.emit({
-      subagentId,
-      ts: Date.now(),
-      type: 'subagent.stopped',
-      payload: {
-        sessionId,
-        subagentId,
-        reason: 'stopped by coordinator',
-      },
-    });
-
+    markSubagentStopped(subagentId, subagent, this.terminating, this, this.fleetBus);
     this.emitCoordinatorStats();
   }
 
@@ -359,15 +343,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
   /**
    * Get current coordinator stats for monitoring/debugging.
    */
-  getStats(): {
-    total: number;
-    running: number;
-    idle: number;
-    stopped: number;
-    inFlight: number;
-    pending: number;
-    completed: number;
-  } {
+  getStats(): CoordinatorStatsSnapshot {
     return computeCoordinatorStats(
       this.subagents,
       this.inFlight,
@@ -488,29 +464,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
    * Returns the number of subagents actually notified.
    */
   requestFinish(reason: string): number {
-    let notified = 0;
-    for (const subagent of this.subagents.values()) {
-      if (subagent.status !== 'running') continue;
-      if (!resolveGracefulFinish(subagent.config)) continue;
-      const budget = subagent.activeBudget;
-      if (!budget) continue;
-      // "Wrap up," never "skip your work": only subagents that have actually
-      // started (an iteration or tool call on record) are asked to accelerate.
-      // A just-spawned subagent — typically a post-session reviewer whose
-      // runner has only just wired its bus — would otherwise read the finish
-      // notice at its FIRST iteration, before it has examined anything, and a
-      // compliant model would emit a truncated report. Subagents that have
-      // not started yet stay on their normal lifecycle; the watchdog
-      // deadline crossing delivers the in-band notice with a grace window,
-      // which is the mandatory path for stalled runs.
-      const usage = budget.usage();
-      if (usage.iterations === 0 && usage.toolCalls === 0) continue;
-      // Notify only — no grace grant. A subagent still well inside its
-      // wall-clock budget keeps its full legitimate working time; one already
-      // past its deadline has (or will) get grace from the watchdog.
-      if (budget.notifyFinish(reason)) notified++;
-    }
-    return notified;
+    return notifyRunningSubagentsToFinish(this.subagents.values(), reason);
   }
 
   // --- internal dispatching ---------------------------------------------
@@ -599,52 +553,18 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
   private async runDispatched(subagentId: string, task: TaskSpec): Promise<void> {
     const subagent = this.subagents.get(subagentId);
     if (!subagent) return;
-    // Final race guard: if `stop(subagentId)` ran between dispatch
-    // and us arriving here, refuse to start the task and surface it
-    // as `aborted_by_parent` so any caller awaiting the task id
-    // unblocks. Without this, the task would be marked 'running',
-    // collide with the just-completed 'stopped' state, and leak
-    // inFlight by 1 because no recordCompletion path covers it.
+    // Final race guard: refuse a task whose subagent was stopped between
+    // dispatch and here (see createTerminatedBeforeStartResult).
     if (this.terminating.has(subagentId) || subagent.status === 'stopped') {
-      this.recordCompletion({
-        subagentId,
-        taskId: task.id,
-        status: 'stopped',
-        error: {
-          kind: 'aborted_by_parent',
-          message: 'Subagent was terminated before task could start',
-          retryable: false,
-        },
-        iterations: 0,
-        toolCalls: 0,
-        durationMs: 0,
-      });
+      this.recordCompletion(createTerminatedBeforeStartResult(subagentId, task.id));
       return;
     }
-
-    subagent.status = 'running';
-    subagent.currentTask = task.id;
-    task.subagentId = subagentId;
-    // Carry the owning session on the task itself. Agent factories receive
-    // `(config, task)` and nothing else, so without this the only session they
-    // could read was the HOST's live one — which moves every time the user
-    // switches tabs, filing a worker's transcript and token spend under
-    // whichever tab happened to be in front when it spawned. An explicit
-    // stamp on the task already wins; this only fills the gap.
-    if (subagent.sessionId) {
-      task.context = { sessionId: subagent.sessionId, ...(task.context ?? {}) };
-    }
-    subagent.context.tasks.push(task);
-    // Bound the per-subagent task history: a worker runs one task at a time, so
-    // the completing task is always among the most recent entries. This keeps a
-    // long-lived worker (idle→assign→complete→…) from accumulating every task it
-    // ever ran, and keeps the `.find` at recordCompletion O(cap) instead of O(N).
-    if (subagent.context.tasks.length > DefaultMultiAgentCoordinator.MAX_SUBAGENT_TASK_HISTORY) {
-      subagent.context.tasks.splice(
-        0,
-        subagent.context.tasks.length - DefaultMultiAgentCoordinator.MAX_SUBAGENT_TASK_HISTORY,
-      );
-    }
+    beginSubagentTask(
+      subagent,
+      subagentId,
+      task,
+      DefaultMultiAgentCoordinator.MAX_SUBAGENT_TASK_HISTORY,
+    );
 
     const sessionId = subagent.sessionId;
     this.fleetBus?.emit({

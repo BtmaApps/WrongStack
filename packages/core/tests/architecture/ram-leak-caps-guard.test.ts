@@ -180,7 +180,10 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
   });
 
   it('core/file-observer: SCAN_HASH_CONCURRENCY = 32', () => {
-    const { value, file } = readConst('core', 'chronicle/file-observer-scan.ts:SCAN_HASH_CONCURRENCY');
+    const { value, file } = readConst(
+      'core',
+      'chronicle/file-observer-scan.ts:SCAN_HASH_CONCURRENCY',
+    );
     expect(value, file).toBe('32');
   });
 
@@ -192,10 +195,10 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
     expect(value, file).toBe('30_000');
   });
 
-  it('core/agent-status-tracker: RECENT_TOOL_LIMIT = 12', () => {
+  it('core/agent-status-subagents: RECENT_TOOL_LIMIT = 12', () => {
     const { value, file } = readConst(
       'core',
-      'coordination/agent-status-tracker.ts:RECENT_TOOL_LIMIT',
+      'coordination/agent-status-subagents.ts:RECENT_TOOL_LIMIT',
     );
     expect(value, file).toBe('12');
   });
@@ -216,16 +219,19 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
     expect(value, file).toBe('10_000');
   });
 
-  it('core/agent-status-tracker: PARTIAL_TEXT_CAP = 1200', () => {
+  it('core/agent-status-subagents: PARTIAL_TEXT_CAP = 1200', () => {
     const { value, file } = readConst(
       'core',
-      'coordination/agent-status-tracker.ts:PARTIAL_TEXT_CAP',
+      'coordination/agent-status-subagents.ts:PARTIAL_TEXT_CAP',
     );
     expect(value, file).toBe('1200');
   });
 
-  it('core/agent-status-tracker: TASK_TEXT_CAP = 1200', () => {
-    const { value, file } = readConst('core', 'coordination/agent-status-tracker.ts:TASK_TEXT_CAP');
+  it('core/agent-status-subagents: TASK_TEXT_CAP = 1200', () => {
+    const { value, file } = readConst(
+      'core',
+      'coordination/agent-status-subagents.ts:TASK_TEXT_CAP',
+    );
     expect(value, file).toBe('1200');
   });
 

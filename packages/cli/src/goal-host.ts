@@ -20,7 +20,7 @@ export { configureGoalPolicy, isGoalCommandAllowed, resetGoalPolicy } from './go
  * single-thread turn injection.
  */
 
-import { assignNickname, type BrainArbiter } from '@wrongstack/core/coordination';
+import { assignNickname } from '@wrongstack/core/coordination';
 import {
   GoalPlanner,
   GoalRunLeaseBusyError,
@@ -28,14 +28,12 @@ import {
   type PhaseGraph,
   PhaseGraphBuilder,
   PhaseOrchestrator,
-  type PhaseProgress,
   PhaseStore,
   prepareGoalGraphForResume,
   prepareGoalWorkspace,
   verifyGoalProject,
 } from '@wrongstack/core/goal';
-import type { EventBus } from '@wrongstack/core/kernel';
-import type { Config, TaskNode } from '@wrongstack/core/types';
+
 import { WorktreeManager } from '@wrongstack/core/worktree';
 
 /** Tasks share one phase worktree, so concurrency is opt-in rather than implicit. */
@@ -50,99 +48,20 @@ function resolveTaskConcurrency(): number {
   return Math.min(8, Math.max(1, parsed));
 }
 
-import type { MultiAgentHost } from './multi-agent.js';
+import { buildConflictPrompt, buildRepairPrompt, buildTaskPrompt } from './goal-host-prompts.js';
+import type {
+  ActiveRun,
+  GoalHostDeps,
+  GoalHostHooks,
+  GoalStartResult,
+  RunResult,
+} from './goal-host-types.js';
 import { createWorktreeCommandHost } from './worktree-command-host.js';
+
+export type { GoalHostDeps, GoalHostHooks } from './goal-host-types.js';
 
 /** Default parallel-phase concurrency once worktree isolation is available. */
 const WORKTREE_PHASE_CONCURRENCY = 4;
-
-export interface GoalHostDeps {
-  multiAgentHost: MultiAgentHost;
-  /** Read the *current* Config lazily (it may be patched, e.g. YOLO toggles). */
-  getConfig: () => Config;
-  /** Shared app EventBus — orchestrator events feed the TUI PhaseMonitor. */
-  events: EventBus;
-  /** Current parent session id for worktree lifecycle events. */
-  getSessionId?: (() => string | undefined) | undefined;
-  /** Directory for per-project phase-graph engine checkpoints. */
-  storeDir: string;
-  /** Project root — base for git-worktree isolation. */
-  projectRoot: string;
-  /** SDD board snapshot dir — `/worktree clean` skips while an SDD run is live. */
-  sddBoardsDir?: string | undefined;
-  /**
-   * Enable per-phase git-worktree isolation (default true). When on and the
-   * project is a git repo, parallelizable phases run in isolated worktrees and
-   * merge back sequentially. Disable with WRONGSTACK_GOAL_WORKTREES=0.
-   */
-  worktrees?: boolean | undefined;
-  /** Max parallel phases when worktrees are active (default 4). */
-  maxConcurrentPhases?: number | undefined;
-  /** Optional global Brain arbiter for Goal policy decisions. */
-  brain?: BrainArbiter | undefined;
-  /** Optional progress logger (rendered to the user during start). */
-  log?: ((line: string) => void) | undefined;
-}
-
-/** A live, read-only view of the running Goal, exposed to slash commands. */
-interface GoalRunnerView {
-  graph: PhaseGraph;
-  getProgress: () => PhaseProgress | null;
-  isRunning: () => boolean;
-}
-
-type GoalStartResult = { ok: true; graph: PhaseGraph } | { ok: false; error: string };
-
-export interface GoalHostHooks {
-  onGoalStart: (opts: {
-    goal: string;
-    projectContext?: string | undefined;
-  }) => Promise<GoalStartResult>;
-  onGoalPause: () => void;
-  onGoalResume: () => void;
-  /**
-   * Resume a persisted PhaseGraph. The graph must already have been loaded
-   * from the PhaseStore. Creates a fresh orchestrator and starts executing
-   * pending tasks.
-   */
-  onGoalResumeFromGraph: (graph: PhaseGraph) => Promise<GoalStartResult>;
-  onGoalStop: () => void;
-  getGoalRunner: () => GoalRunnerView | null;
-  /** Interactive board: move a task to another phase. */
-  onGoalMoveTask: (taskId: string, toPhaseId: string) => boolean;
-  /** Interactive board: (re)assign a task to a specific agent (clear with both omitted). */
-  onGoalAssignTask: (taskId: string, agentId?: string, agentName?: string) => boolean;
-  /** Interactive board: add a new task to a phase. Returns the new task id. */
-  onGoalAddTask: (
-    phaseId: string,
-    spec: {
-      title: string;
-      description?: string;
-      type?: TaskNode['type'];
-      priority?: TaskNode['priority'];
-    },
-  ) => string | null;
-  /** Interactive board: requeue a task to pending so it (re)runs. */
-  onGoalRetryTask: (taskId: string) => boolean;
-  /** Backs the /worktree slash command (list / merge / prune / clean). */
-  onWorktree: (action: 'list' | 'merge' | 'prune' | 'clean', target?: string) => Promise<string>;
-}
-
-interface ActiveRun {
-  graph: PhaseGraph;
-  orchestrator: PhaseOrchestrator;
-  abort: AbortController;
-  unsubscribe: () => void;
-  releaseRunLease: () => Promise<void>;
-  runPromise?: Promise<void> | undefined;
-}
-
-/** Minimal shape of an agent.run result we depend on. */
-interface RunResult {
-  status: string;
-  finalText?: string | undefined;
-  error?: { message?: string | undefined };
-}
 
 export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
   const store = new PhaseStore({ baseDir: deps.storeDir });
@@ -177,64 +96,6 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
     } finally {
       await built.dispose?.();
     }
-  }
-
-  function buildTaskPrompt(task: TaskNode, phaseName: string, goal: string): string {
-    return [
-      `You are executing one task inside an autonomous, phase-based build.`,
-      `Overall goal: ${goal}`,
-      `Current phase: ${phaseName}`,
-      '',
-      `TASK: ${task.title}`,
-      task.description ? `Details: ${task.description}` : '',
-      `Type: ${task.type} · Priority: ${task.priority}`,
-      '',
-      `Do the work now using your tools (read, edit, write, bash, …). Make the`,
-      `change real — do not just describe it. When finished, end with a one-line`,
-      `summary of what you changed. If the task is impossible or already done,`,
-      `say so explicitly.`,
-    ]
-      .filter(Boolean)
-      .join('\n');
-  }
-
-  function buildRepairPrompt(phaseName: string, failure: string, goal: string): string {
-    return [
-      `You are repairing a FAILED verification inside an autonomous, phase-based build.`,
-      `Overall goal: ${goal}`,
-      `Phase: ${phaseName}`,
-      '',
-      `The phase's code changes were applied, but verification (typecheck/lint)`,
-      `failed in this working directory. Verifier output:`,
-      '```',
-      failure.slice(0, 4000),
-      '```',
-      '',
-      `Fix the code in THIS working directory so verification passes. Use your tools`,
-      `(read, edit, write, bash). Fix the root cause — do NOT delete code, weaken`,
-      `types, or disable lint rules just to silence the error. When finished, end`,
-      `with a one-line summary of what you changed.`,
-    ].join('\n');
-  }
-
-  function buildConflictPrompt(files: string[], goal: string): string {
-    const fileList = files.length
-      ? files.map((f) => `  - ${f}`).join('\n')
-      : '  (run `git diff --check` or search for "<<<<<<<" to find them)';
-    return [
-      `A git squash-merge hit conflicts while integrating an autonomous build phase`,
-      `into the base branch. Overall goal: ${goal}`,
-      '',
-      `These files contain conflict markers (<<<<<<<, =======, >>>>>>>) in the`,
-      `current working directory:`,
-      fileList,
-      '',
-      `Resolve every conflict by correctly combining BOTH sides — keep the intent of`,
-      `the base branch AND the phase's changes; do not blindly discard either side.`,
-      `Remove all conflict markers from every affected file. Do NOT run \`git commit\``,
-      `or \`git add\` — just leave the resolved files on disk. If a conflict cannot be`,
-      `resolved safely, say so explicitly. End with a one-line summary.`,
-    ].join('\n');
   }
 
   /**

@@ -29,6 +29,7 @@ const HOT_PATHS = [
 
 const PROCESS_HOT_PATHS = [
   'packages/techstack/src/advisory/native-audit.ts',
+  'packages/techstack/src/advisory/native-audit-command.ts',
   'packages/plugins/src/dependency-vulnerability-gate/index.ts',
   'packages/plugins/src/test-flake-detector/index.ts',
   'packages/plugins/src/api-compatibility-gate/index.ts',

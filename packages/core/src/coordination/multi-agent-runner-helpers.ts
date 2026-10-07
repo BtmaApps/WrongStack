@@ -6,6 +6,7 @@ import type {
   TaskSpec,
 } from '../types/multi-agent.js';
 import { classifySubagentError } from './coordinator/error-classifier.js';
+import type { SubagentEntry } from './multi-agent-queue-helpers.js';
 import { executeSubagentWithTimeout } from './multi-agent-timeout.js';
 import type { SubagentBudget } from './subagent-budget.js';
 import { BudgetExceededError, SubagentBudget as BudgetImpl } from './subagent-budget.js';
@@ -149,5 +150,58 @@ export async function executeSubagentTask(params: ExecuteSubagentTaskParams): Pr
       toolCalls: usage.toolCalls,
       durationMs: Date.now() - startTime,
     };
+  }
+}
+
+/**
+ * Final race guard: if `stop(subagentId)` ran between dispatch
+ * and us arriving here, refuse to start the task and surface it
+ * as `aborted_by_parent` so any caller awaiting the task id
+ * unblocks. Without this, the task would be marked 'running',
+ * collide with the just-completed 'stopped' state, and leak
+ * inFlight by 1 because no recordCompletion path covers it.
+ */
+export function createTerminatedBeforeStartResult(subagentId: string, taskId: string): TaskResult {
+  return {
+    subagentId,
+    taskId,
+    status: 'stopped',
+    error: {
+      kind: 'aborted_by_parent',
+      message: 'Subagent was terminated before task could start',
+      retryable: false,
+    },
+    iterations: 0,
+    toolCalls: 0,
+    durationMs: 0,
+  };
+}
+
+/** Mark `subagent` running on `task` and record it in its bounded task history. */
+export function beginSubagentTask(
+  subagent: SubagentEntry,
+  subagentId: string,
+  task: TaskSpec,
+  maxHistory: number,
+): void {
+  subagent.status = 'running';
+  subagent.currentTask = task.id;
+  task.subagentId = subagentId;
+  // Carry the owning session on the task itself. Agent factories receive
+  // `(config, task)` and nothing else, so without this the only session they
+  // could read was the HOST's live one — which moves every time the user
+  // switches tabs, filing a worker's transcript and token spend under
+  // whichever tab happened to be in front when it spawned. An explicit
+  // stamp on the task already wins; this only fills the gap.
+  if (subagent.sessionId) {
+    task.context = { sessionId: subagent.sessionId, ...(task.context ?? {}) };
+  }
+  subagent.context.tasks.push(task);
+  // Bound the per-subagent task history: a worker runs one task at a time, so
+  // the completing task is always among the most recent entries. This keeps a
+  // long-lived worker (idle→assign→complete→…) from accumulating every task it
+  // ever ran, and keeps the `.find` at recordCompletion O(cap) instead of O(N).
+  if (subagent.context.tasks.length > maxHistory) {
+    subagent.context.tasks.splice(0, subagent.context.tasks.length - maxHistory);
   }
 }

@@ -8,19 +8,19 @@ import {
   estimateToolInputTokens,
   estimateToolResultTokens,
 } from '../utils/token-estimate.js';
-import { sliceUtf16Safe } from './compaction-scoring.js';
+import {
+  extractPathHints,
+  summarizeToolResultElision,
+  summarizeToolUseInputElision,
+} from './compaction-elision-summaries.js';
+import { analyzeFileToolLifecycle } from './compaction-file-lifecycle.js';
 
-const PATH_HINT_PATTERN =
-  /(?:(?:[A-Za-z]:)?[./\\]?[\w@.-]+(?:[\\/][\w@(). -]+)+\.[A-Za-z0-9]{1,12})/g;
-const PATH_BACKSLASH_PATTERN = /\\/g;
-const PATH_TRIM_PATTERN = /^["'`]+|["'`),;:]+$/g;
-
-const ERROR_LINE_PATTERN =
-  /\b(error|exception|failed|failure|fatal|panic|timeout|denied|enoent|eacces|eperm)\b/i;
-const STRONG_ERROR_LINE_PATTERN =
-  /\b(error|exception|fatal|panic|timeout|denied|enoent|eacces|eperm)\b/i;
-const NEWLINE_SPLIT_PATTERN = /\r?\n/;
-const WHITESPACE_COLLAPSE_PATTERN = /\s+/g;
+export {
+  summarizeToolResultElision,
+  summarizeToolUseInputElision,
+} from './compaction-elision-summaries.js';
+export type { FileToolLifecycle } from './compaction-file-lifecycle.js';
+export { normalizePathKey, readPathOf } from './compaction-file-lifecycle.js';
 
 export interface CompactionMetrics {
   messageCount: number;
@@ -87,128 +87,6 @@ export interface AcknowledgedToolReceiptCollapse extends EliseResult {
 }
 
 const TOOL_HISTORY_DIGEST_PREFIX = '[tool_history_digest:';
-
-export interface FileToolLifecycle {
-  activeReadIds: Set<string>;
-  staleReadPaths: Map<string, string>;
-}
-
-function isReadToolName(name: string): boolean {
-  return /^(read|read_file|open_file|view|view_file)$/.test(name.toLowerCase());
-}
-
-function isFileMutationToolName(name: string): boolean {
-  return /^(edit|write|replace|patch|apply_patch)$/.test(name.toLowerCase());
-}
-
-function didFileMutationRun(use: ToolUseBlock): boolean {
-  const name = use.name.toLowerCase();
-  if (name === 'replace') return use.input?.['dry_run'] === false;
-  if (name === 'patch') return use.input?.['dry_run'] !== true;
-  return true;
-}
-
-function sameFilePath(a: string, b: string): boolean {
-  if (a === b) return true;
-  const aAbsolute = /^(?:[a-z]:\/|\/)/.test(a);
-  const bAbsolute = /^(?:[a-z]:\/|\/)/.test(b);
-  if (aAbsolute === bAbsolute) return false;
-  return aAbsolute ? a.endsWith(`/${b}`) : b.endsWith(`/${a}`);
-}
-
-export function readPathOf(input: Record<string, unknown> | undefined): string | undefined {
-  if (!input) return undefined;
-  for (const key of ['file_path', 'path', 'file', 'filename']) {
-    const v = input[key];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-export function normalizePathKey(p: string): string {
-  return p.replace(PATH_BACKSLASH_PATTERN, '/').replace(/^\.\//, '').toLowerCase();
-}
-
-function mutationPathKeys(use: ToolUseBlock, result: ToolResultBlock): string[] {
-  const paths = new Set<string>();
-  const direct = readPathOf(use.input);
-  if (direct) paths.add(normalizePathKey(direct));
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(result.content);
-  } catch {
-    return [...paths];
-  }
-  const visit = (value: unknown, key = ''): void => {
-    if (typeof value === 'string') {
-      if (/^(path|file|file_path|filename|files)$/.test(key) && value.trim()) {
-        paths.add(normalizePathKey(value.trim()));
-      }
-      return;
-    }
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item, key);
-      return;
-    }
-    if (!value || typeof value !== 'object') return;
-    for (const [childKey, child] of Object.entries(value as Record<string, unknown>)) {
-      visit(child, childKey);
-    }
-  };
-  visit(parsed);
-  return [...paths];
-}
-
-function analyzeFileToolLifecycle(
-  messages: readonly Message[],
-  acknowledgedBefore: number,
-): FileToolLifecycle {
-  const uses = new Map<string, ToolUseBlock>();
-  const activeByPath = new Map<string, Set<string>>();
-  const staleReadPaths = new Map<string, string>();
-
-  for (let i = 0; i < acknowledgedBefore; i++) {
-    const message = messages[i];
-    if (!message || typeof message.content === 'string') continue;
-    for (const block of message.content) {
-      if (block.type === 'tool_use') {
-        uses.set(block.id, block);
-        continue;
-      }
-      if (block.type !== 'tool_result' || block.is_error === true) continue;
-      const use = uses.get(block.tool_use_id);
-      if (!use) continue;
-      if (isReadToolName(use.name)) {
-        const rawPath = readPathOf(use.input);
-        if (!rawPath) continue;
-        const pathKey = normalizePathKey(rawPath);
-        const matchingPath = [...activeByPath.keys()].find((activePath) =>
-          sameFilePath(activePath, pathKey),
-        );
-        const canonicalPath = matchingPath ?? pathKey;
-        const reads = activeByPath.get(canonicalPath) ?? new Set<string>();
-        reads.add(block.tool_use_id);
-        activeByPath.set(canonicalPath, reads);
-        continue;
-      }
-
-      if (!isFileMutationToolName(use.name) || !didFileMutationRun(use)) continue;
-      for (const mutationPath of mutationPathKeys(use, block)) {
-        for (const [activePath, activeIds] of activeByPath) {
-          if (!sameFilePath(activePath, mutationPath)) continue;
-          for (const activeId of activeIds) staleReadPaths.set(activeId, activePath);
-          activeByPath.delete(activePath);
-        }
-      }
-    }
-  }
-
-  return {
-    activeReadIds: new Set([...activeByPath.values()].flatMap((ids) => [...ids])),
-    staleReadPaths,
-  };
-}
 
 export { isElidedResultContent, isElidedToolInput };
 
@@ -697,94 +575,4 @@ export function eliseOldToolResults(
   });
 
   return { messages: changed && next ? next : (messages as Message[]), saved, changed };
-}
-
-export function summarizeToolUseInputElision(
-  block: ToolUseBlock,
-  tokens: number,
-): Record<string, unknown> {
-  const fields: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(block.input ?? {})) {
-    fields[key] = summarizeToolUseInputValue(value);
-  }
-
-  return {
-    __elided_tool_input: `~${tokens} tokens; original arguments are in the session log`,
-    tool: block.name,
-    fields,
-  };
-}
-
-function summarizeToolUseInputValue(value: unknown): unknown {
-  if (value === null || value === undefined) return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return value;
-  if (typeof value === 'string') {
-    const oneLine = value.replace(/\s+/g, ' ').trim();
-    return oneLine.length <= 160
-      ? oneLine
-      : `${sliceUtf16Safe(oneLine, 0, 120)}...(${oneLine.length} chars)`;
-  }
-  if (Array.isArray(value)) {
-    return `[array:${value.length}]`;
-  }
-  if (typeof value === 'object') {
-    const keys = Object.keys(value as Record<string, unknown>);
-    return `[object:${keys.slice(0, 8).join(',')}${keys.length > 8 ? ',...' : ''}]`;
-  }
-  return String(value);
-}
-
-export function summarizeToolResultElision(block: ToolResultBlock, tokens: number): string {
-  const parts = [`elided: ~${tokens} tokens`];
-  if (block.name) parts.push(`tool=${block.name}`);
-  const files = extractPathHints(block.content).slice(0, 5);
-  if (files.length > 0) parts.push(`files=${files.join(', ')}`);
-  const error = firstErrorLine(block.content);
-  if (error) parts.push(`error=${error}`);
-  const excerpt = semanticToolResultExcerpt(block.content);
-  if (excerpt) parts.push(`excerpt=${excerpt}`);
-  return `[${parts.join('; ')}]`;
-}
-
-function semanticToolResultExcerpt(content: unknown, maxChars = 480): string | undefined {
-  const text = safeToolResultString(content).replace(WHITESPACE_COLLAPSE_PATTERN, ' ').trim();
-  if (!text) return undefined;
-  if (text.length <= maxChars) return text;
-  const separator = ' … ';
-  const headChars = Math.ceil((maxChars - separator.length) * 0.65);
-  const tailChars = maxChars - separator.length - headChars;
-  return `${sliceUtf16Safe(text, 0, headChars)}${separator}${sliceUtf16Safe(text, text.length - tailChars)}`;
-}
-
-function safeToolResultString(content: unknown): string {
-  if (typeof content === 'string') return content;
-  try {
-    return JSON.stringify(content);
-  } catch {
-    return String(content);
-  }
-}
-
-function extractPathHints(content: unknown): string[] {
-  const text = safeToolResultString(content);
-  const out = new Set<string>();
-  for (const match of text.matchAll(PATH_HINT_PATTERN)) {
-    const clean = match[0]?.replace(PATH_BACKSLASH_PATTERN, '/').replace(PATH_TRIM_PATTERN, '');
-    if (clean && clean.length <= 220) out.add(clean);
-    if (out.size >= 5) break;
-  }
-  return [...out];
-}
-
-function firstErrorLine(content: unknown): string | undefined {
-  const text = safeToolResultString(content);
-  const lines = text.split(NEWLINE_SPLIT_PATTERN);
-  for (const pattern of [STRONG_ERROR_LINE_PATTERN, ERROR_LINE_PATTERN]) {
-    for (const line of lines) {
-      if (!pattern.test(line)) continue;
-      const trimmed = line.replace(WHITESPACE_COLLAPSE_PATTERN, ' ').trim();
-      if (trimmed) return sliceUtf16Safe(trimmed, 0, 180);
-    }
-  }
-  return undefined;
 }

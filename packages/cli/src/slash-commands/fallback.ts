@@ -2,72 +2,15 @@ import {
   diagnoseFallbackConfig,
   normalizeModelRef,
   parseModelRef,
-  runtimeFallbackChain,
   simulateFallbackFailover,
-  smartDefaultFallbackChain,
 } from '@wrongstack/core/agent';
 import type { ProviderErrorKind, SlashCommand } from '@wrongstack/core/types';
 import { color, toErrorMessage, updateJsonObjectFile } from '@wrongstack/core/utils';
 import { backupCurrent } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
 import type { SlashCommandContext } from './command-context.js';
-
-// ── Reference validation helpers ──────────────────────────────────────────────
-
-/**
- * Reason a ref may NOT be stored in a chain or profile, or undefined when it
- * is acceptable. Only hard, user-owned rules live here:
- *
- *  1. It parses to a non-empty model.
- *  2. It is in `favoriteModels` (skipped when favorites are empty — legacy
- *     behavior: no favorites ⇒ no enforcement). This is an explicit policy
- *     the user turned on, so it stays blocking.
- *
- * The `providers[].models` allow-list is deliberately NOT blocking: it is an
- * unrefreshed snapshot that re-auth and manual edits rewrite, so a stale entry
- * would refuse a model the provider actually serves. It is surfaced as a
- * warning instead (see {@link refStaleModelListWarning}).
- */
-function refInvalidReason(
-  ref: string,
-  config: {
-    provider: string;
-    providers?: Record<string, { models?: string[] | undefined }> | undefined;
-    favoriteModels?: string[] | undefined;
-  },
-): string | undefined {
-  const parsed = parseModelRef(ref);
-  if (!parsed.model) return 'no model in reference';
-  const favorites = config.favoriteModels ?? [];
-  if (favorites.length === 0) return undefined;
-  const canonical = normalizeModelRef(ref, config.provider);
-  const inFavorites = favorites.some((f) => normalizeModelRef(f, config.provider) === canonical);
-  if (!inFavorites) return 'not in favorites';
-  return undefined;
-}
-
-/**
- * Advisory note when a ref names a model the provider's saved `models` list
- * does not contain. The runtime still tries the entry (the list drifts), so
- * this is a "check this" hint, never a drop — the previous wording claimed the
- * entry was "inactive", which was true then and would be misleading now.
- */
-function refStaleModelListWarning(
-  ref: string,
-  config: {
-    provider: string;
-    providers?: Record<string, { models?: string[] | undefined }> | undefined;
-  },
-): string | undefined {
-  const parsed = parseModelRef(ref);
-  if (!parsed.model) return 'no model in reference';
-  const providerId = parsed.provider ?? config.provider;
-  const entry = config.providers?.[providerId];
-  if (Array.isArray(entry?.models) && !entry.models.includes(parsed.model)) {
-    return `not in ${providerId} saved model list — will still be tried`;
-  }
-  return undefined;
-}
+import { renderFallbackView } from './fallback-chain-view.js';
+import { refInvalidReason, refStaleModelListWarning } from './fallback-ref-validation.js';
 
 /**
  * Canonicalize a model reference so equivalent spellings dedupe:
@@ -156,129 +99,6 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
     'Persisted to ~/.wrongstack/profiles/<name>/config.json.',
   ].join('\n');
 
-  function currentView(): string {
-    const config = opts.configStore.get();
-    const explicit = config.fallbackModels ?? [];
-    const profiles = config.fallbackProfiles ?? {};
-    const favorites = config.favoriteModels ?? [];
-    const bridge = config.fallbackBridge?.trim();
-    const auto = config.fallbackAuto !== false;
-    // Mirror lastResortCap() normalization so the display never diverges
-    // from the runtime: finite non-negative → floored; anything else → 12.
-    const rawCap = config.fallbackMaxLastResortCandidates;
-    const capValue =
-      typeof rawCap === 'number' && Number.isFinite(rawCap) && rawCap >= 0
-        ? Math.floor(rawCap)
-        : 12;
-    const capLabel = capValue === 0 ? color.dim('disabled') : color.green(String(capValue));
-
-    const filteredReason = (ref: string): string | undefined =>
-      refStaleModelListWarning(ref, config);
-    const activeProfile =
-      typeof config.fallbackProfile === 'string' && profiles[config.fallbackProfile]
-        ? config.fallbackProfile
-        : undefined;
-
-    const lines = [
-      `${color.bold('WrongStack')} ${color.dim('— Fallback chain')}`,
-      '',
-      `  ${color.bold('leader')}  ${color.cyan(`${config.provider}/${config.model}`)}`,
-      `  ${color.bold('bridge')}  ${bridge ? color.cyan(bridge) : color.dim('(disabled)')}  ${color.dim('/fallback bridge set <provider/model>')}`,
-      `  ${color.bold('profile')} ${activeProfile ? color.amber(activeProfile) : color.dim('(none)')}  ${color.dim('/fallback profile use <name> | none')}`,
-      '',
-    ];
-
-    if (explicit.length > 0) {
-      lines.push(
-        `  ${color.bold('explicit chain')} ${color.dim('(tried in order after the leader)')}`,
-      );
-      explicit.forEach((ref, i) => {
-        const note = filteredReason(ref);
-        const suffix = note ? `  ${color.amber(`⚠ ${note}`)}` : '';
-        lines.push(`    ${color.amber(String(i + 1).padStart(2))}. ${color.cyan(ref)}${suffix}`);
-      });
-    } else {
-      lines.push(`  ${color.bold('explicit chain')} ${color.dim('(empty)')}`);
-      const preview = auto ? smartDefaultFallbackChain(config) : [];
-      if (auto) {
-        if (preview.length > 0) {
-          lines.push(`    ${color.dim('smart default (auto-derived):')}`);
-          preview.forEach((ref, i) => {
-            lines.push(`    ${color.dim(`${String(i + 1).padStart(2)}. ${ref}`)}`);
-          });
-        } else {
-          lines.push(
-            `    ${color.dim('smart default: nothing usable — add models to your providers or use /fallback add')}`,
-          );
-        }
-      }
-    }
-
-    // The chain the agent will ACTUALLY rotate through, in order — the same
-    // `resolveCandidates` call the fallback extension makes. The explicit list
-    // above is only one input to it (bridge, selected profile, smart default,
-    // `default`-profile depth and the last-resort sweep all layer in), so
-    // rendering only the explicit list left the view describing something the
-    // runtime does not do.
-    const runtime: string[] = runtimeFallbackChain(config);
-    lines.push(
-      '',
-      `  ${color.bold('effective order')} ${color.dim('(what will actually be tried)')}`,
-    );
-    if (runtime.length === 0) {
-      lines.push(
-        `    ${color.red('empty')} ${color.dim('— a failure on the leader has nowhere to go')}`,
-      );
-    } else {
-      runtime.forEach((ref, i) => {
-        lines.push(`    ${color.amber(String(i + 1).padStart(2))}. ${color.cyan(ref)}`);
-      });
-    }
-
-    const gateSec = config.fallbackGateSeconds ?? 7;
-    const gateLabel =
-      config.fallbackGateSeconds === 0
-        ? color.dim('off (immediate auto-switch)')
-        : color.green(`${gateSec}s`);
-
-    lines.push(
-      '',
-      `  ${color.bold('auto')}  ${auto ? color.green('on') : color.dim('off')}  ${color.dim('/fallback auto on|off')}`,
-      `  ${color.bold('favorites only')}  ${config.favoriteModelsOnly ? color.green('on') : color.dim('off')}  ${color.dim('/fallback fav only on|off')}`,
-      `  ${color.bold('gate countdown')}  ${gateLabel}  ${color.dim('/fallback gate <seconds|off>')}`,
-      `  ${color.bold('last-resort cap')}  ${capLabel}  ${color.dim('(max auto-discovered models appended, 0=disabled)')}`,
-      '',
-      `  ${color.bold('profiles')} ${Object.keys(profiles).length ? '' : color.dim('(none)')}`,
-      ...Object.entries(profiles)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .flatMap(([name, chain]) => {
-          if (!chain || chain.length === 0) {
-            return [`    ${color.amber(name)} → ${color.dim('(empty)')}`];
-          }
-          return [
-            `    ${color.amber(name)} →`,
-            ...chain.map((ref) => {
-              const note = filteredReason(ref);
-              const suffix = note ? `  ${color.amber(`⚠ ${note}`)}` : '';
-              return `      ${color.cyan(ref)}${suffix}`;
-            }),
-          ];
-        }),
-      '',
-      `  ${color.bold('favorites')} ${favorites.length ? '' : color.dim('(none)')}`,
-      ...favorites.map((ref, i) => {
-        const note = filteredReason(ref);
-        const suffix = note ? `  ${color.amber(`⚠ ${note}`)}` : '';
-        return `    ${color.amber(String(i + 1).padStart(2))}. ${color.cyan(ref)}${suffix}`;
-      }),
-      '',
-      color.dim(
-        '  /fallback add <provider/model> · profile set fallback1 a,b · fav add a/b · help',
-      ),
-    );
-    return lines.join('\n');
-  }
-
   return {
     name: 'fallback',
     category: 'Config',
@@ -293,7 +113,7 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
       if (!opts.paths) {
         return { message: `${color.red('Error')} config paths not available.` };
       }
-      if (!sub) return { message: currentView() };
+      if (!sub) return { message: renderFallbackView(opts) };
 
       const config = opts.configStore.get();
       const globalConfigPath = activeProfileConfigPath(opts.paths, config);
@@ -585,7 +405,7 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
               message: `${color.amber('Usage:')} /fallback profile set <name> <ref,ref,...> | use <name> | none | remove <name>`,
             };
           }
-          if (action === 'list') return { message: currentView() };
+          if (action === 'list') return { message: renderFallbackView(opts) };
           if (action === 'none' || action === 'clear') {
             await patchGlobalConfig(globalConfigPath, (cfg) => {
               delete cfg.fallbackProfile;
@@ -681,7 +501,7 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
         if (sub === 'fav' || sub === 'favorite' || sub === 'favorites') {
           const action = (parts[1] ?? '').toLowerCase();
           const favorites = [...(config.favoriteModels ?? [])];
-          if (action === 'list' || !action) return { message: currentView() };
+          if (action === 'list' || !action) return { message: renderFallbackView(opts) };
           if (action === 'only') {
             const val = (parts[2] ?? '').toLowerCase();
             if (val !== 'on' && val !== 'off') {

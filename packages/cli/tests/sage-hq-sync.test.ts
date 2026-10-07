@@ -52,6 +52,11 @@ it('syncs external daemon writes over real HQ WebSockets, isolates projects, res
     const publisher = createCliHqPublisher({
       projectRoot,
       clientKind: 'cli',
+      // One vitest process hosts every client. Without a distinct machine, HQ
+      // reads same pid + project + kind as one publisher restarting and has
+      // each hello supersede the others (close 4001) — under load a client was
+      // still evicted when the final assertion ran.
+      machineId: `sage-hq-sync-test-${name}`,
       config: { enabled: true, url: `http://127.0.0.1:${server!.port}`, projectAlias },
       onSageSnapshot: (payload) => sync.handleRemote(payload),
     })!;

@@ -46,61 +46,18 @@
 import { randomUUID } from 'node:crypto';
 import { dispatchAgent } from './dispatcher.js';
 import type { FleetBus } from './fleet-bus.js';
-import type { GoalNode, GoalPriority, GoalStatus, KnowledgeGraph } from './knowledge-graph.js';
+import type { GoalNode, GoalPriority, KnowledgeGraph } from './knowledge-graph.js';
 import type { Mailbox } from './mailbox-types.js';
+import {
+  type AuctionAgentMessage,
+  type AuctionBroadcastMessage,
+  notifyAuctionAgent,
+  publishAuctionBroadcast,
+} from './task-auctioneer-mail.js';
+import type { TaskAuctionOptions, TaskBid } from './task-auctioneer-types.js';
+import { hasOpenBlockers, isTerminalGoalStatus } from './task-auctioneer-types.js';
 
-// ── Task bid ─────────────────────────────────────────────────────────────
-
-export interface TaskBid {
-  id: string;
-  taskId: string;
-  agentId: string;
-  agentName: string;
-  agentRole: string;
-  /** Dispatcher score for this task */
-  score: number;
-  /** Why this agent is a good fit */
-  rationale: string;
-  submittedAt: string;
-}
-
-// ── Auctioneer options ───────────────────────────────────────────────────
-
-export interface TaskAuctionOptions {
-  graph: KnowledgeGraph;
-  fleet?: FleetBus | undefined;
-  mailbox?: Mailbox | undefined;
-  selfAgentId?: string | undefined;
-  /** How long a bid window stays open before auto-awarding. Default: 30s */
-  bidWindowMs?: number | undefined;
-  /** Maximum concurrent tasks per agent. Default: 3 */
-  maxTasksPerAgent?: number | undefined;
-  /** Minimum confidence threshold for dispatcher scoring. Default: 0.3 */
-  minConfidence?: number | undefined;
-  /**
-   * Maximum times a task can be republished when no bids are received.
-   * After this, the task is marked as 'failed' with reason 'no_bids'.
-   * Default: 3.
-   */
-  maxBidRetries?: number | undefined;
-}
-
-// ── TaskAuctioneer ──────────────────────────────────────────────────────
-
-/**
- * A goal that has reached `done` or `failed` is finished for good — the same
- * two states `KnowledgeGraph._isTerminal` treats as terminal when it prunes.
- * `KnowledgeGraph.update` merges patches without consulting the current state,
- * so the absorbing rule has to be enforced by the caller that owns the
- * transition.
- */
-function isTerminalGoalStatus(status: GoalStatus): boolean {
-  return status === 'done' || status === 'failed';
-}
-
-function hasOpenBlockers(graph: KnowledgeGraph, blockedBy: readonly string[]): boolean {
-  return blockedBy.some((id) => (graph.get(id) as GoalNode | undefined)?.status !== 'done');
-}
+export type { TaskAuctionOptions, TaskBid } from './task-auctioneer-types.js';
 
 export class TaskAuctioneer {
   private readonly graph: KnowledgeGraph;
@@ -598,50 +555,12 @@ export class TaskAuctioneer {
     );
   }
 
-  private async _mailboxPublish(msg: {
-    type: 'note' | 'broadcast' | 'result' | 'assign';
-    subject: string;
-    body: string;
-    taskContext?: Record<string, unknown>;
-  }): Promise<void> {
-    if (!this.mailbox) return;
-    try {
-      await this.mailbox.send({
-        from: this.selfAgentId,
-        to: '*',
-        type: msg.type,
-        subject: msg.subject,
-        body: msg.body,
-        priority: 'normal',
-      });
-    } catch {
-      /* best-effort */
-    }
+  private _mailboxPublish(msg: AuctionBroadcastMessage): Promise<void> {
+    return publishAuctionBroadcast(this.mailbox, this.selfAgentId, msg);
   }
 
-  private async _notifyAgent(
-    agentId: string,
-    msg: {
-      type: 'assign' | 'note';
-      subject: string;
-      body: string;
-      taskContext?: Record<string, unknown>;
-    },
-  ): Promise<void> {
-    if (!this.mailbox) return;
-    try {
-      await this.mailbox.send({
-        from: this.selfAgentId,
-        to: agentId,
-        type: msg.type,
-        subject: msg.subject,
-        body: msg.body,
-        priority: 'high',
-        taskContext: msg.taskContext as Parameters<typeof this.mailbox.send>[0]['taskContext'],
-      });
-    } catch {
-      /* best-effort */
-    }
+  private _notifyAgent(agentId: string, msg: AuctionAgentMessage): Promise<void> {
+    return notifyAuctionAgent(this.mailbox, this.selfAgentId, agentId, msg);
   }
 
   private _startBidWindow(taskId: string): void {

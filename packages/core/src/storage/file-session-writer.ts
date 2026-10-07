@@ -9,10 +9,12 @@ import type {
   SessionWriter,
 } from '../types/session.js';
 import type { EventBus } from './event-bus-port.js';
+import type { FileSessionWriterOptions } from './file-session-writer-options.js';
 import type { SessionCheckpointCas } from './session-checkpoint-cas.js';
 import { SessionSummaryTracker } from './session-summary-tracker.js';
 import { SessionWriteBuffer } from './session-write-buffer.js';
 import { isClosedHandleError } from './session-writer/session-writer-flush.js';
+import { flushAfterAppend, pushOrWriteThrough } from './session-writer-append.js';
 import {
   executeClearSession,
   persistSessionCloseSummary,
@@ -210,39 +212,7 @@ export class FileSessionWriter implements SessionWriter {
     public readonly startedAt: string,
     private readonly meta: Omit<SessionMetadata, 'startedAt'>,
     private readonly events?: EventBus | undefined,
-    opts: {
-      resumed?: boolean | undefined;
-      dir?: string | undefined;
-      filePath?: string | undefined;
-      secretScrubber?: SecretScrubber | undefined;
-      checkpointCas?: SessionCheckpointCas | undefined;
-      /** Called synchronously after each event is scrubbed + observed, before it enters the write buffer. */
-      onAppend?: ((event: SessionEvent) => void) | undefined;
-      /** Batch variant called after all events in the batch have been scrubbed + observed. */
-      onAppendBatch?: ((events: SessionEvent[]) => void) | undefined;
-      /** Existing cumulative summary when reopening a persisted session. */
-      initialSummary?: SessionSummary | undefined;
-      /** Called on close() with the finalized summary for index/sidecar writes. */
-      onClose?: ((summary: SessionSummary) => void | Promise<void>) | undefined;
-      /** Reconcile an explicit name changed while this writer remained open. */
-      resolveName?: (() => Promise<Pick<SessionSummary, 'name'> | null>) | undefined;
-      /**
-       * Mid-session metadata checkpoint throttle (ms). While the session is
-       * live and dirty, the summary sidecar + index row are refreshed at most
-       * this often, so a SIGKILLed process still leaves accurate listing
-       * metadata instead of its create-time stub. 0 disables checkpointing —
-       * killed sessions then stay visible through the store's list()-union
-       * scan, but only with analyzer-derived metadata rather than tracked
-       * counters. Default 10_000.
-       */
-      metadataCheckpointMs?: number | undefined;
-      /**
-       * Persists a mid-session summary snapshot (store-level index row /
-       * catalog upsert). The sidecar file itself is written by the writer
-       * under its manifest lock; this callback covers the index side.
-       */
-      onMetadataCheckpoint?: ((summary: SessionSummary) => void | Promise<void>) | undefined;
-    } = {},
+    opts: FileSessionWriterOptions = {},
     traceId?: string | undefined,
   ) {
     this.resumed = opts.resumed ?? false;
@@ -393,47 +363,8 @@ export class FileSessionWriter implements SessionWriter {
     } catch {
       /* best-effort */
     }
-    let pushed = this.buffer.push(scrubbed);
-    if (!pushed) {
-      this.buffer.cancelTimer();
-      await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => undefined);
-      pushed = this.buffer.push(scrubbed);
-      if (!pushed) {
-        // Serialized direct-write fallback (mirrors bufferSynchronousEvent /
-        // appendBatch): never silently drop an event after an overflow flush.
-        // Critical events sync here too — the empty-buffer flush below cannot
-        // datasync bytes that bypassed the buffer (>16MiB push failure).
-        await this.buffer
-          .drainWriteChain()
-          .then(() => this.buffer.enqueueWrite(`${JSON.stringify(scrubbed)}\n`))
-          .then(() => {
-            if (!isCriticalEvent(scrubbed)) return;
-            return this.handle.datasync().catch(() => undefined);
-          });
-      }
-    }
-
-    if (isCriticalEvent(scrubbed) || this.buffer.shouldFlushNow()) {
-      // Critical events (user_input/llm_response/checkpoint/in_flight_*) and
-      // buffer-full both flush immediately. Cancel any pending timer so we
-      // don't double-flush on the next tick.
-      this.buffer.cancelTimer();
-      if (isCriticalEvent(scrubbed)) {
-        // Critical events MUST reach disk — a flush failure on a user prompt or
-        // model response makes the transcript unreliable for recovery, so we
-        // propagate the error rather than silently sweeping it.
-        await this.buffer.flushBuffer(this.closed, { datasync: true });
-      } else {
-        await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => {
-          // append() is intentionally best-effort for non-critical events. The
-          // failed batch remains at the front of writeBuffer; an explicit
-          // boundary flush can surface the error while ordinary audit appends do
-          // not abort the agent loop.
-        });
-      }
-    } else {
-      this.buffer.scheduleFlush(this.closed);
-    }
+    await pushOrWriteThrough(this.buffer, scrubbed, this.closed, () => this.handle, false);
+    await flushAfterAppend(this.buffer, this.closed, isCriticalEvent(scrubbed));
   }
 
   async appendBatch(events: SessionEvent[]): Promise<void> {
@@ -450,29 +381,8 @@ export class FileSessionWriter implements SessionWriter {
       } catch {
         /* best-effort */
       }
-      let pushed = this.buffer.push(scrubbed);
-      if (!pushed) {
-        this.buffer.cancelTimer();
-        // Same contract as the outer flush: critical events propagate errors.
-        if (isCriticalEvent(scrubbed)) {
-          await this.buffer.flushBuffer(this.closed, { datasync: true });
-        } else {
-          await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => undefined);
-        }
-        pushed = this.buffer.push(scrubbed);
-        if (!pushed) {
-          // Serialized direct-write fallback (mirrors bufferSynchronousEvent):
-          // never silently drop an event after an overflow flush. Batch-level
-          // critical handling below supplies datasync when applicable.
-          await this.buffer
-            .drainWriteChain()
-            .then(() => this.buffer.enqueueWrite(`${JSON.stringify(scrubbed)}\n`))
-            .then(() => {
-              if (!isCriticalEvent(scrubbed)) return;
-              return this.handle.datasync().catch(() => undefined);
-            });
-        }
-      }
+      // Same contract as the outer flush: critical events propagate errors.
+      await pushOrWriteThrough(this.buffer, scrubbed, this.closed, () => this.handle, true);
       scrubbedBatch.push(scrubbed);
     }
     if (scrubbedBatch.length > 0) {
@@ -488,20 +398,7 @@ export class FileSessionWriter implements SessionWriter {
     }
     // One critical event makes the whole batch durable immediately — flushing
     // only part of it would strand earlier events behind the 500ms timer.
-    const hasCritical = scrubbedBatch.some(isCriticalEvent);
-    if (hasCritical || this.buffer.shouldFlushNow()) {
-      this.buffer.cancelTimer();
-      if (hasCritical) {
-        // At least one critical event is in the batch — must reach disk.
-        await this.buffer.flushBuffer(this.closed, { datasync: true });
-      } else {
-        await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => {
-          // Best-effort for non-critical batch flushes.
-        });
-      }
-    } else {
-      this.buffer.scheduleFlush(this.closed);
-    }
+    await flushAfterAppend(this.buffer, this.closed, scrubbedBatch.some(isCriticalEvent));
   }
 
   /**

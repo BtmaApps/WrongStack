@@ -62,10 +62,11 @@ describe('Kanban IPC ownership boundary', () => {
     expect(facade).not.toContain("from '../storage.js'");
     expect(server).toContain('SqliteKanbanStorage.open(projectRoot,');
     expect(server).toContain('installKanbanStorageBackend(projectRoot, sqliteStorage)');
-    const sqliteStorage = read('packages/kanban/src/server/sqlite-storage.ts');
-    expect(sqliteStorage).toContain('await removeLegacyFiles(dir, legacyFiles)');
-    expect(sqliteStorage.indexOf("this.db.exec('COMMIT')")).toBeLessThan(
-      sqliteStorage.lastIndexOf('await removeLegacyFiles(dir, legacyFiles)'),
+    const migration = read('packages/kanban/src/server/sqlite-schema-migration.ts');
+    expect(migration).toContain('await removeLegacyFiles(dir, legacyFiles)');
+    expect(migration.indexOf("db.exec('COMMIT')")).toBeGreaterThan(-1);
+    expect(migration.lastIndexOf("db.exec('COMMIT')")).toBeLessThan(
+      migration.lastIndexOf('await removeLegacyFiles(dir, legacyFiles)'),
     );
   });
 

@@ -89,7 +89,7 @@ describe('S4: every shell-enabling spawn site is paired with the cmd-shim helper
       // are now visible, which they were not before.
       'packages/cli/src/goal-commands.ts', // shorthand `shell,` — caller-supplied
       'packages/cli/src/simpleui-dist.ts',
-      'packages/techstack/src/advisory/native-audit.ts',
+      'packages/techstack/src/advisory/native-audit-command.ts',
       'packages/webui-server/src/server/frontend-static-serve.ts',
       'packages/tools/src/bash.ts', // pickShell(), not a spawn option
       'scripts/publish-workspace.mjs',

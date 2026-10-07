@@ -12,12 +12,12 @@ import {
   requeuePhaseTask,
   setPhaseTaskAssignee,
 } from './phase-board-mutations.js';
+import { acquirePhaseWorktree, runPhaseVerifyGate } from './phase-orchestrator-gates.js';
 import {
   commitAndEnqueueMerge,
   failPhaseAfterTasks,
   type IntegrationContext,
   keepWorktreeForReview,
-  worktreeEnv,
 } from './phase-orchestrator-integration.js';
 import {
   getActivePhases,
@@ -316,48 +316,7 @@ export class PhaseOrchestrator {
     this.graph.activePhaseIds.push(phase.id);
 
     // Allocate an isolated git worktree for this phase, if a manager is wired.
-    // A persisted isolated run must never silently switch to the base tree.
-    if (this.worktrees && !this.phaseWorktrees.has(phase.id)) {
-      const savedWorktree = phase.metadata?.['worktreeResume'] as
-        | { dir?: unknown; branch?: unknown; baseBranch?: unknown }
-        | undefined;
-      const canAdopt = savedWorktree && phase.metadata?.['integrationStatus'] !== 'merged';
-      try {
-        const handle = canAdopt
-          ? await this.worktrees.adopt(phase.id, {
-              dir: String(savedWorktree.dir ?? ''),
-              branch: String(savedWorktree.branch ?? ''),
-              baseBranch: String(savedWorktree.baseBranch ?? ''),
-              ownerLabel: phase.name,
-            })
-          : await this.worktrees.allocate(phase.id, {
-              slugHint: phase.name,
-              ownerLabel: phase.name,
-            });
-        if (handle.status === 'active') {
-          this.phaseWorktrees.set(phase.id, handle);
-          phase.metadata = {
-            ...phase.metadata,
-            worktreeResume: {
-              dir: handle.dir,
-              branch: handle.branch,
-              baseBranch: handle.baseBranch,
-            },
-          };
-        } else if (canAdopt || this.graph.worktrees === true) {
-          throw new Error('Saved Goal phase worktree is not active.');
-        }
-      } catch (error) {
-        if (canAdopt || this.graph.worktrees === true) {
-          await this.failPhaseAfterTasks(
-            phase,
-            `Cannot safely use phase worktree: ${toErrorMessage(error)}`,
-          );
-          return;
-        }
-        // A fresh allocation failure may fall back to the shared tree.
-      }
-    }
+    if (!(await acquirePhaseWorktree(this.integrationCtx(), phase))) return;
 
     this.emit('phase.started', {
       phaseId: phase.id,
@@ -451,51 +410,13 @@ export class PhaseOrchestrator {
    * `maxVerifyAttempts` repairs. Returns the final verdict. When no `verifyPhase`
    * callback is wired the gate is a no-op and always passes.
    */
-  private async runVerifyGate(
-    phase: PhaseNode,
-  ): Promise<{ ok: boolean; output?: string | undefined }> {
-    if (!this.ctx.verifyPhase) return { ok: true };
-    const env = this.worktreeEnv(phase);
-
-    for (let attempt = 0; attempt <= this.opts.maxVerifyAttempts; attempt++) {
-      if (this.stopped) return { ok: false, output: 'stopped before verification completed' };
-
-      this.emit('phase.verifying', { phaseId: phase.id, name: phase.name, attempt });
-      let verdict: { ok: boolean; output?: string | undefined };
-      try {
-        verdict = await this.ctx.verifyPhase(phase, env);
-      } catch (err) {
-        verdict = { ok: false, output: toErrorMessage(err) };
-      }
-      if (this.stopped) return { ok: false, output: 'stopped before verification completed' };
-      if (verdict.ok) return { ok: true };
-
-      this.emit('phase.verifyFailed', {
-        phaseId: phase.id,
-        name: phase.name,
-        attempt,
-        error: verdict.output,
-      });
-
-      // Out of attempts, no repair pass available, or aborted → give up.
-      if (attempt >= this.opts.maxVerifyAttempts || !this.ctx.repairPhase || this.stopped) {
-        return { ok: false, output: verdict.output };
-      }
-
-      this.emit('phase.repairing', { phaseId: phase.id, name: phase.name, attempt: attempt + 1 });
-      try {
-        await this.ctx.repairPhase(
-          phase,
-          verdict.output ?? 'verification failed',
-          attempt + 1,
-          env,
-        );
-      } catch {
-        // A failed repair is non-fatal: the next verifyPhase run will observe the
-        // still-broken tree and the loop will exit with ok:false.
-      }
-    }
-    return { ok: false };
+  private runVerifyGate(phase: PhaseNode): Promise<{ ok: boolean; output?: string | undefined }> {
+    return runPhaseVerifyGate(
+      this.integrationCtx(),
+      phase,
+      this.opts.maxVerifyAttempts,
+      () => this.stopped,
+    );
   }
 
   /** Worktree env (cwd/branch) for a phase, or undefined if it runs on the shared tree. */
@@ -516,12 +437,6 @@ export class PhaseOrchestrator {
       emit: (event, payload) => this.emit(event, payload),
       updatePhaseStatus: (phase, status) => this.updatePhaseStatus(phase, status),
     };
-  }
-
-  private worktreeEnv(
-    phase: PhaseNode,
-  ): { cwd?: string | undefined; branch?: string | undefined } | undefined {
-    return worktreeEnv(this.integrationCtx(), phase);
   }
 
   private async failPhaseAfterTasks(phase: PhaseNode, error: string): Promise<void> {

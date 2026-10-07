@@ -22,7 +22,7 @@ const allowedNegativeKillSources = new Set([
   'packages/kanban/src/verification/verification-process.ts',
 ]);
 const allowedDirectSignalSources = new Set([
-  'packages/cli/src/slash-commands/session.ts',
+  'packages/cli/src/slash-commands/session-live-status.ts',
   // Same reviewed call site as above: SIGKILL to its own detached hook child.
   'packages/core/src/hooks/shell-executor.ts',
   // The WebUI server was extracted from packages/webui to the standalone
@@ -138,7 +138,7 @@ describe('POSIX signal safety in tests', () => {
   });
 
   it('keeps /sessions kill SIGTERM behind PID safety guards', () => {
-    const file = path.join(repoRoot, 'packages/cli/src/slash-commands/session.ts');
+    const file = path.join(repoRoot, 'packages/cli/src/slash-commands/session-live-status.ts');
     const text = readFileSync(file, 'utf8');
 
     expect(text).toContain('function isSafeSessionKillPid');

@@ -1,12 +1,4 @@
-import {
-  ArrowDownWideNarrow,
-  CornerLeftUp,
-  FileCode,
-  Folders,
-  Loader2,
-  Minimize2,
-  Search,
-} from 'lucide-react';
+import { CornerLeftUp, FileCode, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { VList, type VListHandle } from 'virtua';
 import { useAppTranslation } from '@/i18n';
@@ -25,6 +17,7 @@ import {
   NodeContextMenu,
   RenamePromptModal,
 } from './FileExplorer/FileExplorerModals.js';
+import { FileExplorerToolbar } from './FileExplorer/FileExplorerToolbar.js';
 import { TreeRow } from './FileExplorer/TreeRow.js';
 import {
   collectAllFiles,
@@ -33,6 +26,7 @@ import {
   scoreFile,
   treeRowId,
 } from './FileExplorer/tree-helpers.js';
+import { handleTreeNavigationKey } from './FileExplorer/tree-keyboard.js';
 import type {
   CreatePromptState,
   CrumbContext,
@@ -368,88 +362,20 @@ export function FileExplorer() {
 
   const handleTreeKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (rows.length === 0) return;
-      const nextNav = (from: number, dir: 1 | -1): number => {
-        let i = from + dir;
-        while (i >= 0 && i < rows.length && rows[i]?.emptyPlaceholder) i += dir;
-        return i < 0 || i >= rows.length ? from : i;
-      };
       const setFocus = (i: number) => {
         setFocusedIdx(i);
         listRef.current?.scrollToIndex(i, { align: 'nearest' });
       };
-      const cur = focusedIdx;
-      const row = cur >= 0 && cur < rows.length ? rows[cur] : undefined;
-
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setFocus(nextNav(cur, 1));
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setFocus(cur === -1 ? nextNav(rows.length, -1) : nextNav(cur, -1));
-          break;
-        case 'ArrowRight':
-          if (!row || row.emptyPlaceholder) break;
-          e.preventDefault();
-          if (row.node.type === 'directory') {
-            if (!expandedDirs.has(row.node.path)) toggleDir(row.node.path);
-            else setFocus(nextNav(cur, 1));
-          }
-          break;
-        case 'ArrowLeft': {
-          if (!row || row.emptyPlaceholder) break;
-          e.preventDefault();
-          if (row.node.type === 'directory' && expandedDirs.has(row.node.path)) {
-            toggleDir(row.node.path);
-            break;
-          }
-          for (let i = cur - 1; i >= 0; i--) {
-            const cand = rows[i];
-            if (cand && !cand.emptyPlaceholder && cand.depth < row.depth) {
-              setFocus(i);
-              break;
-            }
-          }
-          break;
-        }
-        case 'Enter':
-          if (!row || row.emptyPlaceholder) break;
-          e.preventDefault();
-          if (row.node.type === 'directory') toggleDir(row.node.path);
-          else handleOpen(row.node.path);
-          break;
-        case ' ':
-          if (!row || row.emptyPlaceholder) break;
-          e.preventDefault();
-          if (row.node.type === 'directory') toggleDir(row.node.path);
-          else handleSelect(row.node.path);
-          break;
-        case 'F10':
-        case 'ContextMenu': {
-          // Shift+F10 / Menu key — open the row context menu anchored at the
-          // focused row, giving keyboard users the same actions as right-click.
-          if (e.key === 'F10' && !e.shiftKey) break;
-          if (!row || row.emptyPlaceholder) break;
-          e.preventDefault();
-          const rect = document.getElementById(treeRowId(row.node.path))?.getBoundingClientRect();
-          setNodeMenu({
-            x: rect?.left ?? window.innerWidth / 2,
-            y: rect ? rect.bottom + 2 : window.innerHeight / 2,
-            node: row.node,
-          });
-          break;
-        }
-        case 'Home':
-          e.preventDefault();
-          setFocus(nextNav(-1, 1));
-          break;
-        case 'End':
-          e.preventDefault();
-          setFocus(nextNav(rows.length, -1));
-          break;
-      }
+      handleTreeNavigationKey(e, {
+        rows,
+        focusedIdx,
+        expandedDirs,
+        setFocus,
+        toggleDir,
+        handleOpen,
+        handleSelect,
+        setNodeMenu,
+      });
     },
     [rows, focusedIdx, expandedDirs, toggleDir, handleOpen, handleSelect],
   );
@@ -486,77 +412,15 @@ export function FileExplorer() {
             </div>
           )}
           {tree.length > 0 && dirCount > 0 && (
-            <div className="flex items-center gap-0.5 px-2 py-0.5 border-b shrink-0">
-              <button
-                type="button"
-                onClick={handleGlobalExpand}
-                className={cn(
-                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
-                  'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
-                )}
-                title={t('activity:fileExplorer.expandAllTitle')}
-              >
-                <Folders className="h-3 w-3" />
-                <span>{t('activity:fileExplorer.expandAll')}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleGlobalCollapse}
-                className={cn(
-                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
-                  'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
-                )}
-                title={t('activity:fileExplorer.collapseAllTitle')}
-              >
-                <Minimize2 className="h-3 w-3" />
-                <span>{t('activity:fileExplorer.collapse')}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSortBySize((v) => !v)}
-                className={cn(
-                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
-                  'hover:bg-muted/60',
-                  sortBySize ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-                )}
-                title={
-                  sortBySize
-                    ? t('activity:fileExplorer.sortByNameTitle')
-                    : t('activity:fileExplorer.sortBySizeTitle')
-                }
-              >
-                <ArrowDownWideNarrow className="h-3 w-3" />
-                <span>
-                  {sortBySize
-                    ? t('activity:fileExplorer.sortBySize')
-                    : t('activity:fileExplorer.sortByName')}
-                </span>
-              </button>
-              <div className="relative flex items-center">
-                <Search className="absolute left-1 h-3 w-3 text-muted-foreground/60 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('activity:fileExplorer.searchPlaceholder')}
-                  className="w-28 rounded bg-muted/40 px-1 py-0.5 pl-4 text-[10px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:w-40 focus:bg-muted/70 focus:ring-1 focus:ring-primary/30 transition-all"
-                  aria-label={t('activity:fileExplorer.search')}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-0.5 text-muted-foreground/60 hover:text-foreground text-[10px]"
-                    aria-label={t('common:action.clear')}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <span className="ml-auto text-[9px] text-muted-foreground/70 tabular-nums">
-                {t('activity:fileExplorer.folders', { count: dirCount })}
-              </span>
-            </div>
+            <FileExplorerToolbar
+              dirCount={dirCount}
+              sortBySize={sortBySize}
+              searchQuery={searchQuery}
+              onExpandAll={handleGlobalExpand}
+              onCollapseAll={handleGlobalCollapse}
+              onToggleSort={() => setSortBySize((v) => !v)}
+              onSearchChange={setSearchQuery}
+            />
           )}
           <div className="min-h-0 min-w-0 flex flex-1 flex-col py-1">
             {breadcrumbs.length > 0 && (

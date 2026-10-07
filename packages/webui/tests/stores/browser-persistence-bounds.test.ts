@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest';
 // data can protect drafts/transcripts, but open tab ids and the foreground
 // pointer are deliberately not resurrected on a fresh WebUI load.
 const chatSource = readFileSync(
-  resolve(import.meta.dirname, '../../src/stores/chat-lanes.ts'),
+  resolve(import.meta.dirname, '../../src/stores/chat-lanes-registry.ts'),
   'utf8',
 );
 const chatFacadeSource = readFileSync(
