@@ -186,8 +186,15 @@ export function commitToEntry(subject: string): { section: Section; text: string
 
 /** Extract the commit subject from a `git commit -m "..."` command, if any. */
 export function commitSubjectFromCommand(command: string): string | null {
-  if (!/\bgit\s+commit\b/.test(command)) return null;
-  const m = /(?:-m|--message)\s+(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|(\S+))/.exec(command);
+  // Global options may precede the subcommand (`git -C pkg commit`), and the
+  // message flag comes combined (`-am`), attached (`-m"…"`) or as
+  // `--message=…`: the old `-m\s+` grammar missed all of them, so those
+  // commits never reached the changelog.
+  if (!/\bgit(?:\s+(?:-[Cc]\s+\S+|--?[\w-]+(?:=\S+)?))*\s+commit\b/.test(command)) return null;
+  const m =
+    /(?:^|\s)(?:-[A-Za-z]*m|--message)(?:=|\s+)?(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|(\S+))/.exec(
+      command,
+    );
   const rawSubject = m?.[1] ? m[1].replace(/\\"/g, '"') : (m?.[2] ?? m?.[3] ?? null);
   if (!rawSubject) return null;
   // Multi-line -m payloads: only the first line is the subject.

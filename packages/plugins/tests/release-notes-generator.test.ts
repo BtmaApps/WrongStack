@@ -5,6 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 
 let mockGitOutput = '';
+
+/** `git log --pretty=format:%H%x1f%s%x1f%b%x1e` records from `hash<TAB>subject[<TAB>body]` lines. */
+function gitLog(lines: string): string {
+  return lines
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [hash = '', subject = '', body = ''] = line.split('\t');
+      return `${hash}\x1f${subject}\x1f${body}\x1e`;
+    })
+    .join('\n');
+}
 const mockExecFile = vi.fn(
   (
     _file: string,
@@ -110,12 +122,14 @@ describe('release-notes-generator plugin shape', () => {
 
 describe('generate_release_notes tool', () => {
   it('groups conventional commits by type', async () => {
-    mockGitOutput = [
-      'aaa111\tfeat(auth): add login',
-      'bbb222\tfix(api): handle null',
-      'ccc333\tdocs: update readme',
-      'ddd444\tchore: bump deps',
-    ].join('\n');
+    mockGitOutput = gitLog(
+      [
+        'aaa111\tfeat(auth): add login',
+        'bbb222\tfix(api): handle null',
+        'ccc333\tdocs: update readme',
+        'ddd444\tchore: bump deps',
+      ].join('\n'),
+    );
 
     const api = makeApi();
     plugin.setup(api as never);
@@ -135,7 +149,9 @@ describe('generate_release_notes tool', () => {
   });
 
   it('marks a `type!:` commit as breaking instead of dropping the marker', async () => {
-    mockGitOutput = ['aaa111\tfeat(api)!: drop the v1 routes', 'bbb222\tfix: keep v2'].join('\n');
+    mockGitOutput = gitLog(
+      ['aaa111\tfeat(api)!: drop the v1 routes', 'bbb222\tfix: keep v2'].join('\n'),
+    );
     const api = makeApi();
     plugin.setup(api as never);
     const result = (await getTool(api, 'generate_release_notes')({ from: 'v1', to: 'HEAD' })) as {
@@ -145,8 +161,23 @@ describe('generate_release_notes tool', () => {
     expect(result.notes).toContain('- bbb222 keep v2');
   });
 
+  it('marks a commit with a BREAKING CHANGE footer as breaking', async () => {
+    // The spec's canonical marker lives in the body; a subject-only log
+    // listed this commit as an ordinary feature.
+    mockGitOutput = gitLog(
+      'aaa111\tfeat: move config loader\tBREAKING CHANGE: config moved to wstack.toml\nbbb222\tfeat: mention\tno breaking changes here',
+    );
+    const api = makeApi();
+    plugin.setup(api as never);
+    const result = (await getTool(api, 'generate_release_notes')({ from: 'v1', to: 'HEAD' })) as {
+      notes: string;
+    };
+    expect(result.notes).toContain('- aaa111 **BREAKING:** move config loader');
+    expect(result.notes).toContain('- bbb222 mention');
+  });
+
   it('puts non-conventional commits in Uncategorized', async () => {
-    mockGitOutput = ['aaa111\twip: random thing', 'bbb222\tfeat: real feature'].join('\n');
+    mockGitOutput = gitLog(['aaa111\twip: random thing', 'bbb222\tfeat: real feature'].join('\n'));
 
     const api = makeApi();
     plugin.setup(api as never);
@@ -161,7 +192,7 @@ describe('generate_release_notes tool', () => {
   });
 
   it('omits scopes when includeScope is false', async () => {
-    mockGitOutput = 'aaa111\tfeat(auth): add login\n';
+    mockGitOutput = gitLog('aaa111\tfeat(auth): add login\n');
 
     const api = makeApi({
       extensions: { 'release-notes-generator': { includeScope: false } },
@@ -178,7 +209,7 @@ describe('generate_release_notes tool', () => {
   });
 
   it('defaults from to latest tag when not provided', async () => {
-    mockGitOutput = 'aaa111\tfeat: default from tag\n';
+    mockGitOutput = gitLog('aaa111\tfeat: default from tag\n');
 
     const api = makeApi();
     plugin.setup(api as never);
@@ -234,7 +265,7 @@ describe('generate_release_notes tool', () => {
       'git',
       [
         'log',
-        '--pretty=format:%H%x09%s',
+        '--pretty=format:%H%x1f%s%x1f%b%x1e',
         '--end-of-options',
         `${'a'.repeat(40)}..${'b'.repeat(40)}`,
       ],
@@ -290,7 +321,9 @@ describe('generate_release_notes tool', () => {
   });
 
   it('optionally polishes notes through api.llm while preserving traceable hashes', async () => {
-    mockGitOutput = ['aaa111\tfeat(auth): add login', 'bbb222\tfix(api): handle null'].join('\n');
+    mockGitOutput = gitLog(
+      ['aaa111\tfeat(auth): add login', 'bbb222\tfix(api): handle null'].join('\n'),
+    );
     const complete = vi.fn().mockResolvedValue({
       text: [
         '## Highlights',
@@ -328,7 +361,7 @@ describe('generate_release_notes tool', () => {
   });
 
   it('rejects LLM notes that drop a commit hash and keeps deterministic notes', async () => {
-    mockGitOutput = ['aaa111\tfeat: add one', 'bbb222\tfix: fix two'].join('\n');
+    mockGitOutput = gitLog(['aaa111\tfeat: add one', 'bbb222\tfix: fix two'].join('\n'));
     const api = makeApi({
       llm: { complete: vi.fn().mockResolvedValue({ text: '## Notes\n\n- aaa111 Add one.' }) },
     });
@@ -354,7 +387,7 @@ describe('generate_release_notes tool', () => {
 
 describe('teardown + counters', () => {
   it('logs completion and zeros counters', async () => {
-    mockGitOutput = 'aaa111\tfeat: x\n';
+    mockGitOutput = gitLog('aaa111\tfeat: x\n');
     const api = makeApi();
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_release_notes');
@@ -384,7 +417,7 @@ describe('config parsing', () => {
     });
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_release_notes');
-    mockGitOutput = 'aaa111\tfeat(scope): x\n';
+    mockGitOutput = gitLog('aaa111\tfeat(scope): x\n');
     const result = (await generate({ to: 'HEAD' })) as {
       ok: boolean;
       from: string | null;

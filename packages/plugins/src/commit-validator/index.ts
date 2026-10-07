@@ -294,10 +294,12 @@ function parseCommitMessage(message: string, cfg: CommitValidatorConfig): Parsed
 const GIT_MESSAGE_FLAG_RE = new RegExp(
   [
     // -m "…" | -am "…" | -m '…' | -m=… ; --message "…" | --message='…' | --message=…
-    String.raw`(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:\s+|=)"([^"]*)"`,
-    String.raw`(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:\s+|=)'([^']*)'`,
+    // The separator is optional: `-m"wip"` reaches git as `-mwip`, which it
+    // commits — required, that spelling skipped validation entirely.
+    String.raw`(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:\s+|=)?"([^"]*)"`,
+    String.raw`(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:\s+|=)?'([^']*)'`,
     // Bare value: stops at whitespace or a shell separator.
-    String.raw`(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:\s+|=)([^\s;&|"']+)`,
+    String.raw`(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:\s+|=)?([^\s;&|"']+)`,
   ].join('|'),
   'g',
 );

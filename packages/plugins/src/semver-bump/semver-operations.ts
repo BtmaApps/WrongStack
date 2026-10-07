@@ -110,22 +110,44 @@ export function parseVersion(v: string): [number, number, number] {
 
 export function bumpVersion(version: string, part: BumpType): string {
   let [major, minor, patch] = parseVersion(version);
+  // A prerelease precedes its release (SemVer §11), so bumping it first lands
+  // on that release, as `npm version` does: 1.2.3-beta.1 → patch = 1.2.3,
+  // 1.3.0-rc.1 → minor = 1.3.0, 2.0.0-rc.1 → major = 2.0.0. Incrementing
+  // unconditionally skipped the release the prerelease was building toward.
+  const prerelease = /^v?\d+\.\d+\.\d+-/.test(version);
 
   if (part === 'major') {
-    major++;
+    if (!(prerelease && minor === 0 && patch === 0)) major++;
     minor = 0;
     patch = 0;
   } else if (part === 'minor') {
-    minor++;
+    if (!(prerelease && patch === 0)) minor++;
     patch = 0;
   } else if (part === 'patch') {
-    patch++;
+    if (!prerelease) patch++;
   } else {
     /* v8 ignore next -- callers resolve 'auto' to a concrete part before calling bumpVersion; this return is defensive. */
     return version; // auto requires commit analysis
   }
 
   return `${major}.${minor}.${patch}`;
+}
+
+const BREAKING_MENTION = /(?:^|\W)(BREAKING[ -]CHANGES?)(?!\w)/gi;
+/** Words that deny the mention right before it: "no", "not (a)", "without", "zero", "non-". */
+const NEGATED_BEFORE = /(?:\bno|\bnot(?:\s+an?)?|\bwithout|\bzero|\bnon)[\s-]*$/i;
+
+/**
+ * A body mention of a breaking change, unless that mention is negated —
+ * "No breaking changes." and "non-breaking change" are the commonest
+ * lowercase uses, and each forced a MAJOR bump.
+ */
+function bodyAnnouncesBreaking(body: string): boolean {
+  for (const m of body.matchAll(BREAKING_MENTION)) {
+    const start = m.index + m[0].length - m[1]!.length;
+    if (!NEGATED_BEFORE.test(body.slice(Math.max(0, start - 16), start))) return true;
+  }
+  return false;
 }
 
 /** Parse a conventional-commit subject line and optional body. Accepts the breaking `!` both
@@ -137,7 +159,7 @@ export function parseConventional(subject: string, body = ''): Omit<Conventional
   // AND plain mentions ("this is a BREAKING CHANGE for consumers") both count,
   // so a breaking commit can no longer fold into a minor bump by omitting the
   // footer colon. Subject `!` handling is unchanged.
-  const hasBreakingInBody = /(?:^|\W)BREAKING[ -]CHANGES?(?!\w)/i.test(body);
+  const hasBreakingInBody = bodyAnnouncesBreaking(body);
   return {
     // Types are case-insensitive (Conventional Commits §16), and
     // commit-validator lowercases them before validating: `Feat: x` passed

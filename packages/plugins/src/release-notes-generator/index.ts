@@ -214,19 +214,21 @@ async function resolveCommit(ref: string, signal?: AbortSignal): Promise<string>
 async function getCommits(from: string, to: string, signal?: AbortSignal): Promise<Commit[]> {
   const toCommit = await resolveCommit(to, signal);
   const range = from ? `${await resolveCommit(from, signal)}..${toCommit}` : toCommit;
+  // The body is read too: the spec's canonical breaking marker is the
+  // `BREAKING CHANGE:` footer (semver-bump bumps MAJOR on it), and a
+  // subject-only log listed those commits as ordinary entries.
   const output = await runGit(
-    ['log', '--pretty=format:%H%x09%s', '--end-of-options', range],
+    ['log', '--pretty=format:%H%x1f%s%x1f%b%x1e', '--end-of-options', range],
     signal,
   );
   if (!output.trim()) return [];
 
   const commits: Commit[] = [];
-  for (const line of output.split(/\r?\n/)) {
-    const tab = line.indexOf('\t');
-    if (tab === -1) continue;
-    const hash = line.slice(0, tab);
-    const subject = line.slice(tab + 1);
+  for (const record of output.split('\x1e')) {
+    const [hash = '', subject = '', body = ''] = record.replace(/^\r?\n/, '').split('\x1f');
+    if (!hash || !subject) continue;
     const parsed = parseConventionalCommit(subject);
+    if (/^BREAKING[ -]CHANGE:/m.test(body)) parsed.breaking = true;
     commits.push({ hash, subject, ...parsed });
   }
   return commits;

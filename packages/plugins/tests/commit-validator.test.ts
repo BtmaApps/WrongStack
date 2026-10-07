@@ -82,6 +82,25 @@ describe('commit-validator plugin', () => {
   });
 });
 
+describe('attached message flag', () => {
+  it('validates `-m"…"` / `-am\'…\'` instead of letting them through', async () => {
+    // git takes the attached value (`-mwip stuff` after shell quoting); with no
+    // separator the hook found no message and skipped validation.
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    for (const command of ['git commit -m"wip stuff"', "git commit -am'wip stuff'"]) {
+      const result = await hook({ toolName: 'bash', toolInput: { command } });
+      expect(result?.decision).toBe('block');
+    }
+    const ok = await hook({
+      toolName: 'bash',
+      toolInput: { command: 'git commit -m"feat: add login"' },
+    });
+    expect(ok).toBeUndefined();
+  });
+});
+
 describe('valid commit messages', () => {
   it('passes through a valid feat commit via bash', async () => {
     const api = makeApi();
