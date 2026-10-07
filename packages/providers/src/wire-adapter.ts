@@ -585,9 +585,9 @@ export abstract class WireAdapter implements Provider {
     }
     const webStream = Readable.toWeb(readable);
     const wrappedWeb = this.wrapHangWebStream(webStream as ReadableStream<Uint8Array>, model);
-    return Readable.fromWeb(
-      wrappedWeb as never as ReadableStream,
-    ) as never as NodeJS.ReadableStream;
+    // `as never`: the global ReadableStream differs from node:stream/web's
+    // when the DOM lib is in scope (vitest types), so don't name either.
+    return Readable.fromWeb(wrappedWeb as never) as never as NodeJS.ReadableStream;
   }
 
   private wrapHangWebStream(

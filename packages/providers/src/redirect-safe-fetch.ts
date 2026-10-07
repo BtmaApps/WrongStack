@@ -197,7 +197,9 @@ export async function redirectSafeFetch(
     const res = await fetchImpl(currentUrl, {
       method,
       headers,
-      ...(body !== undefined ? { body } : {}),
+      // Cast: under the DOM lib (pulled in by vitest types) `BodyInit` only
+      // accepts ArrayBuffer-backed views, not `Uint8Array<ArrayBufferLike>`.
+      ...(body !== undefined ? { body: body as NonNullable<RequestInit['body']> } : {}),
       ...(init.signal ? { signal: init.signal } : {}),
       redirect: 'manual',
     });

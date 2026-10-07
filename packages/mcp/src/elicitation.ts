@@ -396,31 +396,10 @@ export function validateElicitationContent(
   const out: Record<string, ElicitationValue> = {};
   for (const field of fields) {
     const raw = Object.hasOwn(content, field.name) ? content[field.name] : undefined;
-    if (
-      Array.isArray(raw) &&
-      raw.length === 0 &&
-      field.kind === 'multi-enum' &&
-      field.minItems === 0
-    ) {
-      Object.defineProperty(out, field.name, {
-        value: [],
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      });
-      continue;
-    }
-    // `''` is a real string answer, not an absent one. A declared
-    // `{ type: 'string' }` with no `minLength` — or with `minLength: 0`, which
-    // `optionalCount` accepts — admits the empty string, so `checkValue` below,
-    // which owns the bounds contract, has to see it. Lumping `''` in with the
-    // omissions made a required plain string field unsatisfiable (every answer
-    // came back "is required") and silently dropped the key on an optional one,
-    // so the server received `{}` where it had been given `{ note: '' }`. Only a
-    // genuine omission — `undefined`, or an explicit `null` — means "not
-    // answered"; a server that wants a non-blank answer declares `minLength`,
-    // and then the rejection names the real bound.
-    if (raw === undefined || raw === null || (Array.isArray(raw) && raw.length === 0)) {
+    // Presence and bounds are separate: '' and [] are answers, not omissions.
+    // Let checkValue enforce their type and minLength/minItems, including when
+    // no minimum is declared. Only undefined/null mean "not answered".
+    if (raw === undefined || raw === null) {
       if (field.required) return { ok: false, error: `${label(field)} is required` };
       continue;
     }
