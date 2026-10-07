@@ -1036,6 +1036,25 @@ describe('SddParallelRun — failure supervisor', () => {
     expect(tracker.getAllNodes().filter((n) => n.parentId === t1.id)).toHaveLength(2);
   });
 
+  it('a split verdict applies on the real path, where the node is still in_progress', async () => {
+    // executeOne leaves the node `in_progress` when the worker fails; the split
+    // used to be refused there as "running" and the task went terminal-failed.
+    const superviseFailure = vi.fn(async () => ({
+      action: 'split' as const,
+      subtasks: [
+        { title: 'A', description: 'a' },
+        { title: 'B', description: 'b' },
+      ],
+    }));
+    const { run, tracker, t1 } = await makeFailing({ superviseFailure });
+    (run as never as { coordinator: unknown }).coordinator = fakeCoordinator({
+      awaitTasks: vi.fn(async (ids: string[]) => ids.map((id) => failResult(id))),
+    });
+    await run.executeOne(t1);
+    expect(tracker.getNode(t1.id)?.status).toBe('completed');
+    expect(tracker.getAllNodes().filter((n) => n.parentId === t1.id)).toHaveLength(2);
+  });
+
   it('a fail verdict (or none) lets the task terminal-fail', async () => {
     const superviseFailure = vi.fn(async () => ({ action: 'fail' as const }));
     const { run, tracker, t1 } = await makeFailing({ superviseFailure });

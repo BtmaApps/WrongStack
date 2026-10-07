@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:34:38.196Z
+**Generated:** 2026-10-07T07:35:46.559Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4829 |
-| Production source lines | 1078437 |
+| Production source lines | 1078451 |
 | Test files | 4164 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 15891 |
@@ -84,6 +84,7 @@ None.
 | Lines | File |
 |---:|---|
 | 797 | `packages/webui/src/lib/ws-client.ts` |
+| 795 | `packages/cli/src/goal-host.ts` |
 | 795 | `packages/tools/src/codebase-index/ast-invariant-engine.ts` |
 | 794 | `packages/core/src/plugins/review-claim-registry.ts` |
 | 793 | `packages/core/src/hq/publisher.ts` |
@@ -96,7 +97,6 @@ None.
 | 790 | `packages/simpleui/src/settings-panel.tsx` |
 | 789 | `packages/cli/src/slash-commands/memory.ts` |
 | 789 | `packages/core/src/coordination/brain-monitor.ts` |
-| 788 | `packages/cli/src/goal-host.ts` |
 | 788 | `packages/providers/src/trusted-presets.ts` |
 | 788 | `packages/tui/src/app-view-pickers.tsx` |
 | 787 | `packages/core/src/coordination/mailbox-codecs.ts` |

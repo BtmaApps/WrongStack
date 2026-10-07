@@ -161,6 +161,13 @@ export async function trySupervisorRescue(
     return true;
   }
   if (verdict.action === 'split') {
+    // The failed attempt is over (its subagent is released) but the node still
+    // reads `in_progress`, which splitGraphNode refuses as "running" — so a
+    // split verdict never applied on the real path. Settle it to `pending`
+    // (no cascade) first; a refused split is overwritten by the terminal fail.
+    if (this.opts.tracker.getNode(taskId)?.status === 'in_progress') {
+      this.opts.tracker.updateNodeStatus(taskId, 'pending', 'supervisor split');
+    }
     const ids = this.splitTask(taskId, verdict.subtasks);
     if (ids.length === 0) return false; // split refused (e.g. running) → let it fail
     this.emit('sdd.supervisor.decision', { runId: this.runId, taskId, action: 'split' });

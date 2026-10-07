@@ -620,6 +620,13 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
         if (abort.signal.aborted) return { ok: false, error: 'Goal resume was stopped.' };
         graph.runState = 'running';
         await persist(graph);
+        // `/goal stop` may land during that save; activating anyway ran the
+        // tasks the user just stopped (the start path re-checks here too).
+        if (abort.signal.aborted) {
+          graph.runState = 'stopped';
+          await persist(graph);
+          return { ok: false, error: 'Goal resume was stopped.' };
+        }
         const verifyEnabled = graph.verifyTasks ?? process.env['WRONGSTACK_GOAL_VERIFY'] !== '0';
         const resolveEnabled = !!worktrees && process.env['WRONGSTACK_GOAL_RESOLVE'] !== '0';
         const orchestrator = new PhaseOrchestrator({

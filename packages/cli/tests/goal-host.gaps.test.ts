@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
-import { type PhaseGraph, PhaseGraphBuilder } from '@wrongstack/core/goal';
+import { type PhaseGraph, PhaseGraphBuilder, PhaseStore } from '@wrongstack/core/goal';
 import { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -299,6 +299,79 @@ describe('createGoalHost — start failures and task errors', () => {
       await new Promise((r) => setTimeout(r, 20));
     }
     expect(host.getGoalRunner()).toBeNull();
+  });
+
+  // `/goal stop` that lands while resume awaits its final save used to be
+  // ignored: the orchestrator was activated anyway and ran the stopped tasks.
+  it('honours a stop issued while resume is persisting the running graph', async () => {
+    let tasksRun = 0;
+    const host = makeHost(
+      fakeHost({
+        plan: ONE_PHASE_PLAN,
+        onTaskRun: () => {
+          tasksRun++;
+        },
+      }),
+      new EventBus(),
+    );
+    const graph: PhaseGraph = await new PhaseGraphBuilder({
+      title: 'stopped during resume',
+      phases: [
+        {
+          name: 'Phase A',
+          description: 'do A',
+          priority: 'high',
+          estimateHours: 1,
+          parallelizable: false,
+          taskTemplates: [
+            {
+              title: 'task one',
+              description: '',
+              type: 'feature',
+              priority: 'high',
+              estimateHours: 1,
+            },
+          ],
+        },
+      ],
+      autonomous: true,
+    }).build();
+
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let parked!: () => void;
+    const saveParked = new Promise<void>((r) => {
+      parked = r;
+    });
+    const originalSave = PhaseStore.prototype.save;
+    let gated = false;
+    const spy = vi.spyOn(PhaseStore.prototype, 'save').mockImplementation(async function (
+      this: PhaseStore,
+      saved: PhaseGraph,
+    ) {
+      if (!gated && saved.runState === 'running') {
+        gated = true;
+        parked();
+        await gate;
+      }
+      return originalSave.call(this, saved);
+    });
+    try {
+      const pending = host.onGoalResumeFromGraph(graph);
+      await saveParked;
+      host.onGoalStop();
+      release();
+      const result = await pending;
+
+      expect(result).toEqual({ ok: false, error: 'Goal resume was stopped.' });
+      expect(host.getGoalRunner()).toBeNull();
+      expect(graph.runState).toBe('stopped');
+      expect(tasksRun).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

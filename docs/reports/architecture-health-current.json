@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T07:34:38.196Z",
+  "generatedAt": "2026-10-07T07:35:46.559Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4829,
     "testFiles": 4164,
-    "sourceLines": 1078437,
+    "sourceLines": 1078451,
     "workspaceEdges": 133,
     "moduleEdges": 15891,
     "nonCommandSlashImports": 0,
@@ -26283,6 +26283,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/cli/src/goal-host.ts",
+      "lines": 795,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/tools/src/codebase-index/ast-invariant-engine.ts",
       "lines": 795,
       "relativeImports": 3
@@ -26341,11 +26346,6 @@
       "file": "packages/core/src/coordination/brain-monitor.ts",
       "lines": 789,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/cli/src/goal-host.ts",
-      "lines": 788,
-      "relativeImports": 4
     },
     {
       "file": "packages/providers/src/trusted-presets.ts",
