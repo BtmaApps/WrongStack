@@ -332,6 +332,30 @@ describe('gitignore-guard PostToolUse hook', () => {
     },
   );
 
+  it('reads a nested .gitignore relative to its own directory', async () => {
+    seedGitignore(join(ROOT, 'apps', 'web', '.gitignore'), '/dist/\n');
+    const api = makeApi({ extensions: { 'gitignore-guard': { mode: 'append' } } });
+    await plugin.setup(api as never);
+    const hook = getHook(api);
+
+    expect(await hook(writeInput('apps/web/dist/bundle.js'))).toBeUndefined();
+    expect(mockWriteFile).not.toHaveBeenCalled();
+  });
+
+  it('treats a trailing-slash directory pattern as a glob', () => {
+    expect(matchGitignorePattern('pkg.egg-info/PKG-INFO', '*.egg-info/')).toBe(true);
+    expect(matchGitignorePattern('cmake-build-debug/a.o', 'cmake-build-*/')).toBe(true);
+    expect(matchGitignorePattern('pkg.egg-info-old/x', '*.egg-info/')).toBe(false);
+  });
+
+  it('reads bracket expressions as one character from a set', () => {
+    expect(matchGitignorePattern('foo.pyc', '*.py[cod]')).toBe(true);
+    expect(matchGitignorePattern('foo.pyx', '*.py[cod]')).toBe(false);
+    expect(matchGitignorePattern('bin/a', '[Bb]in/')).toBe(true);
+    expect(matchGitignorePattern('log1/a', 'log[!s]/')).toBe(true);
+    expect(matchGitignorePattern('logs/a', 'log[!s]/')).toBe(false);
+  });
+
   it('respects ignorePatterns opt-outs', async () => {
     const api = makeApi({
       extensions: {

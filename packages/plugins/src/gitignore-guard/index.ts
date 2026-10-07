@@ -57,7 +57,7 @@
  */
 
 import { access, readFile, writeFile } from 'node:fs/promises';
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const API_VERSION = '^0.1.10';
@@ -128,6 +128,21 @@ function globToSource(glob: string): string {
       i += 3;
       continue;
     }
+    // A bracket expression (`*.py[cod]`, `[Bb]in/`, `log[!s]/`) is one
+    // character from a set — never `/`; a leading `!`/`^` negates it. Like
+    // git, a pattern with an unterminated `[` matches nothing.
+    if (glob[i] === '[') {
+      let j = i + 1;
+      const negated = glob[j] === '!' || glob[j] === '^';
+      if (negated) j++;
+      if (glob[j] === ']') j++; // a leading `]` is a member
+      const close = glob.indexOf(']', j);
+      if (close === -1) return '(?!)';
+      const body = glob.slice(negated ? i + 2 : i + 1, close).replace(/[\\\]^]/g, '\\$&');
+      out += negated ? `[^/${body}]` : `(?!/)[${body}]`;
+      i = close + 1;
+      continue;
+    }
     const ch = glob[i]!;
     if (ch === '*') {
       out += '[^/]*';
@@ -169,7 +184,9 @@ export function matchGitignorePattern(relPath: string, pattern: string): boolean
       return new RegExp(`^${globToSource(dir)}(?:/|$)`).test(rel);
     }
     // Bare directory name: matches a directory with that name at any depth.
-    return segments.some((s) => s === dir);
+    // The name is a glob (`*.egg-info/`, `cmake-build-*/`), not a literal.
+    const re = globToRegExp(dir);
+    return segments.some((s) => re.test(s));
   }
   // A pattern without a trailing `/` matches files AND directories, and git
   // ignores everything beneath an ignored directory. Matching only the full
@@ -505,7 +522,10 @@ const plugin: Plugin = {
       const candidates = gitignoreCandidates(relDirOf(resolved.rel), resolved.root);
       for (const candidate of candidates) {
         const lines = await readGitignoreLines(candidate);
-        if (isCoveredByLines(lines, resolved.rel)) {
+        // A nested .gitignore's patterns are relative to its own directory:
+        // `/dist/` in apps/web/.gitignore ignores apps/web/dist.
+        const relToIgnore = toForwardSlashes(relative(dirname(candidate), resolved.abs));
+        if (isCoveredByLines(lines, relToIgnore)) {
           state.coveredSkipCount += 1;
           return;
         }
