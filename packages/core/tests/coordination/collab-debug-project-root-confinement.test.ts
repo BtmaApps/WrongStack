@@ -178,7 +178,7 @@ describe('collab_debug honours project-root confinement', () => {
     const origCwd = process.cwd();
     process.chdir(base); // the process cwd is NOT the session's working directory
     try {
-      await tool.execute({ targetPaths: ['in.ts'] }, ctx as never);
+      await tool.execute({ targetPaths: ['in.ts'] }, ctx as never, undefined as never);
     } finally {
       process.chdir(origCwd);
     }
