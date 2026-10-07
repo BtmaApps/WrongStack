@@ -28,7 +28,7 @@ export function CommitWorkflowPage() {
             <span className="text-brand">without the typing.</span>
           </>
         }
-        description="The agent reads your diff and generates a well-formed conventional commit message — type, scope, summary, and body. You review before it commits. Foreign file detection prevents sweeping up another agent's work."
+        description="The agent reads your diff and generates a well-formed conventional commit message — type, scope, and summary. Preview it first with /commit --dry-run. Foreign file detection warns before sweeping up another agent's work."
         aside={<ExternalDoc path="docs/slash/git.md">Open Git commands docs</ExternalDoc>}
       />
 
@@ -44,7 +44,7 @@ export function CommitWorkflowPage() {
           {[
             {
               cmd: '/commit',
-              desc: 'Stage files, generate a conventional commit message from the diff, and commit. Review before confirming.',
+              desc: 'Stage the working tree, auto-generate a conventional commit message from the staged diff (LLM first, heuristic fallback), and commit. Warns when foreign files are detected.',
               icon: GitCommitHorizontal,
               tag: 'stages + commits',
             },
@@ -68,7 +68,7 @@ export function CommitWorkflowPage() {
             },
             {
               cmd: '/gitcheck',
-              desc: 'Silent check for uncommitted changes. Exit code only. Ideal for pre-flight automation and CI hooks.',
+              desc: 'Check for uncommitted changes. Prints a count when dirty, nothing when clean — easy to wire into prompts and automation.',
               icon: Shield,
               tag: 'read-only',
             },
@@ -80,7 +80,7 @@ export function CommitWorkflowPage() {
             },
             {
               cmd: '/gitid',
-              desc: 'Inspect or set git user.name and user.email for commit attribution. Safe — only modifies the local repo config.',
+              desc: 'Inspect or set the commit identity used by agent-run git commands. Injected as GIT_AUTHOR_*/GIT_COMMITTER_* env vars — your git config is never modified.',
               icon: Fingerprint,
               tag: 'config',
             },
@@ -105,8 +105,8 @@ export function CommitWorkflowPage() {
           <SectionIntro
             index="02"
             eyebrow="Conventional commits"
-            title="Generated messages follow the spec. You review before it commits."
-            description="The agent reads your diff and produces a conventional commit: type, optional scope, summary line, and body. Every type maps to a semantic version bump. Breaking changes are detected from the body."
+            title="Generated messages follow the spec. Preview before it commits."
+            description="The agent reads your diff and produces a conventional commit subject — type, optional scope, summary line. Body and footers follow the spec when you add them. Every type maps to a semantic version bump. Breaking changes are detected from the body."
           />
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-line bg-card p-7">
@@ -161,7 +161,7 @@ export function CommitWorkflowPage() {
               <div className="mt-5 overflow-hidden rounded-lg border border-line bg-ink">
                 <div className="border-b border-white/10 px-4 py-3">
                   <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                    Generated commit message
+                    Example conventional commit
                   </span>
                 </div>
                 <div className="p-5 font-mono text-sm leading-7">
@@ -202,7 +202,7 @@ export function CommitWorkflowPage() {
                   },
                   {
                     label: 'Dry run',
-                    body: '`/commit --dry-run` shows the generated message without committing. Edit inline before confirming.',
+                    body: '`/commit --dry-run` previews the message and diff stat it would commit — no commit is made.',
                   },
                 ].map(({ label, body }) => (
                   <div key={label} className="rounded-lg border border-line bg-bg p-3">
@@ -229,7 +229,7 @@ export function CommitWorkflowPage() {
             {
               icon: FileClock,
               title: 'File-author tracking',
-              body: 'Every file this session creates or edits is recorded in the per-project author log at `~/.wrongstack/projects/<slug>/file-authors.jsonl`. Session ID and agent name are captured.',
+              body: 'Every file this session creates or edits is recorded in the per-project author log at `~/.wrongstack/projects/<slug>/file-authors.json`. Session ID and agent name are captured.',
             },
             {
               icon: Users,
@@ -319,17 +319,17 @@ export function CommitWorkflowPage() {
               {
                 step: '02',
                 title: 'Stage files',
-                body: 'Pass an explicit file list — never blind-stage the whole tree. The agent scopes to files it authored.',
+                body: "The whole working tree is staged (`git add .`) after the safety check. The warning tells you when that sweep would include another session's files.",
               },
               {
                 step: '03',
                 title: 'Generate message',
-                body: 'The model reads the staged diff and produces a conventional commit: type, scope, summary, body, footer.',
+                body: 'The model reads the staged diff and drafts a conventional subject line — type, scope, summary. Heuristics take over if the LLM call fails.',
               },
               {
                 step: '04',
                 title: 'Review',
-                body: 'The generated message is presented. You can edit inline, add footers, or reject and rephrase.',
+                body: 'The commit is created immediately; the staged diff stat is shown with the result. Preview beforehand with `/commit --dry-run`.',
               },
               {
                 step: '05',
@@ -418,8 +418,8 @@ export function CommitWorkflowPage() {
               <div className="mt-5 space-y-3">
                 {[
                   {
-                    label: 'Never blind-stage',
-                    body: "/commit requires an explicit file list. No `git add .` — prevents capturing another agent's work.",
+                    label: 'Warned before sweeping',
+                    body: 'Commit safety warns before a tree-wide stage (`git add .`) so you can narrow scope — commit via an explicit file list instead of sweeping the whole tree.',
                   },
                   {
                     label: 'Warn-only',
@@ -431,7 +431,7 @@ export function CommitWorkflowPage() {
                   },
                   {
                     label: 'No rebase or reset',
-                    body: 'The git command family does not expose rebase, reset, or force-push. Those stay in the shell domain.',
+                    body: 'The read-only /git overview does not expose rebase or reset. /push does accept --force (-f), so it is not a guarantee against history rewriting.',
                   },
                 ].map(({ label, body }) => (
                   <div key={label} className="rounded-lg border border-line bg-bg p-4">
@@ -458,22 +458,22 @@ export function CommitWorkflowPage() {
             {
               icon: Check,
               title: 'Goal',
-              body: 'After the review phase, Goal can auto-commit the verified worktree changes. Commit message is generated from the phase plan and diff.',
+              body: 'After successful phase tasks and the configured verification gate, Goal commits worktree changes with a deterministic goal(phase-name): phase-id subject, then queues dependency-ordered merges. This is separate from /commit message generation.',
             },
             {
               icon: Shield,
               title: 'Quality gate',
-              body: 'The quality_gate verifier lane can require a clean /gitcheck before passing. Uncommitted changes after verification = gate failure.',
+              body: 'quality_gate runs independent reviewer/verifier lanes against caller-supplied commands and acceptance criteria. Every enabled lane must explicitly pass; dirty-tree status is not an automatic built-in failure rule.',
             },
             {
               icon: AlertTriangle,
               title: 'CI pre-flight',
-              body: 'Run /gitcheck in CI scripts before deploy. Non-zero exit code means uncommitted changes — fail the pipeline.',
+              body: '/gitcheck is an in-session slash command, not an exit-code CI check. For CI, inspect git status --porcelain and explicitly fail when its output contains changes.',
             },
             {
               icon: Fingerprint,
               title: 'Attribution',
-              body: "/gitid ensures commits carry the right author. Set per-project or globally. Follows git's own precedence rules.",
+              body: '/gitid ensures commits carry the right author. Persisted to the active profile (or this session only). Env-var injection takes precedence over git config for agent-run commits; your terminal commits are untouched.',
             },
           ].map(({ icon: Icon, title, body }) => (
             <article key={title} className="rounded-2xl border border-line bg-card p-6">

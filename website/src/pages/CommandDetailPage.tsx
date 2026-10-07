@@ -2,10 +2,10 @@ import { ArrowRight, Check, Command, Copy, Layers3, Terminal } from 'lucide-reac
 import { useState } from 'react';
 import {
   ExternalDoc,
+  heroTitleFontSize,
   PageHero,
   PageNext,
   SectionIntro,
-  heroTitleFontSize,
 } from '@/components/site/primitives';
 import { commandDetails } from '@/data/command-details';
 import { commandFromSlug, commandSlug, commands } from '@/data/content';
@@ -14,7 +14,7 @@ import { Link, useRouter } from '@/lib/router';
 
 const commandDeepGuides: Partial<Record<string, { href: string; label: string }>> = {
   '/mode': { href: '/modes', label: 'Compare all 19 session modes' },
-  '/fleet': { href: '/agent-roster', label: 'Browse 50 phase roles plus Shadow' },
+  '/fleet': { href: '/agent-roster', label: 'Browse the full fleet roster' },
   '/spawn': { href: '/agent-roster', label: 'Choose a specialist role' },
   '/agents': { href: '/agent-roster', label: 'Understand the roster and lifecycle phases' },
   '/director': { href: '/agent-roster', label: 'See the Director’s complete roster' },
@@ -78,7 +78,7 @@ function fallbackExamples(name: string): string[] {
   if (name === '/shadow') return ['/shadow start', '/shadow status', '/shadow stop'];
   if (name === '/hq') return ['/hq', '/hq connect http://localhost:4000'];
   if (name === '/coordinator') return ['/coordinator status', '/coordinator pause'];
-  if (name === '/collab') return ['/collab src/auth/', '/collab --timeout 120000 src/'];
+  if (name === '/collab') return ['/collab', '/collab invite', '/collab history 20'];
   if (name === '/ensemble') return ['/ensemble "review the API layer"'];
   return [name, `/help ${bare}`];
 }

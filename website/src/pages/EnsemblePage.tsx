@@ -32,7 +32,7 @@ export function EnsemblePage() {
             <span className="text-brand">one problem.</span>
           </>
         }
-        description="Fan one task to multiple ACP-capable coding agents simultaneously. Claude Code, Gemini CLI, Codex CLI, and 9 more — each works independently with its own tools and model. Compare results side by side or surface consensus patterns."
+        description="Fan one task to multiple ACP-capable coding agents simultaneously. Claude Code, Gemini CLI, Codex CLI, and 10 more — each works independently with its own tools and model. Compare results side by side or surface consensus patterns."
         aside={
           <ExternalDoc path="docs/acp-ensemble.md">Open ACP Ensemble architecture</ExternalDoc>
         }
@@ -57,7 +57,7 @@ export function EnsemblePage() {
             {
               icon: Layers3,
               title: 'ACP Server',
-              body: 'External editors (Zed, JetBrains Junie, VS Code ACP) can drive WrongStack as an ACP server. Full v1 method set: initialize, session/new, session/prompt, session/cancel, mode/config management.',
+              body: 'External editors (Zed, JetBrains Junie, VS Code ACP) can drive WrongStack as an ACP server. 17 request methods: initialize, authenticate, logout, session/new, session/prompt, session/load and more, plus session/update streaming and session/request_permission.',
               tag: 'driven by editors',
             },
             {
@@ -87,7 +87,7 @@ export function EnsemblePage() {
           <SectionIntro
             index="02"
             eyebrow="Agent catalog"
-            title="12 agents. Live detection. No API keys needed."
+            title="13 agents. Live detection. No API keys needed."
             description="Every agent uses its existing login — no extra configuration. WrongStack probes your `$PATH` to discover installed agents. The bundled catalog serves as offline fallback; a synced registry from the ACP project provides live updates."
           />
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -134,6 +134,12 @@ export function EnsemblePage() {
                   vendor: 'Community',
                   id: 'mistral-vibe',
                   integration: 'experimental',
+                },
+                {
+                  name: 'Kimi Code CLI',
+                  vendor: 'Moonshot',
+                  id: 'kimi',
+                  integration: 'native',
                 },
               ] as { name: string; vendor: string; id: string; integration: string }[]
             ).map(({ name, vendor, id, integration }) => (

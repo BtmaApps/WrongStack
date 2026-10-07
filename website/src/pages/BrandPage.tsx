@@ -57,8 +57,8 @@ const lightPalette: BrandColor[] = [
   },
   {
     name: 'Orange UI',
-    value: '#9A5700',
-    role: 'Accessible orange text and metadata',
+    value: '#D97706',
+    role: 'Orange accent for light-theme UI',
     textClass: 'text-white',
   },
   { name: 'Canvas', value: '#F8F6F0', role: 'Page background', textClass: 'text-ink' },

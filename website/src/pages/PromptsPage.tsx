@@ -28,7 +28,7 @@ export function PromptsPage() {
             {
               icon: Library,
               title: 'Bundled',
-              body: '50+ prompts ship with WrongStack. Code review templates, refactoring checklists, architecture decision records, debugging workflows. Always available.',
+              body: '200+ prompts ship with WrongStack. Code review templates, refactoring checklists, architecture decision records, debugging workflows. Always available.',
             },
             {
               icon: Layers3,

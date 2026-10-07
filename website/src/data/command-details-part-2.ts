@@ -74,13 +74,14 @@ export const commandDetailsPart2: CommandDetailMap = {
 
   '/collab': {
     purpose:
-      'Start structured live collaboration helpers — BugHunter, RefactorPlanner, and Critic run in parallel on target files.',
+      'Operator-side helpers for live collaboration — see who is watching this session and invite a teammate.',
     behavior:
-      'The collaboration workflow spawns three specialist agents simultaneously: BugHunter scans for bugs, RefactorPlanner proposes improvements, and Critic evaluates both. Events flow between them on the FleetBus. The final report aggregates findings with an overall verdict.',
-    before: 'Identify the target files or directories. Narrow scope for faster results.',
+      'The CLI does not run the WebSocket observer client itself: /collab status shows collaboration state, /collab invite prints a WebUI join URL for the current session, /collab history [N] shows recent session events, and /collab annotations (alias /collab notes) shows saved annotations. Observer count is best-effort from the CLI side; the WebUI owns the live participant list.',
+    before: 'Have the WebUI running if you want a teammate to actually join via the invite link.',
     during:
-      'Agents emit events on the FleetBus as they find issues. The Critic evaluates in real time.',
-    after: 'Review the structured report. Address bugs first, then consider refactor suggestions.',
+      'The invite URL points at the WebUI session; the browser observer connects over WebSocket, not the terminal.',
+    after:
+      'For the three-agent BugHunter → RefactorPlanner → Critic pipeline, use the collab_debug tool instead — /collab only reports on live collaboration.',
   },
 
   '/brain': {
@@ -113,7 +114,7 @@ export const commandDetailsPart2: CommandDetailMap = {
     purpose:
       'Read and send cross-agent project mailbox messages — the inter-agent communication hub.',
     behavior:
-      'The project mailbox is a shared message store for all agents working on the same project. `/mailbox` shows unread messages. `/mailbox send` sends a typed message (note, ask, assign, steer, broadcast, etc.). `/mailbox query` filters messages. Messages support priorities, read receipts, and completion tracking.',
+      'The project mailbox is a shared message store for all agents working on the same project. `/mailbox` shows unread messages. `/mailbox send` sends a typed message (note, ask, assign, steer, etc.). `/mailbox history [n]` filters recent messages. Messages support priorities, read receipts, and completion tracking.',
     before:
       'Check `/mailbox` when starting work to see if other agents have left messages or assignments for you.',
     during: 'Unread messages appear inline. Sending confirms with a message ID.',

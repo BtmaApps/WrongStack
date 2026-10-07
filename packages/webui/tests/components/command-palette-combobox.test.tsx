@@ -12,7 +12,7 @@
 // so this asserts the id actually exists in the document and is the selected
 // option, not merely that the attribute is present.
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/i18n', () => ({
   useAppTranslation: () => ({ t: (k: string) => k }),

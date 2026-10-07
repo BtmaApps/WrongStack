@@ -10,10 +10,10 @@ import {
 } from 'lucide-react';
 import {
   ExternalDoc,
+  heroTitleFontSize,
   PageHero,
   PageNext,
   SectionIntro,
-  heroTitleFontSize,
 } from '@/components/site/primitives';
 import { Link } from '@/lib/router';
 
@@ -59,7 +59,7 @@ export function FleetPage() {
           href="/agent-roster"
           className="mt-8 inline-flex rounded-full border border-brand/25 bg-brand/5 px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.12em] text-brand"
         >
-          Browse 50 phase roles + Shadow →
+          Browse the full fleet roster, including Shadow →
         </Link>
         <div className="mt-14 space-y-2">
           {[

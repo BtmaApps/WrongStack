@@ -1,7 +1,7 @@
 import { ArrowRight, Check, Terminal } from 'lucide-react';
 import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
-import { Link } from '@/lib/router';
 import { ecosystemPillars } from '@/data/content';
+import { Link } from '@/lib/router';
 
 export function EcosystemPage() {
   return (
@@ -124,7 +124,7 @@ export function EcosystemPage() {
                 '~/.wrongstack/profiles/<name>/skills/',
                 '~/.claude/skills/ + foreign agents',
                 'user-configured extraDirs',
-                '29 bundled core skills',
+                '37 bundled core skills',
               ].map((path, index) => (
                 <div
                   key={path}
@@ -181,7 +181,7 @@ export function EcosystemPage() {
             {
               href: '/skills',
               label: 'Skills',
-              desc: 'Installable knowledge packages that auto-activate on trigger words.',
+              desc: 'Installable knowledge packages the agent selects from their descriptions.',
             },
             {
               href: '/prompts',

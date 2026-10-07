@@ -74,6 +74,21 @@ export const TOO_DEEP_MARKER = 'unscannable_nested_input';
  */
 export const RE_DOS_TIMEOUT_MS = 100;
 
+/**
+ * Thrown when the scan exceeds {@link RE_DOS_TIMEOUT_MS}. The budget is
+ * wall-clock, so on a saturated host it can trip on a benign scan; the check
+ * only runs once a match is in hand, so `matchedSoFar` is never empty and the
+ * fail-closed block can still name what it found.
+ */
+export class SecretScanTimeoutError extends Error {
+  readonly matchedSoFar: readonly string[];
+  constructor(message: string, matchedSoFar: readonly string[]) {
+    super(message);
+    this.name = 'SecretScanTimeoutError';
+    this.matchedSoFar = matchedSoFar;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -92,19 +107,21 @@ export function scanWindow(window: string, found: Set<string>, startTime: number
   let m: RegExpExecArray | null;
   // biome-ignore lint/suspicious/noAssignInExpressions: idiomatic RegExp.exec loop
   while ((m = COMBINED_REGEX.exec(window)) !== null) {
-    // ReDoS guard: abort if cumulative regex time exceeds the threshold.
-    // The throw propagates through buildHook synchronously; with
-    // failurePolicy: 'closed' it is caught and treated as a block.
-    if (performance.now() - startTime > RE_DOS_TIMEOUT_MS) {
-      throw new Error(
-        `secret-scanner: ReDoS timeout — regex scan exceeded ${RE_DOS_TIMEOUT_MS}ms on ${window.length}-char window`,
-      );
-    }
     // Determine which pattern fired. Group offsets come from the table
     // built with the regex — a pattern containing its own capture groups
     // shifts every later pattern, so `m[i + 1]` is not reliable.
     const type = patternTypeForGroups(m.slice(1));
     if (type !== undefined) found.add(type);
+    // ReDoS guard: abort if cumulative regex time exceeds the threshold.
+    // The throw propagates through buildHook synchronously; with
+    // failurePolicy: 'closed' it is caught and treated as a block. Recorded
+    // after the match above so the block can report what was already found.
+    if (performance.now() - startTime > RE_DOS_TIMEOUT_MS) {
+      throw new SecretScanTimeoutError(
+        `secret-scanner: ReDoS timeout — regex scan exceeded ${RE_DOS_TIMEOUT_MS}ms on ${window.length}-char window`,
+        Array.from(found).sort(),
+      );
+    }
     // Defensive: avoid infinite loop on zero-width matches (none of the
     // current patterns are zero-width, but future additions might be).
     if (m.index === COMBINED_REGEX.lastIndex) {

@@ -166,28 +166,28 @@ export function ArchitecturePage() {
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
           {[
             [
-              'Pre-tool',
-              'Before every tool call: permission check, input validation, env expansion.',
+              'request',
+              'Before the provider request: context assembly, memory injection, skill body loading.',
             ],
             [
-              'Post-tool',
-              'After every tool call: output redaction, secret scrubbing, side-effect recording.',
+              'response',
+              'After the provider response: token counting, cost accounting, usage logging.',
             ],
             [
-              'Pre-provider',
-              'Before the LLM request: context assembly, memory injection, skill body loading.',
+              'toolCall',
+              'Around every tool call: permission check, input validation, output redaction, secret scrubbing.',
             ],
             [
-              'Post-provider',
-              'After the LLM response: token counting, cost accounting, usage logging.',
+              'userInput',
+              'User input entering the loop: normalization, queued-message handling, steering intake.',
             ],
             [
-              'Pre-iteration',
-              'Before each agent iteration: budget check, compaction trigger, context pruning.',
+              'assistantOutput',
+              'Assistant text leaving the loop: block-level transforms before surfaces render it.',
             ],
             [
-              'Post-iteration',
-              'After each agent iteration: session append, checkpoint update, fleet pulse.',
+              'contextWindow',
+              'The live context itself: budget checks, compaction triggers and context pruning.',
             ],
           ].map(([name, body]) => (
             <div key={name} className="rounded-xl border border-line bg-card p-5">

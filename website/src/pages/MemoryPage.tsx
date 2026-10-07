@@ -248,15 +248,15 @@ export function MemoryPage() {
           {[
             {
               title: 'Event types',
-              body: 'message, thinking, tool_use, tool_result, error, status, system. Each carries timestamp, iteration, and optional cost metadata.',
+              body: 'Message, thinking, tool_use, tool_result, error, status and system entries. Each carries a timestamp, the agent attribution, and iteration metadata.',
             },
             {
               title: 'Replay',
-              body: '/session replay <id> reconstructs the full conversation. Useful for debugging past runs, auditing decisions, or continuing from a checkpoint.',
+              body: '/sessions lists saved sessions; /resume and /load are aliases for that surface. Reopen a specific session from the shell with wstack --resume <id>. /sessions status inspects live sessions; /sessions recover inspects recovery evidence.',
             },
             {
               title: 'Retention',
-              body: 'Configurable. Sessions auto-prune based on age and count. Critical sessions can be pinned to prevent deletion.',
+              body: 'Configurable retention (retentionDays / sessionRetentionDays in memory settings) prunes old session memories by age.',
             },
           ].map(({ title, body }) => (
             <div key={title} className="rounded-xl border border-line bg-card p-5">

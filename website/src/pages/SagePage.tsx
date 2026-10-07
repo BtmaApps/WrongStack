@@ -144,15 +144,15 @@ export function SagePage() {
             {[
               {
                 title: 'Critical priority',
-                body: 'Always injected into context, regardless of relevance score. Use for security constraints and build commands.',
+                body: 'High importance helps ranking, but never bypasses relevance, lifecycle or budget gates. Keep mandatory security rules in project instructions.',
               },
               {
                 title: 'Anti-patterns',
-                body: 'Highest type boost (+3) in scoring. The agent actively avoids repeating documented mistakes.',
+                body: 'Anti-patterns share the durable-kind boost with facts, decisions, warnings and other durable kinds. They have no special +3 scoring bonus.',
               },
               {
                 title: 'Confidence gate',
-                body: 'Entries below 0.5 confidence get a score penalty. The agent prefers verified facts over speculation.',
+                body: 'Confidence contributes continuously to metadata quality alongside importance and freshness. Tool-result injection separately checks importance, relation strength and final score.',
               },
             ].map(({ title, body }) => (
               <div key={title} className="rounded-xl border border-line bg-card p-5">
@@ -170,30 +170,30 @@ export function SagePage() {
           index="03"
           eyebrow="Relevance engine"
           title="Not every memory belongs in every turn."
-          description="Before each agent request, the scoring engine ranks all entries against the current task, active skills, available tools, and session mode. Only the top 8 make the cut."
+          description="Tool-result retrieval uses concrete paths and queries to find related memories, then scores eligible candidates. Lifecycle, relevance, cooldown, diversity and character budgets can reduce the result below the configured eight-hint limit. Turn-context injection is a separate, opt-in path."
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_.72fr]">
           <div className="space-y-3">
             {[
               {
                 icon: Telescope,
-                title: 'Task word overlap',
-                body: 'Primary signal. Words from the current task are matched against entry text (+2) and tags (+3 per tag hit).',
+                title: 'Concrete relevance evidence',
+                body: 'Exact anchors, informative query terms, tags and optional semantic recall establish relation strength. Generic coding words are ignored; metadata alone cannot manufacture relevance.',
               },
               {
                 icon: Zap,
-                title: 'Skill and tool relevance',
-                body: 'Active skill names and available tool names boost entries that mention them. Keeps domain-specific knowledge surfaced at the right time.',
+                title: 'Tool-result score composition',
+                body: 'Metadata is (importance × 3 + confidence × 2 + freshness) / 6. The base score combines metadata × 0.48 with relation strength × 0.48, before boosts and penalties; the result is clamped to 0–1.',
               },
               {
                 icon: Tag,
-                title: 'Priority and type boosts',
-                body: 'Critical entries get +5. Anti-patterns get +3. Low priority entries get a -2 penalty. Decisions and conventions are weighted above plain facts.',
+                title: 'Durability, anchors and proven use',
+                body: 'Permanent entries add 0.08, long-lived entries 0.04 and short-lived entries subtract 0.08. Durable kinds and anchored entries each add 0.04. Recorded uses add a bounded boost; unanchored entries lose 0.05.',
               },
               {
                 icon: FileSearch,
-                title: 'Recency and repetition',
-                body: 'Entries younger than 1 day get +1; older than 30 days get -1. Recently accessed entries get a slight penalty to avoid repetition.',
+                title: 'Visibility and repetition gates',
+                body: 'Freshness contributes to metadata rather than fixed +1/−1 age bonuses. Repeatedly injected but unused memories receive a penalty. Duplicate text, already-visible memories, cooldowns and output budgets further limit injection.',
               },
             ].map(({ icon: Icon, title, body }) => (
               <div key={title} className="rounded-xl border border-line bg-card p-5">
@@ -209,7 +209,7 @@ export function SagePage() {
           </div>
           <aside className="rounded-2xl border border-line bg-ink p-7 text-zinc-300">
             <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
-              Injection example
+              Illustrative memory hints
             </div>
             <div className="mt-6 space-y-4 font-mono text-xs">
               <p className="text-zinc-500">
@@ -217,25 +217,25 @@ export function SagePage() {
               </p>
               <div className="rounded-lg border border-white/10 p-3">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
-                  Injected into system prompt
+                  Fictional entries — not runtime ranking output
                 </p>
                 <div className="mt-3 space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className="shrink-0 text-emerald-500">+7</span>
+                    <span className="shrink-0 text-emerald-500">anchored</span>
                     <span className="text-zinc-300">
                       [<span className="text-brand">anti_pattern</span>] Auth token refresh races
                       with concurrent requests #auth #bug
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="shrink-0 text-emerald-500">+5</span>
+                    <span className="shrink-0 text-emerald-500">related</span>
                     <span className="text-zinc-300">
                       [<span className="text-brand">fact</span>] Login timeout defaults to 30s in
                       production config #auth #timeout
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="shrink-0 text-zinc-500">+3</span>
+                    <span className="shrink-0 text-zinc-500">context</span>
                     <span className="text-zinc-400">
                       [<span className="text-brand">reference</span>] auth module lives in
                       packages/auth/src #path #auth
@@ -312,7 +312,7 @@ export function SagePage() {
           index="05"
           eyebrow="Consolidation"
           title="Clean up without losing knowledge."
-          description="Deduplication runs automatically when a scope exceeds 32 KB. An optional post-session LLM pass proposes smarter add, edit, and delete operations."
+          description="Deduplication runs automatically when a scope exceeds 32 KB. The optional post-session LLM pass is add-only; corrections and removals require explicit review."
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-line bg-card p-7">
@@ -334,8 +334,9 @@ export function SagePage() {
             <h2 className="mt-8 text-xl font-black text-fg">LLM consolidation</h2>
             <p className="mt-3 text-sm leading-7 text-muted">
               After sessions with enough iterations, an optional lightweight model pass reviews the
-              conversation and proposes edit/delete operations on existing entries plus new facts to
-              remember. The consolidator uses a fast model — it summarizes, does not generate code.
+              conversation and proposes new facts to remember — add-only by design, with anchors
+              grounded in files, symbols and commands. Corrections and removals go through explicit
+              review flows, never the unattended consolidator.
             </p>
             <div className="mt-5 flex items-center gap-2 text-xs text-faint">
               <Check className="size-3.5 text-emerald-500" />
@@ -357,13 +358,14 @@ export function SagePage() {
             {[
               {
                 title: 'Turn context',
-                body: 'Before every agent request, the top 8 scored entries from project-memory are injected into the system prompt as a "Relevant Memory" block. The agent sees them alongside its tools, mode, and instructions.',
-                detail: 'Configurable: Sage.inject.turnContext (default true)',
+                body: 'When enabled, turn-context retrieval searches against the latest user message and applies a separate relevance/metadata gate. Up to 8 candidates are considered by default; duplicate, inactive or low-scoring entries and the character budget can reduce the rendered set.',
+                detail: 'Configurable: Sage.inject.turnContext (default false; opt-in)',
               },
               {
                 title: 'Tool results',
-                body: 'After file reads, grep results, and directory trees return, up to 4 relevant memory hints are appended to the output. The agent gets file-path-aware context without you having to remind it.',
-                detail: 'Configurable: Sage.inject.toolResults and maxHintsPerTool (default 4)',
+                body: 'After supported file, search and mutation tools return, related memory hints are surfaced alongside the result and retained as bounded provider-visible evidence. The default cap is 8 hints, subject to relevance and output budgets.',
+                detail:
+                  'Configurable: Sage.inject.toolResults (default true), maxHintsPerTool (default 8)',
               },
             ].map(({ title, body, detail }) => (
               <article key={title} className="bg-card p-7">
@@ -498,7 +500,7 @@ export function SagePage() {
           <div className="mt-12 overflow-hidden rounded-2xl border border-white/10">
             <div className="border-b border-white/10 px-6 py-4">
               <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                .wrongstack/config.json → Sage
+                Active profile config.json → Sage
               </span>
             </div>
             <div className="p-6 font-mono text-sm leading-7 text-zinc-300">
@@ -538,9 +540,11 @@ export function SagePage() {
               <span className="text-zinc-600"> </span>
               <span className="text-zinc-500">"turnContext"</span>
               <span className="text-zinc-600">: </span>
-              <span className="text-emerald-400">true</span>
+              <span className="text-emerald-400">false</span>
               <span className="text-zinc-600">,</span>
-              <span className="text-zinc-700">{' // inject top 8 into every turn'}</span>
+              <span className="text-zinc-700">
+                {' // opt in to bounded turn-context retrieval'}
+              </span>
               <br />
               <span className="text-zinc-600"> </span>
               <span className="text-zinc-500">"toolResults"</span>
@@ -552,7 +556,7 @@ export function SagePage() {
               <span className="text-zinc-600"> </span>
               <span className="text-zinc-500">"maxHintsPerTool"</span>
               <span className="text-zinc-600">: </span>
-              <span className="text-amber-300">4</span>
+              <span className="text-amber-300">8</span>
               <br />
               <span className="text-zinc-600"> {'}'}</span>
               <br />

@@ -78,22 +78,21 @@ export const commandDetailsPart1: CommandDetailMap = {
       'Review the outcome: fixed-and-verified, fixed-verification-incomplete, no-proven-bug, or blocked. These reports are not automatically certified by the application.',
   },
   '/btw': {
-    purpose:
-      'Ask a quick side question without derailing the current task or polluting the main conversation thread.',
+    purpose: 'Add a non-aborting "by the way" note that reaches the agent on its next iteration.',
     behavior:
-      'The command opens a lightweight side-channel. Your question is answered inline but does not become part of the main task context — the agent returns to its primary objective immediately after answering. Ideal for clarifying syntax, checking a fact, or getting a quick lookup without context pollution.',
-    before: 'No preparation needed. Just have your question ready.',
+      '`/btw <note>` stashes a short note on the live run context. Unlike an aborting steer, the agent keeps working and the note is folded in at the start of its next iteration — between tool batches. If no run is active, the note rides along on the next turn the agent takes. `pendingBtwCount` tracks queued notes.',
+    before: 'No preparation needed. Just have the note ready while the agent works.',
     during:
-      'The agent pauses its main task briefly, answers your question, then resumes. The side answer appears inline.',
+      'The agent is not interrupted — it continues the current tool batch and sees the note next iteration.',
     after:
-      'The main task continues uninterrupted. The side Q&A is logged but does not steer the primary workflow.',
+      'The note becomes part of the next turn’s context. It steers without discarding in-flight work.',
   },
 
   '/next': {
     purpose:
       'Toggle automatic next-task prediction — the agent suggests what to do after the current task completes.',
     behavior:
-      'When enabled, after each task completion the agent appends 2–4 suggested next prompts in a <nextsteps> block. You select one with `/next 1` (or `/next 1 2 3`), list them with `/next list`, or regenerate with `/suggest`. Running `/next` without arguments toggles the feature on or off.',
+      'When enabled, after each completed turn the REPL runs a lightweight single-shot prediction and shows the 1-3 most likely next steps (display-only). You select stored suggestions with `/next 1` (or `/next 1 2 3`; commas also work), list them with `/next list`, or clear with `/next clear`. Bare `/next` reports the current state; `/next on|off|toggle` changes it and persists to config. Selected suggestions execute as the next agent turn, bypassing refinement.',
     before:
       'Check whether you want predictive suggestions for your workflow style. Some users prefer manual control.',
     during:
@@ -104,9 +103,9 @@ export const commandDetailsPart1: CommandDetailMap = {
 
   '/suggest': {
     purpose:
-      'Generate context-aware next actions manually, with an optional fast heuristic mode that skips the model call.',
+      'Generate context-aware next-step suggestions manually, with an optional fast heuristic mode that skips the model call.',
     behavior:
-      'The command analyzes your current session context — open files, recent tasks, mailbox messages, and todo list — and produces a ranked list of suggested next prompts. In heuristic mode it uses pattern matching for speed; without it, the configured model generates richer suggestions.',
+      'The command collects git status and working-directory context and asks a lightweight suggest subagent for 3-5 actionable prompts, storing them for `/next` selection. `--fast` (or `-f`) uses deterministic heuristics instead of the subagent; `--fresh` bypasses the ~60s result cache; without `onSpawnAndWait` it falls back to heuristics.',
     before: 'Complete or pause your current task so the context reflects what remains to be done.',
     during:
       'Suggestions appear as a numbered list. Heuristic mode returns near-instantly; model mode may take a few seconds.',
@@ -130,7 +129,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Classify an error and route it into a focused repair workflow — faster than explaining the bug manually.',
     behavior:
-      'The command reads the most recent error from the session (or accepts a pasted error), classifies it by type (type error, lint, test failure, runtime crash), and dispatches a targeted repair sub-agent with the appropriate tools and context. The fixer proposes a patch you can review.',
+      'The command classifies the pasted error (or problem description) via a multi-language pattern table (TypeScript, Rust, Go, Python, security, infra, and more), then injects a per-turn directive as the next agent turn with matching skill hints (typescript-strict, bug-hunter, security-scanner, tech-stack, …). Only classifications that need multi-file analysis request delegation to a role-mapped subagent; simple fixes run inline.',
     before:
       'Keep the error message handy — copy it from your terminal or let the command read the last session error.',
     during:
@@ -156,7 +155,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Set the active autonomy level — control how independently the agent chooses and executes tasks.',
     behavior:
-      'Autonomy levels range from manual (you drive every step) to full (the agent plans and executes freely). `/autonomy` without arguments shows the current level. `/autonomy <level>` sets it. Higher levels unlock automatic task chaining, goal pursuit, and proactive tool use.',
+      'Autonomy modes are off, suggest, auto, eternal and eternal-parallel. `/autonomy` without arguments shows the current level. `/autonomy <level>` sets it; eternal modes confirm a goal exists and force YOLO on before starting their engine. auto self-drives with Esc/Ctrl+C to redirect; eternal runs a goal-driven loop, eternal-parallel fans out 4-8 subagents per tick, both until `/autonomy stop`. Higher levels unlock automatic task chaining, goal pursuit, and proactive tool use.',
     before:
       'Decide how much control you want to retain. Higher autonomy is powerful but requires trust in the agent judgment.',
     during:
@@ -169,7 +168,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Manage the per-session strategic plan board — outline big-picture work and track progress across turns.',
     behavior:
-      'The plan is a durable outline that survives within the session. `/plan add "title"` creates an item. `/plan start <id>` marks it in progress. `/plan done <id>` completes it. `/plan promote <id>` breaks a plan item into todo items. Plans can be session-scoped or project-scoped.',
+      '`/plan add "title"` creates an item. `/plan start <id|#>` marks it in progress; `/plan done <id|#>` completes it. `/plan promote <id|#> [subtask ...]` (alias `derive`) derives todos from a plan item; `taskify` copies an item into the task store; `template [list|use <name>]` applies bundled templates; `remove`/`clear` refuse while items are unfinished. The plan is a per-session JSON file (planPath) and prints after each mutation; `--json` returns stable output.',
     before:
       'Think about the high-level milestones for your session. Plans are coarser than todos — they represent phases or features.',
     during: 'The plan board prints after each mutation. Active items show their status.',
@@ -178,10 +177,9 @@ export const commandDetailsPart1: CommandDetailMap = {
   },
 
   '/review': {
-    purpose:
-      'Run a model-driven code review pass — the agent inspects your changes and reports issues, risks, and suggestions.',
+    purpose: 'Trigger a Chimera code review of the files changed in this session.',
     behavior:
-      'The command runs the configured model over your working tree diff (or specified files). It checks for bugs, anti-patterns, security issues, style violations, and design problems. The output is a structured review with severity levels and actionable suggestions.',
+      'The command collects added/modified files from git (skipping `.wrongstack/`), reads their content, and emits a chimera.review_needed event handled by the read-only Chimera review subagent (read, grep, glob, tree, index search). It reviews up to 30 changed files by default; `--limit <n>` (1–200) and `--files <substr>` narrow the set. Review claims are installed before the event fires so concurrent sessions cannot review the same content.',
     before:
       'Stage or diff the changes you want reviewed. Narrow the scope with a file path for faster, more focused reviews.',
     during:
@@ -194,7 +192,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Manage durable Kanban boards — create columns, add dependency-aware tasks, assign work, and dispatch to the fleet.',
     behavior:
-      'The full Kanban system supports multiple boards, columns, tasks with dependency chains, assignments, leases, heartbeats, and fleet dispatch. `/kanban` opens the TUI panel. Subcommands like `/kanban task ready`, `/kanban task dispatch`, and `/kanban snapshot` provide CLI access. Aliases: `/kb`, `/board`.',
+      'The full Kanban system supports multiple boards, columns, tasks with dependency chains, assignments, leases, heartbeats, and fleet dispatch. `/kanban open` (aliases `panel`, `tui`) opens the TUI panel; `/kanban create <title>` creates a board; `/kanban snapshot` (alias `queue`) prints the orchestration snapshot. Task subcommands back ready/dispatch flows. Aliases: `/kb`, `/board`.',
     before:
       'Create a board with columns matching your workflow (e.g., Todo, Running, Review, Done). Define task dependencies before dispatching.',
     during:
@@ -217,7 +215,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Run the configured context-window compactor immediately — reclaim token space without losing essential context.',
     behavior:
-      'The compactor summarizes older messages, prunes irrelevant content, and consolidates the conversation into a denser form. It preserves key decisions, file references, and active tasks. Run it proactively when approaching context limits or when the conversation feels bloated.',
+      '`/compact` runs the configured compactor (`trigger: manual`); `/compact aggressive` compacts more aggressively. The compactor summarizes older turns to reclaim tokens, reports before/after counts plus per-phase reductions, and also repairs orphan tool_use/tool_result blocks. If the context changed or the run stopped mid-compaction, the stale result is discarded.',
     before:
       'Check current context usage with `/context` or `/stats`. Compact when you are above 70% of the window.',
     during:
@@ -230,7 +228,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Inspect, repair, and tune context modes, thresholds, and limits — control how the agent manages its working memory.',
     behavior:
-      '`/context` shows the current context window state: token usage, message count, compaction thresholds. Subcommands let you switch context modes (deep, balanced, tight), adjust compaction thresholds, manually prune message ranges, and inject summary notes. The `/ctx` alias works interchangeably.',
+      '`/context` shows the measured context window state: token breakdown by source, message counts, and thresholds. `/context mode` lists the context-window modes (balanced, frugal, deep) and `mode <id>` switches for the session; `limit [tokens] [--persist]` reads or sets the effective window; `thresholds <warn> <soft> <hard>` tunes compaction thresholds; `repair` removes orphan tool_use/tool_result frames; `cache` prints the prompt-cache report. The `/ctx` alias works interchangeably.',
     before:
       'Check `/stats` first for a quick overview. Use `/context` when you need to inspect or modify the context strategy.',
     during:
@@ -243,7 +241,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Inspect runtime diagnostics and active system state — a comprehensive health check for the current session.',
     behavior:
-      'The command prints a structured diagnostics report: Node.js version, process uptime, memory usage, active plugins, loaded skills, registered tools, provider status, session metrics, and any detected anomalies. Use it when something feels wrong or before reporting a bug.',
+      'The CLI host prints provider/model and optional wire family, project root, token totals, estimated cost, tool/MCP counts, recent errors and recent side effects. It does not enumerate Node version, process memory, plugins or loaded skills. Output depends on the host adapter.',
     before: 'No preparation needed. Run it anytime you want a system health snapshot.',
     during:
       'The report prints section by section. Each section is labeled and can be visually scanned for warnings.',
@@ -255,7 +253,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Show token, cost, and iteration statistics for the current session — understand where your budget is going.',
     behavior:
-      'The command prints a breakdown: total tokens used (input vs output), estimated cost, iteration count, tool call count, and averages per turn. Some providers expose more detail than others. The stats reset when you start a new session.',
+      'The CLI SessionStats report shows elapsed time, iterations, API requests, token/cache usage, estimated cost, per-tool counts and average durations, and file/shell/fetch activity. First-token latency and error counts appear when available. An inactive session has no report yet.',
     before:
       'No preparation needed. Run it to check your usage against provider limits or cost concerns.',
     during: 'The stats print instantly — no model call required.',
@@ -266,7 +264,7 @@ export const commandDetailsPart1: CommandDetailMap = {
   '/memory': {
     purpose: 'Search, graph, verify, clean, import, and inspect the structured Sage system.',
     behavior:
-      'Sage persists facts across sessions. `/memory search <query>` finds relevant memories. `/memory graph` shows the knowledge graph. `/memory verify` checks integrity. `/memory hygiene` cleans stale entries. `/memory import` loads from external sources. The memory system auto-injects relevant facts into agent context.',
+      'Sage persists facts across sessions. `/memory search <query>` finds relevant memories. `/memory graph` shows the knowledge graph. `/memory verify` checks integrity. `/memory hygiene` cleans stale entries. `/memory import-legacy` loads from the legacy flat-file store; `remember`, `update`, `delete`/`forget` edit structured entries; `race` and `diagnostics` compare the lexical and semantic channels. The memory system auto-injects relevant facts into agent context.',
     before:
       'Think about what you want to find or manage. Use search for fact retrieval, graph for relationship exploration.',
     during:
@@ -278,17 +276,18 @@ export const commandDetailsPart1: CommandDetailMap = {
   '/todos': {
     purpose: 'View and manage the current session todo list — the agent tactical task tracker.',
     behavior:
-      'The todo list is the agent per-turn task list. `/todos` prints all items with their status (pending, in_progress, completed). The agent updates it automatically as it works. You can add, remove, or reorder items manually. Unlike `/tasks`, todos are ephemeral and reset each session.',
+      'The todo list is the agent per-turn task list. `/todos` prints all items with their status (pending, in_progress, completed). The agent updates it automatically as it works. You can add (`/todos add <text>`), complete (`/done`, `done-all`) or remove items — there is no reorder. Todos bound to Kanban tasks are projections: mutate them through Kanban. Unlike /tasks, todos are ephemeral and reset each session.',
     before: 'No preparation needed. Run it to see what the agent is currently working on.',
     during: 'The list prints with status indicators. Only one item can be in_progress at a time.',
-    after: 'Completed items stay visible for the session. Use `/clear` to reset the todo list.',
+    after:
+      'Completed items stay visible for the session. Use `/todos clear` to reset the list (refused while Kanban projections are present).',
   },
 
   '/tasks': {
     purpose:
       'Manage structured tasks with priorities, dependencies, types, and assignments — a richer alternative to todos.',
     behavior:
-      'Tasks support types (feature, bugfix, refactor, docs, test, chore), priorities, dependency chains, assignees, and estimates. `/tasks` shows the full list. Tasks can be session-scoped or project-scoped. Use `/tasks promote` to convert a task into actionable todos.',
+      'Tasks support types (feature, bugfix, refactor, docs, test, chore), priorities (critical, high, medium, low), dependency chains, assignees, and statuses (pending, in_progress, blocked, failed, review, completed). `/tasks` shows progress plus the list; `start`/`done`/`fail`/`status` change state and refuse while dependencies are unfinished. Tasks are session-isolated by default and survive resume; use `scope: "project"` in the task tool to share across sessions. `/tasks promote` converts a task into todo items; `planify` promotes it to a plan item.',
     before:
       'Plan your task hierarchy. Define dependencies before marking tasks ready to avoid blocked states.',
     during: 'The task list prints with type badges, priority indicators, and dependency arrows.',
@@ -299,7 +298,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Force the live session writer to flush to disk — persist the current conversation state immediately.',
     behavior:
-      'The session writer normally flushes periodically. `/save` forces an immediate write of the full conversation transcript, memory state, and session metadata to disk. Use it before a risky operation or before closing the terminal.',
+      'The session writer buffers events and flushes periodically. `/save` calls `ctx.session.flush()` to force buffered events to disk immediately — no session_end marker is written, because the session is still running. Use it before a risky operation or before closing the terminal.',
     before: 'No preparation needed. It is safe to run at any time.',
     during: 'The flush happens synchronously — the prompt returns when the write is complete.',
     after:
@@ -310,7 +309,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'List and resume saved sessions — pick up where you left off, also available as `/resume` and `/load`.',
     behavior:
-      'The command lists all saved sessions with timestamps, durations, and summary snippets. `/sessions resume <id>` restores a session with its full context, todo list, plan, and memory state. `/sessions rename <id> "name"` labels a session. `/sessions delete <id>` removes old sessions.',
+      'The command lists recent sessions with ids, names, dates and auto-derived titles. Subcommands: `status`/`live` (live registry view), `agents`, `kill <id> [--force]` (SIGTERM another session by PID), `rename <id> [name]`, `move <id> <path>` (to another worktree/project), `archive [<id>|--apply]` (gzip closed JSONL logs), and `rehydrate <id>`. Resuming is done through `/resume` (interactive picker, `--incomplete` for crashed sessions) or `wstack resume <id>` — there is no `/sessions delete`; deletion is `/prune`.',
     before: 'Save your current session with `/save` first if you plan to switch.',
     during:
       'The session list prints with IDs and metadata. Resuming loads the session and prints a restore summary.',
@@ -322,17 +321,18 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Preview or delete old session data — free disk space by removing stale transcripts and checkpoints.',
     behavior:
-      '`/prune` shows a preview of which sessions are eligible for deletion based on age and size. `/prune --execute` performs the deletion. You can filter by age, project, or session count. Pruning is irreversible — the preview is always shown before deletion.',
+      '`/prune` deletes sessions older than 30 days by default; `/prune 14` uses a 14-day cutoff (1–365). `/prune --dry-run` previews what would be deleted without deleting. `/prune --checkpoints` reclaims workspace checkpoints no session references; `/prune --rebuild-index` rebuilds the session index from disk. Pruning is irreversible — use `--dry-run` first. To compress instead of delete, use `/sessions archive`.',
     before:
-      'Run `/prune` without flags first to preview what would be deleted. Confirm nothing important is in the list.',
-    during: 'The preview lists sessions with size and age. The execute phase shows progress.',
-    after: 'Run `/prune` again to confirm the old sessions are gone. Freed disk space is reported.',
+      'Run `/prune --dry-run` first to preview what would be deleted. Confirm nothing important is in the list.',
+    during: 'The dry run lists sessions older than the cutoff. Deletion reports the pruned count.',
+    after:
+      'Run `/prune --dry-run` again to confirm the old sessions are gone. The checkpoint sweep reports reclaimed MiB.',
   },
 
   '/exit': {
     purpose: 'Close the REPL cleanly — aliases include `/quit` and `/q`.',
     behavior:
-      'The command triggers a graceful shutdown: the session is saved, active subagents are terminated, cron jobs are cancelled, and the process exits. Any unsaved changes are flushed before exit. Use this instead of Ctrl+C for a clean teardown.',
+      'The command runs the host’s before-exit hook (e.g. an uncommitted-changes check that can abort with a message; the exit still proceeds) and then the exit hook, which performs the surface’s clean teardown before the process ends. Use this instead of Ctrl+C for a clean exit.',
     before: 'Confirm you want to end the session. Any running fleet operations will be terminated.',
     during:
       'The shutdown sequence prints: saving session, stopping agents, cancelling timers, exiting.',
@@ -343,7 +343,7 @@ export const commandDetailsPart1: CommandDetailMap = {
     purpose:
       'Abort the in-flight leader iteration safely — stop the agent mid-thought without corrupting session state.',
     behavior:
-      'When the agent is in the middle of a model call or long tool execution, `/interrupt` sends a cancellation signal. The current operation stops gracefully, partial output is discarded, and the REPL prompt returns. Unlike Ctrl+C, it does not risk corrupting the session file.',
+      '`/interrupt` (aliases `/stop`, `/int`) aborts the in-flight leader run via the surface-installed interrupt controller and also kills every running subagent through the fleet hook; `/interrupt all` is the same spelled explicitly. In the TUI and WebUI a slash command dispatches even mid-run; in the plain REPL the prompt blocks during a run, so Ctrl+C remains the mid-run path there.',
     before: 'Use when the agent is stuck, looping, or heading in the wrong direction.',
     during:
       'The interrupt signal propagates. In-flight tool calls may complete or abort depending on their phase.',

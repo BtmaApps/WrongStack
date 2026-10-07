@@ -98,6 +98,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
             role: those properties are only meaningful on a focusable separator,
             so AT had no widget to expose and the drag was mouse-only. Now an
             explicit role="separator" that keyboard users can operate too. */}
+        {/* biome-ignore lint/a11y/useSemanticElements: a focusable splitter widget; <hr> is a non-interactive thematic break. */}
         <div
           role="separator"
           aria-orientation="vertical"

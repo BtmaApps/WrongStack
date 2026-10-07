@@ -12,7 +12,7 @@ export function SkillsPage() {
             Teach the agent <span className="text-brand">new capabilities.</span>
           </>
         }
-        description="Skills are installable packages of instructions, trigger words, and capability declarations. They auto-activate when you mention their keywords — no mode switch, no manual loading."
+        description="Skills are installable packages of instructions and trigger descriptions. The agent surfaces them from the available-skills list and loads the body on demand — no mode switch, no manual loading."
         aside={<ExternalDoc path="docs/skills.md">Open Skills docs</ExternalDoc>}
       />
 
@@ -20,25 +20,25 @@ export function SkillsPage() {
         <SectionIntro
           index="01"
           eyebrow="How they work"
-          title="Trigger words activate skills automatically."
-          description="Every skill declares a set of trigger words. When your message contains one, the skill's full instruction body is injected into the agent's context — no command needed."
+          title="Descriptions steer skill selection."
+          description="Each skill carries a description (and an optional `trigger` line) that is surfaced in the available-skills list. The agent selects relevant skills from those descriptions and loads the full body with the skill tool — no mode switch needed."
         />
         <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line lg:grid-cols-3">
           {[
             {
               step: '01',
-              title: 'You mention a trigger',
-              body: 'Type "help me with the security audit" or "scan for SQL injection." The skill system detects the trigger words and activates the matching skill.',
+              title: 'A task matches',
+              body: 'Type "help me with the security audit." The agent reads each skill\u2019s description — or its explicit "Use when…" trigger line — to decide which skills are relevant.',
             },
             {
               step: '02',
               title: 'Skill body loads',
-              body: "The skill's full instruction text — methodology, checklists, code patterns — is injected into the agent's system prompt for that turn.",
+              body: "The selected skill's full instruction text — methodology, checklists, code patterns — is delivered through the skill tool (progressive mode) or injected into the system prompt within its budget (eager mode).",
             },
             {
               step: '03',
               title: 'Agent applies it',
-              body: "The agent follows the skill's detailed instructions alongside its baseline rules. The skill deactivates after the turn unless triggered again.",
+              body: "The agent follows the skill's detailed instructions alongside its baseline rules. Use `/skill use <name> <task>` to select one explicitly.",
             },
           ].map(({ step, title, body }) => (
             <article key={step} className="bg-card p-7">
@@ -174,10 +174,19 @@ export function SkillsPage() {
             {[
               { label: 'name', body: 'Unique identifier. Used for installation and resolution.' },
               { label: 'description', body: 'Short summary shown in listings and search results.' },
-              { label: 'triggers', body: 'Words and phrases that auto-activate this skill.' },
-              { label: 'capabilities', body: 'Required tools or permissions the skill needs.' },
-              { label: 'body', body: 'The full instruction text injected into the system prompt.' },
-              { label: 'version', body: 'Semver. Used by /skill-update for upgrade checking.' },
+              {
+                label: 'trigger',
+                body: 'Optional "Use when…" line shown in the available-skills list.',
+              },
+              {
+                label: 'allowed-tools',
+                body: 'Optional tool list — informational, never enforced.',
+              },
+              {
+                label: 'body',
+                body: 'The full instruction text delivered by the skill tool or injected eagerly.',
+              },
+              { label: 'version', body: 'Optional SemVer string — informational only.' },
             ].map(({ label, body }) => (
               <div key={label} className="rounded-xl border border-line bg-card p-5">
                 <h3 className="font-black text-sm text-fg">{label}</h3>

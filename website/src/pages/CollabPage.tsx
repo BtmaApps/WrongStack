@@ -182,6 +182,11 @@ export function CollabPage() {
                     type: 'enum',
                     desc: 'bug_finding | refactor_plan',
                   },
+                  {
+                    name: 'evaluation.subjectId',
+                    type: 'string',
+                    desc: 'ID of the finding or plan being evaluated',
+                  },
                   { name: 'evaluation.score', type: 'number', desc: '0–10 quality score' },
                   {
                     name: 'evaluation.verdict',
@@ -201,7 +206,7 @@ export function CollabPage() {
                   {
                     name: 'evaluation.concerns',
                     type: 'object[]',
-                    desc: '{ description, severity: blocking|advisory }',
+                    desc: '{ description, severity: blocking|advisory, location? }',
                   },
                 ],
               },
@@ -406,7 +411,7 @@ export function CollabPage() {
               <div>
                 <span className="text-zinc-500">sessionId</span>
                 <span className="text-zinc-600">: </span>
-                <span className="text-amber-300">uuid</span>
+                <span className="text-amber-300">string</span>
               </div>
               <div>
                 <span className="text-zinc-500">disposition</span>
@@ -505,7 +510,7 @@ export function CollabPage() {
             index="06"
             eyebrow="Usage guide"
             title="Package by package. Never the whole repo."
-            description="Collab sends the full file snapshot to three agents. Each agent reads every file. Target one module at a time — 10–20 files is ideal, 20–30 is the limit, 50+ will fail."
+            description="The collab_debug tool takes targetPaths and sends the full file snapshot to three agents. Each agent reads every file. Target one module at a time — 10–20 files is ideal, 20–30 is the limit, 50+ will fail."
           />
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-line bg-card p-7">
@@ -514,15 +519,15 @@ export function CollabPage() {
               <div className="mt-5 space-y-2">
                 {[
                   {
-                    cmd: '/collab packages/core/src/agents/',
+                    cmd: 'collab_debug(["packages/core/src/agents/"])',
                     desc: 'Single package directory — 10–15 files. Reliable in under 3 minutes.',
                   },
                   {
-                    cmd: '/collab packages/runtime/src/sessions/',
+                    cmd: 'collab_debug(["packages/runtime/src/sessions/"])',
                     desc: 'Subdirectory within a package — 5–8 files. Fast, focused results.',
                   },
                   {
-                    cmd: '/collab src/auth/ src/middleware/',
+                    cmd: 'collab_debug(["src/auth/", "src/middleware/"])',
                     desc: 'Multiple small targets — each 5–10 files. Handled in one snapshot.',
                   },
                 ].map(({ cmd, desc }) => (

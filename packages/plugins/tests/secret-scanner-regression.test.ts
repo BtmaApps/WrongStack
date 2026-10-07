@@ -15,7 +15,7 @@
  *  3. Any input longer than the scan window was skipped outright, making
  *     file size itself a bypass.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -202,6 +202,31 @@ describe('large inputs are scanned, not skipped', () => {
     expect(result?.decision).toBe('block');
     expect(result?.reason).toContain('github_pat');
     secretScannerPlugin.teardown?.(api as Any);
+  });
+
+  it('still names the credential when a loaded host trips the wall-clock budget', () => {
+    // Under a saturated full-suite run the cumulative 100 ms budget elapsed on
+    // this benign scan; the throw then discarded the match already in hand and
+    // the block reason said only "ReDoS timeout". Simulate the stall.
+    const api = makeApi();
+    secretScannerPlugin.setup(api as Any);
+    let now = 0;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => (now += 1_000));
+    try {
+      const filler = 'x'.repeat(250_000);
+      const result = getPreHook(api)({
+        event: 'PreToolUse',
+        toolName: 'write',
+        toolInput: { path: 'big.txt', content: `${filler}\n${githubPat()}\n${filler}` },
+        cwd: '/tmp',
+      });
+      expect(result?.decision).toBe('block');
+      expect(result?.reason).toContain('ReDoS timeout');
+      expect(result?.reason).toContain('github_pat');
+    } finally {
+      clock.mockRestore();
+      secretScannerPlugin.teardown?.(api as Any);
+    }
   });
 
   it('finds a credential straddling a window boundary', () => {

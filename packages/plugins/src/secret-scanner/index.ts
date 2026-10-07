@@ -39,6 +39,7 @@ import {
   findMatches,
   MAX_TOTAL_SCAN_LENGTH,
   redactInput,
+  SecretScanTimeoutError,
   scanInput,
   setCombinedRegex,
   TOO_LARGE_MARKER,
@@ -225,10 +226,13 @@ function buildHook(
     } catch (err) {
       if (String(err).includes('ReDoS')) {
         state.timeoutCount += 1;
+        const partial =
+          err instanceof SecretScanTimeoutError && err.matchedSoFar.length > 0
+            ? ` Matched before the budget ran out: ${err.matchedSoFar.join(', ')}.`
+            : '';
         return {
           decision: 'block',
-          reason:
-            'secret-scanner: ReDoS timeout — regex scan exceeded the wall-clock budget. Fail-closed: treated as a block.',
+          reason: `secret-scanner: ReDoS timeout — regex scan exceeded the wall-clock budget. Fail-closed: treated as a block.${partial}`,
         };
       }
       throw err;

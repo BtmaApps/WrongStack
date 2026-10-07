@@ -24,7 +24,7 @@ const workflows = [
   [
     'SDD',
     'Feature work that benefits from requirements, design, tasks, implementation and verification.',
-    '/sdd "add account switching"',
+    '/sdd new "add account switching"',
     '/commands/sdd',
   ],
   [
@@ -42,7 +42,7 @@ const workflows = [
   [
     'Collab debug',
     'Three specialist roles that stream bug findings, plans and criticism through FleetBus.',
-    '/collab src/auth',
+    'collab_debug tool',
     '/commands/collab',
   ],
   [
@@ -110,10 +110,10 @@ export function WorkflowsPage() {
             index="02"
             eyebrow="Spec-driven development"
             title="Turn a feature request into a verified implementation trail."
-            description="SDD keeps requirements, analysis, design, tasks and implementation state under the project instead of leaving the plan inside transient chat."
+            description="SDD keeps the spec, implementation plan, and task state under the project instead of leaving the plan inside transient chat."
           />
           <div className="mt-12 grid gap-2 lg:grid-cols-5">
-            {['Requirements', 'Analysis', 'Design', 'Tasks', 'Implementation'].map(
+            {['Questioning', 'Spec review', 'Implementation', 'Task review', 'Executing'].map(
               (phase, index) => (
                 <article key={phase} className="relative rounded-xl border border-line bg-card p-5">
                   <span className="font-mono text-xs font-black text-brand-2">0{index + 1}</span>

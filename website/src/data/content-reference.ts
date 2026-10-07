@@ -114,8 +114,9 @@ export const settingGroups: SettingGroup[] = [
       },
       {
         key: 'tools.maxIterations',
-        defaultValue: '100',
-        explanation: 'Soft iteration ceiling; can auto-extend.',
+        defaultValue: '0 (unlimited)',
+        explanation:
+          'No hard turn cap by default. A positive limit is a hard stop unless autoExtendLimit is enabled.',
       },
       {
         key: 'tools.iterationTimeoutMs',
@@ -171,9 +172,9 @@ export const settingGroups: SettingGroup[] = [
     icon: Network,
     fields: [
       {
-        key: 'fleet.maxConcurrent',
-        defaultValue: '4',
-        explanation: 'Maximum simultaneously active subagents.',
+        key: 'maxConcurrent',
+        defaultValue: '10',
+        explanation: 'Top-level limit on simultaneously active subagents.',
       },
       {
         key: 'fleet.lifecycle',
@@ -200,10 +201,10 @@ export const settingGroups: SettingGroup[] = [
     fields: [
       {
         key: 'session.auditLevel',
-        defaultValue: 'standard',
+        defaultValue: 'full',
         explanation: 'Controls optional audit-event detail.',
       },
-      { key: 'log.level', defaultValue: 'info', explanation: 'Runtime log verbosity.' },
+      { key: 'log.level', defaultValue: 'warn', explanation: 'Runtime log verbosity.' },
       {
         key: '--metrics',
         defaultValue: 'off',

@@ -375,7 +375,8 @@ const featuredUsage: Record<string, { usage: string[]; note?: string }> = {
     note: 'Solo sessions only. A round budget authorizes investigations, not a guaranteed number of fixes.',
   },
   '/sdd': {
-    usage: ['/sdd "add OAuth account switching"', '/sdd status'],
+    usage: ['/sdd new "add OAuth account switching"', '/sdd approve', '/sdd status'],
+    note: 'Phase flow: questioning → spec_review → implementation → task_review → executing. /sdd approve advances each phase.',
   },
   '/skill-install': {
     usage: ['/skill-install user/repo', '/skill-install registry:skill-id'],
@@ -436,6 +437,7 @@ const pluginCommands = new Set([
   '/prompts',
   '/prompt',
   '/prompt-gen',
+  '/bughunt',
   '/sync',
   '/skill',
   '/skill-gen',

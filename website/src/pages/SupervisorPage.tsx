@@ -12,7 +12,7 @@ export function SupervisorPage() {
             The Brain's <span className="text-brand">safety gate.</span>
           </>
         }
-        description="The Fleet Supervisor sits between the Director and every agent action. It evaluates spawns, assignments, and tool escalations against Brain risk thresholds — approving safe operations and blocking risky ones."
+        description="The Fleet Supervisor is the brain-gated watcher of a running Director fleet. It monitors queue shape and worker activity and — through the tiered Brain (policy → LLM → human, /brain risk ceiling) — rebalances pending tasks off overloaded workers, spawns helpers on deep backlogs, steers stuck or repeatedly-failing workers, and keeps the leader informed."
         aside={<ExternalDoc path="docs/slash/supervisor.md">Open Supervisor docs</ExternalDoc>}
       />
 
@@ -56,27 +56,27 @@ export function SupervisorPage() {
         <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
           <SectionIntro
             index="02"
-            eyebrow="What it checks"
-            title="Four categories of fleet actions."
-            description="Deterministic rules handle common cases. The Brain model only engages for borderline decisions."
+            eyebrow="What it watches"
+            title="Four engagement signals."
+            description="Deterministic signals decide when to engage; every intervention is then gated by the Brain (/brain risk ceiling applies)."
           />
           <div className="mt-12 grid gap-6 lg:grid-cols-4">
             {[
               {
-                label: 'Agent spawns',
-                body: 'Before a new subagent is created, the Supervisor verifies the spawn is within budget limits and risk thresholds.',
+                label: 'Starvation',
+                body: 'A pinned task waits longer than the configured starvation window before the Supervisor considers retargeting it.',
               },
               {
-                label: 'Task assignments',
-                body: "Every task dispatch is checked: is the role appropriate? Does the task match the agent's capabilities?",
+                label: 'Overload',
+                body: 'A worker holding at least the overload threshold of pinned tasks has pending work rebalanced onto free workers.',
               },
               {
-                label: 'Tool escalations',
-                body: 'When an agent requests a tool outside its default permission set, the Supervisor evaluates against Brain policy.',
+                label: 'Deep backlog',
+                body: 'When pending work exceeds a multiple of the worker count, the Supervisor can spawn helpers (config fleet.supervisor.allowSpawn).',
               },
               {
-                label: 'Budget exhaustion',
-                body: 'Agents approaching token, cost, or iteration caps trigger a pre-emptive review before the hard limit.',
+                label: 'Stuck and failing workers',
+                body: 'Workers silent past the stuck window or on a failure streak get steered — or terminated when config allows (fleet.supervisor.allowTerminate).',
               },
             ].map(({ label, body }) => (
               <div key={label} className="rounded-xl border border-line bg-card p-5">
@@ -133,15 +133,19 @@ export function SupervisorPage() {
             {[
               {
                 cmd: '/supervisor status',
-                desc: 'Show current state: enabled/disabled, recent decisions, blocked actions count.',
+                desc: 'Show running state, config (interval, cooldown, signal thresholds, allowed actions) and the last engagement.',
               },
               {
                 cmd: '/supervisor on',
-                desc: 'Enable the Supervisor. All fleet actions are gated by Brain risk policy.',
+                desc: 'Arm the supervision evaluation loop for this session.',
               },
               {
                 cmd: '/supervisor off',
-                desc: 'Disable the Supervisor. Not recommended for production — bypasses Brain safety.',
+                desc: 'Disarm it — no further automatic interventions this session.',
+              },
+              {
+                cmd: '/supervisor log [n]',
+                desc: 'Show the last n supervision entries (default 10): signal → proposed action → outcome.',
               },
             ].map(({ cmd, desc }) => (
               <div key={cmd} className="rounded-xl border border-line bg-card p-5">

@@ -234,7 +234,7 @@ export function TelegramPage() {
               desc: 'Send a message. Optional numeric chat_id overrides the default. Falls back to configured notifyChatId.',
             },
             {
-              cmd: '/chatid',
+              cmd: '/telegram:chatid',
               alias: '',
               desc: 'Show the configured default notification chat ID. Use this to verify your setup or copy the ID for /send.',
             },

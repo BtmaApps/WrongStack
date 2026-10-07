@@ -107,7 +107,7 @@ export function GettingStartedPage() {
             index="02"
             eyebrow="Authentication"
             title="Start with the account you already have."
-            description="ChatGPT with Codex connects through browser sign-in. Other coding plans connect with dedicated API keys. Authentication changes billing and access—not the agent kernel or tool system."
+            description="ChatGPT with Codex, Claude and GitHub Copilot have subscription sign-in routes. Other coding plans use dedicated API keys. Authentication changes billing and access—not the agent kernel or tool system."
           />
           <div className="mt-12 grid gap-6 overflow-hidden rounded-2xl border border-emerald-500/30 bg-ink p-6 text-white sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
@@ -202,7 +202,7 @@ export function GettingStartedPage() {
               Laptop,
               'Browser workspace',
               'wstack --webui --open',
-              'Shares the live CLI agent with a rich browser view, or run wstack --webui for a standalone agent.',
+              'Starts a browser-driven agent session instead of the terminal REPL. Add --open to launch the browser automatically.',
             ],
             [
               MessageSquareMore,
@@ -302,7 +302,7 @@ export function GettingStartedPage() {
           {[
             {
               title: 'macOS',
-              body: 'Native binary for Apple silicon and Intel, ad-hoc signed by the installer. Git is pre-installed. Use Terminal.app or iTerm2. API keys go in the active ~/.wrongstack/profiles/<name>/config.json.',
+              body: 'Native binary for Apple silicon and Intel, ad-hoc signed by the installer. Ensure Git is installed. Use Terminal.app or iTerm2. Run wstack auth to save encrypted credentials in the active profile configuration.',
             },
             {
               title: 'Linux',

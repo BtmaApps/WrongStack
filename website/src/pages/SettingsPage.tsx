@@ -241,7 +241,7 @@ export function SettingsPage() {
           <div>
             <h3 className="font-black text-fg">Where private project settings go</h3>
             <code className="mt-2 block font-mono text-xs text-brand">
-              ~/.wrongstack/projects/&lt;slug&gt;/config.local.json
+              ~/.wrongstack/projects/&lt;hash&gt;/config.local.json
             </code>
             <p className="mt-2 text-sm leading-6 text-muted">
               This file is project-specific but lives outside the repository, so it can safely

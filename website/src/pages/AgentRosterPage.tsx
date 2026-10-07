@@ -11,10 +11,10 @@ import {
 import { useMemo, useState } from 'react';
 import {
   ExternalDoc,
+  heroTitleFontSize,
   PageHero,
   PageNext,
   SectionIntro,
-  heroTitleFontSize,
 } from '@/components/site/primitives';
 import {
   builtInRosterCount,
@@ -55,12 +55,12 @@ export function AgentRosterPage() {
         titleFontSize={heroTitleFontSize('One accountable fleet.')}
         title={
           <>
-            Fifty-one roles.
+            {builtInRosterCount} roles.
             <br />
             <span className="text-brand-2">One accountable fleet.</span>
           </>
         }
-        description="WrongStack provides 50 selectable phase-catalog specialists plus the separate Shadow operational role. Each has its own capability signals, prompt, tool scope and budget profile; smart dispatch uses those contracts to send bounded work to the right specialist."
+        description="WrongStack provides 79 selectable phase-catalog specialists plus four operational roles including the Shadow monitor. Each has its own capability signals, prompt, tool scope and budget profile; smart dispatch uses those contracts to send bounded work to the right specialist."
         aside={
           <ExternalDoc path="docs/slash/fleet.md">Open the fleet operator reference</ExternalDoc>
         }
@@ -71,7 +71,7 @@ export function AgentRosterPage() {
           index="01"
           eyebrow="Current source count"
           title="The old 47-agent number is no longer current."
-          description="The live FLEET_ROSTER resolves 50 phase-catalog roles plus the Shadow operational role. Five optional ACP agents extend the addressable catalog without entering the in-process roster."
+          description="The live FLEET_ROSTER resolves 79 phase-catalog roles plus four operational roles (Shadow, generic, explore-companion, chaos-monkey). Five optional ACP agents extend the addressable catalog without entering the in-process roster."
         />
         <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
           {[

@@ -138,9 +138,10 @@ describe('choke point selects the windows-native backend (plan 28 T5/T5.1)', () 
         windowsNativeSandboxBackend.enforceExec({ tool: 'stub-exec', config }),
       ).resolves.toEqual({ outcome: 'allow' });
     } else {
-      await expect(
-        windowsNativeSandboxBackend.enforceExec({ tool: 'stub-exec', config }),
-      ).rejects.toThrow(SandboxDeniedError);
+      // enforceExec returns a decision; only the choke point (wrap.ts) throws.
+      const decision = await windowsNativeSandboxBackend.enforceExec({ tool: 'stub-exec', config });
+      expect(decision.outcome).toBe('deny');
+      if (decision.outcome === 'deny') expect(decision.reason).toContain('requires Windows');
     }
   });
 

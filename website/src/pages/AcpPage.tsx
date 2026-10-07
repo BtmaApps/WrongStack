@@ -12,7 +12,7 @@ export function AcpPage() {
             Drive external agents <span className="text-brand">from one terminal.</span>
           </>
         }
-        description="Agent Communication Protocol v1 — WrongStack is both client and server. Drive Claude Code, Gemini CLI, Codex CLI, and 9 more using their existing logins. External editors can drive WrongStack as an ACP server."
+        description="Agent Communication Protocol v1 — WrongStack is both client and server. Drive Claude Code, Gemini CLI, Codex CLI, and 10 more using their existing logins. External editors can drive WrongStack as an ACP server."
         aside={<ExternalDoc path="docs/acp-ensemble.md">Open ACP architecture</ExternalDoc>}
       />
 
@@ -31,7 +31,7 @@ export function AcpPage() {
               items: [
                 'Spawns agents as child processes over stdio',
                 'Full v1 client state machine: init→new→prompt→stream',
-                'Answer fs/read, terminal/create, session/request_permission',
+                'Answer fs/read_text_file, fs/write_text_file, terminal/create, session/request_permission',
                 'session/cancel notification on abort',
                 'Each agent uses its own tools, models, and permissions',
               ],
@@ -40,10 +40,11 @@ export function AcpPage() {
               icon: Network,
               title: 'ACP Server',
               items: [
-                'Full v1 method set: 9 methods',
-                'initialize, authenticate, session/new, session/prompt',
-                'session/cancel, set_mode, set_config_option, session/load, session/list',
-                '8 notification types emitted to client',
+                '17 request methods incl. providers/* and mcp/message',
+                'initialize, authenticate, logout, session/new, session/prompt',
+                'session/load, session/resume, session/close, session/delete, session/fork',
+                'session/set_mode, session/set_config_option, session/list, providers/list, providers/set, providers/disable, mcp/message',
+                'session/update notifications streamed to the client per turn',
                 'Per-session concurrency with proper AbortController cancellation',
               ],
             },
@@ -69,7 +70,7 @@ export function AcpPage() {
           <SectionIntro
             index="02"
             eyebrow="Discovery"
-            title="Live $PATH probe. 12 agents. Cached results."
+            title="Live $PATH probe. 13 agents. Cached results."
             description="EnsembleRegistry probes all catalog entries in parallel. Results are cached for 5 seconds. The bundled catalog is the offline fallback; `/acp sync` fetches the official registry (37+ agents)."
           />
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -86,6 +87,7 @@ export function AcpPage() {
               { name: 'Goose', vendor: 'Community', integration: 'experimental' },
               { name: 'OpenHands', vendor: 'Community', integration: 'experimental' },
               { name: 'Mistral Vibe', vendor: 'Community', integration: 'experimental' },
+              { name: 'Kimi Code CLI', vendor: 'Moonshot', integration: 'native' },
             ].map(({ name, vendor, integration }) => (
               <div key={name} className="rounded-xl border border-line bg-card p-4">
                 <h3 className="font-black text-sm text-fg">{name}</h3>
@@ -127,7 +129,7 @@ export function AcpPage() {
                 },
                 {
                   cmd: '/acp list',
-                  desc: 'Live detection: installed/not-found for all 12 catalog entries with integration status.',
+                  desc: 'Live detection: installed/not-found for all 13 catalog entries with integration status.',
                 },
                 {
                   cmd: '/acp sync',
