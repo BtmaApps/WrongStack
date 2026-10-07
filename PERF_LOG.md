@@ -1,5 +1,19 @@
 # Performance log
 
+## 2026-10-07 - subscription replay invariants baseline (second cache audit)
+
+Workload: deterministic two-request reasoning/tool replay on Codex and public ChatGPT; two short distinct opaque session ids; same tool array before/after adding a definition. Command: `pnpm exec vitest run --config .temp_files/openai-cache-audit-round2/proof.config.ts .temp_files/prove_F2026100704_reasoning_summary.test.ts .temp_files/prove_F2026100705_affinity_collision.test.ts .temp_files/prove_F2026100706_tool_array_cache.test.ts --reporter=verbose`. Windows x64 / Node v24.13.0 / pnpm 12.3.4; shared base HEAD 7d48d6df186182f4a3a5d3caa424e77e587ae345 plus first cache round and concurrent unrelated changes.
+Baseline: nonempty reasoning summary replays as empty; two distinct ids produce one identity and share turn state; a two-tool mutable list replays as one tool. Unaffected empty-summary, safe-id and new-array controls pass. These are correctness/ownership invariants, not timing or live cache-hit/allowance measurements.
+After: the unchanged proofs retain both routes' server summaries, isolate original opaque IDs and turn state, and send current tool membership/nested schema content. `node .temp_files/verify_F2026100704_subscription_replay.mjs` passed 22 checks on three consecutive runs. Existing default wire-description budgets and stable memo hits are preserved; mutable tool definitions now require a content fingerprint, which adds host work to establish correctness. No host-latency improvement is claimed.
+Separate bounded live transport measurement: `pnpm exec tsx .temp_files/openai-cache-audit-round2/live-cache-probe.ts --run`; exactly 3 HTTP requests per saved subscription route on gpt-6.1-sol, with no retry/prewarm/credential renewal. Both report prompt/read/fresh respectively 1401/0/1401, 1418/1280/138, 1435/1280/155; warm hit shares 90.27% and 89.20%, output=5 each. Combined 8508 prompt / 3388 fresh / 5120 cached / 30 output. This small stable synthetic reference is a current-backend cache measurement, not old/new-code A/B or a subscription-quota saving claim.
+
+## 2026-10-07 - ChatGPT public Responses cache prefix baseline
+
+HEAD: 7d48d6df186182f4a3a5d3caa424e77e587ae345; Windows x64 / Node v24.13.0 / pnpm 12.3.4.
+Workload: two requests, fixed 19,000-character instructions, 20 unchanged history items, one marked volatile block changing from live A to live B. Command: `pnpm exec vitest run --config .temp_files/openai-cache-audit/proof.config.ts .temp_files/prove_F2026100701_chatgpt_prefix.test.ts --reporter=verbose`.
+Baseline measured: ChatGPT stable instructions=false; Codex control=true; history overlap=20/20 and latest state delivered on both. This is a cache-prefix correctness defect, not a wall-clock or live quota benchmark. Each repair will be independently verified. No cache-hit percentage or subscription saving inferred from JSON equality.
+After, unchanged proof: stable instructions=true on both routes; history overlap remains 20/20 and latest state is delivered. Three consecutive runs of `node .temp_files/verify_F2026100701_chatgpt_cache.mjs` each passed 15 checks, including empty history, sibling identity, missing/long keys, aliased subscription integration and gated out-of-order diagnostic correlation. The existing stable instruction prefix is no longer rewritten by the marked live block. Backend cache-hit/quota savings remain unmeasured.
+
 ## 2026-09-30 — core: pruneSessionFiles retention sweep pipelining (perf-ratchet round session-store-prune-conc-2026-09-30)
 
 commit: 85916462541c50748be6efa2e5c77e8a7ca297ca (shared working tree; this round's change is confined to `packages/core/src/storage/session-store/prune-helpers.ts` plus one regression test. The tree carries unrelated in-flight work from other sessions, so this id identifies the base, not the change.)

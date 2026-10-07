@@ -15,3 +15,8 @@
 - In `packages/cli/src/hq-server/ws.ts`, reject eviction claims unless `sameCredential` matches; only then may `clients.delete` + `close(4001)` or undelivered-command inheritance occur.
 - Treat `readyState === OPEN` gate on `4003` refusal as deliberate rotated-token-reconnect design documented at the comment above it.
 - Treat `ws.on('close')` cleanup, not the TTL sweep, as primary dead-holder removal.
+
+- When introducing an allow-everything mode that must not outrank user refusals, fail closed on rules that could not be evaluated — in `packages/core/src/security/permission-policy.ts` the `denyUnevaluated` refusal before the YOLO+ auto-allow is the pattern that keeps a broad switch from silently outranking a rule the user wrote. (anchors: `packages/core/src/security/permission-policy.ts`, `denyUnevaluated`) [applied 4×, 4 ok]
+
+---
+*Distilled 2026-10-07T07:45:44.194Z · 1 new directive*

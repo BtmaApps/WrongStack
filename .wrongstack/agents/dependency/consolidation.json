@@ -1,13 +1,14 @@
 {
-  "consolidatedAt": "2026-09-29T12:06:36.427Z",
+  "consolidatedAt": "2026-10-07T07:47:56.530Z",
   "sourceEntryCount": 0,
   "sourceBytes": 391,
-  "consolidatedBytes": 2209,
-  "trigger": "automatic",
-  "model": "MiniMax-M3.1-Flash-Preview",
+  "consolidatedBytes": 5450,
+  "trigger": "manual",
+  "model": "glm-5.3-flash",
   "pruned": true,
-  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\dependency\\archive\\learned-2026-09-29T12-06-36-427Z.md",
+  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\dependency\\archive\\learned-2026-10-07T07-47-56-530Z.md",
   "skills": [
-    "tech-stack"
+    "tech-stack",
+    "node-modern"
   ]
 }
