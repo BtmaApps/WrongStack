@@ -212,68 +212,6 @@ export function filterFleetTopologyByIdle(
   };
 }
 
-/**
- * Agent statuses that mean "doing work or needs the operator". Everything
- * else — 'idle', a retained node's 'offline', anything unknown — reads as
- * dormant. Waiting-on-user and errored agents deliberately count as
- * attended: hiding idle workers must never swallow one that needs its
- * operator.
- */
-const ATTENDED_AGENT_STATUSES = new Set<string>([
-  'active',
-  'running',
-  'streaming',
-  'waiting_user',
-  'error',
-]);
-
-/** True when an agent is neither working, waiting on the user, nor errored. */
-export function isIdleAgentStatus(status: string | undefined): boolean {
-  return !ATTENDED_AGENT_STATUSES.has(status ?? '');
-}
-
-/**
- * Drop idle agent nodes while keeping the graph a readable hierarchy.
- *
- * With `hideIdle` set, agent nodes whose status reads idle are removed, and
- * a terminal whose agents were ALL hidden by this filter folds away with
- * them — an empty terminal shell is exactly the clutter the toggle exists
- * to remove. Terminals that never had agent children (synthetic "waiting
- * for telemetry" sessions) and the machine/project spine always stay, so
- * the map never hides what is connected — only who is dormant.
- */
-export function filterFleetTopologyByIdle(
-  topology: FleetTopology,
-  hideIdle: boolean,
-): FleetTopology {
-  if (!hideIdle) return topology;
-
-  const childrenById = new Map<string, string[]>();
-  for (const edge of topology.edges) {
-    const children = childrenById.get(edge.source) ?? [];
-    children.push(edge.target);
-    childrenById.set(edge.source, children);
-  }
-
-  const included = new Set<string>();
-  for (const node of topology.nodes) {
-    if (node.kind !== 'agent' || !isIdleAgentStatus(node.status)) included.add(node.id);
-  }
-
-  for (const node of topology.nodes) {
-    if (node.kind !== 'terminal') continue;
-    const agentIds = childrenById.get(node.id) ?? [];
-    // No agent edges means the terminal never had agents — keep it.
-    if (agentIds.length === 0) continue;
-    if (agentIds.every((agentId) => !included.has(agentId))) included.delete(node.id);
-  }
-
-  return {
-    nodes: topology.nodes.filter((node) => included.has(node.id)),
-    edges: topology.edges.filter((edge) => included.has(edge.source) && included.has(edge.target)),
-  };
-}
-
 /** Return nodes in hierarchy order even though the topology builder stores
  * machine records before session-derived project/terminal records. */
 export function orderFleetTopologyNodes(topology: FleetTopology): FleetTopologyNode[] {

@@ -148,6 +148,7 @@ export function useCockpitFleetStats(
     let busy = 0;
     let waiting = 0;
     let errored = 0;
+    let idle = 0;
     let activeSessions = 0;
     for (const session of sessions) {
       if (session.status === 'active') activeSessions += 1;
@@ -156,9 +157,10 @@ export function useCockpitFleetStats(
         if (agent.status === 'running' || agent.status === 'streaming') busy += 1;
         else if (agent.status === 'waiting_user') waiting += 1;
         else if (agent.status === 'error') errored += 1;
+        else idle += 1;
       }
     }
-    return { total, busy, waiting, errored, activeSessions };
+    return { total, busy, waiting, errored, idle, activeSessions };
   }, [sessions]);
 
   const clientVersions = useMemo(() => {

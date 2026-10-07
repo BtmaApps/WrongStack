@@ -24,6 +24,7 @@ import {
 } from '@xyflow/react';
 import {
   Bot,
+  EyeOff,
   FolderGit2,
   GitBranch,
   LayoutGrid,
@@ -54,8 +55,10 @@ import { chatTargetFromNode, type FleetChatTarget } from '../../domain/fleet-cha
 import {
   buildFleetTopology,
   filterFleetTopology,
+  filterFleetTopologyByIdle,
   filterFleetTopologyByQuery,
   fleetColumnFor,
+  isIdleAgentStatus,
   type FleetTopology,
   type FleetTopologyNode,
   type FleetTopologyScope,
@@ -402,6 +405,9 @@ export function FleetMapView(): React.ReactElement {
   const fleetPrefs = useHqLocalPrefs().fleet;
   const scope = fleetPrefs.scope;
   const layout = fleetPrefs.layout;
+  // One shared flag with the Cockpit's Fleet card, so both HQ surfaces
+  // always agree on which workers are visible.
+  const hideIdle = fleetPrefs.hideIdle;
   const [query, setQuery] = useState('');
 
   const machineOptions = useMemo(
@@ -439,9 +445,24 @@ export function FleetMapView(): React.ReactElement {
     () => filterFleetTopology(fullTopology, scope, effectiveScopeId),
     [effectiveScopeId, fullTopology, scope],
   );
+  // How many idle agents the toggle is currently hiding at this scope, so
+  // the button can show what switching it back would restore.
+  const idleHiddenCount = useMemo(
+    () =>
+      hideIdle
+        ? scopedTopology.nodes.filter(
+            (node) => node.kind === 'agent' && isIdleAgentStatus(node.status),
+          ).length
+        : 0,
+    [hideIdle, scopedTopology],
+  );
+  const activityTopology = useMemo(
+    () => filterFleetTopologyByIdle(scopedTopology, hideIdle),
+    [hideIdle, scopedTopology],
+  );
   const topology = useMemo(
-    () => filterFleetTopologyByQuery(scopedTopology, query),
-    [query, scopedTopology],
+    () => filterFleetTopologyByQuery(activityTopology, query),
+    [activityTopology, query],
   );
 
   if (snapshot === null) {
@@ -539,6 +560,16 @@ export function FleetMapView(): React.ReactElement {
           )}
 
           <div className="ml-auto flex items-center gap-1">
+            <Button
+              variant={hideIdle ? 'secondary' : 'ghost'}
+              size="sm"
+              aria-pressed={hideIdle}
+              title="Hide agents that are idle; working, waiting and errored agents stay visible"
+              onClick={() => setHqFleetPrefs({ hideIdle: !hideIdle })}
+            >
+              <EyeOff />
+              Hide idle{idleHiddenCount > 0 ? ` (${idleHiddenCount})` : ''}
+            </Button>
             <span className="text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
               View
             </span>
@@ -587,7 +618,15 @@ export function FleetMapView(): React.ReactElement {
       </div>
 
       {topology.nodes.length === 0 ? (
-        <EmptyState title="No fleet entries match this search" className="m-4" />
+        query.length > 0 ? (
+          <EmptyState title="No fleet entries match this search" className="m-4" />
+        ) : (
+          <EmptyState
+            title="No workers are active right now"
+            hint="Idle agents are hidden — turn off 'Hide idle' to show them."
+            className="m-4"
+          />
+        )
       ) : layout === 'map' ? (
         <ReactFlowProvider>
           <FleetFlow topology={topology} />

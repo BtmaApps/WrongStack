@@ -88,6 +88,7 @@ describe('hq-local-prefs', () => {
       expect(prefs.appearance.theme).toBe('dark');
       expect(prefs.fleet.scope).toBe('all');
       expect(prefs.fleet.layout).toBe('map');
+      expect(prefs.fleet.hideIdle).toBe(false);
       expect(prefs.console.delivery).toBe('steer');
       expect(prefs.control.abortTarget).toBe('leader');
       expect(prefs.control.spawnRole).toBe('bug-hunter');
@@ -156,6 +157,39 @@ describe('hq-local-prefs', () => {
     try {
       const prefs = handle.value();
       expect(prefs.control.cmdType).toBe('steer');
+    } finally {
+      unmountHook(handle);
+    }
+  });
+
+  it('hydrates a persisted fleet.hideIdle flag and drops non-boolean values', () => {
+    seedStorage(JSON.stringify({ fleet: { hideIdle: true } }));
+    reloadHqLocalPrefs();
+    const handle = mountHook();
+    try {
+      expect(handle.value().fleet.hideIdle).toBe(true);
+    } finally {
+      unmountHook(handle);
+    }
+    seedStorage(JSON.stringify({ fleet: { hideIdle: 'yes' } }));
+    reloadHqLocalPrefs();
+    expect(getHqLocalPrefsSnapshot().fleet.hideIdle).toBe(false);
+  });
+
+  it('setHqFleetPrefs persists hideIdle without clobbering sibling fleet prefs', () => {
+    const handle = mountHook();
+    try {
+      act(() => {
+        setHqFleetPrefs({ hideIdle: true });
+      });
+      const prefs = handle.value();
+      expect(prefs.fleet.hideIdle).toBe(true);
+      expect(prefs.fleet.layout).toBe('map');
+      expect(prefs.fleet.scope).toBe('all');
+      const raw = window.localStorage.getItem(__test__.STORAGE_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw ?? '{}') as { fleet: { hideIdle: boolean } };
+      expect(parsed.fleet.hideIdle).toBe(true);
     } finally {
       unmountHook(handle);
     }

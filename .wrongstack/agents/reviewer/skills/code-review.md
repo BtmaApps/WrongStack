@@ -19,3 +19,8 @@
 - Treat `mode === 'off'` (denying every other value) as intentional fail-closed hardening, not automatically a bug against the exec wrapper's `mode !== 'enforced'`; check `SandboxMode` in `packages/core/src/sandbox/types.ts` and the pinning tests in `packages/core/tests/sandbox/mcp-gate.test.ts`.
 
 When these targeted invariants hold and no finding remains, return exactly `{"findings": []}`.
+
+- When a diff adds a required field to a nested interface, immediately read the same module's default-prefs literal and merge/normalization function (`packages/webui-hq/src/data/local-prefs.ts`: `DEFAULT_PREFS`, `mergeWithDefaults`) — an annotated literal missing the new field is an unconditional TS2741 compile break, and the merge function needs explicit per-field type validation or persisted values are silently dropped. (anchors: `packages/webui-hq/src/data/local-prefs.ts`, `DEFAULT_PREFS`, `mergeWithDefaults`)
+
+---
+*Distilled 2026-10-07T09:17:50.414Z · 1 new directive*

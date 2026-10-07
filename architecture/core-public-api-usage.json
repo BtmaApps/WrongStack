@@ -74,8 +74,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 161,
-      "typeOnly": 97,
+      "files": 163,
+      "typeOnly": 99,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -6250,6 +6250,12 @@
     },
     {
       "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/tests/components/fleet-idle-toggle.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/tests/components/transcript-turn.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -6293,6 +6299,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/tests/fleet-nav.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/tests/fleet-topology-idle.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

@@ -9,6 +9,7 @@ import {
   BellRing,
   Bot,
   CircleDollarSign,
+  EyeOff,
   Gauge,
   Network,
   RadioTower,
@@ -21,6 +22,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { EmptyState, Mono, StatTile } from '../components/hq/primitives.js';
 import { ShareBar } from '../components/hq/view-chrome.js';
 import { Badge, type BadgeTone } from '../components/ui/badge.js';
+import { Button } from '../components/ui/button.js';
+import { setHqFleetPrefs, useHqLocalPrefs } from '../data/local-prefs.js';
 import { attentionBreakdown } from '../data/selectors.js';
 import { useHqStore } from '../data/store/index.js';
 import { usePendingApprovals } from '../domain/use-pending-approvals.js';
@@ -49,6 +52,10 @@ export function CockpitView(): React.ReactElement {
       commandStatuses: state.commandStatuses,
     })),
   );
+
+  // Shared with the Fleet Map toolbar: one flag, so both HQ surfaces hide
+  // the same idle workers.
+  const hideIdle = useHqLocalPrefs().fleet.hideIdle;
 
   const totals = snapshot?.totals;
   const machines = snapshot?.machines ?? [];
@@ -186,7 +193,11 @@ export function CockpitView(): React.ReactElement {
               value={agents.activeSessions}
               tone={agents.activeSessions > 0 ? 'active' : 'idle'}
             />
-            <StatTile label="agents" value={agents.total} />
+            <StatTile
+              label="agents"
+              value={hideIdle ? agents.total - agents.idle : agents.total}
+              hint={hideIdle ? `${agents.idle} idle hidden` : undefined}
+            />
             <StatTile
               label="busy"
               value={agents.busy}
@@ -217,6 +228,17 @@ export function CockpitView(): React.ReactElement {
                 />
               </>
             )}
+            <Button
+              className="ml-auto self-start"
+              variant={hideIdle ? 'secondary' : 'ghost'}
+              size="sm"
+              aria-pressed={hideIdle}
+              title="Same toggle as the Fleet Map: idle agents stop counting toward 'agents'"
+              onClick={() => setHqFleetPrefs({ hideIdle: !hideIdle })}
+            >
+              <EyeOff />
+              Hide idle
+            </Button>
           </div>
         </CockpitCard>
 

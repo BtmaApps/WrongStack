@@ -9,10 +9,6 @@
     "packages/plugins/src/dep-guard/index.ts": {
       "lines": 897,
       "relativeImports": 2
-    },
-    "packages/webui-hq/src/domain/fleet-topology.ts": {
-      "lines": 817,
-      "relativeImports": 0
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T09:21:02.751Z",
+  "generatedAt": "2026-10-07T09:35:21.801Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4830,
-    "testFiles": 4175,
-    "sourceLines": 1080092,
+    "testFiles": 4177,
+    "sourceLines": 1080093,
     "workspaceEdges": 133,
-    "moduleEdges": 15902,
+    "moduleEdges": 15904,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -875,7 +875,7 @@
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
       "sourceFiles": 128,
-      "testFiles": 52,
+      "testFiles": 54,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -891,7 +891,7 @@
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 52
+          "testFiles": 54
         }
       ]
     },
@@ -21288,6 +21288,12 @@
         ]
       },
       {
+        "file": "packages/webui-hq/tests/components/fleet-idle-toggle.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/tests/components/transcript-turn.test.tsx",
         "projects": [
           "root-node"
@@ -21397,6 +21403,12 @@
       },
       {
         "file": "packages/webui-hq/tests/fleet-retention.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/tests/fleet-topology-idle.test.ts",
         "projects": [
           "root-node"
         ]
@@ -26351,11 +26363,6 @@
       "file": "packages/plugins/src/dep-guard/index.ts",
       "lines": 897,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/webui-hq/src/domain/fleet-topology.ts",
-      "lines": 817,
-      "relativeImports": 0
     }
   ],
   "hotspots": [
@@ -26363,11 +26370,6 @@
       "file": "packages/plugins/src/dep-guard/index.ts",
       "lines": 897,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/webui-hq/src/domain/fleet-topology.ts",
-      "lines": 817,
-      "relativeImports": 0
     },
     {
       "file": "packages/core/src/security/directory-permission-policy.ts",
@@ -26608,6 +26610,11 @@
       "file": "packages/core/src/goal/phase-orchestrator.ts",
       "lines": 767,
       "relativeImports": 16
+    },
+    {
+      "file": "packages/webui-server/src/server/ws-payload-preferences.ts",
+      "lines": 767,
+      "relativeImports": 0
     }
   ],
   "testOnlyExports": [

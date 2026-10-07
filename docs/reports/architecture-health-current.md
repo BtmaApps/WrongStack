@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T09:21:02.751Z
+**Generated:** 2026-10-07T09:35:21.801Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4830 |
-| Production source lines | 1080092 |
-| Test files | 4175 |
+| Production source lines | 1080093 |
+| Test files | 4177 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15902 |
+| Relative module edges | 15904 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -59,7 +59,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tui | 477 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 705 | 471 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
-| @wrongstack/webui-hq | 128 | 52 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/webui-hq | 128 | 54 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 292 | 277 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
 | @wrongstack/wrongtrace | 11 | 8 | — |
@@ -84,7 +84,6 @@ None.
 | Lines | File |
 |---:|---|
 | 897 | `packages/plugins/src/dep-guard/index.ts` |
-| 817 | `packages/webui-hq/src/domain/fleet-topology.ts` |
 | 808 | `packages/core/src/security/directory-permission-policy.ts` |
 | 799 | `packages/techstack/src/advisory/native-audit.ts` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
@@ -133,6 +132,7 @@ None.
 | 769 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 768 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 767 | `packages/core/src/goal/phase-orchestrator.ts` |
+| 767 | `packages/webui-server/src/server/ws-payload-preferences.ts` |
 
 ## Exports only tests reference
 
