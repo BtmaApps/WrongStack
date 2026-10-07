@@ -41,8 +41,14 @@ export function formatMemoryHintsDetailed(
       memory.importance >= 0.9 ? 'critical' : memory.importance >= 0.75 ? 'high' : undefined,
       memory.status !== 'active' ? memory.status : undefined,
     ].filter(Boolean);
-    const anchor = formatPrimaryAnchor(memory);
-    const tags = Array.isArray(memory.tags) ? memory.tags.slice(0, 3) : [];
+    // The suffix sits outside the <memory> fence, and tags/anchors are as
+    // writer-controlled as the text (the write path only trims them): a
+    // newline there started a fresh, unfenced hint line or forged another
+    // <memory> entry. Escaped like the text.
+    const anchor = escapeFenceText(formatPrimaryAnchor(memory));
+    const tags = Array.isArray(memory.tags)
+      ? memory.tags.slice(0, 3).map((tag) => escapeFenceText(tag))
+      : [];
     const validityReview = opts.validityReviews?.get(memory.id);
     const metadata = [
       memoryReviewReason(memory)

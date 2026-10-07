@@ -1,6 +1,6 @@
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { SageSurface } from '@wrongstack/sage';
-import { getSageSurface } from '@wrongstack/sage';
+import { getSageSurface, SAGE_KINDS } from '@wrongstack/sage';
 import type { SlashCommandContext } from './command-context.js';
 import { requiresSage } from './memory-formatters.js';
 
@@ -113,24 +113,11 @@ export async function runGatherCommand(
   }
   const resolvedStatus = statusVal as (typeof VALID_STATUSES)[number] | undefined;
 
-  // Runtime-validate --kind against known SageKind values
-  const VALID_KINDS = [
-    'fact',
-    'decision',
-    'convention',
-    'preference',
-    'warning',
-    'anti_pattern',
-    'workflow',
-    'bug_root_cause',
-    'file_note',
-    'symbol_note',
-    'command_note',
-    'summary',
-    'memory_review',
-  ] as const;
-  if (kindVal !== undefined && !(VALID_KINDS as readonly string[]).includes(kindVal)) {
-    return { message: `Invalid --kind "${kindVal}". Valid: ${VALID_KINDS.join(', ')}` };
+  // Runtime-validate --kind against known SageKind values. SAGE_KINDS is the
+  // compile-gated runtime list in sage, so a kind added to the union cannot
+  // drift away from this validation the way a hand-copied list did.
+  if (kindVal !== undefined && !(SAGE_KINDS as readonly string[]).includes(kindVal)) {
+    return { message: `Invalid --kind "${kindVal}". Valid: ${SAGE_KINDS.join(', ')}` };
   }
 
   try {

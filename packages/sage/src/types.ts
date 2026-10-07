@@ -687,3 +687,4 @@ export type {
   SageScope,
   SageStatus,
 } from './memory-model.js';
+export { SAGE_KINDS } from './memory-model.js';

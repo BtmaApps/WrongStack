@@ -82,6 +82,43 @@ export type AssertAllSageStatusesListed = AssertNever<
   Exclude<SageStatus, (typeof SAGE_STATUSES)[number]>
 >;
 
+/**
+ * Every {@link SageKind} as a runtime list — the single source of truth for
+ * command-side validation vocabularies (for example `/memory gather --kind`).
+ * The union alone cannot be iterated, and a hand-copied CLI list has already
+ * drifted from it once (gather rejected the 2026-08-08 kinds), the same
+ * failure mode the status list above was created to prevent.
+ */
+export const SAGE_KINDS = [
+  'fact',
+  'decision',
+  'convention',
+  'preference',
+  'warning',
+  'anti_pattern',
+  'workflow',
+  'bug_root_cause',
+  'file_note',
+  'symbol_note',
+  'command_note',
+  'summary',
+  'memory_review',
+  'tool_outcome',
+  'error_pattern',
+  'session_digest',
+  'role_operational',
+  'task_outcome',
+  'security_signal',
+  'fleet_convention',
+] as const satisfies readonly SageKind[];
+
+/**
+ * Compile gate: `never` while {@link SAGE_KINDS} lists every kind. A kind
+ * added to the union but not to the list fails here, naming itself — the same
+ * `AssertNever` idiom the status list uses.
+ */
+export type AssertAllSageKindsListed = AssertNever<Exclude<SageKind, (typeof SAGE_KINDS)[number]>>;
+
 export interface MemoryAnchor {
   type: 'file' | 'directory' | 'symbol' | 'package' | 'command' | 'test' | 'git' | 'agent';
   path?: string | undefined;

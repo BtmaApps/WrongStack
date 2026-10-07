@@ -130,6 +130,20 @@ describe('runGatherCommand', () => {
     expect(out.message).toContain('Filter: status=active');
   });
 
+  it('accepts every SageKind, including the 2026-08-08 additions', async () => {
+    const { surface, listSagePage } = makeSage();
+    const out = await runGatherCommand(surface, ['--kind', 'task_outcome']);
+    expect(out.message).not.toContain('Invalid --kind');
+    expect(listSagePage.mock.calls[0]?.[0]?.kind).toBe('task_outcome');
+  });
+
+  it('still rejects an unknown kind and names the full vocabulary', async () => {
+    const { surface } = makeSage();
+    const out = await runGatherCommand(surface, ['--kind', 'nonsense']);
+    expect(out.message).toContain('Invalid --kind "nonsense"');
+    expect(out.message).toContain('task_outcome');
+  });
+
   it('joins free-form tokens into the query filter', async () => {
     const { surface, listSagePage } = makeSage();
     await runGatherCommand(surface, ['pnpm', 'workspace', 'setup']);
