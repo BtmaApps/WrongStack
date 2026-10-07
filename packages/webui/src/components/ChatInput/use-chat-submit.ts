@@ -343,6 +343,9 @@ export function useChatSubmit({
               ? sendMessage(combined, wireImages, true)
               : sendMessage(combined, wireImages);
             if (!requestId) {
+              // The composer was already reset above; restore the draft so the
+              // "kept" toast is true (same contract as the not-connected arm).
+              setInput(combined);
               toast.error(t('chat:input.notConnectedDraftKept'));
               return;
             }
@@ -376,6 +379,10 @@ export function useChatSubmit({
             timestamp: new Date().toISOString(),
           }),
         );
+        // The composer was already reset above; restore the draft so a failed
+        // send does not silently consume it (same contract as the
+        // not-connected arm).
+        setInput(combined);
         setLoading(false);
       }
     },

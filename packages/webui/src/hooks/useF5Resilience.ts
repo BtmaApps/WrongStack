@@ -5,8 +5,8 @@ import { activeLaneId, DEFAULT_LANE_ID, laneIds } from '@/stores/chat-lanes';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import {
   activeSessionLaneId,
-  sessionLaneIds,
   SESSION_DEFAULT_LANE_ID,
+  sessionLaneIds,
 } from '@/stores/session-lanes';
 import { releaseTab, restoreTabsAfterBoot, useSessionTabStore } from '@/stores/session-tab-store';
 
@@ -143,8 +143,8 @@ export function useF5Resilience(): void {
     //
     // This timer is the fallback for the cases where that frame never comes:
     // a server too old to send the field, or a page that fails to connect.
-    // `restoreTabsAfterBoot` is a one-shot latch, so whichever fires first
-    // wins and the other is a no-op.
+    // Whichever fires first promotes; a boot frame that arrives after the
+    // fallback still reconciles — it prunes stale slots and offers them.
     const timer = setTimeout(() => restoreTabsAfterBoot(undefined), BOOT_RESTORE_FALLBACK_MS);
     return () => clearTimeout(timer);
   }, []);

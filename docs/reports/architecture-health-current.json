@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T07:48:05.206Z",
+  "generatedAt": "2026-10-07T07:49:00.544Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4829,
-    "testFiles": 4165,
-    "sourceLines": 1079390,
+    "testFiles": 4168,
+    "sourceLines": 1079500,
     "workspaceEdges": 133,
     "moduleEdges": 15897,
     "nonCommandSlashImports": 0,
@@ -844,7 +844,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 705,
-      "testFiles": 468,
+      "testFiles": 471,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 468
+          "testFiles": 471
         }
       ]
     },
@@ -23430,6 +23430,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/chat-input-submit-draft-restore.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/chat-keep-alive.test.ts",
         "projects": [
           "webui-jsdom"
@@ -24432,6 +24438,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/skills-list-refresh-failsafe.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/slash-commands.test.ts",
         "projects": [
           "webui-jsdom"
@@ -24589,6 +24601,12 @@
       },
       {
         "file": "packages/webui/tests/components/use-paste-drop.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/use-skill-detail-failsafe.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

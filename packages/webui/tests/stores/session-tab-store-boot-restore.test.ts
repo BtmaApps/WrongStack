@@ -4,6 +4,7 @@ import { DEFAULT_LANE_ID, ensureLane, useChatLanes } from '../../src/stores/chat
 import { useFleetStore } from '../../src/stores/fleet-store';
 import { useHistoryStore } from '../../src/stores/history-store';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
+import { useRestoreTabsStore } from '../../src/stores/restore-tabs-store';
 import {
   ensureSessionLane,
   SESSION_DEFAULT_LANE_ID,
@@ -16,7 +17,6 @@ import {
   useSessionTabStore,
   writeStoredTabs,
 } from '../../src/stores/session-tab-store';
-import { useRestoreTabsStore } from '../../src/stores/restore-tabs-store';
 import { useUIStore } from '../../src/stores/ui-store';
 
 /**
@@ -348,6 +348,47 @@ describe('restoreTabsAfterBoot', () => {
     const kept = restoreTabsAfterBoot(undefined);
 
     expect(kept).toEqual([...TAB_IDS]);
+  });
+
+  it('a late boot frame still reconciles after the fallback timer promoted unfiltered', () => {
+    // Slow connect: the 2s fallback timer fired first (`undefined` = "no
+    // answer YET") and promoted the strip unfiltered, fronting a stale
+    // session. The boot `session.start` frame that arrives late carries the
+    // REAL live list and must still reconcile — prune the stale slot, move
+    // the foreground off it, and offer it. Never resume it unasked.
+    writeStoredTabs(['sess-a', 'sess-stale']);
+    useSessionTabStore.setState({ openTabIds: ['sess-a', 'sess-stale'] });
+    seedLanesWithVisitedAt();
+    useSessionLanes.setState((s) => ({
+      lanes: {
+        ...s.lanes,
+        'sess-stale': {
+          ...(s.lanes['sess-a'] ?? {}),
+          id: 'sess-stale',
+          session: {
+            id: 'sess-stale',
+            startedAt: 1_700_000_000_000,
+            provider: 'anthropic',
+            model: 'anthropic-test-model',
+            title: 'tab sess-stale',
+          },
+          lastVisitedAt: 500, // most recent → the timer fronts THIS stale id
+        },
+      },
+    }));
+
+    // 1. The fallback timer: unfiltered restore fronts the stale id.
+    restoreTabsAfterBoot(undefined);
+    expect(useSessionLanes.getState().activeSessionId).toBe('sess-stale');
+
+    // 2. The boot frame arrives late with the real live list.
+    restoreTabsAfterBoot(['sess-a']);
+
+    expect(useSessionTabStore.getState().openTabIds).toEqual(['sess-a']);
+    // The foreground moved off the pruned session onto the surviving slot.
+    expect(useSessionLanes.getState().activeSessionId).toBe('sess-a');
+    // Offered, not resumed.
+    expect(useRestoreTabsStore.getState().candidates).toEqual(['sess-stale']);
   });
 
   it('runs once per page load — a later frame cannot re-front the user', () => {

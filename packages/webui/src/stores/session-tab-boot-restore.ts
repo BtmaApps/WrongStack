@@ -9,6 +9,7 @@ import {
   focusOnServer,
   foregroundTabId,
   releaseTab,
+  repointForegroundAfterRelease,
 } from './session-tab-activation';
 import { MAX_OPEN_TABS, writeStoredTabs } from './session-tab-persistence';
 import type { SessionTabStoreApi } from './session-tab-types';
@@ -109,10 +110,13 @@ export function pruneTabsToLiveSessionsIn(
 
 /** One-shot latch: the boot restore may only run once per page load. */
 let bootRestoreDone = false;
+/** A frame carrying `openSessionIds` already reconciled the strip. */
+let bootFrameReconciled = false;
 
 /** Test seam — lets a suite re-arm the one-shot latch. */
 export function resetBootRestoreLatchForTests(): void {
   bootRestoreDone = false;
+  bootFrameReconciled = false;
 }
 
 /**
@@ -137,19 +141,47 @@ export function restoreTabsAfterBootIn(
   live: readonly string[] | undefined,
   options: RestoreOpenTabsOptions = {},
 ): string[] {
-  if (bootRestoreDone) return [];
-  bootRestoreDone = true;
-  if (live === undefined) return restoreOpenTabsOnBootIn(store, options);
+  if (live === undefined) {
+    // Old server / page that never connects: the designed unfiltered fallback.
+    // It only promotes — a boot frame that arrives later still reconciles.
+    if (bootRestoreDone) return [];
+    bootRestoreDone = true;
+    return restoreOpenTabsOnBootIn(store, options);
+  }
+
+  // Later frames fall straight through: the strip was already reconciled once,
+  // and re-running the picker must never yank the user off the tab they read.
+  if (bootFrameReconciled) return [];
 
   const alive = new Set(live.filter((id) => typeof id === 'string' && id.length > 0));
   const stale = store.getState().openTabIds.filter((id) => !alive.has(id));
+  bootFrameReconciled = true;
+
+  if (!bootRestoreDone) {
+    // Frame-first (the normal path): prune stale slots BEFORE promotion, then
+    // promote what survived and offer what was dropped.
+    bootRestoreDone = true;
+    pruneTabsToLiveSessionsIn(store, live);
+    const restored = restoreOpenTabsOnBootIn(store, options);
+    // Offered, not resumed. A session the runtime does not hold costs a full
+    // journal read to bring back, and doing that unasked is what made a fresh
+    // WebUI open on somebody else's conversation.
+    if (stale.length > 0) useRestoreTabsStore.getState().offer(stale);
+    return restored;
+  }
+
+  // Fallback-timer-first (slow connect): the timer promoted the strip
+  // unfiltered, so it may front sessions this runtime does not hold. The late
+  // frame's reconcile must not be latched away — prune the stale ids, repoint
+  // the foreground off any pruned slot, and offer them (never resume unasked).
   pruneTabsToLiveSessionsIn(store, live);
-  const restored = restoreOpenTabsOnBootIn(store, options);
-  // Offered, not resumed. A session the runtime does not hold costs a full
-  // journal read to bring back, and doing that unasked is what made a fresh
-  // WebUI open on somebody else's conversation.
-  if (stale.length > 0) useRestoreTabsStore.getState().offer(stale);
-  return restored;
+  if (stale.length > 0) {
+    repointForegroundAfterRelease(store.getState().openTabIds, (id) =>
+      store.getState().markSeen(id),
+    );
+    useRestoreTabsStore.getState().offer(stale);
+  }
+  return [];
 }
 
 export function restoreOpenTabsOnBootIn(

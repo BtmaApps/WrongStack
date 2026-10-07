@@ -49,6 +49,8 @@ export function SkillsList({ className }: { className?: string }) {
 
   // Check for updates state
   const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+  // Fail-safe timer for the refresh round-trip (cleared on reply/unmount).
+  const refreshTimeoutRef = useRef<number | null>(null);
 
   // Hand-rolled overlays (not Radix Dialog): close the open one on Escape.
   useEffect(() => {
@@ -66,6 +68,14 @@ export function SkillsList({ className }: { className?: string }) {
   const handleRefreshAll = useCallback(() => {
     if (!client) return;
     setCheckingForUpdates(true);
+    // Fail-safe: a lost `skills.updated` frame (server restart, socket drop)
+    // must not leave the refresh spinner stuck — the same protection
+    // handleExportAll gets from listenOnce's timeout.
+    if (refreshTimeoutRef.current !== null) window.clearTimeout(refreshTimeoutRef.current);
+    refreshTimeoutRef.current = window.setTimeout(() => {
+      refreshTimeoutRef.current = null;
+      setCheckingForUpdates(false);
+    }, 30_000);
     client.checkForUpdates(undefined, undefined);
   }, [client]);
 
@@ -148,6 +158,10 @@ export function SkillsList({ className }: { className?: string }) {
           errors?: Array<{ name: string; error: string }>;
         };
       };
+      if (refreshTimeoutRef.current !== null) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       setCheckingForUpdates(false);
       if (m.payload.success) {
         const currentState = skillsStateRef.current;
@@ -171,6 +185,10 @@ export function SkillsList({ className }: { className?: string }) {
     return () => {
       client.off('skills.list', handleSkillsList as (msg: unknown) => void);
       client.off('skills.updated', handleSkillsUpdated as (msg: unknown) => void);
+      if (refreshTimeoutRef.current !== null) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
     };
   }, [client, setSkillsState]);
 

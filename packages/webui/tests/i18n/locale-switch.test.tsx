@@ -19,20 +19,26 @@
  * runner). The lazy-load is a Vite/browser runtime concern verified separately
  * by the 42 locale chunks emitted into dist.
  */
+import { act, cleanup, configure, render, screen, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { i18n, installDesktopHostLocaleBridge, useAppTranslation } from '../../src/i18n';
 import { handlePrefsUpdated } from '../../src/hooks/ws-handlers/misc-handlers';
-import { useLocalPrefs } from '../../src/stores/local-prefs';
-import settings_en from '../../src/i18n/locales/en/settings.json';
-import settings_tr from '../../src/i18n/locales/tr/settings.json';
+import { i18n, installDesktopHostLocaleBridge, useAppTranslation } from '../../src/i18n';
+import common_de from '../../src/i18n/locales/de/common.json';
 import settings_de from '../../src/i18n/locales/de/settings.json';
+import common_en from '../../src/i18n/locales/en/common.json';
+import settings_en from '../../src/i18n/locales/en/settings.json';
 import settings_fr from '../../src/i18n/locales/fr/settings.json';
 import settings_it from '../../src/i18n/locales/it/settings.json';
 import settings_ptBR from '../../src/i18n/locales/pt-BR/settings.json';
-import common_en from '../../src/i18n/locales/en/common.json';
 import common_tr from '../../src/i18n/locales/tr/common.json';
-import common_de from '../../src/i18n/locales/de/common.json';
+import settings_tr from '../../src/i18n/locales/tr/settings.json';
+import { useLocalPrefs } from '../../src/stores/local-prefs';
+
+// The i18n chain (store subscribe → changeLanguage → languageChanged → React
+// re-render) is async end to end; under a fully parallel suite run the default
+// 1s waitFor budget has expired before a completion lands. 5s keeps the wait
+// bound to the REAL completion signal, not to an idle-machine constant.
+configure({ asyncUtilTimeout: 5_000 });
 
 // Mutable host-listener slot. Filled by the bridge the i18n module subscribes
 // to at module load. Tests fire the host listener through `fireHostLocale`
@@ -157,6 +163,31 @@ describe('locale switching applies instantly', () => {
     );
     await waitFor(() => expect(document.documentElement.lang).toBe('fr'));
     expect(i18n.language).toBe('fr');
+  });
+
+  it('syncs <html lang> even when i18next already reports the requested language', async () => {
+    // An earlier switch completing OUT OF ORDER can leave the attribute stale
+    // while i18n.language already matches — the captured full-run flake was
+    // exactly this: lang 'fr' vs language 'en'. Setting uiLocale to the
+    // already-active language dedupes inside i18next (no languageChanged
+    // fires), so the store path must still correct the stale attribute.
+    await i18n.changeLanguage('en');
+    act(() => {
+      useLocalPrefs.getState().set({ uiLocale: 'fr' });
+    });
+    await waitFor(() => expect(document.documentElement.lang).toBe('fr'));
+
+    // Simulate the out-of-order completion: language is already back to 'en'
+    // while the attribute still says 'fr' (the late fr-completion overwrote
+    // the attribute after the en switch completed).
+    await i18n.changeLanguage('en');
+    document.documentElement.lang = 'fr';
+
+    act(() => {
+      useLocalPrefs.getState().set({ uiLocale: 'en' });
+    });
+    await waitFor(() => expect(document.documentElement.lang).toBe('en'));
+    expect(i18n.language).toBe('en');
   });
 
   it('changeLanguage lazy-loads a non-English locale bundle through the backend', async () => {

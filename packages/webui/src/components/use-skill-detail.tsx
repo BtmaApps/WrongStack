@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -342,8 +343,21 @@ export function useSkillDetail({ className }: { className?: string }) {
     setEditSaving(true);
     setEditError(null);
 
+    // The ack must be failure-safe: a lost reply (server restart, socket
+    // drop) or a throwing send must not leave the spinner stuck forever with
+    // a leaked listener — the content fetch in this hook applies the same
+    // protection with its 10s timeout.
+    let settled = false;
+    let failSafe: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      client.off('skills.edited', handler as (msg: unknown) => void);
+      clearTimeout(failSafe);
+    };
     const handler = (msg: unknown) => {
       const m = msg as { payload: { success: boolean; error: string | null } };
+      finish();
       setEditSaving(false);
       if (m.payload.success) {
         lastSavedDraftRef.current = '';
@@ -358,11 +372,20 @@ export function useSkillDetail({ className }: { className?: string }) {
       } else {
         setEditError(m.payload.error ?? i18n.t('activity:skillDetail.saveFailed'));
       }
-      client.off('skills.edited', handler as (msg: unknown) => void);
     };
-
+    failSafe = setTimeout(() => {
+      finish();
+      setEditSaving(false);
+      setEditError(i18n.t('activity:skillDetail.saveFailed'));
+    }, 15_000);
     client.on('skills.edited', handler as (msg: unknown) => void);
-    client.editSkill(selectedSkill.name, editContent);
+    try {
+      client.editSkill(selectedSkill.name, editContent);
+    } catch (err) {
+      finish();
+      setEditSaving(false);
+      setEditError(toErrorMessage(err));
+    }
   }, [client, selectedSkill, editContent]);
 
   // Check for updates
@@ -402,8 +425,20 @@ export function useSkillDetail({ className }: { className?: string }) {
       if (!client || !skill) return;
       setUninstalling(true);
 
+      // Same failure-safe contract as handleSaveEdit: a lost ack or a
+      // throwing send must not leave the spinner stuck forever with a
+      // leaked listener.
+      let settled = false;
+      let failSafe: ReturnType<typeof setTimeout> | undefined;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        client.off('skills.uninstalled', handler as (msg: unknown) => void);
+        clearTimeout(failSafe);
+      };
       const handler = (msg: unknown) => {
         const m = msg as { payload: { success: boolean; error: string | null } };
+        finish();
         setUninstalling(false);
         if (m.payload.success) {
           setUninstallConfirmSkill(null);
@@ -412,11 +447,20 @@ export function useSkillDetail({ className }: { className?: string }) {
         } else {
           setEditError(m.payload.error ?? i18n.t('activity:skillDetail.uninstallFailed'));
         }
-        client.off('skills.uninstalled', handler as (msg: unknown) => void);
       };
-
+      failSafe = setTimeout(() => {
+        finish();
+        setUninstalling(false);
+        setEditError(i18n.t('activity:skillDetail.uninstallFailed'));
+      }, 15_000);
       client.on('skills.uninstalled', handler as (msg: unknown) => void);
-      client.uninstallSkill(skill.name, skill.source === 'user');
+      try {
+        await client.uninstallSkill(skill.name, skill.source === 'user');
+      } catch (err) {
+        finish();
+        setUninstalling(false);
+        setEditError(toErrorMessage(err));
+      }
     },
     [client, handleClose],
   );

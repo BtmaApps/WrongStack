@@ -122,10 +122,19 @@ void i18n.loadNamespaces(DEFERRED_NAMESPACES).catch((error: unknown) => {
 
 // Locale reactivity: any change to the stored uiLocale (picker, reset(), or a
 // cross-tab localStorage rehydrate) drives i18next + <html lang> from one place.
+let latestLocaleRequest: string | undefined;
 useLocalPrefs.subscribe((state, prev) => {
   const next = state.uiLocale;
-  if (next && next !== prev.uiLocale && next !== i18n.language) {
-    void i18n.changeLanguage(next).then(() => syncHtmlLang(next));
+  if (next && next !== prev.uiLocale) {
+    // Sync <html lang> even when i18next already reports the requested
+    // language: the attribute can lag behind i18n.language when an earlier
+    // switch completes out of order, and a deduped changeLanguage emits no
+    // languageChanged to correct it. Only the LATEST request may write the
+    // attribute — a slow earlier completion must not overwrite a newer one.
+    latestLocaleRequest = next;
+    void i18n.changeLanguage(next).then(() => {
+      if (latestLocaleRequest === next) syncHtmlLang(next);
+    });
   }
 });
 
@@ -177,6 +186,9 @@ export { useTranslation as useAppTranslation } from 'react-i18next';
  * production app relies on the auto-call below (module-load side effect).
  */
 export const installDesktopHostLocaleBridge = subscribeDesktopLocaleBridge;
+// Re-export straight from the module (not the local default-import binding)
+// so the dts bundler can drop the chain without leaving a dangling import.
+export { default as i18n } from 'i18next';
 export type { AppLocaleCode } from './languages';
 export {
   detectLocale,
@@ -185,6 +197,3 @@ export {
   normalizeLocale,
   SUPPORTED_LNGS,
 } from './languages';
-// Re-export straight from the module (not the local default-import binding)
-// so the dts bundler can drop the chain without leaving a dangling import.
-export { default as i18n } from 'i18next';
