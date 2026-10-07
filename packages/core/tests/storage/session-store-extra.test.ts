@@ -904,6 +904,22 @@ describe('DefaultSessionStore — best-effort cleanup paths', () => {
     await expect(fs.stat(shard)).rejects.toBeDefined();
   });
 
+  it('prune keeps a shard inside the retention window that a create has not filled yet', async () => {
+    // Gated order of a concurrent create: its shard dir exists (and a list()
+    // may have written the manifest) but the transcript is not open yet.
+    // Sweeping the "leftover-only" directory here failed the create with ENOENT.
+    const today = new Date().toISOString().slice(0, 10);
+    const shard = path.join(tmp, today);
+    await fs.mkdir(shard, { recursive: true });
+    await fs.writeFile(path.join(shard, '_manifest.json'), '{}');
+
+    await store.prune(30);
+
+    await expect(fs.stat(shard)).resolves.toBeDefined();
+    const handle = await fs.open(path.join(shard, '12-00-00Z_new.jsonl'), 'w');
+    await handle.close();
+  });
+
   it('prune keeps a leftover-only shard that still holds something unrecognized', async () => {
     // The sweep must not become a blanket delete: anything it cannot account
     // for keeps the directory, so an unexpected artifact survives.

@@ -400,9 +400,12 @@ function usageMeter(
     const window = usageWindow(id, value, now);
     if (window) windows.push(window);
   }
-  // `limit_reached` names no window; the one at 100% is the one cutting off.
+  // `limit_reached` names no window; the exhausted one that reopens last is the
+  // one cutting off — the same rule the header path applies.
   const reached =
-    limit.limit_reached === true ? windows.find((w) => w.usedPercent >= 100)?.id : undefined;
+    limit.limit_reached === true
+      ? codexBlockingWindow({ providerId, meterId, windows, capturedAt: now })?.id
+      : undefined;
   return {
     providerId,
     meterId,

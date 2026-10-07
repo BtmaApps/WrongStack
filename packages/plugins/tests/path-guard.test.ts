@@ -1178,6 +1178,22 @@ describe('path-guard plugin', () => {
     expect(result?.reason).toContain('write scope "db"');
   });
 
+  it.each([
+    'cmd /c del .env',
+    'cmd.exe /C "del /f .env"',
+    'cmd /c erase .env',
+    'ri .env',
+    'pwsh -c "ri .env"',
+  ])(
+    'blocks a Windows delete of a protected path through cmd /c or an alias: %s',
+    async (command) => {
+      const api = makeApi();
+      pathGuardPlugin.setup(api as never);
+      const result = await getHook(api)({ toolName: 'bash', toolInput: { command } });
+      expect(result?.decision).toBe('block');
+    },
+  );
+
   it.each(['rm -f db -rf', 'rm db --recursive', 'del db /s'])(
     'blocks recursive flags after the first operand: %s',
     async (command) => {

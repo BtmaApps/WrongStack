@@ -137,6 +137,24 @@ describe('mcp.add / mcp.update consult the trust boundary (M1)', () => {
     expect((result!.payload as { message: string }).message).toContain('denied');
   });
 
+  it('mcp.discover does not start the server when the boundary denies', async () => {
+    // discover → restartMcp → registry.start/restart: the same spawn path that
+    // mcp.restart and mcp.wake authorize. It used to skip the boundary.
+    const ws = fakeWs();
+    const registry = makeRegistry();
+    await handleMcpDiscover(
+      ws as never,
+      msg('mcp.discover', { name: 'github' }),
+      configPath,
+      registry,
+      denyAll,
+    );
+    expect((registry as { start: ReturnType<typeof vi.fn> }).start).not.toHaveBeenCalled();
+    expect((registry as { restart: ReturnType<typeof vi.fn> }).restart).not.toHaveBeenCalled();
+    const result = ws.sent.find((m) => m.type === 'mcp.operation_result');
+    expect((result!.payload as { message: string }).message).toContain('denied');
+  });
+
   it('an allowing boundary leaves behavior unchanged', async () => {
     const allowAll = {
       evaluate: async () => ({

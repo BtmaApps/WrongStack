@@ -361,6 +361,44 @@ describe('PreToolUse hook — redact mode', () => {
   });
 });
 
+// ── Hook behavior: input nested past the scan guard ───────────────────
+
+describe('PreToolUse hook — input nested past the scan depth guard', () => {
+  function nested(depth: number, leaf: unknown): Record<string, unknown> {
+    let value: unknown = leaf;
+    for (let i = 0; i < depth; i++) value = { child: value };
+    return { args: value };
+  }
+
+  it.each(['block', 'redact'])('%s mode refuses a credential nested 60 levels deep', (mode) => {
+    const api = makeApi({ extensions: { 'secret-scanner': { mode } } });
+    secretScannerPlugin.setup(api as any);
+    const hook = getRegisteredHook(api);
+    const result = hook({
+      event: 'PreToolUse',
+      toolName: 'mcp__server__call',
+      toolInput: nested(60, makeGithubPat()),
+      cwd: '/tmp',
+    });
+    expect(result?.decision).toBe('block');
+    expect(result?.modifiedInput).toBeUndefined();
+  });
+
+  it('still lets clean input within the guard through', () => {
+    const api = makeApi();
+    secretScannerPlugin.setup(api as any);
+    const hook = getRegisteredHook(api);
+    expect(
+      hook({
+        event: 'PreToolUse',
+        toolName: 'mcp__server__call',
+        toolInput: nested(40, 'hello'),
+        cwd: '/tmp',
+      }),
+    ).toBeUndefined();
+  });
+});
+
 // ── Hook behavior: allow mode ─────────────────────────────────────────
 
 describe('PreToolUse hook — allow mode', () => {

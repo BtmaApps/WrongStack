@@ -320,6 +320,7 @@ export function stripTransparentLaunchers(command: string): string {
     do {
       beforeUnwrap = stripped;
       stripped = unwrapEnvSplitStringAtBoundary(stripped);
+      stripped = unwrapCmdRunAtBoundary(stripped);
     } while (stripped !== beforeUnwrap);
     stripped = stripLauncherAtBoundary(stripped, 'env', ENV_VALUE_TAKING);
     stripped = stripLauncherAtBoundary(stripped, 'sudo', SUDO_VALUE_TAKING);
@@ -328,6 +329,28 @@ export function stripTransparentLaunchers(command: string): string {
     }
   } while (stripped !== previous);
   return stripped;
+}
+
+/**
+ * `cmd /c <command>` (also `/k`, `cmd.exe`, leading `/q`-style switches) runs
+ * the rest of its line as a command, exactly like `sh -c`. Left wrapped, the
+ * delete rules saw `cmd` at the command boundary and `cmd /c del .env` walked
+ * past a guard that blocks `del .env`. A double-quoted body (`cmd /c "del
+ * .env"`) is unquoted the way cmd itself strips the outer pair.
+ */
+export function unwrapCmdRunAtBoundary(command: string): string {
+  const match =
+    /(^|[;&|\r\n]\s*|\(\s*|`\s*)(?:[^\s;&|(){}]+[\\/])?cmd(?:\.exe)?(?:\s+\/[A-Za-z](?::[^\s;&|]*)?){0,4}?\s+\/[ck]\s+/i.exec(
+      command,
+    );
+  if (!match) return command;
+  const boundary = match[1] ?? '';
+  let body = command.slice(match.index + match[0].length);
+  if (body.startsWith('"')) {
+    const close = body.indexOf('"', 1);
+    body = close === -1 ? body.slice(1) : `${body.slice(1, close)}${body.slice(close + 1)}`;
+  }
+  return `${command.slice(0, match.index)}${boundary}${body}`;
 }
 
 export function firstUnquotedShellSeparator(

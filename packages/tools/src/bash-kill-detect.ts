@@ -234,6 +234,75 @@ export function parsePosixKillTargets(normalized: string, command: string): Kill
  * another command is handled whole by the conservative pipeline block — and
  * redirections such as `2>&1` / `&>file` are not separators.
  */
+/** Launchers that run the rest of the line unchanged, with the options that take a value. */
+const KILL_LAUNCHERS: Record<string, { values: ReadonlySet<string>; positionals?: number }> = {
+  sudo: { values: new Set(['-u', '-g', '-C', '-h', '-p', '-U']) },
+  doas: { values: new Set(['-u', '-C']) },
+  env: { values: new Set(['-u', '-C', '-S']) },
+  nohup: { values: new Set() },
+  command: { values: new Set() },
+  exec: { values: new Set(['-a']) },
+  time: { values: new Set(['-f', '-o']) },
+  setsid: { values: new Set() },
+  nice: { values: new Set(['-n']) },
+  stdbuf: { values: new Set(['-i', '-o', '-e']) },
+  timeout: { values: new Set(['-s', '-k']), positionals: 1 },
+};
+
+/**
+ * Reduce a command to the kill verb it runs. The guard's parsers anchor the
+ * verb as the bare first word, so the same kill of a protected PID passed
+ * when written `taskkill.exe …`, `C:/Windows/System32/taskkill.exe …`,
+ * `cmd /c taskkill …`, `env kill …`, `timeout 5 kill …`, `/usr/bin/kill …` or
+ * `(kill …)`. Strips, to a fixed point: a `( … )` / `$( … )` wrapper, `cmd
+ * /c|/k` (outer double quotes as cmd strips them), a transparent launcher with
+ * its options, and a path / `.exe` on the verb itself.
+ */
+export function unwrapKillCommandHead(normalized: string): string {
+  let current = normalized.trim();
+  for (let pass = 0; pass < 8; pass++) {
+    const before = current;
+    const subshell = /^\$?\(\s*([\s\S]*?)\s*\)$/.exec(current);
+    if (subshell) current = subshell[1] ?? '';
+    const cmd =
+      /^(?:\S*[\\/])?cmd(?:\.exe)?(?:\s+\/[a-z](?::\S*)?){0,4}?\s+\/[ck]\s+([\s\S]+)$/i.exec(
+        current,
+      );
+    if (cmd) {
+      const body = cmd[1] ?? '';
+      const quoted = /^"([^"]*)"(.*)$/.exec(body);
+      current = quoted ? `${quoted[1] ?? ''}${quoted[2] ?? ''}`.trim() : body;
+    }
+    const tokens = current.split(' ');
+    const head = (tokens[0] ?? '').replace(/^.*[\\/]/, '').toLowerCase();
+    const launcher = KILL_LAUNCHERS[head];
+    if (launcher && tokens.length > 1) {
+      let i = 1;
+      while (i < tokens.length) {
+        const token = tokens[i] ?? '';
+        if (token === '--') {
+          i++;
+          break;
+        }
+        if (head === 'env' && /^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) {
+          i++;
+          continue;
+        }
+        if (!token.startsWith('-') || token === '-') break;
+        i += launcher.values.has(token) ? 2 : 1;
+      }
+      i += launcher.positionals ?? 0;
+      current = tokens.slice(i).join(' ');
+    }
+    current = current.replace(
+      /^(?:\S*[\\/])?(kill|taskkill|tskill|wmic)(?:\.exe)?(?=\s|$)/i,
+      (_m, verb: string) => verb,
+    );
+    if (current === before) break;
+  }
+  return current;
+}
+
 export function splitShellSequence(command: string): string[] {
   const segments: string[] = [];
   let current = '';

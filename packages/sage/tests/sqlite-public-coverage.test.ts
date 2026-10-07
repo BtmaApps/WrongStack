@@ -187,8 +187,11 @@ describe('SQLite public API completion coverage', () => {
       cursor: first.nextCursor!,
     });
     expect(second.memories[0]?.id).not.toBe(first.memories[0]?.id);
+    // Unknown statuses are a caller mismatch, not a default request: the
+    // documented contract (normalizeListStatuses) returns an empty page so
+    // the caller notices — the same answer the WS fallback emulation gives.
     await expect(store.listSagePage({ statuses: ['invalid' as never] })).resolves.toMatchObject({
-      total: 3,
+      total: 0,
     });
   });
 

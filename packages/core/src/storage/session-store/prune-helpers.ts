@@ -102,6 +102,13 @@ export async function pruneSessionFiles(
     if (!entry.isDirectory()) continue;
     const dateDir = path.join(storeDir, entry.name);
     try {
+      // A shard still inside the retention window can be one a concurrent
+      // create has just made: create runs ensureShardDir, awaits its index
+      // append, and only then opens the transcript. Sweeping that empty (or
+      // manifest-only) directory made the create's open fail with ENOENT.
+      // Date shards are named by the session's UTC start day; anything else
+      // falls back to the directory's own mtime.
+      if (await withinRetention(dateDir, entry.name, cutoff)) continue;
       const remaining = await fsp.readdir(dateDir, { withFileTypes: true });
       if (remaining.length === 0) {
         /* v8 ignore next -- best-effort: rmdir of a confirmed-empty dir does not reject */
@@ -128,6 +135,16 @@ export async function pruneSessionFiles(
   }
 
   return deleted;
+}
+
+/** True when the shard directory may still receive or hold a session younger than `cutoff`. */
+async function withinRetention(dir: string, name: string, cutoff: number): Promise<boolean> {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(name)) {
+    const dayStart = Date.parse(`${name}T00:00:00.000Z`);
+    if (Number.isFinite(dayStart)) return dayStart + 86_400_000 > cutoff;
+  }
+  const stat = await fsp.stat(dir);
+  return stat.mtimeMs >= cutoff;
 }
 
 /**

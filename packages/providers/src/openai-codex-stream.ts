@@ -13,11 +13,13 @@ import { parseToolInput } from './_tool-input.js';
 import type { CodexResponseMetadata } from './codex-websocket.js';
 import { parseProviderErrorBody, scrubProviderErrorBody } from './error-parse.js';
 import { parseCodexRateLimitEvent } from './openai-codex-rate-limits.js';
+import { responsesReasoningSummary } from './responses-reasoning-summary.js';
 
 import { createSseLineFoldingTransform, parseSSE } from './sse.js';
 import {
   CODEX_REASONING_ENCRYPTED_META,
   CODEX_REASONING_ID_META,
+  CODEX_REASONING_SUMMARY_META,
   CODEX_TOOL_ARGUMENTS_META,
 } from './tool-format/to-responses.js';
 
@@ -345,6 +347,7 @@ export async function* parseOpenAIResponsesStream(
         if (!item) break;
         if (item.type === 'reasoning') {
           const encrypted = (item as { encrypted_content?: unknown }).encrypted_content;
+          const summary = (item as { summary?: unknown }).summary;
           const itemId = reasoningItemId ?? (typeof item.id === 'string' ? item.id : undefined);
           if (typeof encrypted === 'string' && encrypted.length > 0 && itemId) {
             yield {
@@ -352,6 +355,9 @@ export async function* parseOpenAIResponsesStream(
               providerMeta: {
                 [CODEX_REASONING_ID_META]: itemId,
                 [CODEX_REASONING_ENCRYPTED_META]: encrypted,
+                ...(Array.isArray(summary)
+                  ? { [CODEX_REASONING_SUMMARY_META]: responsesReasoningSummary(summary) }
+                  : {}),
               },
             };
           }

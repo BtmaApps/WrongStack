@@ -194,3 +194,37 @@ describe('bash-kill-guard — launcher-wrapped verbs (win32)', () => {
     },
   );
 });
+
+describe('bash-kill-guard — verb spelled with path/.exe, cmd /c, launchers, extra targets', () => {
+  it.each([
+    `taskkill.exe /PID ${P} /F`,
+    `C:/Windows/System32/taskkill.exe /PID ${P} /F`,
+    `cmd /c taskkill /PID ${P} /F`,
+    `cmd.exe /c "taskkill /F /PID ${P}"`,
+    `Stop-Process ${P}`,
+    `spps 111, ${P} -Force`,
+    `taskkill /PID 111 /PID ${P} /F`,
+    `env kill ${P}`,
+    `timeout 5 kill ${P}`,
+    `(kill ${P})`,
+  ])('blocks %j (win32)', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    expect((await checkAndBlockKillCommand(command)).blocked).toBe(true);
+  });
+
+  it.each([`sudo kill ${P}`, `/usr/bin/kill -9 ${P}`, `nice -n 5 kill ${P}`])(
+    'blocks %j (linux)',
+    async (command) => {
+      const { checkAndBlockKillCommand } = await loadGuard('linux');
+      expect((await checkAndBlockKillCommand(command)).blocked).toBe(true);
+    },
+  );
+
+  it.each(['taskkill /PID 111 /PID 222', 'Stop-Process 111', 'timeout 5 sleep 1'])(
+    'does not block %j (win32)',
+    async (command) => {
+      const { checkAndBlockKillCommand } = await loadGuard('win32');
+      expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
+    },
+  );
+});

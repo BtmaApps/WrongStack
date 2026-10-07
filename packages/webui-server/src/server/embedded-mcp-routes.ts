@@ -41,7 +41,8 @@ export function createEmbeddedMcpRoutes(deps: EmbeddedMessageRouterDeps) {
       handleMcpWake(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
     restart: (ws, msg) =>
       handleMcpRestart(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
-    discover: (ws, msg) => handleMcpDiscover(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
+    discover: (ws, msg) =>
+      handleMcpDiscover(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
     resources: (ws, msg) => handleMcpResources(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
     prompts: (ws, msg) => handleMcpPrompts(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
     resourceRead: (ws, msg) =>

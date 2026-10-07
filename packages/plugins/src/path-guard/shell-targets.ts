@@ -69,7 +69,7 @@ export function commandRecursivelyDeletes(command: string): boolean {
     return true;
   }
   const destructive = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}${COMMAND_PATH_PREFIX}(rm|rmdir|del|rd|Remove-Item)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
+    String.raw`${COMMAND_BOUNDARY}${COMMAND_PATH_PREFIX}(rm|rmdir|del|erase|rd|Remove-Item|ri)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
     'gi',
   );
   let match: RegExpExecArray | null = destructive.exec(stripped);
@@ -85,7 +85,7 @@ export function commandRecursivelyDeletes(command: string): boolean {
       if (token === '--') break;
       if (tool === 'rm') {
         if (token === '--recursive' || /^-[^-]*[rR]/.test(token)) recursive = true;
-      } else if (tool === 'remove-item') {
+      } else if (tool === 'remove-item' || tool === 'ri') {
         if (/^-Recurse$/i.test(token) || /^-r$/i.test(token)) recursive = true;
       } else if (/^\/[a-z]*s[a-z]*$/i.test(token)) {
         recursive = true;
@@ -199,7 +199,8 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
   }
 
   const destructive = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(rm|rmdir|del|rd|Remove-Item|unlink|truncate|shred|mv)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
+    // `erase` is cmd's alias of del; `ri` is PowerShell's alias of Remove-Item.
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(rm|rmdir|del|erase|rd|Remove-Item|ri|unlink|truncate|shred|mv)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
     'gi',
   );
   let m: RegExpExecArray | null = destructive.exec(normalizedCommand);

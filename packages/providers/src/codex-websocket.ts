@@ -21,6 +21,7 @@ import type {
 } from './codex-websocket-types.js';
 import { CODEX_ROUTING_HINT_HEADER } from './openai-codex-request.js';
 import { isCacheProbeEnabled, recordCacheProbeTransport } from './prompt-cache-probe.js';
+import { responsesReasoningSummary } from './responses-reasoning-summary.js';
 
 export type {
   CodexResponseMetadata,
@@ -78,7 +79,7 @@ function replayableResponseItem(value: unknown): Record<string, unknown> | undef
           type: 'reasoning',
           id: item.id,
           encrypted_content: item.encrypted_content,
-          summary: [],
+          summary: responsesReasoningSummary(item.summary),
         }
       : undefined;
   }

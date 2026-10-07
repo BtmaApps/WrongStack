@@ -200,6 +200,41 @@ describe('license-audit-gate plugin', () => {
     expect(result?.reason).toContain('GPL-2.0');
   });
 
+  it('audits the copy in the directory the install ran in, not the root one', () => {
+    // Root holds an allowed copy; the command installed a GPL one into packages/web.
+    vi.mocked(readFileSync).mockImplementation((path: unknown) => {
+      const p = normalizePath(String(path));
+      if (p.endsWith('packages/web/node_modules/left-pad/package.json')) {
+        return JSON.stringify({ name: 'left-pad', license: 'GPL-3.0-only' });
+      }
+      if (p.endsWith('/node_modules/left-pad/package.json')) {
+        return JSON.stringify({ name: 'left-pad', license: 'MIT' });
+      }
+      throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
+    });
+    const api = makeApi();
+    licenseAuditPlugin.setup(api as never);
+    const hook = getHook(api);
+    const run = (command: string) =>
+      hook({
+        toolName: 'bash',
+        toolInput: { command },
+        toolResult: { content: '', isError: false },
+      })?.decision;
+    expect(run('npm install left-pad')).toBeUndefined();
+    for (const command of [
+      'cd packages/web && npm install left-pad',
+      'npm install left-pad --prefix packages/web',
+      'pnpm -C packages/web add left-pad',
+      'yarn --cwd packages/web add left-pad',
+    ]) {
+      expect(run(command), command).toBe('block');
+    }
+    // A `cd` inside a subshell does not outlive it.
+    expect(run('(cd packages/web); npm install left-pad')).toBeUndefined();
+    expect(run('(cd packages/web && npm install left-pad)')).toBe('block');
+  });
+
   it('blocks when package.json cannot be read', () => {
     vi.mocked(readFileSync).mockImplementation(() => {
       throw new Error('ENOENT');

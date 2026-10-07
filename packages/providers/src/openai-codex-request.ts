@@ -92,11 +92,12 @@ export function appendVolatileSystem(
 /** Header-safe, session-stable affinity key used by the Codex backend. */
 export function codexCacheSessionId(sessionId: string | undefined): string | undefined {
   if (!sessionId) return undefined;
-  const normalized = sessionId.replace(/[^A-Za-z0-9._-]/g, '_');
-  if (normalized.length > 64) {
+  // Lossy replacement merged e.g. "session/a" and "session?a", sharing
+  // thread connections and turn state. Hash the original opaque value.
+  if (sessionId.length > 64 || !/^[A-Za-z0-9._-]+$/.test(sessionId)) {
     return `ws-${createHash('sha256').update(sessionId).digest('hex').slice(0, 61)}`;
   }
-  return normalized || undefined;
+  return sessionId;
 }
 
 /** Stable UUID-shaped thread/request id derived from WrongStack's opaque session id. */

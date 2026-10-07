@@ -46,7 +46,8 @@ export function createMcpRouteTable(deps: WebuiDeps): McpRouteHandlers {
       handleMcpWake(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
     restart: (ws, msg) =>
       handleMcpRestart(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    discover: (ws, msg) => handleMcpDiscover(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
+    discover: (ws, msg) =>
+      handleMcpDiscover(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
     resources: (ws, msg) => handleMcpResources(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
     prompts: (ws, msg) => handleMcpPrompts(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
     resourceRead: (ws, msg) =>

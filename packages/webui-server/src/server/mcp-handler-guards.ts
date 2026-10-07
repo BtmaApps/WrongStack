@@ -33,6 +33,7 @@ export async function authorizeMcpMutation(
     | 'mcp.disable'
     | 'mcp.wake'
     | 'mcp.restart'
+    | 'mcp.discover'
     | 'mcp.auth.login'
     | 'mcp.auth.logout',
   serverName: string,

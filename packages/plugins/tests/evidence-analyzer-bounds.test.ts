@@ -190,3 +190,14 @@ describe('ci-failure-triage rules under the windowing', () => {
     expect(count(findings, TYPE)).toBe(1);
   });
 });
+
+describe('analyzeEvidence excerpt redaction', () => {
+  it('redacts values assigned to bare SECRET / TOKEN / PASSWORD names', () => {
+    // env-contract-guard reports exactly these lines as "environment value
+    // exposed"; the excerpt must not hand the value back.
+    const content =
+      'SECRET=s3cr3t-value-0123456789\nTOKEN=tok_abcdefghijklmnop\npassword=hunter2hunter2';
+    const excerpts = analyzeEvidence(content, profile(/=/), 10).findings.map((f) => f.excerpt);
+    expect(excerpts).toEqual(['SECRET=[REDACTED]', 'TOKEN=[REDACTED]', 'password=[REDACTED]']);
+  });
+});

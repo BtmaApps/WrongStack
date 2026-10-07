@@ -93,6 +93,18 @@ describe('extractErrorLine / extractFrames', () => {
     expect(extractErrorLine('all tests passed\n42 files ok')).toBeNull();
     expect(extractFrames('hello world', 5)).toHaveLength(0);
   });
+
+  it('extracts compiler diagnostics in tsc non-TTY `file(line,col)` form', () => {
+    // Shape captured from the repo's real tsc with stdout piped.
+    const tsc =
+      "src/a.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n" +
+      "src/b.ts(10,3): error TS2304: Cannot find name 'foo'.\n";
+    expect(extractErrorLine(tsc)).toBe(
+      "error TS2322: Type 'string' is not assignable to type 'number'.",
+    );
+    expect(extractFrames(tsc, 5)).toEqual(['src/a.ts:1', 'src/b.ts:10']);
+    expect(extractErrorLine('Found 2 errors in 1 file.')).toBeNull();
+  });
 });
 
 describe('error-lens plugin', () => {

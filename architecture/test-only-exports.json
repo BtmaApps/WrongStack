@@ -1071,8 +1071,7 @@
     ],
     "packages/sage/src/shared/pagination.ts": [
       "compareByUpdatedDesc",
-      "DEFAULT_PAGE_LIMIT",
-      "normalizeListStatuses"
+      "DEFAULT_PAGE_LIMIT"
     ],
     "packages/sdd/src/sdd-board-store.ts": [
       "sameIndexSignature"

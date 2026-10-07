@@ -41,7 +41,12 @@ import type {
   ToolResultBlock,
   ToolUseBlock,
 } from '@wrongstack/core/types';
-import { compactToolDefinitionForWire } from '@wrongstack/core/utils';
+import {
+  compactToolDefinitionForWire,
+  SCHEMA_DESCRIPTION_MAX_CHARS,
+  TOOL_DESCRIPTION_MAX_CHARS,
+} from '@wrongstack/core/utils';
+import { responsesReasoningSummary } from '../responses-reasoning-summary.js';
 
 export interface ResponsesTool {
   type: 'function';
@@ -51,14 +56,24 @@ export interface ResponsesTool {
   strict: boolean;
 }
 
-const _toolCache = new WeakMap<Tool[], ResponsesTool[]>();
+const _toolCache = new WeakMap<Tool[], { fingerprint: string; result: ResponsesTool[] }>();
 
 export function toolsToResponses(tools: Tool[]): ResponsesTool[] {
+  // Request.tools and nested schemas are mutable. Array/object identity alone
+  // cannot establish that the cached wire declaration still represents them.
+  const fingerprint = JSON.stringify(
+    tools.map((tool) => [tool.name, tool.description, tool.inputSchema]),
+  );
   const hit = _toolCache.get(tools);
-  if (hit) return hit;
+  if (hit?.fingerprint === fingerprint) return hit.result;
   const sorted = tools.length > 1 ? [...tools].sort((a, b) => a.name.localeCompare(b.name)) : tools;
   const result = sorted.map((t): ResponsesTool => {
-    const compact = compactToolDefinitionForWire(t);
+    // Explicit default budgets bypass the compactor's identity-only memo on
+    // an actual definition change, while preserving existing wire budgets.
+    const compact = compactToolDefinitionForWire(t, {
+      descriptionMaxChars: TOOL_DESCRIPTION_MAX_CHARS,
+      schemaDescriptionMaxChars: SCHEMA_DESCRIPTION_MAX_CHARS,
+    });
     return {
       type: 'function',
       name: compact.name,
@@ -67,7 +82,7 @@ export function toolsToResponses(tools: Tool[]): ResponsesTool[] {
       strict: false,
     };
   });
-  _toolCache.set(tools, result);
+  _toolCache.set(tools, { fingerprint, result });
   return result;
 }
 
@@ -93,6 +108,7 @@ function imageUrl(b: ImageBlock): string {
  */
 export const CODEX_REASONING_ID_META = 'codexReasoningId';
 export const CODEX_REASONING_ENCRYPTED_META = 'codexReasoningEncrypted';
+export const CODEX_REASONING_SUMMARY_META = 'codexReasoningSummary';
 export const CODEX_TOOL_ARGUMENTS_META = 'codexToolArguments';
 
 /** Preserve server formatting only while the validated tool input still agrees. */
@@ -131,7 +147,12 @@ function reasoningItem(block: ThinkingBlock): Record<string, unknown> | null {
   const id = block.providerMeta?.[CODEX_REASONING_ID_META];
   const encrypted = block.providerMeta?.[CODEX_REASONING_ENCRYPTED_META];
   if (typeof id !== 'string' || !id || typeof encrypted !== 'string' || !encrypted) return null;
-  return { type: 'reasoning', id, encrypted_content: encrypted, summary: [] };
+  return {
+    type: 'reasoning',
+    id,
+    encrypted_content: encrypted,
+    summary: responsesReasoningSummary(block.providerMeta?.[CODEX_REASONING_SUMMARY_META]),
+  };
 }
 
 export function messagesToResponsesInput(

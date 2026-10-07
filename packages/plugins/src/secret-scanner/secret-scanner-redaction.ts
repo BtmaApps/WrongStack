@@ -55,6 +55,13 @@ export const MAX_TOTAL_SCAN_LENGTH = 8 * 1024 * 1024;
 export const TOO_LARGE_MARKER = 'unscannable_oversized_input';
 
 /**
+ * Pseudo-match type reported when an input nests deeper than the scan's
+ * recursion guard. Same rule as {@link TOO_LARGE_MARKER}: a subtree the scan
+ * declined to read is reported, never passed as clean.
+ */
+export const TOO_DEEP_MARKER = 'unscannable_nested_input';
+
+/**
  * Cumulative regex execution timeout in ms. If the combined regex's
  * `while (exec(...))` loop runs longer than this, the scan throws a
  * ReDoS error. Because the hook's policy is `failurePolicy: 'closed'`,
@@ -143,8 +150,10 @@ export function findMatches(text: string): string[] {
 export function scanInput(input: unknown, depth = 0): string[] | null {
   if (input === null || input === undefined) return null;
   // ReDoS guard: limit recursion depth to prevent stack overflow on
-  // deeply nested objects crafted to bypass the string-length check.
-  if (depth > 50) return null;
+  // deeply nested objects crafted to bypass the string-length check. The
+  // unread subtree is reported: returning null here let a credential nested
+  // past the guard through the block and redact gates as "no match".
+  if (depth > 50) return [TOO_DEEP_MARKER];
   if (typeof input === 'string') {
     const found = findMatches(input);
     return found.length > 0 ? found : null;

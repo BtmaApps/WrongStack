@@ -157,13 +157,18 @@ export function safeBrowserUrl(rawUrl: string): string {
 }
 
 export function redactBrowserText(text: string): string {
-  return text
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
-    .replace(
-      /(["']?)\b(authorization|set[-_ ]?cookie|cookie|api[-_ ]?key|private[-_ ]?key|client[-_ ]?secret|access[-_ ]?token|refresh[-_ ]?token|session[-_ ]?token|auth[-_ ]?token|token|password|secret)\b\1(\s*[:=]\s*)((?:"[^"\r\n]*"|'[^'\r\n]*'|(?:Basic|Bearer)\s+[^\s,;]+|[^\s,;]+))/gi,
-      (_match, q1, key, sep, val) => {
-        const quote = val.startsWith('"') ? '"' : val.startsWith("'") ? "'" : '';
-        return `${q1}${key}${q1}${sep}${quote}[REDACTED]${quote}`;
-      },
-    );
+  return (
+    text
+      .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
+      // The optional `prefix_` segments cover compound names (GITHUB_TOKEN,
+      // db_password, stripe-secret): `_` is a word character, so a bare `\b`
+      // before the name never matched them and their values passed through.
+      .replace(
+        /(["']?)\b((?:[A-Za-z0-9]+[-_.]){0,6}(?:authorization|set[-_ ]?cookie|cookie|api[-_ ]?key|private[-_ ]?key|client[-_ ]?secret|access[-_ ]?token|refresh[-_ ]?token|session[-_ ]?token|auth[-_ ]?token|token|password|secret))\b\1(\s*[:=]\s*)((?:"[^"\r\n]*"|'[^'\r\n]*'|(?:Basic|Bearer)\s+[^\s,;]+|[^\s,;]+))/gi,
+        (_match, q1, key, sep, val) => {
+          const quote = val.startsWith('"') ? '"' : val.startsWith("'") ? "'" : '';
+          return `${q1}${key}${q1}${sep}${quote}[REDACTED]${quote}`;
+        },
+      )
+  );
 }

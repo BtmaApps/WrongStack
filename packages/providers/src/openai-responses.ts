@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import type {
   Capabilities,
   ImageGenerationRequest,
@@ -7,12 +8,23 @@ import type {
   Request,
   StreamEvent,
 } from '@wrongstack/core/types';
+import { isVolatileSystemBlock } from '@wrongstack/core/types';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import { openAIImagesBody, openAIImagesUrl, parseOpenAIImages } from './image-generation.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
 import { parseOpenAIResponsesStream } from './openai-codex.js';
+import {
+  appendVolatileSystem,
+  codexCacheSessionId,
+  codexClientRequestId,
+} from './openai-codex-request.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
+import {
+  isCacheProbeEnabled,
+  recordCacheProbeRequest,
+  recordCacheProbeUsage,
+} from './prompt-cache-probe.js';
 import { messagesToResponsesInput, toolsToResponses } from './tool-format/to-responses.js';
 import { WireAdapter, type WireAdapterStreamOptions } from './wire-adapter.js';
 
@@ -46,6 +58,10 @@ export class OpenAIResponsesProvider extends WireAdapter {
     OpenAIResponsesProviderOptions,
     'store' | 'replayReasoning' | 'chatGPTPlan'
   >;
+  private readonly cacheProbeRequests = new WeakMap<
+    object,
+    { requestId: string; sessionKey: string; reasoningTokens: number | undefined }
+  >();
 
   constructor(opts: OpenAIResponsesProviderOptions) {
     super(opts.apiKey, opts.baseUrl, opts.fetchImpl, opts.streamOpts);
@@ -53,6 +69,36 @@ export class OpenAIResponsesProvider extends WireAdapter {
     this.extraHeaders = opts.headers;
     this.responseOptions = opts;
     this.capabilities = capabilitiesForFamily('openai', opts.capabilities);
+  }
+
+  override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
+    if (!isCacheProbeEnabled()) {
+      yield* super.stream(req, opts);
+      return;
+    }
+    // Each call owns its probe, even if a caller reuses the same Request.
+    // Tool filtering preserves this fresh cache object across request copies.
+    const probe = {
+      requestId: '',
+      sessionKey: 'no-session',
+      reasoningTokens: undefined as number | undefined,
+    };
+    req = { ...req, cache: { ...req.cache } };
+    this.cacheProbeRequests.set(req.cache!, probe);
+    for await (const event of super.stream(req, opts)) {
+      if (event.type === 'message_stop') {
+        recordCacheProbeUsage({
+          provider: this.id,
+          sessionKey: probe.sessionKey,
+          requestId: probe.requestId,
+          model: req.model,
+          threadId: req.cache?.threadId ?? req.cache?.sessionId,
+          usage: event.usage,
+          reasoningTokens: probe.reasoningTokens,
+        });
+      }
+      yield event;
+    }
   }
 
   /** Text-to-image through the images API beside the Responses endpoint. */
@@ -91,24 +137,49 @@ export class OpenAIResponsesProvider extends WireAdapter {
     for (const [key, value] of Object.entries(this.extraHeaders ?? {})) {
       if (!PROTECTED.has(key.toLowerCase())) filtered[key] = value;
     }
-    return {
+    const headers: Record<string, string> = {
       ...filtered,
       ...super.buildHeaders(req),
       authorization: `Bearer ${this.apiKey}`,
     };
+    if (this.responseOptions.chatGPTPlan) {
+      // Match the official Responses client's owning-session/thread split.
+      // Explicit gateway headers remain untouched outside the plan route.
+      for (const name of Object.keys(headers)) {
+        if (['session-id', 'thread-id', 'x-client-request-id'].includes(name.toLowerCase())) {
+          delete headers[name];
+        }
+      }
+      const sessionId = codexCacheSessionId(req.cache?.sessionId);
+      const threadId = codexCacheSessionId(req.cache?.threadId) ?? sessionId;
+      if (sessionId) headers['session-id'] = sessionId;
+      if (threadId) {
+        const requestId = codexClientRequestId(threadId);
+        headers['thread-id'] = requestId;
+        headers['x-client-request-id'] = requestId;
+      }
+    }
+    return headers;
   }
 
   protected override buildBody(req: Request, ctx: BuildBodyContext): Record<string, unknown> {
-    const instructions =
-      req.system && req.system.length > 0
-        ? req.system.map((block) => block.text).join('\n\n')
-        : undefined;
+    // A marked per-turn block must not rewrite instructions before history.
+    // Honour the same stability contract as the ChatGPT Codex adapter.
+    const stableSystem: string[] = [];
+    const volatileSystem: string[] = [];
+    for (const block of req.system ?? []) {
+      (isVolatileSystemBlock(block) ? volatileSystem : stableSystem).push(block.text);
+    }
+    const instructions = stableSystem.length > 0 ? stableSystem.join('\n\n') : undefined;
     const body: Record<string, unknown> = {
       model: req.model,
       stream: true,
-      input: messagesToResponsesInput(req.messages, {
-        includeReasoning: this.responseOptions.replayReasoning,
-      }),
+      input: appendVolatileSystem(
+        messagesToResponsesInput(req.messages, {
+          includeReasoning: this.responseOptions.replayReasoning,
+        }),
+        volatileSystem,
+      ),
     };
     if (this.responseOptions.store !== undefined) body['store'] = this.responseOptions.store;
     if (this.responseOptions.replayReasoning) body['include'] = ['reasoning.encrypted_content'];
@@ -130,6 +201,12 @@ export class OpenAIResponsesProvider extends WireAdapter {
     }
     applyPromptCacheKey(body, req, ctx.capabilities);
     if (this.responseOptions.chatGPTPlan) {
+      // Tool/prompt epochs may change the generic prefix hash; the owning
+      // conversation's cache partition stays stable, as on the Codex route.
+      const sessionId = codexCacheSessionId(req.cache?.sessionId);
+      if (sessionId && ctx.capabilities?.cacheControl === 'auto') {
+        body['prompt_cache_key'] = sessionId;
+      }
       // https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations
       // The plan route does not accept sampling or output-cap parameters.
       delete body['max_output_tokens'];
@@ -152,16 +229,51 @@ export class OpenAIResponsesProvider extends WireAdapter {
         if (item['type'] === 'function_call') item['namespace'] = 'wrongstack';
       }
     }
+    const probe = req.cache ? this.cacheProbeRequests.get(req.cache) : undefined;
+    if (probe) {
+      probe.requestId = randomUUID();
+      probe.sessionKey = String(body['prompt_cache_key'] ?? 'no-session');
+      recordCacheProbeRequest({
+        provider: this.id,
+        sessionKey: probe.sessionKey,
+        requestId: probe.requestId,
+        model: req.model,
+        threadId: req.cache?.threadId ?? req.cache?.sessionId,
+        accountScope: createHash('sha256').update(this.apiKey).digest('hex'),
+        settings: [
+          body['reasoning'],
+          body['text'],
+          body['tool_choice'],
+          body['parallel_tool_calls'],
+        ],
+        instructions: String(body['instructions'] ?? ''),
+        tools: body['tools'] as readonly unknown[] | undefined,
+        items: body['input'] as readonly unknown[],
+      });
+    }
     return body;
   }
 
   protected override parseStream(
     body: ReadableStream<Uint8Array> | NodeJS.ReadableStream | null,
     fallbackModel: string,
+    req?: Request,
   ): AsyncIterable<StreamEvent> {
-    return parseOpenAIResponsesStream(body, fallbackModel, this.id, undefined, undefined, {
-      requireTerminalEnvelope: this.responseOptions.chatGPTPlan === true,
-    });
+    const probe = req?.cache ? this.cacheProbeRequests.get(req.cache) : undefined;
+    return parseOpenAIResponsesStream(
+      body,
+      fallbackModel,
+      this.id,
+      undefined,
+      probe
+        ? (tokens) => {
+            probe.reasoningTokens = tokens;
+          }
+        : undefined,
+      {
+        requireTerminalEnvelope: this.responseOptions.chatGPTPlan === true,
+      },
+    );
   }
 
   protected override translateError(

@@ -55,9 +55,14 @@ function readConfig(raw: unknown): EvidenceAnalyzerConfig {
 
 /** Never echo a credential-like value back in a diagnostic excerpt. */
 function redactExcerpt(line: string): string {
-  return line
-    .replace(/\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))\s*=\s*([^\s#]+)/gi, '$1=[REDACTED]')
-    .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/-]{12,}/gi, '$1 [REDACTED]');
+  return (
+    line
+      // The prefix is optional: bare `SECRET=` / `TOKEN=` / `PASSWORD=` are the
+      // exact lines env-contract-guard reports as exposed, and a mandatory
+      // leading character echoed their values verbatim.
+      .replace(/\b([A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))\s*=\s*([^\s#]+)/gi, '$1=[REDACTED]')
+      .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/-]{12,}/gi, '$1 [REDACTED]')
+  );
 }
 
 /**

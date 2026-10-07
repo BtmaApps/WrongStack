@@ -40,7 +40,11 @@ async function runGit(
           rejectPromise(new Error(`git command failed: ${e.message ?? e.stderr ?? String(err)}`));
           return;
         }
-        resolvePromise(stdout.trim());
+        // Strip only the trailing line break(s): path lists (`diff --name-only`,
+        // `ls-files`) do not quote spaces, so a full trim() ate the leading
+        // space of a first path (` lead.txt` became `lead.txt`) and the scoped
+        // commit then named a file that does not exist.
+        resolvePromise(stdout.replace(/[\r\n]+$/, ''));
       },
     );
   });

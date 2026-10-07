@@ -122,7 +122,10 @@ describe('resolveCodexUrl', () => {
 
 describe('codexCacheSessionId', () => {
   it('keeps cache affinity stable while making the header safe', () => {
-    expect(codexCacheSessionId('sess:one/two')).toBe('sess_one_two');
+    const key = codexCacheSessionId('sess:one/two');
+    expect(key).toMatch(/^ws-[0-9a-f]{61}$/);
+    expect(codexCacheSessionId('sess:one/two')).toBe(key);
+    expect(codexCacheSessionId('sess_one_two')).not.toBe(key);
   });
 });
 
@@ -920,7 +923,7 @@ describe('OpenAICodexProvider request shape', () => {
       { ...baseReq, cache: { key: 'ws-key', sessionId: 'sess:one/two' } },
       { signal: new AbortController().signal },
     );
-    expect(captured.init?.headers?.['session-id']).toBe('sess_one_two');
+    expect(captured.init?.headers?.['session-id']).toBe(codexCacheSessionId('sess:one/two'));
     expect(captured.init?.headers?.['thread-id']).toMatch(/^[0-9a-f-]{36}$/i);
     expect(captured.init?.headers?.['x-client-request-id']).toBe(
       captured.init?.headers?.['thread-id'],

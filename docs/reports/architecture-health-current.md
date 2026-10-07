@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:50:57.594Z
+**Generated:** 2026-10-07T09:11:14.042Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4829 |
-| Production source lines | 1079504 |
-| Test files | 4172 |
+| Production source files | 4830 |
+| Production source lines | 1079960 |
+| Test files | 4175 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15897 |
+| Relative module edges | 15902 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -44,11 +44,11 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 144 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 11 | 10 | — |
-| @wrongstack/providers | 126 | 111 | @wrongstack/core |
+| @wrongstack/providers | 127 | 113 | @wrongstack/core |
 | @wrongstack/requirement-intake | 17 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 24 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
-| @wrongstack/sage | 144 | 126 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 144 | 127 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 45 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 21 | 31 | @wrongstack/core |
@@ -136,7 +136,7 @@ None.
 
 ## Exports only tests reference
 
-- 957 runtime exports are referenced by tests and by no other production file.
+- 956 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

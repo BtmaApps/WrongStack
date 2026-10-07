@@ -23,13 +23,18 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   // Shell control operators stay unparsed so the conservative pipeline path runs.
   const isSimpleTaskkill = /^taskkill\s+/i.test(normalized) && !/[|&<>]/.test(normalized);
   // `/PID:1234` (colon-attached) binds identically to `/PID 1234`.
-  const taskkillPidMatch = isSimpleTaskkill
-    ? normalized.match(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/i)
-    : null;
-  const taskkillPidValue = taskkillPidMatch?.[1] ?? taskkillPidMatch?.[2];
-  if (taskkillPidValue) {
+  // taskkill accepts `/PID` more than once and kills every one; reading only
+  // the first let `taskkill /PID <other> /PID <protected>` through.
+  const taskkillPids = isSimpleTaskkill
+    ? [...normalized.matchAll(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/gi)].map((m) =>
+        parseInt(m[1] ?? m[2] ?? '', 10),
+      )
+    : [];
+  const firstTaskkillPid = taskkillPids[0];
+  if (firstTaskkillPid !== undefined) {
     return {
-      pid: parseInt(taskkillPidValue, 10),
+      pid: firstTaskkillPid,
+      ...(taskkillPids.length > 1 ? { pids: taskkillPids } : {}),
       signal: hasTaskkillForce ? 'FORCE' : 'TERM',
       isGroupKill: false,
       isAllKill: false,
@@ -99,6 +104,27 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   if (isStopProcIdCommand && stopProcId) {
     return {
       pid: parseInt(stopProcId, 10),
+      signal: 'FORCE',
+      isGroupKill: false,
+      isAllKill: false,
+      originalCommand: command,
+    };
+  }
+
+  // ── Stop-Process 1234 / spps 1234,5678 -Force ─────────────────────
+  // -Id is Stop-Process's first positional parameter, so a bare number (or a
+  // comma list) is a PID list. `kill <n>` stays with the POSIX branch below.
+  const stopProcPositional = normalized.match(
+    /^(?:stop-process|spps)\s+(\d+(?:\s*,\s*\d+)*)(?:\s+-[a-zA-Z]+(?::\S+)?)*$/i,
+  );
+  const positionalPids =
+    stopProcPositional?.[1]?.split(/\s*,\s*/).map((v) => parseInt(v, 10)) ?? [];
+  const firstPositionalPid = positionalPids[0];
+  if (firstPositionalPid !== undefined) {
+    const pids = positionalPids;
+    return {
+      pid: firstPositionalPid,
+      ...(pids.length > 1 ? { pids } : {}),
       signal: 'FORCE',
       isGroupKill: false,
       isAllKill: false,

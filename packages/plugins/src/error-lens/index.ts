@@ -136,6 +136,10 @@ const ERROR_LINE_PATTERNS = [
   /^(panic: [^\n]*)/m,
   // Generic FAIL lines from test runners.
   /^[ \t]*((?:FAIL|✗|×)[ \t]+[^\n]{5,})/m,
+  // Compiler diagnostics: tsc `a.ts(1,7): error TS2322: …` (its non-TTY
+  // form) and `a.ts:1:7 - error TS2322: …`, MSBuild `error CS1002: …`,
+  // gcc/clang `a.c:3:5: error: …`, rustc `error[E0308]: …`.
+  /^[^\n]*?\b(error(?: [A-Z]+\d+|\[[A-Z]\d+\])?: [^\n]*)/m,
 ];
 
 const FRAME_PATTERNS: RegExp[] = [
@@ -147,6 +151,8 @@ const FRAME_PATTERNS: RegExp[] = [
   /(?:^|[ \t(])((?:file:\/\/\/?)?(?:[A-Za-z]:[\\/])?[A-Za-z0-9_./\\-]+\.[a-z]{1,4}:\d+)(?::\d+)?/gm,
   // Rust: "--> src/main.rs:4:5"
   /-->\s+((?:[A-Za-z]:[\\/])?[^\s:]+:\d+)/g,
+  // tsc (non-TTY) / MSBuild: "src/foo.ts(12,5): error …" — file + line groups.
+  /(?:^|[ \t])((?:[A-Za-z]:[\\/])?[A-Za-z0-9_./\\-]+\.[A-Za-z]{1,6})\((\d+),\d+\)/gm,
 ];
 
 /** Extract the first recognizable error line from tool output. */

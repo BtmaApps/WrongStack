@@ -28,7 +28,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
 import { parseInstallCommands } from '../dep-guard/index.js';
 
@@ -157,14 +157,84 @@ export function parsePackageNames(command: string): string[] {
  *  read and block every legitimate non-node install. */
 const AUDITABLE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
 
-function parseAuditablePackageNames(command: string): string[] {
-  return [
-    ...new Set(
-      parseInstallCommands(command)
-        .filter((entry) => AUDITABLE_MANAGERS.has(entry.manager))
-        .flatMap((entry) => entry.packages.map((pkg) => pkg.name)),
-    ),
-  ];
+/** JS-manager options whose value is the directory the install runs in. */
+const INSTALL_DIR_OPTIONS = new Set(['--prefix', '-C', '--dir', '--cwd']);
+
+function unquote(token: string): string {
+  return token.replace(/^(['"])(.*)\1$/, '$2');
+}
+
+function installDirOption(segment: string): string | undefined {
+  const tokens = segment.split(/\s+/);
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i] ?? '';
+    if (INSTALL_DIR_OPTIONS.has(token) && tokens[i + 1]) return unquote(tokens[i + 1] ?? '');
+    const eq = /^(--prefix|--dir|--cwd)=(.+)$/.exec(token);
+    if (eq?.[2]) return unquote(eq[2]);
+  }
+  return undefined;
+}
+
+interface AuditTarget {
+  name: string;
+  /** Directory the install ran in; the package resolves from here. */
+  dir: string;
+}
+
+/**
+ * Every auditable install in `command`, with the directory it installed into.
+ * `parseInstallCommands` keeps the package names but not the target, so the
+ * audit read `./node_modules/<name>` for `cd pkg && npm i x`, `--prefix pkg`,
+ * `pnpm -C pkg add x` and `yarn --cwd pkg add x` alike — a disallowed package
+ * installed into a sub-package passed whenever the root held an allowed copy.
+ * A `cd` lasts until the end of its `( … )` subshell.
+ */
+function auditTargets(command: string, cwd: string): AuditTarget[] {
+  const targets = new Map<string, AuditTarget>();
+  const scopes: string[] = [];
+  let dir = cwd;
+  for (const raw of command.split(/&&|\|\||[;|\n\r]/)) {
+    let segment = raw.trim();
+    while (/^[({]/.test(segment)) {
+      if (segment.startsWith('(')) scopes.push(dir);
+      segment = segment.slice(1).trim();
+    }
+    let closes = 0;
+    while (/[)}]$/.test(segment)) {
+      if (segment.endsWith(')')) closes++;
+      segment = segment.slice(0, -1).trim();
+    }
+    const cd = /^(?:cd|pushd)\s+(?:--\s+)?(\S+)$/.exec(segment);
+    if (cd?.[1]) {
+      dir = resolve(dir, unquote(cd[1]));
+    } else {
+      for (const entry of parseInstallCommands(segment)) {
+        if (!AUDITABLE_MANAGERS.has(entry.manager)) continue;
+        const option = installDirOption(segment);
+        const at = option ? resolve(dir, option) : dir;
+        for (const pkg of entry.packages)
+          targets.set(`${pkg.name}\0${at}`, { name: pkg.name, dir: at });
+      }
+    }
+    for (; closes > 0; closes--) dir = scopes.pop() ?? dir;
+  }
+  return [...targets.values()];
+}
+
+/** `<name>/package.json` as Node resolves it from `dir`: nearest `node_modules` up the tree. */
+function readInstalledManifest(name: string, dir: string): unknown {
+  let current = dir;
+  for (;;) {
+    try {
+      return JSON.parse(
+        readFileSync(join(current, 'node_modules', name, 'package.json'), 'utf-8'),
+      ) as unknown;
+    } catch (err) {
+      const parent = dirname(current);
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT' || parent === current) throw err;
+      current = parent;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -239,7 +309,7 @@ function isLicenseAllowed(licenseStr: string, normalizedAllowed: Set<string>): b
 }
 
 function auditPackages(
-  names: string[],
+  targets: AuditTarget[],
   allowedLicenses: string[],
 ): {
   ok: boolean;
@@ -250,12 +320,10 @@ function auditPackages(
   const errors: string[] = [];
   const normalizedAllowed = new Set(allowedLicenses.map((l) => l.toLowerCase()));
 
-  for (const name of names) {
+  for (const { name, dir } of targets) {
     let licenses: string[] = [];
     try {
-      const pkgPath = resolve('node_modules', name, 'package.json');
-      const raw = JSON.parse(readFileSync(pkgPath, 'utf-8')) as unknown;
-      licenses = extractLicenseStrings(raw);
+      licenses = extractLicenseStrings(readInstalledManifest(name, dir));
     } catch {
       errors.push(name);
     }
@@ -344,12 +412,12 @@ const plugin: Plugin = {
       if (!command) return;
 
       state.invocations += 1;
-      const names = parseAuditablePackageNames(command);
-      if (names.length === 0) return;
+      const targets = auditTargets(command, process.cwd());
+      if (targets.length === 0) return;
 
       state.installsSeen += 1;
-      const audit = auditPackages(names, cfg.allowedLicenses);
-      state.packagesAudited += names.length;
+      const audit = auditPackages(targets, cfg.allowedLicenses);
+      state.packagesAudited += targets.length;
 
       const denied = audit.results.filter((r) => !r.allowed).map((r) => r.name);
       state.allowedCount += audit.results.filter((r) => r.allowed).length;

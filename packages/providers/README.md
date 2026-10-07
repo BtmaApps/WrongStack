@@ -18,6 +18,8 @@ Product identity, endpoint, environment-variable, model, usage, compatibility-po
 
 After changing a definition, run `pnpm providers:catalog:write`. Release checks fail when either generated snapshot drifts.
 
+For ChatGPT subscription cache identity, volatile prompt handling, upstream comparisons and `WRONGSTACK_CACHE_PROBE` diagnostics, see [OpenAI cache management](../../docs/openai-cache-management.md).
+
 ## Supported wire families
 
 | Family | Class | Preset | Used by |
@@ -84,7 +86,7 @@ Every provider accepts the canonical `Request` type from `@wrongstack/core`. Par
 | `logprobs` | ❌ | ✅ `logprobs` + `top_logprobs` | ✅ `logprobs` | ✅ `logprobs` |
 | `reasoning` | ✅ `thinking` | ✅ `reasoning_effort` | ✅ `thinkingConfig` | via quirks |
 | `responseFormat` | ❌ | ✅ `response_format` | ✅ `responseMimeType`+`responseSchema` | Provider-specific |
-| `cache` | ✅ `cache_control` | ❌ | ❌ | ❌ |
+| `cache` | ✅ `cache_control` | ✅ automatic `prompt_cache_key` | ❌ | model-dependent automatic cache key |
 | `safetySettings` | ❌ | ❌ | ✅ `safetySettings` array | ❌ |
 | `candidateCount` | ❌ | ❌ | ✅ `candidateCount` | ❌ |
 

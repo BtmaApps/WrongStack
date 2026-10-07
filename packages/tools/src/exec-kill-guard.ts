@@ -41,7 +41,14 @@ export async function checkExecKillCommand(
 ): Promise<ExecKillCheckResult> {
   if (!cmd) return { blocked: false };
 
-  const cmdLower = cmd.toLowerCase().trim();
+  // Compare the executable's base name: exec resolves `C:\Windows\System32\
+  // taskkill.exe` and `/bin/kill` to the same programs, and the verbatim
+  // comparisons below never matched a path-qualified command.
+  const cmdLower = cmd
+    .toLowerCase()
+    .trim()
+    .replace(/^.*[\\/]/, '')
+    .replace(/\.exe$/, '');
   const fullCommand = [cmdLower, ...args].join(' ').replace(/\s+/g, ' ').trim();
 
   // On Windows, check for taskkill, Stop-Process, wmic kill
@@ -62,11 +69,13 @@ export async function checkExecKillCommand(
           }
         }
       }
-      // /PID specific process
+      // /PID specific process (also the colon-attached `/PID:1234`, which
+      // taskkill binds identically — the bash guard already reads it)
       for (let i = 0; i < args.length; i++) {
         const a = args[i]!;
-        if (a.toUpperCase() === '/PID' || a.toUpperCase() === '-PID') {
-          const pidArg = args[i + 1];
+        const attached = /^[/-]PID:(\d+)$/i.exec(a)?.[1];
+        if (attached || a.toUpperCase() === '/PID' || a.toUpperCase() === '-PID') {
+          const pidArg = attached ?? args[i + 1];
           if (pidArg && /^\d+$/.test(pidArg)) {
             const result = await checkKillTarget({
               pid: parseInt(pidArg, 10),
@@ -114,7 +123,7 @@ export async function checkExecKillCommand(
     ) {
       const shellFlagIndex = args.findIndex((arg) => {
         const lower = arg.toLowerCase();
-        return lower === '-c' || lower === '-command' || lower === '/c';
+        return lower === '-c' || lower === '-command' || lower === '/c' || lower === '/k';
       });
       if (shellFlagIndex >= 0) {
         const innerTokens = tokenizeShellCommand(args.slice(shellFlagIndex + 1).join(' '));
@@ -130,7 +139,10 @@ export async function checkExecKillCommand(
         // executes and killed a real process (live-verified). Recurse on the
         // effective command; -File script mode is opaque and stays
         // uninspected (argsAfterLauncherFlags returns [] for it).
-        const innerTokens = argsAfterLauncherFlags(args);
+        // PowerShell joins its positional arguments into one command string,
+        // so `powershell "Stop-Process -Id 123"` (a single argv entry) runs
+        // the cmdlet too — tokenize the joined text like the -Command branch.
+        const innerTokens = tokenizeShellCommand(argsAfterLauncherFlags(args).join(' '));
         const innerCommand = innerTokens[0];
         if (innerCommand) {
           const result = await checkExecKillCommand(innerCommand, innerTokens.slice(1));
@@ -183,12 +195,39 @@ export async function checkExecKillCommand(
           }
         }
       }
-      // Bare "kill node" (PowerShell alias) — name as first non-flag arg
+      // Bare "kill node" (PowerShell alias) — name as first non-flag arg.
+      // A numeric one (or comma list) binds to -Id, Stop-Process's first
+      // positional parameter: `Stop-Process 1234` kills PID 1234, and reading
+      // it as a process NAME never matched a protected entry.
       const firstNonFlag = args.find((a) => !a.startsWith('-'));
+      const positionalPids = firstNonFlag?.replace(/,$/, '').split(',');
+      if (positionalPids?.every((v) => /^\d+$/.test(v.trim()))) {
+        for (const v of positionalPids) {
+          const result = await checkKillTarget({
+            pid: parseInt(v.trim(), 10),
+            signal: 'FORCE',
+            cmd: fullCommand,
+          });
+          if (result.blocked) return result;
+        }
+      }
       if (firstNonFlag) {
         const name = firstNonFlag.replace(/^['"]|['"]$/g, '');
         // pkill and process names like "node" — conservative check
         const result = await checkKillTarget({ name, signal: 'TERM', cmd: fullCommand });
+        if (result.blocked) return result;
+      }
+    }
+
+    // tskill <pid> — Terminal Services process kill, present on Windows Pro.
+    if (cmdLower === 'tskill') {
+      const pidArg = args.find((a) => /^\d+$/.test(a));
+      if (pidArg) {
+        const result = await checkKillTarget({
+          pid: parseInt(pidArg, 10),
+          signal: 'TERM',
+          cmd: fullCommand,
+        });
         if (result.blocked) return result;
       }
     }

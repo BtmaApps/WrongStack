@@ -113,4 +113,14 @@ describe('browser security boundary', () => {
     expect(redacted).not.toContain('hunter2');
     expect(redacted).not.toContain('key123');
   });
+
+  it('redacts compound credential names (GITHUB_TOKEN, db_password, stripe-secret)', () => {
+    const redacted = redactBrowserText(
+      'GITHUB_TOKEN=ghp_abcdef {"db_password": "hunter2"} x-stripe-secret: sk_live_x',
+    );
+    expect(redacted).not.toContain('ghp_abcdef');
+    expect(redacted).not.toContain('hunter2');
+    expect(redacted).not.toContain('sk_live_x');
+    expect(redactBrowserText('TOKEN_URL=https://x')).toBe('TOKEN_URL=https://x');
+  });
 });

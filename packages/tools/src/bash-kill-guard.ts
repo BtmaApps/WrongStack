@@ -54,6 +54,7 @@ import {
   SCRIPT_KILL_FALLBACK_RE,
   SCRIPT_KILL_RE_POSIX,
   splitShellSequence,
+  unwrapKillCommandHead,
 } from './bash-kill-detect.js';
 import { parseWindowsKillCommand } from './bash-kill-parse-windows.js';
 import {
@@ -314,7 +315,7 @@ export async function checkAndBlockKillCommand(command: string): Promise<KillChe
 }
 
 async function checkSingleCommand(command: string): Promise<KillCheckResult> {
-  const normalized = command.replace(/\s+/g, ' ').trim();
+  const normalized = unwrapKillCommandHead(command.replace(/\s+/g, ' ').trim());
 
   // First, extract any kill command from shell-wrapped commands
   const killCmd =

@@ -53,6 +53,18 @@ describe('exec-kill-guard', () => {
       expect(result.reason).toMatch(/current WrongStack|protected WrongStack/i);
     });
 
+    it.each([
+      ['C:\\Windows\\System32\\taskkill.exe', ['/PID', String(process.pid), '/F']],
+      ['taskkill', [`/PID:${process.pid}`, '/F']],
+      ['C:\\Windows\\System32\\cmd.exe', ['/c', 'taskkill', '/PID', String(process.pid)]],
+      ['cmd', ['/k', 'taskkill', '/PID', String(process.pid)]],
+      ['tskill', [String(process.pid)]],
+      ['powershell', [`Stop-Process -Id ${process.pid}`]],
+      ['pwsh', ['-c', `Stop-Process ${process.pid}`]],
+    ] as const)('blocks a self-kill spelled %s %j', async (cmd, args) => {
+      expect((await checkExecKillCommand(cmd, [...args])).blocked).toBe(true);
+    });
+
     it('blocks taskkill /PID targeting current process (dash flags)', async () => {
       const result = await checkExecKillCommand('taskkill', ['-F', '-PID', String(process.pid)]);
       expect(result.blocked).toBe(true);

@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1368,
-      "typeOnly": 1205,
-      "runtimeOrMixed": 415
+      "files": 1370,
+      "typeOnly": 1206,
+      "runtimeOrMixed": 417
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -17568,7 +17568,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/openai-responses.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -18034,6 +18034,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/openai-responses-cache.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/openai-responses-coverage.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18077,6 +18083,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/reasoning-echo-field.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/responses-replay-invariants.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

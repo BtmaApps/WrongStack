@@ -1,10 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-import {
-  clampPageLimit,
-  DEFAULT_PAGE_STATUSES,
-  VALID_MEMORY_STATUSES,
-} from './shared/pagination.js';
+import { clampPageLimit, normalizeListStatuses } from './shared/pagination.js';
 import { decodePageCursor, escapeLikePattern } from './sqlite-store-pagination.js';
 import {
   buildSessionClause,
@@ -31,12 +27,12 @@ export function listSqliteSagePage(
     .all(...session.params) as SqliteCountRow[];
   const statusCounts = countRowsByField(statusRows, 'status');
 
-  const requested =
-    options.statuses && options.statuses.length > 0
-      ? options.statuses.filter((status) => VALID_MEMORY_STATUSES.has(status))
-      : DEFAULT_PAGE_STATUSES;
-  const statuses =
-    options.statuses?.length === 0 ? [] : requested.length > 0 ? requested : DEFAULT_PAGE_STATUSES;
+  // An explicitly-provided `statuses` array IS the contract: unknown names
+  // must yield an empty page ("return empty so the caller notices the
+  // mismatch" — normalizeListStatuses), never a silent default view. Only an
+  // ABSENT array takes the default (everything except `deleted`). The WS
+  // surface forwards arbitrary client strings, so this is a trust boundary.
+  const statuses = [...normalizeListStatuses(options.statuses)];
   if (statuses.length === 0) {
     return { memories: [], nextCursor: null, total: 0, statusCounts };
   }

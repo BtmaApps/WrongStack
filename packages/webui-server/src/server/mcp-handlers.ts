@@ -314,9 +314,15 @@ export async function handleMcpDiscover(
   msg: WSClientMessage,
   globalConfigPath: string,
   mcpRegistry?: MCPRegistry,
+  trustBoundary?: TrustBoundary,
 ): Promise<void> {
   const d = deps(ws, globalConfigPath, mcpRegistry);
   if (!d) return;
+  // discoverMcp → restartMcp → registry.start: it spawns the configured
+  // server (disabled ones included), the same class as restart/wake/enable.
+  // Without this check a boundary that refused mcp.restart still spawned
+  // through mcp.discover.
+  if (!(await authorizeMcpMutation(ws, 'mcp.discover', name(msg), trustBoundary))) return;
   const result = await discoverMcp(name(msg), d);
   if (result.ok) {
     // Hints the live server claimed for its freshly discovered tools. Absent

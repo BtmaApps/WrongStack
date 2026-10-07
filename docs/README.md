@@ -93,6 +93,7 @@ How to add new things. Each guide is self-contained — read the one for the sur
 | Document | What it covers |
 |---|---|
 | [configuration.md](configuration.md) | Configuration model, secret vault, environment variables, config migration |
+| [openai-cache-management.md](openai-cache-management.md) | Codex/ChatGPT cache identity, stable prompts, usage diagnostics and quota measurement |
 | [slash/profile.md](slash/profile.md) | Profile copy/switch and which state requires a restart |
 | [subcommands/config-transfer.md](subcommands/config-transfer.md) | Portable settings, included controls and merge semantics |
 | [slash/permissions.md](slash/permissions.md) | Explain live policy decisions and manage session rules |

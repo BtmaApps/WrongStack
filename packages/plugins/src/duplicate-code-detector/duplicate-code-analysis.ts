@@ -197,15 +197,31 @@ export function normalizeLine(line: string): string {
   return normalized;
 }
 
-/** Fingerprint of the `minLines` window starting at `start` over pre-normalized lines. */
+/**
+ * Indexes of the lines that still carry code once normalized. Windows are
+ * built over these, not over raw lines: blank and comment-only lines
+ * normalize to '' and used to sit inside a raw `minLines` window without
+ * reaching its fingerprint, so seven different comment lines plus one shared
+ * `return x;` fingerprinted as that single line — an "8-line duplicate".
+ */
+export function codeLineIndexes(normalizedLines: string[]): number[] {
+  const indexes: number[] = [];
+  for (let i = 0; i < normalizedLines.length; i++) {
+    if (normalizedLines[i]!.length > 0) indexes.push(i);
+  }
+  return indexes;
+}
+
+/** Fingerprint of the `minLines` code lines starting at `codeLines[start]`. */
 export function windowFingerprint(
   normalizedLines: string[],
+  codeLines: number[],
   start: number,
   minLines: number,
 ): string {
-  return normalizedLines
+  return codeLines
     .slice(start, start + minLines)
-    .filter((l) => l.length > 0)
+    .map((i) => normalizedLines[i])
     .join('\n');
 }
 
@@ -237,19 +253,17 @@ export function extractFingerprintHashes(
   minLines: number,
   maxWindows: number,
 ): Set<number> {
-  const rawLines = content.split(/\r?\n/);
   // Normalize once per source line. Normalizing every overlapping window
   // repeated this work roughly minLines times and created large transient
   // string heaps during project scans.
-  const normalizedLines = rawLines.map(normalizeLine);
+  const normalizedLines = content.split(/\r?\n/).map(normalizeLine);
+  const codeLines = codeLineIndexes(normalizedLines);
   const fingerprints = new Set<number>();
-  const windowCount = Math.min(Math.max(rawLines.length - minLines + 1, 0), maxWindows);
+  const windowCount = Math.min(Math.max(codeLines.length - minLines + 1, 0), maxWindows);
   for (let index = 0; index < windowCount; index += 1) {
-    const fingerprint = normalizedLines
-      .slice(index, index + minLines)
-      .filter((line) => line.length > 0)
-      .join('\n');
-    if (fingerprint.length > 0) fingerprints.add(hashFingerprint(fingerprint));
+    fingerprints.add(
+      hashFingerprint(windowFingerprint(normalizedLines, codeLines, index, minLines)),
+    );
   }
   return fingerprints;
 }
@@ -314,19 +328,22 @@ export function extractWindows(
   // not one location per shifted window.
   // Windows are visited in ascending start order, so a new window can only
   // overlap the most recently kept one.
+  const codeLines = codeLineIndexes(normalizedLines);
   let coveredUntil = 0;
   const windows: CodeWindow[] = [];
-  for (let i = 0; i <= rawLines.length - minLines; i++) {
-    const startLine = i + 1;
-    const endLine = i + minLines;
+  for (let k = 0; k <= codeLines.length - minLines; k++) {
+    const first = codeLines[k]!;
+    const last = codeLines[k + minLines - 1]!;
+    const startLine = first + 1;
+    const endLine = last + 1;
     if (startLine <= coveredUntil) continue;
-    const fingerprint = windowFingerprint(normalizedLines, i, minLines);
-    if (fingerprint.length === 0 || !isDuplicate(fingerprint)) continue;
+    const fingerprint = windowFingerprint(normalizedLines, codeLines, k, minLines);
+    if (!isDuplicate(fingerprint)) continue;
     windows.push({
       file: filePath,
       startLine,
       endLine,
-      snippet: rawLines.slice(i, i + minLines).join('\n'),
+      snippet: rawLines.slice(first, last + 1).join('\n'),
       fingerprint,
     });
     coveredUntil = endLine;
@@ -346,10 +363,9 @@ export function findDuplicates(
   const occurrences = new Map<number, number>();
   for (const content of files.values()) {
     const normalizedLines = content.split(/\r?\n/).map(normalizeLine);
-    for (let i = 0; i <= normalizedLines.length - minLines; i++) {
-      const fingerprint = windowFingerprint(normalizedLines, i, minLines);
-      if (fingerprint.length === 0) continue;
-      const hash = hashFingerprint(fingerprint);
+    const codeLines = codeLineIndexes(normalizedLines);
+    for (let k = 0; k <= codeLines.length - minLines; k++) {
+      const hash = hashFingerprint(windowFingerprint(normalizedLines, codeLines, k, minLines));
       occurrences.set(hash, (occurrences.get(hash) ?? 0) + 1);
     }
   }
