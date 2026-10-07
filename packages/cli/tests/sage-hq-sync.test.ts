@@ -59,7 +59,10 @@ it('syncs external daemon writes over real HQ WebSockets, isolates projects, res
     const c = { publisher, sync, ipc: new SageProjectServerConnection(projectRoot, directory) };
     clients.push(c);
     publisher.connect();
-    await vi.waitFor(() => expect(publisher.connected).toBe(true));
+    await vi.waitFor(() => expect(publisher.connected).toBe(true), {
+      timeout: 15_000,
+      interval: 100,
+    });
     return c;
   }
   const a = await client('a');
@@ -94,6 +97,18 @@ it('syncs external daemon writes over real HQ WebSockets, isolates projects, res
     callOptions,
   );
   await a.sync.refresh();
+  // Publishing is asynchronous. Observe the update through another live
+  // client before restarting HQ, so its persisted snapshot contains the update.
+  await vi.waitFor(
+    async () => {
+      await a.sync.refresh();
+      await late.sync.refresh();
+      expect((await late.ipc.call('getSage', { id: memory.id }, callOptions))?.text).toBe(
+        'Updated while client B was offline',
+      );
+    },
+    { timeout: 15_000, interval: 100 },
+  );
   // A new HQ process reads its persisted store; reconnecting publishers re-announce.
   const port = server.port;
   await server.close();

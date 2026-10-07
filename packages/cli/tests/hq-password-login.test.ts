@@ -9,7 +9,7 @@ import {
   verifyHqPassword,
   writeHqAuthFile,
 } from '@wrongstack/core/hq';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
 
@@ -454,6 +454,12 @@ describe('HQ server — optional browser password login', () => {
   it('login lockout persists across server restart (M1)', async () => {
     await seedAuthFile({ password: 'secret123' });
 
+    // Exercise persistence independently of how long real HTTP, scrypt and
+    // shutdown take under coverage. Keep network/debounce timers real.
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    onTestFinished(() => clock.mockRestore());
+
     // First start: fail login once to trigger initial backoff (2s window).
     handle = await startHqServer({ host: '127.0.0.1', port: 0, dataDir });
     const fail1 = await login(handle, 'wrong');
@@ -488,6 +494,11 @@ describe('HQ server — optional browser password login', () => {
     // wrong credential).
     const correctButLocked = await login(handle, 'secret123');
     expect(correctButLocked.res.status).toBe(429);
+
+    // The persisted lock still expires at its original deadline.
+    clock.mockReturnValue(now + 2_001);
+    const afterExpiry = await login(handle, 'secret123');
+    expect(afterExpiry.res.status).toBe(200);
   });
 
   it('keeps cred: entries in memory and does not persist password hashes to login-attempts.json (SEC-001)', async () => {

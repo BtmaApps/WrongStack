@@ -121,6 +121,8 @@ describe('banner pixel formation', () => {
   });
 
   it('plays at app startup while the composer continues accepting input', async () => {
+    const startedAt = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(startedAt);
     const journey = createAppJourney();
     const view = renderRealTty(<App {...journey.props} banner />, { columns: 100, rows: 45 });
     try {
@@ -130,7 +132,8 @@ describe('banner pixel formation', () => {
       view.stdin.write('pixel-animation-input');
       await settle(80);
       expect(view.lastFrame()).toContain('pixel-animation-input');
-      await settle(BANNER_FORMATION_DURATION_MS);
+      clock.mockReturnValue(startedAt + BANNER_FORMATION_DURATION_MS);
+      await settle(90);
       expect(view.lastFrame()).toContain(WORDMARK_LINES[0]);
       expect(view.lastFrame()).toContain('pixel-animation-input');
     } finally {

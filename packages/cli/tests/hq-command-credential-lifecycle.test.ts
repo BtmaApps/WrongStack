@@ -280,6 +280,10 @@ describe('client identity is bound to the credential that registered it', () => 
 
 describe('credentials that expire while a socket is open', () => {
   it('closes a client socket once its token reaches expiresAt', async () => {
+    // Hold the auth clock until both real WebSocket handshakes finish; a
+    // short wall-clock TTL can expire while coverage boots the server.
+    let now = Date.now();
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
     await writeHqAuthFile(dataDir, {
       version: HQ_AUTH_FILE_VERSION,
       updatedAt: new Date().toISOString(),
@@ -290,7 +294,7 @@ describe('credentials that expire while a socket is open', () => {
           id: 'short',
           token: 'client-short-0123456789',
           createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 1_500).toISOString(),
+          expiresAt: new Date(now + 1_500).toISOString(),
         },
       ],
     });
@@ -307,7 +311,9 @@ describe('credentials that expire while a socket is open', () => {
     const keep = await open(`ws://127.0.0.1:${handle.port}/ws/client?token=client-keep-0123456789`);
     await helloAndWelcome(keep, 'long-lived');
 
-    expect(await closed(short, 6_000)).toBe(1008);
+    const expiredClosed = closed(short, 6_000);
+    now += 1_501;
+    expect(await expiredClosed).toBe(1008);
     expect(keep.readyState).toBe(WebSocket.OPEN);
   });
 

@@ -82,14 +82,15 @@ it('runs two WebUI goals independently, routes status by id and preserves anothe
         expect((await store.listGoals()).find((goal) => goal.id === ids[0])?.status).toBe(
           'completed',
         ),
-      { timeout: 10_000 },
+      // Real Git checkpoints/worktree operations can exceed 10s under coverage.
+      { timeout: 60_000 },
     );
     expect((await store.listGoals()).find((goal) => goal.id === ids[1])?.status).toBe('running');
     gates[1]!.resolve();
     await vi.waitFor(
       async () =>
         expect((await store.listGoals()).every((goal) => goal.status === 'completed')).toBe(true),
-      { timeout: 10_000 },
+      { timeout: 60_000 },
     );
     await handler.handleMessage(ws, { type: 'goal.list' });
     expect(
@@ -137,4 +138,4 @@ it('runs two WebUI goals independently, routes status by id and preserves anothe
     handler.dispose();
     await fixture.dispose();
   }
-});
+}, 180_000);
