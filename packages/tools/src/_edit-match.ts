@@ -143,6 +143,7 @@ export function findLadderMatches(fileLf: string, oldLf: string): LadderResult |
 
   const fileTrimmed = fileTrimEnd.map((l) => l.trimStart());
   const needleTrimmed = needleTrimEnd.map((l) => l.trimStart());
+  const needleShape = indentShape(needleLines);
   const normalized = windowScan(
     fileTrimmed,
     needleTrimmed,
@@ -150,6 +151,11 @@ export function findLadderMatches(fileLf: string, oldLf: string): LadderResult |
     fileLines,
     (a, b) => a === b,
     needleEndsWithNewline,
+  ).filter((m) =>
+    sameShape(
+      indentShape(fileLines.slice(m.startLine - 1, m.startLine - 1 + needleLines.length)),
+      needleShape,
+    ),
   );
   if (normalized.length > 0) return { tier: 'whitespace-normalized', matches: normalized };
 
@@ -231,10 +237,12 @@ function fuzzyScan(
   if (needleInterior.length > FUZZY_MAX_INTERIOR_CHARS) return undefined;
 
   const fileTrimmed = fileLines.map((l) => l.trim());
+  const needleShape = indentShape(needleLines);
   const candidates: Array<{ match: LadderMatch; score: number }> = [];
   for (let i = 0; i + n <= fileLines.length; i++) {
     if ((fileTrimmed[i] as string) !== firstNeedle) continue;
     if ((fileTrimmed[i + n - 1] as string) !== lastNeedle) continue;
+    if (!sameShape(indentShape(fileLines.slice(i, i + n)), needleShape)) continue;
     const windowInterior = fileTrimmed.slice(i + 1, i + n - 1).join('\n');
     if (windowInterior.length > FUZZY_MAX_INTERIOR_CHARS) continue;
     const maxLen = Math.max(needleInterior.length, windowInterior.length);
@@ -266,6 +274,36 @@ function fuzzyScan(
     };
   }
   return { tier: 'fuzzy', matches: [best.match], score: best.score };
+}
+
+/**
+ * Indentation SHAPE of a block: each non-blank line's depth rank among the
+ * block's distinct indentation widths (a tab counts 4). The indent-insensitive
+ * tiers compare lines with leading whitespace stripped and re-indent the
+ * replacement by the first line's delta only, so they are sound only for a
+ * uniform shift — which keeps the shape (as do 2-vs-4 spaces and tabs). A
+ * different nesting does not: in Python/YAML it is a different program, and
+ * accepting it wrote the needle's structure over the file's (a statement
+ * silently moved out of its `if`).
+ */
+function indentShape(lines: readonly string[]): number[] {
+  const widths = lines.filter((l) => l.trim() !== '').map(indentWidth);
+  const ranks = [...new Set(widths)].sort((a, b) => a - b);
+  return widths.map((w) => ranks.indexOf(w));
+}
+
+function indentWidth(line: string): number {
+  let width = 0;
+  for (const ch of line) {
+    if (ch === ' ') width++;
+    else if (ch === '\t') width += 4;
+    else break;
+  }
+  return width;
+}
+
+function sameShape(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((rank, i) => rank === b[i]);
 }
 
 /** Normalized similarity in [0, 1]: 1 − levenshtein / max-length. */

@@ -394,12 +394,19 @@ function parseLinterOutput(stdout: string, linterName: string): LintIssue[] {
 
 /**
  * Apply a simple str_replace to file content, mirroring the `edit` tool.
- * If old_string appears multiple times, replaces the first occurrence.
+ * If old_string appears multiple times, replaces the first occurrence — or
+ * every occurrence when the edit sets `replace_all`, as the tool does.
  * Returns the modified content, or null if old_string wasn't found.
  */
-function applyEdit(content: string, oldString: string, newString: string): string | null {
+function applyEdit(
+  content: string,
+  oldString: string,
+  newString: string,
+  replaceAll = false,
+): string | null {
   const idx = content.indexOf(oldString);
   if (idx === -1) return null;
+  if (replaceAll && oldString !== '') return content.split(oldString).join(newString);
   return content.slice(0, idx) + newString + content.slice(idx + oldString.length);
 }
 
@@ -523,7 +530,7 @@ const plugin: Plugin = {
         // Read current file content, apply the edit in-memory.
         try {
           const current = await readFile(filePath, 'utf-8');
-          content = applyEdit(current, oldStr, newStr);
+          content = applyEdit(current, oldStr, newStr, inp['replace_all'] === true);
         } catch {
           return; // can't read file — let the tool handle the error
         }

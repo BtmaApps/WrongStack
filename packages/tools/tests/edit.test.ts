@@ -383,6 +383,27 @@ describe('edit tool', () => {
       expect(content).toBe('function f() {\n    if (cond) {\n        doOther();\n    }\n}\n');
     });
 
+    it('indent-insensitive tiers refuse a block whose nesting differs', async () => {
+      // The model misremembers audit() as outside the if; accepting the match
+      // wrote that structure over the file and moved audit() out of the if.
+      const file =
+        'def handler(event):\n    if event.ok:\n        process(event)\n        audit(event)\n    return True\n';
+      await fs.writeFile(path.join(sb.dir, 'h.py'), file);
+      await readTool.execute({ path: 'h.py' }, sb.ctx, { signal: newSignal() });
+      await expect(
+        editTool.execute(
+          {
+            path: 'h.py',
+            old_string: '    if event.ok:\n        process(event)\n    audit(event)',
+            new_string: '    if event.ok:\n        handle(event)\n    audit(event)',
+          },
+          sb.ctx,
+          { signal: newSignal() },
+        ),
+      ).rejects.toThrow();
+      expect(await fs.readFile(path.join(sb.dir, 'h.py'), 'utf8')).toBe(file);
+    });
+
     it('block-anchor fuzzy match repairs a slightly-wrong interior line', async () => {
       const file =
         'export function greet(name) {\n' +

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:42:17.754Z
+**Generated:** 2026-10-07T07:43:12.543Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4829 |
-| Production source lines | 1079111 |
+| Production source lines | 1079156 |
 | Test files | 4165 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 15897 |
@@ -93,6 +93,7 @@ None.
 | 793 | `packages/plugins/src/session-recap/index.ts` |
 | 792 | `packages/cli/src/boot/tui-settings-adapter.ts` |
 | 792 | `packages/core/src/session-catalog/project-server.ts` |
+| 792 | `packages/plugins/src/lint-gate/index.ts` |
 | 791 | `packages/core/src/execution/compaction-elision.ts` |
 | 791 | `packages/core/src/storage/file-session-writer.ts` |
 | 790 | `packages/cli/src/slash-commands/session.ts` |
@@ -107,7 +108,6 @@ None.
 | 786 | `packages/governance/src/event-store.ts` |
 | 786 | `packages/kanban/src/server/sqlite-storage.ts` |
 | 785 | `packages/core/src/coordination/fleet-supervisor.ts` |
-| 785 | `packages/plugins/src/lint-gate/index.ts` |
 | 784 | `packages/core/src/coordination/agent-status-tracker.ts` |
 | 784 | `packages/tools/src/exec.ts` |
 | 783 | `packages/webui/src/stores/chat-lanes.ts` |
