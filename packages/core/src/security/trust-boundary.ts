@@ -388,13 +388,14 @@ export function decodeTrustBoundaryDecision(
 ): TrustDecodeResult<TrustBoundaryDecision> {
   const issues: TrustDecodeIssue[] = [];
   if (!isRecord(input)) return { ok: false, issues: [{ path: '$', message: 'must be an object' }] };
-  if (!['allow', 'deny', 'confirm', 'scoped-token'].includes(String(input.kind))) {
+  const kind = typeof input.kind === 'string' ? input.kind : '';
+  if (!['allow', 'deny', 'confirm', 'scoped-token'].includes(kind)) {
     issues.push({ path: '$.kind', message: 'must be one of: allow, deny, confirm, scoped-token' });
   }
   addString(issues, input.reason, '$.reason');
   if (input.policyId !== undefined) addString(issues, input.policyId, '$.policyId');
-  if (input.kind === 'confirm') addString(issues, input.prompt, '$.prompt');
-  if (input.kind === 'scoped-token') {
+  if (kind === 'confirm') addString(issues, input.prompt, '$.prompt');
+  if (kind === 'scoped-token') {
     addString(issues, input.token, '$.token');
     addString(issues, input.tokenId, '$.tokenId');
     addString(issues, input.expiresAt, '$.expiresAt');

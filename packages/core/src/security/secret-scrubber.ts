@@ -203,7 +203,10 @@ const PATTERNS: Pattern[] = [
     // tokens sharing a single delimiter (`Bearer a… Bearer b…`) must both be
     // redacted. A consuming trailing delimiter would eat the separator the
     // next match needs for its leading anchor, leaking the second token.
-    regex: /(?:^|[^A-Za-z0-9_.~+/-])Bearer\s+[A-Za-z0-9._~+/-]{12,512}=*(?=$|[^A-Za-z0-9_.~+/-])/g,
+    regex:
+      /(?:^|[^A-Za-z0-9_.~+/-])[Bb][Ee][Aa][Rr][Ee][Rr]\s+[A-Za-z0-9._~+/-]{12,512}=*(?=$|[^A-Za-z0-9_.~+/-])/g,
+    // `Bearer` is not a substring of `bearer` or `BEARER`. The pre-scan ORs
+    // a case-insensitive word check; see hasCredentialAnchors.
     anchor: 'Bearer',
   },
   {
@@ -407,6 +410,16 @@ const SCRUB_CHUNK_BYTES = 64 * 1024;
 const SCRUB_OVERLAP_BYTES = 1024;
 
 /**
+ * Extra room past the overlap window for one whitespace-free token.
+ * Prefix patterns such as `ghp_` and `eyJ` have no upper bound, so a token
+ * longer than {@link SCRUB_OVERLAP_BYTES} that straddles the 64KB cut used
+ * to be hard-split. Neither half matched, and the secret was emitted whole.
+ * One extra chunk covers real JWTs and long PATs; a longer run is hostile
+ * and still falls back to the hard cut.
+ */
+const SCRUB_TOKEN_SPAN_BYTES = 64 * 1024;
+
+/**
  * Marker + shape for the one multi-line credential pattern (`private_key`).
  *
  * The whitespace-snap invariant above does NOT hold for this pattern: a PEM
@@ -450,6 +463,15 @@ const PEM_END_LINE_TOLERANCE = 64;
  * shrinks a boundary: when the block already ends inside the head, the
  * whitespace-snapped boundary is kept as-is.
  */
+function findWhitespace(text: string, from: number, until: number): number {
+  for (let j = from; j < until; j++) {
+    const ch = text.charCodeAt(j);
+    // space, \t, \n, \r
+    if (ch === 32 || ch === 9 || ch === 10 || ch === 13) return j;
+  }
+  return -1;
+}
+
 function extendChunkBoundaryPastPem(text: string, chunkStart: number, proposedEnd: number): number {
   const head = text.slice(chunkStart, proposedEnd);
   const lastBegin = head.lastIndexOf('-----BEGIN ');
@@ -535,6 +557,15 @@ function escapeLiteral(text: string): string {
 const ANCHOR_PRESCAN = new RegExp(ALL_ANCHORS.map(escapeLiteral).join('|'));
 
 /**
+ * RFC 6750 scheme spelling is case-insensitive. The combined scrub regex
+ * cannot take the `i` flag (it would also fold `AKIA` and the other
+ * case-sensitive prefixes), so the bearer alternative uses per-letter
+ * classes and this pre-scan admits every casing. No `g` flag: a shared
+ * global regex would skip the next text after a match.
+ */
+const BEARER_WORD = /bearer/i;
+
+/**
  * Quick pre-scan: does the text contain any substring that MUST be present for
  * some credential pattern to match? If not, the text is guaranteed clean and
  * every regex pass is skipped.
@@ -555,7 +586,7 @@ const ANCHOR_PRESCAN = new RegExp(ALL_ANCHORS.map(escapeLiteral).join('|'));
  * more alternative in a single scan.
  */
 function hasCredentialAnchors(text: string): boolean {
-  return ANCHOR_PRESCAN.test(text);
+  return BEARER_WORD.test(text) || ANCHOR_PRESCAN.test(text);
 }
 
 export class DefaultSecretScrubber implements SecretScrubber {
@@ -569,11 +600,10 @@ export class DefaultSecretScrubber implements SecretScrubber {
     if (!hasCredentialAnchors(text)) return text;
 
     // For oversize inputs, scrub in fixed chunks to keep memory bounded.
-    // The boundary is snapped FORWARD to the next whitespace within an
-    // overlap window so a secret straddling the nominal 64 KB cut is never
-    // split in half. Every bounded credential pattern is whitespace-free, so
-    // the next whitespace at/after the cut necessarily falls past the end of
-    // any such secret — guaranteeing it stays wholly inside the current chunk.
+    // The boundary is snapped FORWARD to the next whitespace so a secret
+    // straddling the nominal 64 KB cut is not split in half. The first
+    // overlap window covers the bounded patterns; the token span covers
+    // unbounded single-line patterns (a long `ghp_` or JWT).
     if (text.length <= SCRUB_CHUNK_BYTES) {
       return this.scrubOne(text);
     }
@@ -585,19 +615,14 @@ export class DefaultSecretScrubber implements SecretScrubber {
         // Look for the first whitespace at/after the nominal cut, bounded by
         // the overlap window. Extending forward (not backward) ensures any
         // secret that began before `end` finishes before the new boundary.
-        const limit = Math.min(end + SCRUB_OVERLAP_BYTES, text.length);
-        let safe = -1;
-        for (let j = end; j < limit; j++) {
-          const ch = text.charCodeAt(j);
-          // space, \t, \n, \r
-          if (ch === 32 || ch === 9 || ch === 10 || ch === 13) {
-            safe = j;
-            break;
-          }
+        const overlapLimit = Math.min(end + SCRUB_OVERLAP_BYTES, text.length);
+        const tokenCap = Math.min(end + SCRUB_TOKEN_SPAN_BYTES, text.length);
+        let safe = findWhitespace(text, end, overlapLimit);
+        if (safe === -1 && tokenCap > overlapLimit) {
+          safe = findWhitespace(text, overlapLimit, tokenCap);
         }
-        // Snap onto the whitespace if found; otherwise fall back to the hard
-        // cut (an unbroken >1 KB run with no whitespace can't be a bounded
-        // secret anyway — those are all ≤ ~560 chars and whitespace-free).
+        // Snap onto the whitespace if found within the token span; otherwise
+        // fall back to the hard cut.
         end = safe === -1 ? end : safe + 1;
         // The whitespace snap assumes whitespace-free secrets. A PEM private
         // key is multi-line: when the cut lands inside one, the snap above

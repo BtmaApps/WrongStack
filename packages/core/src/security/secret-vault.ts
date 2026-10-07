@@ -189,8 +189,21 @@ export class DefaultSecretVault implements RotatableSecretVault {
    */
   rotateKey(): { oldVersion: number; newVersion: number } {
     const oldVersion = this._keyVersion;
-    const newKey = randomBytes(KEY_BYTES);
     const newVersion = oldVersion + 1;
+    // The versioned key file stores the version in a single byte. Writing
+    // 256 truncates to 0 and replaces the version-255 key, so a reload
+    // reports a different version and can no longer decrypt the previous
+    // ciphertext. Refuse before any key material is generated or written.
+    if (newVersion > 0xff) {
+      throw new ConfigError({
+        message:
+          `SecretVault: key version ${oldVersion} cannot rotate; ` +
+          `the on-disk version field is one byte (max 255)`,
+        code: ERROR_CODES.CONFIG_INVALID,
+        context: { keyFile: this.keyFile, keyVersion: oldVersion, maxVersion: 0xff },
+      });
+    }
+    const newKey = randomBytes(KEY_BYTES);
 
     mkdirSecretDirSync(path.dirname(this.keyFile));
     const passphrase = getVaultPassphrase();
@@ -497,7 +510,7 @@ export async function rotateConfigKeys(
   }
 
   // Count encrypted fields and decrypt them
-  const counter = { n: 0, failed: [] as string[] };
+  const counter = { n: 0, failed: [] as string[], decryptedPaths: new Set<string>() };
   const decrypted = walkDecryptCount(parsed, vault, counter);
 
   // Abort BEFORE rotating if any encrypted field could not be decrypted with
@@ -527,7 +540,7 @@ export async function rotateConfigKeys(
   const { oldVersion, newVersion } = vault.rotateKey();
 
   // Re-encrypt all secret fields with the new key
-  const reencrypted = walkReencrypt(decrypted, vault);
+  const reencrypted = walkReencrypt(decrypted, vault, counter.decryptedPaths);
 
   // Write the config file atomically
   await atomicWrite(configPath, JSON.stringify(reencrypted, null, 2), { mode: 0o600 });
@@ -554,10 +567,24 @@ export async function rotateConfigKeys(
 function walkDecryptCount<T>(
   node: T,
   vault: SecretVault,
-  counter: { n: number; failed: string[] },
+  counter: { n: number; failed: string[]; decryptedPaths: Set<string> },
   pathPrefix = '',
 ): T {
   if (node === null || node === undefined) return node;
+  // String nodes are not objects. An encrypted string nested in an array
+  // used to return here unchanged, then survive rotation under the old key.
+  if (typeof node === 'string') {
+    if (!vault.isEncrypted(node)) return node;
+    try {
+      const plain = vault.decrypt(node) as T;
+      counter.n++;
+      counter.decryptedPaths.add(pathPrefix);
+      return plain;
+    } catch {
+      counter.failed.push(pathPrefix.length > 0 ? pathPrefix : '(root)');
+      return node;
+    }
+  }
   if (typeof node !== 'object') return node;
   if (Array.isArray(node)) {
     return node.map((item, i) =>
@@ -567,18 +594,7 @@ function walkDecryptCount<T>(
   const out: Record<string, unknown> = Object.create(null);
   for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
     const keyPath = pathPrefix ? `${pathPrefix}.${k}` : k;
-    if (typeof v === 'string' && vault.isEncrypted(v)) {
-      try {
-        out[k] = vault.decrypt(v);
-        counter.n++;
-      } catch {
-        // Decryption failed — record the path and keep the old ciphertext.
-        // The caller aborts rotation when counter.failed is non-empty, so
-        // the old key is never discarded while this value still depends on it.
-        counter.failed.push(keyPath);
-        out[k] = v;
-      }
-    } else if (typeof v === 'object' && v !== null) {
+    if (typeof v === 'string' || (typeof v === 'object' && v !== null)) {
       out[k] = walkDecryptCount(v, vault, counter, keyPath);
     } else {
       out[k] = v;
@@ -587,26 +603,45 @@ function walkDecryptCount<T>(
   return out as T;
 }
 
+/** Last object-key segment of a walk path. Indexed array slots have no field name. */
+function secretFieldNameAt(pathPrefix: string): string | undefined {
+  if (pathPrefix.length === 0 || pathPrefix.endsWith(']')) return undefined;
+  const parts = pathPrefix.split('.');
+  return parts[parts.length - 1];
+}
+
 /**
- * Walk a config object and re-encrypt all secret-bearing fields.
- * Unlike encryptConfigSecrets, this encrypts ALL string values that
- * were previously decrypted (they're now plaintext), not just those
- * matching the secret field pattern. This ensures we re-encrypt values
- * that were successfully decrypted in walkDecryptCount.
+ * Re-encrypt every string walkDecryptCount decrypted, including values whose
+ * field name is not a secret key and encrypted strings that lived in arrays.
+ * Also encrypt a still-plaintext secret field, which is the previous behavior.
  */
-function walkReencrypt<T>(node: T, vault: SecretVault): T {
+function walkReencrypt<T>(
+  node: T,
+  vault: SecretVault,
+  decryptedPaths: ReadonlySet<string>,
+  pathPrefix = '',
+): T {
   if (node === null || node === undefined) return node;
+  if (typeof node === 'string') {
+    if (vault.isEncrypted(node)) return node;
+    const fieldName = secretFieldNameAt(pathPrefix);
+    const plaintextSecret = node.length > 0 && fieldName !== undefined && isSecretField(fieldName);
+    if (decryptedPaths.has(pathPrefix) || plaintextSecret) {
+      return vault.encrypt(node) as T;
+    }
+    return node;
+  }
   if (typeof node !== 'object') return node;
   if (Array.isArray(node)) {
-    return node.map((item) => walkReencrypt(item, vault)) as never as T;
+    return node.map((item, i) =>
+      walkReencrypt(item, vault, decryptedPaths, `${pathPrefix}[${i}]`),
+    ) as never as T;
   }
   const out: Record<string, unknown> = Object.create(null);
   for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-    if (typeof v === 'string' && isSecretField(k) && v.length > 0 && !vault.isEncrypted(v)) {
-      // This was a decrypted secret — re-encrypt it
-      out[k] = vault.encrypt(v);
-    } else if (typeof v === 'object' && v !== null) {
-      out[k] = walkReencrypt(v, vault);
+    const keyPath = pathPrefix ? `${pathPrefix}.${k}` : k;
+    if (typeof v === 'string' || (typeof v === 'object' && v !== null)) {
+      out[k] = walkReencrypt(v, vault, decryptedPaths, keyPath);
     } else {
       out[k] = v;
     }

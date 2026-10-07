@@ -242,10 +242,31 @@ function patternSpecificity(pattern: string): number {
  * path and none of its files, so a `write` to `secrets/key.pem` sailed
  * through a rule that validated and read as a ban. Only `secrets/**` worked.
  */
+/**
+ * ASCII case fold. Windows paths are case-insensitive; `String.toLowerCase`
+ * follows the process locale (`I` → `ı` under Turkish) and would make a
+ * rule miss. Non-ASCII folding is left to the filesystem.
+ */
+function foldFsPath(value: string): string {
+  if (process.platform !== 'win32') return value;
+  let out = '';
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    out += code >= 65 && code <= 90 ? String.fromCharCode(code + 32) : value[i]!;
+  }
+  return out;
+}
+
 function ruleCoversPath(pattern: string, targetPath: string): boolean {
-  if (matchGlob(pattern, targetPath)) return true;
-  for (let cut = targetPath.lastIndexOf('/'); cut > 0; cut = targetPath.lastIndexOf('/', cut - 1)) {
-    if (matchGlob(pattern, targetPath.slice(0, cut))) return true;
+  const foldedPattern = foldFsPath(pattern);
+  const foldedTarget = foldFsPath(targetPath);
+  if (matchGlob(foldedPattern, foldedTarget)) return true;
+  for (
+    let cut = foldedTarget.lastIndexOf('/');
+    cut > 0;
+    cut = foldedTarget.lastIndexOf('/', cut - 1)
+  ) {
+    if (matchGlob(foldedPattern, foldedTarget.slice(0, cut))) return true;
   }
   return false;
 }

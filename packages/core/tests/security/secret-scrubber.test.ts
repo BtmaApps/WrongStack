@@ -231,6 +231,25 @@ describe('SecretScrubber', () => {
     expect(out.split('\n')).toHaveLength(3);
   });
 
+  it('redacts a bearer scheme in any letter case', () => {
+    const token = 'aB3dE6gH9jK2';
+    for (const scheme of ['bearer', 'BEARER', 'BeArEr']) {
+      const out = s.scrub(`${scheme} ${token}`);
+      expect(out, scheme).not.toContain(token);
+      expect(out, scheme).toContain('[REDACTED:bearer_token]');
+    }
+    expect(s.scrub('bearer shorttoken')).toContain('shorttoken');
+    expect(s.scrub('the bearer of bad news arrived')).toBe('the bearer of bad news arrived');
+  });
+
+  it('redacts a long single-line secret that straddles the 64KB cut beyond the 1KB overlap', () => {
+    const CHUNK = 64 * 1024;
+    const secret = `ghp_${'a'.repeat(2000)}`;
+    const out = s.scrub(`${'y'.repeat(CHUNK - 21)}.${secret} tail`);
+    expect(out).not.toContain(secret);
+    expect(out).toContain('[REDACTED:github_pat]');
+  });
+
   it('redacts two adjacent Bearer tokens sharing a single delimiter', () => {
     const t1 = 'tokentokentoken1';
     const t2 = 'tokentokentoken2';

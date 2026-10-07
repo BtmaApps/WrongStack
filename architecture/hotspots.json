@@ -1,5 +1,10 @@
 {
   "schemaVersion": 1,
   "thresholdLines": 800,
-  "files": {}
+  "files": {
+    "packages/core/src/security/directory-permission-policy.ts": {
+      "lines": 808,
+      "relativeImports": 8
+    }
+  }
 }

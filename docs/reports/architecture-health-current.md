@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:36:50.655Z
+**Generated:** 2026-10-07T07:37:55.105Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4829 |
-| Production source lines | 1078455 |
+| Production source lines | 1078537 |
 | Test files | 4164 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 15891 |
@@ -83,6 +83,7 @@ None.
 
 | Lines | File |
 |---:|---|
+| 808 | `packages/core/src/security/directory-permission-policy.ts` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
 | 795 | `packages/cli/src/goal-host.ts` |
 | 795 | `packages/tools/src/codebase-index/ast-invariant-engine.ts` |
@@ -97,10 +98,10 @@ None.
 | 790 | `packages/simpleui/src/settings-panel.tsx` |
 | 789 | `packages/cli/src/slash-commands/memory.ts` |
 | 789 | `packages/core/src/coordination/brain-monitor.ts` |
+| 788 | `packages/core/src/security/secret-scrubber.ts` |
 | 788 | `packages/providers/src/trusted-presets.ts` |
 | 788 | `packages/tui/src/app-view-pickers.tsx` |
 | 787 | `packages/core/src/coordination/mailbox-codecs.ts` |
-| 787 | `packages/core/src/security/directory-permission-policy.ts` |
 | 787 | `packages/webui/src/components/SidePanel/SessionPanel.tsx` |
 | 786 | `packages/governance/src/event-store.ts` |
 | 786 | `packages/kanban/src/server/sqlite-storage.ts` |
@@ -132,7 +133,6 @@ None.
 | 767 | `packages/core/src/goal/phase-orchestrator.ts` |
 | 767 | `packages/webui-server/src/server/ws-payload-preferences.ts` |
 | 766 | `packages/tools/src/todo.ts` |
-| 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
 
 ## Exports only tests reference
 

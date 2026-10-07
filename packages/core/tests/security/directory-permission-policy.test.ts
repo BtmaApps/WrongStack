@@ -201,6 +201,18 @@ describe('matchRule', () => {
     expect(matchRule(wild, 'clients/acme/src/a.ts')?.directory).toBe('clients/*');
     expect(matchRule(wild, 'vendors/acme/a.ts')).toBeUndefined();
   });
+
+  it('matches ASCII case-insensitively on Windows and keeps specificity', () => {
+    const plain = policy([{ directory: 'secrets/**', denyTools: ['write'] }]);
+    if (process.platform === 'win32') {
+      expect(matchRule(plain, 'Secrets/key.pem')?.directory).toBe('secrets/**');
+      expect(matchRule(plain, 'SECRETS/KEY.PEM')?.directory).toBe('secrets/**');
+      expect(matchRule(pol, 'Infra/Terraform/main.tf')?.directory).toBe('infra/terraform/**');
+    } else {
+      expect(matchRule(plain, 'Secrets/key.pem')).toBeUndefined();
+    }
+    expect(matchRule(plain, 'secrets-public/readme.md')).toBeUndefined();
+  });
 });
 
 // ── validateDirectoryPolicy (schema surface) ────────────────────────────────

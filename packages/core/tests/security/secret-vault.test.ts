@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
@@ -523,5 +524,73 @@ describe('Key rotation', () => {
         expect(keyFileNeedsHardening(missing)).toBe(false);
       }
     });
+  });
+});
+
+describe('secret vault rotation boundaries', () => {
+  it('re-encrypts ciphertext stored in an array', async () => {
+    const { dir, vault } = await makeVault();
+    const cfgPath = path.join(dir, 'config.json');
+    const objectSecret = vault.encrypt('object-secret');
+    const arraySecret = vault.encrypt('array-secret');
+    await fs.writeFile(
+      cfgPath,
+      JSON.stringify({ providers: [{ apiKey: objectSecret }], tokens: [arraySecret] }),
+    );
+
+    const result = await rotateConfigKeys(cfgPath, vault);
+    const after = JSON.parse(await fs.readFile(cfgPath, 'utf8')) as {
+      providers: Array<{ apiKey: string }>;
+      tokens: string[];
+    };
+
+    expect(result.rotated).toBe(2);
+    expect(vault.decrypt(after.providers[0]!.apiKey)).toBe('object-secret');
+    expect(vault.decrypt(after.tokens[0]!)).toBe('array-secret');
+  });
+
+  it('re-encrypts a decrypted field whose name is not a secret key', async () => {
+    const { dir, vault } = await makeVault();
+    const cfgPath = path.join(dir, 'config.json');
+    await fs.writeFile(
+      cfgPath,
+      JSON.stringify({
+        apiKey: vault.encrypt('api-secret'),
+        note: vault.encrypt('shoulder-surf-me'),
+        baseUrl: 'https://example.test',
+      }),
+    );
+
+    await rotateConfigKeys(cfgPath, vault);
+    const after = JSON.parse(await fs.readFile(cfgPath, 'utf8')) as {
+      apiKey: string;
+      note: string;
+      baseUrl: string;
+    };
+
+    expect(vault.decrypt(after.apiKey)).toBe('api-secret');
+    expect(vault.isEncrypted(after.note)).toBe(true);
+    expect(vault.decrypt(after.note)).toBe('shoulder-surf-me');
+    expect(after.baseUrl).toBe('https://example.test');
+  });
+
+  it('refuses to rotate a version-255 key and keeps its ciphertext', () => {
+    const dir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'wstack-vault-v255-'));
+    tmpDirs.push(dir);
+    const keyFile = path.join(dir, '.key');
+    const body = Buffer.alloc(37);
+    body.write('WSKV', 0, 'ascii');
+    body[4] = 255;
+    randomBytes(32).copy(body, 5);
+    fsSync.writeFileSync(keyFile, body);
+
+    const vault = trackVault(new DefaultSecretVault({ keyFile }));
+    const ciphertext = vault.encrypt('ceiling');
+    const before = fsSync.readFileSync(keyFile);
+
+    expect(() => vault.rotateKey()).toThrow(/cannot rotate/);
+    expect(vault.keyVersion).toBe(255);
+    expect(fsSync.readFileSync(keyFile).equals(before)).toBe(true);
+    expect(vault.decrypt(ciphertext)).toBe('ceiling');
   });
 });
