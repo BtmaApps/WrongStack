@@ -41,6 +41,10 @@ function compress<T>(cells: readonly T[], key: (cell: T) => string, char: (cell:
  * One lane as runs over `width` columns of `[start, end]`. Each column takes
  * the phase covering most of its time slice; a segment too short to win any
  * column still gets the column it starts in, so an instant merge stays visible.
+ * That column is taken from its holder when the holder keeps another column
+ * (or is itself an instant step) — an instant merge usually lands inside the
+ * column the preceding working slice already owns, and only taking EMPTY
+ * columns hid it.
  */
 export function worktreeBarRuns(
   lane: WorktreeLane,
@@ -52,7 +56,17 @@ export function worktreeBarRuns(
   const span = Math.max(1, end - start);
   const cells: Array<WorktreeLanePhase | null> = Array.from({ length: width }, () => null);
   const best: number[] = Array.from({ length: width }, () => 0);
-  for (const seg of lane.segments) {
+  const owner: number[] = Array.from({ length: width }, () => -1);
+  const owned: number[] = [];
+  const instant = new Set<number>();
+  const take = (i: number, index: number, phase: WorktreeLanePhase): void => {
+    const previous = owner[i]!;
+    if (previous >= 0) owned[previous] = (owned[previous] ?? 1) - 1;
+    owner[i] = index;
+    owned[index] = (owned[index] ?? 0) + 1;
+    cells[i] = phase;
+  };
+  lane.segments.forEach((seg, index) => {
     const segEnd = seg.end ?? end;
     const first = column(seg.start, start, span, width);
     const last = column(Math.max(seg.start, segEnd - 1), start, span, width);
@@ -63,12 +77,17 @@ export function worktreeBarRuns(
       const overlap = Math.min(c1, segEnd) - Math.max(c0, seg.start);
       if (overlap > best[i]!) {
         best[i] = overlap;
-        cells[i] = seg.phase;
+        take(i, index, seg.phase);
         won = true;
       }
     }
-    if (!won && cells[first] === null) cells[first] = seg.phase;
-  }
+    if (won) return;
+    const holder = owner[first]!;
+    if (holder < 0 || instant.has(holder) || (owned[holder] ?? 0) > 1) {
+      take(first, index, seg.phase);
+      instant.add(index);
+    }
+  });
   return compress(
     cells,
     (p) => p ?? '',
