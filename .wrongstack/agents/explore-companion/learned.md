@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:59:23.484Z; skill=codebase-navigation; applied=91; wins=91; skipped=61; skippedWins=61 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:59:23.484Z; skill=codebase-navigation; applied=94; wins=94; skipped=62; skippedWins=61 -->
 - **Always classify `scripts/build-package.mjs` in WrongStack as a zero-export top-level build script: close its consumers with a repo-wide filename grep over `package.json` `build` scripts plus `scripts/build.mjs` (the cmd.exe orchestrator reachable from root `package.json` `"build"`), never `codebase-incoming-calls`. Its dispatch key is `packageJson.name` against the `profiles` registry (~L213-560); an unregistered package name throws, and the registry's comment-documented invariants (`splitting: true` for `@wrongstack/core`/`@wrongstack/tools`, entry keys as dist output paths, TUI bundling react) are the real edit blast radius. Architecture tests in `packages/core/tests/architecture/` and `packages/tools/tests/architecture/` reference the script by filename.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `scripts/build-package.mjs`
@@ -21,7 +21,7 @@
   - *How:* `packages/core/tests/architecture/`
   - *How:* `packages/tools/tests/architecture/`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:06:15.607Z; skill=codebase-navigation; applied=103; wins=103; skipped=88; skippedWins=88 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:06:15.607Z; skill=codebase-navigation; applied=104; wins=104; skipped=91; skippedWins=90 -->
 - **Always classify a core type module as caller-less before running `codebase-incoming-calls`: when every export is an `interface` (e.g. `packages/core/src/types/one-shot-llm.ts`), the call graph is empty by construction and the real consumer closure is a repo-wide exported-symbol grep plus a file-stem grep. Include inline type expressions in the symbol pass — cross-package consumers can reach core types through `import('@wrongstack/core/types').SomeOption['field']` (as `packages/cli/src/wiring/provider-utility-tools.ts` does), which a file-stem search never catches.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `codebase-incoming-calls`
@@ -31,7 +31,7 @@
   - *How:* `packages/cli/src/wiring/provider-utility-tools.ts`
   - *How:* `@wrongstack/core`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-07T05:46:37.578Z; skill=codebase-navigation; applied=23; wins=23; skipped=37; skippedWins=37 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-07T05:46:37.578Z; skill=codebase-navigation; applied=23; wins=23; skipped=41; skippedWins=40 -->
 - **Always close consumers of `packages/kanban/src/types.ts` with quote-anchored relative-specifier greps (`from ['"](\.{1,2}/)+types\.js['"]`), never `codebase-incoming-calls` — it is a type-only module with an empty call graph by construction, and the anchoring is required because sibling stems (`supervision-types.js`, `task-policy-types.js`, `verification-types.js`, `types-contract-graph.js`) share the `types` suffix. Treat `packages/kanban/src/index.ts` `export * from './types.js'` as the sole external surface: `packages/kanban/package.json` has no `./types` subpath, so sibling packages reach these types only via the `@wrongstack/kanban` root barrel.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `packages/kanban/src/types.ts`
@@ -49,7 +49,7 @@
   - *How:* `@wrongstack/kanban`
   - *How:* `./types.js`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-07T07:50:43.086Z; skill=codebase-navigation; applied=9; wins=9; skipped=12; skippedWins=12 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-07T07:50:43.086Z; skill=codebase-navigation; applied=9; wins=9; skipped=16; skippedWins=15 -->
 - **Always close consumers of `packages/sage/src/sqlite-store-hygiene.ts` with a specifier grep (`.js`-suffixed) plus a bare-token grep, never `codebase-incoming-calls` on the wrapper `hygiene`: the symbol name is generic enough that the call graph includes unpinnable noise (the `hygiene` config parameter in `packages/sage/src/host-wiring.ts`, an unrelated core test). The dedicated regression tests (`packages/sage/tests/sqlite-store-hygiene-*-toctou.test.ts`) reach the module through `SqliteMemoryPort` (`../src/memory-port.js`) with no import edge, and the only real importer is `packages/sage/src/sqlite-store-graph-write.ts:8`, surfaced publicly as `SqliteSageStore.hygiene()` in `packages/sage/src/sqlite-store.ts`.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `packages/sage/src/sqlite-store-hygiene.ts`
@@ -65,7 +65,7 @@
   - *How:* `packages/sage/src/sqlite-store.ts`
   - *How:* `packages/sage/src/sqlite-store-graph-write.ts`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-07T09:07:58.972Z; skill=codebase-navigation; applied=2; wins=2 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-07T09:07:58.972Z; skill=codebase-navigation; applied=4; wins=4; skipped=2; skippedWins=1 -->
 - **Always close consumers of a `packages/webui-hq/src/views/<name>/index.tsx` view module with a repo-wide exported-symbol grep (`FleetMapView`) plus a specifier grep (`views/<name>(/index)?\.js`), never `codebase-incoming-calls` alone: wiring is exclusively `lazy(() => import('../../views/<name>/index.js'))` entries in `packages/webui-hq/src/components/hq/view-router.tsx` (`HQ_VIEW_COMPONENTS: Record<HqViewId, ...>` — Record exhaustiveness makes a missing entry a compile error), plus a parallel dynamic-import table in `packages/webui-hq/tests/components/views-smoke.test.tsx` that stubs `ResizeObserver` for React Flow. The view-key string (e.g. `'fleet'`) is the real public contract; keep `@xyflow/react` imports inside the lazy chunk per the router's chunking comment.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `packages/webui-hq/src/views/<name>/index.tsx`
@@ -80,7 +80,7 @@
   - *How:* `'fleet'`
   - *How:* `@xyflow/react`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-07T06:18:39.213Z; skill=codebase-navigation; applied=13; wins=13; skipped=32; skippedWins=32 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-07T06:18:39.213Z; skill=codebase-navigation; applied=13; wins=13; skipped=36; skippedWins=35 -->
 - **Always close consumers of a `packages/webui/src/components/*View.tsx` route-style component with a repo-wide bare-symbol grep, never a static-import specifier grep or `codebase-incoming-calls` alone: these views are wired exclusively through dynamic `import('./XView').then((m) => ({ default: m.XView }))` entries in `packages/webui/src/components/view-registry.ts`, which the call graph reports as zero callers and `from ['"]...XView['"]` misses by construction. The registry entry (view key, `boundaryNameKey`, `props`) is the real public contract; side-panel siblings reference the view only in comments (view-state navigation coupling, no import edge).**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `packages/webui/src/components/*View.tsx`
@@ -91,7 +91,7 @@
   - *How:* `boundaryNameKey`
   - *How:* `props`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T20:54:20.591Z; skill=codebase-navigation; applied=1; wins=1; skipped=87; skippedWins=87 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T20:54:20.591Z; skill=codebase-navigation; applied=1; wins=1; skipped=91; skippedWins=90 -->
 - **Always disambiguate `EFFORT_KEEP` by import specifier, never by symbol name, when closing consumers of `packages/cli/src/picker-effort.ts`: `packages/tui/src/components/model-picker-effort.ts` exports its own same-named `EFFORT_KEEP` with the same sentinel semantics, and a bare symbol grep returns ~10 TUI files that have no import edge to the CLI module. Close with a module-path grep (`picker-effort\.js`) scoped to the import specifier, and treat the pair as behavioral twins (semantic edits in one may warrant a matching change in the other) rather than one shared implementation.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `EFFORT_KEEP`
@@ -99,7 +99,7 @@
   - *How:* `packages/tui/src/components/model-picker-effort.ts`
   - *How:* `picker-effort\.js`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T15:16:11.746Z; skill=codebase-navigation; applied=54; wins=54; skipped=84; skippedWins=84 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T15:16:11.746Z; skill=codebase-navigation; applied=54; wins=54; skipped=88; skippedWins=87 -->
 - **Always disambiguate the four same-named `AGENTS.md` files in WrongStack before reporting consumers: `.wrongstack/AGENTS.md` (project memory, accessor `WstackPaths.inProjectAgentsFile` in `packages/core/src/utils/wstack-paths.ts`), root `AGENTS.md`/`CLAUDE.md` (repo instructions via `system-prompt-builder.ts`), `~/.wrongstack/AGENTS.md` (user instructions), and subdirectory `<dir>/AGENTS.md` (directory instructions). Close the project-memory file's dependents with an untruncated grep on `inProjectAgentsFile` plus the literal `.wrongstack/AGENTS.md` — never a bare `AGENTS\.md` filename grep, which conflates all four and returns 190+ hits. - **What:** grep the accessor symbol, not the filename, for `.wrongstack/AGENTS.md` consumers. - **Why:** the filename stem matches four unrelated files and truncates before closure. - **How:** `grep inProjectAgentsFile` (11 untruncated hits) + `grep '\.wrongstack/AGENTS\.md'` in `packages/core/src` and `packages/cli/src`.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `AGENTS.md`
@@ -117,7 +117,7 @@
   - *How:* `packages/core/src`
   - *How:* `packages/cli/src`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:51:24.662Z; skill=codebase-navigation; applied=29; wins=29; skipped=128; skippedWins=128 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:51:24.662Z; skill=codebase-navigation; applied=29; wins=29; skipped=132; skippedWins=131 -->
 - **Always flag post-edit state explicitly when a probe reports the leader edited a file without reading it: for untracked, gitignored scratch files (`.temp_files/**`) there is no pre-edit baseline in git, so the captured read is the surviving record — say so rather than implying a before/after comparison. Close such a file's consumers with a repo-wide tracked grep of the full filename, and never use `glob` for existence or sibling closure under `.temp_files/`: it honors ignore rules and returns false zeros even with an explicit `.temp_files/...` pattern while a direct `read` proves the file exists.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `.temp_files/**`
@@ -126,7 +126,7 @@
   - *How:* `.temp_files/...`
   - *How:* `read`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-07T07:14:08.493Z; skill=codebase-navigation; applied=7; wins=7; skipped=19; skippedWins=19 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-07T07:14:08.493Z; skill=codebase-navigation; applied=8; wins=8; skipped=22; skippedWins=21 -->
 - **Always include a WrongStack package's coverage gate when reporting a test file's blast radius: specs with zero source importers are still the only consumers keeping `packages/*/vitest.config.ts` `coverage.thresholds` (e.g. webui-server's 78/76/69/66 over `src/**` minus entry barrels) green, so deleting or weakening a spec can fail the package run even when the untruncated stem grep proves no code depends on it. Pair the closure with `tsconfig.test.json` (`include` of `tests/**/*`) to catch the type gate, and check whether test helpers rely on load-bearing `as never`/`as unknown` casts that bypass the real options type.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `packages/*/vitest.config.ts`
@@ -138,7 +138,7 @@
   - *How:* `as never`
   - *How:* `as unknown`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:18:25.222Z; applied=22; wins=22; skipped=157; skippedWins=157 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:18:25.222Z; applied=22; wins=22; skipped=161; skippedWins=160 -->
 - **Always verify `vi.mock('../src/.../<module>.js')` specifiers against the live import path when closing dependents of a WrongStack slash-command module: renamed modules leave stale mocks behind (e.g. `packages/cli/tests/kanban-slash-coverage.test.ts` mocks `kanban-task.js` while `packages/cli/src/slash-commands/kanban.ts` imports `./kanban-task-subcommands.js`), so a symbol grep hit in a test can indicate a mock that never intercepts anything — confirm with a filename glob over `packages/cli/src/slash-commands/` before counting that test as a dependent.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `vi.mock('../src/.../<module>.js')`
@@ -148,7 +148,7 @@
   - *How:* `./kanban-task-subcommands.js`
   - *How:* `packages/cli/src/slash-commands/`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T11:50:12.264Z; skill=codebase-navigation; applied=56; wins=56; skipped=147; skippedWins=147 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T11:50:12.264Z; skill=codebase-navigation; applied=56; wins=56; skipped=151; skippedWins=150 -->
 - **Before trusting a WrongStack core module's header comment claiming it is the "single shared" implementation used by every surface, verify by repo-wide import-edge grep of its exported symbols (e.g. `resolveRefinerTargetSpec|RefinerTargetSpec|RefinerTargetSource`): parallel implementations can persist with no import edge (`packages/core/src/execution/refiner-target.ts` claims goal/mission refinement uses it, but `packages/core/src/goal/mission-refinement.ts` re-implements the same precedence inline with a `favoriteModels` allow-list). Treat `codebase-impact-analysis` HIGH-risk ratings on core symbols as transitive barrel-closure noise when `totalCallSites=0` direct — anchor blast radius with `codebase-incoming-calls` plus one untruncated symbol grep instead.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `resolveRefinerTargetSpec|RefinerTargetSpec|RefinerTargetSource`
@@ -159,7 +159,7 @@
   - *How:* `totalCallSites=0`
   - *How:* `codebase-incoming-calls`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T21:23:38.005Z; skill=codebase-navigation; applied=2; wins=2; skipped=75; skippedWins=75 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T21:23:38.005Z; skill=codebase-navigation; applied=2; wins=2; skipped=79; skippedWins=78 -->
 - **Classify `~/.wrongstack/tool-output/<ISO-timestamp>-<tool>-<uuid>.log` files as command-output spool artifacts, never modules: zero exports/importers by construction, producer is `packages/tools/src/_output-spool.ts` (`createOutputSpool`/`finishCommandOutput`, called only from `packages/tools/src/bash-stream.ts` and `packages/tools/src/exec.ts`), and the `read` tool accepts these absolute home-directory paths — read the log directly (L1 carries the command + exit metadata) instead of searching the repo for the filename. When such a log holds a `git diff`, report the touched modules' live state and close symbol consumers separately; the diff's path filter may omit sibling files a commit also changed.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `~/.wrongstack/tool-output/<ISO-timestamp>-<tool>-<uuid>.log`
@@ -171,7 +171,7 @@
   - *How:* `read`
   - *How:* `git diff`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T15:32:15.082Z; skill=codebase-navigation; applied=74; wins=74; skipped=54; skippedWins=54 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T15:32:15.082Z; skill=codebase-navigation; applied=77; wins=77; skipped=55; skippedWins=54 -->
 - **Classify `architecture/*.json` baselines in WrongStack (`test-only-exports.json`, `core-public-api-snapshot.json`, `exceptions.json`, `hotspots.json`) as data ratchets, not modules: they have no importable symbols, so close consumers with a repo-wide filename-token grep at `truncated=false`, never `codebase-incoming-calls`. Producer is the guarding script's `--write` mode under `scripts/`, reader is `loadArchitectureInputs` in `scripts/lib/architecture-health.mjs`, and the invocation chain is root `package.json` `check:architecture` / `check:architecture:sync`. Comment/doc hits naming the file are evidence of recorded entries, not runtime consumers.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `architecture/*.json`
@@ -189,7 +189,7 @@
   - *How:* `check:architecture`
   - *How:* `check:architecture:sync`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-07T08:07:58.245Z; skill=codebase-navigation; applied=2; wins=2; skipped=7; skippedWins=7 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-07T08:07:58.245Z; skill=codebase-navigation; applied=2; wins=2; skipped=11; skippedWins=10 -->
 - **Classify a proof round by its config filename and directory contents before predicting its runner: `.temp_files/proof-driven-bug-hunter/<round>/vitest.proof.config.mjs` (ESM, no TS transpile) with no sibling `run.mjs` means the only consumer is a manual `pnpm exec vitest run -c <config>` from repo root — close consumers with an untruncated grep of the full round-directory name, never `codebase-incoming-calls`. When mapping edit blast radius for such a config, the load-bearing lines are the `dirname`-chain depth pinning `root` to repo root (mirrored by the proof test's `../../../packages/...` relative imports) and any `replaceAll('\\', '/')` normalization feeding an absolute `test.include` glob on Windows.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `.temp_files/proof-driven-bug-hunter/<round>/vitest.proof.config.mjs`
@@ -202,7 +202,7 @@
   - *How:* `replaceAll('\\', '/')`
   - *How:* `test.include`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:56:12.075Z; skill=codebase-navigation; applied=57; wins=57; skipped=96; skippedWins=96 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T12:56:12.075Z; skill=codebase-navigation; applied=58; wins=58; skipped=99; skippedWins=98 -->
 - **Never trust a WrongStack module header comment as evidence of consumers: close it with a repo-wide module-path token grep plus an exported-symbol alternation grep. New scaffolding modules can carry aspirational wiring claims with zero importers (e.g. `packages/core/src/execution/refine-decisions.ts` claims a `@wrongstack/core/execution` barrel re-export and a WebUI subpath consumer, but `packages/core/src/execution/index.ts` omits the module and only `packages/core/package.json` names the path). Also treat same-named types in sibling packages (TUI's local `RefineFailureDecision`) as name collisions until an import edge is shown — a files-with-match hit on a type name is not a dependency.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `packages/core/src/execution/refine-decisions.ts`
@@ -212,7 +212,7 @@
   - *How:* `RefineFailureDecision`
   - *How:* `@wrongstack/core`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T15:45:21.163Z; skill=codebase-navigation; applied=26; wins=26; skipped=99; skippedWins=99 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T15:45:21.163Z; skill=codebase-navigation; applied=26; wins=26; skipped=103; skippedWins=102 -->
 - **Treat `protocolHandlerCoverage` in `packages/acp/src/agent/protocol-handler.ts` as a test-only export seam consumed solely by `packages/acp/tests/protocol-handler.test.ts` (the per-file coverage suite behind the 99.8/100/98.5 thresholds in `packages/acp/vitest.config.ts`) — removing or renaming it breaks that suite only, never runtime importers; close its consumers with a test-filename grep, not `codebase-incoming-calls`.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `protocolHandlerCoverage`
@@ -221,7 +221,7 @@
   - *How:* `packages/acp/vitest.config.ts`
   - *How:* `codebase-incoming-calls`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-06T17:09:06.615Z; skipped=117; skippedWins=117 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-06T17:09:06.615Z; skipped=121; skippedWins=120 -->
 - **When the project `grep` tool reports `count=N` but `showing 3` in content mode, do not re-run pattern variants to surface the rest — the display is capped at ~3 matches per file regardless of pattern. Enumerate the full match set (e.g. every `it(...)` title in a vitest file) with one `read` of the enclosing line range, anchored by the line numbers grep already returned.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `grep`
@@ -232,7 +232,7 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:14:49.141Z; skill=codebase-navigation; applied=66; wins=66; skipped=158; skippedWins=158 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:14:49.141Z; skill=codebase-navigation; applied=69; wins=68; skipped=159; skippedWins=159 -->
 - **Always classify a proof round by its entry filename before predicting its runner: `.temp_files/proof-driven-bug-hunter/<round>/proof.ts` with a `pnpm exec tsx` header is a standalone harness with no `run.mjs` and no `vitest.proof.config.ts` — root `vitest.config.ts` excludes `'**/.temp_files/**'`, so its blast radius is the manual run only, and its relative `../../../packages/...` dynamic import pins the file exactly three levels below repo root. Verify with an exact-directory `tree`, not by assuming the vitest round shape.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `.temp_files/proof-driven-bug-hunter/<round>/proof.ts`
@@ -244,7 +244,7 @@
   - *How:* `../../../packages/...`
   - *How:* `tree`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T12:20:59.408Z; skill=codebase-navigation; applied=43; wins=43; skipped=134; skippedWins=134 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T12:20:59.408Z; skill=codebase-navigation; applied=43; wins=43; skipped=138; skippedWins=137 -->
 - **Always close WrongStack CLI subcommand-handler dependents with a repo-wide filename-stem grep, not `codebase-incoming-calls`: `packages/cli/src/subcommands/index.ts` wires every handler through lazy `async () => (await import('./handlers/<name>.js')).<name>Cmd` registry entries, which the call graph reports as zero direct callers. The stem grep plus a per-file check of imported symbols separates real importers (e.g. three test files importing `modeldiagCmd`) from sibling-module and help-text near-misses (`modeldiag-eval.js`, `per-subcommand-help-table.ts`).**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `codebase-incoming-calls`
@@ -254,7 +254,7 @@
   - *How:* `modeldiag-eval.js`
   - *How:* `per-subcommand-help-table.ts`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T12:09:29.458Z; skill=codebase-navigation; applied=45; wins=45; skipped=143; skippedWins=143 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T12:09:29.458Z; skill=codebase-navigation; applied=45; wins=45; skipped=147; skippedWins=146 -->
 - **Always confirm `codebase-incoming-calls` attribution of a constructor call site with a targeted `read` when the reported enclosing symbol is implausible — the index attached `new SessionSummaryTracker(...)` at `packages/core/src/storage/file-session-writer.ts:262` to `recordSideEffect` (a method defined at L186), when the call is actually `FileSessionWriter` constructor wiring. Treat call-graph "caller" fields as nearest-symbol guesses, not verified enclosures, before naming a caller in a report.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `codebase-incoming-calls`
@@ -265,7 +265,7 @@
   - *How:* `FileSessionWriter`
   - *How:* `packages/core/src/storage/file-session-writer.ts`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:45:31.179Z; skill=codebase-navigation; applied=87; wins=87; skipped=120; skippedWins=120 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:45:31.179Z; skill=codebase-navigation; applied=88; wins=88; skipped=123; skippedWins=122 -->
 - **Always disambiguate sibling-relative imports of generically named stems (`fix.ts`, `index.ts`, `tools.ts`) by the imported symbols, not just the specifier: `from './fix.js'` matched `packages/cli/src/slash-commands/index.ts` (importing `buildFixCommand`) as a false positive while closing consumers of `packages/tools/src/dead-code/fix.ts`. Verify each hit's imported names against the target file's export list before counting it.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `fix.ts`
@@ -277,7 +277,7 @@
   - *How:* `packages/tools/src/dead-code/fix.ts`
   - *How:* `./fix.js`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T12:49:23.044Z; skill=codebase-navigation; applied=53; wins=53; skipped=106; skippedWins=106 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T12:49:23.044Z; skill=codebase-navigation; applied=55; wins=55; skipped=108; skippedWins=107 -->
 - **Always disambiguate WrongStack's near-twin script names by full filename, not stem prefix: `scripts/snapshot-core-public-api.mjs` (generator, run by npm `check:architecture`) and `scripts/sync-core-public-api-snapshot.mjs` (pre-commit guard, run by `.githooks/pre-commit`) differ only in word order. When closing consumers of one, grep the exact full filename and verify each hit's role — a loose `snapshot` or `core-public-api` stem conflates the two, and root `package.json` references only the generator while `.githooks/pre-commit` references only the guard.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `scripts/snapshot-core-public-api.mjs`
@@ -288,7 +288,7 @@
   - *How:* `core-public-api`
   - *How:* `package.json`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T13:02:55.780Z; skill=codebase-navigation; applied=56; wins=56; skipped=94; skippedWins=94 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T13:02:55.780Z; skill=codebase-navigation; applied=57; wins=57; skipped=97; skippedWins=96 -->
 - **Treat previously captured "zero importers / aspirational wiring" findings about a module as stale on every new contact: re-run the module-path token grep plus exported-symbol alternation grep before repeating the old conclusion. Scaffolding modules acquire real consumers between sessions — `packages/core/src/execution/refine-decisions.ts` went from barrel-omitted with only `packages/core/package.json` naming the path, to fully wired (barrel re-export in `packages/core/src/execution/index.ts`, TUI consumer via `@wrongstack/core/execution`, WebUI consumer via the narrow subpath, build entry in `scripts/build-package.mjs`) with tests green. Also: when a probed symbol has same-named local types in sibling packages (TUI's local `RefineFailureDecision`), separate "imports core's type" from "declares its own" by reading the import block's source module before counting a grep hit as a dependent.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/core/src/execution/refine-decisions.ts`
@@ -299,7 +299,7 @@
   - *How:* `RefineFailureDecision`
   - *How:* `@wrongstack/core`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:37:44.905Z; skill=codebase-navigation; applied=81; wins=81; skipped=131; skippedWins=131 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:37:44.905Z; skill=codebase-navigation; applied=84; wins=83; skipped=132; skippedWins=132 -->
 - **When a probe asks "who imports X.test.ts(x)", expect zero source importers by construction: close it with one repo-wide untruncated filename-stem grep, then cite the owning package's `vitest.config.ts` project `include` glob as the actual consumer (e.g. `packages/webui/vitest.config.ts` `browser-jsdom` project, `tests/**/*.test.tsx`). Treat a `docs/reports/architecture-health-current.json` hit as inventory metadata only — it can be stale (it listed project `webui-jsdom` where the live config says `browser-jsdom`).**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `vitest.config.ts`
@@ -310,7 +310,7 @@
   - *How:* `docs/reports/architecture-health-current.json`
   - *How:* `webui-jsdom`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:45:08.905Z; skill=codebase-navigation; applied=106; wins=106; skipped=102; skippedWins=102 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-06T11:45:08.905Z; skill=codebase-navigation; applied=107; wins=107; skipped=105; skippedWins=104 -->
 - **When probing a WrongStack CLI slash-command module for dependents, always check `packages/webui-server/src/server/` for a same-named `*-adapter.ts` before assuming a shared code path: these adapters re-implement CLI behavior against `@wrongstack/core/*` directly (e.g. `goal-refiner-adapter.ts` mirrors `goal-refiner.ts`'s fallback order via `refineGoalWithProvider` from `@wrongstack/core/goal`) rather than importing the CLI module — so behavioral coupling exists with no import edge, and a stem-only consumer grep will show the adapter while a symbol-only grep would miscount it as a dependent.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/webui-server/src/server/`

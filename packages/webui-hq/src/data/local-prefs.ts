@@ -64,6 +64,12 @@ export interface HqLocalPrefs {
     layout: 'map' | 'compact';
     machineId: string;
     projectId: string;
+    /**
+     * Hide idle workers. One shared flag for the Fleet Map and the Cockpit
+     * Fleet card: when true, agents that are neither working, waiting on
+     * the user, nor errored are filtered out of both surfaces.
+     */
+    hideIdle: boolean;
   };
   console: {
     delivery: 'steer' | 'btw' | 'queue';
@@ -104,6 +110,7 @@ const DEFAULT_PREFS: HqLocalPrefs = {
     layout: 'map',
     machineId: '',
     projectId: '',
+    hideIdle: false,
   },
   console: {
     delivery: 'steer',
@@ -182,6 +189,7 @@ function mergeWithDefaults(input: unknown): HqLocalPrefs {
       layout: fleet['layout'] === 'compact' ? 'compact' : 'map',
       machineId: typeof fleet['machineId'] === 'string' ? fleet['machineId'] : '',
       projectId: typeof fleet['projectId'] === 'string' ? fleet['projectId'] : '',
+      hideIdle: fleet['hideIdle'] === true,
     },
     console: {
       delivery:

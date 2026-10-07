@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T09:11:14.042Z",
+  "generatedAt": "2026-10-07T09:21:02.751Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4830,
     "testFiles": 4175,
-    "sourceLines": 1079960,
+    "sourceLines": 1080092,
     "workspaceEdges": 133,
     "moduleEdges": 15902,
     "nonCommandSlashImports": 0,
@@ -26351,6 +26351,11 @@
       "file": "packages/plugins/src/dep-guard/index.ts",
       "lines": 897,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/webui-hq/src/domain/fleet-topology.ts",
+      "lines": 817,
+      "relativeImports": 0
     }
   ],
   "hotspots": [
@@ -26358,6 +26363,11 @@
       "file": "packages/plugins/src/dep-guard/index.ts",
       "lines": 897,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/webui-hq/src/domain/fleet-topology.ts",
+      "lines": 817,
+      "relativeImports": 0
     },
     {
       "file": "packages/core/src/security/directory-permission-policy.ts",
@@ -26598,11 +26608,6 @@
       "file": "packages/core/src/goal/phase-orchestrator.ts",
       "lines": 767,
       "relativeImports": 16
-    },
-    {
-      "file": "packages/webui-server/src/server/ws-payload-preferences.ts",
-      "lines": 767,
-      "relativeImports": 0
     }
   ],
   "testOnlyExports": [

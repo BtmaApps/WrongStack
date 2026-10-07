@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T09:11:14.042Z
+**Generated:** 2026-10-07T09:21:02.751Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4830 |
-| Production source lines | 1079960 |
+| Production source lines | 1080092 |
 | Test files | 4175 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 15902 |
@@ -84,6 +84,7 @@ None.
 | Lines | File |
 |---:|---|
 | 897 | `packages/plugins/src/dep-guard/index.ts` |
+| 817 | `packages/webui-hq/src/domain/fleet-topology.ts` |
 | 808 | `packages/core/src/security/directory-permission-policy.ts` |
 | 799 | `packages/techstack/src/advisory/native-audit.ts` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
@@ -132,7 +133,6 @@ None.
 | 769 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 768 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 767 | `packages/core/src/goal/phase-orchestrator.ts` |
-| 767 | `packages/webui-server/src/server/ws-payload-preferences.ts` |
 
 ## Exports only tests reference
 

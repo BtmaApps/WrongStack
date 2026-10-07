@@ -12,7 +12,7 @@ export function cn(...inputs: ClassValue[]) {
    ========================================================================= */
 
 export const META = {
-  version: '1.0.34',
+  version: '1.0.35',
   repo: 'https://github.com/WrongStack/WrongStack',
   license: 'MIT',
   domain: 'wrongstack.com',
