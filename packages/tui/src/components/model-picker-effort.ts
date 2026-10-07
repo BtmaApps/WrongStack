@@ -25,6 +25,13 @@ export type ModelEffortChoice = typeof EFFORT_KEEP | ReasoningEffort;
 export interface EffortModelDetail {
   reasoning?: boolean | undefined;
   effortLevels?: readonly string[] | undefined;
+  /**
+   * Documented "no effort control" — the upstream tri-state
+   * `reasoningConfig.effortSupported === false`. Absent means undocumented,
+   * which the strip reads as the full canonical set; `effortLevels` absence
+   * alone cannot carry this (it is overloaded with "undocumented").
+   */
+  effortControlSupported?: false | undefined;
 }
 
 function isReasoningEffort(value: string): value is ReasoningEffort {
@@ -40,6 +47,8 @@ export function modelEffortOptions(
   detail: EffortModelDetail | undefined,
 ): readonly ModelEffortChoice[] {
   if (!detail?.reasoning) return [];
+  // Documented "no effort control": no strip, even though the model reasons.
+  if (detail.effortControlSupported === false) return [];
   const documented = (detail.effortLevels ?? []).filter(isReasoningEffort);
   const levels =
     documented.length > 0

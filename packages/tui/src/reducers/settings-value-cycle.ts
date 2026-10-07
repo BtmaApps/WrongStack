@@ -283,6 +283,15 @@ export function cycleSettingsValue(inputs: {
       // set, and a persisted-but-unadvertised value is appended so it stays
       // reachable (the runtime resolver omits unsupported values).
       if (f === 24) {
+        // Host gate contract (reasoningEffortVocabulary): undefined =
+        // undocumented reasoner (full canonical set); [] = the model
+        // documents effortSupported === false — no effort control at all. The
+        // runtime resolver drops any effort for it, so cycling would persist
+        // a dead value: leave the field inert (the picker's detail line says
+        // so — see settings-picker.tsx).
+        if (sp.reasoningEffortLevels !== undefined && sp.reasoningEffortLevels.length === 0) {
+          return state;
+        }
         const documented = (sp.reasoningEffortLevels ?? []).filter(
           (level): level is (typeof REASONING_EFFORTS)[number] =>
             REASONING_EFFORTS.some((candidate) => candidate === level),

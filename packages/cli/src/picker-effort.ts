@@ -47,3 +47,24 @@ export function cycleStartupEffort(
   const base = Math.max(0, options.indexOf(current as StartupEffortChoice));
   return options[(base + delta + options.length) % options.length] ?? EFFORT_KEEP;
 }
+
+/**
+ * Tri-state effort vocabulary for the settings field-24 gate (the ←/→ cycle
+ * in the settings picker): `undefined` — undocumented reasoner, the cycle
+ * keeps the full canonical set; `[]` — the model documents
+ * `effortSupported === false` (no effort control at all; the runtime resolver
+ * drops any effort, so the cycle must go inert); otherwise the documented
+ * levels. Mirrors {@link startupEffortOptions}'s tri-state handling.
+ */
+export function reasoningEffortVocabulary(
+  rc:
+    | {
+        effortSupported?: boolean | undefined;
+        effortLevels?: readonly string[] | undefined;
+      }
+    | undefined,
+): string[] | undefined {
+  if (rc?.effortSupported === false) return [];
+  if (rc?.effortSupported && rc.effortLevels?.length) return [...rc.effortLevels];
+  return undefined;
+}

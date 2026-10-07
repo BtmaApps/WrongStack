@@ -357,6 +357,12 @@ export function isModelRefListed(
     const ref = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
     if (!ref) return false;
     if (ref === m || ref === `${p}/${m}`) return true;
+    // `provider model` where the model id has its own slash
+    // (`openrouter anthropic/claude-x`) — parseModelRef's first rule, which the
+    // runtime fallback manager honours. Splitting on the first slash instead
+    // read it as provider "openrouter anthropic" and resurrected the model.
+    const spaced = /^([^\s/]+)\s+([^\s/].*)$/u.exec(ref);
+    if (spaced) return spaced[1] === p && spaced[2]!.trim() === m;
     const slash = ref.indexOf('/');
     if (slash !== -1) return ref.slice(0, slash).trim() === p && ref.slice(slash + 1).trim() === m;
     const parts = ref.split(/\s+/u);

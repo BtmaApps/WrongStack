@@ -12,6 +12,16 @@ describe('modelEffortOptions', () => {
     expect(modelEffortOptions(undefined)).toEqual([]);
   });
 
+  it('offers nothing for a model documented with no effort control', () => {
+    // Tri-state `effortSupported === false` upstream: the model reasons, but
+    // its catalog entry documents that it has no effort control.
+    expect(modelEffortOptions({ reasoning: true, effortControlSupported: false })).toEqual([]);
+    // The documented-false arm wins even if stale levels ride along.
+    expect(
+      modelEffortOptions({ reasoning: true, effortControlSupported: false, effortLevels: ['low'] }),
+    ).toEqual([]);
+  });
+
   it('offers only the documented levels, in canonical order', () => {
     expect(modelEffortOptions({ reasoning: true, effortLevels: ['high', 'low'] })).toEqual([
       EFFORT_KEEP,

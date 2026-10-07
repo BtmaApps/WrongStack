@@ -2922,20 +2922,28 @@ describe('useAppPickerKeys — resume in-flight guards (/resume picker + F10 ses
           queueMicrotask(() => resolve({ entries: [], nextId: 1, sessionId: 'sess_target' }));
         }),
     );
-    const { fire, unmount } = mountRealPickerKeys(
+    const { dispatch, fire, unmount } = mountRealPickerKeys(
       resumePickerState(),
       onResumeSession as unknown as (sessionId: string) => Promise<unknown>,
     );
 
-    await fire(); // Enter #1
-    await sleep(70);
-    expect(onResumeSession).toHaveBeenCalledTimes(1);
-    await sleep(10); // flush the .then/.finally chain that releases the lock
+    try {
+      fire(); // Enter #1
+      // The final hint clear follows lock release, including the replay paint.
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: 'hint', text: '' }), {
+        timeout: 5_000,
+      });
+      expect(onResumeSession).toHaveBeenCalledTimes(1);
+      dispatch.mockClear();
 
-    await fire(); // Enter #2 — lock released, a fresh resume must go through
-    await sleep(70);
-    expect(onResumeSession).toHaveBeenCalledTimes(2);
-    unmount();
+      fire(); // Enter #2 — lock released, a fresh resume must go through
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: 'hint', text: '' }), {
+        timeout: 5_000,
+      });
+      expect(onResumeSession).toHaveBeenCalledTimes(2);
+    } finally {
+      unmount();
+    }
   });
 
   // ── F10 sessions-panel resume (same lock, two-step confirm flow) ─────────
@@ -3095,20 +3103,27 @@ describe('useAppPickerKeys — resume in-flight guards (/resume picker + F10 ses
           queueMicrotask(() => resolve({ entries: [], nextId: 1, sessionId: 'sess_target' }));
         }),
     );
-    const { fire, unmount } = mountRealPickerKeys(
+    const { dispatch, fire, unmount } = mountRealPickerKeys(
       sessionsPanelState({ sessionId: 'sess_target', sessionName: 'project' }),
       onResumeSession as unknown as (sessionId: string) => Promise<unknown>,
     );
 
-    await fire(); // Enter #1
-    await sleep(70);
-    expect(onResumeSession).toHaveBeenCalledTimes(1);
-    await sleep(10); // flush the .then/.finally chain that releases the lock
+    try {
+      fire(); // Enter #1
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: 'hint', text: '' }), {
+        timeout: 5_000,
+      });
+      expect(onResumeSession).toHaveBeenCalledTimes(1);
+      dispatch.mockClear();
 
-    await fire(); // Enter #2 — lock released, a fresh resume must go through
-    await sleep(70);
-    expect(onResumeSession).toHaveBeenCalledTimes(2);
-    unmount();
+      fire(); // Enter #2 — lock released, a fresh resume must go through
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: 'hint', text: '' }), {
+        timeout: 5_000,
+      });
+      expect(onResumeSession).toHaveBeenCalledTimes(2);
+    } finally {
+      unmount();
+    }
   });
 
   it('drops /resume chain dispatches after unmount and refuses new work afterwards', async () => {

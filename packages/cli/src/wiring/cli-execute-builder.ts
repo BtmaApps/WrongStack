@@ -8,6 +8,7 @@ import { isSafeMode } from '../boot/safe-mode.js';
 import type { CliGovernanceRuntimeHandle } from '../cli-main-helpers.js';
 import { createPickableProvidersLoader } from '../cli-main-helpers.js';
 import type { MultiAgentHost } from '../fleet/host.js';
+import { reasoningEffortVocabulary } from '../picker-effort.js';
 import { createRuntimeControllerDeps } from './runtime-controller-deps.js';
 import { createRuntimeLifecycleDeps } from './runtime-lifecycle-deps.js';
 import { createRuntimePickerDeps } from './runtime-picker-deps.js';
@@ -336,10 +337,7 @@ export async function runCliExecution(params: {
           }
           return undefined;
         },
-        getActiveModelReasoningEffortLevels: () => {
-          const rc = activeReasoningConfig;
-          return rc?.effortSupported && rc.effortLevels?.length ? [...rc.effortLevels] : undefined;
-        },
+        getActiveModelReasoningEffortLevels: () => reasoningEffortVocabulary(activeReasoningConfig),
         buildProviderForModel,
         context,
         getConfig: () => configRef.current,

@@ -54,6 +54,11 @@ export function isModelInFavorites(
     if (!raw) return false;
     const clean = raw.trim().toLowerCase();
     if (clean === full || clean === mLower) return true;
+    // `provider model` where the model id has its own slash
+    // (`openrouter anthropic/claude-x`) — core parseModelRef's first rule.
+    // Splitting on the first slash read it as provider "openrouter anthropic".
+    const spaced = /^([^\s/]+)\s+([^\s/].*)$/u.exec(clean);
+    if (spaced) return spaced[1] === pLower && spaced[2]!.trim() === mLower;
     const slashIdx = clean.indexOf('/');
     if (slashIdx !== -1) {
       const favProv = clean.slice(0, slashIdx).trim();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T19:42:57.891Z",
+  "generatedAt": "2026-10-07T07:31:32.602Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4829,
-    "testFiles": 4161,
-    "sourceLines": 1078369,
+    "testFiles": 4162,
+    "sourceLines": 1078430,
     "workspaceEdges": 133,
-    "moduleEdges": 15890,
+    "moduleEdges": 15891,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 608,
-      "testFiles": 599,
+      "testFiles": 600,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 599
+          "testFiles": 600
         }
       ]
     },
@@ -3709,6 +3709,12 @@
       },
       {
         "file": "packages/cli/tests/permissions-explain-subcommand.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/picker-effort.test.ts",
         "projects": [
           "root-node"
         ]

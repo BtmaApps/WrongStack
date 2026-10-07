@@ -167,9 +167,13 @@ function modelDetails(
         // Documented effort vocabulary, mirroring the gate
         // `getActiveModelReasoningEffortLevels` applies for the settings
         // panel: `effortSupported === false` is a documented "no effort
-        // control", and the picker must not offer a strip for it. An absent
-        // field stays absent, which the strip reads as "undocumented →
-        // canonical set".
+        // control", and the picker must not offer a strip for it — carried
+        // explicitly, because an absent `effortLevels` alone would read as
+        // "undocumented → canonical set". An absent field stays absent,
+        // which the strip reads as "undocumented → canonical set".
+        ...(model.reasoningConfig?.effortSupported === false
+          ? { effortControlSupported: false as const }
+          : {}),
         ...(model.reasoningConfig?.effortSupported && model.reasoningConfig.effortLevels?.length
           ? { effortLevels: [...model.reasoningConfig.effortLevels] }
           : {}),

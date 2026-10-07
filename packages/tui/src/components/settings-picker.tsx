@@ -259,9 +259,12 @@ export function SettingsPicker({
     {
       label: 'Reasoning effort',
       value: reasoningEffort,
-      detail: reasoningEffortLevels?.length
-        ? `documented for this model: ${reasoningEffortLevels.join(' · ')}`
-        : 'none–max (model-dependent)',
+      detail:
+        reasoningEffortLevels !== undefined && reasoningEffortLevels.length === 0
+          ? 'not adjustable for this model'
+          : reasoningEffortLevels?.length
+            ? `documented for this model: ${reasoningEffortLevels.join(' · ')}`
+            : 'none–max (model-dependent)',
     },
     {
       label: 'Preserve thinking',

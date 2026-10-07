@@ -1563,6 +1563,25 @@ describe('settings picker reducer', () => {
     expect(s.settingsPicker.statuslineMode).toBe('detailed'); // unaffected
   });
 
+  it('field 24 stays inert for a documented no-effort-control model', () => {
+    // `effortSupported === false` reaches the picker as [] (tri-state via
+    // reasoningEffortVocabulary). The runtime resolver drops any effort for
+    // such a model, so cycling would persist a dead value — both directions
+    // must leave the persisted effort untouched, and [] must NOT collapse
+    // into the undocumented full-set arm.
+    const up = reducer(
+      base({ open: true, field: 24, reasoningEffort: 'high', reasoningEffortLevels: [] }),
+      { type: 'settingsValueChange', delta: 1 },
+    );
+    expect(up.settingsPicker.reasoningEffort).toBe('high');
+    expect(up.settingsPicker.reasoningEffortLevels).toEqual([]);
+    const down = reducer(
+      base({ open: true, field: 24, reasoningEffort: 'high', reasoningEffortLevels: [] }),
+      { type: 'settingsValueChange', delta: -1 },
+    );
+    expect(down.settingsPicker.reasoningEffort).toBe('high');
+  });
+
   // New field order (reordered sections, thinkingWord added at field 22, multi-diff summary at field 21):
   // 0-14: Autonomy + UX + Features (unchanged)
   // 15-20: Tools (indexOnStart moved here), 21: multiDiffSummaryThreshold

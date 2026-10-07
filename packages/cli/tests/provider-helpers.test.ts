@@ -253,6 +253,32 @@ describe('buildPickableProviders', () => {
     });
   });
 
+  it('marks a model documented without effort control so the strip stays hidden', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-x';
+    const registry = fakeRegistry([
+      {
+        id: 'anthropic',
+        family: 'anthropic',
+        envVars: ['ANTHROPIC_API_KEY'],
+        models: [
+          {
+            id: 'opus',
+            name: 'Opus',
+            reasoning: true,
+            reasoningConfig: { effortSupported: false, effortLevels: [] },
+          },
+        ],
+      },
+    ]);
+    const result = await buildPickableProviders(registry, { providers: {} } as never);
+    const detail = result[0]?.modelDetails?.['opus'];
+    expect(detail?.reasoning).toBe(true);
+    // Tri-state `false` must reach the picker explicitly — absent
+    // effortLevels alone reads as "undocumented → full canonical strip".
+    expect(detail?.effortControlSupported).toBe(false);
+    expect(detail?.effortLevels).toBeUndefined();
+  });
+
   it('returns providers with stored apiKey in config', async () => {
     const registry = fakeRegistry([
       {

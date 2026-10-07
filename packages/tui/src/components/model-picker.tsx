@@ -28,6 +28,12 @@ export interface ProviderOption {
            * strip reads as "offer the full canonical set".
            */
           effortLevels?: readonly string[] | undefined;
+          /**
+           * Documented "no effort control" (`reasoningConfig.effortSupported
+           * === false` upstream): no effort strip even though the model
+           * reasons. Absent means undocumented (see `effortLevels`).
+           */
+          effortControlSupported?: false | undefined;
           maxContext?: number | undefined;
           maxOutput?: number | undefined;
           inputCost?: number | undefined;
