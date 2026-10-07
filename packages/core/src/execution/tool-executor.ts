@@ -66,6 +66,37 @@ async function mapWithConcurrency<T, R>(
   await Promise.all(Array.from({ length: Math.min(effectiveLimit, items.length) }, () => worker()));
   return results;
 }
+
+type BudgetCap = (text: string, remainingBudget: number) => { text: string; newBudget: number };
+
+/** Keep hook text that is delivered to the model inside the iteration budget. */
+function fitToBudget(
+  enforceCap: BudgetCap,
+  text: string,
+  budget: number,
+): { text: string; budget: number } {
+  if (budget <= 0 || text.length === 0) return { text: '', budget: Math.max(0, budget) };
+  const capped = enforceCap(text, budget);
+  if (Buffer.byteLength(capped.text, 'utf8') > budget) return { text: '', budget: 0 };
+  return { text: capped.text, budget: capped.newBudget };
+}
+
+function rememberPendingContext(
+  ctx: Context,
+  addition: string,
+  budget: number,
+  enforceCap: BudgetCap,
+): number {
+  const piece = ctx.pendingPostToolContext ? `\n\n${addition}` : addition;
+  const fitted = fitToBudget(enforceCap, piece, budget);
+  if (fitted.text.length > 0) {
+    ctx.pendingPostToolContext = ctx.pendingPostToolContext
+      ? `${ctx.pendingPostToolContext}${fitted.text}`
+      : fitted.text;
+  }
+  return fitted.budget;
+}
+
 export class ToolExecutor extends ToolExecutorCore {
   async executeBatch(
     toolUses: ToolUseBlock[],
@@ -188,11 +219,10 @@ export class ToolExecutor extends ToolExecutorCore {
         );
         if (produced.data) rememberProgrammaticOutput(result, produced.data.value);
         budget -= bytes;
+        const enforceCap: BudgetCap = (text, room) => this.serializer.enforceCap(text, room);
         await queueDirectoryInstructions(tool, use.input, ctx);
         if (preToolContext?.contextAs === 'separate') {
-          ctx.pendingPostToolContext = ctx.pendingPostToolContext
-            ? `${ctx.pendingPostToolContext}\n\n${preToolContext.text}`
-            : preToolContext.text;
+          budget = rememberPendingContext(ctx, preToolContext.text, budget, enforceCap);
         }
         postRan = true;
         if (this.opts.hookRunner?.has('PostToolUse')) {
@@ -204,13 +234,11 @@ export class ToolExecutor extends ToolExecutorCore {
           );
           if (post.additionalContext) {
             if (post.contextAs === 'separate') {
-              ctx.pendingPostToolContext = ctx.pendingPostToolContext
-                ? `${ctx.pendingPostToolContext}\n\n${post.additionalContext}`
-                : post.additionalContext;
+              budget = rememberPendingContext(ctx, post.additionalContext, budget, enforceCap);
             } else {
-              const appended = `\n\n${post.additionalContext}`;
-              result = appendToolResultContext(result, appended);
-              budget = Math.max(0, budget - Buffer.byteLength(appended, 'utf8'));
+              const fitted = fitToBudget(enforceCap, `\n\n${post.additionalContext}`, budget);
+              if (fitted.text.length > 0) result = appendToolResultContext(result, fitted.text);
+              budget = fitted.budget;
             }
           }
         }
@@ -406,11 +434,12 @@ export class ToolExecutor extends ToolExecutorCore {
           : produced.fingerprint,
       );
       if (produced.data) rememberProgrammaticOutput(settled.block, produced.data.value);
+      let room = budget - settled.bytes;
+      const enforceCap: BudgetCap = (value, remaining) =>
+        this.serializer.enforceCap(value, remaining);
       await queueDirectoryInstructions(tool, use.input, ctx);
       if (preToolContext?.contextAs === 'separate') {
-        ctx.pendingPostToolContext = ctx.pendingPostToolContext
-          ? `${ctx.pendingPostToolContext}\n\n${preToolContext.text}`
-          : preToolContext.text;
+        room = rememberPendingContext(ctx, preToolContext.text, room, enforceCap);
       }
       // This is the run a confirm prompt approved. It used to skip PostToolUse
       // entirely, so an approved write never released the file lock its
@@ -428,14 +457,13 @@ export class ToolExecutor extends ToolExecutorCore {
         );
         if (post.additionalContext) {
           if (post.contextAs === 'separate') {
-            ctx.pendingPostToolContext = ctx.pendingPostToolContext
-              ? `${ctx.pendingPostToolContext}\n\n${post.additionalContext}`
-              : post.additionalContext;
+            rememberPendingContext(ctx, post.additionalContext, room, enforceCap);
           } else {
-            const appended = `\n\n${post.additionalContext}`;
+            const fitted = fitToBudget(enforceCap, `\n\n${post.additionalContext}`, room);
+            if (fitted.text.length === 0) return settled;
             return {
-              block: appendToolResultContext(settled.block, appended),
-              bytes: settled.bytes + Buffer.byteLength(appended, 'utf8'),
+              block: appendToolResultContext(settled.block, fitted.text),
+              bytes: settled.bytes + Buffer.byteLength(fitted.text, 'utf8'),
             };
           }
         }

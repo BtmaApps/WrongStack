@@ -459,6 +459,87 @@ describe('ToolExecutor — additional coverage', () => {
       const content = (result.outputs[0]!.result as ToolResultBlock).content as string;
       expect(content).toContain('inline note');
     });
+
+    it('keeps hook context inside perIterationOutputCapBytes', async () => {
+      const cap = 1_000;
+      const huge = 'H'.repeat(50_000);
+      const tool = makeTool({ name: 'read', execute: vi.fn().mockResolvedValue('ok') });
+      const hookRunner = {
+        has: vi.fn((name: string) => name === 'PostToolUse'),
+        postToolUse: vi.fn().mockResolvedValue({ additionalContext: huge }),
+      };
+      const executor = makeExecutor([tool], {
+        hookRunner: hookRunner as never,
+        perIterationOutputCapBytes: cap,
+      });
+      const inline = await executor.executeBatch([makeUse('read')], makeCtx(), 'sequential');
+      const inlineText = (inline.outputs[0]!.result as ToolResultBlock).content as string;
+      expect(Buffer.byteLength(inlineText, 'utf8')).toBeLessThanOrEqual(cap);
+      expect(inlineText.startsWith('ok')).toBe(true);
+      expect(inlineText).not.toContain(huge);
+
+      const separateCtx = makeCtx();
+      hookRunner.postToolUse.mockResolvedValue({ additionalContext: huge, contextAs: 'separate' });
+      const separate = await executor.executeBatch([makeUse('read')], separateCtx, 'sequential');
+      const separateText = (separate.outputs[0]!.result as ToolResultBlock).content as string;
+      const pending = separateCtx.pendingPostToolContext ?? '';
+      expect(Buffer.byteLength(separateText + pending, 'utf8')).toBeLessThanOrEqual(cap);
+      expect(pending).not.toBe(huge);
+
+      hookRunner.postToolUse.mockResolvedValue({ additionalContext: huge });
+      const direct = await executor.executeTool(tool, makeUse('read'), makeCtx(), cap);
+      expect(Buffer.byteLength(String(direct.block.content), 'utf8')).toBeLessThanOrEqual(cap);
+
+      const full = 'S'.repeat(5_000);
+      const skeleton = makeTool({
+        name: 'codebase-skeleton',
+        preserveFullOutput: true,
+        execute: vi.fn().mockResolvedValue(full),
+      });
+      const preserved = await makeExecutor([skeleton], {
+        hookRunner: hookRunner as never,
+        perIterationOutputCapBytes: cap,
+      }).executeBatch([makeUse('codebase-skeleton')], makeCtx(), 'sequential');
+      expect((preserved.outputs[0]!.result as ToolResultBlock).content).toBe(full);
+
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let arrived = 0;
+      let openBoth!: () => void;
+      const bothArrived = new Promise<void>((resolve) => {
+        openBoth = resolve;
+      });
+      const left = makeTool({ name: 'left', execute: vi.fn().mockResolvedValue('ok') });
+      const right = makeTool({ name: 'right', execute: vi.fn().mockResolvedValue('ok') });
+      const parallel = makeExecutor([left, right], {
+        perIterationOutputCapBytes: cap,
+        maxParallelTools: 2,
+        hookRunner: {
+          has: (name: string) => name === 'PostToolUse',
+          postToolUse: async () => {
+            arrived += 1;
+            if (arrived === 2) openBoth();
+            await gate;
+            return { additionalContext: huge };
+          },
+        } as never,
+      });
+      const pendingBatch = parallel.executeBatch(
+        [makeUse('left'), makeUse('right')],
+        makeCtx(),
+        'parallel',
+      );
+      await bothArrived;
+      release();
+      const raced = await pendingBatch;
+      const visible = raced.outputs.reduce((sum, output) => {
+        const content = String((output.result as ToolResultBlock).content);
+        return sum + Buffer.byteLength(content, 'utf8');
+      }, 0);
+      expect(visible).toBeLessThanOrEqual(cap);
+    });
   });
 
   describe('cross-field validation', () => {
