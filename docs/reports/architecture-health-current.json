@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T07:49:00.544Z",
+  "generatedAt": "2026-10-07T07:49:59.989Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4829,
-    "testFiles": 4168,
-    "sourceLines": 1079500,
+    "testFiles": 4172,
+    "sourceLines": 1079504,
     "workspaceEdges": 133,
     "moduleEdges": 15897,
     "nonCommandSlashImports": 0,
@@ -920,7 +920,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 292,
-      "testFiles": 273,
+      "testFiles": 277,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -946,7 +946,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 273
+          "testFiles": 277
         }
       ]
     },
@@ -22236,6 +22236,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/mcp-auth-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/mcp-env-redaction.test.ts",
         "projects": [
           "root-node"
@@ -23016,6 +23022,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/start-webui-phases.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/start-webui-proxy-apply.test.ts",
         "projects": [
           "root-node"
@@ -23034,6 +23046,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/start-webui-shutdown-session-swap.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/start-webui-shutdown.test.ts",
         "projects": [
           "root-node"
@@ -23041,6 +23059,12 @@
       },
       {
         "file": "packages/webui-server/tests/start-webui-vector-memory.integration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/start-webui-wiring.test.ts",
         "projects": [
           "root-node"
         ]

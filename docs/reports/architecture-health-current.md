@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-07T07:49:00.544Z
+**Generated:** 2026-10-07T07:49:59.989Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4829 |
-| Production source lines | 1079500 |
-| Test files | 4168 |
+| Production source lines | 1079504 |
+| Test files | 4172 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 15897 |
 | Non-command slash imports | 0 |
@@ -61,7 +61,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/webui | 705 | 471 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 128 | 52 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
-| @wrongstack/webui-server | 292 | 273 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
+| @wrongstack/webui-server | 292 | 277 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
 | @wrongstack/wrongtrace | 11 | 8 | — |
 | wrongstack | 1 | 1 | @wrongstack/cli |
 

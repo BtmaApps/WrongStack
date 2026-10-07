@@ -217,7 +217,7 @@ export function wireStandaloneWebuiRuntime(input: StandaloneWebuiWiringInput): v
 
   setupWebuiShutdown({
     stopTelemetryExport: otlpExport ? () => otlpExport.stop() : undefined,
-    session: state.getSession(),
+    getSession: () => state.getSession(),
     tokenCounter,
     clients,
     httpServer,

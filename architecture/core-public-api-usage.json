@@ -239,8 +239,8 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 757,
-      "typeOnly": 68,
+      "files": 758,
+      "typeOnly": 69,
       "runtimeOrMixed": 718
     },
     "@wrongstack/core/utils/child-env": {
@@ -26665,6 +26665,12 @@
       "file": "packages/webui-server/tests/session-swap-lifecycle.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/tests/start-webui-wiring.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",

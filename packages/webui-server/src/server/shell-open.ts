@@ -220,7 +220,10 @@ export async function handleShellOpen(
               '-e',
               'sh',
               '-c',
-              `cd ${shellQuote(target)} && ${process.env['SHELL'] ?? 'sh'}`,
+              // shellQuote only escapes `'` for use INSIDE single quotes; the
+              // quotes themselves were missing, so a path with a space split
+              // into two `cd` operands and the shell never started.
+              `cd '${shellQuote(target)}' && ${process.env['SHELL'] ?? 'sh'}`,
             ]),
           ),
         );

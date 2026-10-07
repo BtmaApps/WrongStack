@@ -17,7 +17,8 @@ type LeaderSession = Awaited<ReturnType<DefaultSessionStore['create']>>;
 type AgentServices = Awaited<ReturnType<typeof createAgentServices>>;
 
 export function setupWebuiShutdown(options: {
-  session: LeaderSession;
+  /** Live view: the store may swap the session (post-/new) after wiring. */
+  getSession: () => LeaderSession;
   tokenCounter: DefaultTokenCounter;
   clients: Map<WebSocket, ConnectedClient>;
   httpServer: http.Server;
@@ -71,7 +72,7 @@ export function setupWebuiShutdown(options: {
   let unregister = (): void => {};
   const releaseSalvage = addFatalSalvageHook(() => {
     try {
-      options.session.flushSync?.();
+      options.getSession().flushSync?.();
     } catch {
       // best-effort — the process is already going down
     }
@@ -86,12 +87,12 @@ export function setupWebuiShutdown(options: {
       // Background tabs first: they are only reachable through the registry,
       // and the leader's close below is what ends the host.
       await options.closeSessionJournals?.().catch(() => undefined);
-      await options.session.append({
+      await options.getSession().append({
         type: 'session_end',
         ts: new Date().toISOString(),
         usage: options.tokenCounter.total(),
       });
-      await options.session.close();
+      await options.getSession().close();
     },
     clients: () => options.clients.keys(),
     servers: [

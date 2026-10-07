@@ -60,7 +60,7 @@ describe('setupWebuiShutdown', () => {
     const secondary = {};
 
     const result = setupWebuiShutdown({
-      session: { append, close: closeSession } as never,
+      getSession: () => ({ append, close: closeSession }) as never,
       tokenCounter: { total: vi.fn(() => ({ input: 12, output: 3 })) } as never,
       clients: new Map(),
       httpServer: primary as never,
@@ -136,10 +136,11 @@ describe('setupWebuiShutdown', () => {
 
     const disposeMemoryOk = vi.fn().mockResolvedValue(undefined);
     setupWebuiShutdown({
-      session: {
-        append: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn().mockResolvedValue(undefined),
-      } as never,
+      getSession: () =>
+        ({
+          append: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+        }) as never,
       tokenCounter: { total: vi.fn(() => ({ input: 0, output: 0 })) } as never,
       clients: new Map(),
       httpServer: {} as never,
