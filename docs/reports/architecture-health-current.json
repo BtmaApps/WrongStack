@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T07:31:32.602Z",
+  "generatedAt": "2026-10-07T07:34:38.196Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4829,
-    "testFiles": 4162,
-    "sourceLines": 1078430,
+    "testFiles": 4164,
+    "sourceLines": 1078437,
     "workspaceEdges": 133,
     "moduleEdges": 15891,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 608,
-      "testFiles": 600,
+      "testFiles": 602,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 600
+          "testFiles": 602
         }
       ]
     },
@@ -2226,6 +2226,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/boot-launch-choices.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/boot-tui-callbacks.test.ts",
         "projects": [
           "root-node"
@@ -2431,6 +2437,12 @@
       },
       {
         "file": "packages/cli/tests/cli-main-helpers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/cli-main-orchestration.test.ts",
         "projects": [
           "root-node"
         ]

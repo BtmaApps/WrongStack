@@ -77,8 +77,12 @@ export async function applyBootLaunchChoices(
       flags['no-yolo'] === true ? false : flags['yolo'] === true ? true : undefined;
     let autonomyPinned: 'off' | 'auto' | undefined;
     if (flags['no-autonomy'] === true) autonomyPinned = 'off';
-    else if (flags['eternal'] === true)
-      autonomyPinned = 'off'; // --eternal starts engine directly, skips launch-prompt autonomy
+    // `--eternal "<mission>"` starts the engine directly, so the launch prompt
+    // must not ask (and persist) autonomy. The engine starts only for a
+    // mission STRING (cli-main-orchestration); `=== true` matched only the
+    // bare, mission-less form, which starts nothing.
+    else if (typeof flags['eternal'] === 'string' && flags['eternal'].trim() !== '')
+      autonomyPinned = 'off';
     else if (typeof flags['autonomy'] === 'string') {
       const v = (flags['autonomy'] as string).toLowerCase();
       autonomyPinned = v === 'off' || v === 'no' || v === 'false' ? 'off' : 'auto';

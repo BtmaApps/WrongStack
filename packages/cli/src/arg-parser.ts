@@ -112,6 +112,9 @@ export const BOOLEAN_FLAGS = new Set([
   'all-models',
   'plan',
   'json',
+  // `wstack modeldiag eval [role] --quick`: as a value flag it swallowed the
+  // role (`eval --quick coder` ran a full all-category eval, not a quick one).
+  'quick',
   // Destructive-preview switch (`wstack chronicle prune --dry-run`). It is
   // boolean at every call site, and leaving it out let it consume the next
   // positional — on a command whose whole purpose is to NOT delete.
