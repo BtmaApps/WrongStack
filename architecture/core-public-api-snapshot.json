@@ -1620,7 +1620,7 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 62,
-      "sourceLines": 12409
+      "sourceLines": 12429
     },
     {
       "directory": "infrastructure",
@@ -1746,7 +1746,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 116,
-      "sourceLines": 25643
+      "sourceLines": 25653
     },
     {
       "directory": "tasking",
@@ -1781,7 +1781,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 83,
-      "sourceLines": 13930
+      "sourceLines": 13972
     },
     {
       "directory": "vcs",

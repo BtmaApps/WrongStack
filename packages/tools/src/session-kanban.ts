@@ -21,7 +21,7 @@ export {
 } from './session-kanban-boards.js';
 
 import { type FSWatcher, watch } from 'node:fs';
-import { basename, dirname } from 'node:path';
+import { basename, dirname, isAbsolute } from 'node:path';
 import type { Context, TodoItem } from '@wrongstack/core/agent';
 import { loadPlan, loadTasks, type PlanItem } from '@wrongstack/core/storage';
 import { deserializeTaskGraph } from '@wrongstack/core/tasking';
@@ -561,6 +561,15 @@ export function attachSessionKanbanMirror(context: Context): () => void {
       watcher = watch(candidate, { persistent: false }, (_event, filename) => {
         if (detached || watchedDir !== candidate) return;
         const name = filename?.toString();
+        // Windows reports a deleted watched directory as an endless 'rename'
+        // storm of its own absolute path (never error/close). Stop watching;
+        // the next plan/task path change re-arms.
+        if (name && isAbsolute(name)) {
+          watcher?.close();
+          watcher = null;
+          watchedDir = '';
+          return;
+        }
         const currentPlanPath = context.meta['plan.path'];
         const currentTaskPath = context.meta['task.path'];
         const planName = typeof currentPlanPath === 'string' ? basename(currentPlanPath) : '';

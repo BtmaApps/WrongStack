@@ -70,6 +70,13 @@ export function watchProjectTree(
       path.resolve(root),
       { recursive: true, persistent: false },
       (eventType, filename) => {
+        // Windows never emits 'error'/'close' when the watched root itself is
+        // deleted: libuv reports the root's own absolute path in an endless
+        // 'rename' storm instead. Watch filenames are otherwise root-relative.
+        if (filename !== null && path.isAbsolute(String(filename))) {
+          rootRemoved();
+          return;
+        }
         const event: ProjectWatchEvent = {
           eventType: eventType === 'rename' ? 'rename' : 'change',
           filename: filename === null ? null : String(filename),
@@ -97,6 +104,19 @@ export function watchProjectTree(
     // Watchers can also close without first emitting `error` (for example when
     // the watched tree disappears). Never leave that closed handle reusable.
     watcher.on('close', retire);
+    const rootRemoved = (): void => {
+      if (created.dead) return;
+      retire();
+      try {
+        watcher.close();
+      } catch {
+        /* already closed */
+      }
+      const error = Object.assign(new Error(`watched root was removed: ${path.resolve(root)}`), {
+        code: 'ENOENT',
+      });
+      for (const sub of subscribers) sub.onError?.(error);
+    };
     registry.set(key, created);
     entry = created;
   }

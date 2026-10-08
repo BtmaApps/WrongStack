@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-08T12:25:00.747Z
+**Generated:** 2026-10-08T12:25:51.989Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4889 |
-| Production source lines | 1082211 |
+| Production source lines | 1082292 |
 | Test files | 4189 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 16078 |
@@ -104,6 +104,7 @@ None.
 | 755 | `packages/webui-hq/src/domain/fleet-topology.ts` |
 | 754 | `packages/providers/src/codex-websocket.ts` |
 | 754 | `packages/webui-server/src/server/session-handlers.ts` |
+| 753 | `packages/tools/src/session-kanban.ts` |
 | 753 | `packages/webui/src/components/DebugDashboard.tsx` |
 | 752 | `packages/cli/src/config-doctor.ts` |
 | 752 | `packages/core/src/session-catalog/session-registry.ts` |
@@ -122,7 +123,6 @@ None.
 | 746 | `packages/tui/src/run-tui-options.ts` |
 | 744 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 744 | `packages/tools/src/grep.ts` |
-| 744 | `packages/tools/src/session-kanban.ts` |
 | 743 | `packages/cli/src/hq-server.ts` |
 | 742 | `packages/core/src/utils/context-evidence.ts` |
 | 742 | `packages/tui/src/components/agents-monitor.tsx` |

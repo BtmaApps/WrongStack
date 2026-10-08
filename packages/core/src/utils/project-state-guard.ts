@@ -21,6 +21,8 @@ export interface ProjectStateGuardOptions {
 interface ActiveGuardSlot {
   guard?: ProjectStateGuard | undefined;
   root?: string | undefined;
+  /** Bumped per activation request; only the latest request may install. */
+  generation?: number | undefined;
 }
 
 const ACTIVE_GUARD_KEY = Symbol.for('wrongstack.activeProjectStateGuard');
@@ -108,6 +110,18 @@ export async function startProjectStateGuard(
   let watcher: fs.FSWatcher | undefined;
   try {
     watcher = fs.watch(root, { persistent: false }, (_eventType, filename) => {
+      // Windows never emits 'error'/'close' when the watched root is deleted:
+      // libuv reports the root's own absolute path in an endless 'rename'
+      // storm. Stop watching; the poll below stays authoritative.
+      if (filename !== null && path.isAbsolute(String(filename))) {
+        try {
+          watcher?.close();
+        } catch {
+          // Watchers can close themselves after an async error.
+        }
+        watcher = undefined;
+        return;
+      }
       if (concernsProjectState(filename) || String(filename).toLowerCase() === '.gitignore') {
         scheduleRepair();
       }
@@ -155,7 +169,15 @@ export async function activateProjectStateGuard(
   const root = normalizedRoot(projectRoot);
   if (activeGuard.root === root && activeGuard.guard) return activeGuard.guard;
 
+  const generation = (activeGuard.generation ?? 0) + 1;
+  activeGuard.generation = generation;
   const next = await startProjectStateGuard(projectRoot, options);
+  if (activeGuard.generation !== generation) {
+    // A later switch was requested while this one was starting; it owns the
+    // slot, so this superseded guard must not replace it.
+    next.close();
+    return next;
+  }
   const previous = activeGuard.guard;
   activeGuard.root = root;
   activeGuard.guard = next;

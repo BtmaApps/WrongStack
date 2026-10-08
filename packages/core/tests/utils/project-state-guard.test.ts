@@ -1,8 +1,12 @@
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { startProjectStateGuard } from '../../src/utils/project-state-guard.js';
+import {
+  activateProjectStateGuard,
+  startProjectStateGuard,
+} from '../../src/utils/project-state-guard.js';
 
 const cleanup: string[] = [];
 
@@ -84,6 +88,71 @@ describe('project state guard', () => {
 
     await expect(fs.stat(root)).rejects.toMatchObject({ code: 'ENOENT' });
     guard.close();
+  });
+
+  it.runIf(process.platform === 'win32')(
+    'stops watching once the project root itself is deleted',
+    async () => {
+      // Windows reports a deleted watched root as an endless storm of its own
+      // absolute path and never emits error/close.
+      const root = await temporaryProject();
+      const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+      const realWatch = nodeFs.watch;
+      let watcherClosed!: () => void;
+      const closed = new Promise<void>((resolve) => {
+        watcherClosed = resolve;
+      });
+      nodeFs.watch = ((...args: Parameters<typeof realWatch>) => {
+        const watcher = realWatch(...args);
+        const close = watcher.close.bind(watcher);
+        watcher.close = () => {
+          watcherClosed();
+          close();
+        };
+        return watcher;
+      }) as typeof realWatch;
+      syncBuiltinESMExports();
+      try {
+        const guard = await startProjectStateGuard(root, { pollIntervalMs: 60_000 });
+        await fs.rm(root, { recursive: true, force: true });
+        await closed;
+        guard.close();
+      } finally {
+        nodeFs.watch = realWatch;
+        syncBuiltinESMExports();
+      }
+    },
+    10_000,
+  );
+
+  it('keeps the latest switch active when an earlier activation finishes last', async () => {
+    // Gated order: A's setup is held until B is fully active, then released.
+    const first = await temporaryProject();
+    const second = await temporaryProject();
+    const promises = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+    const realMkdir = promises.mkdir;
+    let releaseFirst!: () => void;
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    promises.mkdir = (async (target: Parameters<typeof fs.mkdir>[0], options?: object) => {
+      if (String(target).startsWith(first)) await firstHeld;
+      return realMkdir(target, options);
+    }) as typeof fs.mkdir;
+    syncBuiltinESMExports();
+    try {
+      const pendingFirst = activateProjectStateGuard(first);
+      const secondGuard = await activateProjectStateGuard(second);
+      releaseFirst();
+      const staleFirst = await pendingFirst;
+      staleFirst.close();
+
+      expect(await activateProjectStateGuard(second)).toBe(secondGuard);
+      secondGuard.close();
+    } finally {
+      promises.mkdir = realMkdir;
+      syncBuiltinESMExports();
+    }
   });
 });
 

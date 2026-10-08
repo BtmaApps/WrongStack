@@ -109,6 +109,27 @@ describe('watchProjectTree', () => {
     sub2.close();
   });
 
+  it('retires the watcher when the root itself is reported removed (Windows storm)', () => {
+    const root = freshRoot();
+    const errors: unknown[] = [];
+    const seen: Array<string | null> = [];
+    const sub = watchProjectTree(root, (e) => seen.push(e.filename), {
+      onError: (e) => errors.push(e),
+    });
+
+    // libuv reports the deleted root's own absolute path, endlessly.
+    const storm = process.platform === 'win32' ? `\\\\?\\${root}` : root;
+    for (let i = 0; i < 3; i++) io.listeners.get(root)?.('rename', storm);
+
+    expect(seen).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(io.closed).toContain(root);
+    const sub2 = watchProjectTree(root, () => {});
+    expect(io.watchCalls.filter((r) => r === root)).toHaveLength(2);
+    sub.close();
+    sub2.close();
+  });
+
   it('does not reuse a watcher that closed without emitting an error', () => {
     const root = freshRoot();
     const sub = watchProjectTree(root, () => {});

@@ -256,6 +256,16 @@ export function watchHqAlertsConfig(
 
   watcher.on('change', (eventType: string, filename: string | Buffer | null) => {
     const name = typeof filename === 'string' ? filename : '';
+    // Windows reports a deleted watched directory as an endless 'rename' storm
+    // of its own absolute path (never error/close). Stop instead of spinning.
+    if (path.isAbsolute(name)) {
+      if (closed) return;
+      closed = true;
+      if (timer) clearTimeout(timer);
+      watcher.close();
+      opts.warn?.(`HQ alerts-config watcher stopped: ${path.dirname(file)} was removed`);
+      return;
+    }
     if (eventType === 'rename' || eventType === 'change') {
       if (!name || name === 'alerts-config.json' || name === path.basename(file)) {
         trigger();
