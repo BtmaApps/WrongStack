@@ -62,9 +62,18 @@ export class InputHistoryStore {
     return entries;
   }
 
-  private async readEntries(): Promise<string[]> {
+  private async readEntries(strict = false): Promise<string[]> {
+    let text: string;
     try {
-      const raw: InputHistoryFile = JSON.parse(await fs.readFile(this.file, 'utf8'));
+      text = await fs.readFile(this.file, 'utf8');
+    } catch (err) {
+      // save() merges what other sessions wrote from this read: an unreadable
+      // file taken as [] was written back without their prompts.
+      if (strict && (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      return [];
+    }
+    try {
+      const raw: InputHistoryFile = JSON.parse(text);
       if (
         raw &&
         typeof raw === 'object' &&
@@ -89,7 +98,7 @@ export class InputHistoryStore {
   async save(entries: string[]): Promise<void> {
     await ensureDir(path.dirname(this.file));
     await withFileLock(this.file, async () => {
-      const foreign = (await this.readEntries()).filter(
+      const foreign = (await this.readEntries(true)).filter(
         (entry) => !this.known.has(entry) && !entries.includes(entry),
       );
       // Newest first: this instance's new prompts, then the other instance's,

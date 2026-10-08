@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { removePathSync } from '@wrongstack/primitives';
 
@@ -30,6 +30,20 @@ export function agentsDir(projectRoot?: string): string {
 
 export function roleDir(role: string, projectRoot?: string): string {
   return path.join(agentsDir(projectRoot), assertProjectAgentRole(role));
+}
+
+/**
+ * Read a role file that is about to be rewritten from what it holds. Only a
+ * missing file is empty: an unreadable one (EBUSY from an AV scan, EPERM, EIO)
+ * read as '' was re-rendered from nothing over every lesson the role had.
+ */
+export function readRoleFileForUpdate(filePath: string): string {
+  try {
+    return readFileSync(filePath, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return '';
+    throw err;
+  }
 }
 
 export function writeTextAtomically(filePath: string, content: string): void {

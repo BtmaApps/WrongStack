@@ -19,12 +19,15 @@ export function initVectorMemoryStore(params: {
   try {
     const sageConfig = config['Sage'] as { vector?: { enabled?: boolean } } | undefined;
     if (sageConfig?.vector?.enabled === false) throw new Error('disabled by config');
-    return new VectorMemoryStore({
-      provider: new TransformersEmbeddingProvider({
-        cacheDir: vectorMemoryModelCacheDir,
-      }),
-      projectRoot,
-    });
+    const provider = new TransformersEmbeddingProvider({ cacheDir: vectorMemoryModelCacheDir });
+    // Opt-in backend absent: every embed would throw, so expose no vector surface.
+    if (!provider.isInstalled()) {
+      logger.debug(
+        'vector memory off: optional @huggingface/transformers backend is not installed.',
+      );
+      return undefined;
+    }
+    return new VectorMemoryStore({ provider, projectRoot });
   } catch (error) {
     const message = errMessage(error);
     logger.warn(

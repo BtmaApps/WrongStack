@@ -173,7 +173,10 @@ export class SSEReader {
     this.dataLines = [];
     if (!data) return;
     if (eventName === 'endpoint') {
-      for (const cb of this.endpointListeners) {
+      const listeners = this.endpointListeners;
+      for (const cb of [...listeners]) {
+        if (listeners !== this.endpointListeners) break;
+        if (!listeners.includes(cb)) continue;
         try {
           cb(data);
         } catch {
@@ -201,7 +204,10 @@ export class SSEReader {
     params?: unknown | undefined;
     id?: number | undefined;
   }): void {
-    for (const cb of this.listeners) {
+    const listeners = this.listeners;
+    for (const cb of [...listeners]) {
+      if (listeners !== this.listeners) break;
+      if (!listeners.includes(cb)) continue;
       try {
         cb(msg);
       } catch {

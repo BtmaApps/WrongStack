@@ -43,6 +43,24 @@ describe('manifestConfigHash', () => {
     expect(manifestConfigHash({ transport: 'stdio', command: 'npx', args: ['y'] })).not.toBe(base);
     expect(manifestConfigHash({ transport: 'sse', url: 'https://x' })).not.toBe(base);
   });
+
+  it.each([false, true])('invalidates referenced bearer values (padded name=%s)', (padded) => {
+    const key = 'WRONGSTACK_MANIFEST_TEST_TOKEN';
+    const previous = process.env[key];
+    const cfg = { transport: 'sse', bearerTokenEnv: padded ? ` ${key} ` : key };
+    try {
+      process.env[key] = 'dummy-alpha';
+      const first = manifestConfigHash(cfg);
+      expect(manifestConfigHash(cfg)).toBe(first);
+      process.env[key] = 'dummy-beta';
+      expect(manifestConfigHash(cfg)).not.toBe(first);
+      delete process.env[key];
+      expect(manifestConfigHash(cfg)).not.toBe(first);
+    } finally {
+      if (previous === undefined) delete process.env[key];
+      else process.env[key] = previous;
+    }
+  });
 });
 
 describe('readManifest / writeManifest', () => {

@@ -40,17 +40,32 @@ afterEach(() => {
 
 describe('transient IPC secret reads', () => {
   for (const code of ['EMFILE', 'EBUSY']) {
-    it(`${code}: retries rather than caching the public endpoint fallback`, () => {
+    // A null here is the PUBLIC endpoint name for this call — and callers
+    // memoize it (a daemon computes its endpoint once at start), so a blip
+    // split the single-daemon election. A short transient is absorbed.
+    it(`${code}: a short transient still yields the secret, not the public fallback`, () => {
       const file = path.join(root, 'secret');
       const secret = 'a'.repeat(64);
       fs.writeFileSync(file, secret);
       _ipcEndpointSecretOps.file = () => file;
       fault.code = code;
       fault.remaining = 2;
-      expect(ipcEndpointSecret()).toBeNull();
       expect(ipcEndpointSecret()).toBe(secret);
       expect(fs.readFileSync(file, 'utf8')).toBe(secret);
       expect(fs.readdirSync(root)).toEqual(['secret']);
+    });
+
+    it(`${code}: a failure outlasting the retries falls back without caching it`, () => {
+      const file = path.join(root, 'secret');
+      const secret = 'b'.repeat(64);
+      fs.writeFileSync(file, secret);
+      _ipcEndpointSecretOps.file = () => file;
+      fault.code = code;
+      fault.remaining = 1_000;
+      expect(ipcEndpointSecret()).toBeNull();
+      fault.remaining = 0;
+      expect(ipcEndpointSecret()).toBe(secret);
+      expect(fs.readFileSync(file, 'utf8')).toBe(secret);
     });
   }
 });

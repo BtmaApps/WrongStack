@@ -126,7 +126,8 @@ describe('api-compatibility-gate plugin', () => {
 
     expect(execFile).toHaveBeenCalledWith(
       'git',
-      ['show', 'HEAD:src/index.ts'],
+      // `./`: resolved from cwd, not the repository root (project may be a subfolder).
+      ['show', 'HEAD:./src/index.ts'],
       expect.any(Object),
       expect.any(Function),
     );

@@ -114,8 +114,11 @@ export function handleChildExit(
   // scheduled a second, concurrent reconnect and made the loop abandon its
   // remaining attempts (it read the flipped 'disconnected' as a stop()).
   if (slot?.state !== 'connected') return;
+  const generation = slot.startupGeneration;
+  const isCurrent = () => self.servers.get(name) === slot && slot.startupGeneration === generation;
   if (slot.lazy) {
     self.recordFailure(slot, 'transport', 'process-exit-lazy');
+    if (!isCurrent()) return;
     markLazySlotDormant(slot, self.events, `exit:${code ?? 'unknown'}`, {
       onChildExit: self.onChildExit,
       onToolsChanged: self.onToolsChanged,
@@ -126,8 +129,9 @@ export function handleChildExit(
   resetDisconnectedSlotTools(slot, self.toolRegistry);
   slot.state = 'disconnected';
   self.recordFailure(slot, 'transport', 'process-exit');
+  if (!isCurrent()) return;
   self.events.emit('mcp.server.disconnected', { name, reason: `exit:${code ?? 'unknown'}` });
-  self.scheduleReconnect(slot);
+  if (isCurrent()) self.scheduleReconnect(slot);
 }
 
 /** Handles SSE / streamable-http disconnect — same recovery as stdio child exit. */
@@ -135,8 +139,11 @@ export function handleTransportDisconnect(self: MCPRegistryInternals, name: stri
   const slot = self.servers.get(name);
   // Same live-connection guard as onChildExit.
   if (slot?.state !== 'connected') return;
+  const generation = slot.startupGeneration;
+  const isCurrent = () => self.servers.get(name) === slot && slot.startupGeneration === generation;
   if (slot.lazy) {
     self.recordFailure(slot, 'transport', 'http-disconnect-lazy');
+    if (!isCurrent()) return;
     markLazySlotDormant(slot, self.events, 'http-disconnect', {
       onChildExit: self.onChildExit,
       onToolsChanged: self.onToolsChanged,
@@ -147,8 +154,9 @@ export function handleTransportDisconnect(self: MCPRegistryInternals, name: stri
   resetDisconnectedSlotTools(slot, self.toolRegistry);
   slot.state = 'disconnected';
   self.recordFailure(slot, 'transport', 'http-disconnect');
+  if (!isCurrent()) return;
   self.events.emit('mcp.server.disconnected', { name, reason: 'http-disconnect' });
-  self.scheduleReconnect(slot);
+  if (isCurrent()) self.scheduleReconnect(slot);
 }
 
 const MAX_RECONNECT_CYCLES = MCP_CONSTANTS.RECONNECT.MAX_CYCLES;

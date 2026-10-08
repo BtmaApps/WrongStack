@@ -33,6 +33,8 @@ const APPLIED_FILE = 'last-applied.json';
 const LOCK_FILE = 'update.lock';
 /** A lock whose owner is gone, or this old, belongs to nobody. */
 const LOCK_STALE_MS = 45 * 60_000;
+/** An unparsable lock younger than this is a holder still writing it. */
+const LOCK_TORN_GRACE_MS = 30_000;
 const DOWNLOAD_TIMEOUT_MS = 30 * 60_000;
 
 /** A verified build waiting to be swapped in. */
@@ -124,8 +126,21 @@ function acquireLock(dir: string): (() => void) | undefined {
       let owner: { pid?: unknown; at?: unknown } = {};
       try {
         owner = JSON.parse(fs.readFileSync(lock, 'utf8')) as typeof owner;
-      } catch {
-        // unreadable: treat as abandoned
+      } catch (readErr) {
+        const code = (readErr as NodeJS.ErrnoException).code;
+        // Released meanwhile: try the exclusive create again.
+        if (code === 'ENOENT') continue;
+        // Unreadable right now (EBUSY/EPERM): someone holds it.
+        if (code !== undefined) return undefined;
+        // Unparsable: a holder between its `wx` create and the write, or one
+        // that crashed there. Only the latter, after a grace, is abandoned.
+        let ageMs: number;
+        try {
+          ageMs = Date.now() - fs.statSync(lock).mtimeMs;
+        } catch {
+          continue;
+        }
+        if (ageMs < LOCK_TORN_GRACE_MS) return undefined;
       }
       const fresh =
         typeof owner.pid === 'number' &&

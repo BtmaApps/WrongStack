@@ -74,6 +74,31 @@ describe('TransformersEmbeddingProvider', () => {
     ]);
   });
 
+  it.each([1, 2])(
+    'rejects differing vector widths across batches of size %s',
+    async (batchSize) => {
+      const provider = new TransformersEmbeddingProvider({ batchSize });
+      let calls = 0;
+      Object.defineProperty(provider, 'getExtractor', {
+        value: async () => async (batch: string[]) => ({
+          data: new Float32Array(batch.length * (++calls === 1 ? 2 : 3)),
+        }),
+      });
+      await expect(provider.embed(['one', 'two', 'three'])).rejects.toThrow('unequal-width');
+    },
+  );
+
+  it('keeps equal vector widths across a short final batch', async () => {
+    const provider = new TransformersEmbeddingProvider({ batchSize: 2 });
+    Object.defineProperty(provider, 'getExtractor', {
+      value: async () => async (batch: string[]) => ({
+        data: new Float32Array(batch.length * 3),
+      }),
+    });
+    const vectors = await provider.embed(['one', 'two', 'three']);
+    expect(vectors.map((vector) => vector.length)).toEqual([3, 3, 3]);
+  });
+
   it('reports availability based on whether the optional dep is installed', async () => {
     const provider = new TransformersEmbeddingProvider({
       cacheDir: path.join(os.tmpdir(), `vt-${Date.now()}`),
@@ -82,5 +107,12 @@ describe('TransformersEmbeddingProvider', () => {
     // The transformers backend is opt-in, so availability depends on the
     // environment running the test.
     expect(typeof available).toBe('boolean');
+  });
+
+  it('isInstalled agrees with the import-based isAvailable probe', async () => {
+    // Boot paths gate the vector tools on isInstalled(); it must never say
+    // "installed" where embed() would fail to import the backend.
+    const provider = new TransformersEmbeddingProvider();
+    expect(provider.isInstalled()).toBe(await provider.isAvailable());
   });
 });

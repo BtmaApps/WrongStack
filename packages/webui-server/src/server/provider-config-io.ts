@@ -26,6 +26,11 @@ import {
 const snapshots = new ProviderConfigSnapshots();
 let writeChain: Promise<void> = Promise.resolve();
 
+/** The config loader accepts a UTF-8 BOM (Notepad/PowerShell saves); so must every profile parse. */
+function stripConfigBom(raw: string): string {
+  return raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+}
+
 function globalRootForConfigPath(configPath: string): string {
   const configDir = path.dirname(configPath);
   const profilesDir = path.dirname(configDir);
@@ -47,7 +52,7 @@ export async function mutateSavedProviders(
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
         throw error;
       }
-      const config = JSON.parse(raw) as Record<string, unknown>;
+      const config = JSON.parse(stripConfigBom(raw)) as Record<string, unknown>;
       validateProviderConfigShape(config);
       const decrypted = decryptConfigSecretsForRewrite(config, vault);
       const providers = (decrypted['providers'] ?? {}) as Record<string, ProviderConfig>;
@@ -90,7 +95,7 @@ export async function loadSavedProviders(
   }
   let parsed: { providers?: Record<string, ProviderConfig> } = {};
   try {
-    parsed = JSON.parse(raw) as { providers?: Record<string, ProviderConfig> };
+    parsed = JSON.parse(stripConfigBom(raw)) as { providers?: Record<string, ProviderConfig> };
     validateProviderConfigShape(parsed);
   } catch (error) {
     throw new ConfigError({
@@ -137,7 +142,7 @@ export async function saveProviders(
       }
       let parsed: Record<string, unknown>;
       try {
-        parsed = JSON.parse(raw) as Record<string, unknown>;
+        parsed = JSON.parse(stripConfigBom(raw)) as Record<string, unknown>;
         validateProviderConfigShape(parsed);
       } catch (err) {
         if (fileExists) {

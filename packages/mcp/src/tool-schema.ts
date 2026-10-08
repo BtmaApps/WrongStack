@@ -118,6 +118,10 @@ export async function listAllTools(
     const result = response.result as
       | { tools?: unknown | undefined; nextCursor?: unknown | undefined }
       | undefined;
+    if (!Array.isArray(result?.tools)) {
+      if (page === 0) return null;
+      break;
+    }
     tools.push(...normalizeMCPTools(result?.tools));
     const next = result?.nextCursor;
     if (typeof next !== 'string' || next.length === 0) break;

@@ -196,4 +196,39 @@ describe('model switch lifecycle', () => {
       },
     ]);
   });
+
+  it('answers a payload-less model.refine frame with the empty-text refine result', async () => {
+    // Payload-less client frames are decoder-legal; the empty-text guard is
+    // the correct answer, not a TypeError past the dispatcher.
+    const h = harness();
+
+    await h.refineModel(undefined as never);
+
+    expect(h.sent).toEqual([
+      {
+        type: 'model.refine_result',
+        payload: {
+          refined: '',
+          english: '',
+          error: 'Empty text',
+          errorKind: 'provider_error',
+        },
+      },
+    ]);
+  });
+
+  it('answers a payload-less model.switch frame with the validation-failure results', async () => {
+    // Boundary of the same guard family: validateModelSwitchPayload rejects
+    // non-objects, so a missing payload is refused, never dispatched.
+    const h = harness();
+
+    await h.switchModel(undefined as never);
+
+    expect(h.applyModelSwitch).not.toHaveBeenCalled();
+    const types = h.sent.map((m) => m.type);
+    expect(types).toContain('model.switch_result');
+    expect(types).toContain('key.operation_result');
+    const switchResult = h.sent.find((m) => m.type === 'model.switch_result');
+    expect(switchResult?.payload).toMatchObject({ success: false, runActive: false });
+  });
 });

@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { bunTypecheckInvocation } from './_bun-typechecker.js';
 import { spawnStream } from './_spawn-stream.js';
 import { normalizeCommandOutput, safeResolveReal } from './_util.js';
@@ -142,7 +143,15 @@ export const typecheckTool: Tool<TypecheckInput, TypecheckOutput> = {
     }
 
     yield { type: 'log', text: 'Preparing Bun type checking…', data: { project } };
-    const invocation = await bunTypecheckInvocation(cwd, checkArgs, { signal });
+    let invocation: Awaited<ReturnType<typeof bunTypecheckInvocation>>;
+    try {
+      invocation = await bunTypecheckInvocation(cwd, checkArgs, { signal });
+    } catch (err) {
+      signal.throwIfAborted();
+      // No checker ran (missing project dir, runtime not provisionable): a
+      // failed start, never a fabricated result.
+      throw new Error(`typecheck: failed to start: ${toErrorMessage(err)}`);
+    }
     yield {
       type: 'log',
       text: `${invocation.cmd} ${invocation.args.join(' ')}`,

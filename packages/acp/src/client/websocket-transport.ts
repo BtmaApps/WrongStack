@@ -252,6 +252,7 @@ export class WebSocketClientTransport implements ACPClientTransport {
 
   private dispatch(msg: ACPMessage): void {
     for (const handler of [...this.handlers]) {
+      if (this.closed) break;
       try {
         handler(msg);
       } catch {

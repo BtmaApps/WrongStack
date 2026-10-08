@@ -92,10 +92,13 @@ export async function spawnHqAgent(
   // (packages/core/src/coordination/fleet.ts:325) honors a non-undefined
   // cfg.maxIterations via `cfg.maxIterations ?? defaultBudget.maxIterations`,
   // but it can only see the override if spawnHqAgent forwards it here.
+  // No `maxIterations` on the ad-hoc base: the budget takes the raw value
+  // first, so the old `maxIterations ?? 0` gave every non-roster role (project
+  // agents included) a limit of 0 — stopped after its first iteration. Absent,
+  // it falls through to the generic subagent budget like a CLI delegate.
   const base = FLEET_ROSTER[role] ?? {
     id: `manual-${Date.now()}`,
     name: role,
-    maxIterations: maxIterations ?? 0,
     maxToolCalls: 200,
   };
   const overrides = maxIterations !== undefined ? { maxIterations } : {};

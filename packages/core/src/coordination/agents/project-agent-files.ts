@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import { removePathSync } from '@wrongstack/primitives';
 import { validateProjectAgentConfig } from './project-agent-config-validation.js';
@@ -16,6 +16,7 @@ import {
 import {
   agentsDir,
   isProjectAgentRoleName,
+  readRoleFileForUpdate,
   roleDir,
   writeTextAtomically,
 } from './project-agent-paths.js';
@@ -48,13 +49,7 @@ export function updateProjectAgentLearned(
     return filePath;
   }
 
-  const existing = (() => {
-    try {
-      return readFileSync(filePath, 'utf8');
-    } catch {
-      return '';
-    }
-  })();
+  const existing = readRoleFileForUpdate(filePath);
   const now = new Date().toISOString();
   const entries = parseStructuredLearnedEntriesFromContent(existing, splitLearnedEntries(existing));
   // Taught text is authored by a human and is not held to the automatic

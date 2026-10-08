@@ -33,13 +33,38 @@ const { snapshot } = await import('../fixtures/hq.js');
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
-function mount(): HTMLDivElement {
+async function mount(): Promise<HTMLDivElement> {
   container = document.createElement('div');
   document.body.append(container);
   const created = createRoot(container);
   root = created;
-  act(() => created.render(<AppShell />));
+  // Render AND settle inside one act window. The active view is lazy-loaded
+  // behind Suspense: module loading is not a plain microtask, so give it a
+  // macrotask tick before act exits — otherwise the suspense retry pings
+  // (and the mocked fetch updates) land outside act and React warns.
+  await act(async () => {
+    created.render(<AppShell />);
+    // Cold dynamic imports do real fs work under vitest; a single tick is
+    // not enough, so yield several macrotasks before act exits.
+    for (let tick = 0; tick < 5; tick += 1) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+  });
   return container;
+}
+
+/** Run an interaction inside act; give lazy-view module loads a tick to settle. */
+async function interact(action: () => void): Promise<void> {
+  await act(async () => {
+    action();
+    for (let tick = 0; tick < 5; tick += 1) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+  });
 }
 
 beforeEach(() => {
@@ -101,34 +126,34 @@ describe('view registry', () => {
 });
 
 describe('AppShell', () => {
-  it('mounts and renders one nav item per surface', () => {
-    const mounted = mount();
+  it('mounts and renders one nav item per surface', async () => {
+    const mounted = await mount();
     expect(mounted.querySelector('[data-testid="hq-workbench"]')).not.toBeNull();
     expect(mounted.querySelectorAll('[data-testid="nav-item"]')).toHaveLength(14);
   });
 
-  it('marks the active surface as the current page', () => {
-    const mounted = mount();
+  it('marks the active surface as the current page', async () => {
+    const mounted = await mount();
     const current = mounted.querySelector('[data-testid="nav-item"][aria-current="page"]');
     expect(current?.getAttribute('data-view')).toBe('cockpit');
   });
 
-  it('navigates when a nav item is clicked', () => {
-    const mounted = mount();
+  it('navigates when a nav item is clicked', async () => {
+    const mounted = await mount();
     const alerts = mounted.querySelector<HTMLButtonElement>(
       '[data-testid="nav-item"][data-view="alerts"]',
     );
-    act(() => alerts?.click());
+    await interact(() => alerts?.click());
     expect(useHqStore.getState().activeView).toBe('alerts');
   });
 
-  it('badges unread mail and attention, and nothing else', () => {
+  it('badges unread mail and attention, and nothing else', async () => {
     const withUnread = snapshot();
     withUnread.totals.unreadMailboxMessages = 3;
     act(() => {
       useHqStore.setState({ snapshot: withUnread, alerts: [] });
     });
-    const mounted = mount();
+    const mounted = await mount();
 
     const badged = [...mounted.querySelectorAll('[data-testid="nav-item"]')].filter(
       (item) => item.querySelector('[data-testid="nav-badge"]') !== null,
@@ -138,8 +163,8 @@ describe('AppShell', () => {
     expect(badged[0]?.querySelector('[data-testid="nav-badge"]')?.textContent).toBe('3');
   });
 
-  it('shows a disconnected banner only while the transport is down', () => {
-    const mounted = mount();
+  it('shows a disconnected banner only while the transport is down', async () => {
+    const mounted = await mount();
     expect(mounted.querySelector('[data-testid="connection-banner"]')).not.toBeNull();
 
     act(() => useHqStore.getState().setConnected(true));
@@ -149,22 +174,22 @@ describe('AppShell', () => {
     ).toBe('true');
   });
 
-  it('replaces the whole surface with the gate when auth is required', () => {
+  it('replaces the whole surface with the gate when auth is required', async () => {
     act(() => useHqStore.getState().markAuthRequired());
-    const mounted = mount();
+    const mounted = await mount();
     expect(mounted.querySelector('[data-testid="hq-workbench"]')).toBeNull();
     expect(mounted.textContent).toContain('WrongStack HQ');
     expect(fetchJson).not.toHaveBeenCalled();
   });
 
-  it('applies the dark class to <html>, not a bespoke attribute', () => {
+  it('applies the dark class to <html>, not a bespoke attribute', async () => {
     // The token stylesheet keys on `.dark`; anything else silently theme-less.
-    mount();
+    await mount();
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
-  it('opens the command palette on Ctrl+K and jumps on selection', () => {
-    const mounted = mount();
+  it('opens the command palette on Ctrl+K and jumps on selection', async () => {
+    const mounted = await mount();
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
     });
@@ -176,21 +201,21 @@ describe('AppShell', () => {
       '[data-testid="command-palette-item"]',
     );
     expect(items.length).toBe(14);
-    act(() => items[2]?.click());
+    await interact(() => items[2]?.click());
     expect(useHqStore.getState().activeView).toBe(HQ_VIEWS[2]!.id);
     expect(mounted.isConnected).toBe(true);
   });
 
-  it('jumps to a surface on its Alt+digit shortcut', () => {
-    mount();
-    act(() => {
+  it('jumps to a surface on its Alt+digit shortcut', async () => {
+    await mount();
+    await interact(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: '5', altKey: true }));
     });
     expect(useHqStore.getState().activeView).toBe('alerts');
   });
 
-  it('toggles the nav rail on Ctrl+B', () => {
-    const mounted = mount();
+  it('toggles the nav rail on Ctrl+B', async () => {
+    const mounted = await mount();
     const rail = (): string | null =>
       mounted.querySelector('[data-testid="nav-sidebar"]')?.getAttribute('data-open') ?? null;
     const before = rail();
@@ -200,23 +225,23 @@ describe('AppShell', () => {
     expect(rail()).not.toBe(before);
   });
 
-  it('opens a bookmarked view and writes route changes from any caller', () => {
+  it('opens a bookmarked view and writes route changes from any caller', async () => {
     window.history.replaceState(null, '', '/#/cost');
-    mount();
+    await mount();
     expect(useHqStore.getState().activeView).toBe('cost');
-    act(() => useHqStore.getState().setActiveView('control'));
+    await interact(() => useHqStore.getState().setActiveView('control'));
     expect(window.location.hash).toBe('#/control');
     expect(document.title).toBe('Control · WrongStack HQ');
-    act(() => {
+    await interact(() => {
       window.history.replaceState(null, '', '/#/cost');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(useHqStore.getState().activeView).toBe('cost');
   });
 
-  it('keeps connection notifications silent until a real loss/reconnect', () => {
+  it('keeps connection notifications silent until a real loss/reconnect', async () => {
     useToastStore.getState().clearToasts();
-    mount();
+    await mount();
     act(() => useHqStore.getState().setConnected(true));
     expect(useToastStore.getState().toasts).toHaveLength(0);
     act(() => useHqStore.getState().setConnected(false));
@@ -228,8 +253,8 @@ describe('AppShell', () => {
     ]);
   });
 
-  it('leaves editor shortcuts and handled key events alone', () => {
-    const mounted = mount();
+  it('leaves editor shortcuts and handled key events alone', async () => {
+    const mounted = await mount();
     const editor = document.createElement('textarea');
     mounted.append(editor);
     const rail = mounted.querySelector('[data-testid="nav-sidebar"]');
@@ -247,9 +272,9 @@ describe('AppShell', () => {
     expect(useHqStore.getState().activeView).toBe('cockpit');
   });
 
-  it('keeps bootstrap fragments out of the view router', () => {
+  it('keeps bootstrap fragments out of the view router', async () => {
     window.history.replaceState(null, '', '/#bootstrap=one-time-code');
-    mount();
+    await mount();
     expect(window.location.hash).toBe('#bootstrap=one-time-code');
     expect(useHqStore.getState().activeView).toBe('cockpit');
   });

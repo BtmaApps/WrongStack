@@ -233,6 +233,28 @@ describe('WebUI project switch session identity', () => {
     });
   });
 
+  it('rolls the switch back instead of stranding the fresh writer when projects.json is unreadable', async () => {
+    // A directory where the manifest should be: a real, non-ENOENT read error.
+    // The manifest must not be rewritten empty, and the throw must still dispose `next`.
+    const manifestPath = path.join(root, 'global', 'projects.json');
+    await fs.mkdir(manifestPath, { recursive: true });
+    const h = makeHarness();
+
+    await h.routes.selectProject(h.ws, {
+      type: 'projects.select',
+      payload: { root: targetRoot, name: 'Target Project' },
+    });
+
+    expect(h.current()).toBe(h.old);
+    expect(h.next.close).toHaveBeenCalledOnce();
+    expect(storageMocks.delete).toHaveBeenCalledWith(h.next.id);
+    expect((await fs.stat(manifestPath)).isDirectory()).toBe(true);
+    expect(h.ws.sent.at(-1)).toMatchObject({
+      type: 'projects.selected',
+      payload: { message: expect.stringContaining('Cannot switch') },
+    });
+  });
+
   it('keeps the old runtime and deletes the fresh writer when identity update fails', async () => {
     const onSessionSwapped = vi.fn<
       (sessionId: string, target?: SessionIdentityTarget) => void | Promise<void>

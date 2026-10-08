@@ -301,7 +301,12 @@ function stopAndExit(reason: string, gracefulSocket?: net.Socket): void {
 function scheduleIdleStop(): void {
   if (stopping || clients.size > 0 || idleTimer) return;
   const idleInput = Number(process.env['WRONGSTACK_KANBAN_SERVER_IDLE_MS']);
-  const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : DEFAULT_IDLE_MS;
+  // Node clamps a timer delay above 2^31-1 ms to 1 ms: a huge "never idle out"
+  // value would stop the daemon at once.
+  const idleMs =
+    Number.isFinite(idleInput) && idleInput >= 100
+      ? Math.min(idleInput, 2_147_483_647)
+      : DEFAULT_IDLE_MS;
   idleTimer = setTimeout(() => stopAndExit('idle-timeout'), idleMs);
   idleTimer.unref?.();
 }

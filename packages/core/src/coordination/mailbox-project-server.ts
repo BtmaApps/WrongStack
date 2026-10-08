@@ -86,7 +86,12 @@ const { projectDir } = parseArgs(process.argv.slice(2));
 const endpoint = mailboxProjectServerEndpoint(projectDir);
 const metadataPath = mailboxProjectServerMetadataPath(projectDir);
 const idleInput = Number(process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS']);
-const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : DEFAULT_IDLE_MS;
+// Node clamps a timer delay above 2^31-1 ms to 1 ms: a huge "never idle out"
+// value would stop the daemon at once.
+const idleMs =
+  Number.isFinite(idleInput) && idleInput >= 100
+    ? Math.min(idleInput, 2_147_483_647)
+    : DEFAULT_IDLE_MS;
 const leaseInput = Number(process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS']);
 const clientLeaseMs =
   Number.isFinite(leaseInput) && leaseInput >= 100 ? leaseInput : DEFAULT_CLIENT_LEASE_MS;

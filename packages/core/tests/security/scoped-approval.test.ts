@@ -155,11 +155,14 @@ describe('explicit approval scopes', () => {
   it('keeps an existing deny active if re-saving the rule fails', async () => {
     await policy.deny({ tool: 'exec', pattern: 'uv *' });
     const trustFile = path.join(root, 'trust.json');
+    const saved = await fs.readFile(trustFile, 'utf8');
     await fs.rm(trustFile);
     await fs.mkdir(trustFile);
     await expect(policy.deny({ tool: 'exec', pattern: 'uv *' })).rejects.toThrow();
     expect((await policy.evaluate(exec, input, ctx)).permission).toBe('deny');
+    // The operator repairs trust.json; persisting builds on what is on disk.
     await fs.rmdir(trustFile);
+    await fs.writeFile(trustFile, saved);
     await grant('always-tool');
     expect((await policy.evaluate(exec, input, ctx)).permission).toBe('deny');
     expect(JSON.parse(await fs.readFile(trustFile, 'utf8')).exec.deny).toEqual(['uv *']);

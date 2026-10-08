@@ -87,12 +87,16 @@ export async function setupVectorMemory(args: VectorMemoryArgs): Promise<VectorM
     'transformers-models',
   );
   try {
-    vectorMemoryStore = new VectorMemoryStore({
-      provider: new TransformersEmbeddingProvider({
-        cacheDir: vectorMemoryModelCacheDir,
-      }),
-      projectRoot,
-    });
+    const provider = new TransformersEmbeddingProvider({ cacheDir: vectorMemoryModelCacheDir });
+    // The backend is opt-in: without it every embed throws, so registering
+    // the `vector_memory_*` tools would only hand the model a broken tool.
+    if (!provider.isInstalled()) {
+      logger.debug?.(
+        'vector memory off: optional @huggingface/transformers backend is not installed.',
+      );
+      return { memoryStore, vectorMemoryStore: undefined, vectorMemoryModelCacheDir: '' };
+    }
+    vectorMemoryStore = new VectorMemoryStore({ provider, projectRoot });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.warn(

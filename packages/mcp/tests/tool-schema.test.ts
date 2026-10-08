@@ -2,7 +2,7 @@
  * Tests for tool-schema — normalizeMCPTools.
  */
 import { describe, expect, it } from 'vitest';
-import { normalizeMCPTools } from '../src/tool-schema.js';
+import { listAllTools, normalizeMCPTools } from '../src/tool-schema.js';
 
 describe('normalizeMCPTools', () => {
   it('returns empty array for non-array input', () => {
@@ -74,5 +74,28 @@ describe('normalizeMCPTools', () => {
     expect(result).toHaveLength(2);
     expect(result[0]!.name).toBe('tool-a');
     expect(result[1]!.name).toBe('tool-b');
+  });
+});
+
+describe('listAllTools malformed catalog containers', () => {
+  it.each([{}, { tools: null }, { tools: 'invalid' }])(
+    'rejects malformed first result %j',
+    async (result) => {
+      await expect(listAllTools(async () => ({ result }))).resolves.toBeNull();
+    },
+  );
+
+  it('accepts a valid empty array', async () => {
+    await expect(listAllTools(async () => ({ result: { tools: [] } }))).resolves.toEqual([]);
+  });
+
+  it('retains collected tools if a later page is malformed', async () => {
+    let calls = 0;
+    const tools = [{ name: 'known', inputSchema: {} }];
+    const result = await listAllTools(async () => ({
+      result: ++calls === 1 ? { tools, nextCursor: 'next' } : { tools: 'invalid' },
+    }));
+    expect(result).toEqual(tools);
+    expect(calls).toBe(2);
   });
 });

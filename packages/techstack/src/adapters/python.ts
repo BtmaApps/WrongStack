@@ -39,7 +39,10 @@ function parseTomlSections(content: string): TomlSection[] {
     const line = raw.trim();
     if (line.startsWith('#') || line === '') continue;
     // Array tables also end the preceding section; keep their names distinct.
-    const sectionMatch = line.match(/^\[(\[[^\]]+\]|[^\]]+)\]$/);
+    // A header may carry a trailing comment (`[project]  # metadata`): without
+    // it allowed here the header read as a line of the previous section and
+    // every dependency under it went missing.
+    const sectionMatch = line.match(/^\[(\[[^\]]+\]|[^\]]+)\]\s*(?:#.*)?$/);
     if (sectionMatch) {
       if (currentLines.length > 0) sections.push({ name: currentSection, lines: currentLines });
       currentSection = sectionMatch[1]!;
@@ -283,13 +286,35 @@ function parsePipfileDeps(
     if (section.name !== 'packages' && section.name !== 'dev-packages') continue;
     const scope: DependencyScope = section.name === 'dev-packages' ? 'development' : 'runtime';
     for (const line of section.lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('#')) continue;
-      const match = trimmed.match(/^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*=\s*"([^"]*)"$/);
-      if (match) {
-        const constraint = match[2]! === '*' ? undefined : match[2]!;
-        deps.push({ name: match[1]!, constraint, scope });
+      // Shared TOML reader: quoted keys and trailing comments. The exact
+      // `name = "spec"` match dropped `requests = "*"  # why` and every inline
+      // table (`django = {version = ">=4.2", extras = ["argon2"]}`) — the
+      // documented form for extras, markers and indexes.
+      const entry = parseTomlKeyValue(line);
+      if (!entry) continue;
+      const value = entry.value;
+      const stringValue = /^"([^"]*)"$/.exec(value)?.[1];
+      let constraint: string | undefined;
+      if (stringValue !== undefined) {
+        constraint = stringValue;
+      } else if (value.startsWith('{')) {
+        // A git/path source is not a registry package: carry it as a VCS or
+        // local reference so the classifier does not mint a pypi identity.
+        const git = /\bgit\s*=\s*["']([^"']+)["']/.exec(value)?.[1];
+        const localPath = /\b(?:path|file)\s*=\s*["']([^"']+)["']/.exec(value)?.[1];
+        constraint = git
+          ? `git+${git.replace(/^git\+/, '')}`
+          : localPath !== undefined
+            ? `file:${localPath}`
+            : /\bversion\s*=\s*["']([^"']+)["']/.exec(value)?.[1];
+      } else {
+        continue;
       }
+      deps.push({
+        name: entry.key,
+        constraint: constraint === '*' ? undefined : constraint,
+        scope,
+      });
     }
   }
   return deps;

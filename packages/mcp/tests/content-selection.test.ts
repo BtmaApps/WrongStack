@@ -138,6 +138,15 @@ describe('MCP explicit content selection', () => {
     ).toThrow(/must be a positive safe integer/);
   });
 
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5])(
+    'rejects invalid maxBytes=%s even when resource contents are empty',
+    (maxBytes) => {
+      expect(() =>
+        prepareResourceInsertion('docs', 'mem://one', { contents: [] }, { maxBytes }),
+      ).toThrow(/positive safe integer/);
+    },
+  );
+
   it('rejects server names and prompt names outside 1-256 characters', () => {
     expect(() => prepareResourceInsertion('', 'mem://one', { contents: [] })).toThrow(
       /must contain 1–256 characters/,

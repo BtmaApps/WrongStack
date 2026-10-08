@@ -911,9 +911,11 @@ describe('MavenAdapter', () => {
     });
     await withCleanup(async () => {
       const deps = await new MavenAdapter().inventory(ws, {});
-      expect(deps.find((d) => d.name === 'org.example:demo')?.purl).toBe(
-        'pkg:maven/org.example/demo@${nope.version}',
-      );
+      const demo = deps.find((d) => d.name === 'org.example:demo');
+      // The declaration stays visible, but a placeholder is not a version: the
+      // purl carries none rather than `@${nope.version}`.
+      expect(demo?.requested).toBe('${nope.version}');
+      expect(demo?.purl).toBe('pkg:maven/org.example/demo');
     }, dir);
   });
 

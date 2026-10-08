@@ -7,6 +7,21 @@ import { toErrorMessage } from '../utils/error.js';
 import { sanitizeTerminalText } from '../utils/terminal-sanitize.js';
 import type { EventBus } from './event-bus-port.js';
 
+const TRANSIENT_READ_CODES = new Set(['EBUSY', 'EPERM', 'EACCES']);
+
+/** Read a store file, retrying briefly through transient Windows sharing errors. */
+async function readStoreFile(filePath: string): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fsp.readFile(filePath, 'utf8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 4 || code === undefined || !TRANSIENT_READ_CODES.has(code)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+    }
+  }
+}
+
 /**
  * Plan items are the strategic counterpart to todos. Where `ctx.todos`
  * is the moment-to-moment task board the LLM mutates per-turn, a plan
@@ -62,11 +77,20 @@ function assertPlanMutationInvariants(previous: PlanFile, updated: PlanFile): vo
   }
 }
 
-export async function loadPlan(filePath: string, events?: EventBus): Promise<PlanFile | null> {
+/**
+ * Read the plan file; null when it doesn't exist. With `strict`, any other
+ * read error is thrown instead: a read-modify-write that took "unreadable"
+ * for "empty" saved over every plan item.
+ */
+export async function loadPlan(
+  filePath: string,
+  events?: EventBus,
+  options?: { strict?: boolean | undefined },
+): Promise<PlanFile | null> {
   const t0 = Date.now();
   let raw: string;
   try {
-    raw = await fsp.readFile(filePath, 'utf8');
+    raw = await readStoreFile(filePath);
   } catch (err) {
     events?.emit('storage.error', {
       sessionId: '~boot~',
@@ -76,6 +100,7 @@ export async function loadPlan(filePath: string, events?: EventBus): Promise<Pla
       error: toErrorMessage(err),
       recoverable: true,
     });
+    if (options?.strict && (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return null;
   }
   try {
@@ -326,7 +351,18 @@ export async function mutatePlan(
   fn: (plan: PlanFile) => PlanFile | Promise<PlanFile>,
 ): Promise<PlanFile> {
   return withFileLock(filePath, async () => {
-    const plan = (await loadPlan(filePath)) ?? emptyPlan(sessionId);
+    let loaded: PlanFile | null;
+    try {
+      loaded = await loadPlan(filePath, undefined, { strict: true });
+    } catch (err) {
+      throw new SessionError({
+        message: `Failed to read plan from ${filePath} — the change was NOT saved.`,
+        code: 'SESSION_WRITE_FAILED',
+        sessionId,
+        context: { filePath, operation: 'mutatePlan', cause: toErrorMessage(err) },
+      });
+    }
+    const plan = loaded ?? emptyPlan(sessionId);
     const previous = structuredClone(plan);
     const updated = await fn(plan);
     assertPlanMutationInvariants(previous, updated);

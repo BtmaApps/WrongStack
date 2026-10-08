@@ -462,11 +462,10 @@ describe('external-plugin trust failure modes (required/tofu/advisory)', () => {
       const globalRoot = await tempDir('ws-ext-global-');
       const projectRoot = await tempDir('ws-ext-project-');
       const entry = await writeEntry(join(projectRoot, 'pin-fail-plugin'));
-      // Point the trust store AT a directory: the EISDIR read is swallowed as
-      // an empty store, but the pin's atomic rename onto the directory path
-      // fails — exercising the pin-persist downgrade branch deterministically.
-      const storeDir = join(globalRoot, 'trust-store-dir');
-      await fs.mkdir(storeDir, { recursive: true });
+      // No store yet (an empty store), but a directory squats on the pin's
+      // temp path, so writing the pin fails — exercising the pin-persist
+      // downgrade branch deterministically.
+      await fs.mkdir(join(globalRoot, 'trust-store.json.tmp'), { recursive: true });
       const stub = importStub({ [entry]: pluginFixture('pin-fail-plugin') });
       return { globalRoot, projectRoot, entry, stub } as const;
     };
@@ -479,7 +478,7 @@ describe('external-plugin trust failure modes (required/tofu/advisory)', () => {
         globalRoot: req.globalRoot,
         projectRoot: req.projectRoot,
         reservedNames: new Set(),
-        trustStorePath: join(req.globalRoot, 'trust-store-dir'),
+        trustStorePath: join(req.globalRoot, 'trust-store.json'),
         importModule: req.stub.importModule,
       },
       hooks,
@@ -499,7 +498,7 @@ describe('external-plugin trust failure modes (required/tofu/advisory)', () => {
         globalRoot: tofu.globalRoot,
         projectRoot: tofu.projectRoot,
         reservedNames: new Set(),
-        trustStorePath: join(tofu.globalRoot, 'trust-store-dir'),
+        trustStorePath: join(tofu.globalRoot, 'trust-store.json'),
         importModule: tofu.stub.importModule,
       },
       hooks,

@@ -99,7 +99,7 @@ export async function resolveFiles(
   const resolved: string[] = [];
 
   for (const p of parts) {
-    if (p.includes('*') || p.includes('?')) {
+    if (p.includes('*') || p.includes('?') || RIPGREP_ONLY_GLOB.test(p)) {
       resolved.push(...(await globFiles(p, base, extraGlob)));
       continue;
     }

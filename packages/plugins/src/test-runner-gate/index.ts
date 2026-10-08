@@ -126,9 +126,11 @@ function readConfig(raw: unknown): TestGateConfig {
     enabled: r['enabled'] !== false,
     runner,
     command: typeof r['command'] === 'string' ? r['command'] : DEFAULTS.command,
+    // Node clamps a timer above 2^31-1 ms to 1 ms; cap it so a huge timeout
+    // means "very long", not "kill at once".
     timeoutMs:
       typeof r['timeoutMs'] === 'number' && r['timeoutMs'] > 0
-        ? r['timeoutMs']
+        ? Math.min(r['timeoutMs'], 2_147_483_647)
         : DEFAULTS.timeoutMs,
     testFilePatterns:
       Array.isArray(r['testFilePatterns']) && (r['testFilePatterns'] as unknown[]).length > 0

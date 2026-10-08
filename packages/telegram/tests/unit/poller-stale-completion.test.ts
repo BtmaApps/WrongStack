@@ -40,6 +40,28 @@ const update: TelegramApiUpdate = {
 };
 
 describe('Poller stale completions', () => {
+  it.each(['message', 'callback'] as const)(
+    'stops the batch when the %s handler stops its owner',
+    async (kind) => {
+      const gate = deferred<TelegramApiUpdate[]>();
+      const f = fixture(() => gate.promise);
+      const handler = kind === 'message' ? f.message : f.callback;
+      handler.mockImplementation(() => f.poller.stop());
+      const pending = f.poller.poll();
+      gate.resolve(
+        kind === 'message'
+          ? [update, { ...update, update_id: 13 }]
+          : [12, 13].map((id) => ({
+              update_id: id,
+              callback_query: { id: `cb${id}`, from: { id: 1, is_bot: false, first_name: 'Test' } },
+            })),
+      );
+      await pending;
+      expect(handler).toHaveBeenCalledOnce();
+      expect(f.write).not.toHaveBeenCalled();
+    },
+  );
+
   it('delivers and persists the current chain as an unaffected control', async () => {
     const f = fixture(async () => [update]);
     await f.poller.poll();

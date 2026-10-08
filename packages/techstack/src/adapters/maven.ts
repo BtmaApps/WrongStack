@@ -186,7 +186,13 @@ export class MavenAdapter implements EcosystemAdapter {
       // canonical purl namespace/name form (`pkg:maven/group/artifact`); the
       // raw coordinate as one name segment produced `pkg:maven/group:artifact`,
       // which spec-conformant consumers (OSV) can never match.
-      const purl = dep.version
+      // Only a concrete version is an identity. A placeholder this pom cannot
+      // resolve (`${guava.version}` defined in the parent pom) or a range
+      // (`[1.0,2.0)`) became `pkg:maven/…@${guava.version}`; it stays visible
+      // as `requested`.
+      const concrete =
+        dep.version !== undefined && !dep.version.includes('${') && !/^[[(]/.test(dep.version);
+      const purl = concrete
         ? constructPurl('maven', name, dep.version)
         : constructPurl('maven', name);
 

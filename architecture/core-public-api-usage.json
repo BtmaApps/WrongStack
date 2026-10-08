@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 265,
+      "files": 264,
       "typeOnly": 103,
-      "runtimeOrMixed": 227
+      "runtimeOrMixed": 226
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 353,
+      "files": 354,
       "typeOnly": 156,
-      "runtimeOrMixed": 218
+      "runtimeOrMixed": 219
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -134,9 +134,9 @@
       "runtimeOrMixed": 49
     },
     "@wrongstack/core/registry": {
-      "files": 154,
+      "files": 155,
       "typeOnly": 66,
-      "runtimeOrMixed": 91
+      "runtimeOrMixed": 92
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1375,
-      "typeOnly": 1208,
+      "files": 1379,
+      "typeOnly": 1212,
       "runtimeOrMixed": 419
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 766,
+      "files": 769,
       "typeOnly": 69,
-      "runtimeOrMixed": 725
+      "runtimeOrMixed": 728
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -4420,12 +4420,6 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui/tests/helpers/mailbox-daemon.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui/tests/hooks/sdd-brain-chat-routing.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7846,6 +7840,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-disconnect-callback-ownership.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/registry-idle.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -10385,6 +10385,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-disconnect-callback-ownership.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -16348,6 +16354,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/wiring/vector-memory-setup.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/codebase-index-mcp/src/adapter.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16565,6 +16577,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-coverage.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-disconnect-callback-ownership.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -20632,6 +20650,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/vector-memory/tests/sage-sweep-claim.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/vector-memory/tests/sage-sweep-scope.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/vector-memory/tests/sage-sync.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -22787,6 +22817,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/goal-commands.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/hq-server.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -25762,6 +25798,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/typecheck.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/write.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -26177,6 +26219,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/vector-memory/src/store.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/vector-memory/tests/maintenance-lifecycle.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

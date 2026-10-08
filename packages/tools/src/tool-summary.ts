@@ -312,7 +312,7 @@ export const SUMMARIZE_TOOL_INPUT_BROWSER_SRC: string = [
   '  if(/batch|parallel/.test(n) || Array.isArray(obj.tool_uses) || Array.isArray(obj.calls)){',
   '    var list=obj.tool_uses||obj.calls||obj.batch;',
   '    if(Array.isArray(list)){',
-  '      var names={}, ord=[], li, it, nm;',
+  '      var names=Object.create(null), ord=[], li, it, nm;',
   '      for(li=0; li<list.length; li++){ it=list[li]; if(it && typeof it==="object"){ nm=("name" in it)?it.name:(("tool" in it)?it.tool:null); if(nm!=null){ nm=String(nm); if(!names[nm]){ names[nm]=1; ord.push(nm); } } } }',
   '      var preview=ord.slice(0,3).join(", ");',
   '      var more=ord.length>3 ? " +"+(ord.length-3) : "";',

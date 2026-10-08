@@ -116,9 +116,11 @@ function readConfig(raw: unknown): FlakeDetectConfig {
       typeof r['maxRuns'] === 'number' && r['maxRuns'] >= 1 && r['maxRuns'] <= 100
         ? Math.floor(r['maxRuns'])
         : DEFAULTS.maxRuns,
+    // Node clamps a timer above 2^31-1 ms to 1 ms; cap it so a huge timeout
+    // means "very long", not "kill at once".
     timeoutMs:
       typeof r['timeoutMs'] === 'number' && r['timeoutMs'] > 0
-        ? r['timeoutMs']
+        ? Math.min(r['timeoutMs'], 2_147_483_647)
         : DEFAULTS.timeoutMs,
     passiveMemory: r['passiveMemory'] !== false,
   };

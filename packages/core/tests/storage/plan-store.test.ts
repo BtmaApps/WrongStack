@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -32,6 +33,44 @@ describe('plan-store', () => {
       expect(loaded?.items[0]?.title).toBe('Audit database schema');
       expect(loaded?.items[1]?.details).toBe('idempotent + reversible');
     } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('mutatePlan never saves over a plan it cannot read', async () => {
+    // An unreadable plan loaded as "no plan"; the mutation was applied to an
+    // empty plan and saved over every existing item.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-plan-'));
+    const file = path.join(dir, 'sess.plan.json');
+    const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+    const realReadFile = fsp.readFile;
+    try {
+      let plan = emptyPlan('sess');
+      ({ plan } = addPlanItem(plan, 'Existing step'));
+      await savePlan(file, plan);
+      const before = await fs.readFile(file, 'utf8');
+      fsp.readFile = (async (target: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+        if (String(target) === file) {
+          throw Object.assign(new Error('EIO i/o error'), { code: 'EIO' });
+        }
+        return (realReadFile as (...a: unknown[]) => Promise<unknown>)(target, ...rest);
+      }) as typeof realReadFile;
+      syncBuiltinESMExports();
+      await expect(
+        mutatePlan(file, 'sess', (current) => addPlanItem(current, 'New step').plan),
+      ).rejects.toMatchObject({
+        code: 'SESSION_WRITE_FAILED',
+        context: expect.objectContaining({
+          operation: 'mutatePlan',
+          cause: expect.stringContaining('EIO'),
+        }),
+      });
+      fsp.readFile = realReadFile;
+      syncBuiltinESMExports();
+      expect(await fs.readFile(file, 'utf8')).toBe(before);
+    } finally {
+      fsp.readFile = realReadFile;
+      syncBuiltinESMExports();
       await fs.rm(dir, { recursive: true, force: true });
     }
   });

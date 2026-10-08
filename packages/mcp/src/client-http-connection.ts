@@ -20,6 +20,7 @@ export interface ClientHttpConnectionHost {
   disconnectListeners: Set<() => void>;
   _tools: MCPTool[];
   _toolsCache: MCPTool[] | undefined;
+  readonly toolCatalogVersion: number;
   toolsChangedListeners: Set<ToolsChangedListener>;
   emitCapabilityChanged: (capability: 'resources' | 'prompts') => void;
   emitResourceUpdated: (uri: string) => void;
@@ -56,6 +57,7 @@ export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> 
     }
   });
   host.sseTransport.onToolsChanged((tools) => {
+    const version = host.toolCatalogVersion;
     host._tools = tools;
     // Keep the reconnect-recovery cache in sync. Without this, an empty
     // tools update would leave `_toolsCache` pointing at the previous
@@ -63,6 +65,7 @@ export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> 
     // (since it falls back to the cache when `_tools` is empty).
     host._toolsCache = tools;
     for (const cb of host.toolsChangedListeners) {
+      if (version !== host.toolCatalogVersion) break;
       try {
         cb(host.opts.name, tools);
       } catch {
@@ -125,6 +128,7 @@ export async function connectStreamableHTTP(host: ClientHttpConnectionHost): Pro
     }
   });
   host.httpTransport.onToolsChanged((tools) => {
+    const version = host.toolCatalogVersion;
     host._tools = tools;
     // Same cache-sync reasoning as the SSE branch above — keep
     // `_toolsCache` in lockstep with `_tools` on every transport
@@ -132,6 +136,7 @@ export async function connectStreamableHTTP(host: ClientHttpConnectionHost): Pro
     // stale data.
     host._toolsCache = tools;
     for (const cb of host.toolsChangedListeners) {
+      if (version !== host.toolCatalogVersion) break;
       try {
         cb(host.opts.name, tools);
       } catch {

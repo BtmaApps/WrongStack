@@ -39,7 +39,14 @@ interface CsprojPackageRef {
  * as a version produced the unmatchable `pkg:nuget/Newtonsoft.Json@13.*`.
  */
 function isConcreteVersion(declaration: string): boolean {
-  return !declaration.includes('*') && !declaration.startsWith('[') && !declaration.startsWith('(');
+  // An MSBuild property reference (`$(SerilogVersion)`) is not a version either:
+  // unresolved, it became `pkg:nuget/Serilog@$(SerilogVersion)`.
+  return (
+    !declaration.includes('*') &&
+    !declaration.includes('$(') &&
+    !declaration.startsWith('[') &&
+    !declaration.startsWith('(')
+  );
 }
 
 function parseCsproj(content: string): CsprojPackageRef[] {

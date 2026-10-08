@@ -150,6 +150,8 @@ export function serveStdio(server: MCPServer, opts: ServeStdioOptions = {}): Ser
     if (closed) return;
     closed = true;
     stdin.off('data', onData);
+    stdin.off('end', onEnd);
+    stdin.off('close', onEnd);
     if (!bufferTooLarge && buffer.trim()) {
       const line = buffer.trim();
       buffer = '';

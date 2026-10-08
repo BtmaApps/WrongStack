@@ -615,7 +615,7 @@ export class SessionRegistry {
             stampFailed = true;
             throw new Error('failed to stamp session-registry lock owner');
           }
-          const raw = await fs.readFile(this.filePath, 'utf8').catch(() => '{}');
+          const raw = await this.readRawWithRetry();
           // Corruption-tolerant: a crash-zeroed or torn file must not abort
           // the write — starting from {} rewrites a healthy registry.
           const registry = parseRegistry(raw);
@@ -662,6 +662,28 @@ export class SessionRegistry {
       );
     }
     // All retries exhausted — non-ownership telemetry update dropped.
+  }
+
+  /**
+   * Registry text for a locked update. Only a MISSING file starts from `{}`:
+   * an empty stand-in for a file that is merely unreadable right now (an
+   * antivirus EBUSY) would be written back and erase every other live
+   * session's ownership claim. Transient codes are retried briefly, anything
+   * else fails the update.
+   */
+  private async readRawWithRetry(): Promise<string> {
+    const transientCodes = new Set(['EPERM', 'EBUSY', 'EACCES', 'EMFILE', 'ENFILE']);
+    const maxAttempts = 5;
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await fs.readFile(this.filePath, 'utf8');
+      } catch (err) {
+        const code = String((err as NodeJS.ErrnoException | undefined)?.code ?? '');
+        if (code === 'ENOENT') return '{}';
+        if (!transientCodes.has(code) || attempt === maxAttempts) throw err;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(80, 5 * attempt)));
+      }
+    }
   }
 
   private async writeAtomicLocked(registry: Record<string, SessionRegistryEntry>): Promise<void> {

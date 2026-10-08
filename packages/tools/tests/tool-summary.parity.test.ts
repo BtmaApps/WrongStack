@@ -59,6 +59,11 @@ const cases: readonly Case[] = [
   },
   // batch
   {
+    label: 'batch names matching ordinary object properties',
+    tool: 'batch_tool_use',
+    input: { calls: [{ name: 'toString' }, { name: 'constructor' }, { name: 'toString' }] },
+  },
+  {
     label: 'batch names',
     tool: 'batch_tool_use',
     input: { tool_uses: [{ name: 'read' }, { name: 'write' }, { name: 'edit' }] },

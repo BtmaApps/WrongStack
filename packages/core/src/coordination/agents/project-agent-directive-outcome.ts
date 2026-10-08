@@ -256,14 +256,14 @@ export function recordDirectiveOutcomes(
       .filter(Boolean)
       .sort()
       .pop() ?? at;
+  // Quarantine first: if the log cannot be written, the retired directives
+  // stay in learned.md instead of vanishing from both.
+  if (retired.length > 0) appendQuarantine(normalizedRole, retired, at, projectRoot);
   writeTextAtomically(
     learnedPath(normalizedRole, projectRoot),
     renderLearnedInstructions(normalizedRole, updated, newest),
   );
-  if (retired.length > 0) {
-    appendQuarantine(normalizedRole, retired, at, projectRoot);
-    scrubRetiredFromInjectedDocuments(normalizedRole, retired, projectRoot);
-  }
+  if (retired.length > 0) scrubRetiredFromInjectedDocuments(normalizedRole, retired, projectRoot);
   return {
     role: normalizedRole,
     attributed,

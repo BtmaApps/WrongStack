@@ -9,7 +9,7 @@ import type { Context } from '../core/context.js';
 import type { InputReader } from '../types/input-reader.js';
 import type { PermissionDecision, PermissionPolicy, TrustPolicy } from '../types/permission.js';
 import type { Tool } from '../types/tool.js';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { matchGlob } from '../utils/glob-match.js';
 import { LruCache } from '../utils/lru-cache.js';
 import { safeParse } from '../utils/safe-json.js';
@@ -294,6 +294,15 @@ export abstract class PermissionPolicyState {
   }
 
   protected async loadPolicy(): Promise<void> {
+    await this.readPolicyFile();
+    this.sessionDenied.clear();
+    this.sessionAllowed.clear();
+    this._evalCache.clear();
+    this.loaded = true;
+  }
+
+  /** Replace the persisted rules with what trust.json holds right now. */
+  protected async readPolicyFile(): Promise<void> {
     this.policyDiagnostics = [];
     this.policyInvalid = false;
     try {
@@ -335,10 +344,6 @@ export abstract class PermissionPolicyState {
       }
     }
     this.refreshPolicyIndex();
-    this.sessionDenied.clear();
-    this.sessionAllowed.clear();
-    this._evalCache.clear();
-    this.loaded = true;
   }
 
   protected _logDeny(tool: string, subject: string | undefined, reason: string): void {
@@ -375,23 +380,31 @@ export abstract class PermissionPolicyState {
   ): Promise<void> {
     return this.serializePolicyChange(async () => {
       if (!this.loaded) await this.loadPolicy();
-      if (this.policyInvalid) {
-        throw new Error(
-          `Cannot update ${kind === 'allow' ? 'trust' : 'deny'} rules while trust.json is invalid; repair it first.`,
-        );
-      }
-      const previous = this.policy[rule.tool] ?? {};
-      const entry = {
-        ...previous,
-        [kind]: [...new Set([...(previous[kind] ?? []), rule.pattern])],
-      };
-      if (kind === 'allow' && rule.ttlMs !== undefined) entry.allowUntil = Date.now() + rule.ttlMs;
-      const next = { ...this.policy, [rule.tool]: entry };
-      // Publish only after persistence succeeds. Failed/redundant writes leave
-      // the old deny, expiry, wildcard index, and cached decisions intact.
-      await atomicWrite(this.trustFile, JSON.stringify(next, null, 2));
-      this.policy = next;
-      this.refreshPolicyIndex();
+      // trust.json is shared by every session of the project: build the new
+      // file from what is on disk now, under the file lock, not from the
+      // snapshot this instance loaded at boot — that erased rules (a deny
+      // included) another session had persisted since.
+      await withFileLock(this.trustFile, async () => {
+        await this.readPolicyFile();
+        if (this.policyInvalid) {
+          throw new Error(
+            `Cannot update ${kind === 'allow' ? 'trust' : 'deny'} rules while trust.json is invalid; repair it first.`,
+          );
+        }
+        const previous = this.policy[rule.tool] ?? {};
+        const entry = {
+          ...previous,
+          [kind]: [...new Set([...(previous[kind] ?? []), rule.pattern])],
+        };
+        if (kind === 'allow' && rule.ttlMs !== undefined)
+          entry.allowUntil = Date.now() + rule.ttlMs;
+        const next = { ...this.policy, [rule.tool]: entry };
+        // Publish only after persistence succeeds. Failed/redundant writes leave
+        // the old deny, expiry, wildcard index, and cached decisions intact.
+        await atomicWrite(this.trustFile, JSON.stringify(next, null, 2));
+        this.policy = next;
+        this.refreshPolicyIndex();
+      });
     });
   }
 

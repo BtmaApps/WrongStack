@@ -25,7 +25,12 @@ import { removePathSync } from '@wrongstack/primitives';
 import { loadProjectAgentConfig } from './project-agent-config-io.js';
 import { tokenOverlap } from './project-agent-learning-entries.js';
 import { normalizeForComparison } from './project-agent-learning-normalize.js';
-import { assertProjectAgentRole, roleDir, writeTextAtomically } from './project-agent-paths.js';
+import {
+  assertProjectAgentRole,
+  readRoleFileForUpdate,
+  roleDir,
+  writeTextAtomically,
+} from './project-agent-paths.js';
 import { loadProjectAgentProfile } from './project-agent-profile.js';
 import { ROLE_SKILL_SETS } from './role-skills.js';
 
@@ -359,9 +364,18 @@ function normalizeAffinityEntry(value: unknown): SkillAffinityEntry {
 export function loadSkillAffinity(role: string, projectRoot?: string): SkillAffinity {
   const normalizedRole = assertProjectAgentRole(role);
   try {
-    const parsed = JSON.parse(
+    return affinityFromText(
+      normalizedRole,
       readFileSync(projectSkillAffinityPath(normalizedRole, projectRoot), 'utf8'),
-    ) as Partial<SkillAffinity>;
+    );
+  } catch {
+    return { role: normalizedRole, entries: {}, updatedAt: new Date(0).toISOString() };
+  }
+}
+
+function affinityFromText(normalizedRole: string, text: string): SkillAffinity {
+  try {
+    const parsed = JSON.parse(text) as Partial<SkillAffinity>;
     const entries: Record<string, SkillAffinityEntry> = {};
     for (const [skill, entry] of Object.entries(parsed.entries ?? {})) {
       if (!isProjectSkillName(skill)) continue;
@@ -391,7 +405,19 @@ function mutateAffinity(
   projectRoot: string | undefined,
   mutate: (entry: SkillAffinityEntry) => void,
 ): SkillAffinity {
-  const affinity = loadSkillAffinity(role, projectRoot);
+  const normalizedRole = assertProjectAgentRole(role);
+  let affinity: SkillAffinity;
+  try {
+    // Strict read: an unreadable file taken as empty was written back with one
+    // entry, dropping every skill's evidence and the user's pins.
+    affinity = affinityFromText(
+      normalizedRole,
+      readRoleFileForUpdate(projectSkillAffinityPath(normalizedRole, projectRoot)),
+    );
+  } catch {
+    // Affinity is an optimization signal: skip this update, never overwrite.
+    return loadSkillAffinity(normalizedRole, projectRoot);
+  }
   let changed = false;
   for (const raw of skills) {
     if (!isProjectSkillName(raw)) continue;

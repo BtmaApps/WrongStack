@@ -289,6 +289,11 @@ export async function* parseOpenAIResponsesStream(
           msgPartStreamed = new Map();
           const prefilled = extractOutputText(item.content);
           const ev0 = flushRemainingText(prefilled);
+          if (Array.isArray(item.content)) {
+            item.content.forEach((part, index) => {
+              msgPartStreamed.set(index, extractOutputText([part]).length);
+            });
+          }
           if (ev0) yield ev0;
         }
         break;

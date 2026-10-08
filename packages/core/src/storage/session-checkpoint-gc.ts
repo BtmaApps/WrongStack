@@ -237,7 +237,9 @@ async function readManifestBlobHashes(
     const parsed = JSON.parse(await fsp.readFile(file, 'utf8')) as {
       entries?: Array<{ blobHash?: unknown }>;
     };
-    if (!Array.isArray(parsed.entries)) return [];
+    if (!Array.isArray(parsed.entries)) {
+      throw new Error('Invalid checkpoint manifest entries');
+    }
     return parsed.entries
       .map((entry) => entry?.blobHash)
       .filter((hash): hash is string => typeof hash === 'string' && HASH_RE.test(hash));

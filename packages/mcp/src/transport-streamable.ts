@@ -156,6 +156,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       this.tools.splice(0, this.tools.length, ...tools);
       this.toolCatalogRevision++;
       for (const listener of this.toolsChangedListeners) {
+        if (version !== this.toolCatalogVersion) break;
         try {
           listener([...tools]);
         } catch {

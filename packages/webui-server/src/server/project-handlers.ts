@@ -223,10 +223,6 @@ export function createProjectHandlers(ctx: ProjectHandlersContext): ProjectRoute
         } catch {
           // Best-effort cancellation must not strand the fresh writer.
         }
-        await touchProjectInManifest(
-          { projectRoot: resolved, workingDir: resolved, name },
-          ctx.globalConfigPath,
-        );
         const identityTarget: SessionIdentityTarget = {
           projectSlug: paths.projectSlug,
           projectRoot: resolved,
@@ -234,6 +230,12 @@ export function createProjectHandlers(ctx: ProjectHandlersContext): ProjectRoute
           workingDir: resolved,
         };
         try {
+          // Inside the rollback: an unreadable manifest throws (rather than being
+          // rewritten empty), and that must not strand the fresh writer.
+          await touchProjectInManifest(
+            { projectRoot: resolved, workingDir: resolved, name },
+            ctx.globalConfigPath,
+          );
           await ctx.onSessionSwapped?.(next.id, identityTarget);
           await ctx.onBeforeSessionTodosReplaced?.(next.id, paths.projectSessions);
           await activateProjectStateGuard(resolved);

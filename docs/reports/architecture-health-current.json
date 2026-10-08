@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:43:32.087Z",
+  "generatedAt": "2026-10-08T20:10:07.192Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4898,
-    "testFiles": 4201,
-    "sourceLines": 1084826,
+    "sourceFiles": 4894,
+    "testFiles": 4216,
+    "sourceLines": 1085339,
     "workspaceEdges": 133,
-    "moduleEdges": 16114,
+    "moduleEdges": 16112,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 958
+    "testOnlyExports": 959
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 615,
-      "testFiles": 603,
+      "testFiles": 605,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 603
+          "testFiles": 605
         }
       ]
     },
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1106,
-      "testFiles": 935,
+      "testFiles": 936,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 935
+          "testFiles": 936
         }
       ]
     },
@@ -381,7 +381,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 63,
-      "testFiles": 64,
+      "testFiles": 72,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -394,7 +394,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 64
+          "testFiles": 72
         }
       ]
     },
@@ -766,7 +766,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 315,
-      "testFiles": 298,
+      "testFiles": 299,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +782,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 298
+          "testFiles": 299
         }
       ]
     },
@@ -821,7 +821,7 @@
       "name": "@wrongstack/vector-memory",
       "dir": "packages/vector-memory",
       "sourceFiles": 18,
-      "testFiles": 25,
+      "testFiles": 28,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -836,7 +836,7 @@
         {
           "path": "packages/vector-memory/tsconfig.test.json",
           "error": null,
-          "testFiles": 25
+          "testFiles": 28
         }
       ]
     },
@@ -874,7 +874,7 @@
     {
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
-      "sourceFiles": 128,
+      "sourceFiles": 124,
       "testFiles": 54,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -3270,6 +3270,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/hq-server-mailbox-metadata-sweep.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/hq-server.test.ts",
         "projects": [
           "root-node"
@@ -5491,6 +5497,12 @@
       },
       {
         "file": "packages/cli/tests/wiring/domain-terms-mirror.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/wiring/vector-memory-setup.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8209,6 +8221,12 @@
       },
       {
         "file": "packages/core/tests/execution/tool-executor-skip-after-pretooluse.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/tool-executor-timeout-ceiling.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11994,6 +12012,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/client-http-catalog-callbacks.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/client-ping-complete.test.ts",
         "projects": [
           "root-node"
@@ -12096,6 +12120,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/notify-stdio-close.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/operations.test.ts",
         "projects": [
           "root-node"
@@ -12139,6 +12169,18 @@
       },
       {
         "file": "packages/mcp/tests/registry-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/registry-describe-snapshot.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/registry-disconnect-callback-ownership.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12216,6 +12258,18 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/server-invalid-id.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/server-stdio-listener-cleanup.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/server-transport-guards.test.ts",
         "projects": [
           "root-node"
@@ -12223,6 +12277,12 @@
       },
       {
         "file": "packages/mcp/tests/server.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/sse-reader-callback-ownership.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12265,6 +12325,12 @@
       },
       {
         "file": "packages/mcp/tests/tool-refresh-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/tool-refresh-transport-callbacks.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17586,6 +17652,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/dead-code-backup-identity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/dead-code-engine.test.ts",
         "projects": [
           "root-node"
@@ -21174,6 +21246,12 @@
         ]
       },
       {
+        "file": "packages/vector-memory/tests/maintenance-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vector-memory/tests/sage-augment-integration.test.ts",
         "projects": [
           "root-node"
@@ -21217,6 +21295,18 @@
       },
       {
         "file": "packages/vector-memory/tests/sage-port-wrapper.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vector-memory/tests/sage-sweep-claim.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vector-memory/tests/sage-sweep-scope.test.ts",
         "projects": [
           "root-node"
         ]
@@ -26505,6 +26595,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/core/src/session-catalog/session-registry.ts",
+      "lines": 774,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/tools/src/todo.ts",
       "lines": 766,
       "relativeImports": 2
@@ -26640,11 +26735,6 @@
       "relativeImports": 42
     },
     {
-      "file": "packages/core/src/session-catalog/session-registry.ts",
-      "lines": 752,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/kanban/src/storage.ts",
       "lines": 752,
       "relativeImports": 8
@@ -26720,11 +26810,6 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/cli/src/hq-server.ts",
-      "lines": 743,
-      "relativeImports": 17
-    },
-    {
       "file": "packages/core/src/utils/context-evidence.ts",
       "lines": 742,
       "relativeImports": 5
@@ -26743,6 +26828,11 @@
       "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
       "lines": 740,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/cli/src/hq-server.ts",
+      "lines": 739,
+      "relativeImports": 17
     },
     {
       "file": "packages/webui/src/components/InspectorPanel.tsx",
@@ -27526,6 +27616,10 @@
     {
       "file": "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
       "name": "shouldRetireDirective"
+    },
+    {
+      "file": "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
+      "name": "projectSkillAffinityPath"
     },
     {
       "file": "packages/core/src/coordination/agents/role-skills.ts",

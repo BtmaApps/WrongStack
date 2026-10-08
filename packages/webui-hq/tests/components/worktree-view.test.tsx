@@ -3,6 +3,10 @@
  *
  * @vitest-environment jsdom
  */
+// React act() support: without this flag React warns "The current testing
+// environment is not configured to support act(...)" on every act() call.
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 import type { HqEventEnvelope, HqWorktreeEventPayload } from '@wrongstack/core/hq';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';

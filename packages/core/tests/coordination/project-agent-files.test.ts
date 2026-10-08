@@ -4,9 +4,15 @@
  * reset, refresh, list).
  */
 import * as fs from 'node:fs';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { captureLearnedFromAgentOutputDetailed } from '../../src/coordination/agents/project-agent-capture.js';
+import {
+  readRawLearnedEntries,
+  saveProjectAgentConsolidated,
+} from '../../src/coordination/agents/project-agent-consolidation.js';
 import {
   listProjectAgentRoles,
   refreshProjectAgentIdentity,
@@ -16,6 +22,16 @@ import {
   updateProjectAgentKnowledge,
   updateProjectAgentLearned,
 } from '../../src/coordination/agents/project-agent-files.js';
+import { recordProjectAgentOptimizePass } from '../../src/coordination/agents/project-agent-learning-policy.js';
+import {
+  appendQuarantine,
+  quarantinePath,
+} from '../../src/coordination/agents/project-agent-quarantine.js';
+import {
+  projectSkillAffinityPath,
+  recordSkillLearned,
+  setSkillPinned,
+} from '../../src/coordination/agents/project-agent-skill-layer.js';
 
 let tempRoot: string;
 
@@ -61,6 +77,141 @@ describe('updateProjectAgentLearned', () => {
     const content = fs.readFileSync(path.join(dir, 'learned.md'), 'utf8');
     expect(content).toContain('New content');
     expect(content).not.toContain('Old content');
+  });
+
+  it('never re-renders learned.md over lessons it cannot read right now', () => {
+    // Teach and capture rebuild the file from what they read; an EBUSY read
+    // used to come back as '' and every stored lesson was deleted.
+    const proj = freshProject();
+    const filePath = updateProjectAgentLearned(
+      'bug-hunter',
+      'Always run the focused vitest file from the repository root.',
+      proj,
+    );
+    const before = fs.readFileSync(filePath, 'utf8');
+    const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+    const realReadFileSync = nodeFs.readFileSync;
+    nodeFs.readFileSync = ((p: unknown, ...rest: unknown[]) => {
+      if (String(p) === filePath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof nodeFs.readFileSync;
+    syncBuiltinESMExports();
+    try {
+      const lesson = 'Never pass a possibly empty file list to vitest because it runs everything.';
+      expect(() => updateProjectAgentLearned('bug-hunter', lesson, proj)).toThrow(/EBUSY/);
+      expect(() =>
+        captureLearnedFromAgentOutputDetailed(
+          `## LEARNED\n- ${lesson}\n`,
+          'bug-hunter',
+          proj,
+          true,
+        ),
+      ).toThrow(/EBUSY/);
+    } finally {
+      nodeFs.readFileSync = realReadFileSync;
+      syncBuiltinESMExports();
+    }
+    expect(fs.readFileSync(filePath, 'utf8')).toBe(before);
+  });
+
+  it('never turns learning back on over a policy file it cannot read', () => {
+    // The policy update merged into the defaults ({ enabled: true }) when the
+    // read failed and wrote them back over the user's switch.
+    const proj = freshProject();
+    const dir = path.join(proj, '.wrongstack', 'agents', 'bug-hunter');
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, 'learning.json');
+    fs.writeFileSync(filePath, JSON.stringify({ enabled: false, lifetimeCaptureCount: 7 }));
+    const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+    const realReadFileSync = nodeFs.readFileSync;
+    nodeFs.readFileSync = ((p: unknown, ...rest: unknown[]) => {
+      if (String(p) === filePath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof nodeFs.readFileSync;
+    syncBuiltinESMExports();
+    try {
+      recordProjectAgentOptimizePass('bug-hunter', proj);
+    } finally {
+      nodeFs.readFileSync = realReadFileSync;
+      syncBuiltinESMExports();
+    }
+    expect(JSON.parse(fs.readFileSync(filePath, 'utf8'))).toEqual({
+      enabled: false,
+      lifetimeCaptureCount: 7,
+    });
+  });
+
+  it('never rewrites skill affinity or the quarantine log over a file it cannot read', () => {
+    // Both rebuilt the file from an empty stand-in for an unreadable one: the
+    // user's skill pins and the retired-directive audit log were dropped.
+    const proj = freshProject();
+    setSkillPinned('bug-hunter', 'testing', true, proj);
+    const retired = (what: string) =>
+      [{ key: what, what, how: '', why: '', category: 'process', capturedAt: '' }] as never;
+    appendQuarantine('bug-hunter', retired('older retired directive'), 'then', proj);
+    const affinityPath = projectSkillAffinityPath('bug-hunter', proj);
+    const logPath = quarantinePath('bug-hunter', proj);
+    const before = [fs.readFileSync(affinityPath, 'utf8'), fs.readFileSync(logPath, 'utf8')];
+    const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+    const realReadFileSync = nodeFs.readFileSync;
+    nodeFs.readFileSync = ((p: unknown, ...rest: unknown[]) => {
+      if (String(p) === affinityPath || String(p) === logPath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof nodeFs.readFileSync;
+    syncBuiltinESMExports();
+    try {
+      recordSkillLearned('bug-hunter', 'git-workflow', proj);
+      expect(() =>
+        appendQuarantine('bug-hunter', retired('newer retired directive'), 'now', proj),
+      ).toThrow(/EBUSY/);
+    } finally {
+      nodeFs.readFileSync = realReadFileSync;
+      syncBuiltinESMExports();
+    }
+    expect([fs.readFileSync(affinityPath, 'utf8'), fs.readFileSync(logPath, 'utf8')]).toEqual(
+      before,
+    );
+  });
+
+  it('a pruning consolidation never resets a learned.md it cannot read', () => {
+    // The prune keeps the directives the synthesis never saw; with the buffer
+    // read as '' it archived nothing and reset learned.md to empty.
+    const proj = freshProject();
+    updateProjectAgentLearned('bug-hunter', 'Always run vitest from the repository root.', proj);
+    const sourceKeys = readRawLearnedEntries('bug-hunter', proj).map((entry) => entry.key);
+    const filePath = updateProjectAgentLearned(
+      'bug-hunter',
+      'Never pass a possibly empty file list to vitest because it runs everything.',
+      proj,
+    );
+    const before = fs.readFileSync(filePath, 'utf8');
+    const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+    const realReadFileSync = nodeFs.readFileSync;
+    nodeFs.readFileSync = ((p: unknown, ...rest: unknown[]) => {
+      if (String(p) === filePath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof nodeFs.readFileSync;
+    syncBuiltinESMExports();
+    try {
+      expect(() =>
+        saveProjectAgentConsolidated('bug-hunter', '- synthesized rule', proj, {
+          prune: true,
+          sourceKeys,
+        }),
+      ).toThrow(/EBUSY/);
+    } finally {
+      nodeFs.readFileSync = realReadFileSync;
+      syncBuiltinESMExports();
+    }
+    expect(fs.readFileSync(filePath, 'utf8')).toBe(before);
   });
 });
 

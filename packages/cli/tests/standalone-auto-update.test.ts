@@ -149,6 +149,21 @@ describe('applying the pending build', () => {
     fs.writeFileSync(path.join(dir, 'update.lock'), JSON.stringify({ pid: 2 ** 22 + 7, at: 0 }));
     expect(apply()).toBe('1.0.26');
   });
+
+  it('treats a just-created, still empty lock as held — not abandoned', () => {
+    // A holder between its exclusive create and the write leaves an empty
+    // file; deleting it as "unreadable" let two sessions swap at once.
+    stage('1.0.26');
+    const lock = path.join(dir, 'update.lock');
+    fs.writeFileSync(lock, '');
+    expect(apply()).toBeUndefined();
+    expect(fs.readFileSync(lock, 'utf8')).toBe('');
+    expect(fs.readFileSync(exe, 'utf8')).toBe('old build');
+    // Left behind by a crash long ago, it no longer blocks.
+    const old = new Date(Date.now() - 120_000);
+    fs.utimesSync(lock, old, old);
+    expect(apply()).toBe('1.0.26');
+  });
 });
 
 describe('staging the latest release', () => {

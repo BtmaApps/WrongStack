@@ -39,6 +39,16 @@ describe('plugin trust store', () => {
     await expect(readPluginTrustStore(path)).rejects.toThrow(/not valid JSON/);
   });
 
+  it('refuses a store it cannot read instead of reporting it empty', async () => {
+    // An empty result is written back by the next pin, deleting every pin.
+    const busy = async (): Promise<string> => {
+      throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+    };
+    await expect(readPluginTrustStore('plugin-trust.json', busy)).rejects.toThrow(
+      /could not be read/,
+    );
+  });
+
   it('refuses an invalid pinned section', async () => {
     const dir = await tempDir();
     const path = join(dir, 'trust.json');
@@ -70,6 +80,15 @@ describe('plugin trust store', () => {
     expect(store.pinned['/p/b.js']).toBeDefined();
     // Unpinning an unknown key is a no-op, not an error.
     await unpinPluginTrust(path, '/p/missing.js');
+  });
+
+  it('keeps every pin when several are written at the same time', async () => {
+    // Unlocked read-modify-write: concurrent pins all read the old store and
+    // the last write dropped the others.
+    const path = join(await tempDir(), 'trust.json');
+    await Promise.all(['a', 'b', 'c', 'd'].map((n) => pinPluginTrust(path, n, n, `sha-${n}`)));
+    const store = await readPluginTrustStore(path);
+    expect(Object.keys(store.pinned).sort()).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('writes the store as JSON with a trailing newline', async () => {

@@ -161,6 +161,7 @@ export async function refreshToolsOnListChanged(self: MCPClientInternals): Promi
     self._toolsCache = tools;
     self.toolCatalogRevision++;
     for (const listener of self.toolsChangedListeners) {
+      if (version !== self.toolCatalogVersion) break;
       try {
         listener(self.opts.name, [...tools]);
       } catch {

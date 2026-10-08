@@ -28,6 +28,7 @@
  * Fail-open: any error from the vector store is logged and swallowed.
  * The mirror must never block the SAGE write path.
  */
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/core/kernel';
@@ -305,7 +306,9 @@ export async function forgetStaleSageMirrors(
         // hygiene's bulk archive emits no per-memory event, so this is the
         // only place those rows are ever dropped. A later un-archive fires
         // `memory.updated`, which re-mirrors it.
-        if (memory !== null && isMirroredStatus(memory.status)) continue;
+        if (memory !== null && memory.scope !== 'session' && isMirroredStatus(memory.status)) {
+          continue;
+        }
         await store.forget(entry.id);
         removed++;
       } catch (err) {
@@ -383,8 +386,9 @@ export async function sweepStaleSageMirrors(
   // a large corpus, and a second host booting in that window must not start
   // its own concurrent pass over the same rows.
   const claimAt = new Date().toISOString();
+  const claimId = randomUUID();
   try {
-    fs.writeFileSync(markerPath, JSON.stringify({ at: claimAt }), 'utf8');
+    fs.writeFileSync(markerPath, JSON.stringify({ at: claimAt, claimId }), 'utf8');
   } catch {
     // A read-only data directory disables the throttle, not the sweep.
   }
@@ -396,8 +400,8 @@ export async function sweepStaleSageMirrors(
     return { swept: true, ...result };
   } catch (err) {
     try {
-      const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { at?: unknown };
-      if (marker.at === claimAt) fs.unlinkSync(markerPath);
+      const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { claimId?: unknown };
+      if (marker.claimId === claimId) fs.unlinkSync(markerPath);
     } catch {
       // Missing, corrupt, or replaced marker: another process owns the path.
     }

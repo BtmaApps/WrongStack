@@ -1,6 +1,7 @@
 import type { ResolvedProvider } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
+import { createEmbeddedProviderRoutes } from '../src/server/embedded-provider-routes.js';
 import {
   resolveProviderCatalogForModels,
   resolveProviderModelMetadata,
@@ -181,6 +182,55 @@ describe('handleProviderRoute malformed payload characterization', () => {
     ]) {
       expect(handler).not.toHaveBeenCalled();
     }
+  });
+
+  it('refuses provider.models without a payload and without dispatching it', async () => {
+    const ws = mockWs();
+    const deps = routes();
+
+    await expect(handleProviderRoute(ws, { type: 'provider.models' } as never, deps)).resolves.toBe(
+      true,
+    );
+
+    expect(sentMessages(ws)).toEqual([
+      {
+        type: 'key.operation_result',
+        payload: { success: false, message: 'provider.models payload is invalid' },
+      },
+    ]);
+    expect(deps.listProviderModels).not.toHaveBeenCalled();
+  });
+
+  it('refuses provider.models with a blank providerId and without dispatching it', async () => {
+    const ws = mockWs();
+    const deps = routes();
+
+    await expect(
+      handleProviderRoute(
+        ws,
+        { type: 'provider.models', payload: { providerId: '   ' } } as never,
+        deps,
+      ),
+    ).resolves.toBe(true);
+
+    expect(sentMessages(ws)).toEqual([
+      {
+        type: 'key.operation_result',
+        payload: { success: false, message: 'provider.models payload is invalid' },
+      },
+    ]);
+    expect(deps.listProviderModels).not.toHaveBeenCalled();
+  });
+
+  it('dispatches valid provider.models payloads to the models reader', async () => {
+    const ws = mockWs();
+    const deps = routes();
+    const message = { type: 'provider.models', payload: { providerId: 'anthropic' } } as never;
+
+    await expect(handleProviderRoute(ws, message, deps)).resolves.toBe(true);
+
+    expect(deps.listProviderModels).toHaveBeenCalledWith(ws, message);
+    expect(ws.send).not.toHaveBeenCalled();
   });
 
   it('dispatches provider.quota.refresh to the account-quota reader', async () => {
@@ -638,5 +688,90 @@ describe('provider.audit.get — durable audit trail route', () => {
       type: 'provider.audit.history',
       payload: { lines: [] },
     });
+  });
+});
+
+describe('provider route adapters under payload-less frames', () => {
+  // End-to-end over the REAL embedded route table: the table's adapters
+  // extract `msg.payload` themselves, so a stubbed route table cannot catch
+  // a deref there. payload-less client frames are decoder-legal; each audited
+  // adapter must reach its handler's guard instead of throwing past the
+  // dispatcher (which only logs — the asking tab would get no frame).
+  function embeddedRoutes(ws: ReturnType<typeof mockWs>): ProviderRouteHandlers {
+    const forwardSend = (message: object): void => ws.send(JSON.stringify(message));
+    return createEmbeddedProviderRoutes(
+      {
+        opts: {},
+        send: (_socket: unknown, message: object) => forwardSend(message),
+        providerCtx: {
+          providerStore: { load: async () => ({}), save: async () => undefined },
+          broadcast: vi.fn(),
+          send: (_socket: unknown, message: object) => forwardSend(message),
+          modelsRegistry: {
+            listProviders: async () => [],
+            getModel: async () => undefined,
+            getProvider: async () => undefined,
+          },
+          getDisabledModels: () => [] as string[],
+          getDisabledProviders: () => [] as string[],
+          providerAuthRegistry: undefined,
+          log: () => undefined,
+        },
+        agentConfigCtx: {
+          agent: { ctx: {} },
+          memoryStore: undefined,
+          modelsRegistry: undefined,
+          getConfig: () => undefined,
+          loadSavedProviders: async () => ({}),
+          send: (_socket: unknown, message: object) => forwardSend(message),
+          log: () => undefined,
+        },
+        statusTracker: undefined,
+      } as never,
+      () => ({}) as never,
+      () => false,
+    ) as ProviderRouteHandlers;
+  }
+
+  it('answers payload-less model.refine with the empty-text refine result', async () => {
+    const ws = mockWs();
+
+    await expect(
+      handleProviderRoute(ws, { type: 'model.refine' } as never, embeddedRoutes(ws)),
+    ).resolves.toBe(true);
+
+    const frames = ws.send.mock.calls.map(
+      ([raw]) => JSON.parse(String(raw)) as { type: string; payload: Record<string, unknown> },
+    );
+    const result = frames.find((f) => f.type === 'model.refine_result');
+    expect(result?.payload).toMatchObject({ error: 'Empty text', errorKind: 'provider_error' });
+  });
+
+  it('refuses payload-less model.switch with validation results', async () => {
+    const ws = mockWs();
+
+    await expect(
+      handleProviderRoute(ws, { type: 'model.switch' } as never, embeddedRoutes(ws)),
+    ).resolves.toBe(true);
+
+    const types = ws.send.mock.calls.map(
+      ([raw]) => (JSON.parse(String(raw)) as { type: string }).type,
+    );
+    expect(types).toContain('model.switch_result');
+    expect(types).toContain('key.operation_result');
+  });
+
+  it('answers payload-less fallback.suggest with a heuristic suggestions frame', async () => {
+    const ws = mockWs();
+
+    await expect(
+      handleProviderRoute(ws, { type: 'fallback.suggest' } as never, embeddedRoutes(ws)),
+    ).resolves.toBe(true);
+
+    const frames = ws.send.mock.calls.map(
+      ([raw]) => JSON.parse(String(raw)) as { type: string; payload: Record<string, unknown> },
+    );
+    const suggestions = frames.find((f) => f.type === 'fallback.suggestions');
+    expect(suggestions?.payload.mode).toBe('heuristic');
   });
 });

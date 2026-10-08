@@ -233,6 +233,7 @@ export async function notifyStdio(
         const timeout = setTimeout(() => {
           stdin.removeListener?.('drain', onDrain);
           stdin.removeListener?.('error', onError);
+          stdin.removeListener?.('close', onClose);
           host._drainPending = false;
           reject(new Error(`MCP notify("${method}") drain timeout`));
         }, 500);
@@ -240,6 +241,7 @@ export async function notifyStdio(
           clearTimeout(timeout);
           stdin.removeListener?.('drain', onDrain);
           stdin.removeListener?.('error', onError);
+          stdin.removeListener?.('close', onClose);
           host._drainPending = false;
           resolve();
         };
@@ -247,11 +249,14 @@ export async function notifyStdio(
           clearTimeout(timeout);
           stdin.removeListener?.('drain', onDrain);
           stdin.removeListener?.('error', onError);
+          stdin.removeListener?.('close', onClose);
           host._drainPending = false;
           reject(err);
         };
+        const onClose = () => onError(new Error(`MCP notify("${method}") stdin closed`));
         stdin.once?.('drain', onDrain);
         stdin.once?.('error', onError);
+        stdin.once?.('close', onClose);
       });
     }
   } catch (err) {

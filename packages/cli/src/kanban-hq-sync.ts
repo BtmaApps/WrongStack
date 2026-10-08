@@ -643,9 +643,12 @@ function pruneExpiredTombstones(state: LocalSyncState, now: number): boolean {
 }
 
 async function readState(projectRoot: string): Promise<LocalSyncState> {
+  // A failed READ must throw: both callers write the state back, so an empty
+  // default here would erase every baseline and deletion tombstone. The throw
+  // skips that write (see warnSyncFailure). Only unparseable JSON resets.
+  const raw = await readKanbanMetadata(projectRoot, SYNC_STATE_KEY);
+  if (raw === null) return { boards: {}, tombstones: {} };
   try {
-    const raw = await readKanbanMetadata(projectRoot, SYNC_STATE_KEY);
-    if (raw === null) return { boards: {}, tombstones: {} };
     const parsed = JSON.parse(raw) as Partial<LocalSyncState>;
     return { boards: parsed.boards ?? {}, tombstones: parsed.tombstones ?? {} };
   } catch {

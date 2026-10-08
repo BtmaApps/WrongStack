@@ -253,24 +253,32 @@ describe('QueueStore', () => {
     );
   });
 
-  it('emits storage.error when read() encounters a disk I/O error', async () => {
+  it('rejects and emits storage.error when read() encounters a disk I/O error', async () => {
+    // An unreadable queue used to read as [] ("no queue"); both consumers
+    // then wrote their in-memory queue over the file and lost what was queued.
     const events: EventBus = { emit: vi.fn() } as never;
     const store = new QueueStore({ dir, events });
     statMock.mockResolvedValueOnce({ size: 1 } as never);
-    readFileMock.mockRejectedValueOnce(
-      Object.assign(new Error('EACCES permission denied'), { code: 'EACCES' }),
-    );
-    const out = await store.read();
-    expect(out).toEqual([]);
+    readFileMock.mockRejectedValueOnce(Object.assign(new Error('EIO i/o error'), { code: 'EIO' }));
+    await expect(store.read()).rejects.toMatchObject({ code: 'EIO' });
     expect(events.emit).toHaveBeenCalledWith(
       'storage.error',
       expect.objectContaining({
         store: 'queue',
         operation: 'read',
         outcome: 'failure',
-        error: expect.stringContaining('EACCES'),
+        error: expect.stringContaining('EIO'),
       }),
     );
+  });
+
+  it('read() retries a transient sharing violation instead of reporting no queue', async () => {
+    const store = new QueueStore({ dir });
+    await store.write([{ displayText: 'kept', blocks: [{ type: 'text', text: 'kept' }] }]);
+    readFileMock.mockRejectedValueOnce(
+      Object.assign(new Error('EBUSY resource busy'), { code: 'EBUSY' }),
+    );
+    expect((await store.read()).map((item) => item.displayText)).toEqual(['kept']);
   });
 
   it('emits storage.write with outcome success when write() succeeds', async () => {

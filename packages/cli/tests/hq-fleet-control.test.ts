@@ -100,4 +100,13 @@ describe('spawnHqAgent', () => {
     const cfg = director.captured[0] as { maxIterations?: number };
     expect(cfg.maxIterations).toBe(7);
   });
+
+  it('leaves maxIterations unset for an ad-hoc role spawned without one', async () => {
+    // It used to be `maxIterations ?? 0`; the budget takes the raw value first,
+    // so a project agent spawned from HQ was stopped after one iteration.
+    const director = capturingDirector();
+    await spawnHqAgent(director as never, 'sess-ctrl', 'ad-hoc-unknown-role-xyz', 'task');
+    const cfg = director.captured[0] as { maxIterations?: number };
+    expect(cfg.maxIterations).toBeUndefined();
+  });
 });

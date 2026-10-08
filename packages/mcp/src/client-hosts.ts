@@ -44,6 +44,9 @@ export function buildClientHttpConnectionHost(self: MCPClientInternals): ClientH
       self._toolsCache = value;
     },
     toolsChangedListeners: self.toolsChangedListeners,
+    get toolCatalogVersion() {
+      return self.toolCatalogVersion;
+    },
     emitCapabilityChanged: (...args) => emitCapabilityChanged(self, ...args),
     emitResourceUpdated: (uri: string) => emitResourceUpdated(self, uri),
     emitProgress: (progress: MCPProgressNotification) => emitProgress(self, progress),

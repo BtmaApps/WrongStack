@@ -79,7 +79,12 @@ const indexDir = resolveIndexDir(projectRoot, parsed.indexDir);
 const endpoint = projectIndexServerEndpoint(projectRoot, indexDir);
 const metadataPath = projectIndexServerMetadataPath(projectRoot, indexDir);
 const idleMsRaw = Number(process.env['WRONGSTACK_INDEX_SERVER_IDLE_MS']?.replaceAll('_', ''));
-const idleMs = Number.isFinite(idleMsRaw) && idleMsRaw >= 100 ? idleMsRaw : DEFAULT_IDLE_MS;
+// Node clamps a timer delay above 2^31-1 ms to 1 ms: a huge "never idle out"
+// value would stop the daemon at once.
+const idleMs =
+  Number.isFinite(idleMsRaw) && idleMsRaw >= 100
+    ? Math.min(idleMsRaw, 2_147_483_647)
+    : DEFAULT_IDLE_MS;
 const clientLeaseMsRaw = Number(
   process.env['WRONGSTACK_INDEX_SERVER_CLIENT_LEASE_MS']?.replaceAll('_', ''),
 );

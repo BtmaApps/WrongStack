@@ -14,7 +14,7 @@ import {
   tokenLengthForward,
 } from './input-tokens.js';
 import type { MutableCell } from './shared-types.js';
-import { displayWidth } from './terminal-width.js';
+import { displayWidth, sanitizeTerminalText } from './terminal-width.js';
 
 const PASTE_THRESHOLD_CHARS = 200;
 
@@ -317,7 +317,12 @@ export async function routeInputKey(
     return true;
   }
 
+  // A pasted tab (spreadsheet cells) or control character would be measured
+  // as zero columns by the layout but advanced/acted on by the terminal, so the
+  // composer's rows and caret drift from what is printed. Normalize first.
+  const text = sanitizeTerminalText(input);
+  if (!text) return true;
   host.nextSteps.cancel();
-  host.setDraft(buffer.slice(0, cursor) + input + buffer.slice(cursor), cursor + input.length);
+  host.setDraft(buffer.slice(0, cursor) + text + buffer.slice(cursor), cursor + text.length);
   return true;
 }

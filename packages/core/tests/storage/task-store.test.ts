@@ -328,8 +328,9 @@ describe('task-store', () => {
       'utf8',
     );
     try {
+      // EIO, not a transient sharing code: those are retried before failing.
       vi.mocked(fsp.readFile).mockRejectedValueOnce(
-        Object.assign(new Error('EACCES permission denied'), { code: 'EACCES' }),
+        Object.assign(new Error('EIO i/o error'), { code: 'EIO' }),
       );
       const result = await loadTasks(fp, events);
       expect(result).toBeNull();
@@ -339,9 +340,39 @@ describe('task-store', () => {
           store: 'tasks',
           operation: 'load',
           outcome: 'failure',
-          error: expect.stringContaining('EACCES'),
+          error: expect.stringContaining('EIO'),
         }),
       );
+    } finally {
+      vi.mocked(fsp.readFile).mockReset();
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('mutateTasks never saves over a task file it cannot read', async () => {
+    // An unreadable file loaded as "no tasks"; the mutation was applied to an
+    // empty file and saved over every existing task.
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-tasks-'));
+    const fp = path.join(dir, 'sess.tasks.json');
+    try {
+      await saveTasks(fp, { ...emptyTaskFile('sess'), tasks: [makeTask()] });
+      const before = await fsp.readFile(fp, 'utf8');
+      vi.mocked(fsp.readFile).mockRejectedValueOnce(
+        Object.assign(new Error('EIO i/o error'), { code: 'EIO' }),
+      );
+      await expect(
+        mutateTasks(fp, 'sess', (file) => {
+          file.tasks.push(makeTask({ id: 't2' }));
+          return file;
+        }),
+      ).rejects.toMatchObject({
+        code: 'SESSION_WRITE_FAILED',
+        context: expect.objectContaining({
+          operation: 'mutateTasks',
+          cause: expect.stringContaining('EIO'),
+        }),
+      });
+      expect(await fsp.readFile(fp, 'utf8')).toBe(before);
     } finally {
       vi.mocked(fsp.readFile).mockReset();
       await fsp.rm(dir, { recursive: true, force: true });

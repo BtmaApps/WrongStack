@@ -152,6 +152,129 @@ describe('adapter parser edge cases', () => {
     );
   });
 
+  it('reads Python table headers that carry a trailing comment', async () => {
+    // `[project]  # …` used to read as a line of the previous section, so the
+    // whole table and every dependency in it disappeared from the inventory.
+    const deps = await inventory(
+      pythonAdapter,
+      'python',
+      {
+        'pyproject.toml': [
+          '[build-system]',
+          'requires = ["hatchling"]',
+          '[project]  # PEP 621 metadata',
+          'dependencies = ["requests>=2.32"]',
+          '[project.optional-dependencies] # extras',
+          'dev = ["pytest>=8"]',
+        ].join('\n'),
+      },
+      ['pyproject.toml'],
+    );
+
+    expect(deps.map((dep) => dep.name)).toEqual(expect.arrayContaining(['requests', 'pytest']));
+  });
+
+  it('never uses an MSBuild property reference as a NuGet version', async () => {
+    // Without a restore graph the unresolved `$(SerilogVersion)` became the
+    // locked version and the purl `pkg:nuget/Serilog@$(SerilogVersion)`.
+    const deps = await inventory(
+      dotNetAdapter,
+      'dotnet',
+      {
+        'App.csproj':
+          '<Project Sdk="Microsoft.NET.Sdk"><ItemGroup>' +
+          '<PackageReference Include="Serilog" Version="$(SerilogVersion)" />' +
+          '</ItemGroup></Project>',
+      },
+      ['App.csproj'],
+    );
+
+    expect(deps[0]?.locked).toBeUndefined();
+    expect(deps[0]?.purl).toBe('pkg:nuget/Serilog');
+  });
+
+  it('never puts an unresolved Maven property or range into the purl', async () => {
+    // A property defined in the parent pom stayed `${guava.version}` and
+    // became the purl version.
+    const deps = await inventory(
+      mavenAdapter,
+      'maven',
+      {
+        'pom.xml':
+          '<project><artifactId>app</artifactId><dependencies>' +
+          '<dependency><groupId>com.google.guava</groupId><artifactId>guava</artifactId>' +
+          '<version>${guava.version}</version></dependency>' +
+          '<dependency><groupId>junit</groupId><artifactId>junit</artifactId>' +
+          '<version>[4.0,5.0)</version></dependency>' +
+          '</dependencies></project>',
+      },
+      ['pom.xml'],
+    );
+
+    expect(deps.map((dep) => dep.purl).sort()).toEqual([
+      'pkg:maven/com.google.guava/guava',
+      'pkg:maven/junit/junit',
+    ]);
+  });
+
+  it('never puts a Gemfile requirement into the purl', async () => {
+    // Without Gemfile.lock `'~> 7.1'` became `pkg:gem/rails@~> 7.1`.
+    const deps = await inventory(
+      rubyAdapter,
+      'ruby',
+      { Gemfile: "source 'https://rubygems.org'\ngem 'pg', '1.5.6'\ngem 'rails', '~> 7.1'\n" },
+      ['Gemfile'],
+    );
+
+    expect(deps.map((dep) => dep.purl).sort()).toEqual(['pkg:gem/pg@1.5.6', 'pkg:gem/rails']);
+  });
+
+  it('reads a pubspec.yaml indented with four spaces', async () => {
+    // Entries were recognised only at exactly two spaces; a 4-space pubspec
+    // (valid YAML) inventoried nothing.
+    const deps = await inventory(
+      dartAdapter,
+      'dart',
+      {
+        'pubspec.yaml': [
+          'name: demo',
+          'dependencies:',
+          '    flutter:',
+          '        sdk: flutter',
+          '    http: ^1.2.0',
+          'dev_dependencies:',
+          '    test: ^1.24.0',
+        ].join('\n'),
+      },
+      ['pubspec.yaml'],
+    );
+
+    expect(deps.map((dep) => dep.name).sort()).toEqual(['http', 'test']);
+  });
+
+  it('reads Pipfile inline tables and trailing comments', async () => {
+    // Only `name = "spec"` was recognised: inline tables (extras, markers, git,
+    // path) and commented entries silently left the inventory.
+    const deps = await inventory(
+      pythonAdapter,
+      'python',
+      {
+        Pipfile: [
+          '[packages]',
+          'django = {version = ">=4.2", extras = ["argon2"]}',
+          'mylib = {git = "https://example.test/mylib.git", ref = "main"}',
+          'requests = "*"  # http client',
+        ].join('\n'),
+      },
+      ['Pipfile'],
+    );
+
+    const byName = new Map(deps.map((dep) => [dep.name, dep]));
+    expect(byName.get('django')?.sourceType).toBe('registry');
+    expect(byName.get('mylib')?.sourceType).toBe('git');
+    expect(byName.get('requests')?.sourceType).toBe('registry');
+  });
+
   it('parses Cargo git sources and duplicate package names deterministically', async () => {
     const deps = await inventory(
       rustAdapter,

@@ -5,6 +5,21 @@ import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { TaskItem } from '../utils/task-format.js';
 
+const TRANSIENT_READ_CODES = new Set(['EBUSY', 'EPERM', 'EACCES']);
+
+/** Read a store file, retrying briefly through transient Windows sharing errors. */
+async function readStoreFile(filePath: string): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fsp.readFile(filePath, 'utf8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 4 || code === undefined || !TRANSIENT_READ_CODES.has(code)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Task file persistence — one JSON file per session, resolved via
 // `sessionScopedPath(projectSessions, sessionId, '.tasks.json')`.
@@ -83,16 +98,21 @@ export function emptyTaskFile(sessionId: string): TaskFile {
   };
 }
 
-/** Read the task file. Returns null when the file doesn't exist. */
+/**
+ * Read the task file. Returns null when the file doesn't exist. With
+ * `strict`, any other read error is thrown instead: a read-modify-write that
+ * took "unreadable" for "empty" saved over every task in the file.
+ */
 export async function loadTasks(
   filePath: string,
   events?: EventBus,
   traceId?: string,
+  options?: { strict?: boolean | undefined },
 ): Promise<TaskFile | null> {
   const t0 = Date.now();
   let raw: string;
   try {
-    raw = await fsp.readFile(filePath, 'utf8');
+    raw = await readStoreFile(filePath);
   } catch (err) {
     events?.emit('storage.error', {
       sessionId: traceId ?? '~boot~',
@@ -103,6 +123,7 @@ export async function loadTasks(
       error: toErrorMessage(err),
       recoverable: true,
     });
+    if (options?.strict && (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return null;
   }
   try {
@@ -220,7 +241,18 @@ export async function mutateTasks(
   traceId?: string,
 ): Promise<TaskFile> {
   return withFileLock(filePath, async () => {
-    const file = (await loadTasks(filePath, events, traceId)) ?? emptyTaskFile(sessionId);
+    let loaded: TaskFile | null;
+    try {
+      loaded = await loadTasks(filePath, events, traceId, { strict: true });
+    } catch (err) {
+      throw new SessionError({
+        message: `Failed to read tasks from ${filePath} — the change was NOT saved.`,
+        code: 'SESSION_WRITE_FAILED',
+        sessionId,
+        context: { filePath, operation: 'mutateTasks', cause: toErrorMessage(err) },
+      });
+    }
+    const file = loaded ?? emptyTaskFile(sessionId);
     const previous = structuredClone(file);
     const updated = await fn(file);
     assertTaskMutationInvariants(previous, updated);

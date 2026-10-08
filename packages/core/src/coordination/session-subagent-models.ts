@@ -179,7 +179,7 @@ const plans = new Map<string, SessionSubagentModelPlan>();
 /** Per-session lane occupancy: how many live subagents hold each lane index. */
 const laneCounts = new Map<string, number[]>();
 /** subagentId -> the lane it holds, so `release` needs no session argument. */
-const boundLanes = new Map<string, { sessionId: string; index: number }>();
+const boundLanes = new Map<string, { sessionId: string; index: number; counts: number[] }>();
 
 export function getSessionSubagentModelPlan(
   sessionId: string | undefined,
@@ -356,7 +356,7 @@ export function claimSubagentSlot(
     if (settled) return;
     settled = true;
     const live = laneCounts.get(sessionId);
-    if (live) live[chosen] = Math.max(0, (live[chosen] ?? 0) - 1);
+    if (live === counts) live[chosen] = Math.max(0, (live[chosen] ?? 0) - 1);
   };
 
   return {
@@ -367,7 +367,8 @@ export function claimSubagentSlot(
     bind: (subagentId: string) => {
       if (settled) return;
       settled = true;
-      boundLanes.set(subagentId, { sessionId, index: chosen });
+      if (laneCounts.get(sessionId) !== counts) return;
+      boundLanes.set(subagentId, { sessionId, index: chosen, counts });
     },
     abandon: release,
   };
@@ -380,7 +381,7 @@ export function releaseSubagentSlot(subagentId: string | undefined): void {
   if (!bound) return;
   boundLanes.delete(subagentId);
   const counts = laneCounts.get(bound.sessionId);
-  if (counts) counts[bound.index] = Math.max(0, (counts[bound.index] ?? 0) - 1);
+  if (counts === bound.counts) counts[bound.index] = Math.max(0, (counts[bound.index] ?? 0) - 1);
 }
 
 /** Live lane -> subagent map, for the pickers' "busy" indicators. */
@@ -392,7 +393,7 @@ export function subagentSlotOccupancy(
   if (!plan) return [];
   const out = plan.slots.map((_, slotIndex) => ({ slotIndex, subagentIds: [] as string[] }));
   for (const [subagentId, bound] of boundLanes) {
-    if (bound.sessionId !== sessionId) continue;
+    if (bound.sessionId !== sessionId || bound.counts !== laneCounts.get(sessionId)) continue;
     out[bound.index]?.subagentIds.push(subagentId);
   }
   return out;

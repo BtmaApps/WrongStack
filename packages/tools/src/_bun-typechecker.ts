@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -192,6 +192,16 @@ export async function bunTypecheckInvocation(
     onInstall?: () => void;
   } = {},
 ): Promise<{ cmd: string; args: string[]; cwd: string }> {
+  // The checker runs from its own cache directory, so a missing project
+  // directory would not fail the spawn: Bun would report on a path that does
+  // not exist and the caller would read that as a type-check result. Refuse
+  // up front, before provisioning the runtime.
+  const projectDir = path.resolve(cwd);
+  const isDir = await stat(projectDir).then(
+    (s) => s.isDirectory(),
+    () => false,
+  );
+  if (!isDir) throw new Error(`project directory does not exist: ${projectDir}`);
   const cmd = await ensureBunTypechecker(options);
   const cacheRoot = path.resolve(options.cacheRoot ?? bunTypecheckCacheRoot());
   const checkCwd = path.join(cacheRoot, 'check-cwd');

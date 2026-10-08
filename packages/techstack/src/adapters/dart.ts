@@ -44,6 +44,10 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
   const sections = new Map<string, Map<string, string>>();
   let currentSection: string | undefined;
   let currentName: string | undefined;
+  // Indentation width of the section's entries, taken from its first indented
+  // line. YAML leaves the width to the author; assuming two spaces read every
+  // entry of a 4-space pubspec as a sub-property and inventoried nothing.
+  let entryIndent: number | undefined;
 
   for (const raw of content.split('\n')) {
     // A YAML comment starts at a whitespace-preceded `#` outside quotes; left
@@ -58,6 +62,7 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
     if (sectionMatch && line.startsWith(sectionMatch[1]!)) {
       currentSection = sectionMatch[1]!;
       currentName = undefined;
+      entryIndent = undefined;
       if (!sections.has(currentSection)) {
         sections.set(currentSection, new Map());
       }
@@ -68,8 +73,10 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
 
     // Dependency definition: `  package_name: ^1.0.0`
     // Or sub-properties: `    sdk: flutter` — skip these
+    const indent = line.length - line.trimStart().length;
+    if (indent > 0 && entryIndent === undefined) entryIndent = indent;
     const depMatch = trimmed.match(/^(\S[^:]*?):\s*(.*)$/);
-    if (depMatch && line.startsWith('  ') && !line.startsWith('    ')) {
+    if (depMatch && indent > 0 && indent === entryIndent) {
       currentName = depMatch[1]!.trim();
       let constraint = yamlScalar(depMatch[2]!.trim());
       // A flow mapping carries the constraint inline: `intl: {version: ^0.19.0}`.
@@ -89,7 +96,7 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
       continue;
     }
 
-    if (currentName && line.startsWith('    ')) {
+    if (currentName && entryIndent !== undefined && indent > entryIndent) {
       const sec = sections.get(currentSection);
       if (!sec) continue;
       // Block-mapping constraint: `    version: ^3.4.0`.

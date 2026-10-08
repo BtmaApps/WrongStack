@@ -96,7 +96,7 @@ afterEach(() => {
 });
 
 describe('view smoke', () => {
-  it.each(VIEWS)('%s mounts against an empty snapshot', (_name, View) => {
+  it.each(VIEWS)('%s mounts against an empty snapshot', async (_name, View) => {
     container = document.createElement('div');
     document.body.append(container);
     const created = createRoot(container);
@@ -106,10 +106,14 @@ describe('view smoke', () => {
       act(() => created.render(<View />));
     }).not.toThrow();
 
+    // Views kick off mocked fetches on mount; settle them inside act so the
+    // subscriber updates do not land outside the act window.
+    await act(async () => {});
+
     expect(container.textContent?.trim().length ?? 0).toBeGreaterThan(0);
   });
 
-  it('mounts every view with a null snapshot too', () => {
+  it('mounts every view with a null snapshot too', async () => {
     act(() => {
       useHqStore.setState({ snapshot: null });
     });
@@ -120,6 +124,8 @@ describe('view smoke', () => {
       expect(() => {
         act(() => created.render(<View />));
       }).not.toThrow();
+      // Settle mount-time fetch rejections inside act before unmounting.
+      await act(async () => {});
       act(() => created.unmount());
       host.remove();
     }

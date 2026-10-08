@@ -60,6 +60,7 @@ export function prepareResourceInsertion(
     throw new Error('MCP resource insertion exceeds the limit of 64 content blocks');
   }
   let byteSize = 0;
+  enforceSize(byteSize, policy);
   for (const content of result.contents) {
     validateUri(content.uri, policy);
     if (content.text !== undefined) byteSize += utf8Bytes(content.text);

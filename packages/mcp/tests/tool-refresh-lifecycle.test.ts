@@ -141,6 +141,44 @@ describe('tool refresh lifecycle across transports', () => {
     }
   });
 
+  it.each(['close', 'replace'] as const)(
+    'stdio: stops obsolete catalog callbacks when a listener triggers %s',
+    async (mode) => {
+      const { target, boundary, request } = fixture('stdio');
+      const client = target as MCPClient;
+      const old = deferred<Reply>();
+      const next = deferred<Reply>();
+      request.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+      let replacement: Promise<void> | undefined;
+      let closing: Promise<void> | undefined;
+      client.addToolsChangedListener((_name, tools) => {
+        if (tools[0]?.name !== 'old') return;
+        if (mode === 'close') closing = client.close();
+        else replacement = boundary.refresh();
+      });
+      const tail = vi.fn();
+      client.addToolsChangedListener(tail);
+      try {
+        const pending = boundary.refresh();
+        old.resolve(reply('old'));
+        await pending;
+        expect(tail).not.toHaveBeenCalled();
+        if (replacement) {
+          next.resolve(reply('new'));
+          await replacement;
+          expect(tail).toHaveBeenCalledExactlyOnceWith('fixture', reply('new').result!.tools);
+          expect(client.listTools().map((tool) => tool.name)).toEqual(['new']);
+        }
+        await closing;
+      } finally {
+        old.resolve(reply('old'));
+        next.resolve(reply('new'));
+        await Promise.allSettled([replacement, closing]);
+        await client.close();
+      }
+    },
+  );
+
   for (const kind of ['stdio', 'sse', 'streamable'] as const) {
     it(`${kind}: an older response cannot overwrite a newer catalog`, async () => {
       const { target, boundary, request, changed } = fixture(kind);

@@ -26,7 +26,7 @@ import {
   directiveTrials,
   type StructuredLearnedEntry,
 } from './project-agent-learning-structured.js';
-import { roleDir, writeTextAtomically } from './project-agent-paths.js';
+import { readRoleFileForUpdate, roleDir, writeTextAtomically } from './project-agent-paths.js';
 
 /** Ceiling on the retired-directive log. Local audit only; never injected. */
 export const QUARANTINE_MAX_BYTES = 64 * 1024;
@@ -66,7 +66,8 @@ export function appendQuarantine(
 ): void {
   if (retired.length === 0) return;
   const filePath = quarantinePath(role, projectRoot);
-  const existing = readTextOrEmpty(filePath);
+  // Strict read: an unreadable log taken as '' was replaced by this block.
+  const existing = readRoleFileForUpdate(filePath);
   const header = existing
     ? ''
     : `# Retired directives for \`${role}\`\n\n> Directives that were exercised repeatedly and kept correlating with\n> failure. They are no longer injected anywhere. Kept for audit — a directive\n> can be right about a project that has since changed.\n\n`;

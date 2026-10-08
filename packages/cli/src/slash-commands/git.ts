@@ -271,8 +271,10 @@ async function generateCommitMessageHeuristics(git: GitRunner): Promise<string> 
   const statsResult = await git(['diff', '--cached', '--stat']);
   if (statsResult.code !== 0) return 'chore: update';
 
-  const nameResult = await git(['diff', '--cached', '--name-only']);
-  const files = nameResult.stdout.split('\n').filter(Boolean);
+  // -z: without it core.quotePath C-quotes non-ASCII names (`şema.ts` ->
+  // `"\305\237ema.ts"`) and that text would be committed in the message.
+  const nameResult = await git(['diff', '--cached', '--name-only', '-z']);
+  const files = nameResult.stdout.split('\0').filter(Boolean);
   const commitType = detectCommitType(statsResult.stdout);
 
   let scope = '';

@@ -1,6 +1,6 @@
 /** Fix backups: written before every apply, restored on rollback and by `undo`. */
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
@@ -29,7 +29,7 @@ function sha(text: string): string {
 }
 
 export function writeBackup(projectRoot: string, plan: InternalPlan): BackupManifest {
-  const id = `${new Date().toISOString().replace(/[:.]/g, '-')}-${process.pid}`;
+  const id = `${new Date().toISOString().replace(/[:.]/g, '-')}-${process.pid}-${randomUUID()}`;
   const dir = path.join(backupRoot(projectRoot), id);
   fs.mkdirSync(path.join(dir, 'blobs'), { recursive: true });
   const manifest: BackupManifest = {

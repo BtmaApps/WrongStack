@@ -431,9 +431,16 @@ import {
   setupVectorMemoryMirror,
 } from '../src/server/start-webui-vector.js';
 
+const vectorBackend = vi.hoisted(() => ({ installed: true }));
 vi.mock('@wrongstack/vector-memory', () => ({
   VectorMemoryStore: vi.fn(),
-  TransformersEmbeddingProvider: vi.fn(),
+  TransformersEmbeddingProvider: vi.fn(
+    class {
+      isInstalled() {
+        return vectorBackend.installed;
+      }
+    },
+  ),
   startFirstBootSageSync: vi.fn().mockResolvedValue(undefined),
   subscribeVectorMemoryToSage: vi.fn().mockReturnValue({ dispose: vi.fn() }),
   sweepStaleSageMirrors: vi.fn().mockResolvedValue(undefined),
@@ -459,6 +466,24 @@ describe('start-webui-vector', () => {
       vectorMemoryModelCacheDir: 'D:/cache',
     });
     expect(store).toBeDefined();
+  });
+
+  it('initVectorMemoryStore exposes no store when the opt-in backend is not installed', () => {
+    vectorBackend.installed = false;
+    try {
+      const logger = { warn: vi.fn(), debug: vi.fn() };
+      const store = initVectorMemoryStore({
+        projectRoot: 'D:/root',
+        config: {},
+        logger: logger as never,
+        vectorMemoryModelCacheDir: 'D:/cache',
+      });
+      expect(store).toBeUndefined();
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('not installed'));
+    } finally {
+      vectorBackend.installed = true;
+    }
   });
 
   it('setupVectorMemoryMirror sets up mirror and disposal', () => {

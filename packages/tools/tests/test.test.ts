@@ -214,6 +214,13 @@ describe('buildArgs — the flags that actually reach the runner', () => {
       ['--coverage', '--testNamePattern', 'testpattern', '--testTimeout', '30000'],
     ],
     ['timeout floor', { runner: 'jest', timeout: 5 }, ['--testTimeout', '100']],
+    // Above 2^31-1 ms Node clamps the runner's per-test timer to 1 ms, so an
+    // uncapped value failed every test as "timed out".
+    [
+      'timeout ceiling',
+      { runner: 'vitest', timeout: 3_000_000_000 },
+      ['run', '--testTimeout', '2147483647'],
+    ],
   ])('%s', async (_label, input, expected) => {
     const call = await argvFor(input);
     expect(call.cmd).toBe(input.runner);

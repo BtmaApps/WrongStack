@@ -22,6 +22,9 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     ...actual,
     open: vi.fn(async (filePath: string, flags?: string) => actual.open(filePath, flags as string)),
     unlink: vi.fn(async (filePath: string) => actual.unlink(filePath)),
+    readFile: vi.fn(async (...args: Parameters<typeof actual.readFile>) =>
+      actual.readFile(...args),
+    ),
   };
 });
 
@@ -39,6 +42,7 @@ afterEach(async () => {
   vi.clearAllMocks();
   vi.mocked(fsp.open).mockReset();
   vi.mocked(fsp.unlink).mockReset();
+  vi.mocked(fsp.readFile).mockReset();
   await fsp.rm(dir, { recursive: true, force: true });
 });
 
@@ -142,5 +146,50 @@ describe('SessionRegistry same-pid ownership', () => {
     expect(ids).toEqual(['sess-tab-a', 'sess-tab-b']);
 
     await reg.unregister();
+  });
+});
+
+describe('atomicUpdate registry read failures', () => {
+  const entry = (sessionId: string, pid: number) => ({
+    sessionId,
+    projectSlug: 'ws',
+    projectRoot: '/ws',
+    projectName: 'WS',
+    workingDir: '/ws',
+    pid,
+    startedAt: new Date().toISOString(),
+  });
+
+  it('never erases other live sessions while the registry is unreadable', async () => {
+    // An unreadable registry used to read as `{}`; the update was written back
+    // and every other live claim vanished, so a second process could open a
+    // session that its running owner was still writing.
+    const owner = new SessionRegistry(dir, { ownershipLockWaitMs: 2_000 });
+    await owner.register(entry('sess-live', process.pid));
+    const registryPath = path.join(dir, 'session-registry.json');
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    vi.mocked(fsp.readFile).mockImplementation((async (
+      file: Parameters<typeof actual.readFile>[0],
+      ...rest: unknown[]
+    ) => {
+      if (String(file) === registryPath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (actual.readFile as (...a: unknown[]) => Promise<unknown>)(file, ...rest);
+    }) as never);
+
+    await expect(
+      new SessionRegistry(dir, { ownershipLockWaitMs: 2_000 }).register(
+        entry('sess-other', process.pid),
+      ),
+    ).rejects.toThrow('ownership update failed');
+
+    vi.mocked(fsp.readFile).mockImplementation(actual.readFile as never);
+    await expect(
+      new SessionRegistry(dir, { ownershipLockWaitMs: 2_000 }).register(
+        entry('sess-live', process.ppid),
+      ),
+    ).rejects.toThrow('already open');
+    await owner.unregister();
   });
 });

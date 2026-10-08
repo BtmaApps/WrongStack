@@ -2,13 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type { TodoItem } from '@wrongstack/core/agent';
 import {
   addPlanItem,
-  emptyPlan,
   formatPlan,
-  loadPlan,
   loadTasks,
+  mutatePlan,
   mutateTasks,
   saveCompletedWorkCheckpoint,
-  savePlan,
 } from '@wrongstack/core/storage';
 import type { SlashCommand, TaskPriority, TaskStatus, TaskType } from '@wrongstack/core/types';
 import type { TaskItem } from '@wrongstack/core/utils';
@@ -147,9 +145,13 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
             outputMessage = `No task matched "${restJoined}".`;
             return file;
           }
-          const planCfg = (await loadPlan(planPath)) ?? emptyPlan(sessionId);
-          const { plan: updated } = addPlanItem(planCfg, found.item.title, found.item.description);
-          await savePlan(planPath, updated);
+          // mutatePlan: an unreadable plan is not taken for an empty one (a
+          // load-or-empty + save replaced every plan item with this one).
+          const updated = await mutatePlan(
+            planPath,
+            sessionId,
+            (planCfg) => addPlanItem(planCfg, found.item.title, found.item.description).plan,
+          );
           outputMessage = `Planified "${sanitizeTerminalText(found.item.title)}" → plan item.\n${formatPlan(updated)}`;
           return file;
         });

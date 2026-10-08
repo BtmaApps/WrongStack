@@ -1427,6 +1427,36 @@ describe('OpenAICodexProvider stream parsing', () => {
 
     expect(res.content).toEqual([{ type: 'text', text: 'ABCDEF' }]);
   });
+
+  it('does not repeat prefilled message parts when their text.done events arrive', async () => {
+    const events = [
+      {
+        type: 'response.output_item.added',
+        item: {
+          type: 'message',
+          content: [
+            { type: 'output_text', text: 'AB' },
+            { type: 'output_text', text: 'CD' },
+          ],
+        },
+      },
+      { type: 'response.output_text.done', content_index: 0, text: 'AB' },
+      { type: 'response.output_text.done', content_index: 1, text: 'CD' },
+      {
+        type: 'response.completed',
+        response: { status: 'completed', usage: { input_tokens: 1, output_tokens: 1 } },
+      },
+    ];
+    const p = new OpenAICodexProvider({
+      credentials: { accessToken: fakeJwt('a'), expiresAt: Date.now() + 3_600_000 },
+      fetchImpl: (async () =>
+        new Response(sseBody(events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('')), {
+          status: 200,
+        })) as never as typeof fetch,
+    });
+    const res = await p.complete(baseReq, { signal: new AbortController().signal });
+    expect(res.content).toEqual([{ type: 'text', text: 'ABCD' }]);
+  });
 });
 
 describe('OpenAICodexProvider token refresh', () => {

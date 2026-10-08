@@ -54,6 +54,8 @@ interface ContextPinsState {
   adds: number;
   removals: number;
   persistErrors: number;
+  /** Set when the pins file exists but could not be read at setup. */
+  loadError?: string | undefined;
   contributorUnregister: null | (() => void);
 }
 
@@ -168,10 +170,20 @@ function readConfig(raw: unknown, roots: readonly string[] = [process.cwd()]): C
 // Persistence (best-effort, synchronous — pins are tiny)
 // ---------------------------------------------------------------------------
 
-function loadPins(filePath: string): { pins: Pin[]; nextId: number } {
+function loadPins(filePath: string): { pins: Pin[]; nextId: number; unreadable?: string } {
   if (!filePath) return { pins: [], nextId: 1 };
+  let text: string;
   try {
-    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as {
+    text = fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    // Only a missing file means "no pins". Any other read error (EBUSY from
+    // an AV scan, EPERM, EIO) used to look empty too, and the next pin_add
+    // wrote that empty list over the file — deleting every pin.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { pins: [], nextId: 1 };
+    return { pins: [], nextId: 1, unreadable: err instanceof Error ? err.message : String(err) };
+  }
+  try {
+    const raw = JSON.parse(text) as {
       pins?: unknown;
       nextId?: unknown;
     };
@@ -207,6 +219,11 @@ type PersistOutcome = 'file' | 'memory' | 'error';
 
 async function persistPins(filePath: string): Promise<PersistOutcome> {
   if (!filePath) return 'memory';
+  if (state.loadError !== undefined) {
+    // The stored pins were never loaded: writing now would replace them.
+    state.persistErrors += 1;
+    return 'error';
+  }
   try {
     // Atomic tmp+rename so a crash mid-write can't tear the pin state.
     //
@@ -299,6 +316,12 @@ const plugin: Plugin = {
     // cap, and the next add/remove rewrote the file without them.
     state.pins = loaded.pins;
     state.nextId = loaded.nextId;
+    state.loadError = loaded.unreadable;
+    if (loaded.unreadable !== undefined) {
+      api.log.warn(
+        `context-pins: could not read ${cfg.filePath} (${loaded.unreadable}) — stored pins are not loaded and new pins will NOT be saved this session`,
+      );
+    }
 
     // ── System prompt contributor — the reason this plugin exists ─────
     if (cfg.enabled) {
@@ -479,6 +502,7 @@ const plugin: Plugin = {
     state.adds = 0;
     state.removals = 0;
     state.persistErrors = 0;
+    state.loadError = undefined;
     api.log.info('context-pins: teardown complete', { final });
   },
 

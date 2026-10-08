@@ -55,18 +55,6 @@ export async function syncSageEntries(
       };
       const expectedTags = memory.tags ?? [];
       const expectedSummary = memory.summary ?? undefined;
-      // By SAGE id: a text match owned by another memory is not this mirror.
-      const existing = host.findBySageId(memory.id);
-      const sameState =
-        existing !== undefined &&
-        vectorContentHash(existing.text) === hash &&
-        existing.summary === expectedSummary &&
-        jsonValuesEqual(existing.tags, expectedTags) &&
-        jsonValuesEqual(existing.metadata, expectedMetadata);
-      if (sameState) {
-        skipped++;
-        continue;
-      }
       // The dedup-check → INSERT pair is a read-modify-write, so it runs
       // under the same host-OS file lock as `remember()` (see the class
       // header). Unlocked, two concurrent syncs (e.g. two surfaces
@@ -79,13 +67,22 @@ export async function syncSageEntries(
       // If an entry for this sageId already existed with different text,
       // delete the stale entry before inserting to prevent leaking orphaned
       // ghosts (matching sage-event-mirror's update path).
-      await withFileLock(
+      const changed = await withFileLock(
         host.lockPath,
-        () => {
-          if (existing && !sameState) {
+        async () => {
+          // Re-read after waiting for the lock; another sync may have replaced the row.
+          const existing = host.findBySageId(memory.id);
+          const sameState =
+            existing !== undefined &&
+            vectorContentHash(existing.text) === hash &&
+            existing.summary === expectedSummary &&
+            jsonValuesEqual(existing.tags, expectedTags) &&
+            jsonValuesEqual(existing.metadata, expectedMetadata);
+          if (sameState) return false;
+          if (existing) {
             host.forgetUnlocked(existing.id);
           }
-          return host.rememberUnlocked({
+          await host.rememberUnlocked({
             text: memory.text,
             summary: expectedSummary,
             metadata: expectedMetadata,
@@ -93,10 +90,12 @@ export async function syncSageEntries(
             scope: 'project',
             kind: 'note',
           });
+          return true;
         },
         { timeoutMs: DEFAULT_LOCK_TIMEOUT_MS },
       );
-      indexed++;
+      if (changed) indexed++;
+      else skipped++;
     } catch (err) {
       failed++;
       errors.push({ memoryId: memory.id, message: errMsg(err) });

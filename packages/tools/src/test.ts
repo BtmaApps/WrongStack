@@ -242,7 +242,9 @@ function buildArgs(runner: string, input: TestInput): string[] {
     typeof input.timeout === 'number' && Number.isFinite(input.timeout) && input.timeout > 0
       ? Math.floor(input.timeout)
       : 30000;
-  const timeout = Math.max(100, rawTimeout);
+  // The runner arms each test with setTimeout, which Node clamps above
+  // 2^31-1 ms to 1 ms: a huge timeout failed every test as "timed out".
+  const timeout = Math.min(Math.max(100, rawTimeout), 2_147_483_647);
 
   switch (runner) {
     case 'vitest':

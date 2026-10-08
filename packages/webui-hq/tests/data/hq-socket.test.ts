@@ -607,7 +607,10 @@ describe('HqSocket', () => {
   // ── WebSocket constructor throws ─────────────────────────────────────
 
   it('calls scheduleReconnect when WebSocket constructor throws', () => {
-    const throwingCtor = vi.fn(() => {
+    // Regular function, not an arrow: the code under test calls
+    // `new WebSocket(...)`, and vitest warns when a vi.fn() mock is
+    // constructed from a non-constructible implementation.
+    const throwingCtor = vi.fn(function throwingWebSocket() {
       throw new Error('ws fail');
     });
     vi.stubGlobal('WebSocket', throwingCtor);

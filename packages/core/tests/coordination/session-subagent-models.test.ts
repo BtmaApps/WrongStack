@@ -79,6 +79,34 @@ describe('plan shape', () => {
 });
 
 describe('lane claiming', () => {
+  it.each(['abandon', 'bind', 'release'] as const)(
+    'ignores a gated stale %s after the plan counter generation is replaced',
+    async (mode) => {
+      const plan = planWith({ model: 'a' }, { model: 'b' });
+      setSessionSubagentModelPlanForSession(SESSION, plan);
+      const stale = claimSubagentSlot(SESSION)!;
+      if (mode === 'release') stale.bind('old');
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const pending = (async () => {
+        await gate;
+        if (mode === 'abandon') stale.abandon();
+        else if (mode === 'bind') stale.bind('old');
+        else releaseSubagentSlot('old');
+      })();
+      setSessionSubagentModelPlanForSession(SESSION, undefined);
+      setSessionSubagentModelPlanForSession(SESSION, plan);
+      claimSubagentSlot(SESSION)!.bind('current');
+      expect(subagentSlotOccupancy(SESSION)[0]?.subagentIds).toEqual(['current']);
+      release();
+      await pending;
+      expect(claimSubagentSlot(SESSION)?.slotIndex).toBe(1);
+      expect(subagentSlotOccupancy(SESSION)[0]?.subagentIds).toEqual(['current']);
+    },
+  );
+
   it('gives concurrent spawns different lanes, in order', () => {
     setSessionSubagentModelPlanForSession(
       SESSION,

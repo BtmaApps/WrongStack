@@ -80,6 +80,7 @@ export function manifestConfigHash(cfg: {
     env: sortedEntries(cfg.env),
     headers: sortedEntries(cfg.headers),
     bearerTokenEnv: cfg.bearerTokenEnv ?? null,
+    ...(cfg.bearerTokenEnv ? { bearerToken: process.env[cfg.bearerTokenEnv.trim()] ?? null } : {}),
     passthroughEnv: passthroughEntries(cfg.passthroughEnv),
   });
   return createHash('sha256').update(basis).digest('hex').slice(0, 16);

@@ -158,7 +158,7 @@ export class MCPServer {
       typeof msg.method !== 'string' ||
       !validId
     ) {
-      const id = msg && typeof msg === 'object' ? (msg.id ?? null) : null;
+      const id = validId && msg && typeof msg === 'object' ? (msg.id ?? null) : null;
       return this.encodeError(id ?? null, INVALID_REQUEST, 'Invalid Request');
     }
 

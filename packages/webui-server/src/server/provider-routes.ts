@@ -289,9 +289,19 @@ async function dispatchProviderRoute(
     case 'providers.saved':
       await routes.listSavedProviders(ws, msg);
       return true;
-    case 'provider.models':
+    case 'provider.models': {
+      // A payload-less frame is decoder-legal for client messages, but both
+      // route adapters dereference `payload.providerId`. Validate here like
+      // every other payload-bearing case so the client gets the invalid
+      // result frame instead of a throw past the dispatcher (which only
+      // logs it — the asking tab would get no answer at all).
+      const payload = asPayloadRecord(msg);
+      if (!payload || !requiredString(payload, 'providerId')) {
+        return invalidPayload(ws, msg.type);
+      }
       await routes.listProviderModels(ws, msg);
       return true;
+    }
     case 'provider.models.search': {
       const payload = asPayloadRecord(msg);
       const query = payload ? requiredString(payload, 'query') : null;

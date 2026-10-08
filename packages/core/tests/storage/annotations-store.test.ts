@@ -238,6 +238,21 @@ describe('AnnotationsStore', () => {
     }
   });
 
+  it('add() never writes over annotations it cannot read', async () => {
+    // add() built on list(), which degrades to [] on a read error; writing
+    // that back deleted every existing annotation of the session.
+    await store.add({ sessionId: 'keep', atEventIndex: 1, authorId: 'u', text: 'existing' });
+    fs.readFile.mockRejectedValueOnce(Object.assign(new Error('EIO i/o error'), { code: 'EIO' }));
+    try {
+      await expect(
+        store.add({ sessionId: 'keep', atEventIndex: 2, authorId: 'u', text: 'new' }),
+      ).rejects.toMatchObject({ code: 'EIO' });
+    } finally {
+      fs.readFile.mockReset();
+    }
+    expect((await store.list('keep')).map((a) => a.text)).toEqual(['existing']);
+  });
+
   it('emits storage.write with operation add on successful add()', async () => {
     const events = new EventBus();
     const emitSpy = vi.spyOn(events, 'emit');

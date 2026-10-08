@@ -397,6 +397,9 @@
       "DIRECTIVE_QUARANTINE_MAX_LIFT",
       "shouldRetireDirective"
     ],
+    "packages/core/src/coordination/agents/project-agent-skill-layer.ts": [
+      "projectSkillAffinityPath"
+    ],
     "packages/core/src/coordination/agents/role-skills.ts": [
       "BUNDLED_AGENT_SKILLS"
     ],

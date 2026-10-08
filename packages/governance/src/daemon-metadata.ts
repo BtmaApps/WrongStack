@@ -637,6 +637,12 @@ export async function acquireGovernanceDaemonStartupLease(
 
     const existingRaw = await readBounded(pathname);
     if (existingRaw === null) continue;
+    // The holder creates the lease with 'wx' and writes the record after, so a
+    // zero-byte lease is one being written, not an invalid one: wait for it.
+    if (existingRaw.length === 0 && now() < deadline) {
+      await delay(Math.min(retryMs, Math.max(1, deadline - now())));
+      continue;
+    }
     const existing = parseLease(existingRaw, options.projectRoot);
     if (!existing) {
       throw new GovernanceDaemonStartupLeaseError(

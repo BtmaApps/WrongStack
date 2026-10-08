@@ -30,6 +30,7 @@ export async function reindexVectorEntries(
   return withFileLock(
     host.lockPath,
     async () => {
+      host.assertOpen();
       const rows = (
         opts.onlyMissing
           ? host.db
@@ -47,6 +48,7 @@ export async function reindexVectorEntries(
           // the per-entry vector, even if the cached text-vector is
           // already valid for the same content_hash.
           const result = await host.provider.embed([row.text as string]);
+          host.assertOpen();
           const v = result[0];
           if (!v || v.length !== host.provider.dimensions || !v.every(Number.isFinite)) {
             errors++;
@@ -68,6 +70,7 @@ export async function reindexVectorEntries(
           host.cacheVector(row.text as string, v, now);
           processed++;
         } catch {
+          host.assertOpen();
           errors++;
         }
       }

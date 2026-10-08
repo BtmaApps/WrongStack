@@ -185,6 +185,26 @@ describe('type-gate plugin', () => {
     expect(result?.decision).toBe('block');
   });
 
+  it('blocks when tsc fails without printing a TS diagnostic', async () => {
+    // A crashing tsc (or the unrelated `tsc` npm stub behind `npx tsc`) exits
+    // non-zero with no `error TS` line; reading only the text passed the gate.
+    vi.mocked(execFileSync).mockImplementation(() => {
+      throw Object.assign(new Error('tsc crashed'), {
+        stderr: 'FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory',
+        code: 134,
+      });
+    });
+    const api = makeApi({ extensions: { 'type-gate': { enabled: true, failSeverity: 'block' } } });
+    typeGatePlugin.setup(api as never);
+    const result = await getHook(api)({
+      toolName: 'write',
+      toolInput: { path: 'src/foo.ts' },
+      toolResult: { content: '', isError: false },
+    });
+    expect(result?.decision).toBe('block');
+    expect(result?.reason).toContain('exited with code 134');
+  });
+
   it('runs by default now that the master switch defaults on', async () => {
     // It used to require a literal `enabled: true` on top of host enablement,
     // so `wstack plugin enable type-gate` produced a gate that never ran tsc.

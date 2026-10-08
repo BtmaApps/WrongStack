@@ -33,6 +33,11 @@ export async function query(
   const type = query.type === undefined ? undefined : normalizeMailboxMessageType(query.type);
   const priorityRank = { low: 0, normal: 1, high: 2 } as const;
   const minimumRank = query.minPriority === undefined ? 0 : priorityRank[query.minPriority];
+  // Stored timestamps are toISOString() text and are compared as text, so an
+  // ISO instant written with an offset ("…+03:00") must be put in that same
+  // form first or it orders by its local clock and drops later messages.
+  const sinceMs = query.since === undefined ? Number.NaN : Date.parse(query.since);
+  const since = Number.isFinite(sinceMs) ? new Date(sinceMs).toISOString() : query.since;
   // An explicit empty id set matches nothing — and `IN ()` is not valid
   // SQL, so this has to short-circuit before the statement is built.
   if (query.ids !== undefined && query.ids.length === 0) return [];
@@ -71,9 +76,9 @@ export async function query(
     where.push(`CASE priority WHEN 'high' THEN 2 WHEN 'low' THEN 0 ELSE 1 END >= ?`);
     params.push(minimumRank);
   }
-  if (query.since !== undefined) {
+  if (since !== undefined) {
     where.push('timestamp > ?');
-    params.push(query.since);
+    params.push(since);
   }
   if (!query.includeDeleted) where.push('deleted_at IS NULL');
   if (query.replyTo !== undefined) {
@@ -158,7 +163,7 @@ export async function query(
       return false;
     if (type !== undefined && message.type !== type) return false;
     if (priorityRank[message.priority] < minimumRank) return false;
-    if (query.since !== undefined && message.timestamp <= query.since) return false;
+    if (since !== undefined && message.timestamp <= since) return false;
     if (!query.includeDeleted && message.deletedAt !== undefined) return false;
     if (query.replyTo !== undefined && message.replyTo !== query.replyTo) return false;
     return true;

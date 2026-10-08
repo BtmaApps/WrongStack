@@ -122,9 +122,16 @@ export async function registerProjectInManifest(
         lastWorkingDir?: string;
       }>;
     };
+    let raw: string | undefined;
     try {
-      const raw = await fs.readFile(manifestPath, 'utf8');
-      manifest = JSON.parse(raw);
+      raw = await fs.readFile(manifestPath, 'utf8');
+    } catch (err) {
+      // Only a missing manifest starts empty: on any other read error the
+      // write below would erase every other registered project.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
+    try {
+      manifest = raw === undefined ? { projects: [] } : JSON.parse(raw);
     } catch {
       manifest = { projects: [] };
     }

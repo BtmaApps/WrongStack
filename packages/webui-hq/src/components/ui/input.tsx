@@ -25,10 +25,6 @@ export function Textarea({
   );
 }
 
-/**
- * Native select. Radix Select is used where the list needs search, icons or
- * grouping; a plain picker does not need a portal and a listbox.
- */
 export function Select({
   className,
   ...props

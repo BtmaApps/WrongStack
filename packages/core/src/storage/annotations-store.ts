@@ -201,7 +201,9 @@ export class AnnotationsStore {
     try {
       await this.enqueue(input.sessionId, async () => {
         await withFileLock(fp, async () => {
-          const all = await this.list(input.sessionId);
+          // Not list(): it degrades to [] on a read error, and writing that
+          // back deleted every existing annotation. readFile() throws instead.
+          const all = (await this.readFile(input.sessionId))?.annotations ?? [];
           all.push(annotation);
           // Evict oldest if we crossed the cap. Resolved first, then oldest.
           if (all.length > this.maxAnnotations) {

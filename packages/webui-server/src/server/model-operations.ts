@@ -198,7 +198,12 @@ export function createModelOperations(context: ModelOperationsContext) {
     );
   }
 
-  async function refineModel(ws: WebSocket, payload: ModelRefinePayload): Promise<void> {
+  async function refineModel(ws: WebSocket, rawPayload: ModelRefinePayload): Promise<void> {
+    // A payload-less frame is decoder-legal for client messages. The empty-
+    // text guard below is the correct answer for one — treat a missing
+    // payload the same way instead of throwing past the dispatcher, which
+    // only logs it and leaves the asking tab without a refine_result frame.
+    const payload = rawPayload ?? ({} as ModelRefinePayload);
     const text = payload.text;
     // Echo the asking tab: refinement runs against that session's model and
     // history, and the reply must be lane-routable — an untagged

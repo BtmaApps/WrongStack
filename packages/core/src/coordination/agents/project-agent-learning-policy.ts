@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { learningPolicyPath, writeTextAtomically } from './project-agent-paths.js';
+import {
+  learningPolicyPath,
+  readRoleFileForUpdate,
+  writeTextAtomically,
+} from './project-agent-paths.js';
 
 /** Persistent controls and counters for one roster role's learning loop. */
 export interface ProjectAgentLearningPolicy {
@@ -31,9 +35,15 @@ export function loadProjectAgentLearningPolicy(
   projectRoot?: string,
 ): ProjectAgentLearningPolicy {
   try {
-    const parsed = JSON.parse(
-      readFileSync(learningPolicyPath(role, projectRoot), 'utf8'),
-    ) as Partial<ProjectAgentLearningPolicy>;
+    return policyFromText(readFileSync(learningPolicyPath(role, projectRoot), 'utf8'));
+  } catch {
+    return { ...DEFAULT_LEARNING_POLICY };
+  }
+}
+
+function policyFromText(text: string): ProjectAgentLearningPolicy {
+  try {
+    const parsed = JSON.parse(text) as Partial<ProjectAgentLearningPolicy>;
     return {
       enabled: parsed.enabled !== false,
       lifetimeCaptureCount:
@@ -75,8 +85,11 @@ export function updateProjectAgentLearningPolicy(
   const defined = Object.fromEntries(
     Object.entries(patch).filter(([, value]) => value !== undefined),
   ) as Partial<ProjectAgentLearningPolicy>;
+  // Strict read: an unreadable file taken as the defaults was written back with
+  // enabled:true, re-enabling a role the user had switched off.
+  const current = readRoleFileForUpdate(learningPolicyPath(role, projectRoot));
   const updated: ProjectAgentLearningPolicy = {
-    ...loadProjectAgentLearningPolicy(role, projectRoot),
+    ...(current ? policyFromText(current) : { ...DEFAULT_LEARNING_POLICY }),
     ...defined,
   };
   writeTextAtomically(

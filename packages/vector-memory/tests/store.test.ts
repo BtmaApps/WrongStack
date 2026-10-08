@@ -235,6 +235,72 @@ describe('VectorMemoryStore', () => {
     }
   });
 
+  it.each(['tags', 'summary', 'unchanged'] as const)(
+    'rechecks the current SAGE mirror after a queued %s sync acquires the lock',
+    async (mode) => {
+      const entered = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      const secondLock = Promise.withResolvers<void>();
+      let blocked = false;
+      class GatedProvider extends FakeEmbeddingProvider {
+        override async embed(texts: string[]): Promise<Float32Array[]> {
+          if (texts.includes('updated fact') && !blocked) {
+            blocked = true;
+            entered.resolve();
+            await release.promise;
+          }
+          return super.embed(texts);
+        }
+      }
+      const concurrentStore = makeStore({ provider: new GatedProvider() });
+      const source = (tags: string[], summary?: string): SageSyncSource => ({
+        listActiveMemories: async () => [
+          { id: 'sage-1', text: 'updated fact', tags, ...(summary ? { summary } : {}) },
+        ],
+      });
+      const pending: Array<Promise<unknown>> = [];
+      try {
+        await concurrentStore.remember({
+          text: 'old fact',
+          metadata: { source: 'sage', sageId: 'sage-1' },
+        });
+        const lockPath = concurrentStore.lockPath;
+        let acquisitions = 0;
+        Object.defineProperty(concurrentStore, 'lockPath', {
+          get() {
+            if (++acquisitions === 2) secondLock.resolve();
+            return lockPath;
+          },
+        });
+        const first = concurrentStore.syncFromSage(source(['first']));
+        pending.push(first);
+        await entered.promise;
+        const second = concurrentStore.syncFromSage(
+          source(
+            mode === 'tags' ? ['second'] : ['first'],
+            mode === 'summary' ? 'new summary' : undefined,
+          ),
+        );
+        pending.push(second);
+        await secondLock.promise;
+        release.resolve();
+        const reports = await Promise.all([first, second]);
+        expect(reports.map((report) => report.failed)).toEqual([0, 0]);
+        expect(concurrentStore.findBySageId('sage-1')).toMatchObject({
+          text: 'updated fact',
+          tags: mode === 'tags' ? ['second'] : ['first'],
+          summary: mode === 'summary' ? 'new summary' : undefined,
+        });
+        expect(concurrentStore.stats().entries).toBe(1);
+        if (mode === 'unchanged') expect(reports[1]?.skipped).toBe(1);
+      } finally {
+        release.resolve();
+        await Promise.allSettled(pending);
+        concurrentStore.close();
+      }
+    },
+  );
+
   it('records the active provider id in schema_meta', () => {
     expect(store.activeProviderId).toMatch(/^fake-v1-/);
   });

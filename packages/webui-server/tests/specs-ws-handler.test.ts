@@ -149,4 +149,19 @@ describe('SpecsWebSocketHandler', () => {
     mockWs.emit('close');
     handler.dispose();
   });
+
+  it('routes a payload-less specs.taskStatus frame through the wire-input guard', async () => {
+    // A payload-less frame is decoder-legal for client messages; it must meet
+    // the same wire-input guard as any other malformed taskStatus payload
+    // instead of crashing on the destructuring (a TypeError there bypassed
+    // the guard entirely and left the asking tab without any frame).
+    mkdirSync(specsDir, { recursive: true });
+    mkdirSync(graphsDir, { recursive: true });
+    const handler = new SpecsWebSocketHandler(specsDir, graphsDir);
+
+    await expect(handler.handleMessage({ type: 'specs.taskStatus' })).rejects.toThrow(
+      'Invalid task status',
+    );
+    handler.dispose();
+  });
 });

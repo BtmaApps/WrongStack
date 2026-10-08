@@ -206,7 +206,7 @@ export class PhaseStore {
         return async () => {
           if (released) return;
           released = true;
-          const current = await this.readRunLease(leasePath);
+          const current = await this.readRunLease(leasePath).catch(() => null);
           if (current?.ownerId !== ownerId) return;
           await fsp.unlink(leasePath).catch((err: NodeJS.ErrnoException) => {
             if (err.code !== 'ENOENT') throw err;
@@ -266,7 +266,12 @@ export class PhaseStore {
     const isolated = graph.workspace || graph.leaseScope === 'goal';
     const leaseStore = isolated ? this.goalLeaseStore(graph.id) : this;
     const leasePath = path.join(leaseStore.baseDir, RUN_LEASE_FILE);
-    const lease = await this.readRunLease(leasePath);
+    let lease: SerializedRunLease | null;
+    try {
+      lease = await this.readRunLease(leasePath);
+    } catch {
+      return 'unknown';
+    }
     if (lease)
       return this.isProcessAlive(lease.pid) && (isolated || lease.ownerId.endsWith(`:${graph.id}`))
         ? lease.ownerId
@@ -430,10 +435,17 @@ export class PhaseStore {
   }
 
   private async readRunLease(leasePath: string): Promise<SerializedRunLease | null> {
+    let raw: string;
     try {
-      const parsed = JSON.parse(
-        await fsp.readFile(leasePath, 'utf8'),
-      ) as Partial<SerializedRunLease>;
+      raw = await fsp.readFile(leasePath, 'utf8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      // Unreadable right now (EBUSY/EPERM) is not a torn write: the stale-lease
+      // path would unlink a live lease and admit a second run. Treat as held.
+      throw new GoalRunLeaseBusyError();
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<SerializedRunLease>;
       if (
         typeof parsed.ownerId !== 'string' ||
         typeof parsed.pid !== 'number' ||

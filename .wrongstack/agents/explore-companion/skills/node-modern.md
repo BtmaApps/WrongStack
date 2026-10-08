@@ -1,16 +1,19 @@
-## Scratch and mailbox evidence
-- For mailbox probes, follow `.temp_files/dump-l4.mjs`: open `~/.wrongstack/projects/<dir>/_mailbox.sqlite` with `node:sqlite` `DatabaseSync` using `{ readOnly: true }`; query `from_id, to_id, type, data` from `messages`, then parse the JSON string in `data` for `subject` and `body`.
-- Confirm ignored `.temp_files/` artifacts by direct `read`; claim ENOENT only after an exact-directory `tree` with `truncated=false`. After a grep timeout, narrow the follow-up to `scripts/` and root `package.json`, and mark full-tree closure unverified.
-- Inspect `.temp_files/proof-driven-bug-hunter/<round>/` with `tree` and `run.mjs`; root `vitest.config.ts` excludes `**/.temp_files/**`, so do not assume a shared runner or hardcoded config/CWD. Verify `resolve.alias` from manifests rather than a gitignore-aware `glob` over `node_modules/**`.
+## Proof runs — `[applied 14×, 14 ok]`
+
+- `tree` `.temp_files/proof-driven-bug-hunter/<round>/` before predicting how its proof runs: `run.mjs` present → scripted runner; absent → run `pnpm exec vitest run -c vitest.proof.config.mjs` yourself. Root `vitest.config.ts` excludes `**/.temp_files/**` — never assume a shared runner.
+- Treat `root: here`, `.replace(/\\/g, '/')`, and absolute `include` in `vitest.proof.config.mjs` as load-bearing on Windows: drop any one and Vitest resolves against `process.cwd()`/backslashes, silently collecting 0 tests instead of erroring.
+
+## Evidence hygiene — `[applied 2×, 2 ok]`
+
+- Re-run the exact repo-wide grep as the final step before reporting a zero-consumer dependency: sessions live-edit the tree (`pnpm-lock.yaml` and `packages/webui-hq/package.json` both dropped `@radix-ui/react-select` between rounds). A first-round hit that later reads zero is concurrent editing, not tool failure.
+- Claim ENOENT on an ignored `.temp_files/` artifact only after `tree`-ing that exact directory with `truncated=false`.
 
 ## Test discovery
-- Corroborate `packages/plugins/tests/*.test.ts` against `packages/plugins/vitest.config.ts` (`include: ['tests/**/*.test.ts']`), root `vitest.config.ts` (`packages/**/tests/**`), `packages/plugins/tsconfig.test.json` (`tests/**/*`, via `pnpm check:test-types`), and `docs/reports/architecture-health-current.json` (`projects`).
-- For `@wrongstack/tools` and `@wrongstack/providers`, honor `scripts.test` in `packages/tools/package.json` and `packages/providers/package.json`; use `vitest run --root ../.. packages/tools/tests` and `vitest run --root ../.. packages/providers/tests`, respectively.
+
+- Declare a `packages/plugins/tests/*.test.ts` file orphaned only after checking `packages/plugins/vitest.config.ts`, root `vitest.config.ts`, `pnpm check:test-types`, and `docs/reports/architecture-health-current.json`.
+- Drive `@wrongstack/tools` and `@wrongstack/providers` through their `scripts.test`: `vitest run --root ../.. packages/tools/tests`, likewise `packages/providers/tests`.
 
 ## ESM contracts
-- Before changing `packages/webui-server/src/server/route-family-dispatcher.ts` or its callers, read `packages/webui-server/tests/host-dispatcher-parity.test.ts`; `balancedBlockAfter` relies on raw `createRouteFamilyDispatcher(` formatting in `message-dispatcher.ts` and `embedded-message-router.ts`.
-- For `packages/core/src/types/spec.ts`, close consumers through both `./spec.js` and `@wrongstack/core/types/spec.js`. `packages/core/package.json` exposes only `./types` and `./types/limits`, and `scripts/vitest-core-aliases.mjs` does not establish plain Node ESM support.
 
-## Workspace and scope
-- Read membership from `pnpm-workspace.yaml`; distinguish `scripts/bump-version.mjs` version-only writes from manifest readers `scripts/build-portable.mjs`, `scripts/test-affected.mjs` (`SALT_FILES`), and `scripts/release-check-matrix.mjs`.
-- Check tracked scope separately with `@playwright/test` `files_with_matches` and `truncated=false` across `package.json`, `pnpm-lock.yaml`, and `e2e/*.spec.ts`; never infer scope from ignored `.temp_files/`.
+- Read `packages/webui-server/tests/host-dispatcher-parity.test.ts` before editing `route-family-dispatcher.ts`: `balancedBlockAfter` depends on the raw `createRouteFamilyDispatcher(` formatting.
+- Verify `packages/core/src/types/spec.ts` consumers close under both `./spec.js` and `@wrongstack/core/types/spec.js`.

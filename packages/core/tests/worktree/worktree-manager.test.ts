@@ -503,8 +503,14 @@ describe('WorktreeManager (stubbed git)', () => {
 
   it('diffSummary() parses numstat + commit count', async () => {
     const { run } = stubRunner((args) => {
-      if (args[0] === 'diff' && args.includes('--numstat')) {
-        return { code: 0, stdout: '4\t1\tsrc/a.ts\n-\t-\timg.png\n', stderr: '' };
+      // -z keeps non-ASCII names unquoted; a rename names its old and new
+      // paths in the two fields after an empty path.
+      if (args[0] === 'diff' && args.includes('--numstat') && args.includes('-z')) {
+        return {
+          code: 0,
+          stdout: '4\t1\tsrc/a.ts\0-\t-\timg.png\x002\t0\t\0old.ts\0şema.ts\0',
+          stderr: '',
+        };
       }
       if (args[0] === 'rev-list') return { code: 0, stdout: '3\n', stderr: '' };
       if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
@@ -512,9 +518,9 @@ describe('WorktreeManager (stubbed git)', () => {
     });
     const wm = new WorktreeManager({ projectRoot: PROJ, run });
     const s = await wm.diffSummary('/proj/.wrongstack/worktrees/s1', 'main');
-    expect(s.insertions).toBe(4);
+    expect(s.insertions).toBe(6);
     expect(s.deletions).toBe(1);
-    expect(s.files).toHaveLength(2);
+    expect(s.files.map((f) => f.path)).toEqual(['src/a.ts', 'img.png', 'şema.ts']);
     expect(s.commits).toBe(3);
   });
 

@@ -46,7 +46,10 @@ export function clampTimeoutMs(timeoutMs: number, maxTimeoutMs: number): number 
   const fallback = 300_000;
   const finiteTimeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : fallback;
   const finiteMax = Number.isFinite(maxTimeoutMs) && maxTimeoutMs > 0 ? maxTimeoutMs : fallback;
-  return Math.max(1, Math.min(finiteTimeout, finiteMax));
+  // Node timers hold at most 2^31-1 ms: a larger configured value (an
+  // "unlimited" 1000 h) was clamped to 1 ms and aborted every tool call, and
+  // from 2^32 AbortSignal.timeout threw ERR_OUT_OF_RANGE instead.
+  return Math.max(1, Math.min(finiteTimeout, finiteMax, 2_147_483_647));
 }
 
 /** Normalize an AbortSignal reason (Error | string | undefined) to an Error. */

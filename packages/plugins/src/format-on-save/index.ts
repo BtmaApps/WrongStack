@@ -131,7 +131,12 @@ function readConfig(raw: unknown): FormatOnSaveConfig {
   const rawTtl = r['skipTtlMs'] ?? r['skip_ttl_ms'] ?? r['ttlMs'] ?? r['ttl_ms'] ?? r['ttl'];
   return {
     enabled: r['enabled'] !== false,
-    timeoutMs: typeof rawTimeout === 'number' && rawTimeout > 0 ? rawTimeout : DEFAULTS.timeoutMs,
+    // Node clamps a timer above 2^31-1 ms to 1 ms; cap it so a huge timeout
+    // means "very long", not "kill at once".
+    timeoutMs:
+      typeof rawTimeout === 'number' && rawTimeout > 0
+        ? Math.min(rawTimeout, 2_147_483_647)
+        : DEFAULTS.timeoutMs,
     skipWhenCoveredBy: rawCovered !== false,
     skipTtlMs: typeof rawTtl === 'number' && rawTtl >= 0 ? rawTtl : DEFAULTS.skipTtlMs,
   };

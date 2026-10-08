@@ -92,6 +92,7 @@ export class SSETransport extends BaseHTTPTransport {
       this.tools.splice(0, this.tools.length, ...tools);
       this.toolCatalogRevision++;
       for (const cb of this.toolsChangedListeners) {
+        if (version !== this.toolCatalogVersion) break;
         try {
           cb([...this.tools]);
         } catch {

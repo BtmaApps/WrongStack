@@ -128,6 +128,19 @@ describe('SqliteMailbox messages', () => {
     expect(since.length).toBeGreaterThanOrEqual(0);
   });
 
+  it('compares since as an instant, not as text', async () => {
+    // A valid ISO8601 instant with an offset sorts by its local clock as text:
+    // one minute before the message, written in +03:00, dropped the message.
+    const message = await send({ subject: 'later' });
+    const before = Date.parse(message.timestamp) - 60_000;
+    const local = new Date(before + 3 * 3_600_000).toISOString().slice(0, 23);
+    const found = await mb.query({ since: `${local}+03:00` });
+    expect(found.map((m) => m.id)).toContain(message.id);
+    const after = new Date(Date.parse(message.timestamp) + 3 * 3_600_000 + 60_000);
+    const none = await mb.query({ since: `${after.toISOString().slice(0, 23)}+03:00` });
+    expect(none.map((m) => m.id)).not.toContain(message.id);
+  });
+
   it('applies unread filtering and the result limit before materializing message bodies', async () => {
     const messages = [];
     for (let i = 0; i < 80; i++) {

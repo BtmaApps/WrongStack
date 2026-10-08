@@ -177,6 +177,7 @@ export class Poller {
       if (epoch !== this.chainEpoch || signal.aborted) return;
       this._conflictStreak = 0;
       for (const upd of updates) {
+        if (epoch !== this.chainEpoch || signal.aborted) return;
         if (upd.update_id < this.offset) continue;
         if (upd.callback_query) {
           // Same poison-safety contract as the message path below: a failing
@@ -190,6 +191,7 @@ export class Poller {
               `Telegram callback handler failed: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
+          if (epoch !== this.chainEpoch || signal.aborted) return;
           this.offset = upd.update_id + 1;
           continue;
         }
@@ -209,6 +211,7 @@ export class Poller {
             `Telegram processMessage failed: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
+        if (epoch !== this.chainEpoch || signal.aborted) return;
         this.offset = upd.update_id + 1;
       }
       if (this.offsetStore && updates.length > 0) void this.saveOffset();

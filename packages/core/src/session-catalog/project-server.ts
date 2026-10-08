@@ -58,7 +58,10 @@ const startedAt = new Date().toISOString();
 const instanceId = randomUUID();
 const authToken = randomBytes(32).toString('hex');
 const idleInput = Number(process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS']);
-const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : 5 * 60_000;
+// Node clamps a timer delay above 2^31-1 ms to 1 ms: a huge "never idle out"
+// value would stop the daemon at once.
+const idleMs =
+  Number.isFinite(idleInput) && idleInput >= 100 ? Math.min(idleInput, 2_147_483_647) : 5 * 60_000;
 const disconnectedIdleMs = Math.min(idleMs, 250);
 /**
  * A socket that connects and then never sends a single byte pins this daemon

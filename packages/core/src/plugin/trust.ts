@@ -27,6 +27,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { ERROR_CODES, FsError } from '../types/errors.js';
+import { withFileLock } from '../utils/atomic-write.js';
 
 export interface PluginTrustEntry {
   /** Absolute entry file path that was hashed at pin time. */
@@ -90,8 +91,16 @@ export async function readPluginTrustStore(
   let raw: string;
   try {
     raw = await readFileFn(storePath);
-  } catch {
-    return { pinned: {} };
+  } catch (err) {
+    // Only a missing file is an empty store. Any other read error (EBUSY from
+    // an AV scan, EPERM, EIO) used to look empty too, and the next pin wrote
+    // that empty store back — deleting every existing pin.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { pinned: {} };
+    throw new FsError({
+      message: `Plugin trust store "${storePath}" could not be read (${err instanceof Error ? err.message : String(err)})`,
+      code: ERROR_CODES.FS_READ_FAILED,
+      path: storePath,
+    });
   }
   let parsed: unknown;
   try {
@@ -166,18 +175,24 @@ export async function pinPluginTrust(
   integrity: string,
   spec?: string,
 ): Promise<PluginTrustStore> {
-  const store = await readPluginTrustStore(storePath);
-  store.pinned[name] = { entry, integrity, pinnedAt: new Date().toISOString(), spec };
-  await writePluginTrustStore(storePath, store);
-  return store;
+  // Locked read-modify-write: two pins at once (two sessions booting with new
+  // plugins) both read the old store and the later write dropped the other pin.
+  return withFileLock(storePath, async () => {
+    const store = await readPluginTrustStore(storePath);
+    store.pinned[name] = { entry, integrity, pinnedAt: new Date().toISOString(), spec };
+    await writePluginTrustStore(storePath, store);
+    return store;
+  });
 }
 
 /** Remove the pin for `name` (if present) and persist the store. */
 export async function unpinPluginTrust(storePath: string, name: string): Promise<PluginTrustStore> {
-  const store = await readPluginTrustStore(storePath);
-  if (store.pinned[name] !== undefined) {
-    delete store.pinned[name];
-    await writePluginTrustStore(storePath, store);
-  }
-  return store;
+  return withFileLock(storePath, async () => {
+    const store = await readPluginTrustStore(storePath);
+    if (store.pinned[name] !== undefined) {
+      delete store.pinned[name];
+      await writePluginTrustStore(storePath, store);
+    }
+    return store;
+  });
 }

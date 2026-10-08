@@ -30,12 +30,19 @@ export function projectsJsonPath(globalConfigPath: string): string {
   return path.join(base, 'projects.json');
 }
 
-export async function loadManifest(globalConfigPath: string): Promise<ProjectsManifest> {
+export async function loadManifest(
+  globalConfigPath: string,
+  opts: { forWrite?: boolean } = {},
+): Promise<ProjectsManifest> {
   try {
     const raw = await fs.readFile(projectsJsonPath(globalConfigPath), 'utf8');
     const parsed = JSON.parse(raw) as ProjectsManifest;
     return { projects: parsed.projects ?? [] };
-  } catch {
+  } catch (error) {
+    // A caller that writes the manifest back must not treat "unreadable right
+    // now" as empty: the write would erase every other registered project.
+    const code = (error as NodeJS.ErrnoException).code;
+    if (opts.forWrite && code !== undefined && code !== 'ENOENT') throw error;
     return { projects: [] };
   }
 }
@@ -78,7 +85,7 @@ export async function touchProjectInManifest(
   const file = projectsJsonPath(globalConfigPath);
   let entry: ProjectEntry | undefined;
   await withFileLock(file, async () => {
-    const manifest = await loadManifest(globalConfigPath);
+    const manifest = await loadManifest(globalConfigPath, { forWrite: true });
     const now = new Date().toISOString();
     entry = manifest.projects.find((candidate) => path.resolve(candidate.root) === root);
     if (entry) {

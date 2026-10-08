@@ -88,10 +88,22 @@ export function ipcEndpointSecret(): string | null {
     return null;
   }
   if (cached?.file === file) return cached.secret;
-  const secret = readSecret(file) ?? createSecret(file);
+  let secret = readSecret(file) ?? createSecret(file);
+  // "Unreadable right now" is not "no secret": callers memoize the endpoint
+  // (a daemon computes it once at start), so falling back to the public name
+  // on a transient EMFILE/EBUSY would bind or dial a different endpoint than
+  // every other process for its whole life — a split election. Retry briefly.
+  for (let attempt = 0; secret === undefined && attempt < TRANSIENT_RETRIES; attempt++) {
+    Atomics.wait(retrySleep, 0, 0, TRANSIENT_RETRY_MS);
+    secret = readSecret(file);
+  }
   if (secret !== undefined) cached = { file, secret };
   return secret ?? null;
 }
+
+const TRANSIENT_RETRIES = 8;
+const TRANSIENT_RETRY_MS = 25;
+const retrySleep = new Int32Array(new SharedArrayBuffer(4));
 
 /**
  * The name component for a project daemon endpoint: `publicKey` (the existing

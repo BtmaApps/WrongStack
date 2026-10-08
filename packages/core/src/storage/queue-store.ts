@@ -29,6 +29,21 @@ export const QUEUE_MAX_ITEMS = 100;
 export const QUEUE_MAX_BYTES = 16 * 1024 * 1024;
 export const QUEUE_MAX_ITEM_BYTES = 8 * 1024 * 1024;
 
+const TRANSIENT_READ_CODES = new Set(['EBUSY', 'EPERM', 'EACCES']);
+
+/** Read the queue, retrying briefly through transient Windows sharing errors. */
+async function readQueueFile(file: string): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fsp.readFile(file, 'utf8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 4 || code === undefined || !TRANSIENT_READ_CODES.has(code)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+    }
+  }
+}
+
 function serializedBytes(value: unknown): number {
   try {
     return Buffer.byteLength(JSON.stringify(value), 'utf8');
@@ -178,7 +193,7 @@ export class QueueStore {
         });
         return [];
       }
-      raw = await fsp.readFile(this.file, 'utf8');
+      raw = await readQueueFile(this.file);
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === 'ENOENT') {
@@ -208,7 +223,9 @@ export class QueueStore {
         path: this.file,
         message: toErrorMessage(err),
       });
-      return [];
+      // Not "no queue": returning [] let the caller persist its in-memory
+      // queue over the file and lose what was queued before the restart.
+      throw err;
     }
     let parsed: unknown;
     try {

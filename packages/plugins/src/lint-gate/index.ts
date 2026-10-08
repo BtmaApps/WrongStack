@@ -118,7 +118,12 @@ function readConfig(raw: unknown): LintGateConfig {
     linter,
     mode,
     severity,
-    timeoutMs: typeof rawTimeout === 'number' && rawTimeout > 0 ? rawTimeout : DEFAULTS.timeoutMs,
+    // Node clamps a timer above 2^31-1 ms to 1 ms; cap it so a huge timeout
+    // means "very long", not "kill at once".
+    timeoutMs:
+      typeof rawTimeout === 'number' && rawTimeout > 0
+        ? Math.min(rawTimeout, 2_147_483_647)
+        : DEFAULTS.timeoutMs,
     fixRules: Array.isArray(rawRules)
       ? (rawRules as unknown[]).filter((x): x is string => typeof x === 'string')
       : [],

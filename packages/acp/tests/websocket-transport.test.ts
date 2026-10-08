@@ -236,6 +236,55 @@ describe('WebSocketClientTransport', () => {
     await expect(firstStart).resolves.toBeUndefined();
   });
 
+  it.each(['stop', 'remote-close', 'newline'] as const)(
+    'stops dispatching the current message when a callback triggers %s',
+    async (mode) => {
+      const transport = new WebSocketClientTransport({ url: 'ws://agent.test' });
+      const started = transport.start();
+      const ws = last();
+      ws.fire('open');
+      await started;
+      const seen: string[] = [];
+      transport.onMessage(() => {
+        seen.push('first');
+        if (mode === 'remote-close') ws.fire('close');
+        else transport.stop();
+      });
+      transport.onMessage(() => seen.push('second'));
+      const gate = Promise.withResolvers<void>();
+      const delivered = gate.promise.then(() => {
+        ws.fire('message', { data: mode === 'newline' ? '{"id":1}\n{"id":2}' : '{"id":1}' });
+      });
+      try {
+        gate.resolve();
+        await delivered;
+        expect(seen).toEqual(['first']);
+      } finally {
+        transport.stop();
+      }
+    },
+  );
+
+  it('ignores a gated stale message released after stop, including late registrations', async () => {
+    const transport = new WebSocketClientTransport({ url: 'ws://agent.test' });
+    const started = transport.start();
+    const ws = last();
+    ws.fire('open');
+    await started;
+    const seen: ACPMessage[] = [];
+    const gate = Promise.withResolvers<void>();
+    const delivered = gate.promise.then(() => ws.fire('message', { data: '{"id":1}' }));
+    transport.stop();
+    const off = transport.onMessage((message) => seen.push(message));
+    try {
+      gate.resolve();
+      await delivered;
+      expect(seen).toEqual([]);
+    } finally {
+      off();
+    }
+  });
+
   it('normalizes buffers, array buffers, other data, whitespace, and faulty handlers', async () => {
     const t = new WebSocketClientTransport({
       url: 'ws://agent.test',

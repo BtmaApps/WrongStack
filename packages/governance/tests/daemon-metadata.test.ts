@@ -1,4 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import type * as fsp from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 
@@ -279,6 +281,49 @@ describe('governance daemon startup lease', () => {
     });
     expect(existsSync(governanceDaemonStartupLeasePath(root))).toBe(true);
     await expect(first.release()).resolves.toBe(false);
+  });
+
+  it('waits for a lease that is still being written instead of rejecting it', async () => {
+    // The holder creates the lease with 'wx' and writes its record after; a
+    // starter that read the empty file in between failed with invalid_lease.
+    const root = projectRoot();
+    const holder = await acquireGovernanceDaemonStartupLease({
+      projectRoot: root,
+      pid: 501,
+      instanceId: 'holder',
+      startedAt,
+    });
+    const leasePath = governanceDaemonStartupLeasePath(root);
+    const record = readFileSync(leasePath, 'utf8');
+    writeFileSync(leasePath, '');
+
+    const fs = createRequire(import.meta.url)('node:fs/promises') as typeof fsp;
+    const realReadFile = fs.readFile;
+    let leaseReads = 0;
+    fs.readFile = (async (file: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+      // Second look: the holder has finished writing its record.
+      if (String(file) === leasePath && ++leaseReads === 2) writeFileSync(leasePath, record);
+      return (realReadFile as (...a: unknown[]) => Promise<unknown>)(file, ...rest);
+    }) as typeof realReadFile;
+    syncBuiltinESMExports();
+    try {
+      const attempt = acquireGovernanceDaemonStartupLease({
+        projectRoot: root,
+        pid: 502,
+        instanceId: 'contender',
+        startedAt,
+        isProcessAlive: () => true,
+        timeoutMs: 5_000,
+        retryMs: 5,
+        now: () => (leaseReads < 2 ? 0 : 10_000),
+      });
+      await expect(attempt).rejects.toMatchObject({ code: 'busy' });
+    } finally {
+      fs.readFile = realReadFile;
+      syncBuiltinESMExports();
+    }
+    expect(leaseReads).toBe(2);
+    await expect(holder.release()).resolves.toBe(true);
   });
 
   it('permits stale endpoint cleanup only on filesystem-socket platforms', () => {

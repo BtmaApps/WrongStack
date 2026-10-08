@@ -163,6 +163,20 @@ describe('deny / trust persistence + revert', () => {
     const p = new DefaultPermissionPolicy({ trustFile: badTrust });
     await expect(p.trust({ tool: 'edit', pattern: 'y' })).rejects.toThrow();
   });
+
+  it('never erases a rule another session persisted after this one loaded', async () => {
+    // trust.json is shared by every session of the project. Persisting used to
+    // write this instance's boot-time snapshot back, dropping the other
+    // session's deny.
+    const a = new DefaultPermissionPolicy({ trustFile });
+    const b = new DefaultPermissionPolicy({ trustFile });
+    await a.reload();
+    await b.deny({ tool: 'bash', pattern: 'rm -rf *' });
+    await a.trust({ tool: 'bash', pattern: 'ls *' });
+    const onDisk = JSON.parse(await fs.readFile(trustFile, 'utf8'));
+    expect(onDisk.bash.deny).toContain('rm -rf *');
+    expect(onDisk.bash.allow).toContain('ls *');
+  });
 });
 
 describe('subjectFor with an explicit subjectKey', () => {

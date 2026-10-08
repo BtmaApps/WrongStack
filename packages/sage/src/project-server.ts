@@ -79,7 +79,12 @@ if (ninepMountFsType) {
   process.exit(1);
 }
 const idleMsInput = Number(process.env['WRONGSTACK_SAGE_SERVER_IDLE_MS']);
-const idleMs = Number.isFinite(idleMsInput) && idleMsInput >= 100 ? idleMsInput : DEFAULT_IDLE_MS;
+// Node clamps a timer delay above 2^31-1 ms to 1 ms: a huge "never idle out"
+// value would stop the daemon at once.
+const idleMs =
+  Number.isFinite(idleMsInput) && idleMsInput >= 100
+    ? Math.min(idleMsInput, 2_147_483_647)
+    : DEFAULT_IDLE_MS;
 /**
  * A socket that connects and then never sends a single byte pins this daemon
  * open forever: `clients.add` happens on accept, so `clients.size` stays above

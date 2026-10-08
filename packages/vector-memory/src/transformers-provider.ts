@@ -130,6 +130,25 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
     }
   }
 
+  /**
+   * Synchronous, load-free install probe for boot paths: resolves the
+   * opt-in package without importing it (the import pulls in the ONNX
+   * runtime). False means `embed()` is guaranteed to throw, so a host must
+   * not advertise vector tools on top of this provider. A standalone binary
+   * never bundles the package, so it is false there unless installed beside it.
+   */
+  isInstalled(): boolean {
+    if (typeof import.meta.resolve !== 'function') return true;
+    // Indirect specifier for the same reason as `loadModule()`.
+    const packageName = '@huggingface/transformers';
+    try {
+      import.meta.resolve(packageName);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async embed(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
     const extractor = await this.getExtractor();
@@ -147,7 +166,7 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
           `TransformersEmbeddingProvider: pipeline returned ${vectors.length} vectors for a batch of ${batch.length}`,
         );
       }
-      const width = vectors[0]?.length ?? 0;
+      const width = results[0]?.length ?? vectors[0]?.length ?? 0;
       if (width === 0 || vectors.some((vector) => vector.length !== width)) {
         throw new Error(
           'TransformersEmbeddingProvider: pipeline returned empty or unequal-width vectors',

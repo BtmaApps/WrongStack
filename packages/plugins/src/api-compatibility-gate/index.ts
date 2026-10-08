@@ -281,7 +281,9 @@ function readGitVersion(filePath: string): Promise<string | null> {
   return new Promise((resolveVersion) => {
     execFile(
       'git',
-      ['show', `HEAD:${relPath}`],
+      // `HEAD:<path>` is resolved from the repository root; `./` makes it
+      // relative to cwd, which matters when the project is a repo subfolder.
+      ['show', `HEAD:./${relPath}`],
       {
         encoding: 'utf8',
         cwd: process.cwd(),

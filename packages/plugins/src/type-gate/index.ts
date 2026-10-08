@@ -258,6 +258,18 @@ async function runTypeCheck(cfg: TypeGateConfig): Promise<TypeCheckResult | null
       if (errors.length >= cfg.maxErrors) break;
     }
   }
+  // A non-zero exit with no recognisable diagnostic is still a failed check:
+  // a crashing tsc (V8 heap exhaustion) or the unrelated `tsc` npm stub that
+  // `npx tsc` can launch prints no `error TS` line.
+  if (errors.length === 0 && result.code !== 0) {
+    const tail = lines
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(-2)
+      .join(' | ')
+      .slice(0, 300);
+    errors.push(`type check exited with code ${result.code}${tail ? `: ${tail}` : ''}`);
+  }
 
   const passed = errors.length === 0 && !/\bfound\b.*\berrors?\b/i.test(combined);
   return { passed, errorCount: errors.length, errors, durationMs };

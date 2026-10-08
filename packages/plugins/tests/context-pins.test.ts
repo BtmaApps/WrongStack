@@ -1,4 +1,5 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -165,6 +166,31 @@ describe('context-pins plugin', () => {
     contextPinsPlugin.setup(api2 as never);
     const list = await getTool(api2, 'pin_list').execute({});
     expect(list['totalPins']).toBe(1);
+  });
+
+  it('never saves over a pins file it could not read at setup', async () => {
+    const filePath = join(tmp, 'pins.json');
+    writeFileSync(filePath, JSON.stringify({ pins: [{ id: 'pin-1', text: 'stored' }], nextId: 2 }));
+    const before = readFileSync(filePath, 'utf-8');
+    const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+    const realReadFileSync = nodeFs.readFileSync;
+    nodeFs.readFileSync = ((p: unknown, ...rest: unknown[]) => {
+      if (String(p) === filePath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof nodeFs.readFileSync;
+    syncBuiltinESMExports();
+    const api = makeApi({ extensions: { 'context-pins': { filePath } } });
+    try {
+      contextPinsPlugin.setup(api as never);
+    } finally {
+      nodeFs.readFileSync = realReadFileSync;
+      syncBuiltinESMExports();
+    }
+    const result = await getTool(api, 'pin_add').execute({ text: 'new' });
+    expect(result['persisted']).toBe(false);
+    expect(readFileSync(filePath, 'utf-8')).toBe(before);
   });
 
   it('keeps stored pins past a lowered maxPins instead of deleting them on the next write', async () => {

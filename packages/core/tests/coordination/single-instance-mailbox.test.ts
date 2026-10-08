@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
@@ -221,6 +222,37 @@ describe('acquireOrJoin', () => {
       acquireOrJoin({ projectDir: tmp, host: '127.0.0.1', requestedPort: null, strictPort: false }),
     ).rejects.toThrow();
   });
+
+  it('never overwrites a live lock it cannot read right now', async () => {
+    // An unreadable lock (EBUSY from an indexer) read as "absent": the caller
+    // wrote its own lock and token over a live bridge's.
+    await writeLock(tmp, { pid: 4242, port: 8000, url: 'http://127.0.0.1:8000', token: 'live' });
+    const lockPath = path.join(tmp, MAILBOX_BRIDGE_LOCK_FILENAME);
+    const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+    const realReadFile = fsp.readFile;
+    fsp.readFile = (async (file: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+      if (String(file) === lockPath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFile as (...a: unknown[]) => Promise<unknown>)(file, ...rest);
+    }) as typeof realReadFile;
+    syncBuiltinESMExports();
+    try {
+      await expect(
+        acquireOrJoin({
+          projectDir: tmp,
+          host: '127.0.0.1',
+          requestedPort: null,
+          strictPort: false,
+        }),
+      ).rejects.toMatchObject({ code: 'EBUSY' });
+    } finally {
+      fsp.readFile = realReadFile;
+      syncBuiltinESMExports();
+    }
+    const onDisk = JSON.parse(await fs.readFile(lockPath, 'utf8')) as MailboxBridgeLock;
+    expect(onDisk).toMatchObject({ pid: 4242, token: 'live' });
+  });
 });
 
 describe('finalize', () => {
@@ -360,11 +392,33 @@ describe('isProcessAlive (win32 tasklist branch)', () => {
     if (res.kind === 'probe-failed') expect(res.pidAlive).toBe(false);
   });
 
-  it('reports stale when tasklist itself throws', async () => {
+  it('does not take over a live owner when tasklist itself fails', async () => {
+    // A failing tasklist (timeout on a loaded machine) said "dead", so a live,
+    // healthy bridge lost its lock and token to a second bridge.
     tasklist.shouldThrow = true;
+    await writeLock(tmp, { pid: 7777, port: 8000, url: 'http://127.0.0.1:8000', token: 'live' });
+    const res = await acquireOrJoin({
+      projectDir: tmp,
+      host: '127.0.0.1',
+      requestedPort: null,
+      strictPort: false,
+    });
+    expect(res.kind).toBe('joined');
+    const onDisk = JSON.parse(
+      await fs.readFile(path.join(tmp, MAILBOX_BRIDGE_LOCK_FILENAME), 'utf8'),
+    ) as MailboxBridgeLock;
+    expect(onDisk).toMatchObject({ pid: 7777, token: 'live' });
+  });
+
+  it('still reports a dead pid as stale when tasklist itself fails', async () => {
+    tasklist.shouldThrow = true;
+    killSpy.mockImplementation((() => {
+      throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
+    }) as never);
     await writeLock(tmp, { pid: 7777, port: 8000, url: 'http://127.0.0.1:8000' });
     const res = await readLiveLock(tmp);
     expect(res.kind).toBe('probe-failed');
+    if (res.kind === 'probe-failed') expect(res.pidAlive).toBe(false);
   });
 });
 

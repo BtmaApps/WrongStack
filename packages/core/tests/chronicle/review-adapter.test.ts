@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { wireReviewFindingsToChronicle } from '../../src/chronicle/review-adapter.js';
-import type { ChronicleEventInput } from '../../src/chronicle/types.js';
 import type { ChronicleEventSink } from '../../src/chronicle/sink.js';
+import type { ChronicleEventInput } from '../../src/chronicle/types.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -472,5 +472,73 @@ blah blah nonsense
     expect(finding).toBeDefined();
     expect(finding!.attributes).toMatchObject({ file: 'src/file.ts' });
     expect((finding!.attributes as Record<string, unknown>).line).toBeUndefined();
+  });
+
+  // ── Backticked citations (canonical documented format) ───────────
+  //
+  // `packages/core/instructions/llm/chimera-review.md` tells the reviewer to
+  // cite findings as `1. [BUG] `path/file.ts:42` — description`. The canonical
+  // markdown parser (review-finding-parser.ts) unwraps that backtick pair;
+  // this adapter deliberately does not import it, so it must do the same.
+  // Regression: the backticks landed in `file`/`resource.path` and the `:42`
+  // was never parsed into a line number, so a "findings in file X" Chronicle
+  // query could not match and the resource id was keyed on garbage.
+  it('extracts file path and line from a backticked citation', () => {
+    const trigger = wireAndCapture();
+    trigger(
+      makePayload({
+        reviewText: `### Critical (1)
+1. [BUG] \`packages/core/src/foo.ts:42\` — Null deref on user.name`,
+      }),
+    );
+
+    const finding = appended.find((e) => e.eventType === 'finding.critical');
+    expect(finding).toBeDefined();
+    expect(finding!.attributes).toMatchObject({
+      file: 'packages/core/src/foo.ts',
+      line: 42,
+    });
+    expect(finding!.resource).toMatchObject({
+      kind: 'file',
+      path: 'packages/core/src/foo.ts',
+      lineStart: 42,
+    });
+    // The title must be the real description, not the citation text.
+    expect((finding!.attributes as Record<string, unknown>).title).toBe('Null deref on user.name');
+  });
+
+  it('control: un-backticked citation of the same finding parses identically', () => {
+    const trigger = wireAndCapture();
+    trigger(
+      makePayload({
+        reviewText: `### Critical (1)
+1. [BUG] packages/core/src/foo.ts:42 — Null deref on user.name`,
+      }),
+    );
+
+    const finding = appended.find((e) => e.eventType === 'finding.critical');
+    expect(finding).toBeDefined();
+    expect(finding!.attributes).toMatchObject({
+      file: 'packages/core/src/foo.ts',
+      line: 42,
+    });
+    expect(finding!.resource?.path).toBe('packages/core/src/foo.ts');
+  });
+
+  it('preserves backticks that are not a citation', () => {
+    const trigger = wireAndCapture();
+    trigger(
+      makePayload({
+        reviewText: `### Medium (1)
+1. [CODE] src/file.ts:10 — the \`notACitation\` token stays verbatim`,
+      }),
+    );
+
+    const finding = appended.find((e) => e.eventType.startsWith('finding.'));
+    expect(finding).toBeDefined();
+    expect(finding!.attributes).toMatchObject({ file: 'src/file.ts', line: 10 });
+    // A non-citation backtick construct must survive into the title/description.
+    const title = String((finding!.attributes as Record<string, unknown>).title);
+    expect(title).toContain('`notACitation`');
   });
 });

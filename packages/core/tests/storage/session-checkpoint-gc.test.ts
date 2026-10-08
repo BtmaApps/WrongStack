@@ -196,6 +196,26 @@ describe('checkpoint CAS garbage collection', () => {
     expect(result.errors.join(' ')).toContain(badHash);
   });
 
+  it.each([{}, { entries: {} }, { entries: null }])(
+    'does not sweep objects when a kept manifest has invalid entries: %j',
+    async (manifest) => {
+      const kept = await writeCheckpoint('kept', ['kept content']);
+      await fs.writeFile(path.join(cas, 'manifests', `${kept}.json`), JSON.stringify(manifest));
+      await age(store);
+      const result = await sweepCheckpointCas({
+        casRoot: cas,
+        reachableManifestHashes: new Set([kept]),
+        keepNewerThanMs: floorNow(),
+      });
+      expect(result.objectsDeleted).toBe(0);
+      expect(result.errors.join(' ')).toContain('Object sweep skipped');
+      const blob = sha('kept content');
+      await expect(
+        fs.stat(path.join(cas, 'objects', blob.slice(0, 2), blob.slice(2))),
+      ).resolves.toBeDefined();
+    },
+  );
+
   it('sweeps no object while a kept manifest cannot be read', async () => {
     // Its blobs are live but unnamed, so no object can be proven garbage: an
     // unreadable live manifest (a transient EBUSY, say) must not cost its blobs.

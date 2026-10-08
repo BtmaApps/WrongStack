@@ -34,7 +34,7 @@ export function describeSlotTools(slot: ServerSlot): MCPDescribedTool[] {
       // Behaviour hints the SERVER claimed (already sanitized to the five
       // known keys by normalizeMCPTools). Surfaced for the operator only:
       // nothing in the permission path reads this field.
-      ...(tool.annotations ? { annotations: tool.annotations } : {}),
+      ...(tool.annotations ? { annotations: structuredClone(tool.annotations) } : {}),
     }));
 }
 

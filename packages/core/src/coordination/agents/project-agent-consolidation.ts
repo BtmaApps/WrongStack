@@ -8,7 +8,12 @@ import {
   renderLearnedInstructions,
   type StructuredLearnedEntry,
 } from './project-agent-learning-structured.js';
-import { assertProjectAgentRole, roleDir, writeTextAtomically } from './project-agent-paths.js';
+import {
+  assertProjectAgentRole,
+  readRoleFileForUpdate,
+  roleDir,
+  writeTextAtomically,
+} from './project-agent-paths.js';
 import { retiredDirectivesToWarnAbout } from './project-agent-quarantine.js';
 
 export interface ConsolidationMetadata {
@@ -180,6 +185,13 @@ export function saveProjectAgentConsolidated(
   const dir = roleDir(normalizedRole, projectRoot);
   mkdirSync(dir, { recursive: true });
   const fp = consolidationPath(normalizedRole, projectRoot);
+  // The prune below rewrites learned.md from this buffer, so read it strictly
+  // and before anything is written: an unreadable buffer read as '' skipped
+  // the archive and reset learned.md, dropping the directives the synthesis
+  // never saw.
+  const pruneSource = options?.prune
+    ? readRoleFileForUpdate(learnedPath(normalizedRole, projectRoot)).trim()
+    : '';
   const bounded = boundConsolidatedDocument(content);
   writeTextAtomically(fp, bounded);
 
@@ -188,7 +200,7 @@ export function saveProjectAgentConsolidated(
   const consolidatedAt = options?.consolidatedAt ?? new Date().toISOString();
   let archived: string | undefined;
   if (options?.prune) {
-    const rawText = loadProjectAgentLearnedText(normalizedRole, projectRoot);
+    const rawText = pruneSource;
     if (rawText) {
       archived = archivePath(normalizedRole, consolidatedAt, projectRoot);
       writeTextAtomically(archived, rawText);
@@ -199,7 +211,7 @@ export function saveProjectAgentConsolidated(
     // it did not see is kept.
     const consumed = options.sourceKeys ? new Set(options.sourceKeys) : undefined;
     const unseen = consumed
-      ? readRawLearnedEntries(normalizedRole, projectRoot).filter(
+      ? parseStructuredLearnedEntriesFromContent(rawText, splitLearnedEntries(rawText)).filter(
           (entry) => !consumed.has(entry.key),
         )
       : [];

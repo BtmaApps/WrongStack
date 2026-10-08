@@ -37,6 +37,37 @@ function resolve(
 }
 
 describe('leader effort in the spawn resolver', () => {
+  it('keeps a locked provider-only lane runtime while the matrix fills its model', () => {
+    const runtime = { reasoning: { effort: 'max' as const }, cache: { ttl: '1h' as const } };
+    const config = resolve(
+      { name: 'w', role: 'critic', leaderEffort: 'medium' },
+      {
+        sessionPlan: lane({ provider: 'p', modelRuntime: runtime }),
+        modelMatrix: {
+          critic: {
+            provider: 'other',
+            model: 'route',
+            modelRuntime: { reasoning: { effort: 'low' } },
+          },
+        },
+      },
+    );
+    expect(config).toMatchObject({ provider: 'p', model: 'route', modelRuntime: runtime });
+  });
+
+  it('does not treat an ignored matrix effort as a user effort override', () => {
+    const config = resolve(
+      { name: 'w', role: 'critic', leaderEffort: 'medium' },
+      {
+        sessionPlan: lane({ provider: 'p', modelRuntime: { cache: { ttl: '1h' } } }),
+        modelMatrix: {
+          critic: { model: 'route', modelRuntime: { reasoning: { effort: 'low' } } },
+        },
+      },
+    );
+    expect(config.modelRuntime).toEqual({ cache: { ttl: '1h' }, reasoning: { effort: 'medium' } });
+  });
+
   it('applies the leader effort when nothing else set one', () => {
     const config = resolve(
       { name: 'w', leaderEffort: 'high' },

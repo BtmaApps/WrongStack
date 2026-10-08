@@ -593,7 +593,10 @@ export class MailboxProjectServerConnection {
     this.stopHeartbeat();
     const configured = Number(process.env['WRONGSTACK_MAILBOX_CLIENT_HEARTBEAT_MS']);
     const intervalMs =
-      Number.isFinite(configured) && configured >= 50 ? configured : DEFAULT_HEARTBEAT_INTERVAL_MS;
+      // Above 2^31-1 ms Node clamps the interval to 1 ms (a heartbeat flood).
+      Number.isFinite(configured) && configured >= 50
+        ? Math.min(configured, 2_147_483_647)
+        : DEFAULT_HEARTBEAT_INTERVAL_MS;
     this.heartbeatTimer = setInterval(() => {
       const socket = this.socket;
       if (socket && !socket.destroyed) {

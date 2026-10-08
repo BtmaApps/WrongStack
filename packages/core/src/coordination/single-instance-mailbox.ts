@@ -250,9 +250,13 @@ type LockInspection =
 async function readLockForInspection(lockPath: string): Promise<LockInspection> {
   let raw: string;
   try {
-    raw = await fsp.readFile(lockPath, 'utf-8');
-  } catch {
-    return { kind: 'absent' };
+    raw = await readLockRaw(lockPath);
+  } catch (error) {
+    // Only a missing file is "no lock". An unreadable one (EBUSY from an
+    // indexer/antivirus) read as absent, and the caller overwrote a live
+    // bridge's lock and token.
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { kind: 'absent' };
+    throw error;
   }
   let parsed: MailboxBridgeLock;
   try {
@@ -280,6 +284,21 @@ async function readLockForInspection(lockPath: string): Promise<LockInspection> 
     return { kind: 'stale', lock: parsed, pidAlive: true };
   }
   return { kind: 'live', lock: parsed };
+}
+
+const TRANSIENT_LOCK_READ_CODES = new Set(['EBUSY', 'EPERM', 'EACCES']);
+
+/** Read the lock, retrying briefly through transient Windows sharing errors. */
+async function readLockRaw(lockPath: string): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fsp.readFile(lockPath, 'utf-8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 4 || code === undefined || !TRANSIENT_LOCK_READ_CODES.has(code)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+    }
+  }
 }
 
 /**
@@ -376,7 +395,10 @@ async function isProcessAlive(pid: number): Promise<boolean> {
         },
         (error, out) => {
           if (error) {
-            resolve(false);
+            // tasklist itself failed (timed out on a loaded machine, missing):
+            // that says nothing about the pid. "Dead" would let the caller
+            // break a live bridge's lock, so fall back to the signal probe.
+            resolve(isPidAlive(pid));
             return;
           }
           // tasklist prints the header even with /NH; if the pid exists,

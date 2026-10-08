@@ -35,6 +35,7 @@ import {
   watchHqAuthFile,
 } from '@wrongstack/core/hq';
 import { createCompatibilityTrustBoundary, type TrustBoundary } from '@wrongstack/core/security';
+import { isPidAlive } from '@wrongstack/core/utils';
 import { WebSocket, WebSocketServer } from 'ws';
 import { HQ_HTML } from './hq-recovery-html.js';
 import { createHqAuthState } from './hq-server/auth-state.js';
@@ -313,14 +314,9 @@ async function startHqServerWithAuth(
               .then((raw) => (JSON.parse(raw) as { pid?: number }).pid)
               .catch(() => undefined);
             if (ownerPid === undefined) return;
-            let ownerAlive = false;
-            try {
-              process.kill(ownerPid, 0);
-              ownerAlive = true;
-            } catch {
-              ownerAlive = false;
-            }
-            if (!ownerAlive) {
+            // isPidAlive counts EPERM as alive: a server this user may not
+            // signal (elevated, another account) still owns its metadata.
+            if (!isPidAlive(ownerPid)) {
               await fs.rm(metadataPath, { force: true }).catch(() => {});
               return;
             }

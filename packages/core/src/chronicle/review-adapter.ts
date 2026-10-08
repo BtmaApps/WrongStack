@@ -158,6 +158,30 @@ const FILE_REF = /^(.+?)(?::(\d+))?\s+[—–]\s*(.+)$/;
 /** Match a path-like reference as fallback when no file:line — pattern is found. */
 const PATH_REF = /^([a-zA-Z_./\\][a-zA-Z0-9_./\\-]*\.\w+)(?::(\d+))?/;
 
+/**
+ * Un-wrap the first balanced backtick pair at the citation position so the
+ * canonical `` `path/file.ts:42` `` citation format resolves to a real file
+ * key. Mirrors the same step in parseFindingSegment()
+ * (packages/core/src/plugins/review-finding-parser.ts); the adapter
+ * deliberately does not import that parser, so the step has to be kept in
+ * sync here. Without it the backticks land in `file`/`resource.path` and the
+ * trailing `:line` is never parsed, so a "findings in file X" query cannot
+ * match and the Chronicle resource id is pollute-able by any citation.
+ *
+ * Only the FIRST balanced pair is unwrapped and only when the inner content
+ * starts with a path-like character and is followed by a separator or end of
+ * string, so a backtick construct inside the description is preserved.
+ */
+function unwrapCitation(remaining: string): string {
+  const citationMatch = remaining.match(
+    /^(`+)([a-zA-Z_./\\:][^`]*[a-zA-Z0-9_./\\:])\1(?=\s*[—–-]|\s*$)/,
+  );
+  if (!citationMatch) return remaining;
+  const inner = citationMatch[2]!;
+  const afterCitation = remaining.slice(citationMatch[0].length);
+  return `${inner}${afterCitation}`;
+}
+
 function parseFindings(reviewText: string): ParsedFinding[] {
   const findings: ParsedFinding[] = [];
   let currentSeverity: string | null = null;
@@ -184,7 +208,10 @@ function parseFindings(reviewText: string): ParsedFinding[] {
     const tag = remaining.match(TAG_PREFIX);
     if (tag) remaining = remaining.slice(tag[0].length).trim();
 
-    // Step 3: extract file:line — description (mirrors canonical FILE_REF)
+    // Step 3: unwrap a backticked citation (mirrors canonical step)
+    remaining = unwrapCitation(remaining);
+
+    // Step 4: extract file:line — description (mirrors canonical FILE_REF)
     const refMatch = remaining.match(FILE_REF);
     let file: string | undefined;
     let lineNum: number | undefined;
@@ -195,7 +222,7 @@ function parseFindings(reviewText: string): ParsedFinding[] {
       lineNum = refMatch[2] !== undefined ? Number.parseInt(refMatch[2]!, 10) : undefined;
       desc = refMatch[3]!.trim();
     } else {
-      // Step 4: fallback — try PATH_REF when no — separator (mirrors canonical fallback)
+      // Step 5: fallback — try PATH_REF when no — separator (mirrors canonical fallback)
       const pathFallback = remaining.match(PATH_REF);
       if (pathFallback) {
         file = pathFallback[1]!.trim();

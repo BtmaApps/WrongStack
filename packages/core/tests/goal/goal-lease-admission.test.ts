@@ -6,6 +6,8 @@ const fixture = vi.hoisted(() => ({
   dirs: new Set<string>(),
   locks: new Map<string, Promise<void>>(),
   mtime: undefined as number | undefined,
+  /** One-shot read failure for the next lease read (e.g. 'EBUSY'). */
+  readFault: undefined as string | undefined,
 }));
 function missing() {
   return Object.assign(new Error('missing'), { code: 'ENOENT' });
@@ -29,6 +31,11 @@ vi.mock('node:fs/promises', () => ({
     };
   },
   readFile: async (file: string) => {
+    if (fixture.readFault && file.endsWith('.active-run.lock')) {
+      const code = fixture.readFault;
+      fixture.readFault = undefined;
+      throw Object.assign(new Error(code), { code });
+    }
     const value = fixture.files.get(file);
     if (value === undefined) throw missing();
     return value;
@@ -72,6 +79,7 @@ beforeEach(() => {
   fixture.dirs.clear();
   fixture.locks.clear();
   fixture.mtime = undefined;
+  fixture.readFault = undefined;
 });
 const store = () => new PhaseStore({ baseDir: path.resolve('virtual-goal-admission') });
 
@@ -113,6 +121,20 @@ it('refuses unknown ownership and permits a known dead owner to be reclaimed', a
   );
   const releaseMaintenance = await goals.acquireRunLease('maintenance');
   await releaseMaintenance();
+  await release();
+});
+
+it('never reclaims a live lease that is only unreadable for a moment', async () => {
+  // An unreadable lease looked like a torn write; past the grace window it was
+  // unlinked and a second Goal run admitted against the same project.
+  const goals = store();
+  const release = await goals.acquireRunLease('owner-a');
+  const file = [...fixture.files.keys()].find((key) => key.endsWith('.active-run.lock'))!;
+  const before = fixture.files.get(file);
+  fixture.mtime = Date.now() - 3_600_000;
+  fixture.readFault = 'EBUSY';
+  await expect(goals.acquireRunLease('owner-b')).rejects.toThrow('Another Goal run');
+  expect(fixture.files.get(file)).toBe(before);
   await release();
 });
 

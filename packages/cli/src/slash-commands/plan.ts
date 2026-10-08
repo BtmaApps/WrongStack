@@ -3,19 +3,16 @@ import {
   clearPlan,
   deriveTodosFromPlanItem,
   emptyPlan,
-  emptyTaskFile,
   formatPlan,
   formatPlanTemplates,
   getPlanTemplate,
   listPlanTemplates,
   loadPlan,
-  loadTasks,
   mutatePlan,
+  mutateTasks,
   type PlanFile,
   removePlanItem,
-  saveTasks,
   setPlanItemStatus,
-  type TaskFile,
 } from '@wrongstack/core/storage';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { formatTaskList, formatTodosList } from '@wrongstack/core/utils';
@@ -123,7 +120,6 @@ export function buildPlanCommand(opts: SlashCommandContext): SlashCommand {
           );
         }
 
-        const taskFile: TaskFile = (await loadTasks(taskPath)) ?? emptyTaskFile(sessionId);
         const now = new Date().toISOString();
         const task = {
           id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -135,8 +131,12 @@ export function buildPlanCommand(opts: SlashCommandContext): SlashCommand {
           createdAt: now,
           updatedAt: now,
         };
-        taskFile.tasks.push(task);
-        await saveTasks(taskPath, taskFile);
+        // mutateTasks: locked, and an unreadable task file is not taken for an
+        // empty one (a load-or-empty + save replaced every task with this one).
+        const taskFile = await mutateTasks(taskPath, sessionId, (file) => {
+          file.tasks.push(task);
+          return file;
+        });
         return result(
           `Taskified "${item.title}" → task.\n${formatTaskList(taskFile.tasks)}`,
           { ok: true, plan, task, tasks: taskFile.tasks },

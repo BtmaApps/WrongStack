@@ -209,7 +209,11 @@ export class RubyAdapter implements EcosystemAdapter {
       seen.add(gem.name);
 
       const locked = lockVersions.get(gem.name);
-      const version = locked ?? gem.version;
+      // Without a lock pin only an exact version (`'1.5.6'`, `'= 1.5.6'`) is an
+      // identity; a requirement (`'~> 7.1'`, `'>= 6.0'`) leaked into the purl
+      // as `pkg:gem/rails@~> 7.1`. It stays visible as `requested`.
+      const exact = gem.version?.replace(/^=\s*/, '');
+      const version = locked ?? (exact && /^\d[\w.+-]*$/.test(exact) ? exact : undefined);
       const purl =
         gem.sourceType === 'registry' && version
           ? buildPurl({ type: 'gem', name: gem.name, version })

@@ -74,6 +74,7 @@ export function resolveDirectorSpawnModel(
   // and lets the layers below fill whatever it left unset.
   let tier = opts.tier;
   let planPinnedProvider = false;
+  let planPinnedRuntime = false;
   // Set when a USER-authored layer (lane, session role overlay, explicit
   // `/setmodel` role/phase route) chose this worker's effort. Only then does the
   // leader's `leaderEffort` step aside — see the fold at the end.
@@ -126,6 +127,7 @@ export function resolveDirectorSpawnModel(
     }
     if (planTarget.modelRuntime && !config.modelRuntime) {
       config.modelRuntime = planTarget.modelRuntime;
+      planPinnedRuntime = plan.lock;
     }
     // A lane effort is the user's call only where the lane's own pins win:
     // with the lock on, or when the leader named no effort to keep.
@@ -164,10 +166,11 @@ export function resolveDirectorSpawnModel(
       // already relies on.
       if (entry.provider && !planPinnedProvider) config.provider = entry.provider;
       if (entry.fallbackProfile) config.fallbackProfile = entry.fallbackProfile;
-      if (entry.modelRuntime) config.modelRuntime = entry.modelRuntime;
+      if (entry.modelRuntime && !planPinnedRuntime) config.modelRuntime = entry.modelRuntime;
       // An explicit role/phase route is a statement the user made; the `*`
       // wildcard is only a default, so the leader's effort still beats it.
       if (
+        !planPinnedRuntime &&
         entry.modelRuntime?.reasoning?.effort !== undefined &&
         (resolution?.source === 'role' || resolution?.source === 'phase')
       ) {

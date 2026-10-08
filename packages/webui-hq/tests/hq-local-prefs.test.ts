@@ -243,7 +243,9 @@ describe('hq-local-prefs', () => {
     try {
       act(() => setHqAppearancePrefs({ theme: 'light' }));
       expect(handle.value().appearance.theme).toBe('light');
-      reloadHqLocalPrefs();
+      // Capture is still mounted: run the store refresh inside act so the
+      // subscriber update does not fire outside the act window.
+      act(() => reloadHqLocalPrefs());
       expect(getHqLocalPrefsSnapshot().appearance.theme).toBe('light');
     } finally {
       unmountHook(handle);

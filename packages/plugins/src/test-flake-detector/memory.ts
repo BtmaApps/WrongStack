@@ -84,7 +84,8 @@ export function parseFailedTests(output: string): Set<string> {
 /** True when the output carries the runner's end-of-run summary: the run completed. */
 export function runCompleted(output: string): boolean {
   return (
-    /^\s*Tests\s+.*\b(?:passed|failed)\b/m.test(output) || // vitest / jest
+    // vitest `Tests  1 failed | 1 passed (2)`, jest `Tests:       1 failed, 1 passed, 2 total`
+    /^\s*Tests:?\s+.*\b(?:passed|failed)\b/m.test(output) ||
     /^=+ .*\b(?:passed|failed|error)\b.* in [\d.]+s/m.test(output) || // pytest
     /^(?:ok|FAIL)\s+\S+\s+[\d.]+s$/m.test(output) || // go
     /^test result: (?:ok|FAILED)\./m.test(output) // cargo

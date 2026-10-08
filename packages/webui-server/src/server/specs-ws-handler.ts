@@ -98,7 +98,11 @@ export class SpecsWebSocketHandler {
         break;
       }
       case 'specs.taskStatus': {
-        const { graphId, taskId, status } = msg.payload as {
+        // A payload-less frame is decoder-legal for client messages; route it
+        // into the wire-input guard below like every other malformed payload
+        // instead of crashing on the destructuring (a TypeError here bypassed
+        // the guard entirely and left the asking tab without any frame).
+        const { graphId, taskId, status } = (msg.payload ?? {}) as {
           graphId: string;
           taskId: string;
           status: TaskNode['status'];

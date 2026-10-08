@@ -35,7 +35,12 @@ import {
   renderLearnedInstructions,
   type StructuredLearnedEntry,
 } from './project-agent-learning-structured.js';
-import { assertProjectAgentRole, roleDir, writeTextAtomically } from './project-agent-paths.js';
+import {
+  assertProjectAgentRole,
+  readRoleFileForUpdate,
+  roleDir,
+  writeTextAtomically,
+} from './project-agent-paths.js';
 import {
   listProjectSkillAugmentations,
   recordSkillLearned,
@@ -297,7 +302,10 @@ export function captureLearnedFromAgentOutputDetailed(
     return { role: normalizedRole, captured: 0, skipped: 0, status: 'no_blocks' };
   }
 
-  const existingRaw = loadProjectAgentLearned(normalizedRole, projectRoot);
+  // Strict read: this buffer is the base the file is re-rendered from.
+  const existingRaw = readRoleFileForUpdate(
+    path.join(roleDir(normalizedRole, projectRoot), 'learned.md'),
+  ).trim();
   const guard = canCaptureNewLearned(
     normalizedRole,
     Buffer.byteLength(existingRaw, 'utf8'),
@@ -314,7 +322,10 @@ export function captureLearnedFromAgentOutputDetailed(
     };
   }
 
-  let structuredEntries = parseStructuredLearnedEntries(normalizedRole, projectRoot);
+  let structuredEntries = parseStructuredLearnedEntriesFromContent(
+    existingRaw,
+    splitLearnedEntries(existingRaw),
+  );
   const normalizedEntries = structuredEntries.map((entry) => entry.key);
   const skillCandidates = resolveRoleSkillCandidates(normalizedRole, projectRoot);
   const routedSkills: string[] = [];
