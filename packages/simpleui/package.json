@@ -24,7 +24,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node ../../scripts/build-package.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/bun-typecheck.mjs --noEmit",
     "test": "vitest run"
   },
   "dependencies": {

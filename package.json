@@ -80,6 +80,7 @@
     "check:test-skips": "node scripts/check-test-skips.mjs",
     "test-skips:sync": "node scripts/check-test-skips.mjs --print-baseline > architecture/test-skip-budget.json",
     "check:test-types": "node scripts/check-test-typecheck.mjs",
+    "setup:bun": "node scripts/setup-bun-typecheck.mjs",
     "report:architecture": "node scripts/check-architecture-health.mjs --write --report-only",
     "release:prepare": "pnpm build && pnpm providers:catalog:write && pnpm plugins:manifest:write && pnpm check:architecture:sync && pnpm report:architecture && pnpm run check:architecture:strict && pnpm test-skips:sync",
     "check:architecture:strict": "node scripts/check-architecture-health.mjs --strict-hotspots",

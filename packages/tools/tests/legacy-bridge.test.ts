@@ -11,6 +11,13 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnMocks = vi.hoisted(() => ({ spawnStream: vi.fn() }));
+vi.mock('../src/_bun-typechecker.js', () => ({
+  bunTypecheckInvocation: async (cwd: string, args: string[]) => ({
+    cmd: 'bun',
+    args: ['check', ...args],
+    cwd,
+  }),
+}));
 vi.mock('../src/_spawn-stream.js', async (original) => {
   const actual = (await original()) as Record<string, unknown>;
   return { ...actual, spawnStream: spawnMocks.spawnStream };
@@ -333,10 +340,10 @@ describe('outdatedTool — non-JS delegation', () => {
 
 // ─── BOUNDED BYPASS ────────────────────────────────────────────────────────
 describe('legacy bridge — bounded conditions', () => {
-  it('empty dir falls through to tsc', async () => {
+  it('empty dir uses the required Bun checker', async () => {
     spawnMocks.spawnStream.mockImplementation(fakeSpawn(''));
     await typecheckTool.execute({}, ctx(), opts);
-    expect(spawnMocks.spawnStream).toHaveBeenCalledWith(expect.objectContaining({ cmd: 'npx' }));
+    expect(spawnMocks.spawnStream).toHaveBeenCalledWith(expect.objectContaining({ cmd: 'bun' }));
   });
   it('JS workspace skips bridge', async () => {
     spawnMocks.spawnStream.mockImplementation(fakeSpawn(''));

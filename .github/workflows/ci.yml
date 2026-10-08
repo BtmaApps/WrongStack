@@ -122,7 +122,7 @@ jobs:
         run: pnpm check:action-pins
 
   typecheck:
-    name: TypeCheck (tsc)
+    name: TypeCheck (Bun)
     needs: reuse-checks
     if: ${{ needs['reuse-checks'].outputs.typecheck != 'true' }}
     runs-on: ubuntu-latest
@@ -170,18 +170,18 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      # Workspace typecheck, serially to avoid tsc buildinfo contention.
+      # Workspace Bun checks run serially, with four checker threads per package.
       # Matches the root package.json script exactly.
       # Each package's `typecheck` script covers BOTH its source tsconfig and
-      # its test tsconfig (e.g. packages/tui runs `tsc --noEmit &&
-      # tsc --noEmit -p tsconfig.test.json`), so test-fixture/type-contract
+      # its test tsconfig (e.g. packages/tui checks its source and test projects
+      # through scripts/bun-typecheck.mjs), so test-fixture/type-contract
       # drift fails this gate instead of silently accumulating.
       - name: TypeCheck
         run: pnpm typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Test-inclusive TypeScript ratchet
+      - name: Test-inclusive Bun typecheck ratchet
         run: pnpm check:test-types
 
   build:

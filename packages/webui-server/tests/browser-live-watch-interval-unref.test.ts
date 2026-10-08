@@ -49,7 +49,7 @@ describe('browser.live.watch details interval', () => {
       const timer = realSetInterval(handler, ms) as unknown as NodeJS.Timeout;
       created.push(timer);
       return timer as unknown as number;
-    }) as typeof setInterval;
+    }) as unknown as typeof setInterval;
     live.sessions.mockResolvedValue([session('b1', 's1')]);
     live.details.mockResolvedValue({
       url: 'https://example.test/',

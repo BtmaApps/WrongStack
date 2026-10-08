@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "build": "node ../../scripts/build-package.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/bun-typecheck.mjs --noEmit",
     "test": "vitest run",
     "test:integration": "WRONGSTACK_VECTOR_INTEGRATION=1 vitest run tests/integration.test.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""

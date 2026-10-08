@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.tests.json",
+    "typecheck": "node ../../scripts/bun-typecheck.mjs -p tsconfig.tests.json",
     "test": "vitest run"
   },
   "dependencies": {

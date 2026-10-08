@@ -31,8 +31,8 @@
     "test:status-bar": "vitest run --config vitest.status-bar-sgr.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "vitest run --coverage --config vitest.config.ts",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "node ../../scripts/bun-typecheck.mjs --noEmit && node ../../scripts/bun-typecheck.mjs --noEmit -p tsconfig.test.json",
+    "typecheck:tests": "node ../../scripts/bun-typecheck.mjs --noEmit -p tsconfig.test.json",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {

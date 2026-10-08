@@ -380,7 +380,12 @@ describe('CloudSync', () => {
         };
         const sync = new CloudSync(
           paths,
-          () => ({ enabled: true, repo: 'testuser/testrepo', categories: ['settings'] }),
+          () => ({
+            enabled: true,
+            repo: 'testuser/testrepo',
+            githubToken: 'fake-token',
+            categories: ['settings'],
+          }),
           vi.fn(),
         );
         const trees: Array<Array<{ path: string; sha?: string | null }>> = [];

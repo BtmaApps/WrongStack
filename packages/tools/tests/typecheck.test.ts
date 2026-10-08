@@ -4,6 +4,13 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnStreamMocks = vi.hoisted(() => ({ spawnStream: vi.fn() }));
+vi.mock('../src/_bun-typechecker.js', () => ({
+  bunTypecheckInvocation: async (cwd: string, args: string[]) => ({
+    cmd: 'bun',
+    args: ['check', ...args],
+    cwd,
+  }),
+}));
 
 vi.mock('../src/_spawn-stream.js', async (orig) => {
   const actual = (await orig()) as Record<string, unknown>;
@@ -47,20 +54,25 @@ describe('typecheckTool', () => {
     const result = await typecheckTool.execute({ all: true }, makeCtx(), makeOpts());
     expect(result.project).toBe('workspace');
     expect(result).toHaveProperty('exit_code');
-    // No pnpm lockfile at /fake → falls back to a single root-level tsc run.
-    expect(capturedCmd).toBe('npx');
-    expect(capturedArgs).toEqual(['tsc', '--noEmit']);
+    expect(capturedCmd).toBe('bun');
+    expect(capturedArgs).toEqual(['check', '--noEmit', '-b']);
   });
 
-  it('runs pnpm -r --no-bail exec tsc when all=true in a pnpm workspace', async () => {
+  it('requires Bun rather than invoking npx or tsc (project mode)', async () => {
+    await typecheckTool.execute({}, makeCtx(), makeOpts());
+    expect(capturedCmd).toBe('bun');
+    expect(capturedArgs).toEqual(['check', '--noEmit']);
+  });
+
+  it('uses Bun build-mode checking even in a pnpm workspace', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tc-pnpm-'));
     try {
       await fs.writeFile(path.join(dir, 'pnpm-lock.yaml'), '');
       const ctx = { cwd: dir, tools: [], projectRoot: dir } as any;
       const result = await typecheckTool.execute({ all: true }, ctx, makeOpts());
       expect(result.project).toBe('workspace');
-      expect(capturedCmd).toBe('pnpm');
-      expect(capturedArgs).toEqual(['-r', '--no-bail', 'exec', 'tsc', '--noEmit']);
+      expect(capturedCmd).toBe('bun');
+      expect(capturedArgs).toEqual(['check', '--noEmit', '-b']);
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }
@@ -110,12 +122,12 @@ describe('typecheckTool', () => {
           stderr: '',
           exitCode: 1,
           truncated: false,
-          error: 'spawn npx ENOENT',
+          error: 'spawn bun ENOENT',
         };
       },
     );
     await expect(typecheckTool.execute({}, makeCtx(), makeOpts())).rejects.toThrow(
-      /typecheck: failed to start npx: spawn npx ENOENT/,
+      /typecheck: failed to start bun: spawn bun ENOENT/,
     );
   });
 

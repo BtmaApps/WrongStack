@@ -43,7 +43,7 @@
   ],
   "scripts": {
     "build": "node ../../scripts/build-package.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/bun-typecheck.mjs --noEmit",
     "schema": "node ../../scripts/generate-protocol-schema.mjs",
     "test": "vitest run",
     "test:coverage": "node ../../scripts/coverage-lock.mjs node ../../scripts/run-vitest-coverage.mjs run --coverage --config vitest.config.ts",

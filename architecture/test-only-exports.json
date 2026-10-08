@@ -1174,6 +1174,11 @@
       "observeHistogram",
       "TelegramTelemetry"
     ],
+    "packages/tools/src/_bun-typechecker.ts": [
+      "bunPlatformPackage",
+      "ensureBunTypechecker",
+      "extractBunExecutable"
+    ],
     "packages/tools/src/_output-diet.ts": [
       "classifyCommandForDiet"
     ],

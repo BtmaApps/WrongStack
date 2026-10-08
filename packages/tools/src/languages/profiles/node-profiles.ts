@@ -37,11 +37,11 @@ export function typescriptProfile(): LanguageProfile {
           'Parse the target with the TypeScript compiler API.',
         ),
       semantic: async (ctx) => {
-        const run = nodeExec(ctx, 'tsc', ['--noEmit', '--pretty', 'false']);
-        return processPlan(ctx, 'semantic', run.command, run.args, {
+        return processPlan(ctx, 'semantic', 'bun', ['check', '--noEmit'], {
           parser: 'typescript',
-          reason: 'Run the workspace TypeScript compiler without emitting files.',
-          executesProjectCode: true,
+          reason:
+            'Require Bun type checking without emitting files; provision the checker when needed.',
+          executesProjectCode: false,
         });
       },
       lint: async (ctx) => {
@@ -83,11 +83,10 @@ export function typescriptProfile(): LanguageProfile {
       build: async (ctx) => scriptPlan(ctx, 'build', 'build'),
       run: async (ctx) => scriptPlan(ctx, 'run', 'dev'),
       'debug-compile': async (ctx) => {
-        const run = nodeExec(ctx, 'tsc', ['--noEmit', '--pretty', 'false']);
-        return processPlan(ctx, 'debug-compile', run.command, run.args, {
+        return processPlan(ctx, 'debug-compile', 'bun', ['check', '--noEmit'], {
           parser: 'typescript',
-          reason: 'Collect deterministic TypeScript compiler diagnostics.',
-          executesProjectCode: true,
+          reason: 'Collect deterministic Bun TypeScript diagnostics.',
+          executesProjectCode: false,
         });
       },
       'package-install': async (ctx) => {

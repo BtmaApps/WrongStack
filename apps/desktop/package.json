@@ -38,7 +38,7 @@
     "start": "electron .",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "node ../../scripts/coverage-lock.mjs node ../../scripts/run-vitest-coverage.mjs run --coverage --config vitest.config.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/bun-typecheck.mjs --noEmit",
     "package": "node ../../scripts/package-desktop.mjs",
     "package:dir": "node ../../scripts/package-desktop.mjs --dir",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { ToolProgressEvent } from '@wrongstack/core/types';
+import { bunTypecheckInvocation } from '../_bun-typechecker.js';
 import { type SpawnStreamResult, spawnStream } from '../_spawn-stream.js';
 import { normalizeCommandOutput } from '../_util.js';
 import {
@@ -80,11 +81,15 @@ export async function* executeLanguagePlan(
   timer.unref?.();
   const signal = AbortSignal.any([options.signal, timeoutController.signal]);
   let spawned: SpawnStreamResult;
+  let diagnosticCwd = workspace.root;
   try {
+    const invocation =
+      plan.command === 'bun' && plan.args[0] === 'check'
+        ? await bunTypecheckInvocation(plan.cwd, plan.args.slice(1), { signal })
+        : { cmd: plan.command!, args: [...plan.args], cwd: plan.cwd };
+    diagnosticCwd = invocation.cwd;
     const stream = spawnStream({
-      cmd: plan.command!,
-      args: [...plan.args],
-      cwd: plan.cwd,
+      ...invocation,
       signal,
       maxBytes: plan.outputLimitBytes,
     });
@@ -121,7 +126,7 @@ export async function* executeLanguagePlan(
     plan.parser,
     spawned.stdout,
     spawned.stderr,
-    workspace.root,
+    diagnosticCwd,
   );
   const timedOut = timeoutController.signal.aborted && !options.signal.aborted;
   const cancelled = options.signal.aborted;

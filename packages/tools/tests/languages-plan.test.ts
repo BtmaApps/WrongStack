@@ -56,10 +56,11 @@ describe('planLanguageOperation', () => {
     });
     const semantic = await planned('typescript', 'semantic', target);
     expect(semantic).toMatchObject({
-      command: 'pnpm',
-      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
+      command: 'bun',
+      args: ['check', '--noEmit'],
       parser: 'typescript',
       network: false,
+      executesProjectCode: false,
     });
   });
 

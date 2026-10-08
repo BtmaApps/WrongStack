@@ -24,7 +24,10 @@ describe('Goal project verifier — shared host hardening', () => {
     expect(VERIFIER_SOURCE).toContain('windowsHide: true');
     expect(VERIFIER_SOURCE).toContain('buildChildEnv()');
     expect(VERIFIER_SOURCE).toContain('maxBuffer: 8 * 1024 * 1024');
-    expect(VERIFIER_SOURCE).toContain('timeout: timeoutMs');
+    // The step timeout kills the whole tree: execFile's own `timeout` only
+    // reached cmd.exe, leaving the hung script running behind the shim.
+    expect(VERIFIER_SOURCE).toContain('treeKill(child)');
+    expect(VERIFIER_SOURCE).toContain('}, timeoutMs);');
   });
 
   it('runs only discovered package scripts through a structured package-manager invocation', () => {

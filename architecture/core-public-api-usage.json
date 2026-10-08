@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 765,
+      "files": 766,
       "typeOnly": 69,
-      "runtimeOrMixed": 724
+      "runtimeOrMixed": 725
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -25325,6 +25325,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/telegram/src/slash-commands/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/_bun-typechecker.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

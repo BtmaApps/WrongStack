@@ -13,7 +13,7 @@ describe('webui status logger heartbeat interval', () => {
       const timer = realSetInterval(handler, ms) as unknown as NodeJS.Timeout;
       created.push(timer);
       return timer as unknown as number;
-    }) as typeof setInterval;
+    }) as unknown as typeof setInterval;
   });
 
   afterEach(() => {

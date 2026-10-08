@@ -17,10 +17,20 @@ Thank you for your interest in contributing to WrongStack! This guide covers the
 git clone https://github.com/WrongStack/WrongStack.git
 cd WrongStack
 pnpm install
+pnpm setup:bun
 pnpm build
 ```
 
 The `postinstall` script configures git hooks (`.githooks/pre-commit`) automatically.
+
+Type checks require Bun's TypeScript 7.0.2 checker. `pnpm setup:bun` verifies an
+installed Bun or provisions the pinned npm build `1.4.2-canary.20261007.1` in
+`.bun/typecheck`; typecheck commands also provision it automatically. The runtime
+archive is integrity-checked and no npm lifecycle scripts run. There is no `tsc`
+fallback. TypeScript remains responsible for emitted JavaScript/declaration files
+and the TypeScript language server. Set `WRONGSTACK_BUN_TYPECHECK` to an explicit
+Bun executable when using an externally managed toolchain; it must pass the same
+compiler-version and type-error checks.
 
 ## Development Workflow
 

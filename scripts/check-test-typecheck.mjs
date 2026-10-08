@@ -5,6 +5,8 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { bunTypecheckInvocation } from '../packages/tools/src/_bun-typechecker.ts';
+import { parseTypecheckDiagnostics } from './lib/test-typecheck-diagnostics.mjs';
 
 const args = new Set(process.argv.slice(2));
 const supported = new Set(['--json', '--print-baseline', '--report-only']);
@@ -19,7 +21,6 @@ const repoRoot = process.cwd();
 const registry = JSON.parse(
   await readFile(path.join(repoRoot, 'architecture/registry.json'), 'utf8'),
 );
-const tscEntry = path.join(repoRoot, 'node_modules/typescript/bin/tsc');
 
 function toPosix(value) {
   return value.replaceAll(path.sep, '/');
@@ -86,13 +87,17 @@ async function loadBaselineCounts() {
   return counts;
 }
 
-function runTsc(project) {
+async function runBun(project) {
+  const invocation = await bunTypecheckInvocation(repoRoot, ['--noEmit', '-p', project.config], {
+    cacheRoot: path.join(repoRoot, '.bun/typecheck'),
+  });
   return new Promise((resolve) => {
-    const child = spawn(
-      process.execPath,
-      [tscEntry, '--noEmit', '--pretty', 'false', '-p', project.config],
-      { cwd: repoRoot, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] },
-    );
+    const child = spawn(invocation.cmd, invocation.args, {
+      cwd: invocation.cwd,
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8');
@@ -104,10 +109,20 @@ function runTsc(project) {
       stderr += chunk;
     });
     child.on('error', (error) =>
-      resolve({ project, exitCode: -1, output: `${stdout}\n${stderr}\n${error.message}` }),
+      resolve({
+        project,
+        cwd: invocation.cwd,
+        exitCode: -1,
+        output: `${stdout}\n${stderr}\n${error.message}`,
+      }),
     );
     child.on('close', (exitCode) =>
-      resolve({ project, exitCode: exitCode ?? -1, output: `${stdout}\n${stderr}` }),
+      resolve({
+        project,
+        cwd: invocation.cwd,
+        exitCode: exitCode ?? -1,
+        output: `${stdout}\n${stderr}`,
+      }),
     );
   });
 }
@@ -126,69 +141,14 @@ async function runWithConcurrency(items, limit, worker) {
   return results;
 }
 
-function normalizeFile(file) {
-  const absolute = path.isAbsolute(file) ? file : path.resolve(repoRoot, file);
-  return toPosix(path.relative(repoRoot, absolute));
-}
-
-// Diagnostic messages (e.g. TS6059 "File '<abs>' is not under rootDir '<abs>'"
-// or TS2307/TS2352 that quote resolved module paths) embed ABSOLUTE repo paths.
-// Those differ per platform/checkout (D:/... on Windows, /home/runner/... on
-// Linux CI, backslash vs forward slash), so hashing the raw message makes the
-// baseline non-portable. Rewrite any absolute repoRoot path inside the message
-// to a stable repo-relative POSIX form so the hash is environment-independent.
-function normalizeMessage(message) {
-  const rootPosix = toPosix(repoRoot);
-  const rootWin = repoRoot.replaceAll('/', '\\');
-  return message
-    .split(rootPosix)
-    .join('<repo>')
-    .split(rootWin)
-    .join('<repo>')
-    .replaceAll('\\', '/');
-}
-
 function parseDiagnostics(result) {
-  const diagnostics = [];
-  const lines = result.output.replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/);
-  let current = null;
-  function finish() {
-    if (!current) return;
-    current.message = normalizeMessage(current.message.replace(/\s+/g, ' ').trim());
-    current.key = `${current.project}|${current.file}|${current.code}|${current.message}`;
-    diagnostics.push(current);
-    current = null;
-  }
-  for (const line of lines) {
-    const withFile = line.match(/^(.+?)\((\d+),(\d+)\): error (TS\d+): (.*)$/);
-    const global = line.match(/^error (TS\d+): (.*)$/);
-    if (withFile) {
-      finish();
-      current = {
-        project: result.project.id,
-        file: normalizeFile(withFile[1]),
-        code: withFile[4],
-        message: withFile[5],
-      };
-    } else if (global) {
-      finish();
-      current = {
-        project: result.project.id,
-        file: '<project>',
-        code: global[1],
-        message: global[2],
-      };
-    } else if (current && line.trim()) current.message += ` ${line.trim()}`;
-  }
-  finish();
-  return diagnostics;
+  return parseTypecheckDiagnostics(result, repoRoot);
 }
 
 const projects = await discoverProjects();
-// TypeScript 7's native compiler launcher is not reliably concurrent on all
-// supported developer machines. Sequential project execution keeps baseline
-// generation deterministic and still completes quickly for this workspace.
-const results = await runWithConcurrency(projects, 1, runTsc);
+// Bun uses up to four checker threads per package. Keep projects sequential
+// to bound resource usage and preserve deterministic baseline generation.
+const results = await runWithConcurrency(projects, 1, runBun);
 const rawDiagnostics = results.flatMap(parseDiagnostics).sort((a, b) => a.key.localeCompare(b.key));
 const diagnosticMap = new Map();
 for (const diagnostic of rawDiagnostics) {

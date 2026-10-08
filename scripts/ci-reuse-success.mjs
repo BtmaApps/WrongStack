@@ -8,7 +8,7 @@
  */
 const checks = {
   lint: 'Lint (Biome)',
-  typecheck: 'TypeCheck (tsc)',
+  typecheck: 'TypeCheck (Bun)',
   build: 'Build (esbuild + tsc declarations)',
   test: 'Test (Vitest + coverage ratchets)',
   'tui-smoke': 'TUI Smoke (non-TTY)',
