@@ -7,6 +7,7 @@
  * ever moves forward.
  */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -134,5 +135,41 @@ describe('Poller standby takeover offset', () => {
     await vi.waitFor(() => expect(offsets.length).toBeGreaterThan(0), { timeout: 2_000 });
 
     expect(offsets[0]).toBe(10);
+  });
+
+  it('holds polling instead of replaying the handled batch while the saved offset is unreadable', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'tg-standby-'));
+    const offsetPath = join(dir, 'offset.json');
+    writeFileSync(offsetPath, '3'); // the previous owner handled 1 and 2
+    const offsets: number[] = [];
+    const seen: number[] = [];
+    // A transient lock (e.g. AV scanning the freshly renamed file) used to read
+    // as "no offset", so polling restarted at 0 and re-ran both commands.
+    const nodeFs = createRequire(import.meta.url)('node:fs') as typeof import('node:fs');
+    const realReadFileSync = nodeFs.readFileSync;
+    nodeFs.readFileSync = ((p: Parameters<typeof realReadFileSync>[0], ...rest: unknown[]) => {
+      if (String(p) === offsetPath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof realReadFileSync;
+    syncBuiltinESMExports();
+    let poller: Poller;
+    try {
+      poller = makePoller({
+        api: fakeTelegram([textUpdate(1), textUpdate(2)])(offsets),
+        offsetPath,
+        onMessage: (id) => seen.push(id),
+      });
+      await poller.poll();
+    } finally {
+      nodeFs.readFileSync = realReadFileSync;
+      syncBuiltinESMExports();
+    }
+    expect(offsets).toEqual([]);
+
+    await poller.poll();
+    expect(offsets).toEqual([3]);
+    expect(seen).toEqual([]);
   });
 });

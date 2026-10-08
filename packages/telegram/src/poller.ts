@@ -18,6 +18,8 @@ export class Poller {
   private pollActive = false;
   private _startedAt: number | null = null;
   private offset = 0;
+  /** The saved offset exists but could not be read; polls hold until it can. */
+  private offsetUnreadable = false;
   private _conflictStreak = 0;
   // Supersede fence: bumped by handleLockLost()/stop() so an in-flight poll's
   // .finally re-arm cannot revive a chain that was replaced while it ran.
@@ -159,6 +161,12 @@ export class Poller {
   async poll(): Promise<void> {
     const epoch = this.chainEpoch;
     const signal = this.controller.signal;
+    // Polling with a stale offset would re-deliver the last batch the previous
+    // owner already handled (it is confirmed only by a higher offset).
+    if (this.offsetUnreadable) {
+      await this.loadOffset();
+      if (this.offsetUnreadable) return;
+    }
     try {
       const updates = await this.api().getUpdates({
         offset: this.offset,
@@ -225,11 +233,19 @@ export class Poller {
     if (!this.offsetStore) return;
     try {
       const saved = this.offsetStore.read();
+      this.offsetUnreadable = false;
       if (saved !== null && saved > this.offset) {
         this.offset = saved;
         this.log.debug(`Telegram polling offset restored: ${this.offset}`);
       }
-    } catch {}
+    } catch (err) {
+      if (!this.offsetUnreadable) {
+        this.log.warn(
+          `Telegram: cannot read the saved polling offset (${err instanceof Error ? err.message : String(err)}) — holding polls until it is readable.`,
+        );
+      }
+      this.offsetUnreadable = true;
+    }
   }
   async saveOffset(): Promise<void> {
     if (!this.offsetStore) return;

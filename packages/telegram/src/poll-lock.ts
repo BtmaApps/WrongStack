@@ -159,6 +159,10 @@ export class PollLock {
 
   private heartbeatTick(): void {
     const current = this.readLock();
+    // Unreadable right now (EBUSY/EPERM) is "unknown", not "taken over":
+    // standing down would leave our own fresh lock blocking every instance,
+    // this one included, until it went stale. Try again next tick.
+    if (current === undefined) return;
     if (!current || current.id !== this.id) {
       // Another instance stole the lock (e.g. this process was suspended past
       // the staleness window). Stop claiming it and notify the owner.

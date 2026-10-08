@@ -55,4 +55,28 @@ describe('poll read ownership verifier', () => {
     good.release();
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  it('keeps a held lock when a heartbeat cannot read the lock file', async () => {
+    // Treating "unreadable" as "taken over" made the holder stand down while
+    // its own fresh lock kept every instance out until it went stale.
+    const fs = await vi.importActual<typeof import('node:fs')>('node:fs');
+    const dir = fs.mkdtempSync(path.join(tmpdir(), 'poll-unknown-read-'));
+    seam.target = path.join(dir, 'poll.lock');
+    seam.mode = 'normal';
+    const lock = new PollLock(seam.target, { staleMs: 1_000_000, heartbeatMs: 1_000_000 });
+    const onLost = vi.fn();
+    lock.onLost = onLost;
+    expect(lock.tryAcquire()).toBe(true);
+
+    seam.mode = 'unknown';
+    seam.code = 'EBUSY';
+    (lock as unknown as { heartbeatTick(): void }).heartbeatTick();
+    seam.mode = 'normal';
+
+    expect(lock.held).toBe(true);
+    expect(onLost).not.toHaveBeenCalled();
+    lock.release();
+    expect(fs.existsSync(seam.target)).toBe(false);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });

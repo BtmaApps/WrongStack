@@ -60,7 +60,8 @@ export class OffsetStore {
 
   /**
    * Read the persisted offset. Returns null when the file is missing, empty,
-   * or contains a value that is not a valid non-negative integer.
+   * or contains a value that is not a valid non-negative integer; throws when
+   * an existing file cannot be read.
    */
   read(): number | null {
     if (!this.path) return null;
@@ -68,8 +69,11 @@ export class OffsetStore {
     let raw: string;
     try {
       raw = readFileSync(this.path, 'utf8').trim();
-    } catch {
-      return null;
+    } catch (err) {
+      // Missing = first run. Any other failure must surface: polling without
+      // the saved offset re-delivers the last, not yet confirmed batch.
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw err;
     }
 
     if (raw.length === 0) return null;
