@@ -57,12 +57,19 @@ export async function resolveServerCommand(
   // not apply PATHEXT, so `spawn('typescript-language-server')` ENOENTs even
   // though the `.cmd` shim sits right there on PATH. Resolve to the concrete
   // file so safeSpawn can see the extension and pick the shell it needs.
-  const onPath = await resolveCommandOnPath(command);
+  //
   // PATH is not by itself proof of provenance: `npm run` / `pnpm run` / `npx`
-  // prepend `<project>/node_modules/.bin` to PATH, so launching wstack through
-  // a package script inside a hostile repo puts that repo's binaries on PATH
-  // and reopens WS-SEC-01 through this branch. Gate on where the file actually
-  // lives, which covers both the local walk above and PATH injection.
+  // prepend `<project>/node_modules/.bin` to PATH (and `where.exe` searches the
+  // current directory first), so launching wstack inside a hostile repo puts
+  // that repo's binaries on PATH and reopens WS-SEC-01 through this branch.
+  // Project-local hits are skipped while choosing — refusing only the FIRST hit
+  // left a shadowed user's trusted global server unused — and the gate below
+  // still checks where the chosen file lives (POSIX `command -v` lists one).
+  const onPath = await resolveCommandOnPath(
+    command,
+    undefined,
+    (hit) => !isInsideProject(hit, cwd),
+  );
   return gateProjectLocalPath(onPath, cwd);
 }
 
@@ -104,8 +111,9 @@ export async function commandExistsOnPath(command: string, timeoutMs = 2000): Pr
 export async function resolveCommandOnPath(
   command: string,
   timeoutMs = 2000,
+  accept?: ((hit: string) => boolean) | undefined,
 ): Promise<string | null> {
-  return commandProbe(command, timeoutMs, process.platform, spawn as unknown as SpawnProbe);
+  return commandProbe(command, timeoutMs, process.platform, spawn as unknown as SpawnProbe, accept);
 }
 
 function commandProbe(
@@ -113,6 +121,7 @@ function commandProbe(
   timeoutMs: number,
   platform: NodeJS.Platform,
   spawnProbe: SpawnProbe,
+  accept?: ((hit: string) => boolean) | undefined,
 ): Promise<string | null> {
   const probe = platform === 'win32' ? 'where.exe' : 'sh';
   const args = platform === 'win32' ? [command] : ['-lc', `command -v ${shellQuote(command)}`];
@@ -137,16 +146,21 @@ function commandProbe(
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      resolve(code === 0 ? pickProbeHit(out, platform) : null);
+      resolve(code === 0 ? pickProbeHit(out, platform, accept) : null);
     });
   });
 }
 
-function pickProbeHit(stdout: string, platform: NodeJS.Platform): string | null {
+function pickProbeHit(
+  stdout: string,
+  platform: NodeJS.Platform,
+  accept: (hit: string) => boolean = () => true,
+): string | null {
   const hits = stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(accept);
   const first = hits[0];
   if (first === undefined) return null;
   if (platform !== 'win32') return first;

@@ -3,7 +3,7 @@
  * Covers secret-name filter, value-side credential detection,
  * NODE_OPTIONS sanitization, and passthrough mode.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildChildEnv,
   configureChildEnvGitIdentity,
@@ -62,6 +62,24 @@ describe('sanitizeNodeOptions', () => {
 // ============================================================================
 
 describe('buildChildEnv', () => {
+  // GitLab's CI_JOB_JWT rode the `CI` prefix rule, and a git env-config
+  // `Authorization:` header value rode the `GIT_` prefix rule.
+  it('strips *_JWT signed tokens and header-shaped credentials in values', () => {
+    process.env = {
+      CI_COMMIT_SHA: 'abc123',
+      CI_JOB_JWT: 'eyJhbGciOiJSUzI1NiJ9.e30.c2ln',
+      CI_JOB_JWT_V2: 'eyJhbGciOiJSUzI1NiJ9.e30.c2ln',
+      GIT_CONFIG_VALUE_0: 'Authorization: Bearer ghs_secret',
+      GIT_CONFIG_VALUE_1: 'https://example.com/authorization-docs',
+    };
+    const result = buildChildEnv();
+    expect(result.CI_COMMIT_SHA).toBe('abc123');
+    expect(result.CI_JOB_JWT).toBeUndefined();
+    expect(result.CI_JOB_JWT_V2).toBeUndefined();
+    expect(result.GIT_CONFIG_VALUE_0).toBeUndefined();
+    expect(result.GIT_CONFIG_VALUE_1).toBe('https://example.com/authorization-docs');
+  });
+
   it('should forward allowed system vars', () => {
     process.env = { PATH: '/usr/bin', HOME: '/home/user' };
     const result = buildChildEnv();

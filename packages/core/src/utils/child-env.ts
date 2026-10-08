@@ -76,6 +76,9 @@ const SECRET_NAME_PARTS = [
   'BEARER',
   'COOKIE',
   'PRIVATE',
+  // Signed tokens named for their format, not their role: GitLab's
+  // CI_JOB_JWT / CI_JOB_JWT_V2 matched nothing here and rode the `CI` prefix.
+  'JWT',
   // F5 (SECRETS-004): `_PAT` (personal-access-token) convention used by
   // `GH_PAT`, `DIGITALOCEAN_PAT`, `AZURE_DEVOPS_PAT`, etc. Plain
   // substring match would catch `PATH` / `PATHEXT` — the bare token
@@ -122,6 +125,16 @@ function valueHasEmbeddedCredential(value: string): boolean {
   // scheme:// then optional user, a ':' , a non-empty password, then '@'.
   // Userinfo chars stop at '/', whitespace, ':' (separator) and '@'.
   return /\b[a-z][a-z0-9+.-]*:\/\/[^/\s:@]*:[^/\s@]+@/i.test(value);
+}
+
+/**
+ * Value-side detection of an HTTP credential header carried in a forwarded
+ * variable — git's env config `GIT_CONFIG_VALUE_<n>="Authorization: Bearer …"`
+ * (the `http.extraHeader` pattern) passes every name rule via the `GIT_`
+ * prefix. Matches only the header shape, so ordinary values are unaffected.
+ */
+function valueHasHeaderCredential(value: string): boolean {
+  return /\b(?:proxy-)?authorization\s*:\s*\S/i.test(value);
 }
 
 /**
@@ -246,7 +259,7 @@ export function buildChildEnv(optsOrSessionId?: BuildChildEnvOptions | string): 
     // 0. Strip any value with an embedded URI credential (user:pass@host),
     //    regardless of the variable name (WS-01). Applied before the allowlist
     //    so even a "system" name carrying a connection string is caught.
-    if (valueHasEmbeddedCredential(v)) continue;
+    if (valueHasEmbeddedCredential(v) || valueHasHeaderCredential(v)) continue;
     // 1. Forward names on the explicit allowlist — these are well-known
     //    non-secret system variables (PATH, HOME, LANG, ...).
     if (ALLOWED_KEYS.has(upper)) {
