@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:37:25.185Z",
+  "generatedAt": "2026-10-08T12:39:25.677Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4893,
     "testFiles": 4192,
-    "sourceLines": 1083620,
+    "sourceLines": 1083632,
     "workspaceEdges": 133,
     "moduleEdges": 16111,
     "nonCommandSlashImports": 0,

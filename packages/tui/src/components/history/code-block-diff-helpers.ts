@@ -42,17 +42,29 @@ export function countUnifiedDiffChanges(diff: string): { added: number; removed:
   const startsWithAny = (prefixes: string[], end: number): string | undefined =>
     prefixes.find((p) => end - lineStart >= p.length && diff.startsWith(p, lineStart));
 
+  // Lines before the first hunk (commit message, format-patch `---`) are not
+  // content, and a file header is a `--- ` line directly followed by `+++ `.
+  // Skipping every `--- `/`+++ ` line dropped removed `-- comment` lines
+  // (SQL/Lua/Haskell) and added `++ x` lines — same rule as core's
+  // countUnifiedDiffLines. A hunkless snippet (`-a` / `+b`) counts from line 1.
+  let sawHunk = !/^@@/m.test(diff);
+  let skipHeaderPlus = false;
   const processLine = (end: number): void => {
     const found = startsWithAny(['diff --git ', '@@'], end);
     if (found === 'diff --git ') {
       /* outside hunk - reset is implicit via the next @@ */
     } else if (found === '@@') {
-      /* entering hunk */
-    } else {
+      sawHunk = true;
+    } else if (skipHeaderPlus) {
+      skipHeaderPlus = false;
+    } else if (sawHunk) {
+      if (startsWithAny(['--- '], end) && diff.startsWith('+++ ', end + 1)) {
+        skipHeaderPlus = true;
+        return;
+      }
       const first = diff.charCodeAt(lineStart);
-      const fileHeader = startsWithAny(['+++ ', '--- '], end) !== undefined;
-      if (!fileHeader && first === 43) added++;
-      else if (!fileHeader && first === 45) removed++;
+      if (first === 43) added++;
+      else if (first === 45) removed++;
     }
   };
 
