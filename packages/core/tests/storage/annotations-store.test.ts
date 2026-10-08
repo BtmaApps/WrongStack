@@ -217,7 +217,7 @@ describe('AnnotationsStore', () => {
     const fp = path.join(dir, 'io-error.annotations.json');
     await fs.writeFile(fp, JSON.stringify({ version: 1, annotations: [] }), 'utf8');
     // Make readFile reject for this file
-    fs.readFile.mockRejectedValueOnce(
+    vi.mocked(fs.readFile).mockRejectedValueOnce(
       Object.assign(new Error('EACCES permission denied'), { code: 'EACCES' }),
     );
     try {
@@ -234,7 +234,7 @@ describe('AnnotationsStore', () => {
         }),
       );
     } finally {
-      fs.readFile.mockReset();
+      vi.mocked(fs.readFile).mockReset();
     }
   });
 
@@ -242,13 +242,15 @@ describe('AnnotationsStore', () => {
     // add() built on list(), which degrades to [] on a read error; writing
     // that back deleted every existing annotation of the session.
     await store.add({ sessionId: 'keep', atEventIndex: 1, authorId: 'u', text: 'existing' });
-    fs.readFile.mockRejectedValueOnce(Object.assign(new Error('EIO i/o error'), { code: 'EIO' }));
+    vi.mocked(fs.readFile).mockRejectedValueOnce(
+      Object.assign(new Error('EIO i/o error'), { code: 'EIO' }),
+    );
     try {
       await expect(
         store.add({ sessionId: 'keep', atEventIndex: 2, authorId: 'u', text: 'new' }),
       ).rejects.toMatchObject({ code: 'EIO' });
     } finally {
-      fs.readFile.mockReset();
+      vi.mocked(fs.readFile).mockReset();
     }
     expect((await store.list('keep')).map((a) => a.text)).toEqual(['existing']);
   });
