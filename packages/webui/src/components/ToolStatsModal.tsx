@@ -223,7 +223,7 @@ export function ToolStatsModal({ open, onClose }: ToolStatsModalProps) {
       <section
         aria-label={t('chat:toolStats.title', 'Tool call statistics')}
         className={cn(
-          'flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border/70 bg-card shadow-2xl transition-transform duration-200',
+          'flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border/70 bg-card ws-dialog transition-transform duration-200',
           animateIn ? 'scale-100' : 'scale-95',
         )}
         onClick={(e) => e.stopPropagation()}

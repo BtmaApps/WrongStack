@@ -89,7 +89,7 @@ export function ReviewTray({
               <button
                 type="button"
                 onClick={() => onOpenFile(path)}
-                className="truncate font-mono text-[11px] text-primary hover:underline"
+                className="truncate rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] text-foreground hover:bg-primary/20 hover:underline"
                 title={path}
               >
                 {path}

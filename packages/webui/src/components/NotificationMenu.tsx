@@ -253,7 +253,7 @@ export function NotificationMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="w-80 sm:w-96 max-w-[calc(100vw-1rem)] p-0 rounded-xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden text-card-foreground"
+        className="w-80 sm:w-96 max-w-[calc(100vw-1rem)] p-0 rounded-xl border border-border/80 bg-card/95 backdrop-blur-xl ws-dialog overflow-hidden text-card-foreground"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 px-3.5 py-2.5 bg-muted/30">

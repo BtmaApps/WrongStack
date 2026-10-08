@@ -1,11 +1,11 @@
 import { CheckCircle2, Circle, Clock, Pause, RotateCcw, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useServerMessage } from '@/hooks/useServerMessage';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { useActiveSessionId } from '@/stores';
 import { onLaneDisposed } from '@/stores/chat-lanes';
-import { useServerMessage } from '@/hooks/useServerMessage';
 
 interface TaskItem {
   id: string;
@@ -248,7 +248,7 @@ export function TasksPanel(): React.ReactElement | null {
                           e.stopPropagation();
                           handleStatusChange(task.id, 'in_progress');
                         }}
-                        className="px-1.5 py-0.5 text-[9px] rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+                        className="px-1.5 py-0.5 text-[9px] rounded bg-primary/15 text-foreground hover:bg-primary/25 transition-colors"
                         title={t('activity:task.startTitle')}
                       >
                         {t('common:action.start')}

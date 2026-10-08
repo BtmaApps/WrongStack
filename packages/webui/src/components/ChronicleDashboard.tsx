@@ -275,7 +275,7 @@ export function ChronicleDashboard() {
                 <h1 className="text-lg font-semibold tracking-tight">
                   {t('activity:chronicle.codingIntelligence')}
                 </h1>
-                <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold tracking-wider text-primary">
+                <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold tracking-wider text-foreground">
                   {t('activity:chronicle.chronicle')}
                 </span>
               </div>
@@ -350,7 +350,7 @@ export function ChronicleDashboard() {
         </section>
 
         <section className="flex flex-wrap gap-x-6 gap-y-1 border-b border-border/60 bg-primary/[0.018] px-4 py-1.5 font-mono text-[9px] text-muted-foreground">
-          <span className="font-sans font-semibold uppercase tracking-wider text-primary">
+          <span className="font-sans font-semibold uppercase tracking-wider text-foreground">
             {t('activity:chronicle.tokenEconomics')}
           </span>
           <span>
@@ -546,7 +546,7 @@ export function ChronicleDashboard() {
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] transition-colors [&>svg]:h-3.5 [&>svg]:w-3.5',
                 signal === item.id
-                  ? 'bg-primary/10 font-medium text-primary'
+                  ? 'bg-primary/10 font-medium text-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >

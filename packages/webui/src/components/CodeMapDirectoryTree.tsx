@@ -127,7 +127,7 @@ export const DirectoryBranch = memo(function DirectoryBranch(
             <div
               className={cn(
                 'group flex h-7 items-center pr-1 text-[11px] hover:bg-muted',
-                selectedId === file.id && 'bg-primary/10 text-primary',
+                selectedId === file.id && 'bg-primary/10 text-foreground',
               )}
               style={{ paddingLeft: 8 + depth * 12 }}
             >
@@ -183,7 +183,7 @@ export const DirectoryBranch = memo(function DirectoryBranch(
                   className={cn(
                     'flex h-7 w-full items-center gap-1.5 pr-2 text-left text-[10px] hover:bg-muted',
                     selectedId === symbol.id
-                      ? 'bg-primary/10 text-primary'
+                      ? 'bg-primary/10 text-foreground'
                       : 'text-muted-foreground',
                   )}
                   style={{ paddingLeft: 38 + depth * 12 }}
@@ -202,7 +202,7 @@ export const DirectoryBranch = memo(function DirectoryBranch(
             {expanded && hiddenSymbolCount > 0 && (
               <button
                 type="button"
-                className="flex h-7 w-full items-center text-left font-mono text-[9px] text-primary hover:bg-muted"
+                className="flex h-7 w-full items-center text-left font-mono text-[9px] text-foreground hover:bg-primary/20"
                 style={{ paddingLeft: 38 + depth * 12 }}
                 onClick={() => onRevealAll(symbolsRevealKey)}
               >
@@ -215,7 +215,7 @@ export const DirectoryBranch = memo(function DirectoryBranch(
       {hiddenFileCount > 0 && (
         <button
           type="button"
-          className="flex h-7 w-full items-center text-left font-mono text-[9px] text-primary hover:bg-muted"
+          className="flex h-7 w-full items-center text-left font-mono text-[9px] text-foreground hover:bg-primary/20"
           style={{ paddingLeft: 8 + depth * 12 }}
           onClick={() => onRevealAll(filesRevealKey)}
         >

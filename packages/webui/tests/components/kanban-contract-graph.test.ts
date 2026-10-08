@@ -85,7 +85,7 @@ describe('Kanban contract graph view', () => {
     expect(view.edges.find((edge) => edge.id === 'verify-edge')?.animated).toBe(true);
     expect(view.edges.find((edge) => edge.id === 'verify-edge')?.markerEnd).toMatchObject({
       type: 'arrowclosed',
-      color: '#c084fc',
+      color: 'var(--color-viz-6)',
     });
   });
 

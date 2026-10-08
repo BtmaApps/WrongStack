@@ -26,11 +26,11 @@ const ISOLATED_COLOR_SURFACES = new Map<string, string>([
   // ---- webui ----
   ['webui/components/CommandPalette/export-utils.ts', 'Standalone exported HTML document.'],
   ['webui/components/DesignGalleryView.tsx', 'Previews arbitrary user-selected design-kit tokens.'],
+  ['webui/components/KanbanContractGraphDashboard.tsx', 'Rendered SVG contract graph nodes.'],
   [
-    'webui/components/KanbanContractGraphDashboard.tsx',
-    'Rendered SVG contract graph nodes.',
+    'webui/components/KanbanContractGraphView.ts',
+    'Graph canvas node colors and canvas backgrounds.',
   ],
-  ['webui/components/KanbanContractGraphView.ts', 'Graph canvas node colors and canvas backgrounds.'],
   ['webui/components/KanbanWorkbench.tsx', 'Kanban status badge highlights.'],
   [
     'webui/components/RepositoryHistoryView.tsx',
@@ -40,7 +40,10 @@ const ISOLATED_COLOR_SURFACES = new Map<string, string>([
     'webui/components/RepositoryCommitDetail.tsx',
     'Branch/tag badge tones and merge marker of the git history view (split from RepositoryHistoryView).',
   ],
-  ['webui/components/SetupScreen/ProviderKeyCard.tsx', 'QR encoder requires explicit dark/light colors.'],
+  [
+    'webui/components/SetupScreen/ProviderKeyCard.tsx',
+    'QR encoder requires explicit dark/light colors.',
+  ],
   ['webui/components/TerminalPanel.tsx', 'xterm owns a complete terminal ANSI palette.'],
   [
     'webui/components/vector-memory-panel/index.tsx',
@@ -48,22 +51,12 @@ const ISOLATED_COLOR_SURFACES = new Map<string, string>([
   ],
   ['webui/components/monaco-theme.ts', 'Monaco owns a complete editor/syntax palette.'],
   [
-    'webui/hooks/ws-handlers/brain-handlers.ts',
-    'Council graph color serialized for the separate renderer; extracted from misc-handlers.',
-  ],
-  [
     'webui/hooks/ws-handlers/misc-handlers.ts',
     'Serializes graph colors received by a separate renderer.',
   ],
   ['webui/lib/favicon.ts', 'Generates a self-contained SVG favicon data URL.'],
-  [
-    'webui/lib/palettes.ts',
-    'Defines the literal two-color swatches shown by the palette picker.',
-  ],
-  [
-    'webui/lib/tool-icon.ts',
-    'Maps externally supplied icon colors to stable color names.',
-  ],
+  ['webui/lib/palettes.ts', 'Defines the literal two-color swatches shown by the palette picker.'],
+  ['webui/lib/tool-icon.ts', 'Maps externally supplied icon colors to stable color names.'],
   ['webui/syntax-highlight.css', 'Highlight.js owns paired light/dark syntax colors.'],
 
   // ---- simpleui ----
@@ -72,7 +65,10 @@ const ISOLATED_COLOR_SURFACES = new Map<string, string>([
   // the surface rules below resolve against the variables it declares.
   ['simpleui/styles.css', 'Declares the simpleui palette tokens; its literals ARE the tokens.'],
   // Same role as webui/lib/palettes.ts — the swatch data behind the picker.
-  ['simpleui/lib/palettes.ts', 'Defines the literal swatches shown by the simpleui palette picker.'],
+  [
+    'simpleui/lib/palettes.ts',
+    'Defines the literal swatches shown by the simpleui palette picker.',
+  ],
   // Same role as webui/syntax-highlight.css — a highlighter owns paired
   // light/dark syntax colors rather than theme tokens.
   [
@@ -206,9 +202,7 @@ describe('WebUI theme color boundaries', () => {
   });
 
   it('keeps isolated color-surface exceptions explicit, valid, and necessary', () => {
-    const missing = [...ISOLATED_COLOR_SURFACES.keys()].filter(
-      (key) => !resolveSurface(key),
-    );
+    const missing = [...ISOLATED_COLOR_SURFACES.keys()].filter((key) => !resolveSurface(key));
     const unnecessary = [...ISOLATED_COLOR_SURFACES.keys()].filter((key) => {
       const absolutePath = resolveSurface(key);
       return (

@@ -1,9 +1,3 @@
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useConfigStore } from '@/stores';
-import type { WSServerMessage } from '@/types';
-import { toast } from '@/components/Toaster';
-import { getWSClient } from '@/lib/ws-client';
-import { showPanel } from '@/lib/view-navigation';
 import {
   ArrowRight,
   Bot,
@@ -13,17 +7,20 @@ import {
   KeyRound,
   Loader2,
   RefreshCw,
-  Sparkles,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePagination } from '@/hooks/usePagination';
 import { useShallow } from 'zustand/react/shallow';
-import { Button } from './ui/button';
-import { ScrollArea } from './ui/scroll-area';
-import { Pagination } from './ui/pagination';
+import { toast } from '@/components/Toaster';
+import { usePagination } from '@/hooks/usePagination';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { i18n, useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { useAppTranslation, i18n } from '@/i18n';
+import { showPanel } from '@/lib/view-navigation';
+import { getWSClient } from '@/lib/ws-client';
+import { useConfigStore } from '@/stores';
+import type { WSServerMessage } from '@/types';
 import { CustomProviderSection } from './SetupScreen/CustomProviderSection';
 import {
   DEFAULT_POPULAR_PROVIDERS,
@@ -31,11 +28,14 @@ import {
   type PopularProvider,
 } from './SetupScreen/popular-providers';
 import { formatSetupRelativeTime } from './SetupScreen/relative-time';
+import { Button } from './ui/button';
+import { Pagination } from './ui/pagination';
+import { ScrollArea } from './ui/scroll-area';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-import { ProviderKeyCard } from './SetupScreen/ProviderKeyCard';
 import { useSystemPromptStore } from '@/stores/system-prompt-store';
+import { ProviderKeyCard } from './SetupScreen/ProviderKeyCard';
 import type {
   CatalogModel,
   CatalogProvider,
@@ -597,7 +597,7 @@ export function SetupScreen() {
                               {m.capabilities.slice(0, 3).map((cap) => (
                                 <span
                                   key={cap}
-                                  className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-foreground border border-primary/20"
                                 >
                                   {cap}
                                 </span>

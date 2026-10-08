@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:40:07.238Z",
+  "generatedAt": "2026-10-08T12:40:55.223Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4894,
-    "testFiles": 4194,
-    "sourceLines": 1083857,
+    "sourceFiles": 4895,
+    "testFiles": 4195,
+    "sourceLines": 1083936,
     "workspaceEdges": 133,
-    "moduleEdges": 16113,
+    "moduleEdges": 16114,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -843,8 +843,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 714,
-      "testFiles": 471,
+      "sourceFiles": 715,
+      "testFiles": 472,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 471
+          "testFiles": 472
         }
       ]
     },
@@ -25585,6 +25585,12 @@
       },
       {
         "file": "packages/webui/tests/lib/session-story.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/shadow-boundaries.test.ts",
         "projects": [
           "webui-jsdom"
         ]

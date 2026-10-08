@@ -82,7 +82,7 @@ export function AudienceBadges({
         <button
           key={`${label}:${value}`}
           type="button"
-          className="max-w-full truncate rounded border border-primary/15 bg-primary/7 px-1.5 py-0.5 font-mono text-[9px] text-primary/90 transition-colors hover:border-primary/35 hover:bg-primary/12"
+          className="max-w-full truncate rounded border border-primary/15 bg-primary/7 px-1.5 py-0.5 font-mono text-[9px] text-foreground transition-colors hover:border-primary/35 hover:bg-primary/12"
           onClick={() => onFilter(value)}
           title={`Filter by ${label}: ${value}`}
         >

@@ -15,7 +15,7 @@ export function LifetimeLineage({ lifetime }: { lifetime: FileLineageSummary }) 
   const since = lifetime.firstAt ? new Date(lifetime.firstAt).toLocaleDateString() : undefined;
   return (
     <div className="rounded-md border border-primary/15 bg-primary/[0.03] px-2.5 py-2">
-      <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-primary [&>svg]:h-3 [&>svg]:w-3">
+      <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-foreground [&>svg]:h-3 [&>svg]:text-primary [&>svg]:w-3">
         <FileClock />
         {t('activity:fileActivity.lifetimeTitle')}
       </div>
@@ -120,7 +120,7 @@ export function OverviewTab({
             {tasks.slice(0, 4).map((id) => (
               <span
                 key={id}
-                className="max-w-[180px] truncate rounded border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-primary"
+                className="max-w-[180px] truncate rounded border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-foreground"
                 title={id}
               >
                 {taskLabel(id)}

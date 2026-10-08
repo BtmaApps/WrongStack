@@ -90,7 +90,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
           : { role: 'complementary' })}
         aria-label={t('activity:sidebar.label')}
         className={cn(
-          'fixed inset-y-0 z-40 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl animate-slide-in md:relative md:inset-auto md:z-auto md:shadow-none',
+          'fixed inset-y-0 z-40 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/70 bg-card/95 ws-dialog backdrop-blur-xl animate-slide-in md:relative md:inset-auto md:z-auto md:shadow-none',
           desktopShell ? 'left-10' : 'left-12',
         )}
       >

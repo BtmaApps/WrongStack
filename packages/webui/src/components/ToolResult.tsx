@@ -1,8 +1,8 @@
-import { cn } from '@/lib/utils';
 import { Brain, ChevronDown, ChevronRight, ChevronsDown, ChevronsUp } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { extractSageBlock } from '@/lib/sage-block';
+import { cn } from '@/lib/utils';
 
 /** When a tool dumps hundreds of lines of output, the chat turns into a
  *  scroll-wall. This threshold gates the auto-collapse: anything longer
@@ -177,7 +177,7 @@ export const ToolResult = memo(function ToolResult({
     <button
       type="button"
       onClick={() => window.dispatchEvent(new CustomEvent('open:memory-panel'))}
-      className="mt-1 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/[0.06] px-2 py-0.5 text-[10px] font-medium text-primary/80 hover:bg-primary/10 hover:text-primary transition-colors"
+      className="mt-1 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-foreground hover:bg-primary/20 transition-colors"
       title={`${sageCount} SAGE ${sageCount === 1 ? 'memory' : 'memories'} injected — click to open Memory panel`}
       data-testid="sage-memory-badge"
     >

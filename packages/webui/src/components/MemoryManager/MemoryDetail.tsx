@@ -95,7 +95,7 @@ export function MemoryDetail({
         </span>
         {memory.audience && (
           <span
-            className="flex items-center gap-1 border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[9px] text-primary"
+            className="flex items-center gap-1 border border-primary/30 bg-primary/15 px-2 py-0.5 font-mono text-[9px] text-foreground"
             title={formatAudienceText(memory.audience)}
           >
             <BrainCircuit className="size-3" />

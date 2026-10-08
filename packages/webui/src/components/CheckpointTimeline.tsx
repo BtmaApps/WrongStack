@@ -1,5 +1,6 @@
 import { Clock, History, Rewind } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { HueChip } from '@/components/ui/hue-chip';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -196,9 +197,12 @@ export function CheckpointTimeline({
                         </span>
                         <span className="text-xs font-medium truncate">{cp.label}</span>
                         {isLatest && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium shrink-0">
+                          <HueChip
+                            tone="primary"
+                            className="rounded-full text-[9px] font-medium shrink-0"
+                          >
                             {t('activity:checkpoint.latest')}
-                          </span>
+                          </HueChip>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">

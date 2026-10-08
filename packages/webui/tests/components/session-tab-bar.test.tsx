@@ -282,6 +282,25 @@ describe('SessionTabBar component', () => {
     expect(mockSendAbort).toHaveBeenCalledWith('sess-87654321');
   });
 
+  it('gives the close-X a coarse-pointer hit target of at least 24x24 (WCAG 2.5.8)', () => {
+    useSessionTabStore.setState({
+      openTabIds: ['sess-12345678', 'sess-87654321'],
+      lastSeenCounts: {},
+      attention: {},
+    });
+
+    render(<SessionTabBar />);
+
+    for (const btn of screen.getAllByTitle('Close tab')) {
+      // Invisible ::after expansion (clipped by the overflow-x-auto strip)…
+      expect(btn.className).toContain('ws-touch-target');
+      // …plus a coarse-only 24x24 (min-h-6/min-w-6) floor on the button itself,
+      // so the effective target clears 24px even after the strip clips the pseudo.
+      expect(btn.className).toContain('pointer-coarse:min-h-6');
+      expect(btn.className).toContain('pointer-coarse:min-w-6');
+    }
+  });
+
   it('closes a completely empty tab instantly without confirmation', async () => {
     useSessionTabStore.setState({
       openTabIds: ['sess-12345678', 'sess-87654321'],

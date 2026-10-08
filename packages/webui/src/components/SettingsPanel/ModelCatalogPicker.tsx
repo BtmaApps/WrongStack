@@ -187,7 +187,7 @@ export function ModelCatalogPicker({ ws, onSelect, onClose }: ModelCatalogPicker
                   {match.capabilities.map((cap) => (
                     <span
                       key={cap}
-                      className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+                      className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-foreground"
                     >
                       {cap}
                     </span>

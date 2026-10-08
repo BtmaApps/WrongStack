@@ -22,12 +22,12 @@ const X_BY_KIND: Record<KanbanContractNode['kind'], number> = {
 };
 
 const COLOR_BY_KIND: Record<KanbanContractNode['kind'], string> = {
-  objective: '#38bdf8',
-  component: '#818cf8',
-  artifact: '#f472b6',
-  risk: '#fb923c',
-  guardrail: '#34d399',
-  verification: '#c084fc',
+  objective: 'var(--color-viz-1)',
+  component: 'var(--color-viz-2)',
+  artifact: 'var(--color-viz-3)',
+  risk: 'var(--color-viz-4)',
+  guardrail: 'var(--color-viz-5)',
+  verification: 'var(--color-viz-6)',
 };
 
 const BOARD_X_BY_KIND: Record<KanbanContractNode['kind'], number> = {
@@ -52,13 +52,13 @@ const EDGE_COLOR_BY_TYPE: Record<
   NonNullable<KanbanBoard['contractGraph']>['edges'][number]['type'],
   string
 > = {
-  targets: '#38bdf8',
-  affects: '#818cf8',
-  must_preserve: '#34d399',
-  exposes: '#fb923c',
-  verified_by: '#c084fc',
-  conflicts_with: '#fb7185',
-  derived_from: '#94a3b8',
+  targets: 'var(--color-viz-1)',
+  affects: 'var(--color-viz-2)',
+  must_preserve: 'var(--color-viz-5)',
+  exposes: 'var(--color-viz-4)',
+  verified_by: 'var(--color-viz-6)',
+  conflicts_with: 'var(--color-viz-7)',
+  derived_from: 'var(--color-viz-8)',
   relates_to: '#67e8f9',
 };
 
@@ -174,12 +174,12 @@ export function buildBoardContractGraphView(board: KanbanBoard): { nodes: Node[]
   const nodes: Node[] = board.tasks.map((task) => {
     const health = taskHealth.get(task.id);
     const color = !health?.contracted
-      ? '#fb923c'
+      ? 'var(--color-viz-4)'
       : health.ready
         ? health.closed
-          ? '#34d399'
-          : '#38bdf8'
-        : '#fb7185';
+          ? 'var(--color-viz-5)'
+          : 'var(--color-viz-1)'
+        : 'var(--color-viz-7)';
     const band = taskBands.get(task.id) ?? { top: 0, height: 190 };
     return {
       id: taskContractEndpoint(task.id),
@@ -196,7 +196,7 @@ export function buildBoardContractGraphView(board: KanbanBoard): { nodes: Node[]
     const lane = `${node.taskId}:${LANE_BY_KIND[node.kind]}`;
     const row = rowByLane.get(lane) ?? 0;
     rowByLane.set(lane, row + 1);
-    const color = issueNodeIds.has(node.id) ? '#fb7185' : COLOR_BY_KIND[node.kind];
+    const color = issueNodeIds.has(node.id) ? 'var(--color-viz-7)' : COLOR_BY_KIND[node.kind];
     const band = taskBands.get(node.taskId) ?? { top: 0, height: 190 };
     nodes.push({
       id: node.id,
@@ -236,8 +236,8 @@ export function buildContractGraphView(
     {
       id: rootId,
       position: { x: 0, y: Math.max(36, ((maxRows - 1) * 108) / 2) },
-      data: { label: task.title, color: '#0ea5e9' },
-      style: nodeStyle('#0ea5e9', true),
+      data: { label: task.title, color: 'var(--color-viz-1)' },
+      style: nodeStyle('var(--color-viz-1)', true),
     },
   ];
   for (const node of relevant) {
@@ -276,8 +276,8 @@ function contractEdgeView(edge: NonNullable<KanbanBoard['contractGraph']>['edges
       opacity: edge.enforcement === 'blocking' ? 1 : 0.72,
     },
     markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
-    labelStyle: { fontSize: scaledPx(10), fontWeight: 600, fill: '#cbd5e1' },
-    labelBgStyle: { fill: '#07101f', fillOpacity: 0.9 },
+    labelStyle: { fontSize: scaledPx(10), fontWeight: 600, fill: 'var(--color-viz-label)' },
+    labelBgStyle: { fill: 'var(--color-viz-surface)', fillOpacity: 0.9 },
     labelBgPadding: [5, 3],
     labelBgBorderRadius: 5,
   };
@@ -289,8 +289,10 @@ function nodeStyle(color: string, root = false): Node['style'] {
     minHeight: 64,
     border: `1.5px solid ${color}`,
     borderRadius: 12,
-    background: root ? `linear-gradient(135deg, ${color}, #075985)` : `${color}24`,
-    color: '#f8fafc',
+    background: root
+      ? `linear-gradient(135deg, ${color}, var(--color-viz-1-deep))`
+      : `color-mix(in srgb, ${color} 14%, transparent)`,
+    color: 'var(--color-viz-ink)',
     boxShadow: `0 10px 30px ${color}18, inset 0 1px 0 rgba(255,255,255,0.08)`,
     fontSize: scaledPx(11),
     fontWeight: 650,

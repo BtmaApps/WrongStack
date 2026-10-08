@@ -245,7 +245,7 @@ export function TerminalPanel({
       style={{ height }}
       data-shell={desktopShell ? 'desktop' : 'browser'}
       className={cn(
-        'z-30 flex min-h-0 shrink-0 flex-col border-t border-border/70 bg-card shadow-2xl',
+        'z-30 flex min-h-0 shrink-0 flex-col border-t border-border/70 bg-card ws-dialog',
         desktopShell && 'ws-terminal-desktop',
         hidden && 'hidden',
       )}

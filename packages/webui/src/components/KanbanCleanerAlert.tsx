@@ -98,7 +98,7 @@ export function KanbanCleanerAlert({
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[11px] font-semibold text-foreground group-hover:text-primary">
+                  <span className="block truncate text-[11px] font-semibold text-foreground rounded group-hover:bg-primary/20">
                     {taskTitle}
                   </span>
                   <span className="mt-0.5 block line-clamp-2 text-[10px] leading-4 text-muted-foreground">

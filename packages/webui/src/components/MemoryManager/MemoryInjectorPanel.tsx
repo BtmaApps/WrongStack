@@ -117,7 +117,7 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
       {/* Panel */}
       <aside
         className={cn(
-          'fixed right-0 top-0 z-50 h-full w-full max-w-md border-l border-border/60 bg-card/95 backdrop-blur-xl shadow-2xl',
+          'fixed right-0 top-0 z-50 h-full w-full max-w-md border-l border-border/60 bg-card/95 backdrop-blur-xl ws-dialog',
           'transition-transform duration-300 ease-out',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
@@ -136,7 +136,7 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
                 {t('activity:sageMemory.injectedHeading', 'Memory Context')}
               </h2>
               {activeRecords.length > 0 && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary tabular-nums">
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-foreground tabular-nums">
                   {activeRecords.length} active
                 </span>
               )}

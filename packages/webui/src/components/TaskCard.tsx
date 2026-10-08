@@ -1,8 +1,8 @@
-import { cn } from '@/lib/utils';
-import { useAppTranslation } from '@/i18n';
 import { CheckCircle2, Circle, Clock, Pause, RotateCcw, UserCog, XCircle } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
 
 export interface TaskItem {
   id: string;
@@ -177,7 +177,7 @@ export function TaskCard({
             <button
               type="button"
               onClick={() => onStatusChange(task.id, 'in_progress')}
-              className="px-2 py-0.5 text-[10px] rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+              className="px-2 py-0.5 text-[10px] rounded bg-primary/15 text-foreground hover:bg-primary/25 transition-colors"
             >
               {t('activity:task.start')}
             </button>

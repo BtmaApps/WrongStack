@@ -509,7 +509,7 @@ function ServiceCard({
           )}
           {autoRestarting && (
             <span
-              className="flex shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary"
+              className="flex shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-foreground"
               data-testid="auto-restarting-badge"
               title={t('settings:connection.serviceAutoRestarting', {
                 defaultValue: 'Auto-restarting…',

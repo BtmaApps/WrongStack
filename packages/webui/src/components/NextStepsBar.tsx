@@ -1,7 +1,4 @@
-import {
-  type ParsedNextStep as NextStep,
-  parseNextSteps,
-} from '@wrongstack/tools/next-steps';
+import { type ParsedNextStep as NextStep, parseNextSteps } from '@wrongstack/tools/next-steps';
 import { ArrowRight, Check, Lightbulb, MousePointerClick, Timer } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -377,7 +374,7 @@ export function NextStepsBar({
               </span>
               {/* Auto indicator — show countdown, ⏩ marker, or nothing */}
               {s.auto && (
-                <span className="flex items-center gap-1 text-[10px] text-primary/70">
+                <span className="flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-foreground">
                   {autoMode && s.index === 1 && !showAutoCountdown ? (
                     <span title={t('activity:nextSteps.willAutoSubmit', 'Will auto-submit')}>
                       ⏩

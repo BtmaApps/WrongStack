@@ -62,7 +62,7 @@ export function MemoryManagerStatsBar({
       {scopedCount > 0 && (
         <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-primary/5 px-4 py-1.5">
           <BrainCircuit className="size-3.5 text-primary" />
-          <span className="text-[11px] font-medium text-primary">
+          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[11px] font-medium text-foreground">
             {scopedCount} audience-scoped memory{scopedCount !== 1 ? 'ies' : ''}
           </span>
           {roles.size > 0 && (

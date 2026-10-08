@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
 import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
 
 export interface ChipOption {
   value: string;
@@ -95,7 +95,7 @@ export function ChipMultiSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 max-h-72 w-full min-w-[240px] overflow-hidden rounded-md border border-border/80 bg-popover shadow-xl">
+        <div className="absolute z-50 mt-1 max-h-72 w-full min-w-[240px] overflow-hidden rounded-md border border-border/80 bg-popover ws-dialog">
           <div className="flex items-center gap-1.5 border-b border-border/70 bg-muted/20 px-2 py-1.5">
             <input
               value={query}

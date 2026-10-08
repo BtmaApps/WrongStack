@@ -220,7 +220,7 @@ export function SessionsDashboard() {
     >
       <header className="flex shrink-0 flex-col gap-3 border-b border-border/75 bg-card px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+          <div className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground">
             {t('activity:sessions.workspaceEyebrow', { defaultValue: 'Conversation control' })}
           </div>
           <h1 className="mt-0.5 text-lg font-semibold tracking-tight">

@@ -387,7 +387,7 @@ export function SkillDetailView(props0: { className?: string }) {
                       key={file}
                       type="button"
                       onClick={() => handleNavigateToSkill(derivedName!)}
-                      className="inline-flex min-w-0 items-center gap-1 rounded-md border border-border/70 bg-background/60 px-1.5 py-0.5 text-[10px] transition-colors hover:border-primary/40 hover:text-primary"
+                      className="inline-flex min-w-0 items-center gap-1 rounded-md border border-border/70 bg-background/60 px-1.5 py-0.5 text-[10px] text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10"
                       title={t('activity:skillDetail.goToSkillTitle', { name: derivedName! })}
                     >
                       <ArrowUpRight className="h-2.5 w-2.5" />
@@ -421,7 +421,7 @@ export function SkillDetailView(props0: { className?: string }) {
                       key={ref}
                       type="button"
                       onClick={() => handleNavigateToSkill(derivedName)}
-                      className="inline-flex min-w-0 items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[10px] text-primary transition-colors hover:border-primary/30 hover:bg-primary/10"
+                      className="inline-flex min-w-0 items-center gap-1 rounded-md border border-primary/20 bg-primary/15 px-1.5 py-0.5 text-[10px] text-foreground transition-colors hover:border-primary/30 hover:bg-primary/20"
                       title={t('activity:skillDetail.goToSkillTitle', { name: derivedName })}
                     >
                       <ArrowUpRight className="h-2.5 w-2.5" />

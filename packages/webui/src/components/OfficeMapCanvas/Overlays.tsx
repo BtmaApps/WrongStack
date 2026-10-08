@@ -7,7 +7,7 @@ export function OfficeMapLegends() {
 
   return (
     <>
-      <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-border/70 bg-card/90 p-3 text-[10px] shadow-xl backdrop-blur">
+      <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-border/70 bg-card/90 p-3 text-[10px] ws-dialog backdrop-blur">
         <div className="mb-2 font-bold text-foreground">{t('activity:office.legendStatus')}</div>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -25,7 +25,7 @@ export function OfficeMapLegends() {
         </div>
       </div>
 
-      <div className="absolute bottom-4 right-4 z-10 rounded-lg border border-border/70 bg-card/90 p-3 text-[10px] shadow-xl backdrop-blur">
+      <div className="absolute bottom-4 right-4 z-10 rounded-lg border border-border/70 bg-card/90 p-3 text-[10px] ws-dialog backdrop-blur">
         <div className="mb-2 font-bold text-foreground">
           {t('activity:office.legendConnections')}
         </div>
@@ -75,7 +75,7 @@ export function BroadcastComposer({
   };
 
   return (
-    <div className="absolute right-4 top-16 z-30 w-80 rounded-xl border border-warning/35 bg-card/95 p-3 shadow-2xl backdrop-blur">
+    <div className="absolute right-4 top-16 z-30 w-80 rounded-xl border border-warning/35 bg-card/95 p-3 ws-dialog backdrop-blur">
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-warning">
           <Send className="h-3.5 w-3.5" /> {t('activity:office.broadcastToAll')}

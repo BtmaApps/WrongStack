@@ -307,7 +307,7 @@ function KitContent({
                   <code className="text-xs font-semibold">{name}</code>
                   <span className="text-xs text-muted-foreground">{schema.type}</span>
                   {kit.inputSchema.required?.includes(name) && (
-                    <span className="text-[10px] text-primary">
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-foreground">
                       {t('activity:projectKit.required')}
                     </span>
                   )}

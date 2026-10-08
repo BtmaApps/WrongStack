@@ -127,7 +127,7 @@ describe('InspectorPanel component with universal targets', () => {
     expect(screen.getByText('Cookies must have SameSite=Lax and Secure in prod.')).toBeDefined();
 
     // Clicking Back button returns to fleet view
-    const backBtn = screen.getByTitle('Back to Fleet');
+    const backBtn = screen.getByTitle('activity:inspector.backToFleet');
     fireEvent.click(backBtn);
 
     expect(useUIStore.getState().inspectorTarget).toEqual({ kind: 'fleet', tab: 'fleet' });

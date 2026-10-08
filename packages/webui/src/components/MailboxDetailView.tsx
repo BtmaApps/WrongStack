@@ -216,7 +216,7 @@ export function MailboxDetailView({ className }: { className?: string }) {
                 {msg.priority || 'normal'}
               </span>
               {msg.audience === 'leaders' && (
-                <span className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                <span className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
                   <Lock className="h-2.5 w-2.5" /> {t('activity:mailbox.audienceLeaders')}
                 </span>
               )}
@@ -237,7 +237,7 @@ export function MailboxDetailView({ className }: { className?: string }) {
                 </span>
               )}
               {recipient.scope === 'project' && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/12 text-primary">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/15 text-foreground">
                   <Globe className="h-2.5 w-2.5" />
                   {t('activity:mailbox.projectLabel')}
                 </span>

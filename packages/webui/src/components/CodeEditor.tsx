@@ -30,6 +30,7 @@ import { useTheme } from './ThemeProvider';
 import { EmptyState } from './ui/empty-state';
 // Side-effect import: defines Monaco themes on module load
 import './monaco-theme';
+import { HueChip } from '@/components/ui/hue-chip';
 import { FileActivityDrawer } from './FileActivityDrawer';
 import { getMonacoTheme } from './monaco-theme';
 
@@ -460,7 +461,7 @@ export function CodeEditor() {
               className={cn(
                 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors',
                 wordWrap
-                  ? 'bg-primary/20 text-primary font-medium'
+                  ? 'bg-primary/20 text-foreground font-medium'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
               title={wordWrap ? 'Disable word wrap' : 'Enable word wrap'}
@@ -474,7 +475,7 @@ export function CodeEditor() {
               className={cn(
                 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors',
                 showMinimap
-                  ? 'bg-primary/20 text-primary font-medium'
+                  ? 'bg-primary/20 text-foreground font-medium'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
               title={showMinimap ? 'Hide minimap' : 'Show minimap'}
@@ -561,7 +562,9 @@ export function CodeEditor() {
               Ln {cursorPos.line}, Col {cursorPos.col}
             </span>
             <span>UTF-8</span>
-            <span className="uppercase text-[10px] font-semibold text-primary">{language}</span>
+            <HueChip tone="primary" className="text-[10px] font-semibold uppercase">
+              {language}
+            </HueChip>
           </div>
         </div>
       )}

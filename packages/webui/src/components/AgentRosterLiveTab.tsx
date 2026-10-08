@@ -214,7 +214,7 @@ export function LiveFleetTab({ nowTick }: { nowTick: number }) {
               className={cn(
                 'rounded px-2 py-0.5 text-[10px] font-medium transition-colors',
                 filter === f
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-primary/10 text-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
               )}
             >
@@ -280,7 +280,7 @@ export function LiveFleetTab({ nowTick }: { nowTick: number }) {
                 {agent.iteration}it · {agent.toolCalls}t
               </span>
               {agent.status === 'running' && (
-                <span className="text-[9px] text-primary tabular-nums shrink-0 ml-auto">
+                <span className="text-[9px] text-foreground tabular-nums shrink-0 ml-auto">
                   {fmtElapsed(Date.now() - agent.startedAt)}
                 </span>
               )}
@@ -300,7 +300,7 @@ export function LiveFleetTab({ nowTick }: { nowTick: number }) {
                 </span>
               )}
               {agent.status === 'running' && agent.currentTool && (
-                <span className="text-[9px] text-primary font-mono truncate max-w-[6rem] shrink-0">
+                <span className="text-[9px] text-foreground font-mono truncate max-w-[6rem] shrink-0">
                   → {agent.currentTool}
                 </span>
               )}

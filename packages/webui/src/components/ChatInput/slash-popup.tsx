@@ -23,7 +23,7 @@ export function SlashCommandPopup({
   const orderedCategories = SLASH_CATEGORY_ORDER.filter((category) => byCategory[category]?.length);
 
   return (
-    <div className="absolute bottom-full left-0 right-0 mb-2 max-h-72 overflow-auto rounded-lg border border-border/70 bg-popover p-1 text-sm shadow-xl">
+    <div className="absolute bottom-full left-0 right-0 mb-2 max-h-72 overflow-auto rounded-lg border border-border/70 bg-popover p-1 text-sm ws-dialog">
       <div className="mb-1 border-b px-3 py-1 text-[10px] uppercase text-muted-foreground">
         {t('activity:slashpopup.selectTabCompleteEnterDispatchEsc')}
       </div>

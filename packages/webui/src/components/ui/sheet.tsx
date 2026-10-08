@@ -33,7 +33,7 @@ const SheetOverlay = React.forwardRef<
 ));
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const sheetVariants = cva('ws-sheet-content fixed z-50 gap-4 bg-card shadow-2xl', {
+const sheetVariants = cva('ws-sheet-content fixed z-50 gap-4 bg-card', {
   variants: {
     side: {
       top: 'inset-x-0 top-0 border-b',

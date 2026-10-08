@@ -604,7 +604,7 @@ export function SessionList({
                                     type="button"
                                     onClick={() => handleResume(entry.id)}
                                     disabled={resumingId !== null}
-                                    className="inline-flex h-7 items-center gap-1 border border-border/75 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40"
+                                    className="inline-flex h-7 items-center gap-1 border border-border/75 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground hover:border-primary hover:bg-primary/10 disabled:opacity-40"
                                     title={t('activity:sessions.resume', {
                                       defaultValue: 'Resume session',
                                     })}

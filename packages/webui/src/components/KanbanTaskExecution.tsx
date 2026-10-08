@@ -156,7 +156,7 @@ export function KanbanTaskExecution({
           >
             <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground">
                   {t('activity:kanban.kanbanAgentTransition')}
                 </div>
                 <div className="text-xs text-muted-foreground">

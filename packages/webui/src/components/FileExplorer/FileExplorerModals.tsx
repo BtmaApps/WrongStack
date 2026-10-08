@@ -279,7 +279,7 @@ export function CreatePromptModal({
             type="button"
             onClick={onConfirm}
             disabled={!createName.trim()}
-            className="px-2 py-1 text-[10px] rounded border border-primary text-primary font-medium hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
+            className="px-2 py-1 text-[10px] rounded border border-primary text-foreground font-medium hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
           >
             {t('common:action.create')}
           </button>
@@ -342,7 +342,7 @@ export function RenamePromptModal({
             type="button"
             onClick={onConfirm}
             disabled={!renameValue.trim() || renameValue.trim() === renamePrompt.initialName}
-            className="px-2 py-1 text-[10px] rounded border border-primary text-primary font-medium hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
+            className="px-2 py-1 text-[10px] rounded border border-primary text-foreground font-medium hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
           >
             {t('common:action.rename')}
           </button>

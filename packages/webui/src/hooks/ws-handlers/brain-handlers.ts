@@ -176,7 +176,7 @@ export function handleBrainEvent(msg: WSServerMessage) {
       target: 'brain',
       label: `${p.persona ?? 'voter'} → ${p.status === 'valid' ? (p.optionId ?? 'stance') : (p.status ?? 'failed')}`,
       data: p,
-      color: '#38bdf8',
+      color: 'var(--color-viz-1)',
       flowGroup: 'brain',
     });
     return;

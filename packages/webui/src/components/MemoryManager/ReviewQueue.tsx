@@ -363,7 +363,7 @@ export function ReviewQueue({
                   {target ? (
                     <button
                       type="button"
-                      className="mt-1 font-mono text-[10px] text-primary hover:underline"
+                      className="mt-1 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-foreground hover:bg-primary/20 hover:underline"
                       onClick={() => onOpenMemory?.(target)}
                     >
                       {target.slice(0, 16)}…

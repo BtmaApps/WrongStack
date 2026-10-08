@@ -408,8 +408,8 @@ function Question({
                   <span className="flex items-center gap-2 font-medium">
                     {option.label}
                     {recommended.has(option.id) && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-                        <Check className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-foreground">
+                        <Check className="h-3 w-3 text-primary" />
                         {t('activity:userInput.recommendedChip')}
                       </span>
                     )}

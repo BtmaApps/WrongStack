@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { AgentTranscriptEntry, MailboxMessage } from '@/stores';
 import { AgentTranscript } from '../AgentTranscript';
 import { SessionWatchPanel } from '../SessionWatchPanel';
+import { clampCtxPct } from './nodes.js';
 import {
   fmtAgo,
   fmtCompact,
@@ -14,7 +15,6 @@ import {
   shortModel,
   surfaceLabel,
 } from './utils.js';
-import { clampCtxPct } from './nodes.js';
 
 interface SelectedNodeDetailPanelProps {
   selectedNode: Node<OfficeNodeData>;
@@ -53,7 +53,7 @@ export function SelectedNodeDetailPanel({
   return (
     <div
       className={cn(
-        'absolute top-20 right-4 bg-background border border-border rounded-lg p-4 shadow-xl z-20',
+        'absolute top-20 right-4 bg-background border border-border rounded-lg p-4 ws-dialog z-20',
         d.kind === 'agent' ? 'w-[28rem] max-w-[calc(100%-2rem)]' : d.sessionId ? 'w-80' : 'w-64',
       )}
     >
@@ -108,7 +108,7 @@ export function SelectedNodeDetailPanel({
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {t('activity:agentOffice.currentTask')}
                 </div>
-                <div className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] text-primary">
+                <div className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded bg-primary/10 px-1.5 py-1 font-mono text-[10px] text-foreground">
                   {d.currentTask}
                 </div>
               </div>

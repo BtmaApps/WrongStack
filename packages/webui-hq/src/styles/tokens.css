@@ -70,6 +70,24 @@
   --shadow-xl:
     0 20px 25px -5px hsl(var(--shadow-color) / 0.1), 0 8px 10px -6px hsl(var(--shadow-color) / 0.1);
   --shadow-2xl: 0 25px 50px -12px hsl(var(--shadow-color) / 0.25);
+
+  /* Categorical chart palette — fixed accents for data-viz surfaces (contract
+     graphs, session-story charts, timelines). Theme-independent by design:
+     these hues must stay readable on the dark graph canvases AND warm-paper
+     surfaces, and are deliberately NOT brand-signal palette-swappable.
+     Consumed as var(--color-viz-N) from TS/SVG styles or the viz-N utilities. */
+  --color-viz-1: #38bdf8; /* sky — objective / targets */
+  --color-viz-2: #818cf8; /* indigo — component / affects */
+  --color-viz-3: #f472b6; /* pink — artifact */
+  --color-viz-4: #fb923c; /* orange — risk / exposes */
+  --color-viz-5: #34d399; /* emerald — guardrail / must_preserve */
+  --color-viz-6: #c084fc; /* purple — verification / verified_by */
+  --color-viz-7: #fb7185; /* rose — conflicts / issue */
+  --color-viz-8: #94a3b8; /* slate — derived_from / neutral */
+  --color-viz-label: #cbd5e1; /* node label fill on dark canvases */
+  --color-viz-surface: #07101f; /* dark canvas chrome (label bg, gradients) */
+  --color-viz-1-deep: #075985; /* gradient end paired with viz-1 */
+  --color-viz-ink: #f8fafc; /* label text on filled viz chips */
 }
 
 @layer base {

@@ -68,7 +68,7 @@ export function MemoryManager({
   if (state.loadError && state.memories.length === 0) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-background p-6">
-        <div className="max-w-md border border-destructive/35 bg-card p-6 shadow-2xl">
+        <div className="max-w-md border border-destructive/35 bg-card p-6 ws-dialog">
           <span className="flex size-11 items-center justify-center border border-destructive/35 bg-destructive/10 text-destructive">
             <AlertTriangle className="size-5" />
           </span>

@@ -208,8 +208,8 @@ export function WorkbenchTopbar({
                 {t(`activity:topbar.view.${currentView}`, { defaultValue: viewLabel(currentView) })}
               </span>
               {isLoading && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-primary">
-                  <Bot className="h-3 w-3 animate-pulse" />
+                <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+                  <Bot className="h-3 w-3 animate-pulse text-primary" />
                 </span>
               )}
             </div>

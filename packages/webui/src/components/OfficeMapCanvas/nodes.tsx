@@ -13,9 +13,9 @@ import {
   Cpu,
   Inbox,
   Mail,
+  Monitor,
   Send,
   Terminal,
-  Monitor,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -341,7 +341,7 @@ function CoordinatorNode({ data }: { data: OfficeNodeData }) {
       </div>
 
       {isActive && (
-        <div className="flex items-center gap-2 text-[10px] text-primary">
+        <div className="flex items-center gap-2 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-foreground">
           <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
           {t('activity:office.coordinatingFleet')}
         </div>
@@ -385,7 +385,7 @@ function AgentNode({ data }: { data: OfficeNodeData }) {
       </div>
 
       {data.currentTask && (
-        <div className="mb-1.5 flex min-w-0 items-center gap-1 overflow-hidden text-[11px] text-primary">
+        <div className="mb-1.5 flex min-w-0 items-center gap-1 overflow-hidden rounded bg-primary/10 px-1.5 py-0.5 text-[11px] text-foreground">
           <span
             className={cn(
               'h-1.5 w-1.5 shrink-0 rounded-full bg-primary',

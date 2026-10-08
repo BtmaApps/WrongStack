@@ -184,7 +184,7 @@ export function PlanPanel(): React.ReactElement | null {
                           e.stopPropagation();
                           handleStatusChange(it, 'in_progress');
                         }}
-                        className="px-1.5 py-0.5 text-[9px] rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+                        className="px-1.5 py-0.5 text-[9px] rounded bg-primary/15 text-foreground hover:bg-primary/25 transition-colors"
                         title={t('activity:plan.startTitle')}
                       >
                         {t('common:action.start')}

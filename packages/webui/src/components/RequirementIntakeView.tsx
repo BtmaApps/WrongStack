@@ -284,7 +284,7 @@ export function RequirementIntakeView({
                 )}
               />
               {/\[VIBE\]/i.test(request) ? (
-                <div className="mt-1.5 flex items-center gap-1.5 rounded bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
+                <div className="mt-1.5 flex items-center gap-1.5 rounded bg-primary/15 px-2 py-1 text-[11px] font-medium text-foreground">
                   <span>🌊</span>
                   <span>
                     <strong>VIBE Protocol Detected:</strong> Three-Stage Verification
@@ -449,7 +449,7 @@ export function RequirementIntakeView({
                         {intake.isVibeMode ? (
                           <Badge
                             variant="outline"
-                            className="border-primary/40 bg-primary/10 text-[10px] text-primary"
+                            className="border-primary/40 bg-primary/15 text-[10px] text-foreground"
                           >
                             🌊 VIBE
                           </Badge>

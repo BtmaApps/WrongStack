@@ -114,7 +114,7 @@ export function AgentDetailSection({
                   aria-label={
                     showAllTools ? t('activity:agents.showFewer') : t('activity:agents.showAll')
                   }
-                  className="flex items-center gap-0.5 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                  className="flex items-center gap-0.5 rounded text-[10px] text-muted-foreground hover:bg-primary/20 transition-colors"
                 >
                   {showAllTools ? (
                     <>
@@ -260,7 +260,7 @@ export function AgentDetailSection({
                 <button
                   type="button"
                   onClick={() => setShowAllTranscript(!showAllTranscript)}
-                  className="ml-auto flex items-center gap-0.5 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                  className="ml-auto flex items-center gap-0.5 rounded text-[10px] text-muted-foreground hover:bg-primary/20 transition-colors"
                 >
                   {showAllTranscript ? (
                     <>

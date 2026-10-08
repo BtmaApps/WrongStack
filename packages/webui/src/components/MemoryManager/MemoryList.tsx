@@ -197,7 +197,7 @@ function MemoryCard({ memory, isSelected, onClick }: MemoryCardProps) {
           {memory.scope}
         </span>
         {memory.audience && (
-          <span className="flex items-center gap-0.5 border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] text-primary">
+          <span className="flex items-center gap-0.5 border border-primary/30 bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] text-foreground">
             <BrainCircuit className="size-2.5" />
             {(
               memory.audience.roles ??

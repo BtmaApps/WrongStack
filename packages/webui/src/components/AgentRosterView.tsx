@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AgentRuntimePolicyEditor } from '@/components/AgentRuntimePolicyEditor';
-import { confirmModal } from './ConfirmModal';
+import { HueChip } from '@/components/ui/hue-chip';
 import { useAppTranslation } from '@/i18n';
 import { sendRosterMessage } from '@/lib/roster-ws';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,7 @@ import { AudienceMemoryPanel } from './AudienceMemoryPanel.js';
  * its own full roster reload. Reloading once after the burst settles is enough.
  */
 import type { CustomRosterStats, RosterAgentEntry, RosterTab } from './agent-roster-data.js';
+import { confirmModal } from './ConfirmModal';
 import { OfficeMapPanel } from './OfficeMapPanel.js';
 import { OfficeMapSettingsPanel } from './OfficeMapSettingsPanel.js';
 import { useAgentRosterData } from './useAgentRosterData.js';
@@ -276,7 +277,7 @@ function CustomizationTab({
                 setRuntimeConfig(null);
                 setEditError(null);
               }}
-              className="rounded border border-primary/40 px-1.5 py-1 text-[9px] text-primary hover:bg-primary/10"
+              className="rounded border border-primary/40 px-1.5 py-1 text-[9px] text-foreground hover:bg-primary/20"
             >
               {t('activity:agentRoster.clone')}
             </button>
@@ -301,7 +302,7 @@ function CustomizationTab({
             >
               <div className="text-xs font-semibold">{stat.role}</div>
               <div className="flex gap-2 mt-0.5 text-[9px] text-muted-foreground">
-                {stat.hasIdentity && <span className="text-primary">id</span>}
+                {stat.hasIdentity && <span className="text-foreground">id</span>}
                 {stat.entryCount > 0 && <span className="text-brand-2">{stat.entryCount}e</span>}
                 {stat.hasConfig && <span>cfg</span>}
               </div>
@@ -452,9 +453,13 @@ function CustomizationTab({
             {/* Stat badges */}
             <div className="flex flex-wrap gap-2">
               {selectedStats.hasIdentity && (
-                <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
-                  <FileText className="h-3 w-3" /> identity.md
-                </span>
+                <HueChip
+                  tone="primary"
+                  icon={<FileText className="h-3 w-3" />}
+                  className="px-2 py-1 text-[10px]"
+                >
+                  identity.md
+                </HueChip>
               )}
               {selectedStats.hasConfig && (
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-[10px] text-muted-foreground">

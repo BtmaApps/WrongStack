@@ -1,9 +1,9 @@
+import { Activity, Bot, Cpu, DollarSign, Hash, Monitor, Terminal, Users, Zap } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useMonitorStore } from '@/stores';
 import type { VizEvent } from '@/stores/viz-store';
-import { Activity, Bot, Cpu, DollarSign, Hash, Monitor, Terminal, Users, Zap } from 'lucide-react';
-import { useShallow } from 'zustand/react/shallow';
 import { feedColor } from './resolve.js';
 
 export function StatsHUD() {
@@ -22,7 +22,7 @@ export function StatsHUD() {
   const fmtCost = (n?: number) => (n != null ? `$${n.toFixed(4)}` : '$0.0000');
 
   return (
-    <div className="absolute left-4 top-20 z-10 rounded-xl border border-border/70 bg-card/90 p-3 text-foreground shadow-xl backdrop-blur">
+    <div className="absolute left-4 top-20 z-10 rounded-xl border border-border/70 bg-card/90 p-3 text-foreground ws-dialog backdrop-blur">
       <div className="flex items-center gap-2 mb-2">
         <Activity className="h-3.5 w-3.5 text-success" />
         <span className="text-[10px] font-bold uppercase text-muted-foreground">
@@ -159,9 +159,9 @@ export function LiveFeed({ events, now }: { events: VizEvent[]; now: number }) {
   const recent = events.slice(0, 14);
   return (
     <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none px-3 pb-3">
-      <div className="pointer-events-auto mx-auto max-w-3xl rounded-lg border border-border/70 bg-card/90 px-3 py-2 shadow-xl backdrop-blur">
-        <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase text-primary">
-          <Activity className="h-3 w-3" />
+      <div className="pointer-events-auto mx-auto max-w-3xl rounded-lg border border-border/70 bg-card/90 px-3 py-2 ws-dialog backdrop-blur">
+        <div className="mb-1.5 flex items-center gap-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-foreground">
+          <Activity className="h-3 w-3 text-primary" />
           {t('activity:office.liveActivity')}
         </div>
         {recent.length === 0 ? (

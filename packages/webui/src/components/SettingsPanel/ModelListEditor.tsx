@@ -319,7 +319,7 @@ export function ModelListEditor({
                               return (
                                 <span
                                   key={`in-${m}`}
-                                  className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary"
+                                  className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1 py-0.5 text-[10px] text-foreground"
                                   title={`input: ${m}`}
                                 >
                                   <Icon className="h-2.5 w-2.5" />
