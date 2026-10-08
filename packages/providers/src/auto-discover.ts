@@ -576,8 +576,11 @@ export function mapCompatibleModel(entry: CompatibleModelEntry): ModelsDevModel 
   const cost = mapPricing(entry.pricing) ?? mapXaiPricing(entry);
   if (cost) model.cost = cost;
   if (typeof entry.created === 'number' && entry.created > 0) {
-    // ISO date helps the picker's newest-first sort.
-    model.last_updated = new Date(entry.created * 1000).toISOString().slice(0, 10);
+    // ISO date helps the picker's newest-first sort. `created` is Unix seconds;
+    // a value that does not land on a four-digit year is not, and is dropped —
+    // an Invalid Date's toISOString() throws and failed the whole catalog.
+    const date = new Date(entry.created * 1000);
+    if (date.getUTCFullYear() <= 9999) model.last_updated = date.toISOString().slice(0, 10);
   }
   return model;
 }

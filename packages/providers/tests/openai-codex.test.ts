@@ -1398,6 +1398,35 @@ describe('OpenAICodexProvider stream parsing', () => {
 
     expect(res.content).toEqual([{ type: 'text', text: 'Hello' }]);
   });
+
+  it('recovers a content part delivered only on its own output_text.done', async () => {
+    // output_text.done carries ONE part's text; comparing it with the whole
+    // message's streamed count produced "ABEFEF" here.
+    const sse = [
+      'data: {"type":"response.created","response":{"id":"r1","model":"gpt-5-codex"}}',
+      '',
+      'data: {"type":"response.output_item.added","item":{"type":"message","id":"m1","role":"assistant"}}',
+      '',
+      'data: {"type":"response.output_text.delta","content_index":0,"delta":"AB"}',
+      '',
+      'data: {"type":"response.output_text.done","content_index":0,"text":"AB"}',
+      '',
+      'data: {"type":"response.output_text.done","content_index":1,"text":"CDEF"}',
+      '',
+      'data: {"type":"response.output_item.done","item":{"type":"message","id":"m1","content":[{"type":"output_text","text":"AB"},{"type":"output_text","text":"CDEF"}]}}',
+      '',
+      'data: {"type":"response.completed","response":{"id":"r1","status":"completed","usage":{"input_tokens":1,"output_tokens":1}}}',
+      '',
+    ].join('\n');
+
+    const p = new OpenAICodexProvider({
+      credentials: { accessToken: fakeJwt('a'), expiresAt: Date.now() + 3_600_000 },
+      fetchImpl: (async () => new Response(sseBody(sse), { status: 200 })) as never as typeof fetch,
+    });
+    const res = await p.complete(baseReq, { signal: new AbortController().signal });
+
+    expect(res.content).toEqual([{ type: 'text', text: 'ABCDEF' }]);
+  });
 });
 
 describe('OpenAICodexProvider token refresh', () => {

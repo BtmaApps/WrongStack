@@ -354,6 +354,26 @@ describe('discoverOpenAICompatibleModels', () => {
     });
     expect(provider).toBeUndefined();
   });
+
+  it('keeps the catalog when one entry has a non-seconds created timestamp', async () => {
+    // created * 1000 past year 275760 is an Invalid Date whose toISOString()
+    // threw and failed the whole listing; milliseconds rendered "+055840-11".
+    const provider = await discoverOpenAICompatibleModels('omniroute', {
+      baseUrl: 'http://localhost:20128/v1',
+      fetchImpl: mockModelsFetch({
+        object: 'list',
+        data: [
+          { id: 'micro', created: 1_700_000_000_000_000 },
+          { id: 'milli', created: 1_700_000_000_000 },
+          { id: 'seconds', created: 1_700_000_000 },
+        ],
+      }),
+    });
+    expect(Object.keys(provider?.models ?? {})).toEqual(['micro', 'milli', 'seconds']);
+    expect(provider?.models['micro']?.last_updated).toBeUndefined();
+    expect(provider?.models['milli']?.last_updated).toBeUndefined();
+    expect(provider?.models['seconds']?.last_updated).toBe('2023-11-14');
+  });
 });
 
 describe('discovery failure diagnostics', () => {

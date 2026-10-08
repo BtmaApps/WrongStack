@@ -69,6 +69,12 @@ function extractOutputText(content: unknown): string {
   return out;
 }
 
+/** The `content_index` of a text delta/done event; events without one address part 0. */
+function contentPartIndex(evt: Record<string, unknown>): number {
+  const index = evt['content_index'];
+  return typeof index === 'number' && Number.isInteger(index) && index >= 0 ? index : 0;
+}
+
 /**
  * Read a response-metadata event, whichever dialect the backend used.
  *
@@ -163,10 +169,20 @@ export async function* parseOpenAIResponsesStream(
   // the un-streamed remainder, so a fully-streamed message adds nothing and a
   // never-streamed one is recovered in full — no duplication either way.
   let msgTextStreamed = 0;
-  const flushRemainingText = (full: string): StreamEvent | undefined => {
-    if (full.length <= msgTextStreamed) return undefined;
-    const remainder = full.slice(msgTextStreamed);
-    msgTextStreamed = full.length;
+  // Per content part (`content_index`) of the current message item:
+  // `output_text.done` carries ONE part's text, so it is compared against that
+  // part's own count — never the whole message's.
+  let msgPartStreamed = new Map<number, number>();
+  const flushRemainingText = (full: string, part?: number): StreamEvent | undefined => {
+    const streamed = part === undefined ? msgTextStreamed : (msgPartStreamed.get(part) ?? 0);
+    if (full.length <= streamed) return undefined;
+    const remainder = full.slice(streamed);
+    if (part === undefined) {
+      msgTextStreamed = full.length;
+    } else {
+      msgPartStreamed.set(part, full.length);
+      msgTextStreamed += remainder.length;
+    }
     return { type: 'text_delta', text: remainder };
   };
 
@@ -270,6 +286,7 @@ export async function* parseOpenAIResponsesStream(
           // its terminal events emit only its own un-streamed text. Some backends
           // inline the full text on `added` (no deltas at all); recover it now.
           msgTextStreamed = 0;
+          msgPartStreamed = new Map();
           const prefilled = extractOutputText(item.content);
           const ev0 = flushRemainingText(prefilled);
           if (ev0) yield ev0;
@@ -291,7 +308,9 @@ export async function* parseOpenAIResponsesStream(
       case 'response.refusal.delta': {
         const delta = typeof evt['delta'] === 'string' ? (evt['delta'] as string) : '';
         if (delta) {
+          const part = contentPartIndex(evt);
           msgTextStreamed += delta.length;
+          msgPartStreamed.set(part, (msgPartStreamed.get(part) ?? 0) + delta.length);
           yield { type: 'text_delta', text: delta };
         }
         break;
@@ -302,7 +321,7 @@ export async function* parseOpenAIResponsesStream(
         // remainder we have not already streamed (nothing when deltas covered
         // it; the whole text when the backend skipped deltas entirely).
         const full = typeof evt['text'] === 'string' ? (evt['text'] as string) : '';
-        const ev1 = flushRemainingText(full);
+        const ev1 = flushRemainingText(full, contentPartIndex(evt));
         if (ev1) yield ev1;
         break;
       }
