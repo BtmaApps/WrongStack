@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:31:20.088Z",
+  "generatedAt": "2026-10-08T12:31:59.589Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4889,
     "testFiles": 4190,
-    "sourceLines": 1082438,
+    "sourceLines": 1082629,
     "workspaceEdges": 133,
     "moduleEdges": 16081,
     "nonCommandSlashImports": 0,
@@ -26509,6 +26509,11 @@
       "relativeImports": 10
     },
     {
+      "file": "packages/techstack/src/adapters/npm.ts",
+      "lines": 756,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/tools/src/codebase-index/skeleton-extractor.ts",
       "lines": 756,
       "relativeImports": 3
@@ -26677,11 +26682,6 @@
       "file": "packages/webui/src/components/InspectorPanel.tsx",
       "lines": 739,
       "relativeImports": 4
-    },
-    {
-      "file": "packages/core/src/utils/json-schema-validate.ts",
-      "lines": 737,
-      "relativeImports": 1
     }
   ],
   "testOnlyExports": [

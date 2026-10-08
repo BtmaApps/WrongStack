@@ -210,16 +210,30 @@ function splitTableFormDependency(
   return { base: match[1]!, lines: [`"${key}" = { ${body.join(', ')} }`] };
 }
 
+/**
+ * Where a Cargo.lock entry comes from: its `source` key. Local crates — the
+ * crate itself, workspace members, path dependencies — have no `source`.
+ */
+type CargoLockSource = 'registry' | 'git' | 'path';
+
+function cargoLockSource(source: string | undefined): CargoLockSource {
+  if (source === undefined) return 'path';
+  return source.startsWith('git+') ? 'git' : 'registry';
+}
+
 /** Record one `[[package]]` entry, keeping every version of a repeated name. */
 function recordCargoPackage(
   versions: Map<string, string[]>,
   name: string | undefined,
   version: string | undefined,
+  sources?: Map<string, CargoLockSource>,
+  source?: string,
 ): void {
   if (!name || !version) return;
   const existing = versions.get(name);
   if (existing) existing.push(version);
   else versions.set(name, [version]);
+  sources?.set(`${name}@${version}`, cargoLockSource(source));
 }
 
 /**
@@ -231,23 +245,32 @@ function recordCargoPackage(
  * ascending, so the last entry is the highest version. Every entry is kept here;
  * {@link pickLockedVersion} decides which instance a manifest selects.
  */
-function parseCargoLock(content: string): Map<string, string[]> {
+function parseCargoLock(
+  content: string,
+  sources?: Map<string, CargoLockSource>,
+): Map<string, string[]> {
   const versions = new Map<string, string[]>();
   const lines = content.split('\n');
   let currentName: string | undefined;
   let currentVersion: string | undefined;
+  let currentSource: string | undefined;
   let inPackage = false;
 
   for (const raw of lines) {
     const line = raw.trim();
     if (line.startsWith('#') || line === '') continue;
 
-    if (line.startsWith('[[') && line.includes('package')) {
-      // Save previous
-      if (inPackage) recordCargoPackage(versions, currentName, currentVersion);
+    // ANY table header closes the current package: Cargo writes other tables
+    // after the packages (`[[patch.unused]]`, `[metadata]`) whose `name` and
+    // `version` keys would otherwise overwrite the last package.
+    if (line.startsWith('[')) {
+      if (inPackage) {
+        recordCargoPackage(versions, currentName, currentVersion, sources, currentSource);
+      }
       currentName = undefined;
       currentVersion = undefined;
-      inPackage = true;
+      currentSource = undefined;
+      inPackage = /^\[\[\s*package\s*\]\]$/.test(stripInlineComment(line).trim());
       continue;
     }
 
@@ -258,12 +281,17 @@ function parseCargoLock(content: string): Map<string, string[]> {
       } else if (line.startsWith('version')) {
         const m = line.match(/^version\s*=\s*"([^"]+)"/);
         if (m) currentVersion = m[1]!;
+      } else if (line.startsWith('source')) {
+        const m = line.match(/^source\s*=\s*"([^"]+)"/);
+        if (m) currentSource = m[1]!;
       }
     }
   }
 
   // Save last
-  if (inPackage) recordCargoPackage(versions, currentName, currentVersion);
+  if (inPackage) {
+    recordCargoPackage(versions, currentName, currentVersion, sources, currentSource);
+  }
 
   return versions;
 }
@@ -412,10 +440,11 @@ export class RustAdapter implements EcosystemAdapter {
         ? resolveIn(root, 'Cargo.lock')
         : resolveIn(workspaceRootDir, 'Cargo.lock');
     let lockVersions = new Map<string, string[]>();
+    const lockSources = new Map<string, CargoLockSource>();
     let lockEv: Evidence | undefined;
     try {
       const lockContent = readFileSync(cargoLockPath, 'utf-8');
-      lockVersions = parseCargoLock(lockContent);
+      lockVersions = parseCargoLock(lockContent, lockSources);
       lockEv = lockfileEvidence(cargoLockPath);
     } catch {
       // No lockfile — that's OK
@@ -524,18 +553,28 @@ export class RustAdapter implements EcosystemAdapter {
           const instance = `${name}@${locked}`;
           if (seenInstances.has(instance)) continue;
           seenInstances.add(instance);
+          // Only a registry entry is a crates.io component. A sourceless entry
+          // is a local crate (this crate, a workspace member, a path dep) and a
+          // `git+` one is a git checkout: a pkg:cargo purl named either after
+          // whatever crates.io crate shares the name.
+          const sourceType = lockSources.get(instance) ?? 'registry';
           observations.push({
             id: multiple ? `dep-${workspace.id}-${name}@${locked}` : `dep-${workspace.id}-${name}`,
             workspaceId: workspace.id,
             // Canonical cargo type — see the direct-deps pass above.
-            purl: constructPurl('rust', name, locked),
+            ...(sourceType === 'registry' ? { purl: constructPurl('rust', name, locked) } : {}),
             ecosystem: 'rust',
             name,
-            sourceType: 'registry',
+            sourceType,
             direct: false,
             scope: 'transitive',
             locked,
-            status: 'current',
+            status:
+              sourceType === 'git'
+                ? 'git_dependency'
+                : sourceType === 'path'
+                  ? 'local_path'
+                  : 'current',
             evidence: [lockEv],
           });
         }

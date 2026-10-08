@@ -11,7 +11,7 @@
 
 import { access, readFile, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -198,9 +198,12 @@ function parseNpmLockVersions(lockContent: string): {
   versions: Map<string, string[]>;
   /** Install path (`node_modules/b`, `node_modules/a/node_modules/b`) → version. */
   installed: Map<string, string>;
+  /** Install paths that are symlinks to a local package (`link: true`): workspaces. */
+  links: Set<string>;
 } {
   const versions = new Map<string, string[]>();
   const installed = new Map<string, string>();
+  const links = new Set<string>();
   /** Record one instance, ignoring duplicates of the same name+version. */
   const record = (name: string, version: string): void => {
     const existing = versions.get(name);
@@ -232,8 +235,9 @@ function parseNpmLockVersions(lockContent: string): {
     // dependency and an install path never becomes a package name.
     const packages = lock.packages ?? {};
     for (const key of Object.keys(packages)) {
-      const pkgInfo = packages[key] as { version?: string };
+      const pkgInfo = packages[key] as { version?: string; link?: boolean };
       const marker = key.lastIndexOf('node_modules/');
+      if (pkgInfo.link === true && marker >= 0) links.add(key);
       if (!pkgInfo.version || marker < 0) continue;
       const name = key.slice(marker + 'node_modules/'.length);
       if (!name) continue;
@@ -243,7 +247,7 @@ function parseNpmLockVersions(lockContent: string): {
   } catch {
     // Malformed lockfile — return empty map
   }
-  return { versions, installed };
+  return { versions, installed, links };
 }
 
 /** Name and range of a yarn lock key spec (`minimist@^1.2.0`, `@a/b@npm:^2`). */
@@ -261,9 +265,12 @@ function splitYarnSpec(spec: string): { name: string; range: string } | undefine
 function parseYarnLockVersions(lockContent: string): {
   versions: Map<string, string[]>;
   specs: Map<string, string>;
+  /** `name@range` specs that resolve to a local package (a workspace, link, portal). */
+  linked: Set<string>;
 } {
   const versions = new Map<string, string[]>();
   const specs = new Map<string, string>();
+  const linked = new Set<string>();
   let current: Array<{ name: string; range: string }> = [];
   for (const line of lockContent.split(/\r?\n/)) {
     if (!line.trim() || line.startsWith('#')) continue;
@@ -278,6 +285,15 @@ function parseYarnLockVersions(lockContent: string): {
     }
     const version = /^\s+version:?\s+"?([^"\s]+)"?\s*$/.exec(line)?.[1];
     if (!version || current.length === 0) continue;
+    // One block is one resolution. When a sibling workspace satisfies a plain
+    // range, berry files both under it (`"lodash@npm:4.17.20,
+    // lodash@workspace:packages/lodash"`, version 0.0.0-use.local): every spec
+    // of that block is the local package, not an npm release.
+    if (current.some(({ range }) => /^(?:workspace|link|portal|file):/.test(range))) {
+      for (const { name, range } of current) linked.add(`${name}@${range}`);
+      current = [];
+      continue;
+    }
     for (const { name, range } of current) {
       // berry lists the project's own workspaces (`app@workspace:.`, version
       // `0.0.0-use.local`) and local links beside registry packages.
@@ -289,7 +305,7 @@ function parseYarnLockVersions(lockContent: string): {
     }
     current = [];
   }
-  return { versions, specs };
+  return { versions, specs, linked };
 }
 
 /**
@@ -300,9 +316,12 @@ function parseYarnLockVersions(lockContent: string): {
 function parseBunLockVersions(lockContent: string): {
   versions: Map<string, string[]>;
   hoisted: Map<string, string>;
+  /** Top-level install keys bun links to a local package (`x@workspace:packages/x`). */
+  linked: Set<string>;
 } {
   const versions = new Map<string, string[]>();
   const hoisted = new Map<string, string>();
+  const linked = new Set<string>();
   try {
     const lock = JSON.parse(lockContent.replace(/,(\s*[}\]])/g, '$1')) as {
       packages?: Record<string, unknown>;
@@ -311,16 +330,26 @@ function parseBunLockVersions(lockContent: string): {
       const ident = Array.isArray(entry) ? entry[0] : undefined;
       if (typeof ident !== 'string') continue;
       const spec = splitYarnSpec(ident);
+      const topLevelKey = key.startsWith('@') ? key.split('/').length === 2 : !key.includes('/');
+      // A sibling workspace satisfying a plain range is installed as
+      // `["lodash@workspace:packages/lodash"]`: the local package, no release.
+      if (spec && topLevelKey && /^(?:workspace|link|file|portal):/.test(spec.range)) {
+        linked.add(key);
+        continue;
+      }
       if (!spec || !/^\d/.test(spec.range)) continue;
       const existing = versions.get(spec.name);
       if (!existing) versions.set(spec.name, [spec.range]);
       else if (!existing.includes(spec.range)) existing.push(spec.range);
-      if (key === spec.name) hoisted.set(spec.name, spec.range);
+      // Keyed by top-level install path, which is the manifest key: an alias
+      // (`"isnum6": ["is-number@6.0.0", …]`) installs under its alias, and the
+      // direct row looks it up by that key.
+      if (topLevelKey) hoisted.set(key, spec.range);
     }
   } catch {
     // Malformed lockfile — return empty maps
   }
-  return { versions, hoisted };
+  return { versions, hoisted, linked };
 }
 
 function parsePnpmAllVersions(lockContent: string): Map<string, string[]> {
@@ -519,6 +548,8 @@ export class NpmAdapter implements EcosystemAdapter {
     const lockInfo = await detectLockfile(root, options.projectRoot);
     const resolvedVersions = new Map<string, string>();
     const allLockVersions = new Map<string, readonly string[]>();
+    /** Manifest keys the lockfile installs as workspace links. */
+    const linkedDeps = new Set<string>();
     let lockEv: Evidence | undefined;
     if (lockInfo.kind === 'pnpm') {
       // The importer key is this workspace's path relative to the lockfile,
@@ -535,11 +566,25 @@ export class NpmAdapter implements EcosystemAdapter {
     } else if (lockInfo.kind === 'npm') {
       try {
         const lockContent = await readFile(lockInfo.path, 'utf-8');
-        const { versions, installed } = parseNpmLockVersions(lockContent);
+        const { versions, installed, links } = parseNpmLockVersions(lockContent);
         const importer = relative(dirname(lockInfo.path), root)
           .split(/[/\\]/)
           .filter(Boolean)
           .join('/');
+        // A dependency Node resolves to a `link: true` install is a workspace
+        // package, whatever its manifest spec says (`"lodash": "4.17.20"`
+        // links a sibling named lodash) — not the public npm release.
+        for (const key of Object.keys({
+          ...pkg.optionalDependencies,
+          ...pkg.peerDependencies,
+          ...pkg.devDependencies,
+          ...pkg.dependencies,
+        })) {
+          const own = importer ? `${importer}/node_modules/${key}` : undefined;
+          const resolvedPath =
+            own && (installed.has(own) || links.has(own)) ? own : `node_modules/${key}`;
+          if (links.has(resolvedPath)) linkedDeps.add(key);
+        }
         for (const [k, v] of versions) {
           // Direct rows report the instance Node resolves for THIS workspace:
           // its own node_modules, then the hoisted root. The first instance in
@@ -572,17 +617,20 @@ export class NpmAdapter implements EcosystemAdapter {
           ...pkg.dependencies,
         };
         if (lockInfo.kind === 'yarn') {
-          const { versions, specs } = parseYarnLockVersions(lockContent);
+          const { versions, specs, linked } = parseYarnLockVersions(lockContent);
           for (const [name, requested] of Object.entries(requestedByName)) {
-            const version = specs.get(`${name}@${String(requested).replace(/^npm:/, '')}`);
+            const spec = `${name}@${String(requested).replace(/^npm:/, '')}`;
+            const version = specs.get(spec);
             if (version) resolvedVersions.set(name, version);
+            else if (linked.has(spec)) linkedDeps.add(name);
           }
           for (const [k, v] of versions) allLockVersions.set(k, v);
         } else {
-          const { versions, hoisted } = parseBunLockVersions(lockContent);
+          const { versions, hoisted, linked } = parseBunLockVersions(lockContent);
           for (const name of Object.keys(requestedByName)) {
             const version = hoisted.get(name);
             if (version) resolvedVersions.set(name, version);
+            else if (linked.has(name)) linkedDeps.add(name);
           }
           for (const [k, v] of versions) allLockVersions.set(k, v);
         }
@@ -618,20 +666,23 @@ export class NpmAdapter implements EcosystemAdapter {
         const alias = /^npm:((?:@[^/@]+\/)?[^@]+)(?:@(.*))?$/.exec(manifestSpec);
         const name = alias ? alias[1]! : key;
         const requested = alias ? (alias[2] ?? '*') : manifestSpec;
-        const isRegistry = isRegistrySpec(requested);
-        const status = statusForSpec(requested);
+        const linked = linkedDeps.has(key);
+        const isRegistry = !linked && isRegistrySpec(requested);
+        const status = linked ? 'local_path' : statusForSpec(requested);
 
         // Resolve locked version from lockfile
         const lockedRaw = resolvedVersions.get(key);
         const locked =
           alias && lockedRaw?.startsWith(`${name}@`) ? lockedRaw.slice(name.length + 1) : lockedRaw;
 
-        // Build PURL for registry deps
+        // Build PURL for registry deps. constructPurl puts an npm scope in the
+        // namespace (`pkg:npm/%40types/node`); buildPurl on the raw name
+        // encoded the separator (`%40types%2Fnode`), a non-canonical purl.
         const purl =
           isRegistry && locked
-            ? buildPurl({ type: 'npm', name, version: locked })
+            ? constructPurl('npm', name, locked)
             : isRegistry
-              ? buildPurl({ type: 'npm', name })
+              ? constructPurl('npm', name)
               : undefined;
 
         const evidence: Evidence[] = [manifestEv];
@@ -644,7 +695,13 @@ export class NpmAdapter implements EcosystemAdapter {
           ...(purl ? { purl } : {}),
           ecosystem: 'npm' as const,
           name,
-          sourceType: isRegistry ? 'registry' : status === 'local_path' ? 'path' : 'git',
+          sourceType: linked
+            ? 'workspace'
+            : isRegistry
+              ? 'registry'
+              : status === 'local_path'
+                ? 'path'
+                : 'git',
           direct: true,
           scope,
           requested,
@@ -674,7 +731,7 @@ export class NpmAdapter implements EcosystemAdapter {
           observations.push({
             id: multiple ? `dep-${workspace.id}-${name}@${locked}` : `dep-${workspace.id}-${name}`,
             workspaceId: workspace.id,
-            purl: buildPurl({ type: 'npm', name, version: locked }),
+            purl: constructPurl('npm', name, locked),
             ecosystem: 'npm',
             name,
             sourceType: 'registry',

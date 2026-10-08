@@ -176,6 +176,24 @@ describe('satisfiesRange', () => {
     expect(satisfiesRange('2.5.0', range)).toBe(true);
     expect(satisfiesRange('3.0.0', range)).toBe(false);
   });
+
+  // A partial version is an X-range (semver 7.7.4), not a zero-padded one:
+  // a pin `max: "18"` / `"<=18"` used to reject 18.2.0.
+  it.each([
+    ['18', '18.2.0', true],
+    ['18', '19.0.0', false],
+    ['=1.2', '1.2.9', true],
+    ['<=18', '18.9.9', true],
+    ['<=1.2', '1.3.0', false],
+    ['>1.2', '1.2.9', false],
+    ['>1.2', '1.3.0', true],
+    ['^0', '0.14.0', true],
+    ['^0', '1.0.0', false],
+    ['^0.0', '0.0.7', true],
+    ['^0.0', '0.1.0', false],
+  ])('partial %s against %s is %s', (range, version, expected) => {
+    expect(satisfiesRange(version, parseRange(range))).toBe(expected);
+  });
 });
 
 // ── findRuleMatches ──────────────────────────────────────────────────────

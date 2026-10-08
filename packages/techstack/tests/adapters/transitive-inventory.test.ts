@@ -196,4 +196,52 @@ describe('includeTransitive', () => {
     expect(deps.filter((dep) => !dep.direct)).toHaveLength(500);
     expect(performance.now() - started).toBeLessThan(1_000);
   });
+
+  it('puts an npm scope in the purl namespace (canonical form)', async () => {
+    const deps = await run(
+      'npm',
+      npmAdapter,
+      {
+        'package.json': JSON.stringify({ dependencies: { '@types/node': '^22.0.0' } }),
+        'package-lock.json': JSON.stringify({
+          lockfileVersion: 3,
+          packages: {
+            '': {},
+            'node_modules/@types/node': { version: '22.0.0' },
+            'node_modules/@babel/core': { version: '7.24.0' },
+          },
+        }),
+      },
+      'package.json',
+    );
+    expect(deps.map((dep) => dep.purl).sort()).toEqual([
+      'pkg:npm/%40babel/core@7.24.0',
+      'pkg:npm/%40types/node@22.0.0',
+    ]);
+  });
+
+  it('resolves a bun.lock npm alias through its install-path key', async () => {
+    // Shape written by bun 1.4.2: an alias installs under its alias key.
+    const deps = await run(
+      'npm',
+      npmAdapter,
+      {
+        'package.json': JSON.stringify({
+          dependencies: { 'is-number': '^7.0.0', isnum6: 'npm:is-number@6.0.0' },
+        }),
+        'bun.lock':
+          '{\n  "lockfileVersion": 2,\n  "packages": {\n    "is-number": ["is-number@7.0.0", "", {}, "sha512-a"],\n\n    "isnum6": ["is-number@6.0.0", "", {}, "sha512-b"],\n  }\n}\n',
+      },
+      'package.json',
+    );
+    expect(deps.find((dep) => dep.id === 'dep-ws-npm-isnum6')).toMatchObject({
+      name: 'is-number',
+      locked: '6.0.0',
+      purl: 'pkg:npm/is-number@6.0.0',
+    });
+    expect(deps.filter((dep) => dep.name === 'is-number').map((dep) => dep.locked)).toEqual([
+      '7.0.0',
+      '6.0.0',
+    ]);
+  });
 });

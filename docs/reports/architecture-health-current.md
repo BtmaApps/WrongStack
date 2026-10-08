@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-08T12:31:20.088Z
+**Generated:** 2026-10-08T12:31:59.589Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4889 |
-| Production source lines | 1082438 |
+| Production source lines | 1082629 |
 | Test files | 4190 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 16081 |
@@ -98,6 +98,7 @@ None.
 | 757 | `packages/core/src/coordination/fleet-manager.ts` |
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
 | 756 | `packages/plugin-sdk/src/runtime/index.ts` |
+| 756 | `packages/techstack/src/adapters/npm.ts` |
 | 756 | `packages/tools/src/codebase-index/skeleton-extractor.ts` |
 | 755 | `packages/kanban/src/verification/verification-context.ts` |
 | 755 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
@@ -132,7 +133,6 @@ None.
 | 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 | 739 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 739 | `packages/webui/src/components/InspectorPanel.tsx` |
-| 737 | `packages/core/src/utils/json-schema-validate.ts` |
 
 ## Exports only tests reference
 

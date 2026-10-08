@@ -247,4 +247,55 @@ describe('RustAdapter', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('does not let a trailing [[patch.unused]] table overwrite the last package', async () => {
+    // Real cargo writes unused [patch] entries after the packages; their
+    // name/version used to replace the last package's.
+    const { dir, ws } = mkWorkspace({
+      'Cargo.toml': CARGO,
+      'Cargo.lock': `${LOCK}\n[[patch.unused]]\nname = "unusedpatch"\nversion = "9.9.9"\n`,
+    });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {
+        projectRoot: dir,
+        includeTransitive: true,
+      });
+      expect(deps.find((d) => d.name === 'tokio')?.locked).toBe('1.40.0');
+      expect(deps.some((d) => d.name === 'unusedpatch')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('classifies transitive lock entries by source, not as crates.io by default', async () => {
+    // Sourceless entries are local crates (this crate, workspace members);
+    // a crates.io purl named an unrelated published crate (`config@0.1.0`).
+    const { dir, ws } = mkWorkspace({
+      'Cargo.toml': CARGO,
+      'Cargo.lock': [
+        '[[package]]\nname = "config"\nversion = "0.1.0"',
+        '[[package]]\nname = "forked"\nversion = "0.5.0"\nsource = "git+https://github.com/me/forked#0123abc"',
+        '[[package]]\nname = "itoa"\nversion = "1.0.11"\nsource = "registry+https://github.com/rust-lang/crates.io-index"',
+      ].join('\n\n'),
+    });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {
+        projectRoot: dir,
+        includeTransitive: true,
+      });
+      expect(deps.find((d) => d.name === 'config')).toMatchObject({
+        sourceType: 'path',
+        status: 'local_path',
+      });
+      expect(deps.find((d) => d.name === 'config')?.purl).toBeUndefined();
+      expect(deps.find((d) => d.name === 'forked')).toMatchObject({
+        sourceType: 'git',
+        status: 'git_dependency',
+      });
+      expect(deps.find((d) => d.name === 'forked')?.purl).toBeUndefined();
+      expect(deps.find((d) => d.name === 'itoa')?.purl).toBe('pkg:cargo/itoa@1.0.11');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

@@ -336,6 +336,23 @@ describe('classifyStatus — partial inclusive bounds per ecosystem', () => {
   });
 });
 
+// A tilde locks the component before the last one written: npm/cargo `~1` is
+// <2.0.0 (semver 7.7.4), PEP 440 `~=2.31` is ==2.* (pip packaging). A fixed
+// "minor locked" reading called updates these ranges admit breaking.
+describe('classifyStatus — tilde precision', () => {
+  it.each([
+    ['~1', '1.0.0', '1.2.3', 'update_available_safe'],
+    ['~1', '1.0.0', '2.0.0', 'update_available_breaking'],
+    ['~1.2', '1.2.0', '1.3.0', 'update_available_breaking'],
+    ['~1.2.3', '1.2.3', '1.2.9', 'update_available_safe'],
+    ['~=2.31', '2.31.0', '2.32.3', 'update_available_safe'],
+    ['~=2.31', '2.31.0', '3.0.0', 'update_available_breaking'],
+    ['~=2.31.0', '2.31.0', '2.32.0', 'update_available_breaking'],
+  ])('%s: %s → %s is %s', (requested, locked, latest, expected) => {
+    expect(classify(requested, locked, latest)).toBe(expected);
+  });
+});
+
 // ── Helper factory tests ───────────────────────────────────────────────────
 
 describe('privateOrUnresolvedStatus', () => {

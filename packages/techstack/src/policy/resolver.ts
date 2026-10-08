@@ -289,12 +289,31 @@ function versionParts(version: string): bigint[] {
   return version.split(/[-+]/)[0]?.split('.').map(BigInt) ?? [];
 }
 
-/** Upper bound (exclusive) for a caret range, per semver caret rules. */
+/**
+ * Upper bound (exclusive) for a caret range, per semver caret rules. A missing
+ * component is an X-range, not a zero: `^0` is <1.0.0 and `^0.0` is <0.1.0.
+ */
 function caretUpper(version: string): string {
-  const [major = 0n, minor = 0n, patch = 0n] = versionParts(version);
-  if (major > 0n) return `${major + 1n}.0.0`;
-  if (minor > 0n) return `0.${minor + 1n}.0`;
+  const parts = versionParts(version);
+  const [major = 0n, minor = 0n, patch = 0n] = parts;
+  if (major > 0n || parts.length < 2) return `${major + 1n}.0.0`;
+  if (minor > 0n || parts.length < 3) return `0.${minor + 1n}.0`;
   return `0.0.${patch + 1n}`;
+}
+
+/**
+ * `[lower, upper)` of a PARTIAL version read as an X-range, as semver does:
+ * `1` is >=1.0.0 <2.0.0-0 and `1.2` is >=1.2.0 <1.3.0-0. Undefined for a full
+ * version (or one carrying a prerelease/build), which compares as written.
+ * Zero-padding instead made a pin `max: "18"` / `"<=18"` reject 18.2.0.
+ */
+function partialBounds(version: string): [lower: string, upper: string] | undefined {
+  const parts = versionParts(version);
+  if (parts.length >= 3 || /[-+]/.test(version)) return undefined;
+  const [major = 0n, minor] = parts;
+  return minor === undefined
+    ? [`${major}.0.0`, `${major + 1n}.0.0-0`]
+    : [`${major}.${minor}.0`, `${major}.${minor + 1n}.0-0`];
 }
 
 /** Upper bound (exclusive) for a tilde range. */
@@ -312,9 +331,27 @@ function tildeUpper(version: string): string {
  */
 export function satisfiesRange(version: string, range: ParsedRange): boolean {
   switch (range.kind) {
-    case 'exact':
+    case 'exact': {
+      const partial = partialBounds(range.version);
+      if (partial) {
+        return (
+          compareVersions(version, partial[0]) >= 0 && compareVersions(version, partial[1]) < 0
+        );
+      }
       return compareVersions(version, range.version) === 0;
+    }
     case 'comparator': {
+      const partial = partialBounds(range.version);
+      if (partial) {
+        switch (range.op) {
+          case '=':
+            return satisfiesRange(version, { kind: 'exact', version: range.version });
+          case '>':
+            return compareVersions(version, partial[1]) >= 0;
+          case '<=':
+            return compareVersions(version, partial[1]) < 0;
+        }
+      }
       const cmp = compareVersions(version, range.version);
       switch (range.op) {
         case '>=':

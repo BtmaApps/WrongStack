@@ -53,12 +53,20 @@ export function detectWorkspaceMisalignments(
   for (const [_key, deps] of byPackage) {
     if (deps.length <= 1) continue;
 
-    // Check if distinct versions exist across different workspaces
-    const versionByWs = new Map<string, string>();
+    // Check if distinct versions exist across different workspaces. A workspace
+    // can hold one package at several versions (an npm alias is a second row
+    // with the same name), so each contributes the SET of its versions: keeping
+    // the last row made the verdict depend on manifest key order and
+    // misreported the workspace in the summary.
+    const versionSetByWs = new Map<string, Set<string>>();
     for (const dep of deps) {
       const version = dep.locked ?? dep.requested ?? 'unknown';
-      versionByWs.set(dep.workspaceId, version);
+      const set = versionSetByWs.get(dep.workspaceId) ?? new Set<string>();
+      set.add(version);
+      versionSetByWs.set(dep.workspaceId, set);
     }
+    const versionByWs = new Map<string, string>();
+    for (const [wsId, set] of versionSetByWs) versionByWs.set(wsId, [...set].sort().join(', '));
 
     const uniqueVersions = new Set(versionByWs.values());
     if (uniqueVersions.size <= 1) continue;

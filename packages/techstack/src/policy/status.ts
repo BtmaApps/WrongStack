@@ -249,12 +249,20 @@ function isBreakingUpgrade(
   // same package's `caretUpper`/`satisfiesRange` encode the correct rule).
   if (constraintNorm.startsWith('^')) return crossesCompatibilityAxis(locked, latestStable);
 
-  // `~` — approximately equivalent, breaking if minor changes (and we have it)
+  // `~` — breaking when a component the tilde locks changes. How many it locks
+  // depends on what was written: npm/cargo `~1` is <2.0.0 while `~1.2` and
+  // `~1.2.3` are <1.3.0 (resolver.ts `tildeUpper`); PEP 440 `~=2.31` is ==2.*
+  // and `~=2.31.0` is ==2.31.*. A fixed "minor locked" reading called every
+  // update `~1` / `~=2.31` admits breaking.
   if (constraintNorm.startsWith('~')) {
-    const lockedMinor = locked.split('.')[1];
-    const latestMinor = latestStable.split('.')[1];
-    if (lockedMinor && latestMinor && lockedMajor !== latestMajor) return true;
-    if (lockedMinor && latestMinor && lockedMinor !== latestMinor) return true;
+    const written = /^~=?\s*v?(\d+(?:\.\d+)*)/.exec(constraintNorm)?.[1]?.split('.').length ?? 3;
+    const fixed = Math.max(1, constraintNorm.startsWith('~=') ? written - 1 : Math.min(written, 2));
+    const lockedParts = locked.split('.');
+    const latestParts = latestStable.split('.');
+    for (let i = 0; i < fixed; i++) {
+      if (lockedParts[i] === undefined || latestParts[i] === undefined) break;
+      if (lockedParts[i] !== latestParts[i]) return true;
+    }
     return false;
   }
 

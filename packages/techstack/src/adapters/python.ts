@@ -15,6 +15,7 @@ import type {
   DependencyScope,
   EcosystemId,
   Evidence,
+  SourceType,
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
@@ -329,11 +330,18 @@ function parsePipfileLock(content: string): Map<string, string> {
  * name = "flask"
  * version = "3.0.3"
  */
-export function parsePoetryLock(content: string): Map<string, string> {
+export function parsePoetryLock(
+  content: string,
+  sources?: Map<string, SourceType>,
+): Map<string, string> {
   const versions = new Map<string, string>();
   let currentName: string | undefined;
+  // The package whose name/version were last recorded: its source key follows.
+  let recorded: string | undefined;
+  let inPoetrySource = false;
   for (const raw of content.split('\n')) {
     const line = raw.trim();
+    if (line.startsWith('[')) inPoetrySource = line === '[package.source]';
     const nameMatch = line.match(/^name\s*=\s*"([^"]+)"/);
     if (nameMatch) {
       currentName = nameMatch[1]!;
@@ -341,11 +349,33 @@ export function parsePoetryLock(content: string): Map<string, string> {
     }
     const versionMatch = line.match(/^version\s*=\s*"([^"]+)"/);
     if (versionMatch && currentName) {
-      versions.set(normalizePkgName(currentName), versionMatch[1]!);
+      recorded = normalizePkgName(currentName);
+      versions.set(recorded, versionMatch[1]!);
       currentName = undefined;
+      continue;
     }
+    if (!sources || !recorded) continue;
+    // uv.lock: `source = { registry = "…" }` / `{ editable = "." }` / `{ git = … }`.
+    const uvSource = /^source\s*=\s*\{\s*([a-z-]+)\s*=/.exec(line)?.[1];
+    // poetry.lock: `[package.source]` table with `type = "git" | "directory" | …`.
+    const poetryType = inPoetrySource ? /^type\s*=\s*"([^"]+)"/.exec(line)?.[1] : undefined;
+    const kind = uvSource ?? poetryType;
+    if (kind) sources.set(recorded, pythonLockSourceType(kind));
   }
   return versions;
+}
+
+/**
+ * Source kind of a uv/poetry lock entry. Only an index (`registry`; poetry's
+ * `legacy`/`pypi` alternate indexes) serves a PyPI-style release; the project
+ * itself and workspace members are `editable`/`virtual`, path deps
+ * `directory`/`path`/`file`, and a bare `url` archive is no registry release.
+ */
+function pythonLockSourceType(kind: string): SourceType {
+  if (kind === 'registry' || kind === 'legacy' || kind === 'pypi') return 'registry';
+  if (kind === 'git') return 'git';
+  if (kind === 'url') return 'unknown';
+  return 'path';
 }
 
 /**
@@ -450,12 +480,13 @@ export class PythonAdapter implements EcosystemAdapter {
 
     let lockEv: Evidence | undefined;
     const lockVersions = new Map(reqLockVersions);
+    const lockSources = new Map<string, SourceType>();
     if (lockfilePath) {
       try {
         const lockContent = await readFile(lockfilePath, 'utf-8');
         const parsed =
           lockfilePath.endsWith('poetry.lock') || lockfilePath.endsWith('uv.lock')
-            ? parsePoetryLock(lockContent)
+            ? parsePoetryLock(lockContent, lockSources)
             : parsePipfileLock(lockContent);
         for (const [name, version] of parsed) lockVersions.set(name, version);
         lockEv = lockfileEvidence(lockfilePath);
@@ -522,18 +553,29 @@ export class PythonAdapter implements EcosystemAdapter {
         const name = normalizePkgName(rawName);
         if (seen.has(name)) continue;
         seen.add(name);
+        // Only an index release is a PyPI component: the project itself, a
+        // workspace member or a path/git entry named after some PyPI project
+        // would otherwise be inventoried — and advisory-matched — as that project.
+        const sourceType = lockSources.get(name) ?? 'registry';
         observations.push({
           id: `dep-${workspace.id}-${name}`,
           workspaceId: workspace.id,
           // Canonical pypi type — see the direct-deps pass above.
-          purl: constructPurl('python', name, locked),
+          ...(sourceType === 'registry' ? { purl: constructPurl('python', name, locked) } : {}),
           ecosystem: 'python',
           name,
-          sourceType: 'registry',
+          sourceType,
           direct: false,
           scope: 'transitive',
           locked,
-          status: 'current',
+          status:
+            sourceType === 'registry'
+              ? 'current'
+              : sourceType === 'path'
+                ? 'local_path'
+                : sourceType === 'git'
+                  ? 'git_dependency'
+                  : 'unknown',
           evidence: [lockEv],
         });
       }

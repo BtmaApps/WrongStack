@@ -618,4 +618,93 @@ packages:
       rmSync(rootDir, { recursive: true, force: true });
     }
   });
+
+  it('reports a dependency installed as a package-lock workspace link as a workspace', async () => {
+    // Real npm lock shape: a member's plain `"lodash": "4.17.20"` links the
+    // sibling workspace named lodash. It was reported as the public npm
+    // lodash (purl pkg:npm/lodash, SBOM version 4.17.20).
+    const { dir, workspace } = makeTempWorkspace(
+      'ws-link',
+      {
+        name: 'root',
+        private: true,
+        workspaces: ['packages/*'],
+        dependencies: { lodash: '4.17.20', ms: '2.1.3' },
+      },
+      {
+        filename: 'package-lock.json',
+        content: JSON.stringify({
+          lockfileVersion: 3,
+          packages: {
+            '': { name: 'root' },
+            'node_modules/lodash': { resolved: 'packages/lodash', link: true },
+            'node_modules/ms': { version: '2.1.3' },
+            'packages/lodash': { version: '4.17.20' },
+          },
+        }),
+      },
+    );
+    try {
+      const deps = await new NpmAdapter().inventory(workspace, {});
+      const lodash = deps.find((d) => d.name === 'lodash');
+      expect(lodash).toMatchObject({ sourceType: 'workspace', status: 'local_path' });
+      expect(lodash?.purl).toBeUndefined();
+      expect(deps.find((d) => d.name === 'ms')?.purl).toBe('pkg:npm/ms@2.1.3');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports a yarn berry range resolved to a workspace as a workspace', async () => {
+    // Real berry shape: one block for both specs, version 0.0.0-use.local.
+    // It became `pkg:npm/lodash@0.0.0-use.local`, a registry dependency.
+    const { dir, workspace } = makeTempWorkspace(
+      'berry-ws',
+      { name: 'app', dependencies: { lodash: '4.17.20', ms: '^2.1.0' } },
+      {
+        filename: 'yarn.lock',
+        content:
+          '__metadata:\n  version: 8\n  cacheKey: 10c0\n\n' +
+          '"lodash@npm:4.17.20, lodash@workspace:packages/lodash":\n  version: 0.0.0-use.local\n  resolution: "lodash@workspace:packages/lodash"\n  languageName: unknown\n  linkType: soft\n\n' +
+          '"ms@npm:^2.1.0":\n  version: 2.1.3\n  resolution: "ms@npm:2.1.3"\n  languageName: node\n  linkType: hard\n',
+      },
+    );
+    try {
+      const deps = await new NpmAdapter().inventory(workspace, { includeTransitive: true });
+      const lodash = deps.find((d) => d.name === 'lodash');
+      expect(lodash).toMatchObject({ sourceType: 'workspace', status: 'local_path' });
+      expect(lodash?.purl).toBeUndefined();
+      expect(deps.some((d) => d.locked === '0.0.0-use.local')).toBe(false);
+      expect(deps.find((d) => d.name === 'ms')?.purl).toBe('pkg:npm/ms@2.1.3');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('reports a bun workspace link as a workspace, not the npm package', async () => {
+    // Real bun.lock shape for a sibling that satisfies a plain range.
+    const { dir, workspace } = makeTempWorkspace(
+      'bun-ws',
+      { name: 'app', dependencies: { lodash: '4.17.20', ms: '2.1.3' } },
+      {
+        filename: 'bun.lock',
+        content: `{
+  "lockfileVersion": 1,
+  "packages": {
+    "lodash": ["lodash@workspace:packages/lodash"],
+    "ms": ["ms@2.1.3", "", {}, "sha512-x"],
+  }
+}
+`,
+      },
+    );
+    try {
+      const deps = await new NpmAdapter().inventory(workspace, {});
+      const lodash = deps.find((d) => d.name === 'lodash');
+      expect(lodash).toMatchObject({ sourceType: 'workspace', status: 'local_path' });
+      expect(lodash?.purl).toBeUndefined();
+      expect(deps.find((d) => d.name === 'ms')?.purl).toBe('pkg:npm/ms@2.1.3');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

@@ -617,6 +617,34 @@ dependencies = [
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('does not inventory uv editable/workspace entries as PyPI releases', async () => {
+    // Real uv lock shape: the project and a workspace member are editable.
+    // A member named `requests` 2.0.0 got pkg:pypi/requests@2.0.0 — an
+    // unrelated PyPI release with published advisories.
+    const { dir, ws } = mkWorkspace(
+      {
+        'pyproject.toml': '[project]\nname = "myproj"\nversion = "0.1.0"\ndependencies = []\n',
+        'uv.lock':
+          'version = 1\n\n[[package]]\nname = "myproj"\nversion = "0.1.0"\nsource = { editable = "." }\n\n' +
+          '[[package]]\nname = "requests"\nversion = "2.0.0"\nsource = { editable = "packages/r" }\n\n' +
+          '[[package]]\nname = "idna"\nversion = "3.10"\nsource = { registry = "https://pypi.org/simple" }\n',
+      },
+      ['uv.lock'],
+    );
+    try {
+      const deps = await new PythonAdapter().inventory(ws, { includeTransitive: true });
+      expect(deps.find((d) => d.name === 'requests')).toMatchObject({
+        sourceType: 'path',
+        status: 'local_path',
+      });
+      expect(deps.find((d) => d.name === 'requests')?.purl).toBeUndefined();
+      expect(deps.find((d) => d.name === 'myproj')?.purl).toBeUndefined();
+      expect(deps.find((d) => d.name === 'idna')?.purl).toBe('pkg:pypi/idna@3.10');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 // ── parsePoetryLock ───────────────────────────────────────────────────────
