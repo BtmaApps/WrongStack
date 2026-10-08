@@ -356,7 +356,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
         name: 'all',
         type: 'boolean',
         description:
-          'Type-check all workspace packages (pnpm workspaces run `pnpm -r exec tsc --noEmit`; other setups run a single `tsc --noEmit` at cwd) (default: false)',
+          'Type-check the workspace with Bun, following tsconfig project references (default: false)',
       },
     ],
     notes: [
