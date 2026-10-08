@@ -12,6 +12,7 @@
  */
 
 import { Bot, CircleDot, Loader2, MessageSquare, Plus, TriangleAlert } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { MAX_OPEN_TABS, type TabSummary } from '@/stores/session-tab-store';
 import { formatTokens, slotAccent } from './summaries';
@@ -25,12 +26,17 @@ export function TabMap({
   onSelect: (sessionId: string) => void;
   onNew: () => void;
 }) {
+  const { t } = useAppTranslation();
   const slots = Array.from({ length: MAX_OPEN_TABS }, (_, i) => tabs[i] ?? null);
 
   return (
     <div className="w-[min(92vw,760px)] p-2">
       <div className="px-1 pb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-        Tab map — {tabs.length}/{MAX_OPEN_TABS} slots · one session per tab, nothing shared
+        {t('activity:tabMap.header', {
+          defaultValue: 'Tab map — {{open}}/{{max}} slots · one session per tab, nothing shared',
+          open: tabs.length,
+          max: MAX_OPEN_TABS,
+        })}
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {slots.map((tab, slot) =>
@@ -46,6 +52,7 @@ export function TabMap({
 }
 
 function TabCard({ tab, onSelect }: { tab: TabSummary; onSelect: (id: string) => void }) {
+  const { t } = useAppTranslation();
   const accent = slotAccent(tab.slot);
   return (
     <button
@@ -71,7 +78,7 @@ function TabCard({ tab, onSelect }: { tab: TabSummary; onSelect: (id: string) =>
         <span className="truncate text-xs font-medium">{tab.title}</span>
         {tab.isActive && (
           <span className={cn('shrink-0 text-[9px] font-semibold uppercase', accent.text)}>
-            on screen
+            {t('activity:tabMap.onScreen', { defaultValue: 'on screen' })}
           </span>
         )}
         <span className="ml-auto shrink-0">
@@ -90,23 +97,47 @@ function TabCard({ tab, onSelect }: { tab: TabSummary; onSelect: (id: string) =>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-        <Stat icon={<MessageSquare className="h-3 w-3" />} label={`${tab.messageCount} msg`} />
+        <Stat
+          icon={<MessageSquare className="h-3 w-3" />}
+          label={t('activity:tabMap.messages', {
+            defaultValue: '{{count}} msg',
+            count: tab.messageCount,
+          })}
+        />
         {tab.unread > 0 && (
           <span className="rounded bg-primary/15 px-1 font-semibold text-primary">
-            +{tab.unread} new
+            {t('activity:tabMap.unread', { defaultValue: '+{{count}} new', count: tab.unread })}
           </span>
         )}
-        {tab.queued > 0 && <span>{tab.queued} queued</span>}
+        {tab.queued > 0 && (
+          <span>
+            {t('activity:tabMap.queued', { defaultValue: '{{count}} queued', count: tab.queued })}
+          </span>
+        )}
         <Stat
           icon={<Bot className="h-3 w-3" />}
           label={
-            tab.agentsTotal === 0 ? 'no agents' : `${tab.agentsRunning}/${tab.agentsTotal} agents`
+            tab.agentsTotal === 0
+              ? t('activity:tabMap.noAgents', { defaultValue: 'no agents' })
+              : t('activity:tabMap.agents', {
+                  defaultValue: '{{running}}/{{total}} agents',
+                  running: tab.agentsRunning,
+                  total: tab.agentsTotal,
+                })
           }
           tone={tab.agentsRunning > 0 ? 'text-success' : undefined}
         />
-        {tab.tokens > 0 && <span>{formatTokens(tab.tokens)} tok</span>}
+        {tab.tokens > 0 && (
+          <span>
+            {formatTokens(tab.tokens)} {t('activity:tabMap.tokens', { defaultValue: 'tok' })}
+          </span>
+        )}
         {tab.cost > 0 && <span>${tab.cost.toFixed(4)}</span>}
-        {tab.contextPct > 0 && <span>{tab.contextPct}% ctx</span>}
+        {tab.contextPct > 0 && (
+          <span>
+            {tab.contextPct}% {t('activity:tabMap.context', { defaultValue: 'ctx' })}
+          </span>
+        )}
       </div>
 
       <div className="truncate font-mono text-[9px] text-muted-foreground/60">{tab.sessionId}</div>
@@ -132,6 +163,7 @@ function Stat({
 }
 
 function EmptySlot({ slot, onNew }: { slot: number; onNew: () => void }) {
+  const { t } = useAppTranslation();
   const accent = slotAccent(slot);
   return (
     <button
@@ -148,7 +180,9 @@ function EmptySlot({ slot, onNew }: { slot: number; onNew: () => void }) {
       >
         {slot + 1}
       </span>
-      <span className="text-xs">Empty slot</span>
+      <span className="text-xs">
+        {t('activity:tabMap.emptySlot', { defaultValue: 'Empty slot' })}
+      </span>
       <Plus className="ml-auto h-3.5 w-3.5" />
     </button>
   );

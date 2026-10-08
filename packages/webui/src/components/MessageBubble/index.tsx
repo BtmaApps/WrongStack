@@ -306,7 +306,7 @@ export const MessageBubble = memo(function MessageBubble({
             {isUser
               ? t('activity:message.roleYou')
               : isSystem
-                ? 'System'
+                ? t('activity:message.roleSystem')
                 : isTool
                   ? t('activity:message.roleTool')
                   : isThinkingLog
@@ -335,17 +335,22 @@ export const MessageBubble = memo(function MessageBubble({
               <div className="min-w-[15rem]">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Crosshair className="h-4 w-4 text-primary" />
-                  <span>Proof-Driven Bug Hunter</span>
+                  <span>{t('activity:message.bugHunterTitle')}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1">
-                    Round {bugHunt?.currentRound ?? 1} of {bugHunt?.maxBugs}
+                    {t('activity:message.bugHuntRoundOf', {
+                      current: bugHunt?.currentRound ?? 1,
+                      max: bugHunt?.maxBugs,
+                    })}
                   </span>
                   <span
                     className="max-w-full truncate rounded-full border border-border bg-background/60 px-2 py-1"
-                    title={bugHunt?.scope || 'Whole project'}
+                    title={bugHunt?.scope || t('activity:message.wholeProject')}
                   >
-                    {bugHunt?.scope ? `${bugHunt.scope} and below` : 'Whole project'}
+                    {bugHunt?.scope
+                      ? t('activity:message.scopeAndBelow', { scope: bugHunt.scope })
+                      : t('activity:message.wholeProject')}
                   </span>
                 </div>
               </div>

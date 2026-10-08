@@ -113,7 +113,10 @@ export function SelfLearningAgentList({
                         ? 'text-success'
                         : stat.directiveHitRate < 0.4 && 'text-warning',
                     )}
-                    title="Share of directive applications that ended in a successful task"
+                    title={t('activity:agentRoster.hitRateTooltip', {
+                      defaultValue:
+                        'Share of directive applications that ended in a successful task',
+                    })}
                   >
                     {Math.round(stat.directiveHitRate * 100)}%
                   </span>

@@ -111,7 +111,7 @@ function FileRow({
                 e.stopPropagation();
                 onUnstage();
               }}
-              title="Unstage changes"
+              title={t('activity:changes.unstageTitle')}
               className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-background/80 text-muted-foreground hover:text-foreground"
             >
               <Minus className="h-3 w-3" />
@@ -126,7 +126,7 @@ function FileRow({
                   e.stopPropagation();
                   onStage();
                 }}
-                title="Stage changes"
+                title={t('activity:changes.stageTitle')}
                 className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-background/80 text-muted-foreground hover:text-foreground"
               >
                 <Plus className="h-3 w-3" />
@@ -152,7 +152,7 @@ function FileRow({
                     onDiscard();
                   }
                 }}
-                title="Discard changes"
+                title={t('activity:changes.discardTitle')}
                 className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
               >
                 <Undo2 className="h-3 w-3" />
@@ -344,22 +344,22 @@ export function ChangesPanel() {
                 <button
                   type="button"
                   onClick={() => stageGit?.([])}
-                  title="Stage all changes"
+                  title={t('activity:changes.stageAllTitle')}
                   className="h-6 px-1.5 inline-flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <Plus className="h-3 w-3" />
-                  <span>Stage All</span>
+                  <span>{t('activity:changes.stageAll')}</span>
                 </button>
               )}
               {stagedFiles.length > 0 && (
                 <button
                   type="button"
                   onClick={() => unstageGit?.([])}
-                  title="Unstage all changes"
+                  title={t('activity:changes.unstageAllTitle')}
                   className="h-6 px-1.5 inline-flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <Minus className="h-3 w-3" />
-                  <span>Unstage All</span>
+                  <span>{t('activity:changes.unstageAll')}</span>
                 </button>
               )}
               <button
@@ -408,7 +408,9 @@ export function ChangesPanel() {
                 {stagedFiles.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span>Staged Changes ({stagedFiles.length})</span>
+                      <span>
+                        {t('activity:changes.stagedGroup', { count: stagedFiles.length })}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       {renderGroup(stagedFiles, (f, depth) => (
@@ -429,7 +431,9 @@ export function ChangesPanel() {
                 {unstagedFiles.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span>Changes ({unstagedFiles.length})</span>
+                      <span>
+                        {t('activity:changes.changesGroup', { count: unstagedFiles.length })}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       {renderGroup(unstagedFiles, (f, depth) => (
@@ -465,8 +469,8 @@ export function ChangesPanel() {
                   }}
                   placeholder={
                     stagedFiles.length > 0
-                      ? 'Commit message (Ctrl+Enter)...'
-                      : 'Stage changes to commit...'
+                      ? t('activity:changes.commitPlaceholder')
+                      : t('activity:changes.commitPlaceholderEmpty')
                   }
                   rows={2}
                   className="w-full resize-none rounded-md border border-input bg-background/80 px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -483,7 +487,11 @@ export function ChangesPanel() {
                 ) : (
                   <GitCommitHorizontal className="h-3.5 w-3.5" />
                 )}
-                <span>Commit {stagedFiles.length > 0 ? `(${stagedFiles.length})` : ''}</span>
+                <span>
+                  {stagedFiles.length > 0
+                    ? t('activity:changes.commitButtonCount', { count: stagedFiles.length })
+                    : t('activity:changes.commitButton')}
+                </span>
               </button>
             </div>
           )}

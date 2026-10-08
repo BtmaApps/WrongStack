@@ -215,7 +215,7 @@ function MemoryCard({
             variant="outline"
             disabled={disabled}
             onClick={() => onRecover(match.memory.id)}
-            className="h-7 gap-1 border-primary/40 px-2 text-[11px] text-primary hover:bg-primary/10"
+            className="h-7 gap-1 border-primary/40 bg-primary/10 px-2 text-[11px] text-foreground hover:bg-primary/20"
             title={t('activity:memoryManager.restoreTitle')}
           >
             <RefreshCw className="size-3" /> {t('activity:memoryManager.actionRecover')}
@@ -337,8 +337,8 @@ function Section({
         <span>{title}</span>
         <span className="font-mono">({count})</span>
         {cursorBoosted && (
-          <span className="ml-auto flex items-center gap-0.5 font-mono text-[9px] text-primary">
-            <Pin className="size-2.5" /> {t('activity:memoryManager.cursorBoostTitle')}
+          <span className="ml-auto flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] text-foreground">
+            <Pin className="size-2.5 text-primary" /> {t('activity:memoryManager.cursorBoostTitle')}
           </span>
         )}
       </h3>
@@ -513,8 +513,8 @@ export function MemoryDrawer({
           <span>{t('activity:memoryManager.showRecoverable')}</span>
         </label>
         {cursorBoostedBucket && (
-          <span className="ml-auto flex items-center gap-1 font-mono text-[10px] text-primary">
-            <Pin className="size-3" />{' '}
+          <span className="ml-auto flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+            <Pin className="size-3 text-primary" />{' '}
             {t('activity:memoryManager.linesRange', { start: lineStart, end: lineEnd })}
           </span>
         )}

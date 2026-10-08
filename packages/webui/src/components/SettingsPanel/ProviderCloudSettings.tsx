@@ -4,6 +4,7 @@ import {
   parseNativeCloudSettings,
 } from '@wrongstack/core/cloud-provider';
 import { useEffect, useRef, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { requestAuthOperation } from '@/lib/auth-operation';
 import type { WrongStackWebSocketClient } from '@/lib/ws-client';
 
@@ -19,6 +20,7 @@ export function ProviderCloudSettings({
   ws: WrongStackWebSocketClient;
 }) {
   const [draft, setDraft] = useState<NativeCloudSettings>(cloud ?? {});
+  const { t } = useAppTranslation();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const dirty = useRef(false);
@@ -31,7 +33,9 @@ export function ProviderCloudSettings({
   if (!fields.length) return null;
   return (
     <details className="rounded-lg border border-border p-3">
-      <summary>Cloud routing settings</summary>
+      <summary>
+        {t('activity:providerCloud.heading', { defaultValue: 'Cloud routing settings' })}
+      </summary>
       <p className="text-xs text-muted-foreground">
         Profile values override environment defaults. Empty values use the environment. Credentials
         are managed separately.

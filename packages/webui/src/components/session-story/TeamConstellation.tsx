@@ -5,6 +5,7 @@
    they exist so the rendered contrast audit can apply the WCAG 1.4.11
    decorative-graphic exemption instead of gating them at 3:1. */
 import { Bot, GitFork } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import type { StoryActor } from '@/lib/session-story';
 
 /** Membership edges are dashed; only recorded parent IDs produce solid branches. */
@@ -17,6 +18,7 @@ export function TeamConstellation({
   selected: string;
   onSelect(id: string): void;
 }) {
+  const { t } = useAppTranslation();
   const visible = actors.slice(0, 24);
   const positions = new Map(
     visible.map((actor, index) => {
@@ -37,17 +39,15 @@ export function TeamConstellation({
       <header className="flex items-center gap-2 p-4">
         <GitFork size={16} />
         <div>
-          <h2 className="font-semibold">Team constellation</h2>
-          <p className="text-xs text-muted-foreground">
-            This tab's participants and recorded branches
-          </p>
+          <h2 className="font-semibold">{t('activity:story.teamConstellation')}</h2>
+          <p className="text-xs text-muted-foreground">{t('activity:story.teamSubtitle')}</p>
         </div>
       </header>
       <svg
         viewBox="0 0 640 480"
         className="w-full"
         role="img"
-        aria-label="Session team ownership map"
+        aria-label={t('activity:story.teamMapLabel')}
       >
         <rect width={640} height={480} fill="hsl(var(--muted))" />
         {/* Framing only: the orbit ring and the inner halo carry no data. The whole
@@ -103,7 +103,7 @@ export function TeamConstellation({
           strokeWidth={1.5}
         />
         <text x={320} y={237} fill="hsl(var(--foreground))" fontSize={12} textAnchor="middle">
-          SESSION
+          {t('activity:story.sessionCenter')}
         </text>
         {/* `--info` is a status-taxonomy voice, and at 10px on the `--muted`
             canvas it only reaches 4.25:1 in light theme — below AA. This is a
@@ -111,7 +111,7 @@ export function TeamConstellation({
             secondary ink as the per-node event counts (5.29:1 light / 6.83
             dark) and still reads as deliberately de-emphasised. */}
         <text x={320} y={254} fill="hsl(var(--muted-foreground))" fontSize={10} textAnchor="middle">
-          {actors.length} lanes
+          {t('activity:story.lanes', { count: actors.length })}
         </text>
         {visible.map((actor) => {
           const point = positions.get(actor.id)!;
@@ -157,10 +157,10 @@ export function TeamConstellation({
                 fontSize={9}
                 textAnchor="middle"
               >
-                {actor.events} events
+                {t('activity:story.events', { count: actor.events })}
               </text>
               <title>
-                {actor.name} · {actor.status ?? 'recorded'}
+                {actor.name} · {actor.status ?? t('activity:story.statusRecorded')}
                 {actor.task ? ` · ${actor.task}` : ''}
               </title>
             </g>
@@ -182,10 +182,10 @@ export function TeamConstellation({
         ))}
       </div>
       <p className="px-4 pb-4 text-[11px] text-muted-foreground">
-        Dashed lines show session membership. Solid lines require a recorded parent.{' '}
+        {t('activity:story.legendMembership')}
         {actors.length > visible.length
-          ? 'Use the agent selector for the remaining lanes.'
-          : 'Unknown spawning parents stay unknown.'}
+          ? t('activity:story.legendRemaining')
+          : t('activity:story.legendUnknownParent')}
       </p>
     </section>
   );

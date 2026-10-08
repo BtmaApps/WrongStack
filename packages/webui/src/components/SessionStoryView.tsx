@@ -13,6 +13,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { sessionModelStats } from '@/lib/session-model-stats';
 import { buildSessionStory, type StoryEvent, type StoryKind } from '@/lib/session-story';
 import { storyStats } from '@/lib/session-story-stats';
@@ -32,6 +33,7 @@ import { useStoryHistory } from './session-story/use-story-history';
 import './session-story/story-motion.css';
 
 export function SessionStoryView() {
+  const { t } = useAppTranslation();
   const sessionId = useActiveSessionId();
   const session = useSessionStore((state) => state.session);
   const projectRoot = useSessionStore((state) => state.projectRoot);
@@ -133,17 +135,21 @@ export function SessionStoryView() {
     setPlaying(false);
   };
   const cards = [
-    { label: 'Observed span', value: story.start ? storyTime(span) : '—', icon: Clock3 },
-    { label: 'Team lanes', value: story.actors.length, icon: GitFork },
-    { label: 'Tool calls', value: story.toolCalls, icon: Terminal },
-    { label: 'Recorded files', value: story.files.length, icon: FileCode2 },
     {
-      label: 'Injected IDs / write events',
+      label: t('activity:story.cardSpan'),
+      value: story.start ? storyTime(span) : '—',
+      icon: Clock3,
+    },
+    { label: t('activity:story.cardLanes'), value: story.actors.length, icon: GitFork },
+    { label: t('activity:story.cardToolCalls'), value: story.toolCalls, icon: Terminal },
+    { label: t('activity:story.cardFiles'), value: story.files.length, icon: FileCode2 },
+    {
+      label: t('activity:story.cardMemory'),
       value: `${story.observedInjectedMemories} / ${story.memoryWrites}`,
       icon: BrainCircuit,
     },
-    { label: 'Mail events', value: story.counts.mail, icon: Mail },
-    { label: 'Drift / retry / error', value: story.counts.alert, icon: TriangleAlert },
+    { label: t('activity:story.cardMail'), value: story.counts.mail, icon: Mail },
+    { label: t('activity:story.cardAlerts'), value: story.counts.alert, icon: TriangleAlert },
   ];
   return (
     <div
@@ -152,34 +158,36 @@ export function SessionStoryView() {
       data-motion={motion ? 'on' : 'off'}
     >
       <div className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-7">
-        <header className="relative overflow-hidden rounded-3xl border border-info/20 bg-gradient-to-br from-info/10 via-card to-primary/10 p-5 md:p-8">
+        <header className="border-b border-border bg-card px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => useUIStore.getState().setCurrentView('chat')}
               className="flex items-center gap-2 text-xs text-muted-foreground"
             >
-              <ArrowLeft size={14} /> Back to session
+              <ArrowLeft size={14} /> {t('activity:story.backToSession')}
             </button>
             <span className="rounded-full border px-3 py-1 text-xs">
-              {live ? '● SESSION LIVE' : 'RECORDED SESSION'} ·{' '}
-              {history.events.length.toLocaleString()} history events
+              {live ? `● ${t('activity:story.sessionLive')}` : t('activity:story.recordedSession')}{' '}
+              · {t('activity:story.historyEvents', { count: history.events.length })}
             </span>
           </div>
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="mb-2 text-xs uppercase tracking-[.25em] text-info">
-                SESSION STORY / FLIGHT RECORDER
+                {t('activity:story.heroEyebrow')}
               </p>
-              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                The work. The team. The trail.
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {t('activity:story.heroHeadline')}
               </h1>
               {latestRequest && (
                 <p className="mt-3 max-w-3xl text-sm leading-6">{latestRequest.slice(0, 320)}</p>
               )}
               <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-                {session?.id === sessionId ? session.id : (sessionId ?? 'No session selected')} ·
-                Every lane, including this tab's subagents.
+                {session?.id === sessionId
+                  ? session.id
+                  : (sessionId ?? t('activity:story.noSession'))}{' '}
+                · {t('activity:story.heroSubline')}
               </p>
             </div>
             <div className="flex gap-2">
@@ -189,7 +197,7 @@ export function SessionStoryView() {
                 onClick={() => setMotion((value) => !value)}
                 className="rounded-xl border px-3 py-2 text-xs"
               >
-                Effects {motion ? 'on' : 'off'}
+                {t(motion ? 'activity:story.effectsOn' : 'activity:story.effectsOff')}
               </button>
               <button
                 type="button"
@@ -197,7 +205,7 @@ export function SessionStoryView() {
                 aria-pressed={follow}
                 className="rounded-xl border px-3 py-2 text-xs"
               >
-                {follow ? 'History refresh on' : 'History refresh paused'}
+                {t(follow ? 'activity:story.followOn' : 'activity:story.followPaused')}
               </button>
               <button
                 type="button"
@@ -205,7 +213,8 @@ export function SessionStoryView() {
                 disabled={history.loading}
                 className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs"
               >
-                <RefreshCw size={14} className={history.loading ? 'animate-spin' : ''} /> Refresh
+                <RefreshCw size={14} className={history.loading ? 'animate-spin' : ''} />
+                {t('activity:story.refresh')}
               </button>
             </div>
           </div>
@@ -224,7 +233,7 @@ export function SessionStoryView() {
         </header>
         <div
           role="tablist"
-          aria-label="Session dashboard sections"
+          aria-label={t('activity:story.tablistLabel')}
           className="sticky top-0 z-10 flex gap-1 overflow-x-auto rounded-2xl border bg-background/95 p-1.5 backdrop-blur"
         >
           {(['overview', 'timeline', 'models', 'tools', 'files', 'team'] as const).map(
@@ -260,7 +269,18 @@ export function SessionStoryView() {
                 }}
                 className={`shrink-0 rounded-xl px-4 py-2 text-sm capitalize transition-colors ${tab === value ? 'bg-info/15 font-semibold text-info' : 'text-muted-foreground hover:bg-muted'}`}
               >
-                {value === 'overview' ? 'Overview' : value}
+                {t(
+                  (
+                    {
+                      overview: 'activity:story.tabOverview',
+                      timeline: 'activity:story.tabTimeline',
+                      models: 'activity:story.tabModels',
+                      tools: 'activity:story.tabTools',
+                      files: 'activity:story.tabFiles',
+                      team: 'activity:story.tabTeam',
+                    } as const
+                  )[value],
+                )}
               </button>
             ),
           )}
@@ -282,8 +302,10 @@ export function SessionStoryView() {
           {history.total > history.events.length && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs">
               <span>
-                Loaded {history.events.length.toLocaleString()} of {history.total.toLocaleString()}{' '}
-                recorded events. Charts and totals describe the loaded window.
+                {t('activity:story.partialWindow', {
+                  loaded: history.events.length.toLocaleString(),
+                  total: history.total.toLocaleString(),
+                })}
               </span>
               {history.cursor && (
                 <button
@@ -295,7 +317,7 @@ export function SessionStoryView() {
                   }}
                   className="rounded border px-3 py-1"
                 >
-                  Load earlier events
+                  {t('activity:story.loadEarlier')}
                 </button>
               )}
             </div>
@@ -314,13 +336,17 @@ export function SessionStoryView() {
                 }}
               />
               <section className="story-card flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border bg-card px-5 py-4">
-                <span className="text-sm font-semibold">Recorded reach</span>
+                <span className="text-sm font-semibold">{t('activity:story.recordedReach')}</span>
                 {[
-                  `${stats.tools.length} tool types`,
-                  `${stats.files.length} file paths`,
-                  `${stats.directories} directories`,
-                  `${stats.files.reduce((sum, file) => sum + file.reads, 0)} reads`,
-                  `${stats.files.reduce((sum, file) => sum + file.edits + file.writes, 0)} edits / writes`,
+                  t('activity:story.reachTools', { count: stats.tools.length }),
+                  t('activity:story.reachPaths', { count: stats.files.length }),
+                  t('activity:story.reachDirs', { count: stats.directories }),
+                  t('activity:story.reachReads', {
+                    count: stats.files.reduce((sum, file) => sum + file.reads, 0),
+                  }),
+                  t('activity:story.reachEdits', {
+                    count: stats.files.reduce((sum, file) => sum + file.edits + file.writes, 0),
+                  }),
                 ].map((value) => (
                   <span key={value} className="font-mono text-xs text-muted-foreground">
                     {value}
@@ -331,7 +357,7 @@ export function SessionStoryView() {
                   onClick={() => setTab('files')}
                   className="ml-auto text-xs text-info underline"
                 >
-                  Inspect file footprint
+                  {t('activity:story.inspectFiles')}
                 </button>
               </section>
               <ActivityPulse story={story} end={end} />
@@ -371,7 +397,9 @@ export function SessionStoryView() {
               <section className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4">
                 <button
                   type="button"
-                  aria-label={playing ? 'Pause session replay' : 'Play session replay'}
+                  aria-label={t(
+                    playing ? 'activity:story.pauseReplay' : 'activity:story.playReplay',
+                  )}
                   onClick={() => {
                     setFollow(false);
                     if (!playing && cursor >= 100) setCursor(0);
@@ -386,13 +414,13 @@ export function SessionStoryView() {
                   min={0}
                   max={100}
                   value={cursor}
-                  aria-label="Session replay position"
+                  aria-label={t('activity:story.replayPosition')}
                   onChange={(event) => {
                     setCursor(Number(event.target.value));
                     setPlaying(false);
                     setFollow(false);
                   }}
-                  className="min-w-40 flex-1 accent-cyan-500"
+                  className="min-w-40 flex-1 accent-info"
                 />
                 <span className="font-mono text-xs tabular-nums">
                   +{storyTime(cursorAt - story.start)} / {storyTime(span)}
@@ -405,7 +433,7 @@ export function SessionStoryView() {
                   }}
                   className="text-xs underline"
                 >
-                  Latest
+                  {t('activity:story.latest')}
                 </button>
               </section>
               <StoryChart
@@ -422,14 +450,9 @@ export function SessionStoryView() {
             <div className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground">
               <Activity className="mx-auto mb-3" />
               <p>
-                {history.loading
-                  ? 'Loading the session story…'
-                  : 'No timestamped session events are available yet.'}
+                {history.loading ? t('activity:story.loading') : t('activity:story.emptyTitle')}
               </p>
-              <p className="mt-2 text-xs">
-                Recorded Chronicle events and explicitly owned team activity appear here as they
-                arrive.
-              </p>
+              <p className="mt-2 text-xs">{t('activity:story.emptyHint')}</p>
             </div>
           )}
           {(tab === 'timeline' || tab === 'team') && (
@@ -478,12 +501,12 @@ export function SessionStoryView() {
                       {[selectedActor.model, selectedActor.status].filter(Boolean).join(' · ')}
                     </p>
                     <p className="mt-3 whitespace-pre-wrap break-words text-sm">
-                      {selectedActor.task || 'No assignment was recorded for this actor.'}
+                      {selectedActor.task || t('activity:story.noAssignment')}
                     </p>
                   </section>
                 )}
                 <section className="rounded-2xl border bg-card p-4">
-                  <h2 className="font-semibold">Event evidence</h2>
+                  <h2 className="font-semibold">{t('activity:story.eventEvidence')}</h2>
                   {selected ? (
                     <div className="mt-4 space-y-3">
                       <p className="break-words text-sm font-medium">{selected.title}</p>
@@ -496,7 +519,7 @@ export function SessionStoryView() {
                       {selected.raw && (
                         <details>
                           <summary className="cursor-pointer text-xs text-muted-foreground">
-                            Recorded metadata
+                            {t('activity:story.recordedMetadata')}
                           </summary>
                           <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words text-[11px]">
                             {JSON.stringify(selected.raw, null, 2)}
@@ -506,12 +529,12 @@ export function SessionStoryView() {
                     </div>
                   ) : (
                     <p className="mt-4 text-sm text-muted-foreground">
-                      Select a chart marker or event to inspect its recorded evidence.
+                      {t('activity:story.evidenceHint')}
                     </p>
                   )}
                 </section>
                 <section className="rounded-2xl border bg-card p-4">
-                  <h2 className="font-semibold">File footprint</h2>
+                  <h2 className="font-semibold">{t('activity:story.fileFootprint')}</h2>
                   <ul className="mt-3 space-y-2">
                     {story.files.slice(0, 30).map((path) => (
                       <li
@@ -524,20 +547,17 @@ export function SessionStoryView() {
                   </ul>
                   {story.files.length === 0 && (
                     <p className="mt-3 text-xs text-muted-foreground">
-                      No file paths were recorded in this window.
+                      {t('activity:story.noFiles')}
                     </p>
                   )}
                   {story.files.length > 30 && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      +{story.files.length - 30} more paths in the loaded events
+                      {t('activity:story.morePaths', { count: story.files.length - 30 })}
                     </p>
                   )}
                 </section>
                 <p className="px-2 text-[11px] leading-5 text-muted-foreground">
-                  Only explicit session ownership is included. Mail and memory traces supplement
-                  durable history from bounded recent caches. Hidden or unrecorded events, parents,
-                  durations, and drift are not invented. Chart markers are sampled; the event stream
-                  retains every loaded event.
+                  {t('activity:story.scopeNote')}
                 </p>
               </aside>
             </div>

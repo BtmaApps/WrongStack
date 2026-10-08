@@ -507,6 +507,7 @@
     "reasoningEffortLabel": "Akıl yürütme çabası",
     "reasoningEffortAuto": "Otomatik (genel)",
     "reasoningEffortAutoHint": "Genel ayar: {{value}}",
+    "reasoningEffortLeaderHint": "Leader: {{value}} (kendi seçimi)",
     "reasoningEffortHint": "Modelin düşünmeye harcadığı işlem gücü. Yalnızca model desteklediğinde gönderilir.",
     "reasoningEffortNone": "Yok",
     "reasoningEffortMinimal": "Minimal",

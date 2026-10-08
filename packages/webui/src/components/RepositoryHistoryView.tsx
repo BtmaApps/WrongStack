@@ -1,6 +1,7 @@
 import { ArrowDown, ChevronRight, GitCommitHorizontal, GitMerge, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { showPanel } from '@/lib/view-navigation';
 import { useConfigStore, useGitChangesStore } from '@/stores';
@@ -27,10 +28,11 @@ export { COMMIT_DETAIL_PANEL_CLASS, layoutCommitGraph } from './repository-histo
 const LANE_COLORS = ['#9b87f5', '#37c9a2', '#f2b95f', '#67a7ff', '#e879b8', '#f07178'];
 
 function GraphCanvas({ commits, layout }: { commits: HistoryCommit[]; layout: GraphLayout }) {
+  const { t } = useAppTranslation();
   const width = 22 + layout.laneCount * LANE_GAP;
   return (
     <svg
-      aria-label="Commit topology"
+      aria-label={t('activity:repositoryHistory.commitTopology')}
       className="pointer-events-none absolute inset-y-0 left-0"
       width={width}
       height={commits.length * ROW_HEIGHT}
@@ -82,6 +84,7 @@ function GraphCanvas({ commits, layout }: { commits: HistoryCommit[]; layout: Gr
   );
 }
 export function RepositoryHistoryView() {
+  const { t } = useAppTranslation();
   const { client } = useWebSocket();
   const connected = useConfigStore((state) => state.wsConnected);
   const changedFiles = useGitChangesStore((state) => state.files);
@@ -230,10 +233,10 @@ export function RepositoryHistoryView() {
 
           <div className="grid h-10 shrink-0 grid-cols-4 divide-x divide-border/60 border-b border-border/70 bg-card/20">
             {[
-              ['Commits', insights.commits],
-              ['Branches', insights.branches],
-              ['Contributors', insights.contributors],
-              ['Merges', insights.merges],
+              [t('activity:repositoryHistory.statCommits'), insights.commits],
+              [t('activity:repositoryHistory.statBranches'), insights.branches],
+              [t('activity:repositoryHistory.statContributors'), insights.contributors],
+              [t('activity:repositoryHistory.statMerges'), insights.merges],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-center gap-2 px-2">
                 <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
@@ -253,28 +256,30 @@ export function RepositoryHistoryView() {
               className="group flex h-10 shrink-0 items-center gap-3 border-b border-border/70 bg-primary/[0.055] px-4 text-left text-xs hover:bg-primary/[0.09]"
             >
               <span className="h-2 w-2 animate-pulse rounded-full border border-primary bg-background" />
-              <span className="font-medium">Working changes</span>
+              <span className="font-medium">{t('activity:repositoryHistory.workingChanges')}</span>
               <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                 {changedFiles.length}
               </span>
-              <span className="text-muted-foreground">Your next chapter starts here</span>
+              <span className="text-muted-foreground">
+                {t('activity:repositoryHistory.nextChapter')}
+              </span>
               <ChevronRight className="ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
             </button>
           )}
 
           <div className="ws-history-columns grid h-7 shrink-0 grid-cols-[minmax(0,1fr)_120px_82px_48px] items-center border-b border-border/70 bg-muted/20 px-3 text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-[minmax(0,1fr)_160px_92px_58px]">
             <span className="truncate" style={{ paddingLeft: graphWidth + 10 }}>
-              Graph / commit message
+              {t('activity:repositoryHistory.colGraph')}
             </span>
-            <span>Author</span>
-            <span>Commit</span>
-            <span>When</span>
+            <span>{t('activity:repositoryHistory.colAuthor')}</span>
+            <span>{t('activity:repositoryHistory.colCommit')}</span>
+            <span>{t('activity:repositoryHistory.colWhen')}</span>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {loading && !history ? (
               <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                Mapping repository history…
+                {t('activity:repositoryHistory.loading')}
               </div>
             ) : history?.error ? (
               <div className="flex h-full items-center justify-center p-8 text-sm text-destructive">
@@ -283,7 +288,7 @@ export function RepositoryHistoryView() {
             ) : visibleCommits.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <GitCommitHorizontal className="h-7 w-7 opacity-45" />
-                No commits match this view.
+                {t('activity:repositoryHistory.noCommits')}
               </div>
             ) : (
               <div
@@ -368,23 +373,25 @@ export function RepositoryHistoryView() {
           <footer className="flex h-7 shrink-0 items-center border-t border-border/70 bg-card/25 px-4 text-[9px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-              Commit
+              {t('activity:repositoryHistory.legendCommit')}
             </span>
             <span className="ml-4 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full border border-emerald-400" />
-              Merge
+              {t('activity:repositoryHistory.legendMerge')}
             </span>
             <span className="ml-auto font-mono">
-              {visibleCommits.length} commits · topological order
+              {t('activity:repositoryHistory.commitsCount', {
+                count: visibleCommits.length,
+              })}
             </span>
             {history?.hasMore && !query && (
               <button
                 type="button"
                 onClick={() => requestHistory(activeRef, history.commits.length)}
                 disabled={loading}
-                className="ml-3 rounded border border-border/70 px-1.5 py-0.5 font-sans text-[9px] font-semibold uppercase tracking-wider hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                className="ml-3 rounded border border-border/70 px-1.5 py-0.5 font-sans text-[9px] font-semibold uppercase tracking-wider hover:border-primary/40 hover:bg-primary/10 disabled:opacity-50"
               >
-                Load more
+                {t('activity:repositoryHistory.loadMore')}
               </button>
             )}
             <ArrowDown className="ml-2 h-3 w-3" />

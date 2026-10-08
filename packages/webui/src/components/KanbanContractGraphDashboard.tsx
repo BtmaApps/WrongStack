@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import {
   buildBoardContractGraphView,
@@ -88,14 +89,15 @@ function BoardContractCanvas({
   expanded: boolean;
   onExpand?: (() => void) | undefined;
 }) {
+  const { t } = useAppTranslation();
   return (
     <div
       data-contract-board-canvas={expanded ? 'expanded' : 'embedded'}
       className={cn(
-        'relative overflow-hidden bg-[#07101f]',
+        'relative overflow-hidden bg-viz-surface',
         expanded
           ? 'h-full min-h-0 w-full'
-          : 'h-[72vh] min-h-[680px] max-h-[880px] rounded-2xl border shadow-xl shadow-black/10',
+          : 'h-[72vh] min-h-[680px] max-h-[880px] rounded-2xl border ws-dialog shadow-black/10',
       )}
     >
       <div className="pointer-events-none absolute left-4 top-3 z-10 rounded-lg border border-white/10 bg-black/40 px-3 py-2 backdrop-blur">
@@ -110,8 +112,8 @@ function BoardContractCanvas({
         <button
           type="button"
           onClick={onExpand}
-          className="absolute right-4 top-3 z-10 inline-flex items-center gap-2 rounded-lg border border-cyan-300/25 bg-slate-950/85 px-3 py-2 text-[11px] font-semibold text-cyan-200 shadow-xl backdrop-blur transition-colors hover:border-cyan-300/50 hover:bg-slate-900"
-          aria-label="Expand board Contract Map"
+          className="absolute right-4 top-3 z-10 inline-flex items-center gap-2 rounded-lg border border-cyan-300/25 bg-slate-950/85 px-3 py-2 text-[11px] font-semibold text-cyan-200 ws-dialog backdrop-blur transition-colors hover:border-cyan-300/50 hover:bg-slate-900"
+          aria-label={t('activity:kanban.contractGraph.expandBoardAria')}
         >
           <Maximize2 size={13} /> Expand map
         </button>
@@ -143,7 +145,7 @@ function BoardContractCanvas({
         />
         <Controls
           showInteractive={false}
-          className="!overflow-hidden !rounded-lg !border !border-white/10 !bg-slate-950/80 !shadow-xl [&_button]:!border-slate-700 [&_button]:!bg-slate-900 [&_button]:!fill-slate-200"
+          className="!overflow-hidden !rounded-lg !border !border-white/10 !bg-slate-950/80 !ws-dialog [&_button]:!border-slate-700 [&_button]:!bg-slate-900 [&_button]:!fill-slate-200"
         />
       </ReactFlow>
     </div>
@@ -338,7 +340,7 @@ export function KanbanContractGraphDashboard({
       <Dialog open={expanded} onOpenChange={setExpanded}>
         <DialogContent
           aria-describedby="board-contract-map-modal-description"
-          className="flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden border-white/10 bg-[#07101f] p-0 text-slate-100 sm:p-0"
+          className="flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden border-white/10 bg-viz-surface p-0 text-slate-100 sm:p-0"
         >
           <div className="shrink-0 border-b border-white/10 bg-slate-950/90 px-5 py-4 pr-14 text-slate-100">
             <DialogTitle className="flex items-center gap-2 text-base">

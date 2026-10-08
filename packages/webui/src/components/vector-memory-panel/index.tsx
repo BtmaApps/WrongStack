@@ -9,6 +9,7 @@
 import { ChevronRight } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import type { SharedMemorySearch } from '../MemoryManager/sharedSearch.js';
 import { ForgetVectorMemoryDialog } from './ForgetVectorMemoryDialog.js';
 import {
@@ -40,6 +41,7 @@ export function VectorMemoryPanel({
   baseUrl = '',
   sharedSearch,
 }: VectorMemoryPanelProps = {}): ReactElement {
+  const { t } = useAppTranslation();
   const [status, setStatus] = useState<VectorMemoryStatus | undefined>();
   const [statusError, setStatusError] = useState<string | undefined>();
   const [query, setQuery] = useState('');
@@ -275,11 +277,11 @@ export function VectorMemoryPanel({
         // Dismiss only a confirm dialog that still targets the entry we
         // forgot — if the user somehow queued a different hit meanwhile,
         // its pending confirm must survive.
-        setForgetTarget((t) => (t?.id === id ? null : t));
+        setForgetTarget((prev) => (prev?.id === id ? null : prev));
         // Entry/vector counts in the status strip are now stale.
         setStatusNonce((n) => n + 1);
       } else {
-        setForgetError('The store reported the entry was not removed.');
+        setForgetError(t('activity:memoryManager.vector.forgetNotRemoved'));
       }
     } catch (err: unknown) {
       setForgetError(err instanceof Error ? err.message : String(err));
@@ -296,69 +298,72 @@ export function VectorMemoryPanel({
   if (statusError !== undefined) {
     return (
       <div className="vector-memory-panel vector-memory-panel--error">
-        <h3>Vector Memory</h3>
-        <p>Status unavailable: {statusError}</p>
+        <h3>{t('activity:memoryManager.vector.title')}</h3>
+        <p>{t('activity:memoryManager.vector.statusUnavailable', { error: statusError })}</p>
       </div>
     );
   }
   if (status === undefined) {
     return (
       <div className="vector-memory-panel vector-memory-panel--loading">
-        <h3>Vector Memory</h3>
-        <p>Loading status…</p>
+        <h3>{t('activity:memoryManager.vector.title')}</h3>
+        <p>{t('activity:memoryManager.vector.loadingStatus')}</p>
       </div>
     );
   }
   if (!status.enabled) {
     return (
       <div className="vector-memory-panel vector-memory-panel--disabled">
-        <h3>Vector Memory</h3>
-        <p>Disabled — the webui-server host does not have a vector memory store wired.</p>
+        <h3>{t('activity:memoryManager.vector.title')}</h3>
+        <p>{t('activity:memoryManager.vector.disabledNote')}</p>
       </div>
     );
   }
 
   return (
     <div className="vector-memory-panel">
-      <h3>Vector Memory</h3>
+      <h3>{t('activity:memoryManager.vector.title')}</h3>
       <dl className="vector-memory-panel__status">
-        <dt>Active provider</dt>
+        <dt>{t('activity:memoryManager.vector.activeProvider')}</dt>
         <dd>
           <code>{status.providerId ?? 'unknown'}</code>
         </dd>
-        <dt>Model</dt>
+        <dt>{t('activity:memoryManager.vector.model')}</dt>
         <dd>
           <code>{status.modelId ?? 'unknown'}</code>
         </dd>
-        <dt>Dimensions</dt>
+        <dt>{t('activity:memoryManager.vector.dimensions')}</dt>
         <dd>{status.dimensions ?? 'unknown'}</dd>
-        <dt>Entries / vectors</dt>
+        <dt>{t('activity:memoryManager.vector.entriesVectors')}</dt>
         <dd>
           {status.entries ?? 0} / {status.vectors ?? 0}
         </dd>
-        <dt>Store path</dt>
+        <dt>{t('activity:memoryManager.vector.storePath')}</dt>
         <dd>
-          <code>{status.storePath ?? '(project root)'}</code>
+          <code>{status.storePath ?? t('activity:memoryManager.vector.projectRoot')}</code>
         </dd>
-        <dt>Model cache</dt>
+        <dt>{t('activity:memoryManager.vector.modelCache')}</dt>
         <dd>
-          <code>{status.modelCacheDir ?? '(project root)'}</code>
+          <code>{status.modelCacheDir ?? t('activity:memoryManager.vector.projectRoot')}</code>
         </dd>
-        <dt>Providers</dt>
+        <dt>{t('activity:memoryManager.vector.providers')}</dt>
         <dd>{status.providers?.join(', ') ?? ''}</dd>
         {status.cache ? (
           <>
-            <dt>Embedding cache</dt>
+            <dt>{t('activity:memoryManager.vector.embeddingCache')}</dt>
             <dd>
-              {status.cache.entries} entries · {status.cache.providers} provider
-              {status.cache.providers === 1 ? '' : 's'} · {status.cache.totalUseCount} hits
+              {t('activity:memoryManager.vector.embeddingCacheStats', {
+                entries: status.cache.entries,
+                providers: status.cache.providers,
+                hits: status.cache.totalUseCount,
+              })}
             </dd>
           </>
         ) : null}
       </dl>
 
       <div className="vector-memory-panel__search">
-        <label htmlFor="vm-query">Query</label>
+        <label htmlFor="vm-query">{t('activity:memoryManager.vector.queryLabel')}</label>
         <input
           id="vm-query"
           type="text"
@@ -367,11 +372,11 @@ export function VectorMemoryPanel({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !unsupportedFilters) void runSearch('fresh');
           }}
-          placeholder="apple banana"
+          placeholder={t('activity:memoryManager.vector.queryPlaceholder')}
         />
         <div className="vector-memory-panel__controls">
           <label>
-            limit
+            {t('activity:memoryManager.vector.limitLabel')}
             <input
               type="number"
               min={1}
@@ -383,7 +388,7 @@ export function VectorMemoryPanel({
             />
           </label>
           <label>
-            threshold
+            {t('activity:memoryManager.vector.thresholdLabel')}
             <input
               type="number"
               min={0}
@@ -401,7 +406,9 @@ export function VectorMemoryPanel({
             onClick={() => void runSearch('fresh')}
             disabled={searching || loadingMore || unsupportedFilters}
           >
-            {searching ? 'Searching…' : 'Search'}
+            {searching
+              ? t('activity:memoryManager.vector.searching')
+              : t('activity:memoryManager.vector.searchButton')}
           </button>
         </div>
         {unsupportedFilters ? (
@@ -410,15 +417,18 @@ export function VectorMemoryPanel({
             role="note"
             data-testid="vm-unsupported-filters"
           >
-            Vector search cannot apply the active SAGE filter
-            {unsupportedReasons.length === 1 ? '' : 's'} ({unsupportedReasons.join(', ')}). Clear
-            the filter in the memory list to enable vector search.
+            {t('activity:memoryManager.vector.unsupportedFilters', {
+              count: unsupportedReasons.length,
+              reasons: unsupportedReasons.join(', '),
+            })}
           </p>
         ) : null}
       </div>
 
       {searchError !== undefined ? (
-        <p className="vector-memory-panel__error">Search error: {searchError}</p>
+        <p className="vector-memory-panel__error">
+          {t('activity:memoryManager.vector.searchErrorPrefix', { error: searchError })}
+        </p>
       ) : null}
 
       <ol className="vector-memory-panel__hits">
@@ -463,24 +473,30 @@ export function VectorMemoryPanel({
                 <span
                   role="img"
                   className="vector-memory-panel__hit-tag"
-                  aria-label={`rank ${rank}`}
+                  aria-label={t('activity:memoryManager.vector.rankAria', { rank })}
                 >
                   #{rank}
                 </span>
                 {h.kind !== undefined ? (
-                  <span className="vector-memory-panel__hit-tag">kind {h.kind}</span>
+                  <span className="vector-memory-panel__hit-tag">
+                    {t('activity:memoryManager.vector.kindTag', { kind: h.kind })}
+                  </span>
                 ) : null}
                 {h.scope !== undefined ? (
-                  <span className="vector-memory-panel__hit-tag">scope {h.scope}</span>
+                  <span className="vector-memory-panel__hit-tag">
+                    {t('activity:memoryManager.vector.scopeTag', { scope: h.scope })}
+                  </span>
                 ) : null}
-                {h.tags.map((t) => (
-                  <span key={t} className="vector-memory-panel__hit-tag">
-                    {t}
+                {h.tags.map((tag) => (
+                  <span key={tag} className="vector-memory-panel__hit-tag">
+                    {tag}
                   </span>
                 ))}
                 {sage !== undefined ? (
                   <>
-                    <span className="vector-memory-panel__hit-tag">sage verified</span>
+                    <span className="vector-memory-panel__hit-tag">
+                      {t('activity:memoryManager.vector.sageVerifiedTag')}
+                    </span>
                     {sharedSearch !== undefined ? (
                       <button
                         type="button"
@@ -488,7 +504,7 @@ export function VectorMemoryPanel({
                         style={{ background: 'transparent', cursor: 'pointer' }}
                         onClick={() => sharedSearch.navigateToSage(sage.id)}
                       >
-                        Open in SAGE
+                        {t('activity:memoryManager.vector.openInSage')}
                       </button>
                     ) : null}
                   </>
@@ -497,37 +513,38 @@ export function VectorMemoryPanel({
               {expanded ? (
                 <div className="vector-memory-panel__hit-detail">
                   <dl className="vector-memory-panel__hit-fields">
-                    <dt>id</dt>
+                    <dt>{t('activity:memoryManager.vector.fieldId')}</dt>
                     <dd>
                       <code>{h.id}</code>
                     </dd>
-                    <dt>rank</dt>
+                    <dt>{t('activity:memoryManager.vector.fieldRank')}</dt>
                     <dd>#{rank}</dd>
-                    <dt>score</dt>
+                    <dt>{t('activity:memoryManager.vector.fieldScore')}</dt>
                     <dd>{h.score.toFixed(3)}</dd>
                     {h.kind !== undefined ? (
                       <>
-                        <dt>kind</dt>
+                        <dt>{t('activity:memoryManager.vector.fieldKind')}</dt>
                         <dd>{h.kind}</dd>
                       </>
                     ) : null}
                     {h.scope !== undefined ? (
                       <>
-                        <dt>scope</dt>
+                        <dt>{t('activity:memoryManager.vector.fieldScope')}</dt>
                         <dd>{h.scope}</dd>
                       </>
                     ) : null}
                     {sage !== undefined ? (
                       <>
-                        <dt>sage</dt>
+                        <dt>{t('activity:memoryManager.vector.fieldSage')}</dt>
                         <dd>
-                          <code>{sage.id}</code> (verified)
+                          <code>{sage.id}</code>{' '}
+                          {t('activity:memoryManager.vector.sageVerifiedSuffix')}
                         </dd>
                       </>
                     ) : null}
                     {h.summary ? (
                       <>
-                        <dt>summary</dt>
+                        <dt>{t('activity:memoryManager.vector.fieldSummary')}</dt>
                         <dd>{h.summary}</dd>
                       </>
                     ) : null}
@@ -541,7 +558,7 @@ export function VectorMemoryPanel({
                         setForgetTarget(h);
                       }}
                     >
-                      Forget
+                      {t('activity:memoryManager.vector.forgetButton')}
                     </button>
                   </div>
                 </div>
@@ -549,7 +566,11 @@ export function VectorMemoryPanel({
             </li>
           );
         })}
-        {noHits ? <li className="vector-memory-panel__no-hits">No results.</li> : null}
+        {noHits ? (
+          <li className="vector-memory-panel__no-hits">
+            {t('activity:memoryManager.vector.noResults')}
+          </li>
+        ) : null}
       </ol>
 
       {nextCursor !== null ? (
@@ -562,18 +583,18 @@ export function VectorMemoryPanel({
             onClick={() => void runSearch('more')}
             disabled={searching || loadingMore || unsupportedFilters}
           >
-            {loadingMore ? 'Loading…' : 'Load more'}
+            {loadingMore
+              ? t('activity:memoryManager.vector.loadingMore')
+              : t('activity:memoryManager.vector.loadMore')}
           </button>
         </div>
       ) : null}
 
       {similarity !== undefined && similarity.length > 1 ? (
         <div className="vector-memory-panel__heatmap" data-testid="vector-memory-heatmap">
-          <h4>Result similarity</h4>
+          <h4>{t('activity:memoryManager.vector.heatmapTitle')}</h4>
           <p className="vector-memory-panel__heatmap-hint">
-            Pairwise cosine similarity between returned hits. Darker cells = more similar. A bright
-            diagonal with mostly dark off-diagonals means results form a tight cluster; a noisy grid
-            means the search returned mixed topics.
+            {t('activity:memoryManager.vector.heatmapHint')}
           </p>
           {/* biome-ignore lint/a11y/useSemanticElements: CSS-grid heatmap; a <table> cannot take this grid layout. */}
           <div
@@ -582,7 +603,7 @@ export function VectorMemoryPanel({
               gridTemplateColumns: `auto repeat(${similarity.length}, minmax(20px, 1fr))`,
             }}
             role="table"
-            aria-label="Pairwise cosine similarity between returned hits"
+            aria-label={t('activity:memoryManager.vector.heatmapAria')}
           >
             <div className="vector-memory-panel__heatmap-corner" />
             {similarity.map((_, j) => (
@@ -613,6 +634,7 @@ export function VectorMemoryPanel({
 
 /** One row of the similarity heatmap. The diagonal is forced to 1.0. */
 function SimilarityRow({ row, index }: { row: readonly number[]; index: number }): ReactElement {
+  const { t } = useAppTranslation();
   return (
     <>
       <div className="vector-memory-panel__heatmap-row-label">{index + 1}</div>
@@ -636,8 +658,16 @@ function SimilarityRow({ row, index }: { row: readonly number[]; index: number }
             }
             style={{ background }}
             role="cell"
-            aria-label={`hit ${index + 1} vs hit ${j + 1}: ${clamped.toFixed(2)}`}
-            title={`hit ${index + 1} ↔ hit ${j + 1}: ${clamped.toFixed(3)}`}
+            aria-label={t('activity:memoryManager.vector.cellAria', {
+              i: index + 1,
+              j: j + 1,
+              score: clamped.toFixed(2),
+            })}
+            title={t('activity:memoryManager.vector.cellTitle', {
+              i: index + 1,
+              j: j + 1,
+              score: clamped.toFixed(3),
+            })}
           >
             {clamped >= 0.5 ? clamped.toFixed(2) : ''}
           </div>

@@ -507,6 +507,7 @@
     "reasoningEffortLabel": "Sforzo di ragionamento",
     "reasoningEffortAuto": "Auto (generale)",
     "reasoningEffortAutoHint": "Impostazione generale: {{value}}",
+    "reasoningEffortLeaderHint": "Leader: {{value}} (scelta propria)",
     "reasoningEffortHint": "Quanto compute il modello spende per pensare. Inviato solo se il modello lo supporta.",
     "reasoningEffortNone": "Nessuno",
     "reasoningEffortMinimal": "Minimale",

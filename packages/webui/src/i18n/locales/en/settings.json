@@ -507,6 +507,7 @@
     "reasoningEffortLabel": "Reasoning effort",
     "reasoningEffortAuto": "Auto (general)",
     "reasoningEffortAutoHint": "Project setting: {{value}}",
+    "reasoningEffortLeaderHint": "Leader: {{value}} (its own choice)",
     "reasoningEffortHint": "How much compute the model spends thinking. Only sent when the model supports it.",
     "reasoningEffortNone": "None",
     "reasoningEffortMinimal": "Minimal",

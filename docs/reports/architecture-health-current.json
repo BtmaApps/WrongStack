@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:41:47.660Z",
+  "generatedAt": "2026-10-08T12:42:37.687Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4898,
-    "testFiles": 4200,
-    "sourceLines": 1084365,
+    "testFiles": 4201,
+    "sourceLines": 1084826,
     "workspaceEdges": 133,
     "moduleEdges": 16114,
     "nonCommandSlashImports": 0,
@@ -844,7 +844,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 718,
-      "testFiles": 477,
+      "testFiles": 478,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 477
+          "testFiles": 478
         }
       ]
     },
@@ -25398,6 +25398,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/lib/english-leak-boundaries.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/lib/fallback-ref.test.ts",
         "projects": [
           "webui-jsdom"
@@ -26494,6 +26500,11 @@
   "hotspotCandidates": [],
   "hotspots": [
     {
+      "file": "packages/webui/src/components/ProviderTestView.tsx",
+      "lines": 796,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/tools/src/todo.ts",
       "lines": 766,
       "relativeImports": 2
@@ -26507,6 +26518,11 @@
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "lines": 763,
       "relativeImports": 1
+    },
+    {
+      "file": "packages/webui/src/components/MessageBubble/index.tsx",
+      "lines": 763,
+      "relativeImports": 13
     },
     {
       "file": "packages/core/src/coordination/fleet-manager.ts",
@@ -26559,14 +26575,14 @@
       "relativeImports": 6
     },
     {
-      "file": "packages/webui/src/components/MessageBubble/index.tsx",
-      "lines": 758,
-      "relativeImports": 13
-    },
-    {
       "file": "packages/tui/src/components/sidebar-panels-task.tsx",
       "lines": 757,
       "relativeImports": 12
+    },
+    {
+      "file": "packages/webui/src/components/ChimeraReviewsView.tsx",
+      "lines": 757,
+      "relativeImports": 1
     },
     {
       "file": "packages/plugin-sdk/src/runtime/index.ts",
@@ -26649,19 +26665,14 @@
       "relativeImports": 17
     },
     {
-      "file": "packages/webui/src/components/SddWizard.tsx",
+      "file": "packages/webui/src/components/ChatView/CouncilDecisionCard.tsx",
       "lines": 751,
-      "relativeImports": 5
+      "relativeImports": 2
     },
     {
       "file": "packages/providers/src/openai-codex.ts",
       "lines": 749,
       "relativeImports": 25
-    },
-    {
-      "file": "packages/webui/src/components/ProviderTestView.tsx",
-      "lines": 749,
-      "relativeImports": 3
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
@@ -26682,6 +26693,11 @@
       "file": "packages/tools/src/bash-stream.ts",
       "lines": 747,
       "relativeImports": 10
+    },
+    {
+      "file": "packages/webui/src/components/SddWizard.tsx",
+      "lines": 747,
+      "relativeImports": 5
     },
     {
       "file": "packages/core/src/core/agent-response.ts",
@@ -26719,11 +26735,6 @@
       "relativeImports": 14
     },
     {
-      "file": "packages/webui/src/components/ChimeraReviewsView.tsx",
-      "lines": 741,
-      "relativeImports": 1
-    },
-    {
       "file": "packages/webui/src/components/TaskActivityTimeline.tsx",
       "lines": 741,
       "relativeImports": 1
@@ -26732,11 +26743,6 @@
       "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
       "lines": 740,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/webui/src/components/ChatView/CouncilDecisionCard.tsx",
-      "lines": 739,
-      "relativeImports": 2
     },
     {
       "file": "packages/webui/src/components/InspectorPanel.tsx",

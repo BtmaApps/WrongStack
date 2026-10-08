@@ -166,7 +166,7 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
         <p
           className="border-t border-border/40 px-2.5 py-1.5 font-mono text-[11px]"
           role="status"
-          aria-label="ToolFlow measured output"
+          aria-label={t('activity:toolOverview.toolFlowMeasuredOutput')}
         >
           {toolFlowMetricsLabel(message.toolResult)}
         </p>

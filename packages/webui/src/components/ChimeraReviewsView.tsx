@@ -1,7 +1,3 @@
-import { cn } from '@/lib/utils';
-import { getWSClient } from '@/lib/ws-client';
-import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
-import { useChimeraHubStore } from '@/stores/chimera-hub-store';
 import {
   AlertCircle,
   AlertTriangle,
@@ -21,6 +17,11 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { getWSClient } from '@/lib/ws-client';
+import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
+import { useChimeraHubStore } from '@/stores/chimera-hub-store';
 import { EmptyState } from './ui/empty-state';
 
 function fmtTime(iso: string): string {
@@ -47,7 +48,11 @@ function fmtRelative(iso: string): string {
 }
 
 const LIFECYCLE_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle2 }> = {
-  open: { label: 'Open', cls: 'border-primary/30 bg-primary/10 text-primary', icon: AlertCircle },
+  open: {
+    label: 'Open',
+    cls: 'border-primary/30 bg-primary/10 text-foreground',
+    icon: AlertCircle,
+  },
   actioned: {
     label: 'Actioned',
     cls: 'border-warning/30 bg-warning/10 text-warning',
@@ -73,6 +78,7 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string }>
 };
 
 export function ChimeraReviewsView() {
+  const { t } = useAppTranslation();
   const {
     reports,
     selectedReportId,
@@ -175,7 +181,9 @@ export function ChimeraReviewsView() {
             value={filterSessionId}
             onChange={(e) => setFilterSessionId(e.target.value)}
             className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            aria-label="Filter by session"
+            aria-label={t('activity:chimeraReport.filterBySession', {
+              defaultValue: 'Filter by session',
+            })}
           >
             <option value="">All Sessions ({sessionList.length})</option>
             {sessionList.map((sid) => (
@@ -190,7 +198,9 @@ export function ChimeraReviewsView() {
             value={filterLifecycle}
             onChange={(e) => setFilterLifecycle(e.target.value)}
             className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            aria-label="Filter by status"
+            aria-label={t('activity:chimeraReport.filterByStatus', {
+              defaultValue: 'Filter by status',
+            })}
           >
             <option value="">All Statuses</option>
             <option value="open">Open</option>
@@ -516,7 +526,7 @@ export function ChimeraReviewsView() {
                                     ? 'bg-success/10 text-success border-success/30'
                                     : finding.status === 'ignored'
                                       ? 'bg-muted text-muted-foreground border-border'
-                                      : 'bg-primary/10 text-primary border-primary/30',
+                                      : 'bg-primary/10 text-foreground border-primary/30',
                                 )}
                               >
                                 {finding.status}
@@ -565,7 +575,7 @@ export function ChimeraReviewsView() {
                                       'Reopened in WebUI',
                                     )
                                   }
-                                  className="rounded px-2 py-0.5 text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30"
+                                  className="rounded px-2 py-0.5 text-[11px] font-medium bg-primary/10 text-foreground hover:bg-primary/20 border border-primary/30"
                                 >
                                   Reopen
                                 </button>
@@ -628,7 +638,9 @@ export function ChimeraReviewsView() {
                     onClick={() => setShowRawText((s) => !s)}
                     className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
                   >
-                    <span>Raw Report Markdown</span>
+                    {t('activity:chimeraReport.rawReportMarkdown', {
+                      defaultValue: 'Raw Report Markdown',
+                    })}
                     {showRawText ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
@@ -706,7 +718,9 @@ export function ChimeraReviewsView() {
                   rows={3}
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Record an observation, fix PR link, or triage note..."
+                  placeholder={t('activity:chimeraReport.notePlaceholder', {
+                    defaultValue: 'Record an observation, fix PR link, or triage note...',
+                  })}
                   className="w-full rounded-lg border border-border bg-background p-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <button
@@ -729,7 +743,9 @@ export function ChimeraReviewsView() {
           <div className="flex flex-1 items-center justify-center p-8">
             <EmptyState
               icon={<ShieldAlert className="h-12 w-12 text-muted-foreground/40" />}
-              title="Select a Chimera Review Report"
+              title={t('activity:chimeraReport.selectReportTitle', {
+                defaultValue: 'Select a Chimera Review Report',
+              })}
               description="Choose a review report from the left pane to view structured findings, disk verification proofs, and the activity journal."
             />
           </div>

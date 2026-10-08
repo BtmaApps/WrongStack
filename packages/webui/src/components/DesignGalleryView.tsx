@@ -11,9 +11,9 @@
 
 import { Check, Download, Palette, Search, ShieldCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ContrastBadges, type ContrastIssue } from '@/components/ContrastBadges';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { ContrastBadges, type ContrastIssue } from '@/components/ContrastBadges';
 import { i18n, useAppTranslation } from '@/i18n';
 import { colorToHex } from '@/lib/color';
 import { cn } from '@/lib/utils';
@@ -562,8 +562,8 @@ export function DesignGalleryView({ className }: { className?: string }) {
                       <h3 className="text-sm font-semibold truncate">{kit.name}</h3>
                       <code className="text-[10px] text-muted-foreground">{kit.id}</code>
                       {isActive && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase text-primary ml-auto">
-                          <Check className="w-3 h-3" /> {t('activity:design.active')}
+                        <span className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-foreground ml-auto">
+                          <Check className="w-3 h-3 text-primary" /> {t('activity:design.active')}
                         </span>
                       )}
                     </div>
@@ -577,7 +577,7 @@ export function DesignGalleryView({ className }: { className?: string }) {
                         className={cn(
                           'rounded-md px-2.5 py-1 text-[11px] font-medium transition',
                           isActive
-                            ? 'bg-primary/10 text-primary'
+                            ? 'bg-primary/10 text-foreground'
                             : 'bg-primary text-primary-foreground hover:opacity-90',
                         )}
                       >

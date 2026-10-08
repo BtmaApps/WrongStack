@@ -173,7 +173,7 @@ export function ChatHeader({
               'flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium shrink-0 tabular-nums',
               stateTone,
             )}
-            title={`Agent state: ${agentState}`}
+            title={t('activity:chatHeader.agentStateTitle', { state: agentState })}
           >
             {agentState !== 'idle' && (
               <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
@@ -233,7 +233,7 @@ export function ChatHeader({
                 <ChevronDown className="h-2.5 w-2.5" />
               </button>
               {switcherOpen && (
-                <div className="absolute left-0 top-full mt-1 z-40 w-64 rounded-md border border-border/70 bg-popover shadow-xl p-1 max-h-60 overflow-y-auto">
+                <div className="absolute left-0 top-full mt-1 z-40 w-64 rounded-md border border-border/70 bg-popover ws-dialog p-1 max-h-60 overflow-y-auto">
                   {historyEntries.slice(0, 15).map((e) => (
                     <button
                       key={e.id}
@@ -261,7 +261,7 @@ export function ChatHeader({
           {iteration && (
             <button
               type="button"
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary shrink-0 hover:bg-primary/20 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-foreground shrink-0 hover:bg-primary/20 transition-colors cursor-pointer"
               title={t('chat:header.iterationTitle')}
               onClick={() =>
                 document
@@ -270,7 +270,7 @@ export function ChatHeader({
               }
             >
               <Activity className="h-3 w-3 animate-pulse" />
-              iter {iteration.index}
+              {t('activity:chatHeader.iter', { index: iteration.index })}
               {iteration.max > 0 ? `/${iteration.max}` : ''}
             </button>
           )}
@@ -467,25 +467,39 @@ export function ChatHeader({
             </button>
             {totalPromptTokens > 0 && (
               <>
-                <span className="flex items-center gap-1" title="Total prompt context">
+                <span
+                  className="flex items-center gap-1"
+                  title={t('activity:chatHeader.totalPromptContext')}
+                >
                   <span className="font-medium text-foreground">{fmtTok(totalPromptTokens)}</span>
-                  <span>context</span>
+                  <span>{t('activity:chatHeader.contextWord')}</span>
                 </span>
                 {cachedTokens > 0 && (
-                  <span className="flex items-center gap-1" title="Prompt cache reads">
+                  <span
+                    className="flex items-center gap-1"
+                    title={t('activity:chatHeader.promptCacheReads')}
+                  >
                     <span className="font-medium text-foreground">{fmtTok(cachedTokens)}</span>
-                    <span>cached ({cacheHitPct.toFixed(1)}%)</span>
+                    <span>
+                      {t('activity:chatHeader.cachedWord', { pct: cacheHitPct.toFixed(1) })}
+                    </span>
                   </span>
                 )}
                 {fullChrome && (
-                  <span className="flex items-center gap-1" title="Fresh/uncached prompt tokens">
+                  <span
+                    className="flex items-center gap-1"
+                    title={t('activity:chatHeader.freshPromptTokens')}
+                  >
                     <span className="font-medium text-foreground">{fmtTok(freshTokens)}</span>
-                    <span>fresh ({freshPct.toFixed(1)}%)</span>
+                    <span>{t('activity:chatHeader.freshWord', { pct: freshPct.toFixed(1) })}</span>
                   </span>
                 )}
-                <span className="flex items-center gap-1" title="Completion tokens">
+                <span
+                  className="flex items-center gap-1"
+                  title={t('activity:chatHeader.completionTokens')}
+                >
                   <span className="font-medium text-foreground">{fmtTok(totalTokens.output)}</span>
-                  <span>completion</span>
+                  <span>{t('activity:chatHeader.completionWord')}</span>
                 </span>
                 <CostChip />
                 <QuotaChip />

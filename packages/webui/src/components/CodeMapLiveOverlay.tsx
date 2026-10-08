@@ -1,8 +1,8 @@
 import { ExternalLink, Pause, Play, Radio, ShieldCheck, Target } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { FileActivity, LiveAgentPresence } from '@/stores/codemap-activity-store';
 import { agentColor, agentInitials, shortPath } from './CodeMapVisuals';
-import { useAppTranslation } from '@/i18n';
 
 function OperationBadge({ activity }: { activity: FileActivity }): React.ReactElement {
   return (
@@ -129,7 +129,7 @@ export function LiveAgentsHud({
   const { t } = useAppTranslation();
   if (presences.length === 0) return null;
   return (
-    <section className="pointer-events-auto absolute left-3 top-14 z-20 w-[304px] border bg-card/95 shadow-xl backdrop-blur">
+    <section className="pointer-events-auto absolute left-3 top-14 z-20 w-[304px] border bg-card/95 ws-dialog backdrop-blur">
       <div className="flex h-9 items-center gap-2 border-b px-3">
         <Radio className="h-3.5 w-3.5 animate-pulse text-success" />
         <h2 className="text-[9px] font-black uppercase tracking-[0.18em]">

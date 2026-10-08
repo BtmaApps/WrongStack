@@ -1,7 +1,20 @@
 import type { CSSProperties } from 'react';
 import { useId } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { type buildSessionStory, STORY_COLORS, type StoryKind } from '@/lib/session-story';
 import { storyTime } from './StoryChart';
+
+const KIND_KEYS = {
+  model: 'activity:story.kindModel',
+  tool: 'activity:story.kindTool',
+  file: 'activity:story.kindFile',
+  memory: 'activity:story.kindMemory',
+  agent: 'activity:story.kindAgent',
+  mail: 'activity:story.kindMail',
+  alert: 'activity:story.kindAlert',
+  session: 'activity:story.kindSession',
+  work: 'activity:story.kindWork',
+} as const;
 
 type Story = ReturnType<typeof buildSessionStory>;
 
@@ -39,6 +52,7 @@ export function StoryInsights({
   kind: StoryKind | 'all';
   onKind(value: StoryKind | 'all'): void;
 }) {
+  const { t } = useAppTranslation();
   const gradient = useId().replace(/:/g, '');
   const total = story.events.length;
   let offset = 0;
@@ -54,16 +68,14 @@ export function StoryInsights({
   return (
     <div className="story-enter grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <section className="story-card rounded-2xl border bg-card p-5">
-        <h2 className="font-semibold">Activity spectrum</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Recorded events by category · click to filter
-        </p>
+        <h2 className="font-semibold">{t('activity:story.activitySpectrum')}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t('activity:story.spectrumSubtitle')}</p>
         <div className="flex flex-wrap items-center justify-center gap-5 pt-5">
           <svg
             viewBox="0 0 180 180"
             className="w-40 shrink-0"
             role="img"
-            aria-label="Session activity category distribution"
+            aria-label={t('activity:story.spectrumLabel')}
           >
             <circle
               cx="90"
@@ -99,7 +111,11 @@ export function StoryInsights({
                   }
                 >
                   <title>
-                    {category}: {story.counts[category]} events ({Math.round(amount)}%)
+                    {t('activity:story.categoryTitle', {
+                      category: t(KIND_KEYS[category]),
+                      count: story.counts[category],
+                      percent: Math.round(amount),
+                    })}
                   </title>
                 </circle>
               );
@@ -121,7 +137,7 @@ export function StoryInsights({
               fill="hsl(var(--muted-foreground))"
               fontSize="10"
             >
-              LOADED EVENTS
+              {t('activity:story.loadedEvents')}
             </text>
           </svg>
           <div className="min-w-[130px] flex-1 space-y-1">
@@ -137,7 +153,7 @@ export function StoryInsights({
                   className="h-2 w-2 rounded-full"
                   style={{ background: STORY_COLORS[category] }}
                 />
-                <span className="capitalize">{category}</span>
+                <span className="capitalize">{t(KIND_KEYS[category])}</span>
                 <span className="ml-auto font-mono">{story.counts[category]}</span>
               </button>
             ))}
@@ -147,21 +163,21 @@ export function StoryInsights({
       <section className="story-card rounded-2xl border bg-card p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-semibold">Team overlap</h2>
+            <h2 className="font-semibold">{t('activity:story.teamOverlap')}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Observed lane intervals, including gaps in work
+              {t('activity:story.overlapSubtitle')}
             </p>
           </div>
           <span className="text-3xl font-semibold text-info">
             {overlap.peak}
-            <span className="ml-1 text-xs text-muted-foreground">peak</span>
+            <span className="ml-1 text-xs text-muted-foreground">{t('activity:story.peak')}</span>
           </span>
         </div>
         <svg
           viewBox="0 0 500 170"
           className="mt-5 w-full"
           role="img"
-          aria-label="Observed team overlap over time"
+          aria-label={t('activity:story.overlapLabel')}
         >
           <defs>
             <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
@@ -197,14 +213,12 @@ export function StoryInsights({
             +{storyTime(end - story.start)}
           </text>
         </svg>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          This measures overlapping observed lifetimes, not simultaneous tool execution.
-        </p>
+        <p className="mt-2 text-[11px] text-muted-foreground">{t('activity:story.overlapNote')}</p>
       </section>
       <section className="story-card rounded-2xl border bg-card p-5 md:col-span-2 xl:col-span-1">
-        <h2 className="font-semibold">Team activity</h2>
+        <h2 className="font-semibold">{t('activity:story.teamActivity')}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Top participants by recorded event count
+          {t('activity:story.teamActivitySubtitle')}
         </p>
         <div className="mt-6 space-y-4">
           {busiest.map((actor, index) => (

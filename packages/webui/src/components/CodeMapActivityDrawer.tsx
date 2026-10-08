@@ -1,7 +1,7 @@
 import { Activity as ActivityIcon, X } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { FileActivity } from '@/stores/codemap-activity-store';
-import { useAppTranslation } from '@/i18n';
 
 interface CodeMapActivityDrawerProps {
   historyFile: string;
@@ -16,7 +16,7 @@ export function CodeMapActivityDrawer({
 }: CodeMapActivityDrawerProps): React.ReactElement {
   const { t } = useAppTranslation();
   return (
-    <div className="absolute right-0 top-0 z-50 flex h-full w-[390px] max-w-[90%] flex-col border-l bg-card shadow-2xl">
+    <div className="absolute right-0 top-0 z-50 flex h-full w-[390px] max-w-[90%] flex-col border-l bg-card ws-dialog">
       <div className="flex h-12 items-center justify-between border-b px-4">
         <div className="flex min-w-0 items-center gap-2">
           <ActivityIcon className="h-4 w-4 shrink-0 text-warning" />

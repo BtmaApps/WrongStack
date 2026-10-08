@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAppTranslation } from '@/i18n';
 import { fetchRankedSagePage, type RankedSageHit, type RankedSagePage } from './rankedSearch.js';
 import type { SharedMemorySearch } from './sharedSearch.js';
 
@@ -17,6 +18,7 @@ export function RankedSearchResults({
   audienceOnly,
   onOpen,
 }: RankedSearchResultsProps) {
+  const { t } = useAppTranslation();
   const [page, setPage] = useState<RankedSagePage | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -106,26 +108,28 @@ export function RankedSearchResults({
   if (!query) return null;
   return (
     <section
-      aria-label="Ranked SAGE results"
+      aria-label={t('activity:rankedSearch.resultsLabel')}
       className="shrink-0 border-b border-border/60 bg-card/35"
     >
       <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold">
-        <span>Ranked SAGE results</span>
+        <span>{t('activity:rankedSearch.resultsLabel')}</span>
         {page && (
           <span className="text-muted-foreground">
-            {page.hits.length} shown / {page.totalCandidates} candidates
+            {t('activity:rankedSearch.shownCount', {
+              shown: page.hits.length,
+              total: page.totalCandidates,
+            })}
           </span>
         )}
       </div>
       {!supported && (
         <p role="status" className="px-3 pb-2 text-xs text-muted-foreground">
-          This filter is available in the library only; ranked SAGE search cannot apply it across
-          the whole corpus.
+          {t('activity:rankedSearch.filterUnavailable')}
         </p>
       )}
       {loading && (
         <p role="status" className="px-3 pb-2 text-xs text-muted-foreground">
-          Searching…
+          {t('activity:rankedSearch.searching')}
         </p>
       )}
       {error && (
@@ -141,12 +145,14 @@ export function RankedSearchResults({
               setRetry((value) => value + 1);
             }}
           >
-            Retry from first page
+            {t('activity:rankedSearch.retryFromFirst')}
           </Button>
         </p>
       )}
       {page && page.hits.length === 0 && !error && (
-        <p className="px-3 pb-2 text-xs text-muted-foreground">No ranked SAGE results.</p>
+        <p className="px-3 pb-2 text-xs text-muted-foreground">
+          {t('activity:rankedSearch.noResults')}
+        </p>
       )}
       <ul className="max-h-52 overflow-y-auto divide-y divide-border/50">
         {page?.hits.map((hit: RankedSageHit) => (
@@ -174,7 +180,9 @@ export function RankedSearchResults({
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading…' : 'Load more ranked results'}
+          {loadingMore
+            ? t('activity:rankedSearch.loadingMore')
+            : t('activity:rankedSearch.loadMoreRanked')}
         </Button>
       )}
     </section>

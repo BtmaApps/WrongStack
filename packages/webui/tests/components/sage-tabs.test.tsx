@@ -11,23 +11,34 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/i18n', () => ({
-  useAppTranslation: () => ({
-    t: (key: string) =>
-      ({
-        'activity:memoryManager.lensesAria': 'SAGE memory lenses',
-        'activity:memoryManager.loadingSage': 'Loading SAGE',
-        'activity:memoryManager.loadingAudience': 'Loading audience memories',
-        'activity:memoryManager.loadingVectorMemory': 'Loading vector memory',
-        'activity:memoryManager.tabAllMemories': 'All memories',
-        'activity:memoryManager.tabAllMemoriesHint': 'Inspect, curate, retire',
-        'activity:memoryManager.tabAudience': 'Audience-scoped',
-        'activity:memoryManager.tabAudienceHint': 'Guidance routed to agents',
-        'activity:memoryManager.tabVectorMemory': 'Vector memory',
-        'activity:memoryManager.tabVectorMemoryHint': 'Semantic embedding store',
-      })[key] ?? key,
-  }),
-}));
+const enCatalog = await vi.hoisted(async () => {
+  // browser-jsdom rewrites import.meta.url to an http URL, so the catalog is
+  // read via a cwd-relative path (vitest runs with the package as cwd).
+  const { readFileSync } = await import('node:fs');
+  const raw = readFileSync('src/i18n/locales/en/activity.json', 'utf8');
+  return JSON.parse(raw);
+});
+vi.mock('@/i18n', () => {
+  // Catalog-backed: resolves real en values (the vector panel's t() keys are
+  // not enumerable here — it gained useAppTranslation in the i18n port), so
+  // assertions on translated chrome keep working as keys evolve.
+  const resolve = (key: string): string => {
+    if (!key.startsWith('activity:')) return key;
+    let cur: unknown = enCatalog;
+    for (const part of key.slice('activity:'.length).split('.')) {
+      cur = (cur as Record<string, unknown>)?.[part];
+    }
+    return typeof cur === 'string' ? cur : key;
+  };
+  return {
+    useAppTranslation: () => ({
+      t: (key: string) =>
+        ({
+          'activity:memoryManager.tabVectorMemory': 'Vector memory',
+        })[key] ?? resolve(key),
+    }),
+  };
+});
 
 vi.mock('../../src/components/MemoryManager/index.js', () => ({
   MemoryManager: () => <div>All-memories lens</div>,

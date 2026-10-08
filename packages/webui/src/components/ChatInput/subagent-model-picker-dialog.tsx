@@ -1,10 +1,10 @@
 import { ArrowRight, Cpu, Filter, Search, Star, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  type CatalogModelLite,
-  type ModelCandidate,
   buildModelCandidates,
+  type CatalogModelLite,
   isModelInFavorites,
+  type ModelCandidate,
 } from '@/components/QuickModelSwitcher.filter';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -216,7 +216,9 @@ export function SubagentModelPickerDialog({
                 commit(selected);
               }
             }}
-            placeholder="Search provider or model…"
+            placeholder={t('activity:modelPickDialog.searchPlaceholder', {
+              defaultValue: 'Search provider or model…',
+            })}
             aria-label={`Search models for lane ${laneIndex + 1}`}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground min-w-0"
           />
@@ -227,8 +229,12 @@ export function SubagentModelPickerDialog({
               setFavoritesOnly((v) => !v);
               setSelected(0);
             }}
-            title="Show favorites only"
-            aria-label="Show favorites only"
+            title={t('activity:modelPickDialog.favoritesOnly', {
+              defaultValue: 'Show favorites only',
+            })}
+            aria-label={t('activity:modelPickDialog.favoritesOnly', {
+              defaultValue: 'Show favorites only',
+            })}
             aria-pressed={favoritesOnly}
             className={cn(
               'flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors border shrink-0',
@@ -255,7 +261,9 @@ export function SubagentModelPickerDialog({
                   setProviderFilter(e.target.value || null);
                   setSelected(0);
                 }}
-                aria-label="Filter by provider"
+                aria-label={t('activity:modelPickDialog.filterByProvider', {
+                  defaultValue: 'Filter by provider',
+                })}
                 className="bg-transparent text-xs text-muted-foreground outline-none cursor-pointer border-0 min-w-0 truncate"
               >
                 <option value="">All providers</option>
@@ -380,7 +388,7 @@ export function SubagentModelPickerDialog({
                     )}
                   </div>
                   {isActiveLane ? (
-                    <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">
+                    <span className="text-[10px] uppercase tracking-wide text-foreground font-semibold rounded bg-primary/10 px-1.5 py-0.5">
                       on this lane
                     </span>
                   ) : isActiveSession ? (

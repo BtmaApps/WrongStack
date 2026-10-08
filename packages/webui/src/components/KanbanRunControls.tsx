@@ -1,7 +1,8 @@
-import { useAppTranslation } from '@/i18n';
 import { Check, Pause, Play, Rocket, RotateCcw, Square, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
+import { HueChip } from '@/components/ui/hue-chip';
 import type { ModelCandidate } from '@/hooks/useProviderModels';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import { ModelPicker } from './ModelPicker';
@@ -33,9 +34,13 @@ export function RunControlBar({
     'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-muted';
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-primary/5 px-4 py-1.5">
-      <span className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
-        <Rocket size={11} /> {runLink.engine}
-      </span>
+      <HueChip
+        tone="primary"
+        icon={<Rocket size={11} />}
+        className="text-[10px] font-semibold uppercase"
+      >
+        {runLink.engine}
+      </HueChip>
       <span className="text-[11px] text-muted-foreground">{t('activity:kanban.liveRunSteer')}</span>
       {isSdd && (
         <button
@@ -84,7 +89,7 @@ export function StartAsBar({
 }) {
   const { t } = useAppTranslation();
   const btn =
-    'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/10';
+    'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-primary/20';
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-1.5">
       <Rocket size={13} className="text-primary" />
@@ -144,7 +149,7 @@ export function RunTaskControls({
   };
   return (
     <div className="mt-4 rounded-md border bg-primary/5 p-2.5">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-primary">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-foreground">
         {t('activity:kanban.runControls')}
       </div>
       {isSdd && (

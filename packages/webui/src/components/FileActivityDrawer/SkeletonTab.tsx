@@ -1,11 +1,14 @@
 import { Check, Copy, FileCode, Loader2, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HueChip } from '@/components/ui/hue-chip';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { type OpenFile, useConfigStore, useFileStore } from '@/stores';
 import type { WSServerMessage } from '@/types';
 
 export function SkeletonTab({ file }: { file: OpenFile }) {
+  const { t } = useAppTranslation();
   const wsUrl = useConfigStore((state) => state.wsUrl);
   const jumpToLine = useFileStore((state) => state.jumpToLine);
   const client = useMemo(() => getWSClient(wsUrl), [wsUrl]);
@@ -84,7 +87,7 @@ export function SkeletonTab({ file }: { file: OpenFile }) {
           <button
             type="button"
             onClick={() => jumpToLine(targetLineNum)}
-            className="shrink-0 cursor-pointer rounded bg-primary/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-primary opacity-75 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition-all"
+            className="shrink-0 cursor-pointer rounded bg-primary/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-foreground opacity-75 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition-all"
             title={`Jump to line ${targetLineNum} in editor`}
           >
             Jump to L{targetLineNum} →
@@ -104,10 +107,13 @@ export function SkeletonTab({ file }: { file: OpenFile }) {
     <div className="flex h-full min-h-[140px] flex-col p-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-primary">
-            <FileCode className="h-3 w-3" />
+          <HueChip
+            tone="primary"
+            icon={<FileCode className="h-3 w-3" />}
+            className="font-mono text-[10px] font-semibold uppercase px-2 py-0.5"
+          >
             {lang || 'AST'}
-          </span>
+          </HueChip>
           {stats && (
             <>
               <span className="rounded bg-success/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-success">
@@ -166,7 +172,7 @@ export function SkeletonTab({ file }: { file: OpenFile }) {
         {loading && !skeleton ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
-            <span>Extracting AST Skeleton…</span>
+            <span>{t('activity:fileActivity.skeletonLoading')}</span>
           </div>
         ) : error ? (
           <div className="p-4 text-warning">{error}</div>

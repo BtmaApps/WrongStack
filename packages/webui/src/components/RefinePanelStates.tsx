@@ -36,8 +36,11 @@ export function RefineInFlightCard({
             {t('activity:refine.refining')}
             {provider && model ? (
               <span className="text-muted-foreground font-normal">
-                {' '}
-                on {provider}/{model}
+                {t('activity:refine.runningOn', {
+                  defaultValue: ' on {{provider}}/{{model}}',
+                  provider,
+                  model,
+                })}
               </span>
             ) : null}
           </span>
@@ -100,8 +103,11 @@ export function RefineFailedCard({
             {t('activity:refine.failedHeader')}
             {provider && model ? (
               <span className="text-muted-foreground font-normal">
-                {' '}
-                on {provider}/{model}
+                {t('activity:refine.runningOn', {
+                  defaultValue: ' on {{provider}}/{{model}}',
+                  provider,
+                  model,
+                })}
               </span>
             ) : null}
           </span>

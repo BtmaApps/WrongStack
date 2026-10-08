@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react';
 import { useMemo, useRef } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { type buildSessionStory, STORY_COLORS, type StoryEvent } from '@/lib/session-story';
 
 export function storyTime(ms: number): string {
@@ -25,6 +26,7 @@ export function StoryChart({
   onSelect(event: StoryEvent): void;
   actor: string;
 }) {
+  const { t } = useAppTranslation();
   const svg = useRef<SVGSVGElement>(null);
   const lanes =
     actor === 'all' ? story.actors.slice(0, 32) : story.actors.filter((lane) => lane.id === actor);
@@ -54,10 +56,8 @@ export function StoryChart({
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <header className="flex flex-wrap items-center justify-between gap-2 p-4">
         <div>
-          <h2 className="font-semibold">Parallel work / team lanes</h2>
-          <p className="text-xs text-muted-foreground">
-            Each row belongs to this tab. Dots are recorded events; bars show observed lifetimes.
-          </p>
+          <h2 className="font-semibold">{t('activity:story.parallelLanes')}</h2>
+          <p className="text-xs text-muted-foreground">{t('activity:story.parallelSubtitle')}</p>
         </div>
         <button
           type="button"
@@ -74,7 +74,7 @@ export function StoryChart({
           viewBox={`0 0 ${width} ${height}`}
           className="w-full min-w-[800px]"
           role="img"
-          aria-label="Session team timeline"
+          aria-label={t('activity:story.timelineLabel')}
         >
           <rect width={width} height={height} fill="hsl(var(--muted))" />
           {Array.from({ length: 6 }, (_, index) => {
@@ -135,11 +135,13 @@ export function StoryChart({
                 <text x={lane.parent ? 32 : 16} y={y} fill="hsl(var(--foreground))" fontSize={11}>
                   {lane.name.slice(0, 24)}
                   <title>
-                    {lane.name} · {lane.events} events · {lane.status ?? 'recorded'}
+                    {lane.name} · {t('activity:story.events', { count: lane.events })} ·{' '}
+                    {lane.status ?? t('activity:story.statusRecorded')}
                   </title>
                 </text>
                 <text x={16} y={y + 14} fill="hsl(var(--muted-foreground))" fontSize={9}>
-                  {lane.status ?? 'recorded'} · {lane.events} events
+                  {lane.status ?? t('activity:story.statusRecorded')} ·{' '}
+                  {t('activity:story.events', { count: lane.events })}
                 </text>
                 {lane.start <= cursor && (
                   <line
@@ -219,8 +221,7 @@ export function StoryChart({
       </div>
       {(story.actors.length > lanes.length || story.events.length > points.length) && (
         <p className="p-3 text-xs text-muted-foreground">
-          Chart shows {lanes.length} lanes and samples up to 1,000 markers. Choose an agent or use
-          the event list to inspect every loaded event.
+          {t('activity:story.chartSampling', { lanes: lanes.length })}
         </p>
       )}
     </section>
@@ -234,6 +235,7 @@ export function ActivityPulse({
   story: ReturnType<typeof buildSessionStory>;
   end: number;
 }) {
+  const { t } = useAppTranslation();
   const bins = Array.from({ length: 36 }, () =>
     Object.fromEntries(Object.keys(STORY_COLORS).map((kind) => [kind, 0])),
   );
@@ -249,10 +251,14 @@ export function ActivityPulse({
   return (
     <section className="rounded-2xl border bg-card p-4">
       <div className="mb-4 flex justify-between">
-        <h2 className="font-semibold">Session pulse</h2>
-        <span className="text-xs text-muted-foreground">Recorded events per time bucket</span>
+        <h2 className="font-semibold">{t('activity:story.sessionPulse')}</h2>
+        <span className="text-xs text-muted-foreground">{t('activity:story.pulseSubtitle')}</span>
       </div>
-      <div className="flex h-20 items-end gap-1" role="img" aria-label="Session event density">
+      <div
+        className="flex h-20 items-end gap-1"
+        role="img"
+        aria-label={t('activity:story.densityLabel')}
+      >
         {bins.map((bin, index) => (
           <div
             key={index}
@@ -260,7 +266,10 @@ export function ActivityPulse({
             style={{
               height: `${Math.max(2, (Object.values(bin).reduce((sum, value) => sum + value, 0) / max) * 100)}%`,
             }}
-            title={`+${storyTime((span * index) / 36)}: ${Object.values(bin).reduce((sum, value) => sum + value, 0)} events`}
+            title={t('activity:story.bucketTitle', {
+              offset: storyTime((span * index) / 36),
+              count: Object.values(bin).reduce((sum, value) => sum + value, 0),
+            })}
           >
             {Object.entries(bin).map(([kind, count]) =>
               count > 0 ? (

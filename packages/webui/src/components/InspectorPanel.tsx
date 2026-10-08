@@ -256,7 +256,7 @@ export function InspectorPanel() {
                   type="button"
                   onClick={() => openInspectorTarget({ kind: 'fleet', tab: 'fleet' })}
                   className="inline-flex h-6 items-center gap-1 rounded px-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  title="Back to Fleet"
+                  title={t('activity:inspector.backToFleet')}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                   <span>Fleet</span>

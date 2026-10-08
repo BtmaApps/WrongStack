@@ -10,6 +10,7 @@ import {
   Terminal,
   TriangleAlert,
 } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import {
   type buildSessionStory,
   STORY_COLORS,
@@ -17,6 +18,18 @@ import {
   type StoryKind,
 } from '@/lib/session-story';
 import { storyTime } from './StoryChart';
+
+const KIND_KEYS = {
+  model: 'activity:story.kindModel',
+  tool: 'activity:story.kindTool',
+  file: 'activity:story.kindFile',
+  memory: 'activity:story.kindMemory',
+  agent: 'activity:story.kindAgent',
+  mail: 'activity:story.kindMail',
+  alert: 'activity:story.kindAlert',
+  session: 'activity:story.kindSession',
+  work: 'activity:story.kindWork',
+} as const;
 
 const icons = {
   model: BrainCircuit,
@@ -57,32 +70,33 @@ export function StoryStream({
   onSelect,
   onMore,
 }: Props) {
+  const { t } = useAppTranslation();
   return (
     <section className="min-w-0 rounded-2xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Event stream</h2>
+        <h2 className="font-semibold">{t('activity:story.eventStream')}</h2>
         <span className="text-xs text-muted-foreground">
-          {events.length.toLocaleString()} matching events
+          {t('activity:story.matchingEvents', { count: events.length })}
         </span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <label className="flex min-w-40 flex-1 items-center gap-2 rounded-lg border px-3">
           <Search size={14} />
           <input
-            aria-label="Search session events"
+            aria-label={t('activity:story.searchEventsLabel')}
             value={search}
             onChange={(event) => onSearch(event.target.value)}
-            placeholder="Search tools, files, mail…"
+            placeholder={t('activity:story.searchPlaceholder')}
             className="w-full bg-transparent py-2 text-xs outline-none"
           />
         </label>
         <select
-          aria-label="Session story agent"
+          aria-label={t('activity:story.agentLabel')}
           value={actor}
           onChange={(event) => onActor(event.target.value)}
           className="max-w-60 rounded-lg border bg-background px-2 text-xs"
         >
-          <option value="all">All team members</option>
+          <option value="all">{t('activity:story.allTeamMembers')}</option>
           {story.actors.map((lane) => (
             <option key={lane.id} value={lane.id}>
               {lane.name}
@@ -97,7 +111,7 @@ export function StoryStream({
           onClick={() => onKind('all')}
           className="rounded-full border px-2.5 py-1 text-xs"
         >
-          All
+          {t('activity:story.filterAll')}
         </button>
         {Object.keys(STORY_COLORS).map((key) => (
           <button
@@ -111,7 +125,7 @@ export function StoryStream({
               className="size-1.5 rounded-full"
               style={{ background: STORY_COLORS[key as StoryKind] }}
             />
-            {key} {story.counts[key as StoryKind]}
+            {t(KIND_KEYS[key as StoryKind])} {story.counts[key as StoryKind]}
           </button>
         ))}
       </div>
@@ -154,7 +168,7 @@ export function StoryStream({
       </ol>
       {events.length === 0 && (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          No events match this position and filter.
+          {t('activity:story.noMatchingEvents')}
         </p>
       )}
       {events.length > limit && (
@@ -163,7 +177,7 @@ export function StoryStream({
           onClick={onMore}
           className="mt-3 w-full rounded-xl border p-2 text-xs"
         >
-          Show 50 more
+          {t('activity:story.showMore')}
         </button>
       )}
     </section>

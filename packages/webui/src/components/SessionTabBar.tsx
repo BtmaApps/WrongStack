@@ -164,7 +164,7 @@ export function SessionTabBar() {
     <div className="flex h-9 shrink-0 items-center justify-between border-b border-border/70 bg-card/60 px-2 text-xs backdrop-blur-md">
       <div
         role="tablist"
-        aria-label="Open session tabs"
+        aria-label={t('activity:tabBar.tablistLabel', { defaultValue: 'Open session tabs' })}
         className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-contain [scrollbar-gutter:stable] no-scrollbar"
       >
         {tabs.map((tab) => {
@@ -190,7 +190,14 @@ export function SessionTabBar() {
                   ? cn(accent.border, accent.activeBg, 'font-semibold text-foreground shadow-xs')
                   : 'border-border/40 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
               )}
-              title={`Slot ${tab.slot + 1} · ${tab.title}\n${tab.provider}/${tab.model}\n${tab.sessionId}`}
+              title={t('activity:tabBar.tabTitle', {
+                defaultValue: 'Slot {{slot}} · {{title}}\n{{provider}}/{{model}}\n{{sessionId}}',
+                slot: tab.slot + 1,
+                title: tab.title,
+                provider: tab.provider,
+                model: tab.model,
+                sessionId: tab.sessionId,
+              })}
             >
               {/* Slot number — the stable handle on "which tab is this". */}
               <span
@@ -217,8 +224,11 @@ export function SessionTabBar() {
 
               {tab.unread > 0 && (
                 <span
-                  className="shrink-0 rounded bg-primary/15 px-1 text-[9px] font-semibold text-primary"
-                  title={`${tab.unread} new message(s) since you last looked`}
+                  className="shrink-0 rounded bg-primary/15 px-1 text-[9px] font-semibold text-foreground"
+                  title={t('activity:tabBar.unreadTitle', {
+                    defaultValue: '{{count}} new message(s) since you last looked',
+                    count: tab.unread,
+                  })}
                 >
                   +{tab.unread}
                 </span>
@@ -235,8 +245,15 @@ export function SessionTabBar() {
                 )}
                 title={
                   tab.agentsRunning > 0
-                    ? `${tab.agentsRunning} running agent(s) in this tab, ${tab.agentsTotal} total`
-                    : `${tab.agentsTotal} agent(s) in this tab`
+                    ? t('activity:tabBar.agentsRunningTitle', {
+                        defaultValue: '{{running}} running agent(s) in this tab, {{total}} total',
+                        running: tab.agentsRunning,
+                        total: tab.agentsTotal,
+                      })
+                    : t('activity:tabBar.agentsTotalTitle', {
+                        defaultValue: '{{count}} agent(s) in this tab',
+                        count: tab.agentsTotal,
+                      })
                 }
               >
                 <Bot className="h-2.5 w-2.5" />
@@ -249,8 +266,15 @@ export function SessionTabBar() {
                 <button
                   type="button"
                   onClick={(e) => handleClose(tab.sessionId, e)}
-                  title="Close tab"
+                  title={t('activity:tabBar.closeTab', { defaultValue: 'Close tab' })}
+                  // WCAG 2.5.8: the X is 16x16, under the 24px floor. The
+                  // coarse-pointer-only .ws-touch-target pseudo grows the hit
+                  // area, but the overflow-x-auto strip clips it vertically to
+                  // the 28px row (and horizontally at the scroll edge), so the
+                  // button itself also floors at 24x24 on coarse pointers —
+                  // fine-pointer layout is unchanged.
                   className={cn(
+                    'pointer-coarse:min-h-6 pointer-coarse:min-w-6 ws-touch-target',
                     'ml-auto h-4 w-4 shrink-0 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors',
                     tab.isActive
                       ? 'opacity-70 hover:opacity-100'
@@ -283,19 +307,25 @@ export function SessionTabBar() {
           type="button"
           disabled={!currentSessionId}
           onClick={() => useUIStore.getState().setCurrentView('session-story')}
-          title="Visual story of this session and its subagents"
-          aria-label="Open session story"
+          title={t('activity:tabBar.storyTitle', {
+            defaultValue: 'Visual story of this session and its subagents',
+          })}
+          aria-label={t('activity:tabBar.storyAriaLabel', {
+            defaultValue: 'Open session story',
+          })}
           className="inline-flex h-7 items-center gap-1 rounded px-2 text-[11px] text-info hover:bg-muted disabled:opacity-40"
         >
           <ChartNoAxesCombined size={14} />
-          <span className="hidden sm:inline">Story</span>
+          <span className="hidden sm:inline">
+            {t('activity:tabBar.storyLabel', { defaultValue: 'Story' })}
+          </span>
         </button>
         <DropdownMenu open={mapOpen} onOpenChange={setMapOpen}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className="inline-flex h-7 items-center gap-1 rounded px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              title="What is in each tab"
+              title={t('activity:tabBar.mapTitle', { defaultValue: 'What is in each tab' })}
             >
               <span className="font-mono">
                 {tabs.length}/{MAX_OPEN_TABS}
@@ -314,7 +344,7 @@ export function SessionTabBar() {
             <button
               type="button"
               className="inline-flex h-7 items-center gap-1 rounded px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              title="All Sessions"
+              title={t('activity:tabBar.allSessionsTitle', { defaultValue: 'All Sessions' })}
             >
               <History className="h-3 w-3" />
               <span className="hidden sm:inline">Sessions</span>
@@ -323,7 +353,10 @@ export function SessionTabBar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto">
             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Recent Sessions ({historyEntries.length})
+              {t('activity:tabBar.recentSessions', {
+                defaultValue: 'Recent Sessions ({{count}})',
+                count: historyEntries.length,
+              })}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {historyEntries.slice(0, 15).map((entry) => {
@@ -354,7 +387,10 @@ export function SessionTabBar() {
                   {openSlot >= 0 && (
                     <span
                       className={cn('ml-1 text-[10px] font-semibold', slotAccent(openSlot).text)}
-                      title={`Already open in slot ${openSlot + 1}`}
+                      title={t('activity:tabBar.alreadyOpen', {
+                        defaultValue: 'Already open in slot {{slot}}',
+                        slot: openSlot + 1,
+                      })}
                     >
                       ▪ {openSlot + 1}
                     </span>

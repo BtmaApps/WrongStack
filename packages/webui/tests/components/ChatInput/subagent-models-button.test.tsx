@@ -62,6 +62,9 @@ const prefsState = {
 vi.mock('@/stores/local-prefs', () => ({
   useLocalPrefs: Object.assign((selector: (state: unknown) => unknown) => selector(prefsState), {
     getState: () => prefsState,
+    // No-op for the module-scope locale watcher in '@/i18n' (imported by the
+    // component for useAppTranslation); these tests never switch locales.
+    subscribe: () => () => {},
   }),
 }));
 

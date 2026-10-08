@@ -1,5 +1,6 @@
 import { Bot, Check, Clock, Copy, Cpu, MessageSquare, Wrench, XCircle } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { HueChip } from '@/components/ui/hue-chip';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { compareAgentsByActivity, tallyAgents } from '@/lib/agent-status';
@@ -163,7 +164,7 @@ export function FleetPanel({ className }: { className?: string }): React.ReactEl
                     type="button"
                     onClick={() => openAgentTab(agent.id)}
                     className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-                    title="Open subagent chat tab"
+                    title={t('activity:fleet.openChatTabTitle')}
                   >
                     <MessageSquare className="h-3 w-3" />
                     <span>Chat Tab</span>
@@ -182,10 +183,13 @@ export function FleetPanel({ className }: { className?: string }): React.ReactEl
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2 text-[11px]">
                 <div className="flex items-center gap-2 min-w-0">
                   {agent.status === 'running' && (agent.currentTool || agent.lastTool) ? (
-                    <span className="inline-flex items-center gap-1 text-primary font-mono text-[10px] bg-primary/10 px-1.5 py-0.5 rounded truncate">
-                      <Wrench className="h-3 w-3 shrink-0 animate-pulse" />
+                    <HueChip
+                      tone="primary"
+                      icon={<Wrench className="h-3 w-3 shrink-0 animate-pulse" />}
+                      className="font-mono text-[10px] truncate"
+                    >
                       {agent.currentTool ? agent.currentTool : `last: ${agent.lastTool}`}
-                    </span>
+                    </HueChip>
                   ) : agent.error ? (
                     <span className="inline-flex items-center gap-1 text-destructive text-[10px] truncate">
                       <XCircle className="h-3 w-3 shrink-0" />

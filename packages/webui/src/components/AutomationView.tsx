@@ -10,6 +10,7 @@ import {
   importAutomationJob,
 } from '@wrongstack/webui-protocol';
 import { useEffect, useRef, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { useActiveSessionId, useSessionStore } from '@/stores';
 import './automation.css';
 import { ToolDiffView } from './DiffView';
@@ -28,6 +29,7 @@ const freshJob = (): AutomationJobInput => ({
 export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefined } = {}) {
   const request = <T,>(route: string, method = 'GET', body?: unknown, signal?: AbortSignal) =>
     automationRequest<T>(route, method, body, signal, sessionId);
+  const { t } = useAppTranslation();
   const [state, setState] = useState<AutomationStateView | null>(null);
   const [spec, setSpec] = useState<AutomationJobInput>(freshJob);
   const [editing, setEditing] = useState<{ id: string; revision: number } | null>(null);
@@ -130,7 +132,11 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
       <header>
         <div>
           <h1>Automations</h1>
-          <p>Jobs run in copied Docker workspaces and return patches for review.</p>
+          <p>
+            {t('activity:automation.intro', {
+              defaultValue: 'Jobs run in copied Docker workspaces and return patches for review.',
+            })}
+          </p>
         </div>
         <button type="button" disabled={busy} onClick={() => edit()}>
           New job
@@ -193,7 +199,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
           {!state ? (
             <p>Loading jobs…</p>
           ) : state.jobs.length === 0 ? (
-            <p>No jobs in this project.</p>
+            <p>{t('activity:automation.noJobs', { defaultValue: 'No jobs in this project.' })}</p>
           ) : (
             state.jobs.map((job) => (
               <article key={job.id}>
@@ -387,7 +393,11 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
             </div>
           )}
           <details>
-            <summary>Credentials and execution limits</summary>
+            <summary>
+              {t('activity:automation.credentialsHeading', {
+                defaultValue: 'Credentials and execution limits',
+              })}
+            </summary>
             <label>
               Environment names
               <input
@@ -543,7 +553,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
           </div>
           {preview && (
             <div role="status">
-              <h3>Next scheduled runs</h3>
+              <h3>{t('activity:automation.nextRuns', { defaultValue: 'Next scheduled runs' })}</h3>
               {preview.nextRunTimes.length ? (
                 <ul>
                   {preview.nextRunTimes.map((time) => (
@@ -556,7 +566,11 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
                   ))}
                 </ul>
               ) : (
-                <p>Manual or event-triggered.</p>
+                <p>
+                  {t('activity:automation.manualOnly', {
+                    defaultValue: 'Manual or event-triggered.',
+                  })}
+                </p>
               )}
               {preview.missingReferences.length > 0 && (
                 <p>Missing credentials: {preview.missingReferences.join(', ')}</p>
@@ -569,7 +583,11 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
                     : `does not match (${preview.filterPreview.reasons.join(', ')})`}
                 </p>
               )}
-              <p>Preview starts no container or model request.</p>
+              <p>
+                {t('activity:automation.previewNote', {
+                  defaultValue: 'Preview starts no container or model request.',
+                })}
+              </p>
             </div>
           )}
         </form>

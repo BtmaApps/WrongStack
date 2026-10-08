@@ -19,6 +19,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { HueChip } from '@/components/ui/hue-chip';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -116,9 +117,9 @@ export function ChangesView({ className }: { className?: string }) {
               </div>
             </div>
             {currentFile?.staged && (
-              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
+              <HueChip tone="primary" className="shrink-0 px-1.5 py-0.5 text-[10px] uppercase">
                 Staged
-              </span>
+              </HueChip>
             )}
           </div>
 
@@ -144,7 +145,7 @@ export function ChangesView({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={() => unstageGit?.(selectedPath)}
-                  title="Unstage this file"
+                  title={t('activity:changes.unstageTitle')}
                   className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
                   <Minus className="h-3.5 w-3.5" /> Unstage
@@ -154,7 +155,7 @@ export function ChangesView({ className }: { className?: string }) {
                   <button
                     type="button"
                     onClick={() => stageGit?.(selectedPath)}
-                    title="Stage this file"
+                    title={t('activity:changes.stageTitle')}
                     className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   >
                     <Plus className="h-3.5 w-3.5" /> Stage
@@ -178,7 +179,7 @@ export function ChangesView({ className }: { className?: string }) {
                         discardGit?.(selectedPath);
                       }
                     }}
-                    title="Discard changes in this file"
+                    title={t('activity:changes.discardTitle')}
                     className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                   >
                     <Undo2 className="h-3.5 w-3.5" /> Discard

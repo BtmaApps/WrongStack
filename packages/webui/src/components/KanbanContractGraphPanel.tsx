@@ -7,6 +7,7 @@ import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow } from '@xy
 import '@xyflow/react/dist/style.css';
 import { AlertTriangle, CheckCircle2, Maximize2, Network, ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { buildContractGraphView } from './KanbanContractGraphView';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
@@ -48,7 +49,7 @@ function ContractTaskCanvas({
         />
         <Controls
           showInteractive={false}
-          className="!overflow-hidden !rounded-lg !border !border-border !bg-background !shadow-xl [&_button]:!border-border [&_button]:!bg-muted [&_button]:!fill-foreground"
+          className="!overflow-hidden !rounded-lg !border !border-border !bg-background !ws-dialog [&_button]:!border-border [&_button]:!bg-muted [&_button]:!fill-foreground"
         />
         {expanded && (
           <MiniMap
@@ -77,6 +78,7 @@ export function KanbanContractGraphPanel({
    */
   sendKanban?: ((type: `kanban.${string}`, payload?: Record<string, unknown>) => void) | undefined;
 }) {
+  const { t } = useAppTranslation();
   const [expanded, setExpanded] = useState(false);
   const evaluation = useMemo(() => evaluateContractGraph(board, task.id), [board, task.id]);
   const readiness = useMemo(() => evaluateContractGraphReadiness(board, task.id), [board, task.id]);
@@ -138,7 +140,7 @@ export function KanbanContractGraphPanel({
               type="button"
               onClick={() => setExpanded(true)}
               className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2 py-1 font-semibold text-primary transition-colors hover:bg-primary/20"
-              aria-label="Expand Contract Map"
+              aria-label={t('activity:kanban.contractGraph.expandAria')}
             >
               <Maximize2 size={12} /> Expand
             </button>

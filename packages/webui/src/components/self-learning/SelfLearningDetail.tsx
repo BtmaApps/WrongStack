@@ -138,7 +138,10 @@ export function SelfLearningDetail({
         </div>
         <div
           className="rounded-lg border bg-card p-2"
-          title="Share of directive applications that ended in a successful task. Blank until a directive has actually been exercised on one."
+          title={t('activity:agentRoster.hitRateTooltipDetail', {
+            defaultValue:
+              'Share of directive applications that ended in a successful task. Blank until a directive has actually been exercised on one.',
+          })}
         >
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
             {t('activity:agentRoster.hitRate')}
@@ -165,7 +168,10 @@ export function SelfLearningDetail({
         </div>
         <div
           className="rounded-lg border bg-card p-2"
-          title="Directives that have never been exercised on a task. Anchors — exact commands, paths, package names — are what let the runtime tell that a directive was applied."
+          title={t('activity:agentRoster.neverUsedTooltip', {
+            defaultValue:
+              'Directives that have never been exercised on a task. Anchors — exact commands, paths, package names — are what let the runtime tell that a directive was applied.',
+          })}
         >
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
             {t('activity:agentRoster.neverUsed')}
@@ -332,8 +338,10 @@ export function SelfLearningDetail({
                   </button>
                   {entry.eager && (
                     <span
-                      className="text-[9px] rounded bg-primary/15 text-primary px-1.5 py-0.5"
-                      title="Ranked high enough to be loaded into a spawn of this role"
+                      className="text-[9px] rounded bg-primary/15 text-foreground px-1.5 py-0.5"
+                      title={t('activity:agentRoster.eagerTooltip', {
+                        defaultValue: 'Ranked high enough to be loaded into a spawn of this role',
+                      })}
                     >
                       loaded
                     </span>
@@ -364,7 +372,9 @@ export function SelfLearningDetail({
                   {typeof entry.score === 'number' && (
                     <span
                       className="text-[9px] text-muted-foreground tabular-nums"
-                      title="Project affinity score — higher is loaded first"
+                      title={t('activity:agentRoster.affinityTooltip', {
+                        defaultValue: 'Project affinity score — higher is loaded first',
+                      })}
                     >
                       {entry.score.toFixed(2)}
                     </span>

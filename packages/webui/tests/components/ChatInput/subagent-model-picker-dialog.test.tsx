@@ -22,7 +22,11 @@ vi.mock('@/lib/ws-client', () => ({
     },
   }),
 }));
-vi.mock('@/i18n', () => ({ useAppTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('@/i18n', () => ({
+  useAppTranslation: () => ({
+    t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
+  }),
+}));
 
 import { SubagentModelPickerDialog } from '../../../src/components/ChatInput/subagent-model-picker-dialog';
 

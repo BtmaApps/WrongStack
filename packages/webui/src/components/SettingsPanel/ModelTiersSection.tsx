@@ -1,5 +1,6 @@
 import { Coins, Plus, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { type LocalPrefs, useLocalPrefs } from '@/stores/local-prefs';
 import { Button } from '../ui/button';
 
@@ -40,6 +41,7 @@ interface ModelTiersSectionProps {
 }
 
 export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.ReactElement {
+  const { t } = useAppTranslation();
   const prefs = useLocalPrefs();
   const tiers = prefs.modelTiers ?? {};
   const levels = tiers.levels ?? {};
@@ -124,7 +126,9 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
     <section className="space-y-3" data-testid="model-tiers-section">
       <header className="flex items-center gap-2">
         <Coins className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium text-foreground">Model cost tiers</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          {t('activity:modelTiers.heading', { defaultValue: 'Model cost tiers' })}
+        </h3>
         <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
           <input
             type="checkbox"
@@ -254,13 +258,17 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
 
         <div className="flex items-center gap-1.5">
           <input
-            aria-label="New level name"
+            aria-label={t('activity:modelTiers.newLevelName', {
+              defaultValue: 'New level name',
+            })}
             value={newLevelName}
             onChange={(e) => setNewLevelName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') addLevel();
             }}
-            placeholder="new level name (e.g. budget)"
+            placeholder={t('activity:modelTiers.newLevelPlaceholder', {
+              defaultValue: 'new level name (e.g. budget)',
+            })}
             className="min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
             data-testid="model-tier-new-name"
           />
@@ -314,15 +322,21 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
 
         <div className="flex items-center gap-1.5">
           <input
-            aria-label="New route key"
+            aria-label={t('activity:modelTiers.newRouteKey', {
+              defaultValue: 'New route key',
+            })}
             value={newRouteKey}
             onChange={(e) => setNewRouteKey(e.target.value)}
-            placeholder="role, phase, or *"
+            placeholder={t('activity:modelTiers.routeKeyPlaceholder', {
+              defaultValue: 'role, phase, or *',
+            })}
             className="min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
             data-testid="model-tier-new-route-key"
           />
           <select
-            aria-label="New route tier"
+            aria-label={t('activity:modelTiers.newRouteTier', {
+              defaultValue: 'New route tier',
+            })}
             value={newRouteTier}
             onChange={(e) => setNewRouteTier(e.target.value)}
             className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
@@ -367,7 +381,11 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
 
       {/* ── Leader self-switching ──────────────────────────────────────── */}
       <div className="space-y-1.5">
-        <h4 className="text-xs font-medium text-foreground">Leader self-switching</h4>
+        <h4 className="text-xs font-medium text-foreground">
+          {t('activity:modelTiers.leaderSelfSwitching', {
+            defaultValue: 'Leader self-switching',
+          })}
+        </h4>
         <div className="flex flex-wrap gap-1.5">
           {LEADER_MODES.map((mode) => {
             const active = (leader.mode ?? 'propose') === mode.value;

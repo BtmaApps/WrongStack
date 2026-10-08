@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { distribution, type SessionModelStats } from '@/lib/session-model-stats';
 import type { StoryEvent } from '@/lib/session-story';
 
@@ -22,6 +23,7 @@ export function ModelDashboard({
   models: SessionModelStats[];
   onInspect(event: StoryEvent): void;
 }) {
+  const { t } = useAppTranslation();
   const [mode, setMode] = useState<Mode>('reliability');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string>('all');
@@ -49,42 +51,42 @@ export function ModelDashboard({
   const headers =
     mode === 'reliability'
       ? [
-          'Model / provider',
-          'Attempts',
-          'Usable / failed / unsettled',
-          'Attempt success',
-          'Logical requests',
-          'Retry attempts / scheduled',
-          'Retry wait',
-          'Recovered requests',
-          'Fallback out / in',
+          t('activity:story.mhModelProvider'),
+          t('activity:story.mhAttempts'),
+          t('activity:story.mhUsableFailedUnsettled'),
+          t('activity:story.mhAttemptSuccess'),
+          t('activity:story.mhLogicalRequests'),
+          t('activity:story.mhRetryAttempts'),
+          t('activity:story.mhRetryWait'),
+          t('activity:story.mhRecovered'),
+          t('activity:story.mhFallback'),
         ]
       : mode === 'speed'
         ? [
-            'Model / provider',
-            'Avg / P50 / P95 / max',
-            'Timed attempts',
-            'First chunk avg / P95',
-            'First chunk samples',
-            'Output tok/s',
-            'Fresh input / output',
-            'Cache read / write',
-            'Cache hit',
-            'Usage coverage',
-            'Est. cost / pricing coverage',
+            t('activity:story.mhModelProvider'),
+            t('activity:story.shAvg'),
+            t('activity:story.shTimed'),
+            t('activity:story.shFirstChunk'),
+            t('activity:story.shFirstChunkSamples'),
+            t('activity:story.shOutputTps'),
+            t('activity:story.shFresh'),
+            t('activity:story.shCacheTokens'),
+            t('activity:story.shCacheHit'),
+            t('activity:story.shUsageCoverage'),
+            t('activity:story.shEstCost'),
           ]
         : [
-            'Model / provider',
-            'Agents',
-            'Tools / unsettled',
-            'Tool success / failed / blocked',
-            'Tool avg / P95',
-            'Tool timing coverage',
-            'Invalid tool inputs',
-            'Tasks ok / failed / timeout / stopped / unknown',
-            'Verification fails',
-            'Loops / drift / interventions',
-            'Length stops',
+            t('activity:story.mhModelProvider'),
+            t('activity:story.whAgents'),
+            t('activity:story.whTools'),
+            t('activity:story.whToolOutcomes'),
+            t('activity:story.whToolTiming'),
+            t('activity:story.whToolCoverage'),
+            t('activity:story.whInvalidInputs'),
+            t('activity:story.whTasks'),
+            t('activity:story.whVerification'),
+            t('activity:story.whLoopsDrift'),
+            t('activity:story.whLengthStops'),
           ];
   const cells = (row: SessionModelStats) => {
     const timing = distribution(row.durations),
@@ -96,7 +98,7 @@ export function ModelDashboard({
           `${row.completed} / ${row.failed} / ${row.unsettled}`,
           ratio(row.completed, row.completed + row.failed),
           row.requests.size || '—',
-          `${row.retryAttempts} / ${row.retryScheduleSamples ? row.retriesScheduled : '—'} (schedule ${samples(row.retryScheduleSamples, row.failed)})`,
+          `${row.retryAttempts} / ${row.retryScheduleSamples ? row.retriesScheduled : '—'} (${samples(row.retryScheduleSamples, row.failed)})`,
           row.retryDelaySamples
             ? `${ms(row.retryDelay)} (${samples(row.retryDelaySamples, row.retriesScheduled)})`
             : '—',
@@ -136,17 +138,16 @@ export function ModelDashboard({
       <section className="rounded-2xl border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="font-semibold">Model performance & evidence</h2>
+            <h2 className="font-semibold">{t('activity:story.modelPerformance')}</h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-              Leader and subagents together, grouped by provider + model. Transport success is a
-              usable response; task quality needs recorded outcome evidence.
+              {t('activity:story.modelSubtitle')}
             </p>
           </div>
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            aria-label="Search models"
-            placeholder="Search models…"
+            aria-label={t('activity:story.searchModelsLabel')}
+            placeholder={t('activity:story.searchModelsPlaceholder')}
             className="rounded-xl border bg-background px-3 py-2 text-sm"
           />
         </div>
@@ -160,31 +161,31 @@ export function ModelDashboard({
               className={`rounded-xl border px-3 py-2 text-xs ${mode === value ? 'border-info/50 bg-info/10 text-info' : ''}`}
             >
               {value === 'reliability'
-                ? 'Reliability'
+                ? t('activity:story.modeReliability')
                 : value === 'speed'
-                  ? 'Speed, tokens & cost'
-                  : 'Work & quality signals'}
+                  ? t('activity:story.modeSpeed')
+                  : t('activity:story.modeWork')}
             </button>
           ))}
           <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            Sort
+            {t('activity:story.sortLabel')}
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value)}
               className="rounded-lg border bg-background px-2 py-1"
             >
-              <option value="attempts">Attempts</option>
-              <option value="failures">Failures</option>
-              <option value="latency">Avg latency</option>
-              <option value="cost">Recorded cost</option>
+              <option value="attempts">{t('activity:story.sortAttempts')}</option>
+              <option value="failures">{t('activity:story.sortFailures')}</option>
+              <option value="latency">{t('activity:story.sortLatency')}</option>
+              <option value="cost">{t('activity:story.sortCost')}</option>
             </select>
           </label>
         </div>
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <section className="rounded-xl border bg-background/40 p-4">
-            <h3 className="text-sm font-medium">Attempt reliability</h3>
+            <h3 className="text-sm font-medium">{t('activity:story.attemptReliability')}</h3>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Green = usable · rose = failed · grey = unsettled
+              {t('activity:story.reliabilityLegend')}
             </p>
             <div className="mt-4 space-y-3">
               {rows.slice(0, 8).map((row) => (
@@ -227,9 +228,9 @@ export function ModelDashboard({
             </div>
           </section>
           <section className="rounded-xl border bg-background/40 p-4">
-            <h3 className="text-sm font-medium">Measured attempt latency</h3>
+            <h3 className="text-sm font-medium">{t('activity:story.measuredLatency')}</h3>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Average terminal duration · failed attempts included
+              {t('activity:story.latencySubtitle')}
             </p>
             <div className="mt-4 space-y-3">
               {rows.slice(0, 8).map((row) => {
@@ -299,14 +300,11 @@ export function ModelDashboard({
         </div>
         {rows.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No model evidence matches this filter.
+            {t('activity:story.noModelMatches')}
           </p>
         )}
         <p className="mt-4 text-[11px] leading-5 text-muted-foreground">
-          Output tok/s = completed output tokens / measured full response time, including prefill;
-          it is not streaming decode speed. First chunk includes thinking. Cache tokens are disjoint
-          from fresh input. Costs are recorded per-call estimates with pricing coverage, not
-          cumulative actor totals. Unknown/ambiguous attribution remains visible as Unknown model.
+          {t('activity:story.modelFootnote')}
         </p>
       </section>
       {picked && (
@@ -317,35 +315,41 @@ export function ModelDashboard({
                 {picked.model} · {picked.provider}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                {picked.agents.size} observed lanes · {issues.length} diagnostic records ·{' '}
-                {picked.evidence.length} supporting records
+                {t('activity:story.modelDetailCounts', {
+                  lanes: picked.agents.size,
+                  diagnostics: issues.length,
+                  supporting: picked.evidence.length,
+                })}
               </p>
             </div>
             <button type="button" onClick={() => setSelected('all')} className="text-xs underline">
-              Close details
+              {t('activity:story.closeDetails')}
             </button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               [
-                'Prompt tokens avg / max',
+                t('activity:story.statPrompt'),
                 `${distribution(picked.promptTokens).avg?.toFixed(0) ?? '—'} / ${distribution(picked.promptTokens).max ?? '—'}`,
-                `n=${picked.promptTokens.length}; includes cache`,
+                t('activity:story.notePromptTokens', { count: picked.promptTokens.length }),
               ],
               [
-                'Response tokens avg / P95',
+                t('activity:story.statResponse'),
                 `${distribution(picked.responseTokens).avg?.toFixed(0) ?? '—'} / ${distribution(picked.responseTokens).p95 ?? '—'}`,
-                `n=${picked.responseTokens.length}`,
+                t('activity:story.noteSamples', { count: picked.responseTokens.length }),
               ],
               [
-                'Messages / offered tools avg',
+                t('activity:story.statMessages'),
                 `${distribution(picked.messageCounts).avg?.toFixed(1) ?? '—'} / ${distribution(picked.offeredTools).avg?.toFixed(1) ?? '—'}`,
-                `samples ${picked.messageCounts.length} / ${picked.offeredTools.length}`,
+                t('activity:story.noteSamplePairs', {
+                  messages: picked.messageCounts.length,
+                  tools: picked.offeredTools.length,
+                }),
               ],
               [
-                'Streaming / priced call avg',
+                t('activity:story.statStreaming'),
                 `${samples(picked.streamingAttempts, picked.streamingSamples)} / ${usd(picked.pricedSamples ? picked.cost / picked.pricedSamples : undefined)}`,
-                `${picked.pricedSamples} priced accounting calls`,
+                t('activity:story.notePricedCalls', { count: picked.pricedSamples }),
               ],
             ].map(([label, value, note]) => (
               <div key={label} className="rounded-xl border p-3">
@@ -357,24 +361,22 @@ export function ModelDashboard({
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ['Failure kinds', picked.errorKinds],
-              ['HTTP statuses', picked.httpStatuses],
-              ['Stop reasons', picked.stopReasons],
+              [t('activity:story.failureKinds'), picked.errorKinds],
+              [t('activity:story.httpStatuses'), picked.httpStatuses],
+              [t('activity:story.stopReasons'), picked.stopReasons],
             ].map(([label, values]) => (
               <section key={String(label)} className="rounded-xl bg-muted/30 p-3">
                 <h3 className="text-xs font-medium">{String(label)}</h3>
                 <p className="mt-2 break-words font-mono text-xs text-muted-foreground">
                   {Object.entries(values as Record<string, number>)
                     .map(([key, n]) => `${key}: ${n}`)
-                    .join(' · ') || 'No recorded samples'}
+                    .join(' · ') || t('activity:story.noSamples')}
                 </p>
               </section>
             ))}
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            Failed tools may reflect permissions, filesystem, or network problems. Task success is a
-            reported status; verification failures, loops, drift, and interventions are separate
-            recorded signals. These figures do not form an automatic correctness score.
+            {t('activity:story.modelEvidenceNote')}
           </p>
           <div className="mt-4 space-y-2">
             {(issues.length ? issues : evidence)
@@ -392,14 +394,13 @@ export function ModelDashboard({
                   </span>
                   <span className="font-medium">{event.raw?.eventType}</span>
                   <span className="ml-auto font-mono text-muted-foreground">
-                    {event.raw?.outcome ?? 'recorded'} · {event.actor}
+                    {t('activity:story.statusRecorded')} · {event.actor}
                   </span>
                 </button>
               ))}
           </div>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            Showing the latest 20 diagnostic records, or supporting records when no diagnostics are
-            present. Click to inspect the original timeline evidence.
+            {t('activity:story.diagnosticNote')}
           </p>
         </section>
       )}

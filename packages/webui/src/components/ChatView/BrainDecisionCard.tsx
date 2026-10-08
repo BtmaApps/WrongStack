@@ -17,6 +17,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
+import { HueChip } from '@/components/ui/hue-chip';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { BrainDecisionData, ChatMessage } from '@/stores';
@@ -277,7 +278,7 @@ export const BrainDecisionCard = memo(function BrainDecisionCard({
                 type="button"
                 onClick={handleCopy}
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-1/60 hover:bg-surface-1 px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Copy Brain Directive"
+                title={t('activity:brainDecision.copyTitle')}
               >
                 {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                 <span className="text-[11px]">{copied ? 'Copied' : 'Copy'}</span>
@@ -352,7 +353,7 @@ export const BrainDecisionCard = memo(function BrainDecisionCard({
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border shadow-2xs font-mono',
                     DETERMINISTIC_BRAIN_TIERS.has(tier)
                       ? 'border-border bg-muted/50 text-muted-foreground'
-                      : 'border-primary/40 bg-primary/10 text-primary',
+                      : 'border-primary/40 bg-primary/10 text-foreground',
                   )}
                 >
                   <span>{tier}</span>
@@ -434,9 +435,12 @@ export const BrainDecisionCard = memo(function BrainDecisionCard({
                   })}
                 </span>
                 {optionId ? (
-                  <span className="font-mono text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded border border-primary/25">
+                  <HueChip
+                    tone="primary"
+                    className="font-mono text-[10px] border border-primary/25 px-2 py-0.5"
+                  >
                     option: {optionId}
-                  </span>
+                  </HueChip>
                 ) : null}
               </div>
               <p className="text-sm font-medium text-foreground leading-relaxed pl-6">{text}</p>
@@ -458,7 +462,7 @@ export const BrainDecisionCard = memo(function BrainDecisionCard({
                 <button
                   type="button"
                   onClick={() => setRationaleExpanded(!rationaleExpanded)}
-                  className="text-[11px] text-primary hover:underline font-medium flex items-center gap-0.5 cursor-pointer"
+                  className="text-[11px] text-muted-foreground hover:underline font-medium flex items-center gap-0.5 cursor-pointer"
                 >
                   <span>{rationaleExpanded ? 'Collapse' : 'Expand'}</span>
                   {rationaleExpanded ? (

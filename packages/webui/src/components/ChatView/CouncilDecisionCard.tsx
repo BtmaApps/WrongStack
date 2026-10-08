@@ -261,7 +261,9 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
                 type="button"
                 onClick={handleCopySummary}
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-1/60 hover:bg-surface-1 px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Copy Council Summary"
+                title={t('activity:councilDecision.copySummary', {
+                  defaultValue: 'Copy Council Summary',
+                })}
               >
                 {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                 <span className="text-[11px]">{copied ? 'Copied' : 'Copy'}</span>
@@ -304,7 +306,10 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
               {converged ? (
                 <span
                   className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-[10px] font-bold text-destructive"
-                  title="A majority of the panel changed position after seeing the other ballots — this reads as convergence rather than independent revision."
+                  title={t('activity:councilDecision.convergedTitle', {
+                    defaultValue:
+                      'A majority of the panel changed position after seeing the other ballots — this reads as convergence rather than independent revision.',
+                  })}
                 >
                   <RefreshCw className="h-3 w-3" />
                   <span>
@@ -315,7 +320,10 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
               {judgeIsVoter ? (
                 <span
                   className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-[10px] font-bold text-destructive"
-                  title="The tie-breaker had already cast one of the votes it is breaking, so its verdict restates its own position with the deciding weight."
+                  title={t('activity:councilDecision.judgeIsVoterTitle', {
+                    defaultValue:
+                      'The tie-breaker had already cast one of the votes it is breaking, so its verdict restates its own position with the deciding weight.',
+                  })}
                 >
                   <ShieldAlert className="h-3 w-3" />
                   <span>
@@ -328,7 +336,9 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
               {isCorrelated ? (
                 <span
                   className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning"
-                  title="All seats were served by the same underlying model"
+                  title={t('activity:councilDecision.correlatedTitle', {
+                    defaultValue: 'All seats were served by the same underlying model',
+                  })}
                 >
                   <AlertTriangle className="h-3 w-3 text-warning" />
                   <span>
@@ -522,7 +532,7 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
                     <button
                       type="button"
                       onClick={toggleAllRationales}
-                      className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                      className="text-[11px] text-muted-foreground hover:underline font-medium cursor-pointer"
                     >
                       Toggle All Details
                     </button>
@@ -580,7 +590,7 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
                                   'inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-bold',
                                   seat.veto
                                     ? 'border-destructive/30 bg-destructive/15 text-destructive'
-                                    : 'border-primary/30 bg-primary/15 text-primary',
+                                    : 'border-primary/30 bg-primary/15 text-foreground',
                                 )}
                                 title={
                                   seat.veto
@@ -595,7 +605,9 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
                             {seat.veto ? (
                               <span
                                 className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning"
-                                title="Holds veto power"
+                                title={t('activity:councilDecision.vetoTitle', {
+                                  defaultValue: 'Holds veto power',
+                                })}
                               >
                                 <ShieldAlert className="h-3 w-3" />
                                 <span>VETO</span>
@@ -651,7 +663,7 @@ export const CouncilDecisionCard = memo(function CouncilDecisionCard({
                           <button
                             type="button"
                             onClick={() => toggleRationale(seat.seatId)}
-                            className="inline-flex items-center gap-0.5 text-primary hover:underline font-medium cursor-pointer"
+                            className="inline-flex items-center gap-0.5 text-muted-foreground hover:underline font-medium cursor-pointer"
                           >
                             <span>{isExpanded ? 'Hide' : 'Rationale'}</span>
                             {isExpanded ? (

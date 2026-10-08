@@ -254,7 +254,7 @@ export function SddWizard({
               </button>
 
               {runCfgOpen && (
-                <div className="sdd-rise absolute right-0 top-9 z-50 w-72 rounded-lg border border-border bg-popover p-3 shadow-xl">
+                <div className="sdd-rise absolute right-0 top-9 z-50 w-72 rounded-lg border border-border bg-popover p-3 ws-dialog">
                   <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t('activity:sddWizard.defaultWorkerModel')}
                   </div>
@@ -493,7 +493,7 @@ export function SddWizard({
                 <button
                   type="button"
                   onClick={() => setGraphOpen((o) => !o)}
-                  className="flex w-full items-center gap-1.5 border-b border-border/60 px-3 py-1.5 text-[11px] font-medium text-primary hover:bg-muted/40"
+                  className="flex w-full items-center gap-1.5 border-b border-border/60 px-3 py-1.5 text-[11px] font-medium text-foreground hover:bg-primary/10"
                 >
                   {graphOpen ? (
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -693,7 +693,7 @@ export function SddWizard({
                   )
                 }
                 className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs text-warning transition hover:bg-warning/20 active:scale-95"
-                title="Answer using standard industry best practice"
+                title={t('activity:sddWizard.quickBestPracticeTitle')}
               >
                 <Lightbulb className="mr-1 h-3 w-3" />
                 {t('activity:sddWizard.quickBestPractice', 'Use Best Practice')}
@@ -702,11 +702,7 @@ export function SddWizard({
               {hasMetMin && (
                 <button
                   type="button"
-                  onClick={() =>
-                    sendDirectReply(
-                      'We have covered the necessary requirements. Please generate the complete specification JSON now.',
-                    )
-                  }
+                  onClick={() => sendDirectReply(t('activity:sddWizard.generateSpecNowDirective'))}
                   className="inline-flex items-center rounded-full border border-success/30 bg-success/15 px-2.5 py-1 text-xs font-medium text-success transition hover:bg-success/25 active:scale-95"
                   title={t(
                     'activity:sddWizard.generateSpecNowTitle',

@@ -16,11 +16,13 @@
  *    that unmounts mid-run aborts the run rather than leaving an agent burning
  *    tokens against a socket nobody is reading.
  */
-import { AlertTriangle, Loader2, Send, Sparkles, Square, X } from 'lucide-react';
+
 import type { CodeAssistPreset, CodeAssistResult } from '@wrongstack/webui-protocol';
+import { AlertTriangle, Loader2, Send, Sparkles, Square, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getWSClient } from '@/lib/ws-client';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { getWSClient } from '@/lib/ws-client';
 
 /** What the host screen knows about what the user is currently looking at. */
 export interface CodeAssistTarget {
@@ -40,15 +42,51 @@ interface CodeAssistPanelProps {
  * diagnoses next, tests, then the single mutating action last so it is never
  * one stray click away from `overview`.
  */
-const PRESETS: ReadonlyArray<{ id: CodeAssistPreset; label: string; hint: string }> = [
-  { id: 'overview', label: 'Overview', hint: 'What this code is and how it fits' },
-  { id: 'explain', label: 'Explain', hint: 'Walk through the focused symbol' },
-  { id: 'quality', label: 'Quality', hint: 'Readability, duplication, conventions' },
-  { id: 'bugs', label: 'Bugs', hint: 'Hunt real defects, traced to call sites' },
-  { id: 'security', label: 'Security', hint: 'Injection, traversal, secrets' },
-  { id: 'tests', label: 'Tests', hint: 'What is covered and what is missing' },
-  { id: 'impact', label: 'Impact', hint: 'Blast radius of changing this' },
-  { id: 'fix', label: 'Fix', hint: 'Implement the best improvement (edits files)' },
+const PRESETS: ReadonlyArray<{
+  id: CodeAssistPreset;
+  labelKey: string;
+  hintKey: string;
+}> = [
+  {
+    id: 'overview',
+    labelKey: 'activity:codeAssist.presets.overview.label',
+    hintKey: 'activity:codeAssist.presets.overview.hint',
+  },
+  {
+    id: 'explain',
+    labelKey: 'activity:codeAssist.presets.explain.label',
+    hintKey: 'activity:codeAssist.presets.explain.hint',
+  },
+  {
+    id: 'quality',
+    labelKey: 'activity:codeAssist.presets.quality.label',
+    hintKey: 'activity:codeAssist.presets.quality.hint',
+  },
+  {
+    id: 'bugs',
+    labelKey: 'activity:codeAssist.presets.bugs.label',
+    hintKey: 'activity:codeAssist.presets.bugs.hint',
+  },
+  {
+    id: 'security',
+    labelKey: 'activity:codeAssist.presets.security.label',
+    hintKey: 'activity:codeAssist.presets.security.hint',
+  },
+  {
+    id: 'tests',
+    labelKey: 'activity:codeAssist.presets.tests.label',
+    hintKey: 'activity:codeAssist.presets.tests.hint',
+  },
+  {
+    id: 'impact',
+    labelKey: 'activity:codeAssist.presets.impact.label',
+    hintKey: 'activity:codeAssist.presets.impact.hint',
+  },
+  {
+    id: 'fix',
+    labelKey: 'activity:codeAssist.presets.fix.label',
+    hintKey: 'activity:codeAssist.presets.fix.hint',
+  },
 ];
 
 type RunPhase = 'idle' | 'running' | 'done' | 'error' | 'aborted';
@@ -78,6 +116,7 @@ function nextRequestId(): string {
 const RUN_TIMEOUT_MS = 10 * 60_000;
 
 export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): React.ReactElement {
+  const { t } = useAppTranslation();
   const [run, setRun] = useState<RunState | null>(null);
   const [question, setQuestion] = useState('');
   const [showInput, setShowInput] = useState(false);
@@ -105,7 +144,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
           ? {
               ...prev,
               phase: 'error',
-              error: 'The server did not answer this analysis. It may not support Code Assist.',
+              error: t('activity:codeAssist.timeout'),
             }
           : prev,
       );
@@ -118,7 +157,10 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
   useEffect(() => {
     return () => {
       if (requestIdRef.current) {
-        getWSClient().send({ type: 'code.assist.abort', payload: { requestId: requestIdRef.current } });
+        getWSClient().send({
+          type: 'code.assist.abort',
+          payload: { requestId: requestIdRef.current },
+        });
         requestIdRef.current = null;
       }
     };
@@ -166,7 +208,10 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
       // One run per panel: starting a second aborts the first rather than
       // interleaving two transcripts into one box.
       if (requestIdRef.current) {
-        getWSClient().send({ type: 'code.assist.abort', payload: { requestId: requestIdRef.current } });
+        getWSClient().send({
+          type: 'code.assist.abort',
+          payload: { requestId: requestIdRef.current },
+        });
       }
       const requestId = nextRequestId();
       requestIdRef.current = requestId;
@@ -213,22 +258,24 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
   return (
     <section
       className={cn('flex min-h-0 flex-col border-t bg-card/80', className)}
-      aria-label="Ask AI"
+      aria-label={t('activity:codeAssist.panelLabel')}
     >
       <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b px-3">
         <div className="flex min-w-0 items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <h2 className="text-[10px] font-bold uppercase tracking-[0.18em]">Ask AI</h2>
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.18em]">
+            {t('activity:codeAssist.panelLabel')}
+          </h2>
         </div>
         {busy ? (
           <button
             type="button"
             onClick={stop}
             className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
-            aria-label="Stop analysis"
+            aria-label={t('activity:codeAssist.stopTitle')}
           >
             <Square className="h-3 w-3" />
-            Stop
+            {t('activity:codeAssist.stop')}
           </button>
         ) : (
           run && (
@@ -236,7 +283,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
               type="button"
               onClick={() => setRun(null)}
               className="text-muted-foreground hover:text-foreground"
-              aria-label="Clear analysis"
+              aria-label={t('activity:codeAssist.clearTitle')}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -246,7 +293,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
 
       {!target ? (
         <p className="px-3 py-3 text-[11px] text-muted-foreground">
-          Open a file to run an analysis on it.
+          {t('activity:codeAssist.openFileHint')}
         </p>
       ) : (
         <>
@@ -260,7 +307,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
                 key={preset.id}
                 type="button"
                 disabled={busy}
-                title={preset.hint}
+                title={t(preset.hintKey)}
                 onClick={() => start(preset.id)}
                 className={cn(
                   'border px-2 py-1 text-[10px] uppercase tracking-wider transition-colors',
@@ -270,7 +317,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
                     : 'border-border text-muted-foreground',
                 )}
               >
-                {preset.label}
+                {t(preset.labelKey)}
               </button>
             ))}
             <button
@@ -279,7 +326,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
               onClick={() => setShowInput((v) => !v)}
               className="border border-border px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Ask…
+              {t('activity:codeAssist.askMore')}
             </button>
           </div>
 
@@ -291,8 +338,8 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') ask();
                 }}
-                placeholder="Ask about this file…"
-                aria-label="Ask about this file"
+                placeholder={t('activity:codeAssist.askPlaceholder')}
+                aria-label={t('activity:codeAssist.askLabel')}
                 className="min-w-0 flex-1 border bg-background px-2 py-1 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
               <button
@@ -300,7 +347,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
                 onClick={ask}
                 disabled={busy || !question.trim()}
                 className="border border-border px-2 text-muted-foreground hover:bg-accent disabled:opacity-40"
-                aria-label="Send question"
+                aria-label={t('activity:codeAssist.sendTitle')}
               >
                 <Send className="h-3.5 w-3.5" />
               </button>
@@ -310,14 +357,13 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
             {!run && (
               <p className="text-[11px] text-muted-foreground">
-                Pick an analysis above. It runs on a throwaway agent — it does not open or
-                replace your current session.
+                {t('activity:codeAssist.howItWorks')}
               </p>
             )}
             {run?.phase === 'running' && !run.text && (
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Analysing…
+                {t('activity:codeAssist.analysing')}
               </div>
             )}
             {run?.error && (
@@ -327,7 +373,9 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
               </div>
             )}
             {run?.phase === 'aborted' && (
-              <p className="text-[11px] text-muted-foreground">Analysis stopped.</p>
+              <p className="text-[11px] text-muted-foreground">
+                {t('activity:codeAssist.stopped')}
+              </p>
             )}
             {run?.text && (
               <div className="whitespace-pre-wrap break-words text-[11px] leading-relaxed">
@@ -337,7 +385,7 @@ export function CodeAssistPanel({ target, className }: CodeAssistPanelProps): Re
             {run?.appliedEdits && (
               <p className="mt-2 flex items-start gap-2 border border-warning/40 bg-warning/10 px-2 py-1 text-[10px] text-warning">
                 <AlertTriangle className="mt-px h-3 w-3 shrink-0" />
-                This run was allowed to edit files. Check your working tree before continuing.
+                {t('activity:codeAssist.appliedEdits')}
               </p>
             )}
           </div>

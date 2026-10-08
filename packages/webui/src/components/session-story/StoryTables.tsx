@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import type { storyStats } from '@/lib/session-story-stats';
 
 type Stats = ReturnType<typeof storyStats>;
@@ -18,6 +19,7 @@ export function StoryTables({
   type: 'tools' | 'files';
   onInspect(value: string): void;
 }) {
+  const { t } = useAppTranslation();
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(50);
   const tools = stats.tools.filter((tool) =>
@@ -33,17 +35,28 @@ export function StoryTables({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold">
-            {type === 'tools' ? 'Tool performance' : 'File activity'}
+            {t(type === 'tools' ? 'activity:story.toolPerformance' : 'activity:story.fileActivity')}
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
             {type === 'tools'
-              ? 'Paired calls · averages use only measured terminal durations'
-              : `${stats.files.length} recorded paths · ${stats.directories} directories · successful operations, plus any file a failed call left changed`}
+              ? t('activity:story.toolsSubtitle')
+              : t('activity:story.filesSubtitle', {
+                  files: stats.files.length,
+                  dirs: stats.directories,
+                })}
           </p>
         </div>
         <input
-          aria-label={`Search ${type}`}
-          placeholder={`Search ${type}…`}
+          aria-label={t(
+            type === 'tools'
+              ? 'activity:story.searchToolsLabel'
+              : 'activity:story.searchFilesLabel',
+          )}
+          placeholder={t(
+            type === 'tools'
+              ? 'activity:story.searchToolsPlaceholder'
+              : 'activity:story.searchFilesPlaceholder',
+          )}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -142,7 +155,10 @@ export function StoryTables({
                     </button>
                     {file.conflicted && (
                       <span
-                        title="A failed tool call left this file changed on disk (patch --merge writes conflict markers). No line counts were measured."
+                        title={t('activity:story.conflictFileNote', {
+                          defaultValue:
+                            'A failed tool call left this file changed on disk (patch --merge writes conflict markers). No line counts were measured.',
+                        })}
                         className="ml-2 inline-block border border-destructive/40 px-1 py-0.5 align-middle font-mono text-[10px] uppercase tracking-wide text-destructive"
                       >
                         conflict

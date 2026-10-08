@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { HueChip } from '@/components/ui/hue-chip';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { taskBriefPreview } from '@/lib/task-brief-preview';
@@ -86,7 +87,7 @@ function SubagentTabButton({
       className={cn(
         'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
         active
-          ? 'bg-primary/15 text-primary border-primary/30 shadow-xs'
+          ? 'bg-primary/15 text-foreground border-primary/30 shadow-xs'
           : 'text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground',
       )}
     >
@@ -178,7 +179,7 @@ export function AgentTabs() {
           className={cn(
             'flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
             focusId == null
-              ? 'bg-primary/15 text-primary border-primary/30 shadow-xs'
+              ? 'bg-primary/15 text-foreground border-primary/30 shadow-xs'
               : 'text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground',
           )}
         >
@@ -208,7 +209,7 @@ export function AgentTabs() {
                 className={cn(
                   'flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
                   overflowFocusActive
-                    ? 'bg-primary/15 text-primary border-primary/30 shadow-xs'
+                    ? 'bg-primary/15 text-foreground border-primary/30 shadow-xs'
                     : 'text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground',
                 )}
               >
@@ -280,10 +281,13 @@ export function AgentTabs() {
       <div className="flex shrink-0 items-center gap-2 pl-2 border-l border-border/30">
         {isLoading ? (
           <div className="inline-flex items-center gap-1">
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+            <HueChip
+              tone="primary"
+              icon={<Loader2 className="h-2.5 w-2.5 animate-spin" />}
+              className="text-[10px] font-medium border border-primary/20"
+            >
               <span>Processing...</span>
-            </span>
+            </HueChip>
             <button
               type="button"
               onClick={() => {
@@ -301,7 +305,7 @@ export function AgentTabs() {
         ) : (
           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border/40">
             <CheckCircle2 className="h-2.5 w-2.5 text-success" />
-            <span>Waiting for next prompt</span>
+            <span>{t('activity:agents.waitingNextPrompt')}</span>
           </span>
         )}
         {subagents.length > 0 && (

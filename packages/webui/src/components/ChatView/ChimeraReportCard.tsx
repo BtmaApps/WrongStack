@@ -1,5 +1,6 @@
 import { ShieldAlert } from 'lucide-react';
 import { memo } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { openMainView } from '@/lib/view-navigation';
 import { getWSClient } from '@/lib/ws-client';
@@ -33,6 +34,7 @@ export const ChimeraReportCard = memo(function ChimeraReportCard({
 }) {
   const report = message.chimeraReport;
   const laneBusy = useChatLanes((s) => s.lanes[sessionId]?.isLoading ?? false);
+  const { t } = useAppTranslation();
   if (!report) return null;
   const sent = report.actionedAt != null;
 
@@ -66,9 +68,9 @@ export const ChimeraReportCard = memo(function ChimeraReportCard({
       <div className="rounded-xl border border-warning/30 bg-warning/[0.06] px-4 py-3 space-y-2">
         <div className="flex items-baseline gap-2 text-sm font-semibold min-w-0">
           <span aria-hidden>🦂</span>
-          <span className="shrink-0">Chimera report — action needed</span>
+          <span className="shrink-0">{t('activity:chimeraReport.heading')}</span>
           <span className="text-xs font-normal text-muted-foreground truncate">
-            report {report.reportId}
+            {t('activity:chimeraReport.reportLabel', { id: report.reportId })}
           </span>
         </div>
         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
@@ -81,10 +83,10 @@ export const ChimeraReportCard = memo(function ChimeraReportCard({
             disabled={sent || laneBusy}
             title={
               sent
-                ? 'Prompt sent to the leader'
+                ? t('activity:chimeraReport.buttonSentTitle')
                 : laneBusy
-                  ? 'Waiting for the leader to finish its current run'
-                  : 'Send the leader a prompt to work through this report'
+                  ? t('activity:chimeraReport.buttonBusyTitle')
+                  : t('activity:chimeraReport.buttonTitle')
             }
             className={cn(
               'inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
@@ -94,10 +96,10 @@ export const ChimeraReportCard = memo(function ChimeraReportCard({
             )}
           >
             {sent
-              ? 'Prompt sent ✓'
+              ? t('activity:chimeraReport.sentLabel')
               : laneBusy
-                ? 'Leader is running…'
-                : 'Take action — have the leader review it'}
+                ? t('activity:chimeraReport.busyLabel')
+                : t('activity:chimeraReport.actionLabel')}
           </button>
           <button
             type="button"
@@ -108,7 +110,7 @@ export const ChimeraReportCard = memo(function ChimeraReportCard({
             className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
             <ShieldAlert size={14} />
-            <span>Open in Chimera Hub</span>
+            <span>{t('activity:chimeraReport.openInHub')}</span>
           </button>
         </div>
       </div>

@@ -1,8 +1,10 @@
 import { Code2 } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import { TOOLFLOW_LABEL, toolFlowInput, toolFlowMetricsLabel } from '@/lib/tool-summary';
 import type { ChatMessage } from '@/stores';
 
 export function ToolFlowOverview({ message }: { message: ChatMessage }) {
+  const { t } = useAppTranslation();
   const input = toolFlowInput(message.toolName, message.toolInput);
   const script = typeof input?.script === 'string' ? input.script : '';
   const metrics = toolFlowMetricsLabel(message.toolResult);
@@ -24,7 +26,7 @@ export function ToolFlowOverview({ message }: { message: ChatMessage }) {
         <p
           role="status"
           className="break-words font-mono text-xs"
-          aria-label="ToolFlow measured output"
+          aria-label={t('activity:toolOverview.toolFlowMeasuredOutput')}
         >
           {metrics}
         </p>

@@ -21,6 +21,7 @@ import {
   isProviderDisabled,
 } from '@/components/QuickModelSwitcher.filter';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { openMainView, showPanel } from '@/lib/view-navigation';
 import { useConfigStore } from '@/stores';
@@ -65,23 +66,8 @@ function compactNumber(value: number | undefined): string {
   );
 }
 
-function diagnosisLabel(value: string): string {
-  const labels: Record<string, string> = {
-    authentication: 'Authentication failed',
-    quota_exhausted: 'Plan / credits exhausted',
-    rate_limited: 'Rate limited',
-    model_unavailable: 'Model unavailable',
-    context_limit: 'Context limit exceeded',
-    token_limit: 'Output-token limit rejected',
-    timeout: 'Timed out',
-    network: 'Network error',
-    overloaded: 'Provider overloaded',
-    server_error: 'Provider server error',
-    invalid_request: 'Invalid request',
-    cancelled: 'Cancelled',
-    unknown: 'Unknown failure',
-  };
-  return labels[value] ?? value;
+function diagnosisLabel(value: string, t: (key: string) => string): string {
+  return t(`activity:providerTest.diagnosis.${value}`);
 }
 
 function matchesModelRef(
@@ -101,6 +87,7 @@ function matchesModelRef(
 }
 
 export function ProviderTestView(): React.ReactElement {
+  const { t } = useAppTranslation();
   const ws = useWebSocket();
   const client = ws.client;
   const activeProvider = useConfigStore((state) => state.provider);
@@ -314,15 +301,20 @@ export function ProviderTestView(): React.ReactElement {
           <FlaskConical className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold">Provider Test</h1>
+          <h1 className="text-base font-semibold">{t('activity:providerTest.title')}</h1>
           <p className="truncate text-xs text-muted-foreground">
-            Test every selected model with the saved account and its real provider adapter.
+            {t('activity:providerTest.tagline')}
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => openMainView('settings')}>
-          <Settings className="mr-1.5 h-4 w-4" /> Settings
+          <Settings className="mr-1.5 h-4 w-4" /> {t('activity:providerTest.settings')}
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => showPanel('chat')} aria-label="Close">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => showPanel('chat')}
+          aria-label={t('activity:providerTest.close')}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
       </header>
@@ -341,7 +333,11 @@ export function ProviderTestView(): React.ReactElement {
                 )}
               >
                 {index + 1}.{' '}
-                {item === 'provider' ? 'Account' : item === 'models' ? 'Models' : 'Results'}
+                {item === 'provider'
+                  ? t('activity:providerTest.stepProvider')
+                  : item === 'models'
+                    ? t('activity:providerTest.stepModels')
+                    : t('activity:providerTest.stepResults')}
               </div>
             ))}
           </div>
@@ -349,14 +345,16 @@ export function ProviderTestView(): React.ReactElement {
           {step === 'provider' && (
             <section className="space-y-3">
               <div>
-                <h2 className="text-lg font-semibold">Choose a provider or subscription</h2>
+                <h2 className="text-lg font-semibold">
+                  {t('activity:providerTest.chooseProvider')}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Only saved accounts are shown. Credentials remain on the server.
+                  {t('activity:providerTest.chooseProviderHint')}
                 </p>
               </div>
               {providers.length === 0 ? (
                 <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  No saved provider accounts. Add one in Settings first.
+                  {t('activity:providerTest.noAccounts')}
                 </div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -387,7 +385,9 @@ export function ProviderTestView(): React.ReactElement {
                         <div className="mt-3 text-xs text-muted-foreground">
                           {activeKey
                             ? `${activeKey.label} · ${activeKey.maskedKey}`
-                            : `${provider.apiKeys.length} saved credential(s)`}
+                            : t('activity:providerTest.savedCredentials', {
+                                count: provider.apiKeys.length,
+                              })}
                         </div>
                       </button>
                     );
@@ -396,7 +396,7 @@ export function ProviderTestView(): React.ReactElement {
               )}
               <div className="flex justify-end">
                 <Button disabled={!providerId} onClick={openModels}>
-                  Next <ChevronRight className="ml-1.5 h-4 w-4" />
+                  {t('activity:providerTest.next')} <ChevronRight className="ml-1.5 h-4 w-4" />
                 </Button>
               </div>
             </section>
@@ -406,7 +406,9 @@ export function ProviderTestView(): React.ReactElement {
             <section className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">Choose models</h2>
+                  <h2 className="text-lg font-semibold">
+                    {t('activity:providerTest.chooseModels')}
+                  </h2>
                   <p className="text-sm text-muted-foreground">{providerId}</p>
                 </div>
                 <div className="flex gap-2">
@@ -426,17 +428,17 @@ export function ProviderTestView(): React.ReactElement {
                       )
                     }
                   >
-                    Select all
+                    {t('activity:providerTest.selectAll')}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSelected(new Set(models.map((model) => model.id)))}
                   >
-                    With disabled models
+                    {t('activity:providerTest.withDisabledModels')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setSelected(new Set())}>
-                    Clear
+                    {t('activity:providerTest.clear')}
                   </Button>
                 </div>
               </div>
@@ -446,7 +448,7 @@ export function ProviderTestView(): React.ReactElement {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   className="pl-9"
-                  placeholder="Filter models…"
+                  placeholder={t('activity:providerTest.filterModels')}
                 />
               </div>
               {loadingModels ? (
@@ -478,7 +480,7 @@ export function ProviderTestView(): React.ReactElement {
                           <span className="font-mono text-sm">{model.id}</span>
                           {isModelDisabled(providerId, model.id, localPrefs.disabledModels) && (
                             <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
-                              Disabled
+                              {t('activity:providerTest.disabled')}
                             </span>
                           )}
                         </div>
@@ -489,8 +491,16 @@ export function ProviderTestView(): React.ReactElement {
                         )}
                       </div>
                       <div className="shrink-0 text-right text-xs text-muted-foreground">
-                        <div>ctx {compactNumber(model.contextWindow)}</div>
-                        <div>out {compactNumber(model.maxOutput)}</div>
+                        <div>
+                          {t('activity:providerTest.ctxShort', {
+                            value: compactNumber(model.contextWindow),
+                          })}
+                        </div>
+                        <div>
+                          {t('activity:providerTest.outShort', {
+                            value: compactNumber(model.maxOutput),
+                          })}
+                        </div>
                       </div>
                     </label>
                   ))}
@@ -498,10 +508,11 @@ export function ProviderTestView(): React.ReactElement {
               )}
               <div className="flex items-center justify-between">
                 <Button variant="ghost" onClick={() => setStep('provider')}>
-                  <ArrowLeft className="mr-1.5 h-4 w-4" /> Back
+                  <ArrowLeft className="mr-1.5 h-4 w-4" /> {t('activity:providerTest.back')}
                 </Button>
                 <Button disabled={selected.size === 0 || loadingModels} onClick={runTests}>
-                  <Play className="mr-1.5 h-4 w-4" /> Test {selected.size} model(s)
+                  <Play className="mr-1.5 h-4 w-4" />{' '}
+                  {t('activity:providerTest.testModels', { count: selected.size })}
                 </Button>
               </div>
             </section>
@@ -511,15 +522,21 @@ export function ProviderTestView(): React.ReactElement {
             <section className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">Test results</h2>
+                  <h2 className="text-lg font-semibold">
+                    {t('activity:providerTest.testResults')}
+                  </h2>
                   <p className="text-sm text-muted-foreground">
-                    {providerId} · {tested}/{selected.size} completed
+                    {t('activity:providerTest.resultsSummary', {
+                      provider: providerId,
+                      tested,
+                      selected: selected.size,
+                    })}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   {running ? (
                     <Button variant="destructive" size="sm" onClick={cancel}>
-                      <CircleStop className="mr-1.5 h-4 w-4" /> Stop
+                      <CircleStop className="mr-1.5 h-4 w-4" /> {t('activity:providerTest.stop')}
                     </Button>
                   ) : (
                     <>
@@ -529,12 +546,15 @@ export function ProviderTestView(): React.ReactElement {
                           size="sm"
                           onClick={() => setDisableTargets(disableCandidates)}
                         >
-                          <Ban className="mr-1.5 h-4 w-4" /> Disable all failed (
-                          {disableCandidates.length})
+                          <Ban className="mr-1.5 h-4 w-4" />{' '}
+                          {t('activity:providerTest.disableAllFailed', {
+                            count: disableCandidates.length,
+                          })}
                         </Button>
                       )}
                       <Button variant="outline" size="sm" onClick={() => setStep('models')}>
-                        <RotateCcw className="mr-1.5 h-4 w-4" /> Test again
+                        <RotateCcw className="mr-1.5 h-4 w-4" />{' '}
+                        {t('activity:providerTest.testAgain')}
                       </Button>
                     </>
                   )}
@@ -543,15 +563,21 @@ export function ProviderTestView(): React.ReactElement {
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border p-4">
                   <div className="text-2xl font-semibold">{tested}</div>
-                  <div className="text-xs text-muted-foreground">Completed</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('activity:providerTest.completed')}
+                  </div>
                 </div>
                 <div className="rounded-xl border border-success/30 bg-success/5 p-4">
                   <div className="text-2xl font-semibold text-success">{passed}</div>
-                  <div className="text-xs text-muted-foreground">Working</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('activity:providerTest.working')}
+                  </div>
                 </div>
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
                   <div className="text-2xl font-semibold text-destructive">{failed}</div>
-                  <div className="text-xs text-muted-foreground">Failed</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('activity:providerTest.failed')}
+                  </div>
                 </div>
               </div>
               {runError && (
@@ -563,14 +589,14 @@ export function ProviderTestView(): React.ReactElement {
                 <table className="w-full min-w-[900px] text-left text-sm">
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
-                      <th className="p-3">Model</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Family / wire</th>
-                      <th className="p-3">Catalog limits / cost</th>
-                      <th className="p-3">Latency</th>
-                      <th className="p-3">Usage</th>
-                      <th className="p-3">Detail</th>
-                      <th className="p-3">Actions</th>
+                      <th className="p-3">{t('activity:providerTest.colModel')}</th>
+                      <th className="p-3">{t('activity:providerTest.colStatus')}</th>
+                      <th className="p-3">{t('activity:providerTest.colFamily')}</th>
+                      <th className="p-3">{t('activity:providerTest.colLimits')}</th>
+                      <th className="p-3">{t('activity:providerTest.colLatency')}</th>
+                      <th className="p-3">{t('activity:providerTest.colUsage')}</th>
+                      <th className="p-3">{t('activity:providerTest.colDetail')}</th>
+                      <th className="p-3">{t('activity:providerTest.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -580,13 +606,16 @@ export function ProviderTestView(): React.ReactElement {
                         <td className="p-3">
                           {result.status === 'passed' ? (
                             <span className="inline-flex items-center gap-1 text-success">
-                              <CheckCircle2 className="h-4 w-4" /> Working
+                              <CheckCircle2 className="h-4 w-4" />{' '}
+                              {t('activity:providerTest.working')}
                             </span>
                           ) : result.status === 'cancelled' ? (
-                            <span className="text-muted-foreground">Cancelled</span>
+                            <span className="text-muted-foreground">
+                              {t('activity:providerTest.cancelled')}
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-destructive">
-                              <XCircle className="h-4 w-4" /> Failed
+                              <XCircle className="h-4 w-4" /> {t('activity:providerTest.failed')}
                             </span>
                           )}
                         </td>
@@ -595,8 +624,16 @@ export function ProviderTestView(): React.ReactElement {
                           <div className="text-muted-foreground">{result.wire ?? '—'}</div>
                         </td>
                         <td className="p-3 text-xs">
-                          <div>ctx {compactNumber(result.maxContext)}</div>
-                          <div>out {compactNumber(result.maxOutput)}</div>
+                          <div>
+                            {t('activity:providerTest.ctxShort', {
+                              value: compactNumber(result.maxContext),
+                            })}
+                          </div>
+                          <div>
+                            {t('activity:providerTest.outShort', {
+                              value: compactNumber(result.maxOutput),
+                            })}
+                          </div>
                           {(result.inputCost !== undefined || result.outputCost !== undefined) && (
                             <div className="text-muted-foreground">
                               ${result.inputCost ?? '—'} / ${result.outputCost ?? '—'}
@@ -606,7 +643,10 @@ export function ProviderTestView(): React.ReactElement {
                         <td className="p-3 tabular-nums">{result.latencyMs} ms</td>
                         <td className="p-3 text-xs tabular-nums">
                           {result.usage
-                            ? `in ${result.usage.input} / out ${result.usage.output}`
+                            ? t('activity:providerTest.usageSummary', {
+                                input: result.usage.input,
+                                output: result.usage.output,
+                              })
                             : '—'}
                         </td>
                         <td className="max-w-sm p-3 text-xs">
@@ -617,7 +657,7 @@ export function ProviderTestView(): React.ReactElement {
                           >
                             {result.status === 'passed'
                               ? result.stopReason
-                              : diagnosisLabel(result.diagnosis)}
+                              : diagnosisLabel(result.diagnosis, t)}
                           </div>
                           {result.error && (
                             <div className="mt-1 break-words text-muted-foreground">
@@ -640,7 +680,7 @@ export function ProviderTestView(): React.ReactElement {
                                 ) : (
                                   <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                                 )}
-                                Retry
+                                {t('activity:providerTest.retry')}
                               </Button>
                             )}
                             {result.status === 'passed' ? (
@@ -664,8 +704,8 @@ export function ProviderTestView(): React.ReactElement {
                                   result.modelId,
                                   localPrefs.favoriteModels,
                                 )
-                                  ? 'Unfavorite'
-                                  : 'Favorite'}
+                                  ? t('activity:providerTest.unfavorite')
+                                  : t('activity:providerTest.favorite')}
                               </Button>
                             ) : result.status === 'failed' ? (
                               isModelDisabled(
@@ -678,7 +718,7 @@ export function ProviderTestView(): React.ReactElement {
                                   size="sm"
                                   onClick={() => enableModel(result.modelId)}
                                 >
-                                  Enable
+                                  {t('activity:providerTest.enable')}
                                 </Button>
                               ) : (
                                 <Button
@@ -686,7 +726,8 @@ export function ProviderTestView(): React.ReactElement {
                                   size="sm"
                                   onClick={() => setDisableTargets([result])}
                                 >
-                                  <Ban className="mr-1.5 h-3.5 w-3.5" /> Disable
+                                  <Ban className="mr-1.5 h-3.5 w-3.5" />{' '}
+                                  {t('activity:providerTest.disable')}
                                 </Button>
                               )
                             ) : null}
@@ -698,7 +739,7 @@ export function ProviderTestView(): React.ReactElement {
                       <tr className="border-t">
                         <td colSpan={8} className="p-4 text-center text-sm text-muted-foreground">
                           <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                          Testing next model…
+                          {t('activity:providerTest.testingNext')}
                         </td>
                       </tr>
                     )}
@@ -717,28 +758,34 @@ export function ProviderTestView(): React.ReactElement {
           <DialogHeader>
             <DialogTitle>
               {disableTargets.length > 1
-                ? `Disable ${disableTargets.length} failed models?`
-                : 'Disable this model?'}
+                ? t('activity:providerTest.disableTitleMany', {
+                    count: disableTargets.length,
+                  })
+                : t('activity:providerTest.disableTitleOne')}
             </DialogTitle>
             <DialogDescription>
               {disableTargets.length > 0
-                ? `${disableTargets.map((target) => `${providerId}/${target.modelId}`).join(', ')} will be hidden from model pickers and removed from favorites, the explicit fallback chain, and every fallback profile.`
+                ? t('activity:providerTest.disableBody', {
+                    models: disableTargets
+                      .map((target) => `${providerId}/${target.modelId}`)
+                      .join(', '),
+                  })
                 : ''}
               {disableTargets.some(
                 (target) =>
                   providerId === activeProvider &&
                   target.modelId === useConfigStore.getState().model,
               )
-                ? ' It is currently active and will remain active until you switch models.'
+                ? t('activity:providerTest.disableActiveNote')
                 : ''}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDisableTargets([])}>
-              Cancel
+              {t('activity:providerTest.cancel')}
             </Button>
             <Button variant="destructive" onClick={confirmDisable}>
-              Disable model
+              {t('activity:providerTest.disableModel')}
             </Button>
           </DialogFooter>
         </DialogContent>

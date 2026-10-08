@@ -9,6 +9,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import {
   COMMIT_DETAIL_PANEL_CLASS,
@@ -38,11 +39,12 @@ export function CommitDetail({
     trigger: HTMLButtonElement,
   ) => void;
 }) {
+  const { t } = useAppTranslation();
   const [copied, setCopied] = useState(false);
   if (!commit) {
     return (
       <section className="ws-commit-detail flex h-[34%] min-h-[210px] shrink-0 items-center justify-center border-t border-border/70 bg-card/30 p-6 text-center text-xs text-muted-foreground">
-        Select a commit to inspect its files and metadata.
+        {t('activity:repositoryHistory.selectPrompt')}
       </section>
     );
   }
@@ -54,13 +56,14 @@ export function CommitDetail({
     <section className={COMMIT_DETAIL_PANEL_CLASS}>
       <div className="ws-commit-metadata min-w-0 w-full max-w-none shrink-0 overflow-y-auto border-b border-border/70 px-5 py-4 sm:w-[34%] sm:min-w-[250px] sm:max-w-[440px] sm:border-b-0 sm:border-r">
         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-muted-foreground">
-          <CircleDot className="h-3.5 w-3.5 text-primary" /> Commit details
+          <CircleDot className="h-3.5 w-3.5 text-primary" />{' '}
+          {t('activity:repositoryHistory.commitDetails')}
         </div>
         <h2 className="mt-3 break-words text-sm font-semibold leading-5 text-foreground">
           {commit.subject}
         </h2>
         <div className="mt-3 flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-[10px] font-bold text-primary">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-primary/15 text-[10px] font-bold text-foreground">
             {initials(commit.author)}
           </span>
           <div className="min-w-0">
@@ -87,7 +90,9 @@ export function CommitDetail({
         <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-border/70">
           <div className="border-r border-border/70 p-3">
             <div className="text-lg font-semibold tabular-nums">{files.length}</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Files</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {t('activity:repositoryHistory.files')}
+            </div>
           </div>
           <div className="p-3">
             <div className="font-mono text-xs">
@@ -95,7 +100,7 @@ export function CommitDetail({
               <span className="text-destructive">-{deleted}</span>
             </div>
             <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-              Lines
+              {t('activity:repositoryHistory.lines')}
             </div>
           </div>
         </div>
@@ -107,8 +112,8 @@ export function CommitDetail({
         </div>
         {commit.parents.length > 1 && (
           <div className="mt-2 flex items-center gap-2 text-[11px] text-violet-400">
-            <GitMerge className="h-3.5 w-3.5" />
-            Merge of {commit.parents.length} parents
+            <GitMerge className="h-3.5 w-3.5" />{' '}
+            {t('activity:repositoryHistory.mergeOf', { count: commit.parents.length })}
           </div>
         )}
         {body && (
@@ -131,12 +136,12 @@ export function CommitDetail({
       </div>
       <div className="ws-commit-files min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
         <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-          Changed files
+          {t('activity:repositoryHistory.changedFiles')}
         </div>
         {loading ? (
           <div className="flex items-center gap-2 py-6 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Loading changes…
+            {t('activity:repositoryHistory.loadingChanges')}
           </div>
         ) : detail?.error ? (
           <div className="py-5 text-xs text-destructive">{detail.error}</div>
@@ -168,7 +173,9 @@ export function CommitDetail({
               </button>
             ))}
             {files.length === 0 && (
-              <div className="py-5 text-xs text-muted-foreground">No file changes reported.</div>
+              <div className="py-5 text-xs text-muted-foreground">
+                {t('activity:repositoryHistory.noFileChanges')}
+              </div>
             )}
           </div>
         )}

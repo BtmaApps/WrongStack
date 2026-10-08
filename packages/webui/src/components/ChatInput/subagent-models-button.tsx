@@ -1,6 +1,7 @@
 import { Split, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { type LocalPrefs, useLocalPrefs } from '@/stores/local-prefs';
 import { useSessionStore } from '@/stores/session-store';
@@ -42,6 +43,7 @@ function isPinned(lane: SubagentLane | undefined): boolean {
 }
 
 export function SubagentModelsButton() {
+  const { t } = useAppTranslation();
   const { updatePrefs } = useWebSocket();
   const [open, setOpen] = useState(false);
   const [pickerLane, setPickerLane] = useState<number | null>(null);
@@ -129,12 +131,12 @@ export function SubagentModelsButton() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        title="Subagent models — which models spawned subagents run on (this session)"
+        title={t('activity:chatInput.subagentModelsButtonTitle')}
         className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-accent/50 hover:text-foreground"
       >
         <Split className="h-3.5 w-3.5 shrink-0" />
         <span className="whitespace-nowrap">
-          Subagents: <span className="font-mono">{summary}</span>
+          {t('activity:chatInput.subagentsPrefix')} <span className="font-mono">{summary}</span>
         </span>
       </button>
 
@@ -147,15 +149,15 @@ export function SubagentModelsButton() {
         >
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
-              <p className="text-xs font-semibold">Subagent models</p>
+              <p className="text-xs font-semibold">{t('activity:chatInput.subagentModelsTitle')}</p>
               <p className="text-[10px] leading-tight text-muted-foreground">
-                This session only. Each running subagent takes the first free lane.
+                {t('activity:chatInput.subagentModelsSessionHint')}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close"
+              aria-label={t('activity:chatInput.subagentModelsClose')}
               className="text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
@@ -169,7 +171,7 @@ export function SubagentModelsButton() {
               onChange={(e) => patch({ followSessionModel: e.target.checked })}
             />
             <span className="min-w-0">
-              Use my model for all subagents
+              {t('activity:chatInput.subagentModelsFollow')}
               {sessionProvider && sessionModel ? (
                 <span className="block truncate font-mono text-[10px] text-muted-foreground">
                   {sessionProvider}/{sessionModel}
@@ -185,10 +187,10 @@ export function SubagentModelsButton() {
                 checked={current.lock !== false}
                 onChange={(e) => patch({ lock: e.target.checked })}
               />
-              Override the leader
+              {t('activity:chatInput.subagentModelsOverride')}
             </label>
             <label className="flex items-center gap-1.5">
-              Lanes
+              {t('activity:chatInput.subagentModelsLanes')}
               <input
                 type="number"
                 min={1}
@@ -224,17 +226,22 @@ export function SubagentModelsButton() {
                     type="button"
                     disabled={following}
                     onClick={() => setPickerLane(index)}
-                    aria-label={`Lane ${index + 1} model${pinned ? `: ${value}` : ''}`}
+                    aria-label={t('activity:chatInput.subagentModelsLaneButton', {
+                      index: index + 1,
+                      defaultValue: `Lane ${index + 1} model${pinned ? `: ${value}` : ''}`,
+                    })}
                     className="h-7 min-w-0 flex-1 truncate rounded border bg-background px-2 text-left font-mono text-[10px] hover:border-primary/40 disabled:cursor-not-allowed"
                   >
-                    {pinned ? value : 'inherit — routing / session'}
+                    {pinned ? value : t('activity:chatInput.subagentModelsInherit')}
                   </button>
                   <button
                     type="button"
                     disabled={following || !pinned}
                     onClick={() => setLane(index, {})}
-                    aria-label={`Clear lane ${index + 1}`}
-                    title="Clear lane"
+                    aria-label={t('activity:chatInput.subagentModelsClearLaneLabel', {
+                      index: index + 1,
+                    })}
+                    title={t('activity:chatInput.subagentModelsClearLane')}
                     className="inline-flex h-7 w-7 items-center justify-center rounded border border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground disabled:opacity-40"
                   >
                     <X className="h-3 w-3" />
@@ -245,7 +252,7 @@ export function SubagentModelsButton() {
           </div>
 
           <p className="mt-2 text-[10px] leading-tight text-muted-foreground">
-            /setmodel routing is untouched — a role you routed there keeps its model.
+            {t('activity:chatInput.subagentModelsRoutingNote')}
           </p>
         </div>
       )}
