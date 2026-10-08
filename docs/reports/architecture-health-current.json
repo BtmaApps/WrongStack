@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:29:59.280Z",
+  "generatedAt": "2026-10-08T12:30:40.986Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4889,
-    "testFiles": 4189,
-    "sourceLines": 1082369,
+    "testFiles": 4190,
+    "sourceLines": 1082390,
     "workspaceEdges": 133,
     "moduleEdges": 16081,
     "nonCommandSlashImports": 0,
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1104,
-      "testFiles": 931,
+      "testFiles": 932,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 931
+          "testFiles": 932
         }
       ]
     },
@@ -10681,6 +10681,12 @@
       },
       {
         "file": "packages/core/tests/utils/color.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/utils/compaction-preview.test.ts",
         "projects": [
           "root-node"
         ]

@@ -5,6 +5,7 @@ import type { AgentContext } from '../types/context.js';
 import type { Tool } from '../types/tool.js';
 import { buildCompletedWorkLedgerBlock } from './context-evidence.js';
 import {
+  computeMessageTokens,
   estimateTextTokens,
   estimateToolDefTokens,
   estimateToolInputTokens,
@@ -173,7 +174,10 @@ export function getContextBreakdown(ctx: AgentContext): ContextBreakdown {
     if (isMcpTool(tool)) {
       toolsMcp += tokens;
       const server = mcpServerOf(tool);
-      mcpByServer[server] = (mcpByServer[server] ?? 0) + tokens;
+      // Own keys only: a server named `constructor`/`toString` must not read
+      // the inherited Object.prototype function.
+      mcpByServer[server] =
+        (Object.hasOwn(mcpByServer, server) ? mcpByServer[server]! : 0) + tokens;
     } else {
       toolsBuiltin += tokens;
     }
@@ -214,6 +218,11 @@ export function getContextBreakdown(ctx: AgentContext): ContextBreakdown {
           histThinking += estimateTextTokens(str);
           break;
         }
+        case 'image':
+        case 'document':
+          // The canonical media estimate — never the base64 payload as text.
+          histOther += computeMessageTokens({ ...msg, content: [b] });
+          break;
         default: {
           let str: string;
           try {

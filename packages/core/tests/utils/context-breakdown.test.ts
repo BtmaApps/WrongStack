@@ -167,4 +167,30 @@ describe('getContextBreakdown', () => {
     expect(bd.total).toBe(bd.system.total + bd.tools.total + bd.history.total + bd.volatile.total);
     expect(bd.usedPct).toBeCloseTo(bd.total / bd.effectiveMaxContext, 10);
   });
+
+  it('charges media blocks like the canonical estimator, never by their base64', () => {
+    const messages = [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'what is in this screenshot?' },
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/png', data: 'A'.repeat(1_000_000) },
+          },
+        ],
+      },
+    ] as unknown as Message[];
+    const bd = getContextBreakdown(mkCtx({ messages }));
+    expect(bd.history.total).toBe(estimateMessageTokens(messages));
+    expect(bd.history.other).toBeLessThan(10_000);
+  });
+
+  it('keeps MCP server buckets numeric for Object.prototype member names', () => {
+    const bd = getContextBreakdown(
+      mkCtx({ tools: [mkTool('mcp__constructor__run'), mkTool('mcp__toString__run')] }),
+    );
+    expect(typeof bd.tools.mcpByServer['constructor']).toBe('number');
+    expect(typeof bd.tools.mcpByServer['toString']).toBe('number');
+  });
 });

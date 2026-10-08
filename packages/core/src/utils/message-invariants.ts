@@ -41,7 +41,12 @@ export function repairToolUseAdjacency(
     let msg = original;
 
     if (hasToolUse(msg)) {
-      const nextIds = toolResultIds(messages[i + 1]);
+      // The answering message is the next one this pass KEEPS: an empty turn
+      // in between (interrupted stream, #271) is dropped below, so judging by
+      // messages[i + 1] deleted a pair that ends up adjacent.
+      let j = i + 1;
+      while (j < messages.length && isEmptyMessage(expectDefined(messages[j]))) j++;
+      const nextIds = toolResultIds(messages[j]);
       const filtered = mapContent(msg, (blocks) => {
         const next: ContentBlock[] = [];
         for (const block of blocks) {

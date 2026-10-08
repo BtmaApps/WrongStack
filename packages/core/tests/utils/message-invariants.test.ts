@@ -170,6 +170,23 @@ describe('repairToolUseAdjacency', () => {
     expect(repaired.report.changed).toBe(false);
     expect(repaired.messages).toBe(messages);
   });
+
+  it('keeps a pair separated only by an empty turn that the same pass drops', () => {
+    // An interrupted stream persists an empty assistant turn (#271). Once it is
+    // dropped the call and its result are adjacent, so neither is an orphan.
+    const messages: Message[] = [
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'u1', name: 'read', input: {} }] },
+      { role: 'assistant', content: [{ type: 'text', text: '' }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'u1', content: 'ok' }] },
+    ];
+
+    const repaired = repairToolUseAdjacency(messages);
+
+    expect(repaired.report.removedToolUses).toEqual([]);
+    expect(repaired.report.removedToolResults).toEqual([]);
+    expect(repaired.report.removedMessages).toBe(1);
+    expect(repaired.messages).toHaveLength(2);
+  });
 });
 
 describe('hasMeaningfulContent', () => {

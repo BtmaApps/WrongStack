@@ -1,8 +1,11 @@
 import { isTextBlock } from '../types/blocks.js';
 import type { Message } from '../types/messages.js';
 
+// A hint starts only at a run boundary and segments are bounded to a
+// filename's length (255): otherwise every start offset inside a long
+// word-character run re-scanned it to the end (O(n^2) on one tool result).
 const PATH_HINT_PATTERN =
-  /(?:(?:[A-Za-z]:)?[./\\]?[\w@.-]+(?:[\\/][\w@(). -]+)+\.[A-Za-z0-9]{1,12})/g;
+  /(?<![\w@.-])(?:(?:[A-Za-z]:)?[./\\]?[\w@.-]{1,255}(?:[\\/][\w@(). -]{1,255})+\.[A-Za-z0-9]{1,12})/g;
 const PATH_BACKSLASH_PATTERN = /\\/g;
 const PATH_TRIM_PATTERN = /^["'`]+|["'`),;:]+$/g;
 const ERROR_LINE_PATTERN =
@@ -54,7 +57,8 @@ export function buildCompactionPreview(message: Message, maxChars = 600): string
 function safePreviewString(value: unknown): string {
   if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(value);
+    // JSON.stringify yields undefined (not a string) for undefined/functions.
+    return JSON.stringify(value) ?? '';
   } catch {
     return String(value);
   }
@@ -63,7 +67,10 @@ function safePreviewString(value: unknown): string {
 function truncatePreview(value: string, maxChars: number): string {
   const compact = value.replace(WHITESPACE_COLLAPSE_PATTERN, ' ').trim();
   if (compact.length <= maxChars) return compact;
-  return `${compact.slice(0, Math.max(0, maxChars - 1))}…`;
+  // Never cut a surrogate pair: previews are sent to selector/summarizer models.
+  let end = Math.max(0, maxChars - 1);
+  if (end > 0 && /[\uD800-\uDBFF]/.test(compact[end - 1]!)) end--;
+  return `${compact.slice(0, end)}…`;
 }
 
 function extractPathHints(content: unknown): string[] {
