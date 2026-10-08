@@ -263,7 +263,8 @@ export async function mutateModelsConfig(
     }
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(raw) as Record<string, unknown>;
+      // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+      parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
     } catch (err) {
       if (fileExists) {
         throw new ConfigError({

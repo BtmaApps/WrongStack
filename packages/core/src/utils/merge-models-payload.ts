@@ -11,6 +11,14 @@ const REMOVE_PROVIDERS_KEY = '_removeProviders';
 const REMOVE_MODELS_KEY = '_removeModels';
 
 /**
+ * Keys that must never be copied with `map[key] = …`: a JSON-parsed catalog
+ * keeps `"__proto__"` as an own key, and assigning it re-parents the map.
+ */
+function isReservedKey(key: string): boolean {
+  return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
+
+/**
  * Deep-merge a curated `overlay` payload on top of a `base` payload (both in
  * the models.dev `api.json` shape). The overlay always wins: it can add
  * providers/models the base lacks and override fields the base gets wrong.
@@ -91,9 +99,11 @@ export function mergeModelsPayload(
 function mergeProvider(base: ModelsDevProvider, overlay: ModelsDevProvider): ModelsDevProvider {
   const models: Record<string, ModelsDevModel> = {};
   for (const [mid, m] of Object.entries(base.models ?? {})) {
+    if (isReservedKey(mid)) continue;
     models[mid] = cloneModel(m);
   }
   for (const [mid, ovModel] of Object.entries(overlay.models ?? {})) {
+    if (isReservedKey(mid)) continue;
     const existing = models[mid];
     models[mid] = existing ? mergeModel(existing, ovModel) : cloneModel(ovModel);
   }
@@ -159,6 +169,7 @@ function cloneProvenance(value: ModelProvenance): ModelProvenance {
 function cloneProvider(p: ModelsDevProvider): ModelsDevProvider {
   const models: Record<string, ModelsDevModel> = {};
   for (const [mid, m] of Object.entries(p.models ?? {})) {
+    if (isReservedKey(mid)) continue;
     models[mid] = cloneModel(m);
   }
   return { ...p, models };

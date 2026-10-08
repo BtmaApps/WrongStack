@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -62,6 +63,43 @@ describe('config-history', () => {
       const entries = await listHistory(home);
       expect(entries[0]!.description).toBe('second');
       expect(entries[1]!.description).toBe('first');
+    });
+
+    // The prune deletes every entry file the index does not list, so an empty
+    // stand-in for a bad index used to delete the whole history.
+    it('rebuilds a corrupt index from the entry files instead of deleting them', async () => {
+      const cfg = path.join(tmp, 'config.json');
+      for (const d of ['first', 'second', 'third']) await appendHistory({}, { d }, d, home, cfg);
+      await fs.writeFile(path.join(tmp, 'config.history', 'index.json'), '{ "entries": ');
+
+      await appendHistory({}, { d: 'fourth' }, 'fourth', home, cfg);
+
+      const entries = await listHistory(home, cfg);
+      expect(entries.map((e) => e.description)).toEqual(['fourth', 'third', 'second', 'first']);
+    });
+
+    it('refuses to append (and deletes nothing) while the index is unreadable', async () => {
+      const cfg = path.join(tmp, 'config.json');
+      for (const d of ['first', 'second']) await appendHistory({}, { d }, d, home, cfg);
+      const indexPath = path.join(tmp, 'config.history', 'index.json');
+      const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+      const realReadFile = fsp.readFile;
+      fsp.readFile = (async (p: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+        if (String(p) === indexPath) {
+          throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+        }
+        return (realReadFile as (...a: unknown[]) => Promise<unknown>)(p, ...rest);
+      }) as typeof realReadFile;
+      syncBuiltinESMExports();
+      try {
+        await expect(appendHistory({}, { d: 'third' }, 'third', home, cfg)).rejects.toThrow();
+      } finally {
+        fsp.readFile = realReadFile;
+        syncBuiltinESMExports();
+      }
+      const entries = await listHistory(home, cfg);
+      expect(entries.map((e) => e.description)).toEqual(['second', 'first']);
+      for (const e of entries) expect(await getHistoryEntry(e.id, home, cfg)).not.toBeNull();
     });
   });
 

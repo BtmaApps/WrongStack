@@ -314,12 +314,24 @@ async function applyActions(
   let raw = '{}';
   try {
     raw = await fs.readFile(file, 'utf8');
-  } catch {
-    // no global config yet — start from an empty object
+  } catch (error) {
+    // Only a MISSING config starts from `{}`. Any other read failure (a
+    // transient EBUSY/EPERM lock on Windows) would write the fixes over the
+    // whole profile — and back up that same empty object.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      return {
+        messages: [
+          `${color.red('✗')} cannot read global config (${(error as NodeJS.ErrnoException).code ?? 'error'}) — nothing was changed`,
+        ],
+        changed: false,
+      };
+    }
   }
+  // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+  const text = raw.replace(/^\uFEFF/, '');
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    parsed = JSON.parse(text) as Record<string, unknown>;
   } catch {
     return {
       messages: [`${color.red('✗')} global config is not valid JSON — run /doctor fix first`],
@@ -377,7 +389,7 @@ async function applyActions(
   await atomicWrite(file, JSON.stringify(parsed, null, 2));
   try {
     const homeFn = () => path.dirname(path.dirname(file));
-    await appendHistory(JSON.parse(raw), parsed, 'tuneup auto-fix', homeFn, file);
+    await appendHistory(JSON.parse(text), parsed, 'tuneup auto-fix', homeFn, file);
   } catch {
     // history is best-effort
   }

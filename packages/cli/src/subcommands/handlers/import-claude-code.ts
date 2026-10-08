@@ -242,7 +242,8 @@ async function readJson(file: string): Promise<Record<string, unknown> | undefin
     return undefined;
   }
   try {
-    const parsed: unknown = JSON.parse(raw);
+    // Hand-edited settings/.mcp.json may carry a UTF-8 BOM (RFC 8259: ignorable).
+    const parsed: unknown = JSON.parse(raw.replace(/^\uFEFF/, ''));
     return isRecord(parsed) ? parsed : undefined;
   } catch {
     throw new Error(`${file} is not valid JSON`);

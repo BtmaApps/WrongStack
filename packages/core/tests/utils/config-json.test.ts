@@ -93,6 +93,14 @@ describe('file helpers', () => {
     ).rejects.toThrow('Refusing to overwrite corrupt JSON');
     expect(await fs.readFile(f, 'utf8')).toBe('{broken');
   });
+
+  it('reads and updates a document saved with a UTF-8 BOM', async () => {
+    const f = path.join(tmp, 'bom.json');
+    await fs.writeFile(f, `﻿${JSON.stringify({ provider: 'p' })}`);
+    expect(await readJsonObjectFile(f)).toEqual({ provider: 'p' });
+    await setJsonPathInFile(f, ['model'], 'm');
+    expect(JSON.parse(await fs.readFile(f, 'utf8'))).toEqual({ provider: 'p', model: 'm' });
+  });
 });
 
 describe('getJsonPath', () => {

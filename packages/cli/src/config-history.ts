@@ -320,8 +320,17 @@ async function readIndex(
   homeFn: HomeDirFn = defaultHomeDir,
   targetConfigPath?: string,
 ): Promise<HistoryIndex> {
+  let raw: string;
   try {
-    const raw = await fs.readFile(historyIndexPath(homeFn, targetConfigPath), 'utf8');
+    raw = await fs.readFile(historyIndexPath(homeFn, targetConfigPath), 'utf8');
+  } catch (err) {
+    // appendHistory prunes every entry file the index does not list, so an
+    // empty stand-in for an index that is merely unreadable right now (EBUSY,
+    // EPERM) would delete the whole history. Only a missing index is rebuilt.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    return rebuildIndexFromEntries(homeFn, targetConfigPath);
+  }
+  try {
     const parsed: unknown = JSON.parse(raw);
     // `as HistoryIndex` was an unchecked type assertion: it only covered a
     // PARSE failure, so valid JSON of the wrong shape came back typed as an
@@ -339,10 +348,57 @@ async function readIndex(
       );
       return { version: 1, entries };
     }
-    return { version: 1, entries: [] };
   } catch {
-    return { version: 1, entries: [] };
+    // corrupt — rebuilt below
   }
+  return rebuildIndexFromEntries(homeFn, targetConfigPath);
+}
+
+/**
+ * Recover the index from the self-describing entry files (newest first) when
+ * the index itself is missing or untrustworthy, instead of starting from an
+ * empty one whose next prune would delete every snapshot.
+ */
+async function rebuildIndexFromEntries(
+  homeFn: HomeDirFn = defaultHomeDir,
+  targetConfigPath?: string,
+): Promise<HistoryIndex> {
+  const dir = historyDir(homeFn, targetConfigPath);
+  let files: string[];
+  try {
+    files = (await fs.readdir(dir)).filter((file) => file.endsWith('.json'));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: [] };
+    throw err;
+  }
+  const entries: HistoryIndex['entries'] = [];
+  for (const file of files) {
+    const id = file.slice(0, -'.json'.length);
+    let raw: string;
+    try {
+      raw = await fs.readFile(path.join(dir, file), 'utf8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      // Unreadable right now: indexed by its file name so the sweep keeps it.
+      entries.push({ id, timestamp: '', description: '' });
+      continue;
+    }
+    try {
+      const entry = JSON.parse(raw) as Partial<HistoryEntry>;
+      // Only a real snapshot is adopted; anything else stays an orphan.
+      if (entry.id === id && typeof entry.timestamp === 'string') {
+        entries.push({
+          id,
+          timestamp: entry.timestamp,
+          description: typeof entry.description === 'string' ? entry.description : '',
+        });
+      }
+    } catch {
+      // not a snapshot
+    }
+  }
+  entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return { version: 1, entries };
 }
 
 async function writeIndex(
@@ -499,6 +555,8 @@ export async function appendHistory(
 
   await withFileLock(historyIndexPath(homeFn, targetConfigPath), async () => {
     const idx = await readIndex(homeFn, targetConfigPath);
+    // A rebuilt index already lists the entry file written above.
+    idx.entries = idx.entries.filter((e) => e.id !== id);
     idx.entries.unshift({ id, timestamp, description });
     await pruneHistoryEntries(idx, homeFn, targetConfigPath);
     await writeIndex(idx, homeFn, targetConfigPath);

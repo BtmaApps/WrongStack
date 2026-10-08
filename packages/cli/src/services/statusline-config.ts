@@ -227,7 +227,8 @@ export async function ensureStatuslineConfig(): Promise<StatuslineDocument> {
   let config: StatuslineDocument;
   let sawFile = true;
   try {
-    raw = JSON.parse(await fs.readFile(resolveConfigPath(), 'utf8'));
+    // A hand-saved UTF-8 BOM is valid (RFC 8259) — never quarantine for it.
+    raw = JSON.parse((await fs.readFile(resolveConfigPath(), 'utf8')).replace(/^\uFEFF/, ''));
     config = parseDocument(raw);
   } catch (error) {
     if (isRecord(error) && error['code'] === 'ENOENT') {
@@ -364,4 +365,3 @@ export async function saveStatuslineChips(chips: StatuslineConfig): Promise<void
 export async function saveStatuslineLines(lines: StatuslineLines): Promise<void> {
   await saveStatuslineLayout({ lines });
 }
-

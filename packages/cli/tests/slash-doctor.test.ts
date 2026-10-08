@@ -364,6 +364,20 @@ describe('/doctor slash command', () => {
     expect(readdirSync(dir).some((f) => f.endsWith('.broken.bak'))).toBe(true);
   });
 
+  it('fix mode keeps a valid profile saved with a UTF-8 BOM instead of restoring a backup', async () => {
+    // The config loader accepts the BOM (RFC 8259); treating it as corrupt made
+    // `fix` roll the working profile back to an older backup.
+    const content = `\uFEFF${JSON.stringify({ version: 1, hints: true })}`;
+    const { ctx, globalConfig } = makeCtx(content);
+    writeFileSync(`${globalConfig}.last`, JSON.stringify({ version: 1 }));
+
+    const res = await buildDoctorCommand(ctx).run!('fix');
+    const text = stripAnsi(res!.message!);
+    expect(text).not.toContain('invalid JSON');
+    expect(text).toContain('config is healthy');
+    expect(readFileSync(globalConfig, 'utf8')).toBe(content);
+  });
+
   it('report mode flags corrupt JSON without touching the file', async () => {
     const { ctx, globalConfig } = makeCtx('{ broken');
     const res = await buildDoctorCommand(ctx).run!('');

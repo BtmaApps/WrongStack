@@ -44,6 +44,15 @@ export {
 export type { ConfigLoaderOptions, ConfigSource } from './config-loader/types.js';
 
 /**
+ * Parse a config file's text. A leading UTF-8 BOM (Windows PowerShell 5.1's
+ * `Set-Content -Encoding UTF8` writes one) is dropped first: JSON.parse rejects
+ * it, which discarded a hand-edited config wholesale. RFC 8259 §8.1 allows this.
+ */
+function parseConfigText<T>(raw: string): ReturnType<typeof safeParse<T>> {
+  return safeParse<T>(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw);
+}
+
+/**
  * Config-layer deep merge — delegates to the shared utility with
  * `arrayMode: 'concat-primitives'` and optional debug logging for
  * non-primitive array replacements.
@@ -296,7 +305,7 @@ export class DefaultConfigLoader implements ConfigLoader {
         let fileExisted = true;
         try {
           const raw = await fs.readFile(fp, 'utf8');
-          const result = safeParse<unknown>(raw);
+          const result = parseConfigText<unknown>(raw);
           if (!result.ok || !isPlainRecord(result.value)) {
             return;
           }
@@ -421,12 +430,16 @@ export class DefaultConfigLoader implements ConfigLoader {
     let existed = true;
     try {
       const raw = await fs.readFile(profileFp, 'utf8');
-      const result = safeParse<unknown>(raw);
+      const result = parseConfigText<unknown>(raw);
       if (!result.ok || !isPlainRecord(result.value)) {
         this.logWarn('Profile config parse failed — falling back to defaults', {
           event: 'config.profile_parse_failed',
           path: profileFp,
         });
+        // Leave the user's file alone, like the root-config path above: going
+        // on with `{}` "filled defaults" into it and overwrote every setting.
+        // An empty file has nothing to lose and still self-heals.
+        if (raw.trim() !== '') return;
         parsed = {};
       } else {
         parsed = result.value;
@@ -534,7 +547,7 @@ export class DefaultConfigLoader implements ConfigLoader {
     const t0 = Date.now();
     try {
       const raw = await fs.readFile(fp, 'utf8');
-      const parsed = safeParse<SyncConfig>(raw);
+      const parsed = parseConfigText<SyncConfig>(raw);
       if (!parsed.ok || !parsed.value) {
         this.events?.emit('storage.read', {
           sessionId: '~config~',
@@ -652,7 +665,7 @@ export class DefaultConfigLoader implements ConfigLoader {
       this.jsonCache.set(file, { mtimeMs: null, value: {} });
       return {};
     }
-    const parsed = safeParse<PartialConfig>(raw);
+    const parsed = parseConfigText<PartialConfig>(raw);
     if (!parsed.ok || !parsed.value) {
       this.events?.emit('storage.read', {
         sessionId: '~config~',

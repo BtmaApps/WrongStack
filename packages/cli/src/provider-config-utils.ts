@@ -107,6 +107,11 @@ export { nowIso } from '@wrongstack/primitives';
 /*  Config file I/O — load / mutate `providers` atomically            */
 /* ------------------------------------------------------------------ */
 
+/** The config loader ignores a leading UTF-8 BOM in the profile (RFC 8259); so must auth. */
+function stripConfigBom(raw: string): string {
+  return raw.replace(/^\uFEFF/, '');
+}
+
 /**
  * Read the on-disk config file and return its `providers` map, fully
  * decrypted. Returns `{}` on ENOENT or corrupt JSON (surfacing the error
@@ -130,7 +135,7 @@ export async function loadConfigProviders(
   }
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    parsed = JSON.parse(stripConfigBom(raw)) as Record<string, unknown>;
     validateProviderConfigShape(parsed);
   } catch (err) {
     warn?.(`Config at ${targetPath} is not valid JSON: ${(err as Error).message}`);
@@ -206,7 +211,7 @@ export async function mutateConfigProviders(
       }
       let parsed: Record<string, unknown>;
       try {
-        parsed = JSON.parse(raw) as Record<string, unknown>;
+        parsed = JSON.parse(stripConfigBom(raw)) as Record<string, unknown>;
         validateProviderConfigShape(parsed);
       } catch (err) {
         if (fileExists) {

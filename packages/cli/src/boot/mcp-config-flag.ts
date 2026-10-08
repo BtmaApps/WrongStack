@@ -72,7 +72,9 @@ export function normalizeMcpServerEntry(name: string, raw: unknown): Partial<MCP
 export function parseLaunchMcpServers(text: string, source: string): LaunchMcpServers {
   let doc: unknown;
   try {
-    doc = JSON.parse(text);
+    // A leading UTF-8 BOM (PowerShell 5 `Set-Content -Encoding UTF8`, Notepad)
+    // is ignorable per RFC 8259; config loading strips it the same way.
+    doc = JSON.parse(text.replace(/^\uFEFF/, ''));
   } catch (err) {
     throw new Error(`--mcp-config: ${source} is not valid JSON (${(err as Error).message})`);
   }

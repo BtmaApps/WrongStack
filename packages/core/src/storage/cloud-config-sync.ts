@@ -157,7 +157,16 @@ export class CloudConfigSync {
       return summary({ skipped: true, message: 'Cloud sync is not configured.' });
     }
 
-    const state = await this.loadState();
+    let state: CloudConfigSyncState;
+    try {
+      state = await this.loadState();
+    } catch (error) {
+      // Running on a fresh state would treat every namespace as dirty against an
+      // empty merge base and push local values over other machines' changes.
+      const message = `cannot read sync state (${(error as NodeJS.ErrnoException).code ?? 'error'}); pass skipped`;
+      this.deps.logger?.warn(`cloud-config-sync: ${message}`);
+      return summary({ message });
+    }
     const pulled: string[] = [];
     const pushed: string[] = [];
     const conflicted: string[] = [];
@@ -488,8 +497,16 @@ export class CloudConfigSync {
 
   private async loadState(): Promise<CloudConfigSyncState> {
     if (this.state) return this.state;
+    let raw: string;
     try {
-      const raw = await fs.readFile(this.deps.statePath, 'utf8');
+      raw = await fs.readFile(this.deps.statePath, 'utf8');
+    } catch (error) {
+      // Only a missing file is a first sync; any other read failure must not
+      // silently drop the baselines (see syncOnce).
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      raw = '';
+    }
+    try {
       const parsed = JSON.parse(raw) as Partial<CloudConfigSyncState>;
       this.state = {
         ...structuredClone(EMPTY_STATE),

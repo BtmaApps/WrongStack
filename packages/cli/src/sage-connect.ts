@@ -268,7 +268,7 @@ export function isSageConnected(
     return content.split(/\r?\n/).some((line) => isOwnedTomlHeader(line, opts.guide.serverName));
   }
   try {
-    const servers = (JSON.parse(content) as { mcpServers?: unknown }).mcpServers;
+    const servers = (JSON.parse(stripJsonBom(content)) as { mcpServers?: unknown }).mcpServers;
     return typeof servers === 'object' && servers !== null && opts.guide.serverName in servers;
   } catch {
     return false;
@@ -285,11 +285,16 @@ function jsonEntry(target: SageConnectTarget, launch: SageLaunch): Record<string
 
 // ── JSON ──────────────────────────────────────────────────────────────────
 
+/** These files are hand-edited and their own tools accept a leading UTF-8 BOM (RFC 8259). */
+function stripJsonBom(content: string): string {
+  return content.replace(/^\uFEFF/, '');
+}
+
 function parseJsonObject(content: string | undefined, absPath: string): Record<string, unknown> {
   if (content === undefined || content.trim() === '') return {};
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(stripJsonBom(content));
   } catch (error) {
     throw new Error(
       `${absPath} is not valid JSON (${toErrorMessage(error)}); fix it by hand, nothing was changed.`,

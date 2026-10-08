@@ -32,7 +32,10 @@ export async function resolveAutomationCredentialBundle(
     let config = profiles.get(ref.profile);
     if (!config) {
       config = decryptConfigSecrets(
-        JSON.parse(await readFile(paths.profileConfig(ref.profile), 'utf8')),
+        // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+        JSON.parse(
+          (await readFile(paths.profileConfig(ref.profile), 'utf8')).replace(/^\uFEFF/, ''),
+        ),
         vault,
       ) as Config;
       profiles.set(ref.profile, config);

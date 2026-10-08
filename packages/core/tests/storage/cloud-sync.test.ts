@@ -370,6 +370,56 @@ describe('CloudSync', () => {
         expect(state.localRev).toBeTruthy();
       });
     });
+
+    it('never turns an unparsable settings file into a remote deletion', async () => {
+      await withTempDir(async (dir) => {
+        const paths: WstackPaths = {
+          ...mockPaths,
+          globalRoot: dir,
+          globalConfig: path.join(dir, 'config.json'),
+        };
+        const sync = new CloudSync(
+          paths,
+          () => ({ enabled: true, repo: 'testuser/testrepo', categories: ['settings'] }),
+          vi.fn(),
+        );
+        const trees: Array<Array<{ path: string; sha?: string | null }>> = [];
+        vi.spyOn(sync, 'githubFetch' as keyof CloudSync).mockImplementation((async (
+          _t: string,
+          _o: string,
+          _r: string,
+          method: string,
+          seg: string,
+          body?: { tree: Array<{ path: string; sha?: string | null }> },
+        ) => {
+          if (method === 'GET' && seg === '/git/refs/heads/main') return { object: { sha: 'c1' } };
+          if (method === 'GET' && seg === '/git/commits/c1') return { tree: { sha: 't1' } };
+          if (method === 'GET' && seg.startsWith('/git/trees/t1'))
+            return { tree: [{ path: 'data/settings', sha: 'b1', type: 'blob' }], truncated: false };
+          if (method === 'POST' && seg === '/git/trees') {
+            trees.push(body?.tree ?? []);
+            return { sha: 't2' };
+          }
+          if (method === 'POST' && seg === '/git/commits') return { sha: 'c2' };
+          return {};
+        }) as never);
+
+        // Every remote blob without a local entry is pushed as a deletion, so a
+        // swallowed parse/read error used to delete data/settings from the repo.
+        // A leading UTF-8 BOM is valid JSON text: it must push as an update.
+        await fs.writeFile(
+          path.join(dir, 'config.json'),
+          `${String.fromCharCode(0xfeff)}{"model":"m"}`,
+        );
+        await sync.push('fake-token');
+        expect(trees[0]?.find((e) => e.path === 'data/settings')?.sha).not.toBeNull();
+
+        // Truly corrupt: the push fails instead of deleting the remote copy.
+        await fs.writeFile(path.join(dir, 'config.json'), '{ "model": ');
+        await expect(sync.push('fake-token')).rejects.toThrow();
+        expect(trees).toHaveLength(1);
+      });
+    });
   });
 
   describe('pull() — state file writing', () => {

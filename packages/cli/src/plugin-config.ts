@@ -6,12 +6,32 @@ import { updateJsonObjectFile } from '@wrongstack/core/utils';
 import { backupCurrent } from './config-history.js';
 import type { PluginManagementDeps, PluginManagementResult } from './plugin-management-types.js';
 
+/**
+ * Read the profile config for a read-modify-write. Only a MISSING file reads as
+ * `{}`: callers write the result back over the whole profile, so treating an
+ * unreadable or corrupt file as empty wiped every provider, key and setting.
+ * A leading UTF-8 BOM is ignorable (RFC 8259) — the config loader accepts it.
+ */
 export async function readConfig(file: string): Promise<Record<string, unknown>> {
+  let raw: string;
   try {
-    return JSON.parse(await fs.readFile(file, 'utf8')) as Record<string, unknown>;
-  } catch {
-    return {};
+    raw = await fs.readFile(file, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw.replace(/^\uFEFF/, ''));
+  } catch {
+    throw new Error(
+      `Profile config "${file}" is not valid JSON — fix or remove it before changing plugins`,
+    );
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`Profile config "${file}" must contain a JSON object`);
+  }
+  return parsed as Record<string, unknown>;
 }
 
 export function pluginName(p: string | PluginConfig): string {

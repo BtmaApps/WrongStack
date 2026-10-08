@@ -6,9 +6,17 @@ export type JsonObject = Record<string, unknown>;
 export type JsonPathSegment = string | number;
 export type JsonPath = readonly JsonPathSegment[];
 
+/**
+ * Parse config text, dropping a leading UTF-8 BOM first (Windows PowerShell
+ * 5.1 writes one; JSON.parse rejects it). Same rule as the config loader.
+ */
+function parseConfigJson(text: string): unknown {
+  return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+}
+
 export async function readJsonObjectFile(filePath: string): Promise<JsonObject> {
   try {
-    const parsed = JSON.parse(await fs.readFile(filePath, 'utf8')) as unknown;
+    const parsed = parseConfigJson(await fs.readFile(filePath, 'utf8'));
     return isJsonObject(parsed) ? parsed : {};
   } catch {
     return {};
@@ -35,7 +43,7 @@ export async function updateJsonObjectFile(
   return withFileLock(filePath, async () => {
     let config: JsonObject = {};
     try {
-      const parsed = JSON.parse(await fs.readFile(filePath, 'utf8')) as unknown;
+      const parsed = parseConfigJson(await fs.readFile(filePath, 'utf8'));
       if (!isJsonObject(parsed)) {
         throw new Error(`Refusing to overwrite non-object JSON at ${filePath}`);
       }

@@ -103,6 +103,11 @@ function normalizeVariables(v: unknown): PromptVariable[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
+/** Prompt files are hand-edited; a leading UTF-8 BOM is valid JSON text (RFC 8259). */
+function stripBom(raw: string): string {
+  return raw.replace(/^\uFEFF/, '');
+}
+
 /**
  * DefaultPromptStore — file-per-prompt JSON in a single directory (the global
  * the active profile's `prompts` directory by default, or a layer dir the loader passes in).
@@ -125,7 +130,7 @@ export class DefaultPromptStore implements PromptStore {
         if (!file.endsWith('.json')) continue;
         try {
           const raw: RawPromptFile = JSON.parse(
-            await fs.readFile(path.join(this.dir, file), 'utf8'),
+            stripBom(await fs.readFile(path.join(this.dir, file), 'utf8')),
           );
           const migrated = migratePromptEntry(raw.entry);
           if (migrated) entries.push(migrated);
@@ -179,7 +184,7 @@ export class DefaultPromptStore implements PromptStore {
       return null;
     }
     try {
-      const raw: RawPromptFile = JSON.parse(await fs.readFile(file, 'utf8'));
+      const raw: RawPromptFile = JSON.parse(stripBom(await fs.readFile(file, 'utf8')));
       return migratePromptEntry(raw.entry);
     } catch {
       return null;

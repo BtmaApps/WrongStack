@@ -1746,7 +1746,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 116,
-      "sourceLines": 25554
+      "sourceLines": 25604
     },
     {
       "directory": "tasking",
@@ -1781,7 +1781,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 83,
-      "sourceLines": 13911
+      "sourceLines": 13930
     },
     {
       "directory": "vcs",

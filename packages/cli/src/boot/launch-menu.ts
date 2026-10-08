@@ -706,7 +706,8 @@ export async function persistMenuChoice(
   let existing: Record<string, unknown> = {};
   try {
     const raw = await fs.readFile(globalConfigPath, 'utf8');
-    existing = JSON.parse(raw) as Record<string, unknown>;
+    // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+    existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
   } catch (err) {
     if (fileExists) {
       // Same policy as persistLaunchChoices: refuse to overwrite a

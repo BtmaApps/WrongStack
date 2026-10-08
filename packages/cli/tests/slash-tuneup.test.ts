@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { stripAnsi } from '@wrongstack/core/utils';
@@ -439,5 +440,44 @@ describe('/tuneup slash command', () => {
     const { ctx } = makeCtx({});
     const res = await buildTuneupCommand(ctx).run!('bogus');
     expect(stripAnsi(res!.message!)).toContain('Usage:');
+  });
+
+  it('fix leaves the profile untouched when reading it fails with anything but ENOENT', async () => {
+    const profile = { model: 'claude-x', providers: { anthropic: { apiKey: 'sk-keep-me' } } };
+    const { ctx, globalConfig } = makeCtx(profile);
+    const before = readFileSync(globalConfig, 'utf8');
+    const fsp = createRequire(import.meta.url)(
+      'node:fs/promises',
+    ) as typeof import('node:fs/promises');
+    const realReadFile = fsp.readFile;
+    fsp.readFile = (async (p: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+      if (String(p) === globalConfig) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFile as (...a: unknown[]) => Promise<unknown>)(p, ...rest);
+    }) as typeof realReadFile;
+    syncBuiltinESMExports();
+    try {
+      const res = await buildTuneupCommand(ctx).run!('fix --power');
+      expect(stripAnsi(res!.message!)).toContain('nothing was changed');
+    } finally {
+      fsp.readFile = realReadFile;
+      syncBuiltinESMExports();
+    }
+    // A transient lock must not turn into "start from {}" and overwrite the profile.
+    expect(readFileSync(globalConfig, 'utf8')).toBe(before);
+    expect(existsSync(`${globalConfig}.last`)).toBe(false);
+  });
+
+  it('fix merges into a profile saved with a UTF-8 BOM', async () => {
+    const { ctx, globalConfig } = makeCtx({});
+    writeFileSync(
+      globalConfig,
+      `\uFEFF${JSON.stringify({ model: 'claude-x', autonomy: { defaultMode: 'off' } })}`,
+    );
+    await buildTuneupCommand(ctx).run!('fix');
+    const written = JSON.parse(readFileSync(globalConfig, 'utf8').replace(/^\uFEFF/, ''));
+    expect(written.model).toBe('claude-x');
+    expect(written.adaptiveConcurrency.enabled).toBe(true);
   });
 });

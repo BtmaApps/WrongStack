@@ -184,6 +184,15 @@ describe('statusline config (schema v3)', () => {
     expect(config.chips.state).toBe(true);
   });
 
+  it('keeps a hand-saved config with a UTF-8 BOM instead of quarantining it', async () => {
+    const custom = doc({ ...DEFAULTS, state: !DEFAULTS.state });
+    await fs.writeFile(cfgFile, `\uFEFF${JSON.stringify(custom)}`, 'utf8');
+    const config = await ensureStatuslineConfig();
+    expect(config.chips.state).toBe(!DEFAULTS.state);
+    const entries = await fs.readdir(dir);
+    expect(entries.some((name) => name.includes('.corrupt-'))).toBe(false);
+  });
+
   it('quarantines a corrupt file on ensure instead of destroying it', async () => {
     const corruptBytes = '{ not json';
     await fs.writeFile(cfgFile, corruptBytes, 'utf8');

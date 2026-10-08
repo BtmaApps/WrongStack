@@ -107,7 +107,10 @@ async function readConfig(path: string): Promise<Record<string, unknown>> {
   }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    // The config loader ignores a leading UTF-8 BOM in this same file (RFC
+    // 8259); refusing it here left MCP management unable to edit a profile
+    // that boots fine.
+    parsed = JSON.parse(raw.replace(/^\uFEFF/, ''));
   } catch {
     throw new Error(
       `Profile config "${path}" is not valid JSON — fix or remove it before changing MCP servers`,

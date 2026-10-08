@@ -29,6 +29,35 @@ afterEach(async () => {
 });
 
 describe('plugin management', () => {
+  it('never rewrites an unparseable profile as an empty object', async () => {
+    // The lock path writes the read object back over the whole profile.
+    const corrupt = '{ "providers": { "anthropic": ';
+    await fs.writeFile(configPath, corrupt);
+    await expect(
+      runPluginManagementCommand(['manager', 'lock', '*'], {
+        config: config(),
+        configPath,
+        globalRoot: tmpDir,
+      }),
+    ).rejects.toThrow(/not valid JSON/);
+    expect(await fs.readFile(configPath, 'utf8')).toBe(corrupt);
+  });
+
+  it('keeps every profile setting when the profile carries a UTF-8 BOM', async () => {
+    const profile = { model: 'm', providers: { anthropic: { apiKey: 'sk-keep' } } };
+    await fs.writeFile(configPath, `\uFEFF${JSON.stringify(profile)}`);
+    await runPluginManagementCommand(['manager', 'lock', '*'], {
+      config: config(),
+      configPath,
+      globalRoot: tmpDir,
+    });
+    await expect(readConfig()).resolves.toMatchObject({
+      model: 'm',
+      providers: { anthropic: { apiKey: 'sk-keep' } },
+      pluginManager: { locked: ['*'] },
+    });
+  });
+
   it('exports audit entries for the TUI plugin picker', () => {
     expect(PLUGIN_AUDIT_ENTRIES.length).toBeGreaterThan(0);
     expect(PLUGIN_AUDIT_ENTRIES.every((entry) => entry.canDisable)).toBe(true);

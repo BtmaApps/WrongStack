@@ -42,7 +42,10 @@ export const configImportCmd: SubcommandHandler = async (_args, deps) => {
   const target = path.resolve(deps.cwd, FILE_NAME);
   let payload: Record<string, unknown>;
   try {
-    payload = JSON.parse(await fs.readFile(target, 'utf8')) as Record<string, unknown>;
+    payload = JSON.parse((await fs.readFile(target, 'utf8')).replace(/^\uFEFF/, '')) as Record<
+      string,
+      unknown
+    >;
   } catch (err) {
     deps.renderer.writeError(
       `Import failed: cannot read ${FILE_NAME} in ${deps.cwd} — ${toErrorMessage(err)}`,
@@ -72,7 +75,10 @@ export const configImportCmd: SubcommandHandler = async (_args, deps) => {
     await withFileLock(profilePath, async () => {
       let disk: Record<string, unknown> = {};
       try {
-        disk = JSON.parse(await fs.readFile(profilePath, 'utf8')) as Record<string, unknown>;
+        // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+        disk = JSON.parse(
+          (await fs.readFile(profilePath, 'utf8')).replace(/^\uFEFF/, ''),
+        ) as Record<string, unknown>;
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
         // Fresh/missing profile: start empty — the loader re-materializes defaults.

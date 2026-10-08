@@ -116,6 +116,11 @@ async function runSessionsDoctor(
  * the in-memory store. A config that fails to parse at all is restored from
  * the newest parsable backup.
  */
+/** A leading UTF-8 BOM is valid (RFC 8259) and the config loader accepts it. */
+function stripBom(raw: string): string {
+  return raw.replace(/^\uFEFF/, '');
+}
+
 export function buildDoctorCommand(opts: SlashCommandContext): SlashCommand {
   const help = [
     'Usage:',
@@ -187,7 +192,7 @@ export function buildDoctorCommand(opts: SlashCommandContext): SlashCommand {
     for (const name of candidates) {
       try {
         const raw = await fs.readFile(path.join(dir, name), 'utf8');
-        JSON.parse(raw);
+        JSON.parse(stripBom(raw));
         return { name, raw };
       } catch {
         // missing or also corrupt — try the next one
@@ -267,7 +272,7 @@ export function buildDoctorCommand(opts: SlashCommandContext): SlashCommand {
 
         let parsed: Record<string, unknown>;
         try {
-          parsed = JSON.parse(raw) as Record<string, unknown>;
+          parsed = JSON.parse(stripBom(raw)) as Record<string, unknown>;
         } catch (err) {
           errorCount++;
           const msg = toErrorMessage(err);
@@ -290,7 +295,7 @@ export function buildDoctorCommand(opts: SlashCommandContext): SlashCommand {
             `  ${color.green('✓')} restored from ${backup.name} ${color.dim('(corrupt file kept as *.broken.bak)')}`,
           );
           raw = backup.raw;
-          parsed = JSON.parse(raw) as Record<string, unknown>;
+          parsed = JSON.parse(stripBom(raw)) as Record<string, unknown>;
         }
 
         const report = diagnoseConfig(parsed, pluginSchemas);

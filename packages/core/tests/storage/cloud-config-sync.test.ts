@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -278,10 +279,10 @@ function createHarness(initialConfig: Record<string, unknown>) {
     return jsonResponse(404, { error: { code: 'not_found' } });
   };
 
-  const makeEngine = async () => {
+  const makeEngine = async (statePath?: string) => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cloud-config-sync-'));
     const deps: CloudConfigSyncDeps = {
-      statePath: path.join(dir, 'cloud-sync-state.json'),
+      statePath: statePath ?? path.join(dir, 'cloud-sync-state.json'),
       readLocalConfig: async () => structuredClone(localConfig),
       writeLocalConfig: async (mutator) => {
         localConfig = mutator(structuredClone(localConfig));
@@ -398,6 +399,43 @@ describe('CloudConfigSync engine', () => {
     });
     const third = await engine.syncOnce();
     expect(third.pushed).toContain('core.runtime');
+  });
+
+  it('skips the pass instead of reverting remote changes when the sync state is unreadable', async () => {
+    const harness = createHarness(realisticConfig());
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cloud-config-sync-'));
+    const statePath = path.join(dir, 'cloud-sync-state.json');
+    await (await harness.makeEngine(statePath)).syncOnce();
+    // Another machine changed `hints`.
+    harness.server.payloads['core.runtime'] = {
+      ...harness.server.payloads['core.runtime'],
+      hints: false,
+    };
+    harness.server.revisions['core.runtime'] = (harness.server.revisions['core.runtime'] ?? 1) + 1;
+    const putsBefore = harness.calls.filter((call) => call.method === 'PUT').length;
+
+    // A transient lock on the state file: treating it as a first sync made every
+    // local value win the merge and get pushed over the other machine's change.
+    const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+    const realReadFile = fsp.readFile;
+    fsp.readFile = (async (p: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+      if (String(p) === statePath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFile as (...a: unknown[]) => Promise<unknown>)(p, ...rest);
+    }) as typeof realReadFile;
+    syncBuiltinESMExports();
+    let result: Awaited<ReturnType<CloudConfigSync['syncOnce']>>;
+    try {
+      result = await (await harness.makeEngine(statePath)).syncOnce();
+    } finally {
+      fsp.readFile = realReadFile;
+      syncBuiltinESMExports();
+    }
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('pass skipped');
+    expect(harness.calls.filter((call) => call.method === 'PUT')).toHaveLength(putsBefore);
+    expect((harness.server.payloads['core.runtime'] as Record<string, unknown>).hints).toBe(false);
   });
 
   it('skips cleanly when cloud sync is not configured', async () => {

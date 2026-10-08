@@ -157,7 +157,10 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
         for (const ref of spec.credentials ?? []) {
           try {
             const profile = JSON.parse(
-              await readFile(deps.paths.profileConfig(ref.profile), 'utf8'),
+              (await readFile(deps.paths.profileConfig(ref.profile), 'utf8')).replace(
+                /^\uFEFF/,
+                '',
+              ),
             );
             const provider =
               profile.providers && Object.hasOwn(profile.providers, ref.provider)

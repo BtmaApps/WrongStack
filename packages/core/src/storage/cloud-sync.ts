@@ -250,7 +250,9 @@ export class CloudSync {
         await withFileLock(destPath, async () => {
           let local: Record<string, unknown> = {};
           try {
-            local = JSON.parse(await fs.readFile(destPath, 'utf8')) as Record<string, unknown>;
+            local = JSON.parse(
+              (await fs.readFile(destPath, 'utf8')).replace(/^\uFEFF/, ''),
+            ) as Record<string, unknown>;
           } catch (err) {
             if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
           }
@@ -494,7 +496,14 @@ export class CloudSync {
         if (stat.isDirectory()) {
           const files = await this.walkDir(localPath, localPath);
           for (const file of files) {
-            const content = await fs.readFile(file, 'utf8');
+            let content: string;
+            try {
+              content = await fs.readFile(file, 'utf8');
+            } catch (err) {
+              // Removed since the walk: absent, like any other deleted file.
+              if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+              throw err;
+            }
             const rel = path.relative(localPath, file).replace(/\\/g, '/');
             entries.push({ path: `data/${cat}/${rel}`, content, mode: '100644' });
             hashes.push(`${cat}/${rel}\0${content}`);
@@ -504,7 +513,10 @@ export class CloudSync {
           const content =
             cat === 'settings'
               ? `${JSON.stringify(
-                  projectPortableSettings(JSON.parse(rawContent) as Record<string, unknown>),
+                  projectPortableSettings(
+                    // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+                    JSON.parse(rawContent.replace(/^\uFEFF/, '')) as Record<string, unknown>,
+                  ),
                   null,
                   2,
                 )}\n`
@@ -512,8 +524,11 @@ export class CloudSync {
           entries.push({ path: `data/${cat}`, content, mode: '100644' });
           hashes.push(`${cat}\0${content}`);
         }
-      } catch {
-        // skip missing files/dirs
+      } catch (err) {
+        // Only a MISSING category is absent. buildPushTree turns every absent
+        // entry into a remote deletion, so an unreadable or unparsable one must
+        // fail the push instead of deleting the category from the sync repo.
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }
     }
 
