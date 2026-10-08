@@ -22,6 +22,11 @@
       "fingerprint": "8c370e3250d384cb"
     },
     {
+      "file": "packages/acp/tests/terminal-server.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "5ff5b6ad8219d119"
+    },
+    {
       "file": "packages/cli/tests/auth-menu-oauth.test.ts",
       "kind": "skipIf",
       "fingerprint": "f5a23d12ca71d222"
@@ -30,6 +35,11 @@
       "file": "packages/cli/tests/auth-panel-tui-e2e.test.ts",
       "kind": "skipIf",
       "fingerprint": "6ec5e9ce19834641"
+    },
+    {
+      "file": "packages/cli/tests/chimera-cascade-evidence.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "190c9e2af68c4ce8"
     },
     {
       "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
@@ -50,6 +60,11 @@
       "file": "packages/cli/tests/remote-target.test.ts",
       "kind": "runIf",
       "fingerprint": "c8f782b6a36ba78c"
+    },
+    {
+      "file": "packages/cli/tests/sage-subcommand.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "194a93407536d4a1"
     },
     {
       "file": "packages/cli/tests/settings-cursor-restore-tui-e2e.test.ts",
@@ -117,9 +132,19 @@
       "fingerprint": "6c1dfd9f1895e5c4"
     },
     {
+      "file": "packages/core/tests/goal/project-verifier-timeout.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "2f2518778f9e6ff8"
+    },
+    {
       "file": "packages/core/tests/hq/auth-store.test.ts",
       "kind": "skipIf",
       "fingerprint": "c29fd7d333f936b3"
+    },
+    {
+      "file": "packages/core/tests/infrastructure/path-resolver.test.ts",
+      "kind": "runIf",
+      "fingerprint": "e79c712aa06d7767"
     },
     {
       "file": "packages/core/tests/sandbox/windows-helper-propagation.test.ts",
@@ -192,9 +217,24 @@
       "fingerprint": "4e9fc94cfd45f795"
     },
     {
+      "file": "packages/core/tests/utils/project-state-guard.test.ts",
+      "kind": "runIf",
+      "fingerprint": "bd971256de0bdb44"
+    },
+    {
+      "file": "packages/core/tests/utils/win32-cmd.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "c8f344b51764590b"
+    },
+    {
       "file": "packages/core/tests/utils/win32-exe-search.test.ts",
       "kind": "runIf",
       "fingerprint": "b0cd19c2059fe839"
+    },
+    {
+      "file": "packages/core/tests/utils/wstack-paths.test.ts",
+      "kind": "runIf",
+      "fingerprint": "fe6c2017c3dc1454"
     },
     {
       "file": "packages/core/tests/vcs/vcs-adapter.test.ts",
@@ -322,6 +362,11 @@
       "fingerprint": "31cfbc566a723022"
     },
     {
+      "file": "packages/plugin-sdk/tests/runtime-exec-process-tree.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "6676a44196b78a16"
+    },
+    {
       "file": "packages/plugins/tests/process-guard.test.ts",
       "kind": "runIf",
       "fingerprint": "6372fdcdd20e4a1b"
@@ -377,6 +422,11 @@
       "fingerprint": "9d62767f8ffa98c6"
     },
     {
+      "file": "packages/sage/tests/command-anchor.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "bb5bda08a142b1b6"
+    },
+    {
       "file": "packages/sage/tests/feedback-counters.test.ts",
       "kind": "skipIf",
       "fingerprint": "838869ab26efd619"
@@ -425,6 +475,16 @@
       "file": "packages/sage/tests/sage-context-carry.test.ts",
       "kind": "skipIf",
       "fingerprint": "641295dc4626fb20"
+    },
+    {
+      "file": "packages/sdd/tests/verify-task.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "8e08561629b784b4"
+    },
+    {
+      "file": "packages/sdd/tests/verify-task.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "e319ed8fe59340df"
     },
     {
       "file": "packages/tools/tests/_win32-resolve.test.ts",
@@ -725,6 +785,11 @@
       "file": "packages/tools/tests/win32-resolve.test.ts",
       "kind": "skipIf",
       "fingerprint": "30afc64215499037"
+    },
+    {
+      "file": "packages/tools/tests/win32-resolve.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "e5606278387998b2"
     },
     {
       "file": "packages/tools/tests/win32-resolve.test.ts",
