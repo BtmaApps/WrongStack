@@ -31,6 +31,47 @@ describe('CircuitBreaker', () => {
     });
   });
 
+  describe('idle snapshots', () => {
+    it('expires window counts without another call and preserves failure history', () => {
+      const cb = new CircuitBreaker({ windowMs: 1_000, slowCallThresholdMs: 100 });
+      const startedAt = Date.now();
+      expect(cb.beforeCall()).toBe(true);
+      cb.afterCall(100, false);
+      vi.advanceTimersByTime(500);
+      expect(cb.beforeCall()).toBe(true);
+      cb.afterCall(10, true);
+      expect(cb.snapshot()).toMatchObject({ callsInWindow: 2, slowCallsInWindow: 1 });
+
+      vi.advanceTimersByTime(500);
+      expect(cb.snapshot()).toMatchObject({ callsInWindow: 2, slowCallsInWindow: 1 });
+      vi.advanceTimersByTime(1);
+      expect(cb.snapshot()).toMatchObject({ callsInWindow: 1, slowCallsInWindow: 0 });
+      vi.advanceTimersByTime(500);
+      expect(cb.snapshot()).toMatchObject({
+        state: 'closed',
+        callsInWindow: 0,
+        slowCallsInWindow: 0,
+        consecutiveFailures: 1,
+        lastFailureAt: startedAt + 500,
+        lastSlowAt: startedAt,
+      });
+      expect(cb.snapshot().callsInWindow).toBe(0);
+    });
+
+    it('does not reset consecutive slow calls when the window expires', () => {
+      const cb = new CircuitBreaker({
+        windowMs: 1_000,
+        slowCallThresholdMs: 100,
+        maxSlowCalls: 2,
+      });
+      cb.afterCall(100, false);
+      vi.advanceTimersByTime(1_001);
+      cb.snapshot();
+      cb.afterCall(100, false);
+      expect(cb.snapshot().state).toBe('open');
+    });
+  });
+
   describe('consecutive failure trip', () => {
     it('trips after N consecutive failures', () => {
       const cb = new CircuitBreaker({ maxConsecutiveFailures: 3 });

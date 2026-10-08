@@ -169,6 +169,7 @@ export class CircuitBreaker {
   snapshot(): CircuitBreakerSnapshot {
     this._checkStateTransition();
     const now = Date.now();
+    this._pruneWindow(now);
     let cooldownRemaining: number | null = null;
     if (this.openedAt !== null && this.state === 'open') {
       const elapsed = now - this.openedAt;
