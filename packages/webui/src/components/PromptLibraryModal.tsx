@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // Prompts are bounded (user-defined templates), show all without pagination.
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
+import { registerOpenModal } from '@/lib/open-modal-registry';
 import { useUIStore } from '@/stores';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
@@ -82,6 +83,12 @@ export function PromptLibraryModal() {
   const { client } = useWebSocket();
   const open = useUIStore((s) => s.promptLibraryOpen);
   const setOpen = useUIStore((s) => s.setPromptLibraryOpen);
+  // Register as an open modal so the global Esc handler defers to this
+  // dialog instead of aborting the in-flight run underneath it.
+  useEffect(() => {
+    if (!open) return;
+    return registerOpenModal('prompt-library-modal');
+  }, [open]);
   const requestPromptInsert = useUIStore((s) => s.requestPromptInsert);
 
   const [prompts, setPrompts] = useState<PromptMeta[]>([]);

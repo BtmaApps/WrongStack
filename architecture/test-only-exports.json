@@ -1883,6 +1883,9 @@
       "classifyCtxPct",
       "isAgentActive"
     ],
+    "packages/webui/src/lib/arrow-pane-registry.ts": [
+      "resetArrowPaneRegistryForTests"
+    ],
     "packages/webui/src/lib/default-prompt-pools.ts": [
       "DEFAULT_PROMPT_CARDS",
       "PROMPTS_PER_CARD",
@@ -1907,12 +1910,21 @@
       "isFamilyAllowedForRole",
       "isFontFamilyId"
     ],
+    "packages/webui/src/lib/global-shortcuts-section.ts": [
+      "ACTIVITY_PANEL_DESC_KEY"
+    ],
     "packages/webui/src/lib/model-calendar.ts": [
       "isCalendarRuleBlocking"
     ],
     "packages/webui/src/lib/model-matrix-routes.ts": [
       "MODEL_MATRIX_PHASE_ROUTES",
       "MODEL_MATRIX_ROLE_ROUTES"
+    ],
+    "packages/webui/src/lib/open-modal-registry.ts": [
+      "openModalCount",
+      "resetOpenModalRegistryForTests",
+      "subscribeToOpenModals",
+      "unregisterOpenModal"
     ],
     "packages/webui/src/lib/platform.ts": [
       "ALT_KEY_LABEL",

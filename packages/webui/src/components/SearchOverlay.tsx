@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
+import { registerOpenModal } from '@/lib/open-modal-registry';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, useChatStore, useUIStore } from '@/stores';
 
@@ -64,6 +65,12 @@ export function SearchOverlay() {
   const { t } = useAppTranslation();
   const open = useUIStore((s) => s.searchOpen);
   const setOpen = useUIStore((s) => s.setSearchOpen);
+  // Register as an open modal so the global Esc handler defers to this
+  // dialog instead of aborting the in-flight run underneath it.
+  useEffect(() => {
+    if (!open) return;
+    return registerOpenModal('search-overlay');
+  }, [open]);
   const query = useUIStore((s) => s.searchQuery);
   const setQuery = useUIStore((s) => s.setSearchQuery);
   const messages = useChatStore((s) => s.messages);
@@ -213,7 +220,7 @@ export function SearchOverlay() {
   };
 
   return (
-    <div className="absolute top-2 right-4 z-30 w-[28rem] max-w-[calc(100%-2rem)] rounded-lg border bg-popover shadow-xl">
+    <div className="absolute top-2 right-4 z-30 w-[28rem] max-w-[calc(100%-2rem)] rounded-lg border bg-popover ws-dialog">
       <div className="flex items-center gap-2 px-3 py-2">
         <Search className="h-4 w-4 text-muted-foreground shrink-0" />
         <input

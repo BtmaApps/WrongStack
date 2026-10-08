@@ -42,6 +42,8 @@ export function useCodeMapGraphLoader({
   const [error, setError] = useState<string | null>(null);
   const [loadingBranches, setLoadingBranches] = useState<Set<string>>(new Set());
   const [cacheRevision, setCacheRevision] = useState(0);
+  const [reloadGeneration, setReloadGeneration] = useState(0);
+  const lastReloadGeneration = useRef(0);
   const cache = useRef(new Map<string, CodeMapGraphResponse>());
   const symbolResolveInflight = useRef(new Set<string>());
 
@@ -90,7 +92,9 @@ export function useCodeMapGraphLoader({
   // two parallel fetches that both call setGraph when an index run finishes.
   useEffect(() => {
     let cancelled = false;
-    const forceRefresh = indexGeneration > lastSeenIndexGeneration.current;
+    const reloadRequested = reloadGeneration > lastReloadGeneration.current;
+    if (reloadRequested) lastReloadGeneration.current = reloadGeneration;
+    const forceRefresh = reloadRequested || indexGeneration > lastSeenIndexGeneration.current;
     if (forceRefresh) {
       lastSeenIndexGeneration.current = indexGeneration;
       cache.current.clear();
@@ -134,7 +138,12 @@ export function useCodeMapGraphLoader({
     return () => {
       cancelled = true;
     };
-  }, [currentScopeKey, fetchGraph, indexGeneration, scope]);
+  }, [currentScopeKey, fetchGraph, indexGeneration, reloadGeneration, scope]);
+
+  /** Clear the cache and reload the current scope (error-retry button). */
+  const retry = useCallback((): void => {
+    setReloadGeneration((generation) => generation + 1);
+  }, []);
 
   const ensureBranch = useCallback(
     async (targetScope: CodeMapScope): Promise<void> => {
@@ -203,6 +212,7 @@ export function useCodeMapGraphLoader({
     graph,
     loading,
     error,
+    retry,
     loadingBranches,
     cacheRevision,
     cache,

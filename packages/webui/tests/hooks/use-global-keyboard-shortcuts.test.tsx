@@ -1,5 +1,13 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  registerArrowPane,
+  resetArrowPaneRegistryForTests,
+} from '../../src/lib/arrow-pane-registry';
+import {
+  registerOpenModal,
+  resetOpenModalRegistryForTests,
+} from '../../src/lib/open-modal-registry';
 import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
 
 // ── module stubs ────────────────────────────────────────────────────────────
@@ -111,6 +119,8 @@ describe('useGlobalKeyboardShortcuts', () => {
     useUIStore.setState(uiFns as never);
     useChatStore.setState({ isLoading: false, clearMessages: vi.fn() } as never);
     useLocalPrefs.setState({ keyboardShortcuts: true });
+    resetOpenModalRegistryForTests();
+    resetArrowPaneRegistryForTests();
   });
 
   afterEach(() => {
@@ -473,19 +483,36 @@ describe('useGlobalKeyboardShortcuts', () => {
       expect(wsClient.sendAbort).not.toHaveBeenCalled();
     });
 
-    it.each([
-      'inspectorOpen',
-      'searchOpen',
-      'paletteOpen',
-      'shortcutsOpen',
-      'modelSwitcherOpen',
-      'promptLibraryOpen',
-    ])('does not abort while %s is open — that overlay owns Escape', (flag) => {
+    it('does not abort while the inspector panel is open — it owns Escape', () => {
       useChatStore.setState({ isLoading: true } as never);
-      useUIStore.setState({ [flag]: true } as never);
+      useUIStore.setState({ inspectorOpen: true } as never);
       mount();
       press('Escape');
       expect(wsClient.sendAbort).not.toHaveBeenCalled();
+    });
+
+    // The five dialog overlays now block session-abort via the open-modal
+    // registry: their components register on open (see open-modal-registry).
+    it.each([
+      'search-overlay',
+      'command-palette',
+      'shortcuts-overlay',
+      'quick-model-switcher',
+      'prompt-library-modal',
+    ])('does not abort while the %s modal is registered as open', (id) => {
+      useChatStore.setState({ isLoading: true } as never);
+      useUIStore.setState({
+        searchOpen: true,
+        paletteOpen: true,
+        shortcutsOpen: true,
+        modelSwitcherOpen: true,
+        promptLibraryOpen: true,
+      } as never);
+      mount();
+      const dispose = registerOpenModal(id);
+      press('Escape');
+      expect(wsClient.sendAbort).not.toHaveBeenCalled();
+      dispose();
     });
 
     it('does not abort while a bubble is focused', () => {
@@ -636,6 +663,75 @@ describe('useGlobalKeyboardShortcuts', () => {
       press('j', { ctrlKey: true });
       press('j', { altKey: true });
       expect(list[0].hasAttribute('data-focused')).toBe(false);
+    });
+  });
+
+  // ── arrow-pane registry (scrollable panes own ArrowUp/Down) ───────────────
+
+  describe('arrow-pane registry', () => {
+    /** A registered pane with a focusable row inside it. */
+    function pane(): { el: HTMLDivElement; row: HTMLDivElement } {
+      const el = document.createElement('div');
+      const row = document.createElement('div');
+      row.tabIndex = 0;
+      el.appendChild(row);
+      document.body.appendChild(el);
+      return { el, row };
+    }
+
+    it('a registered pane with focus inside it receives ArrowDown natively', () => {
+      const list = bubbles(3);
+      const { row } = pane();
+      registerArrowPane(row.parentElement as HTMLDivElement);
+      row.focus();
+      mount();
+      const e = press('ArrowDown', {}, row);
+      expect(e.defaultPrevented).toBe(false);
+      expect(list[0].hasAttribute('data-focused')).toBe(false);
+    });
+
+    it('a registered pane with focus inside it receives ArrowUp natively', () => {
+      const list = bubbles(3);
+      list[0].setAttribute('data-focused', 'true');
+      const { row } = pane();
+      registerArrowPane(row.parentElement as HTMLDivElement);
+      row.focus();
+      mount();
+      const e = press('ArrowUp', {}, row);
+      expect(e.defaultPrevented).toBe(false);
+      expect(list[0].hasAttribute('data-focused')).toBe(true);
+    });
+
+    it('a registered pane whose focus is elsewhere does not claim the arrows', () => {
+      const list = bubbles(3);
+      const { el } = pane();
+      registerArrowPane(el);
+      mount();
+      const e = press('ArrowDown');
+      expect(e.defaultPrevented).toBe(true);
+      expect(list[0].hasAttribute('data-focused')).toBe(true);
+    });
+
+    it('j/k bubble navigation still fires inside a registered pane', () => {
+      const list = bubbles(3);
+      const { row } = pane();
+      registerArrowPane(row.parentElement as HTMLDivElement);
+      row.focus();
+      mount();
+      press('j', {}, row);
+      expect(list[0].hasAttribute('data-focused')).toBe(true);
+    });
+
+    it('unregistering the pane restores the global arrow hijack', () => {
+      const list = bubbles(3);
+      const { el, row } = pane();
+      const dispose = registerArrowPane(el);
+      row.focus();
+      mount();
+      dispose();
+      const e = press('ArrowDown', {}, row);
+      expect(e.defaultPrevented).toBe(true);
+      expect(list[0].hasAttribute('data-focused')).toBe(true);
     });
   });
 

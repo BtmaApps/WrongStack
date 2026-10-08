@@ -1,14 +1,26 @@
-import { ChevronDown, ChevronRight, ExternalLink, Loader2, Package, Search, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { CodeMapSearchResultRow } from './CodeMapSearchResults';
-import { DirectoryBranch } from './CodeMapDirectoryTree';
+import {
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Network,
+  Package,
+  RotateCw,
+  Search,
+  X,
+} from 'lucide-react';
+import { useEffect } from 'react';
 import { useAppTranslation } from '@/i18n';
+import { registerArrowPane } from '@/lib/arrow-pane-registry';
+import { cn } from '@/lib/utils';
+import { DirectoryBranch } from './CodeMapDirectoryTree';
+import { CodeMapSearchResultRow } from './CodeMapSearchResults';
 import {
   buildDirectoryTree,
-  scopeKey,
   type CodeMapGraphResponse,
   type CodeMapScope,
   type GraphNodeData,
+  scopeKey,
 } from './codemap-model';
 
 interface SearchVirtualizer {
@@ -19,6 +31,12 @@ interface SearchVirtualizer {
 
 interface CodeMapTreeSidebarProps {
   rootGraph: CodeMapGraphResponse;
+  /** Root graph fetch in flight (initial scope load or explicit retry). */
+  loading: boolean;
+  /** Friendly error from the graph loader (already t()'d upstream). */
+  error: string | null;
+  /** Cache-clearing reload for the error-retry button. */
+  onRetry: () => void;
   search: string;
   searchInput: string;
   searchResults: GraphNodeData[];
@@ -50,6 +68,9 @@ interface CodeMapTreeSidebarProps {
 
 export function CodeMapTreeSidebar({
   rootGraph,
+  loading,
+  error,
+  onRetry,
   search,
   searchInput,
   searchResults,
@@ -79,6 +100,12 @@ export function CodeMapTreeSidebar({
   onSearchChange,
 }: CodeMapTreeSidebarProps): React.ReactElement {
   const { t } = useAppTranslation();
+  // Opt the tree's scroll container into native ArrowUp/Down scrolling —
+  // registered panes stop the global chat bubble-nav from hijacking arrows.
+  useEffect(
+    () => (treeScrollRef.current ? registerArrowPane(treeScrollRef.current) : undefined),
+    [treeScrollRef],
+  );
   return (
     <aside className="flex w-[286px] shrink-0 flex-col border-r bg-card/70">
       <div className="border-b p-3">
@@ -154,6 +181,53 @@ export function CodeMapTreeSidebar({
                 <CodeMapSearchResultRow key={node.id} node={node} onSelect={selectSearchResult} />
               ))
             )}
+          </div>
+        ) : loading && rootGraph.nodes.length === 0 ? (
+          // Initial load / retry in flight and nothing cached yet — skeleton
+          // rows instead of a silently empty tree.
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label={t('activity:codeMap.mappingRelationships')}
+          >
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="flex h-8 items-center gap-2 px-2" aria-hidden="true">
+                <span className="h-3 w-3 shrink-0 animate-pulse bg-muted" />
+                <span
+                  className="h-2.5 animate-pulse bg-muted"
+                  style={{ width: `${45 + ((index * 13) % 40)}%` }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : error && rootGraph.nodes.length === 0 ? (
+          <div
+            role="alert"
+            className="mx-3 my-4 flex flex-col items-center gap-2 border border-destructive/40 bg-destructive/5 px-3 py-4 text-center"
+          >
+            <Network className="h-5 w-5 text-destructive" />
+            {/* Generic friendly message — the canvas surface beside this tree
+                already renders the detailed loader error (e.g.
+                codeMap.snapshotUnavailable for SPA-fallback parse failures);
+                duplicating the raw string here would announce it twice. */}
+            <p className="text-xs leading-relaxed text-destructive">
+              {t('activity:codeMap.treeLoadFailed', {
+                defaultValue: 'The code tree could not load.',
+              })}
+            </p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="flex items-center gap-1.5 border px-2.5 py-1 text-xs text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <RotateCw className="h-3 w-3" />
+              {t('activity:codeMap.retry', { defaultValue: 'Retry' })}
+            </button>
+          </div>
+        ) : rootGraph.nodes.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-3 py-8 text-center text-muted-foreground">
+            <Package className="h-6 w-6 opacity-40" />
+            <p className="text-xs">{t('activity:codeMap.noIndexedNodesAtThisLevel')}</p>
           </div>
         ) : (
           rootGraph.nodes.map((packageNode) => {

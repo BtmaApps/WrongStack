@@ -106,6 +106,7 @@ function CodeMapInner(): React.ReactElement {
     graph,
     loading,
     error,
+    retry,
     loadingBranches,
     cacheRevision,
     cache,
@@ -322,6 +323,9 @@ function CodeMapInner(): React.ReactElement {
       <div className="flex min-h-0 flex-1">
         <CodeMapTreeSidebar
           rootGraph={rootGraph}
+          loading={loading}
+          error={error}
+          onRetry={retry}
           search={search}
           searchInput={searchInput}
           searchResults={searchResults}

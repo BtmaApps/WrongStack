@@ -1,9 +1,11 @@
-import { useLocalPrefs, useUIStore } from '@/stores';
-import { useAppTranslation } from '@/i18n';
-import { platformKeyLabel } from '@/lib/platform';
 import { Keyboard } from 'lucide-react';
 import { useEffect } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import { useAppTranslation } from '@/i18n';
+import { ACTIVITY_PANEL_SHORTCUTS } from '@/lib/global-shortcuts-section';
+import { registerOpenModal } from '@/lib/open-modal-registry';
+import { platformKeyLabel } from '@/lib/platform';
+import { useLocalPrefs, useUIStore } from '@/stores';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 interface Shortcut {
   keys: string[];
@@ -17,9 +19,10 @@ const SHORTCUTS: Array<{ sectionKey: string; items: Shortcut[] }> = [
       { keys: ['Ctrl', 'K'], descKey: 'dCommandPalette' },
       { keys: ['?'], descKey: 'dShowOverlay' },
       { keys: ['Ctrl', '\\'], descKey: 'dToggleSidebar' },
-      { keys: ['Ctrl', '1-8'], descKey: 'dOpenPanel' },
+      // Panel-jump rows are derived from the ACTIVITY_SHORTCUT_BY_KEY handler
+      // table (keys + labels) so this list can never drift from the bindings.
+      ...ACTIVITY_PANEL_SHORTCUTS,
       { keys: ['Ctrl', '9'], descKey: 'dSettings' },
-      { keys: ['Ctrl', '0'], descKey: 'dDesignStudio' },
       { keys: ['Ctrl', 'Shift', 'W'], descKey: 'dWorktrees' },
       { keys: ['Ctrl', 'Shift', 'K'], descKey: 'dMemory' },
       { keys: ['Ctrl', '/'], descKey: 'dFocusInput' },
@@ -91,6 +94,13 @@ export function ShortcutsOverlay() {
   const open = useUIStore((s) => s.shortcutsOpen);
   const setOpen = useUIStore((s) => s.setShortcutsOpen);
   const keyboardShortcuts = useLocalPrefs((s) => s.keyboardShortcuts);
+
+  // Register as an open modal so the global Esc handler defers to this
+  // dialog instead of aborting the in-flight run underneath it.
+  useEffect(() => {
+    if (!open) return;
+    return registerOpenModal('shortcuts-overlay');
+  }, [open]);
 
   useEffect(() => {
     if (!keyboardShortcuts) return;

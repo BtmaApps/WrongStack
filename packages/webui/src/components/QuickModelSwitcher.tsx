@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/components/Toaster';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
+import { registerOpenModal } from '@/lib/open-modal-registry';
 import {
   AUTO_EFFORT,
   effortLabelKey,
@@ -46,6 +47,12 @@ export function QuickModelSwitcher() {
   const { t } = useAppTranslation();
   const open = useUIStore((s) => s.modelSwitcherOpen);
   const setOpen = useUIStore((s) => s.setModelSwitcherOpen);
+  // Register as an open modal so the global Esc handler defers to this
+  // dialog instead of aborting the in-flight run underneath it.
+  useEffect(() => {
+    if (!open) return;
+    return registerOpenModal('quick-model-switcher');
+  }, [open]);
   const favoriteModels = useLocalPrefs((s) => s.favoriteModels);
   const disabledModels = useLocalPrefs((s) => s.disabledModels);
   const disabledProviders = useLocalPrefs((s) => s.disabledProviders);
@@ -462,7 +469,7 @@ export function QuickModelSwitcher() {
                   )}
                 </div>
                 {c.isCurrent ? (
-                  <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">
+                  <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-foreground font-semibold">
                     {t('activity:modelSwitcher.active')}
                   </span>
                 ) : (

@@ -100,24 +100,39 @@ interface MailboxCompactionResult {
   remaining: number;
 }
 
+/** Lifecycle of the message-list query (MailboxPanel loading/error branches). */
+export type MailboxListStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 interface MailboxState {
   messages: MailboxMessage[];
   agents: MailboxAgent[];
   /** Result of the last auto-compact operation, if any. */
   lastCompaction: MailboxCompactionResult | null;
+  /** Query lifecycle for the messages list ('mailbox.messages' request). */
+  listStatus: MailboxListStatus;
+  /** Friendly error from the last failed list load, if any. */
+  listError: string | null;
   setMessages: (messages: MailboxMessage[]) => void;
   setAgents: (agents: MailboxAgent[]) => void;
   setLastCompaction: (result: MailboxCompactionResult | null) => void;
   /** Drop one agent by id (mailbox.agent_deregistered push). */
   removeAgent: (agentId: string) => void;
+  /** Mark the list query as in flight (called when the panel sends it). */
+  beginListLoad: () => void;
+  /** Mark the list query failed (ws payload error path). */
+  failListLoad: (error: string) => void;
 }
 
 export const useMailboxStore = create<MailboxState>()((set) => ({
   messages: [],
   agents: [],
   lastCompaction: null,
+  listStatus: 'idle',
+  listError: null,
   setMessages: (messages) =>
     set({
+      listStatus: 'ready',
+      listError: null,
       // Re-classify any message that lacks a server-derived scope, then cap
       // to the most recent MAX_MAILBOX_MESSAGES so the ActivityBar badge
       // and MailboxPanel list cannot drift past the cap over a long session.
@@ -156,6 +171,8 @@ export const useMailboxStore = create<MailboxState>()((set) => ({
       return { agents: sorted.slice(0, MAX_MAILBOX_AGENTS) };
     }),
   setLastCompaction: (lastCompaction) => set({ lastCompaction }),
+  beginListLoad: () => set({ listStatus: 'loading' }),
+  failListLoad: (error) => set({ listStatus: 'error', listError: error }),
   removeAgent: (agentId) =>
     set((state) => ({
       agents: state.agents.filter((agent) => agent.agentId !== agentId),

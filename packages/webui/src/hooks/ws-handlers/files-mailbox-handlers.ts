@@ -253,7 +253,11 @@ export function handleMailboxEvent(msg: WSServerMessage) {
 }
 
 export function handleMailboxMessages(msg: WSServerMessage) {
-  const p = msg.payload as { messages?: MailboxMessage[] } | undefined;
+  const p = msg.payload as { messages?: MailboxMessage[]; error?: string | undefined } | undefined;
+  if (p?.error) {
+    useMailboxStore.getState().failListLoad(p.error);
+    return;
+  }
   if (p?.messages) useMailboxStore.getState().setMessages(p.messages);
 }
 

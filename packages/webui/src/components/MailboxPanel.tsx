@@ -114,6 +114,8 @@ export function MailboxPanel({ className }: { className?: string }) {
   const messages = useMailboxStore((s) => s.messages);
   const agents = useMailboxStore((s) => s.agents);
   const lastCompaction = useMailboxStore((s) => s.lastCompaction);
+  const listStatus = useMailboxStore((s) => s.listStatus);
+  const listError = useMailboxStore((s) => s.listError);
   const [collapsed, setCollapsed] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [purging, setPurging] = useState(false);
@@ -212,9 +214,16 @@ export function MailboxPanel({ className }: { className?: string }) {
   // Query mailbox on mount and when WS becomes ready
   useEffect(() => {
     if (!ready) return;
+    useMailboxStore.getState().beginListLoad();
     client.send({ type: 'mailbox.messages', payload: { limit: 30 } });
     client.send({ type: 'mailbox.agents', payload: {} });
   }, [ready, client]);
+
+  function handleRetryListLoad(): void {
+    useMailboxStore.getState().beginListLoad();
+    client.send({ type: 'mailbox.messages', payload: { limit: 30 } });
+    client.send({ type: 'mailbox.agents', payload: {} });
+  }
 
   const selectedMailMessage = useUIStore((s) => s.selectedMailMessage);
   const setSelectedMailMessage = useUIStore((s) => s.setSelectedMailMessage);
@@ -393,11 +402,11 @@ export function MailboxPanel({ className }: { className?: string }) {
                 if (!composeOpen) setComposeReplyTo(null);
                 setComposeOpen(!composeOpen);
               }}
-              className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-[10px] font-semibold text-primary hover:bg-primary/5"
+              className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/15"
               aria-expanded={composeOpen}
               aria-haspopup="dialog"
             >
-              <MailPlus className="h-3.5 w-3.5" />
+              <MailPlus className="h-3.5 w-3.5 text-primary" />
               {t('activity:mailbox.compose')}
               <span className="ml-auto text-muted-foreground">{composeOpen ? '−' : '+'}</span>
             </button>
@@ -446,7 +455,7 @@ export function MailboxPanel({ className }: { className?: string }) {
                   type="button"
                   onClick={handlePurge}
                   disabled={purging}
-                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1 rounded px-1 text-[10px] text-muted-foreground hover:bg-primary/15 disabled:opacity-40 transition-colors"
                   title={t('activity:mailbox.purgeTitle')}
                 >
                   <Sparkles className="h-3 w-3" />
@@ -456,7 +465,7 @@ export function MailboxPanel({ className }: { className?: string }) {
                   type="button"
                   onClick={handleCompact}
                   disabled={compacting}
-                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1 rounded px-1 text-[10px] text-muted-foreground hover:bg-primary/15 disabled:opacity-40 transition-colors"
                   title={t('activity:mailbox.compactTitle')}
                 >
                   <Zap className="h-3 w-3" />
@@ -465,7 +474,7 @@ export function MailboxPanel({ className }: { className?: string }) {
               </div>
               {/* Compaction result badge */}
               {lastCompaction && lastCompaction.totalRemoved > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-primary/5 text-primary/70 border border-primary/10">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-primary/10 text-foreground border border-primary/10">
                   <Zap className="h-3 w-3 shrink-0" />
                   <span>
                     {t('activity:mailbox.compactRemoved', { count: lastCompaction.totalRemoved })}
@@ -581,6 +590,51 @@ export function MailboxPanel({ className }: { className?: string }) {
                 compact
                 itemLabel="messages"
               />
+            </div>
+          ) : listStatus === 'error' ? (
+            <div
+              role="alert"
+              className="my-2 flex flex-col items-center gap-2 border border-destructive/40 bg-destructive/5 px-3 py-4 text-center"
+            >
+              <Mail className="h-4 w-4 text-destructive" />
+              <p className="text-xs leading-relaxed text-destructive">
+                {t('activity:mailbox.loadFailed', {
+                  defaultValue: 'Could not load the mailbox list.',
+                })}
+              </p>
+              {listError && <p className="text-xs text-muted-foreground">{listError}</p>}
+              <button
+                type="button"
+                onClick={handleRetryListLoad}
+                className="flex items-center gap-1.5 border px-2.5 py-1 text-xs text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <RotateCw className="h-3 w-3" />
+                {t('activity:mailbox.retry', { defaultValue: 'Retry' })}
+              </button>
+            </div>
+          ) : listStatus === 'loading' || listStatus === 'idle' ? (
+            <div role="status" aria-live="polite">
+              <p className="sr-only">
+                {t('activity:mailbox.loadingMessages', {
+                  defaultValue: 'Loading mailbox messages…',
+                })}
+              </p>
+              {Array.from({ length: 3 }, (_, index) => (
+                <div
+                  key={index}
+                  className="my-1 flex items-center gap-2 px-1 py-2"
+                  aria-hidden="true"
+                >
+                  <span className="h-4 w-4 shrink-0 animate-pulse bg-muted" />
+                  <span className="flex-1 space-y-1.5">
+                    <span
+                      className="block h-2.5 animate-pulse bg-muted"
+                      style={{ width: `${55 + ((index * 15) % 35)}%` }}
+                    />
+                    <span className="block h-2 w-1/3 animate-pulse bg-muted" />
+                  </span>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-xs text-muted-foreground py-2 text-center">

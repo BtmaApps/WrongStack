@@ -8,7 +8,9 @@ import {
   showPanel,
 } from '@/components/activity-bar/nav';
 import { downloadChatAsMarkdown } from '@/components/CommandPalette';
+import { arrowPaneOwnsFocus } from '@/lib/arrow-pane-registry';
 import { clearChatContext } from '@/lib/clear-chat-context';
+import { hasOpenModal } from '@/lib/open-modal-registry';
 import { getWSClient } from '@/lib/ws-client';
 import {
   useChatStore,
@@ -284,21 +286,19 @@ export function useGlobalKeyboardShortcuts(options: UseGlobalKeyboardShortcutsOp
       // a field Esc keeps its local meaning (e.g. closing slash suggestions).
       if (e.key === 'Escape' && !mod && !inField) {
         const ui = useUIStore.getState();
-        const overlayOpen =
-          ui.inspectorOpen ||
-          ui.searchOpen ||
-          ui.paletteOpen ||
-          ui.shortcutsOpen ||
-          ui.modelSwitcherOpen ||
-          ui.promptLibraryOpen;
-        // Some modal hosts are intentionally outside ui-store. A visible
-        // modal owns Escape; non-modal overlay owners opt in explicitly.
+        // Open modals register themselves in the open-modal registry; a
+        // registered modal owns Escape (its own focus-trap / Esc handling
+        // wins) so the run-abort below never fires underneath a dialog.
+        const modalOpen = hasOpenModal();
+        // Non-modal overlay owners that live outside the registry still opt
+        // in explicitly via the DOM attribute (e.g. WorkspaceDock popovers).
         const foregroundEscapeOwner = document.querySelector(
           '[role="dialog"][aria-modal="true"], [data-escape-owns="true"]',
         );
         const focusedBubble = document.querySelector('[data-message-id][data-focused="true"]');
         if (
-          !overlayOpen &&
+          !ui.inspectorOpen &&
+          !modalOpen &&
           !foregroundEscapeOwner &&
           !focusedBubble &&
           useChatStore.getState().isLoading
@@ -322,7 +322,12 @@ export function useGlobalKeyboardShortcuts(options: UseGlobalKeyboardShortcutsOp
           target.setAttribute('data-focused', 'true');
           target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         };
-        if (e.key === 'j' || e.key === 'ArrowDown') {
+        // Scrollable panes (CodeMap tree, lists) register themselves in the
+        // arrow-pane registry; while focus is inside one, ArrowUp/Down fall
+        // through to native scrolling instead of bubble navigation. j/k are
+        // unaffected — the pane only opts into owning the arrow keys.
+        const paneOwnsArrows = arrowPaneOwnsFocus();
+        if (e.key === 'j' || (e.key === 'ArrowDown' && !paneOwnsArrows)) {
           // ArrowDown only intercepts when nothing else has focus AND the
           // user is not in a scrollable list context — the textarea check
           // above covers the only place arrows have meaningful default
@@ -334,7 +339,7 @@ export function useGlobalKeyboardShortcuts(options: UseGlobalKeyboardShortcutsOp
           }
           return;
         }
-        if (e.key === 'k' || e.key === 'ArrowUp') {
+        if (e.key === 'k' || (e.key === 'ArrowUp' && !paneOwnsArrows)) {
           const prev = bubbles[Math.max(0, idx <= 0 ? 0 : idx - 1)];
           if (prev) {
             e.preventDefault();

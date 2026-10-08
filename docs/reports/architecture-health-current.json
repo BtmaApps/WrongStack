@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T12:40:55.223Z",
+  "generatedAt": "2026-10-08T12:41:47.660Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,9 +12,9 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4895,
-    "testFiles": 4195,
-    "sourceLines": 1083936,
+    "sourceFiles": 4898,
+    "testFiles": 4200,
+    "sourceLines": 1084365,
     "workspaceEdges": 133,
     "moduleEdges": 16114,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 952
+    "testOnlyExports": 958
   },
   "errors": [],
   "packageCycles": [],
@@ -843,8 +843,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 715,
-      "testFiles": 472,
+      "sourceFiles": 718,
+      "testFiles": 477,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 472
+          "testFiles": 477
         }
       ]
     },
@@ -23688,6 +23688,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/codemap-tree-sidebar-states.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/command-palette-combobox.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -23982,6 +23988,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/kanban-task-inspector.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/kanban-task-tree.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -24031,6 +24043,12 @@
       },
       {
         "file": "packages/webui/tests/components/mailbox-detail-reply.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/mailbox-panel-list-states.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -25440,6 +25458,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/lib/global-shortcuts-section.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/lib/goal.test.ts",
         "projects": [
           "webui-jsdom"
@@ -25501,6 +25525,12 @@
       },
       {
         "file": "packages/webui/tests/lib/notify.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/open-modal-registry.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -30324,6 +30354,10 @@
       "name": "isAgentActive"
     },
     {
+      "file": "packages/webui/src/lib/arrow-pane-registry.ts",
+      "name": "resetArrowPaneRegistryForTests"
+    },
+    {
       "file": "packages/webui/src/lib/default-prompt-pools.ts",
       "name": "DEFAULT_PROMPT_CARDS"
     },
@@ -30380,6 +30414,10 @@
       "name": "isFontFamilyId"
     },
     {
+      "file": "packages/webui/src/lib/global-shortcuts-section.ts",
+      "name": "ACTIVITY_PANEL_DESC_KEY"
+    },
+    {
       "file": "packages/webui/src/lib/model-calendar.ts",
       "name": "isCalendarRuleBlocking"
     },
@@ -30390,6 +30428,22 @@
     {
       "file": "packages/webui/src/lib/model-matrix-routes.ts",
       "name": "MODEL_MATRIX_ROLE_ROUTES"
+    },
+    {
+      "file": "packages/webui/src/lib/open-modal-registry.ts",
+      "name": "openModalCount"
+    },
+    {
+      "file": "packages/webui/src/lib/open-modal-registry.ts",
+      "name": "resetOpenModalRegistryForTests"
+    },
+    {
+      "file": "packages/webui/src/lib/open-modal-registry.ts",
+      "name": "subscribeToOpenModals"
+    },
+    {
+      "file": "packages/webui/src/lib/open-modal-registry.ts",
+      "name": "unregisterOpenModal"
     },
     {
       "file": "packages/webui/src/lib/platform.ts",

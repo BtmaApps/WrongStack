@@ -8,7 +8,7 @@ import type {
   KanbanTask,
 } from '@wrongstack/kanban';
 import { Maximize2, Minimize2, Save, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useKanbanMeta } from '@/hooks/useKanbanMeta';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
@@ -325,6 +325,23 @@ export function KanbanTaskInspector({
     sendKanban('kanban.task.transfer', { boardId: board.id, taskId: task.id, targetBoardId });
   };
 
+  const asideRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!task) return undefined;
+    const previous = document.activeElement as HTMLElement | null;
+    asideRef.current?.focus();
+    return () => {
+      // Esc/close returns focus to whatever opened the inspector.
+      previous?.focus?.();
+    };
+  }, [task?.id]);
+  const handleInspectorKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Escape') return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+    event.stopPropagation();
+    onClose();
+  };
   // The inspector is contextual UI, not a permanent empty sidebar. Keep all
   // hooks above unconditional, then render nothing until the user selects a task.
   if (!task) return null;
@@ -334,6 +351,9 @@ export function KanbanTaskInspector({
 
   return (
     <aside
+      ref={asideRef}
+      tabIndex={-1}
+      onKeyDown={handleInspectorKeyDown}
       aria-label={t('activity:kanban.taskInspector')}
       data-expanded={expanded ? 'true' : 'false'}
       className={cn(

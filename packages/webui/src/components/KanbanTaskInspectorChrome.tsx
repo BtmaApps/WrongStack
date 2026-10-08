@@ -1,5 +1,6 @@
 import type { KanbanBoard, KanbanTask } from '@wrongstack/kanban';
 import { CircleSlash, FileText, GitBranch, History, Play, ShieldCheck } from 'lucide-react';
+import { useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -144,6 +145,21 @@ export function TaskInspectorTabBar({
   labelFor: (labelKey: string) => string;
   expanded: boolean;
 }) {
+  const tabRefs = useRef(new Map<TaskInspectorTab, HTMLButtonElement>());
+  const handleTabKeyDown = (event: React.KeyboardEvent, index: number) => {
+    const keys = TASK_INSPECTOR_TABS.map(({ key }) => key);
+    let next: number | null = null;
+    if (event.key === 'ArrowRight') next = (index + 1) % keys.length;
+    else if (event.key === 'ArrowLeft') next = (index - 1 + keys.length) % keys.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = keys.length - 1;
+    if (next === null) return;
+    event.preventDefault();
+    const nextKey = keys[next];
+    onSelect(nextKey);
+    // Selection is controlled from above; focus follows selection once it lands.
+    requestAnimationFrame(() => tabRefs.current.get(nextKey)?.focus());
+  };
   return (
     <div
       role="tablist"
@@ -153,16 +169,22 @@ export function TaskInspectorTabBar({
         expanded && 'px-4 xl:px-6',
       )}
     >
-      {TASK_INSPECTOR_TABS.map(({ key, icon: Icon, labelKey }) => {
+      {TASK_INSPECTOR_TABS.map(({ key, icon: Icon, labelKey }, index) => {
         const isActive = key === active;
         const badge = badges[key];
         return (
           <button
             key={key}
+            ref={(node) => {
+              if (node) tabRefs.current.set(key, node);
+              else tabRefs.current.delete(key);
+            }}
             type="button"
             role="tab"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(key)}
+            onKeyDown={(event) => handleTabKeyDown(event, index)}
             className={cn(
               'flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2 text-xs transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

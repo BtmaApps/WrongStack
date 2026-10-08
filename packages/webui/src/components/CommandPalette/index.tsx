@@ -34,6 +34,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import { playCompletionChime } from '@/lib/chime';
 import { clearChatContext } from '@/lib/clear-chat-context';
+import { registerOpenModal } from '@/lib/open-modal-registry';
 import { cn } from '@/lib/utils';
 import { navigateToView, openMainView, showPanel } from '@/lib/view-navigation';
 import {
@@ -66,6 +67,12 @@ interface PaletteItem {
 export function CommandPalette() {
   const open = useUIStore((s) => s.paletteOpen);
   const setOpen = useUIStore((s) => s.setPaletteOpen);
+  // Register as an open modal so the global Esc handler defers to this
+  // dialog instead of aborting the in-flight run underneath it.
+  useEffect(() => {
+    if (!open) return;
+    return registerOpenModal('command-palette');
+  }, [open]);
   const setTheme = useConfigStore((s) => s.setTheme);
   const historyEntries = useHistoryStore((s) => s.entries);
   const keyboardShortcuts = useLocalPrefs((s) => s.keyboardShortcuts);
