@@ -119,6 +119,8 @@ export {
   type MCPServerOperationalHealth,
 } from './operations.js';
 export {
+  type MCPCompletionReference,
+  type MCPCompletionResult,
   type MCPGetPromptResult,
   type MCPImplementationInfo,
   type MCPListPromptsResult,
@@ -133,6 +135,7 @@ export {
   type MCPResourceTemplate,
   type MCPServerCapabilities,
   type MCPServerMetadata,
+  parseCompletionResult,
   parseGetPromptResult,
   parseListPromptsResult,
   parseListResourcesResult,

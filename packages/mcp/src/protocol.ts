@@ -469,3 +469,46 @@ export function logMessageNotification(params: unknown): MCPLogMessageNotificati
     data: input['data'] === undefined ? undefined : serializedNotificationData(input['data']),
   };
 }
+
+/** Reference identifying what to autocomplete (MCP `Reference`). */
+export type MCPCompletionReference =
+  | { type: 'ref/prompt'; name: string }
+  | { type: 'ref/resource'; uri: string };
+
+export interface MCPCompletionResult {
+  completion: {
+    /** Suggested completions, most relevant first. May be empty. */
+    values: string[];
+    /** Total completions the server knows about, when it reports it. */
+    total?: number | undefined;
+    /** True when more completions exist beyond `values`. */
+    hasMore?: boolean | undefined;
+  };
+}
+
+/**
+ * Parse a `completion/complete` result (2024-11-05 completions utility).
+ * `values` is required (may be empty); `total`/`hasMore` are validated only
+ * when present, so a malformed optional cannot masquerade as valid pagination.
+ */
+export function parseCompletionResult(value: unknown): MCPCompletionResult {
+  const envelope = record(value, 'completion/complete result');
+  const completion = record(envelope['completion'], 'completion/complete result.completion');
+  const rawValues = completion['values'];
+  if (!Array.isArray(rawValues)) {
+    throw new Error('Malformed MCP completion/complete result: expected values array');
+  }
+  const values = rawValues.map((entry, index) => {
+    if (typeof entry !== 'string') {
+      throw new Error(`Malformed MCP completion/complete result.values[${index}]: expected string`);
+    }
+    return entry;
+  });
+  const rawTotal = completion['total'];
+  const total =
+    typeof rawTotal === 'number' && Number.isInteger(rawTotal) && rawTotal >= 0
+      ? rawTotal
+      : undefined;
+  const hasMore = typeof completion['hasMore'] === 'boolean' ? completion['hasMore'] : undefined;
+  return { completion: { values, total, hasMore } };
+}

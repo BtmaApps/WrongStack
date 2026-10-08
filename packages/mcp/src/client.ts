@@ -17,6 +17,7 @@ import {
   requestCapability,
   requireResourceSubscriptions,
 } from './client-lifecycle.js';
+import { parseEmptyResult, validateProtocolString } from './client-protocol-helpers.js';
 import { connectStdio, notifyStdio } from './client-stdio.js';
 import { receiveStdioData, receiveStdioLine } from './client-stdio-protocol.js';
 import {
@@ -38,13 +39,16 @@ import type {
 } from './client-types.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
 import { ServerRequestResponder, type UrlElicitation } from './elicitation.js';
-import type {
-  MCPGetPromptResult,
-  MCPListPromptsResult,
-  MCPListResourcesResult,
-  MCPListResourceTemplatesResult,
-  MCPReadResourceResult,
-  MCPServerMetadata,
+import {
+  type MCPCompletionReference,
+  type MCPCompletionResult,
+  type MCPGetPromptResult,
+  type MCPListPromptsResult,
+  type MCPListResourcesResult,
+  type MCPListResourceTemplatesResult,
+  type MCPReadResourceResult,
+  type MCPServerMetadata,
+  parseCompletionResult,
 } from './protocol.js';
 import { toToolCallResult } from './tool-schema.js';
 import type { SSETransport, StreamableHTTPTransport } from './transport.js';
@@ -306,6 +310,37 @@ export class MCPClient {
     opts: MCPRequestOptions = {},
   ): Promise<MCPGetPromptResult> {
     return this.capabilityClient.getPrompt(name, args, opts);
+  }
+
+  /**
+   * Liveness check (MCP `ping`): the server MUST answer promptly with an
+   * empty result. Works on every transport — a cheap connection health probe
+   * before a long call, and the natural reconnect-readiness check.
+   */
+  async ping(opts: MCPRequestOptions = {}): Promise<void> {
+    const res = await this.request('ping', {}, undefined, opts);
+    if (res.error) {
+      throw new Error(`MCP ping failed: ${res.error.message}`);
+    }
+    parseEmptyResult(res.result);
+  }
+
+  /**
+   * Argument autocompletion (MCP `completion/complete`, 2024-11-05). The
+   * server must advertise the `completions` capability; an unsupported
+   * server answers with a JSON-RPC error, which surfaces here as a throw.
+   */
+  async complete(
+    ref: MCPCompletionReference,
+    argument: { name: string; value: string },
+    opts: MCPRequestOptions = {},
+  ): Promise<MCPCompletionResult> {
+    validateProtocolString(argument.name, 'completion argument name');
+    const res = await this.request('completion/complete', { ref, argument }, undefined, opts);
+    if (res.error) {
+      throw new Error(`MCP completion/complete failed: ${res.error.message}`);
+    }
+    return parseCompletionResult(res.result);
   }
 
   async close(): Promise<void> {
