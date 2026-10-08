@@ -189,6 +189,9 @@ export function promptToText(blocks: readonly ContentBlock[]): string {
 export function extractText(result: unknown): string {
   if (typeof result !== 'object' || result === null) return '';
   const r = result as Record<string, unknown>;
+  // Core `RunResult` carries the answer as `finalText`; reading only `text`
+  // sent a real Agent's turn back to the client with no message at all.
+  if (typeof r.finalText === 'string') return r.finalText;
   // v1: result.text is the agent's final text (string).
   if (typeof r.text === 'string') return r.text;
   // Legacy: result.content is an array of blocks.
@@ -219,7 +222,9 @@ export function extractText(result: unknown): string {
 export function pickStopReason(result: unknown, signal: AbortSignal): StopReason {
   if (signal.aborted) return 'cancelled';
   if (typeof result !== 'object' || result === null) return 'end_turn';
-  const r = result as { error?: unknown; stopReason?: unknown };
+  const r = result as { error?: unknown; stopReason?: unknown; status?: unknown };
+  // Core `RunResult.status`: an exhausted iteration budget is not a normal finish.
+  if (r.status === 'max_iterations') return 'max_turn_requests';
   if (r.error) {
     return 'end_turn';
   }

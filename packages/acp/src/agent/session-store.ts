@@ -8,7 +8,7 @@
  */
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import { isSafePathSegment, resolveContainedPath } from '@wrongstack/core/utils';
+import { isSafePathSegment, resolveContainedPath, withFileLock } from '@wrongstack/core/utils';
 import type { SessionState } from './protocol-handler.js';
 
 /** A persisted conversation turn (user/agent message chunk) for replay. */
@@ -250,7 +250,12 @@ export class ACPSessionStore {
    */
   private withIndexLock<T>(fn: () => Promise<T>): Promise<T> {
     const prev = this.indexChain;
-    const next = prev.then(fn, fn);
+    // The chain only orders THIS instance. Two agent processes for the same
+    // project (two editor windows) share the directory, so the index
+    // read-modify-write also holds a cross-process file lock — otherwise the
+    // last writer drops the other's entry and list() never shows it again.
+    const locked = () => withFileLock(this.indexPath(), fn);
+    const next = prev.then(locked, locked);
     const settled = next.then(
       () => undefined,
       () => undefined,

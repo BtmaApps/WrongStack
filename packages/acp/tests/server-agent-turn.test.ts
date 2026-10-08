@@ -82,6 +82,47 @@ function makeHandlerWithFactory(agentFor: (sessionId: string) => FakeAgent) {
 }
 
 describe('makeACPServerAgentTurn', () => {
+  it("streams a core RunResult's finalText back to the client", async () => {
+    // The real Agent returns `{ status, iterations, finalText }`. Reading only
+    // `result.text` sent every real turn back with no message at all.
+    const run = vi.fn(async () => ({ status: 'done', iterations: 1, finalText: 'The answer.' }));
+    const turn = makeACPServerAgentTurn({
+      agentFor: async () => ({ run, teardown: vi.fn() }) as never as Agent,
+    });
+    const updates: Array<{ sessionUpdate: string; content?: { text?: string } }> = [];
+    const out = await turn(
+      {
+        sessionId: 's-final',
+        prompt: [{ type: 'text', text: 'q' }],
+        signal: new AbortController().signal,
+        cwd: ACP_TEST_CWD,
+      },
+      (u) => updates.push(u as never),
+    );
+    expect(out.text).toBe('The answer.');
+    expect(
+      updates.filter((u) => u.sessionUpdate === 'agent_message_chunk').map((u) => u.content?.text),
+    ).toEqual(['The answer.']);
+    expect(turn.replay('s-final').at(-1)?.content).toEqual({ type: 'text', text: 'The answer.' });
+  });
+
+  it('reports an exhausted iteration budget as max_turn_requests', async () => {
+    const run = vi.fn(async () => ({ status: 'max_iterations', iterations: 3, finalText: '' }));
+    const turn = makeACPServerAgentTurn({
+      agentFor: async () => ({ run, teardown: vi.fn() }) as never as Agent,
+    });
+    const out = await turn(
+      {
+        sessionId: 's-cap',
+        prompt: [{ type: 'text', text: 'q' }],
+        signal: new AbortController().signal,
+        cwd: ACP_TEST_CWD,
+      },
+      () => {},
+    );
+    expect(out.stopReason).toBe('max_turn_requests');
+  });
+
   it('passes the session cwd from RunTurnInput into agentFor', async () => {
     const agentFor = vi.fn(async () => makeFakeAgent('ok') as never as Agent);
     const turn = makeACPServerAgentTurn({ agentFor });

@@ -493,4 +493,20 @@ describe('ACPSessionStore', () => {
       vi.restoreAllMocks();
     });
   });
+
+  it('keeps every index entry when several store instances share the directory', async () => {
+    // Two agent processes for one project (two editor windows) share the dir;
+    // the in-instance chain alone let the last index writer drop the others.
+    const stores = Array.from({ length: 4 }, () => new ACPSessionStore({ dir }));
+    await stores[0]!.save(fakeState({ id: 'seed' }));
+    await Promise.all(
+      stores.flatMap((s, si) =>
+        [0, 1, 2].map((k) =>
+          s.save(fakeState({ id: `s${si}${k}`, updatedAt: `2026-01-0${k + 1}T00:00:00.000Z` })),
+        ),
+      ),
+    );
+    const listed = await new ACPSessionStore({ dir }).list();
+    expect(listed).toHaveLength(13);
+  });
 });

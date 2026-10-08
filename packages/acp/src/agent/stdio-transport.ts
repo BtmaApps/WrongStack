@@ -227,7 +227,13 @@ export class StdioTransport implements AgentServerTransport {
         return;
       }
       try {
-        this.dispatch(JSON.parse(raw) as ACPMessage, raw.length);
+        const parsed: unknown = JSON.parse(raw);
+        // A `null`/primitive frame would reach read() as a falsy message, which
+        // the agent read loop takes as end-of-stream and shuts down.
+        if (parsed === null || typeof parsed !== 'object') {
+          throw new Error('frame is not a JSON-RPC object');
+        }
+        this.dispatch(parsed as ACPMessage, raw.length);
       } catch (err) {
         this.stderr.write(`[wstack-acp parse error] ${err}\n`, 'utf8');
       }
