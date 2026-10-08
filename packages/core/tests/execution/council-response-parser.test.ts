@@ -37,6 +37,25 @@ describe('council response parsing', () => {
     );
   });
 
+  it('finds the envelope when braces appear in surrounding prose or reasoning', () => {
+    // First-to-last-brace slicing rejected these as invalid JSON and dropped the vote.
+    const envelope = '{"optionId":"a","rationale":"faster"}';
+    for (const text of [
+      `Comparing {A} and {B}: A wins.\n${envelope}`,
+      `<think>draft {"optionId":"b"}</think>\n${envelope}`,
+      `${envelope}\nNote: config uses {placeholder}.`,
+    ]) {
+      expect(parseVote(text, withOptions, '__r__')).toEqual({
+        ok: true,
+        vote: { optionId: 'a', rationale: 'faster' },
+      });
+    }
+    expect(parseJudge('Weighing {x}…\n{"answer":"Use A"}', open, '__r__')).toEqual({
+      ok: true,
+      value: { answer: 'Use A' },
+    });
+  });
+
   it('still rejects an envelope without the stance, and an empty response', () => {
     expect(parseVote('{"rationale":"because"}', open, '__r__').ok).toBe(false);
     expect(parseVote('   ', open, '__r__').ok).toBe(false);

@@ -34,8 +34,56 @@ export function parseObject(
     }
     return { ok: true, value: value as Record<string, unknown> };
   } catch (error) {
+    // A brace in surrounding prose — reasoning ("{A} vs {B}"), an inlined
+    // <think> block, a closing note — breaks the first-to-last slice while a
+    // well-formed envelope sits right there. Fall back to the last balanced
+    // object that parses: the final answer after any reasoning.
+    const fallback = lastBalancedObject(trimmed);
+    if (fallback) return { ok: true, value: fallback };
     return { ok: false, error: `Invalid LLM response JSON: ${errorMessage(error)}` };
   }
+}
+
+/** Starts scanned by {@link lastBalancedObject}; bounds the quadratic worst case. */
+const MAX_OBJECT_STARTS = 256;
+
+function lastBalancedObject(text: string): Record<string, unknown> | undefined {
+  let best: { start: number; end: number; value: Record<string, unknown> } | undefined;
+  let starts = 0;
+  for (let start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
+    if (++starts > MAX_OBJECT_STARTS) break;
+    const end = matchingBrace(text, start);
+    if (end < 0 || (best && end <= best.end)) continue;
+    try {
+      const value: unknown = JSON.parse(text.slice(start, end + 1));
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        best = { start, end, value: value as Record<string, unknown> };
+      }
+    } catch {
+      // Not JSON at this start; try the next brace.
+    }
+  }
+  return best?.value;
+}
+
+/** Index of the `}` closing the `{` at `start` (string-aware), or -1. */
+function matchingBrace(text: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}' && --depth === 0) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 export function optionalString(value: unknown): string | undefined {
