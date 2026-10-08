@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  recordFileAction,
-  getLastAuthor,
+  compactLog,
+  type FileAuthorTrackerOptions,
   getFileHistory,
   getFilesByAgent,
   getFullLog,
-  compactLog,
-  type FileAuthorTrackerOptions,
+  getLastAuthor,
+  recordFileAction,
 } from '../../src/coordination/file-author-tracker.js';
 
 describe('file-author-tracker', () => {
@@ -104,5 +104,16 @@ describe('file-author-tracker', () => {
 
     const last = await getLastAuthor(opts, 'src/index.ts');
     expect(last).toBeDefined();
+  });
+
+  it('keeps every record when records overlap (parallel tool calls)', async () => {
+    // Recorded fire-and-forget per write/edit tool call; an unlocked
+    // read-modify-write let overlapping records drop each other.
+    await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        recordFileAction(opts, { filePath: `src/f${i}.ts`, action: 'edit', agentId: 'leader' }),
+      ),
+    );
+    expect((await getFullLog(opts)).entries).toHaveLength(20);
   });
 });

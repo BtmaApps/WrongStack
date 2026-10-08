@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -215,6 +216,44 @@ describe('checkpoint CAS garbage collection', () => {
     expect(result.errors.join(' ')).toContain('Object sweep skipped');
     await expect(fs.stat(path.join(cas, 'manifests', `${orphan}.json`))).rejects.toBeDefined();
     const blob = sha('orphan content');
+    await expect(
+      fs.stat(path.join(cas, 'objects', blob.slice(0, 2), blob.slice(2))),
+    ).resolves.toBeDefined();
+  });
+
+  it('sweeps no object while the manifests directory cannot be listed', async () => {
+    // An unlistable manifests dir hid every reference, so every live blob past
+    // the floor looked like garbage and was deleted.
+    const live = await writeCheckpoint('live', ['live content']);
+    await writeTranscript('2020-01-01/live.jsonl', [live]);
+    await age(store);
+    const reachable = await collectReachableManifestHashes(store);
+
+    const manifestsDir = path.join(cas, 'manifests');
+    const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+    const realReaddir = fsp.readdir;
+    fsp.readdir = (async (p: Parameters<typeof realReaddir>[0], ...rest: unknown[]) => {
+      if (String(p) === manifestsDir) {
+        throw Object.assign(new Error('EMFILE: too many open files'), { code: 'EMFILE' });
+      }
+      return (realReaddir as (...a: unknown[]) => Promise<unknown>)(p, ...rest);
+    }) as typeof realReaddir;
+    syncBuiltinESMExports();
+    let result: Awaited<ReturnType<typeof sweepCheckpointCas>>;
+    try {
+      result = await sweepCheckpointCas({
+        casRoot: cas,
+        reachableManifestHashes: reachable,
+        keepNewerThanMs: floorNow(),
+      });
+    } finally {
+      fsp.readdir = realReaddir;
+      syncBuiltinESMExports();
+    }
+
+    expect(result.objectsDeleted).toBe(0);
+    expect(result.errors.join(' ')).toContain('Object sweep skipped');
+    const blob = sha('live content');
     await expect(
       fs.stat(path.join(cas, 'objects', blob.slice(0, 2), blob.slice(2))),
     ).resolves.toBeDefined();

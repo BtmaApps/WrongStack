@@ -15,7 +15,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 
 export interface FileAuthorEntry {
   /** Absolute or relative file path. */
@@ -83,6 +83,23 @@ async function saveLog(storageDir: string, log: FileAuthorLog): Promise<void> {
 }
 
 /**
+ * Load → mutate → save under the log's file lock. Records are fired
+ * fire-and-forget per tool call (parallel calls overlap) and from the daemon's
+ * techstack consumer, so an unlocked read-modify-write dropped entries.
+ */
+async function mutateLog(
+  storageDir: string,
+  projectRoot: string,
+  mutate: (log: FileAuthorLog) => void,
+): Promise<void> {
+  await withFileLock(logPath(storageDir), async () => {
+    const log = await loadLog(storageDir, projectRoot);
+    mutate(log);
+    await saveLog(storageDir, log);
+  });
+}
+
+/**
  * Record that an agent created, edited, or deleted a file.
  */
 export async function recordFileAction(
@@ -90,21 +107,19 @@ export async function recordFileAction(
   entry: Omit<FileAuthorEntry, 'timestamp'>,
 ): Promise<void> {
   const { storageDir, projectRoot, maxEntries = DEFAULT_MAX_ENTRIES } = opts;
-  const log = await loadLog(storageDir, projectRoot);
+  await mutateLog(storageDir, projectRoot, (log) => {
+    log.entries.push({
+      ...entry,
+      timestamp: new Date().toISOString(),
+    });
 
-  log.entries.push({
-    ...entry,
-    timestamp: new Date().toISOString(),
+    // Auto-compact: if over max, keep the newest 80%
+    if (log.entries.length > maxEntries) {
+      const keep = Math.floor(maxEntries * 0.8);
+      log.entries = log.entries.slice(-keep);
+      log.lastCompactedAt = new Date().toISOString();
+    }
   });
-
-  // Auto-compact: if over max, keep the newest 80%
-  if (log.entries.length > maxEntries) {
-    const keep = Math.floor(maxEntries * 0.8);
-    log.entries = log.entries.slice(-keep);
-    log.lastCompactedAt = new Date().toISOString();
-  }
-
-  await saveLog(storageDir, log);
 }
 
 /**
@@ -175,23 +190,25 @@ export async function compactLog(
   opts: Pick<FileAuthorTrackerOptions, 'storageDir' | 'projectRoot'>,
   keepCount = 2000,
 ): Promise<{ archived: number; kept: number }> {
-  const log = await loadLog(opts.storageDir, opts.projectRoot);
-  if (log.entries.length <= keepCount) {
-    return { archived: 0, kept: log.entries.length };
-  }
+  return withFileLock(logPath(opts.storageDir), async () => {
+    const log = await loadLog(opts.storageDir, opts.projectRoot);
+    if (log.entries.length <= keepCount) {
+      return { archived: 0, kept: log.entries.length };
+    }
 
-  const archived = log.entries.slice(0, log.entries.length - keepCount);
-  const kept = log.entries.slice(-keepCount);
+    const archived = log.entries.slice(0, log.entries.length - keepCount);
+    const kept = log.entries.slice(-keepCount);
 
-  const archivePath = path.join(opts.storageDir, `file-authors-archive-${Date.now()}.json`);
-  await atomicWrite(
-    archivePath,
-    `${JSON.stringify({ projectRoot: opts.projectRoot, entries: archived }, null, 2)}\n`,
-  );
+    const archivePath = path.join(opts.storageDir, `file-authors-archive-${Date.now()}.json`);
+    await atomicWrite(
+      archivePath,
+      `${JSON.stringify({ projectRoot: opts.projectRoot, entries: archived }, null, 2)}\n`,
+    );
 
-  log.entries = kept;
-  log.lastCompactedAt = new Date().toISOString();
-  await saveLog(opts.storageDir, log);
+    log.entries = kept;
+    log.lastCompactedAt = new Date().toISOString();
+    await saveLog(opts.storageDir, log);
 
-  return { archived: archived.length, kept: kept.length };
+    return { archived: archived.length, kept: kept.length };
+  });
 }

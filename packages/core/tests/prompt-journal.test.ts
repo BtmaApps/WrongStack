@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -75,6 +76,33 @@ describe('Hierarchical Prompt Journal & Trace Logger', () => {
 
       const updated = await fs.readFile(gitignorePath, 'utf8');
       expect(updated).toContain('.wrongstack/');
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves .gitignore untouched when reading it fails with anything but ENOENT', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pj-git-busy-'));
+    const gitignorePath = path.join(tempDir, '.gitignore');
+    const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof fs;
+    const realReadFile = fsp.readFile;
+    try {
+      await fs.writeFile(gitignorePath, 'node_modules/\n.env\n', 'utf8');
+      fsp.readFile = (async (p: Parameters<typeof realReadFile>[0], ...rest: unknown[]) => {
+        if (String(p) === gitignorePath) {
+          throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+        }
+        return (realReadFile as (...a: unknown[]) => Promise<unknown>)(p, ...rest);
+      }) as typeof realReadFile;
+      syncBuiltinESMExports();
+      await ensureGitignore(tempDir);
+    } finally {
+      fsp.readFile = realReadFile;
+      syncBuiltinESMExports();
+    }
+    try {
+      // A transient lock must not turn into "start from empty" and replace the rules.
+      expect(await fs.readFile(gitignorePath, 'utf8')).toBe('node_modules/\n.env\n');
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
@@ -227,6 +255,35 @@ describe('Hierarchical Prompt Journal & Trace Logger', () => {
       const byLeaf = await getPromptJournalEntries(tempDir, { sessionId: leaf });
       expect(byLeaf).toHaveLength(1);
       expect(byLeaf[0]?.sessionId).toBe(sessionId);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps every summary row and count when entries are recorded concurrently', async () => {
+    // The CLI records raw_user + system_prompt fire-and-forget on a session's
+    // first prompt; unserialized read-modify-writes dropped rows and tore index.json.
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pj-concurrent-'));
+    try {
+      await Promise.all(
+        Array.from({ length: 8 }, (_, i) =>
+          recordPromptJournalEntry({
+            projectRoot: tempDir,
+            sessionId: `sess_${i % 3}`,
+            category: 'raw_user',
+            content: `prompt ${i}`,
+          }),
+        ),
+      );
+      const base = path.join(tempDir, '.wrongstack', 'prompts');
+      const index = JSON.parse(await fs.readFile(path.join(base, 'index.json'), 'utf8'));
+      expect(index.totalPrompts).toBe(8);
+      const today = new Date().toISOString().slice(0, 10);
+      const summary = await fs.readFile(
+        path.join(base, today.slice(0, 7), today, 'daily-summary.md'),
+        'utf8',
+      );
+      expect(summary.split('\n').filter((line) => /^\| \d\d:/.test(line))).toHaveLength(8);
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }

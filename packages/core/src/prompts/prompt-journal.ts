@@ -19,6 +19,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DefaultSecretScrubber } from '../security/secret-scrubber.js';
+import { withFileLock } from '../utils/atomic-write.js';
 
 /**
  * Module-level scrubber instance (SEC-004). One per process is enough — the
@@ -131,7 +132,10 @@ export async function ensureGitignore(projectRoot: string): Promise<void> {
     let content = '';
     try {
       content = await fs.readFile(gitignorePath, 'utf8');
-    } catch {
+    } catch (error) {
+      // Only a missing .gitignore starts empty; writing after any other read
+      // failure would replace the user's rules with this single line.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return;
       content = '';
     }
 
@@ -242,12 +246,18 @@ export async function recordPromptJournalEntry(
     const mdSection = formatEntryMarkdown(entry);
     await fs.appendFile(sessionMdFile, mdSection, 'utf8');
 
-    // 3. Update Daily Summary Markdown
-    const dailySummaryFile = path.join(dayDir, 'daily-summary.md');
-    await updateDailySummary(dailySummaryFile, dateStr, entry);
+    // 3 + 4 are read-modify-write of shared files. Entries are recorded
+    // fire-and-forget (the first prompt of a session records raw_user and
+    // system_prompt at once), so unserialized writers dropped each other's
+    // rows and tore index.json. One lock covers both updates.
+    await withFileLock(path.join(basePromptsDir, 'index.json'), async () => {
+      // 3. Update Daily Summary Markdown
+      const dailySummaryFile = path.join(dayDir, 'daily-summary.md');
+      await updateDailySummary(dailySummaryFile, dateStr, entry);
 
-    // 4. Update Root index.json & index.md
-    await updateRootCatalog(basePromptsDir, monthStr, dateStr, sessionId, entry);
+      // 4. Update Root index.json & index.md
+      await updateRootCatalog(basePromptsDir, monthStr, dateStr, sessionId, entry);
+    });
   } catch (err) {
     // Non-fatal logging error
     console.error?.(`Failed to write hierarchical prompt journal: ${err}`);

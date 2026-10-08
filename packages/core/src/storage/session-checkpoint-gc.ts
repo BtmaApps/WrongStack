@@ -134,7 +134,19 @@ export async function sweepCheckpointCas(opts: {
     if (blobs === null) liveBlobsIncomplete = true;
     else for (const blob of blobs) liveBlobs.add(blob);
   };
-  for (const entry of await readDirSafe(manifestsDir, result)) {
+  let manifestEntries: DirEntry[];
+  try {
+    manifestEntries = await fsp.readdir(manifestsDir, { withFileTypes: true });
+  } catch (err) {
+    manifestEntries = [];
+    // No manifests dir means no references; an unlistable one hides them all,
+    // and sweeping objects then would delete every live checkpoint's content.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      result.errors.push(`${manifestsDir}: ${toErrorMessage(err)}`);
+      liveBlobsIncomplete = true;
+    }
+  }
+  for (const entry of manifestEntries) {
     if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
     result.manifestsScanned++;
     const hash = entry.name.slice(0, -'.json'.length);

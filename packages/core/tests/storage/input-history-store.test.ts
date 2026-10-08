@@ -1,12 +1,12 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
-import {
-  InputHistoryStore,
-  INPUT_HISTORY_DEFAULT_MAX,
-} from '../../src/storage/input-history-store.js';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
+import {
+  INPUT_HISTORY_DEFAULT_MAX,
+  InputHistoryStore,
+} from '../../src/storage/input-history-store.js';
 import type { SecretScrubber } from '../../src/types/secret-scrubber.js';
 
 /**
@@ -149,6 +149,31 @@ describe('InputHistoryStore', () => {
   describe('defaults', () => {
     it('exposes a default max constant', () => {
       expect(INPUT_HISTORY_DEFAULT_MAX).toBe(100);
+    });
+  });
+
+  describe('two instances on one file (two TUIs on one project)', () => {
+    it('a later save does not erase the prompts the other instance added', async () => {
+      await new InputHistoryStore(file, fakeScrubber).save(['old']);
+      const a = new InputHistoryStore(file, fakeScrubber);
+      const b = new InputHistoryStore(file, fakeScrubber);
+      const memA = await a.load();
+      const memB = await b.load();
+      await a.save(['from a', ...memA]);
+      await b.save(['from b', ...memB]);
+      expect(await new InputHistoryStore(file, fakeScrubber).load()).toEqual([
+        'from b',
+        'from a',
+        'old',
+      ]);
+    });
+
+    it("still honors an instance's own removals", async () => {
+      const a = new InputHistoryStore(file, fakeScrubber);
+      await a.load();
+      await a.save(['x', 'y']);
+      await a.save(['x']);
+      expect(await new InputHistoryStore(file, fakeScrubber).load()).toEqual(['x']);
     });
   });
 });

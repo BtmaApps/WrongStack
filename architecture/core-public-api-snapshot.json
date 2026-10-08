@@ -1571,7 +1571,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 237,
-      "sourceLines": 60959
+      "sourceLines": 60989
     },
     {
       "directory": "core",
@@ -1683,7 +1683,7 @@
       "classification": "product feature",
       "intendedOwner": "plugin/runtime implementation",
       "sourceFiles": 4,
-      "sourceLines": 648
+      "sourceLines": 658
     },
     {
       "directory": "quota",
@@ -1746,7 +1746,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 116,
-      "sourceLines": 25604
+      "sourceLines": 25643
     },
     {
       "directory": "tasking",

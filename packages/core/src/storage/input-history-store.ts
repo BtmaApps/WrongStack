@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { atomicWrite, ensureDir } from '../utils/atomic-write.js';
 import type { SecretScrubber } from '../types/secret-scrubber.js';
+import { atomicWrite, ensureDir, withFileLock } from '../utils/atomic-write.js';
 
 /**
  * On-disk shape of the per-project TUI input history file. Newest entry
@@ -31,6 +31,16 @@ export const INPUT_HISTORY_DEFAULT_MAX = 100;
  */
 export class InputHistoryStore {
   /**
+   * Every entry this instance has loaded or saved. Two TUIs on one project
+   * share the file and each saves its whole in-memory list, so anything on
+   * disk that this instance never saw was added by another process and must
+   * be merged in, not overwritten.
+   */
+  private readonly known = new Set<string>();
+  /** The list this instance last loaded or saved — its "new" entries are the rest. */
+  private lastSaved = new Set<string>();
+
+  /**
    * @param file Absolute path to the per-project input-history.json.
    * @param scrubber SecretScrubber used to filter secrets before write.
    * @param maxEntries Cap on the number of entries persisted. Default 100.
@@ -46,6 +56,13 @@ export class InputHistoryStore {
    * (never throws — history is best-effort).
    */
   async load(): Promise<string[]> {
+    const entries = await this.readEntries();
+    for (const entry of entries) this.known.add(entry);
+    this.lastSaved = new Set(entries);
+    return entries;
+  }
+
+  private async readEntries(): Promise<string[]> {
     try {
       const raw: InputHistoryFile = JSON.parse(await fs.readFile(this.file, 'utf8'));
       if (
@@ -70,14 +87,24 @@ export class InputHistoryStore {
    * reducer already dedups); this method only scrubs, caps, and writes.
    */
   async save(entries: string[]): Promise<void> {
-    const cleaned = this.scrubAndFilter(entries);
     await ensureDir(path.dirname(this.file));
-    const payload: InputHistoryFile = {
-      version: 1,
-      updatedAt: new Date().toISOString(),
-      entries: cleaned,
-    };
-    await atomicWrite(this.file, JSON.stringify(payload, null, 2));
+    await withFileLock(this.file, async () => {
+      const foreign = (await this.readEntries()).filter(
+        (entry) => !this.known.has(entry) && !entries.includes(entry),
+      );
+      // Newest first: this instance's new prompts, then the other instance's,
+      // then the rest of this instance's list.
+      const fresh = entries.filter((entry) => !this.lastSaved.has(entry));
+      const merged = [...new Set([...fresh, ...foreign, ...entries])];
+      const payload: InputHistoryFile = {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        entries: this.scrubAndFilter(merged),
+      };
+      await atomicWrite(this.file, JSON.stringify(payload, null, 2));
+      for (const entry of entries) this.known.add(entry);
+      this.lastSaved = new Set(entries);
+    });
   }
 
   /** Truncate the file to an empty entry list (used by /clear). */

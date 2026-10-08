@@ -16,7 +16,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 
 export interface PackageAuthorEntry {
   /** Absolute or relative path to the manifest (package.json, go.mod, etc.). */
@@ -90,6 +90,23 @@ async function saveLog(storageDir: string, log: PackageAuthorLog): Promise<void>
 }
 
 /**
+ * Load → mutate → save under the log's file lock. Records are fired
+ * fire-and-forget per tool call (parallel calls overlap) and from the daemon's
+ * techstack consumer, so an unlocked read-modify-write dropped entries.
+ */
+async function mutateLog(
+  storageDir: string,
+  projectRoot: string,
+  mutate: (log: PackageAuthorLog) => void,
+): Promise<void> {
+  await withFileLock(logPath(storageDir), async () => {
+    const log = await loadLog(storageDir, projectRoot);
+    mutate(log);
+    await saveLog(storageDir, log);
+  });
+}
+
+/**
  * Detect the ecosystem from a manifest filename.
  */
 export function detectEcosystem(manifestPath: string): string {
@@ -129,21 +146,19 @@ export async function recordPackageAction(
   entry: Omit<PackageAuthorEntry, 'timestamp'>,
 ): Promise<void> {
   const { storageDir, projectRoot, maxEntries = DEFAULT_MAX_ENTRIES } = opts;
-  const log = await loadLog(storageDir, projectRoot);
+  await mutateLog(storageDir, projectRoot, (log) => {
+    log.entries.push({
+      ...entry,
+      timestamp: new Date().toISOString(),
+    });
 
-  log.entries.push({
-    ...entry,
-    timestamp: new Date().toISOString(),
+    // Auto-compact: if over max, keep the newest 80%
+    if (log.entries.length > maxEntries) {
+      const keep = Math.floor(maxEntries * 0.8);
+      log.entries = log.entries.slice(-keep);
+      log.lastCompactedAt = new Date().toISOString();
+    }
   });
-
-  // Auto-compact: if over max, keep the newest 80%
-  if (log.entries.length > maxEntries) {
-    const keep = Math.floor(maxEntries * 0.8);
-    log.entries = log.entries.slice(-keep);
-    log.lastCompactedAt = new Date().toISOString();
-  }
-
-  await saveLog(storageDir, log);
 }
 
 /**
@@ -214,21 +229,19 @@ export async function updatePackageOutdatedStatus(
   latestVersion?: string | undefined,
 ): Promise<void> {
   const { storageDir, projectRoot } = opts;
-  const log = await loadLog(storageDir, projectRoot);
-
-  // Append a status-update entry (never mutate existing entries — audit trail)
-  log.entries.push({
-    manifestPath,
-    packageName,
-    versionSpec: '',
-    ecosystem: detectEcosystem(manifestPath),
-    agentId: 'outdated-checker',
-    timestamp: new Date().toISOString(),
-    outdated,
-    latestVersion,
+  await mutateLog(storageDir, projectRoot, (log) => {
+    // Append a status-update entry (never mutate existing entries — audit trail)
+    log.entries.push({
+      manifestPath,
+      packageName,
+      versionSpec: '',
+      ecosystem: detectEcosystem(manifestPath),
+      agentId: 'outdated-checker',
+      timestamp: new Date().toISOString(),
+      outdated,
+      latestVersion,
+    });
   });
-
-  await saveLog(storageDir, log);
 }
 
 /**
