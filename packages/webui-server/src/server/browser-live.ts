@@ -126,6 +126,7 @@ export async function handleBrowserLiveWatch(
       if (!open && watches.get(ws) === watch) void handleBrowserLiveUnwatch(ws);
     });
   }, DETAILS_INTERVAL_MS);
+  detailsTimer.unref?.();
   const watch: Watch = {
     id,
     stop: async () => {

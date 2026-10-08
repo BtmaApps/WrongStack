@@ -407,6 +407,7 @@ export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions
     const hasRunning = getSessionList().some((s) => s.isRunning);
     if (hasRunning) emit();
   }, heartbeatMs);
+  heartbeatTimer.unref?.();
 
   // Initial panel shortly after boot.
   initialTimer = setTimeout(() => {

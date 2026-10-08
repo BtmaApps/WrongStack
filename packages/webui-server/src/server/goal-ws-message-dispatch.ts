@@ -72,17 +72,22 @@ export async function dispatchGoalMessage(
       break;
     }
     case 'goal.taskStatus': {
-      const { taskId, status } = msg.payload as { taskId: string; status: string };
+      // Coerce instead of destructuring `msg.payload` directly: a payload-less
+      // frame must reach the handler's own validation/error framing (undefined
+      // fields → "Invalid task status" error frame, no mutation) rather than
+      // dying in a TypeError that the dispatch layer reports only as a
+      // generic `message_handler_failed` log.
+      const { taskId, status } = (msg.payload ?? {}) as { taskId: string; status: string };
       await handleTaskStatusChange(host, taskId, status);
       break;
     }
     case 'goal.moveTask': {
-      const { taskId, toPhaseId } = msg.payload as { taskId: string; toPhaseId: string };
+      const { taskId, toPhaseId } = (msg.payload ?? {}) as { taskId: string; toPhaseId: string };
       if (host.orchestrator?.moveTask(taskId, toPhaseId)) host.afterBoardMutation();
       break;
     }
     case 'goal.assignTask': {
-      const { taskId, agentId, agentName } = msg.payload as {
+      const { taskId, agentId, agentName } = (msg.payload ?? {}) as {
         taskId: string;
         agentId?: string;
         agentName?: string;
@@ -91,7 +96,7 @@ export async function dispatchGoalMessage(
       break;
     }
     case 'goal.addTask': {
-      const { phaseId, title, description, type, priority } = msg.payload as {
+      const { phaseId, title, description, type, priority } = (msg.payload ?? {}) as {
         phaseId: string;
         title: string;
         description?: string;
@@ -108,7 +113,7 @@ export async function dispatchGoalMessage(
     }
     case 'goal.retryTask':
     case 'goal.runTask': {
-      const { taskId } = msg.payload as { taskId: string };
+      const { taskId } = (msg.payload ?? {}) as { taskId: string };
       const editor =
         host.orchestrator ??
         (host.graph
