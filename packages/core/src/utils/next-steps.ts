@@ -218,7 +218,9 @@ function nonFencedIndexOf(
 
 /** Matches an item line: "1. text", "1) text", "- text", "* text". */
 /** Also captures optional auto="true" attribute at the end. */
-const ITEM_RE = /^(?:(\d+)[.)]\s*|[-*•]\s*)(.+?)(\s+auto="true")?$/;
+/** A bullet needs whitespace and a number must not run into a digit, so */
+/** `**bold**`, `---` and `2.5x` stay prose. */
+const ITEM_RE = /^(?:(\d+)[.)](?!\d)\s*|[-*•]\s+)(.+?)(\s+auto="true")?$/;
 
 const MAX_STEPS = 6;
 

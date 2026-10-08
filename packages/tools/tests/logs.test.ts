@@ -84,6 +84,29 @@ describe('logsTool', () => {
     expect(result.entries.find((e) => e.level === 'warn')?.timestamp).toContain('2024-01-01T10');
   });
 
+  it('keeps the full message when a line has no leading level token', async () => {
+    // `docker logs --timestamps` lines rarely start with a level: the first
+    // word became the "level" and vanished, and a level word mid-line cut the
+    // message down to what followed it.
+    await fs.writeFile(
+      path.join(tmpDir, 'msg.log'),
+      [
+        '2026-10-08T00:00:02.000Z Server listening on :8080',
+        'Failed to connect to db: error ECONNREFUSED',
+      ].join('\n'),
+      'utf8',
+    );
+    const result = await logsTool.execute({ path: 'msg.log' }, makeCtx(), makeOpts());
+    expect(result.entries).toEqual([
+      {
+        timestamp: '2026-10-08T00:00:02.000Z',
+        level: 'info',
+        message: 'Server listening on :8080',
+      },
+      { timestamp: '', level: 'error', message: 'Failed to connect to db: error ECONNREFUSED' },
+    ]);
+  });
+
   it('truncates to the tail window and reports truncated=true', async () => {
     const filePath = path.join(tmpDir, 'big.log');
     await fs.writeFile(filePath, ['line1', 'line2', 'line3', 'line4'].join('\n'), 'utf8');

@@ -284,6 +284,40 @@ function runOutdated(
   });
 }
 
+/**
+ * Rows of yarn classic's `outdated --json` table event, columns read by their
+ * header (`Package`, `Current`, `Wanted`, `Latest`, `Package Type`).
+ * `undefined` when the output carries no such event.
+ */
+function parseYarnClassicTable(output: string): OutdatedPackage[] | undefined {
+  for (const line of output.split(/\r?\n/)) {
+    if (!line.startsWith('{')) continue;
+    let event: { type?: unknown; data?: { head?: unknown; body?: unknown } };
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const { head, body } = event.data ?? {};
+    if (event.type !== 'table' || !Array.isArray(head) || !Array.isArray(body)) continue;
+    const cell = (row: unknown[], name: string) => {
+      const value = row[head.indexOf(name)];
+      return typeof value === 'string' ? value : undefined;
+    };
+    return body
+      .filter((row): row is unknown[] => Array.isArray(row) && cell(row, 'Package') !== undefined)
+      .map((row) => ({
+        name: cell(row, 'Package')!,
+        current: cell(row, 'Current') ?? 'unknown',
+        latest: cell(row, 'Latest') ?? 'unknown',
+        wanted: cell(row, 'Wanted') ?? 'unknown',
+        type: cell(row, 'Package Type') ?? 'unknown',
+        location: cell(row, 'Workspace') ?? cell(row, 'Package')!,
+      }));
+  }
+  return undefined;
+}
+
 function parseOutdatedOutput(
   json: string,
   exitCode: number,
@@ -310,9 +344,19 @@ function parseOutdatedOutput(
     Buffer.byteLength(json, 'utf8') > commandOutputPreviewBytes();
   let parsedOk = false;
 
-  try {
-    const data = JSON.parse(json) as Record<string, unknown>;
+  // yarn classic's `--json` is NDJSON events (`{"type":"info",…}`, then a
+  // `{"type":"table",…}` holding the outdated rows) — never the npm/pnpm
+  // name → entry map, even when a lone event parses as one JSON object.
+  const yarnEvents = /^\{"type":"/.test(json.trimStart());
+  const yarnTable = yarnEvents ? parseYarnClassicTable(json) : undefined;
+  if (yarnTable) {
     parsedOk = true;
+    packages.push(...yarnTable);
+  }
+
+  try {
+    const data = (yarnEvents ? {} : JSON.parse(json)) as Record<string, unknown>;
+    parsedOk ||= !yarnEvents;
     const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
     for (const name of Object.keys(data)) {
       // npm turns a dependency outdated in several places (workspaces) into

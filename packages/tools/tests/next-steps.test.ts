@@ -200,6 +200,24 @@ describe('parseNextSteps (raw mode — /suggest subagent output)', () => {
     expect(texts).toEqual(['Run the typecheck', 'Add a test', 'Commit']);
   });
 
+  it('keeps bold intros, rules and decimals out of the list', () => {
+    // A marker needs whitespace (or, for numbers, no digit after it); otherwise
+    // `**Intro**` / `---` became item 1 and displaced the real first step.
+    const list = '1. Run tests\n2. Fix lint';
+    expect(parseNextSteps(`**Suggested next steps:**\n${list}`, false).texts).toEqual([
+      'Run tests',
+      'Fix lint',
+    ]);
+    expect(parseNextSteps(`Here you go\n---\n${list}`, false).texts).toEqual([
+      'Run tests',
+      'Fix lint',
+    ]);
+    expect(parseNextSteps('1. Run tests\n2.5x faster builds\n2. Ship', false).texts).toEqual([
+      'Run tests',
+      'Ship',
+    ]);
+  });
+
   it('parses bullet items in raw mode', () => {
     const text = '- First bullet\n- Second bullet';
     const { texts } = parseNextSteps(text, false);

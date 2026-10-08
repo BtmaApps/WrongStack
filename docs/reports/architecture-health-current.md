@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-08T12:32:41.486Z
+**Generated:** 2026-10-08T12:34:04.599Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4889 |
-| Production source lines | 1082650 |
+| Production source lines | 1082707 |
 | Test files | 4190 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 16081 |
@@ -85,11 +85,11 @@ None.
 |---:|---|
 | 766 | `packages/tools/src/todo.ts` |
 | 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
+| 763 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
 | 762 | `packages/core/src/plugin/api.ts` |
 | 761 | `packages/cli/src/plugin-management.ts` |
 | 761 | `packages/cli/src/slash-commands/project.ts` |
 | 761 | `packages/techstack/src/policy/rulebook.ts` |
-| 761 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
 | 761 | `packages/tui/src/input-validation.ts` |
 | 761 | `packages/tui/src/submit-controller.ts` |
 | 759 | `packages/core/src/coordination/sqlite-mailbox.ts` |
@@ -136,7 +136,7 @@ None.
 
 ## Exports only tests reference
 
-- 948 runtime exports are referenced by tests and by no other production file.
+- 949 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

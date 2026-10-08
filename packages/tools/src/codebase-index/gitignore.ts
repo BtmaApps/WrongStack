@@ -67,6 +67,8 @@ const END_EQ_OR_UNDER: GlobBoundary = (index, input) =>
   index === input.length || input[index] === '/';
 /** Right before a `/` only — strictly under the entry. */
 const END_UNDER: GlobBoundary = (index, input) => index < input.length && input[index] === '/';
+/** End of path only — the entry itself. */
+const END_EXACT: GlobBoundary = (index, input) => index === input.length;
 
 /**
  * Match `parts` (a body split at `/**\/`) as consecutive spans: each part ends
@@ -149,9 +151,14 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
   const evaluate = (p: string, isDir: boolean): boolean => {
     let ignored = false;
     for (const r of rules) {
-      // A directory-only rule never matches a file by its own name; it only
-      // matches files that live strictly beneath the named directory.
-      const isEnd = r.dirOnly && !isDir ? END_UNDER : END_EQ_OR_UNDER;
+      // Without negation, "the entry or anything under it" is the same as
+      // git's parent-directory exclusion. With it, git applies every rule —
+      // `!rule` included — to the path itself only (the ancestor walk below
+      // supplies parent exclusion): `!foo/` re-includes `foo`, never an
+      // ignored `foo/a/x`. A directory-only rule never matches a file by its
+      // own name.
+      if (hasNegation && r.dirOnly && !isDir) continue;
+      const isEnd = hasNegation ? END_EXACT : r.dirOnly && !isDir ? END_UNDER : END_EQ_OR_UNDER;
       if (matchParts(r.parts, p, r.isStart, isEnd)) {
         ignored = !r.negated;
         if (!hasNegation && ignored) return true;

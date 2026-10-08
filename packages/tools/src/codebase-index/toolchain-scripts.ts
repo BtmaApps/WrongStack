@@ -12,11 +12,11 @@
  */
 
 import { type ChildProcess, spawn } from 'node:child_process';
-import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import { removePathSync } from '@wrongstack/primitives';
 import { recordParserSubprocess } from './perf-metrics.js';
 
 // ─── Go ──────────────────────────────────────────────────────────────────────
@@ -653,7 +653,9 @@ async function writePrivateScript(
   // Best-effort cleanup; a SIGKILL leaves the directory to the OS temp sweep.
   process.once('exit', () => {
     try {
-      fsSync.rmSync(dir, { recursive: true, force: true });
+      // removePathSync: Node 24 rmSync is a silent no-op on a non-ASCII path
+      // (a %TEMP% under C:\Users\Çağrı\…), which leaked this directory.
+      removePathSync(dir, { recursive: true, force: true });
     } catch {
       /* best-effort cleanup */
     }

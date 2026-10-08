@@ -92,7 +92,9 @@ export function jmespathSearch(data: unknown, query: string): unknown {
     const arr = data as Record<string, unknown>[];
     if (!Array.isArray(arr)) return [];
     const filtered = arr.filter((item) => {
-      const itemVal = (item as Record<string, unknown>)[field];
+      // A `null` element (valid JSON) has no fields: JMESPath reads it as null
+      // instead of failing the whole query.
+      const itemVal = (item as Record<string, unknown> | null | undefined)?.[field];
       switch (op) {
         case '==':
           return itemVal === cmpVal;

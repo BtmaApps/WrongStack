@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnStreamMocks = vi.hoisted(() => ({ spawnStream: vi.fn() }));
 
@@ -10,7 +10,7 @@ vi.mock('../src/_spawn-stream.js', async (orig) => {
   return { ...actual, spawnStream: spawnStreamMocks.spawnStream };
 });
 
-import { formatTool } from '../src/format.js';
+import { formatTool, parseFormatterCounts } from '../src/format.js';
 
 const makeCtx = () => ({ cwd: '/fake', tools: [], projectRoot: '/fake' }) as any;
 const makeOpts = () => ({ signal: new AbortController().signal });
@@ -290,5 +290,25 @@ describe('formatTool', () => {
         makeCtx(),
       ),
     ).rejects.toThrow(/flag injection/);
+  });
+});
+
+describe('parseFormatterCounts', () => {
+  it('reads Biome 2 "No fixes applied" as zero files changed', () => {
+    // Real Biome 2.5.13 summaries: N files processed, none written — already
+    // formatted, or aborted on a parse error. "Formatted N" was taken as N changed.
+    expect(parseFormatterCounts('biome', 'Formatted 2 files in 1758µs. No fixes applied.')).toEqual(
+      { checked: 2, changed: 0 },
+    );
+    expect(
+      parseFormatterCounts(
+        'biome',
+        'Code formatting aborted due to parsing errors.\nFormatted 1 file in 1518µs. No fixes applied.\nFound 1 error.',
+      ),
+    ).toEqual({ checked: 1, changed: 0 });
+    expect(parseFormatterCounts('biome', 'Formatted 2 files in 2ms. Fixed 1 file.')).toEqual({
+      checked: 2,
+      changed: 1,
+    });
   });
 });

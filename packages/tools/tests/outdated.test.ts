@@ -154,6 +154,35 @@ describe('outdatedTool', () => {
     expect(result.exit_code).toBe(0);
   });
 
+  it('parses yarn classic NDJSON (info + table events) and keeps a lone error event a failure', async () => {
+    // Captured from yarn 1.22.22 `outdated --json` (exit 1 when outdated).
+    const ndjson =
+      '{"type":"info","data":"Color legend : ..."}\n' +
+      '{"type":"table","data":{"head":["Package","Current","Wanted","Latest","Package Type","URL"],' +
+      '"body":[["ms","2.0.0","2.0.0","2.1.3","dependencies","https://github.com/vercel/ms#readme"]]}}\n';
+    spawnMocks.spawn.mockImplementation(() => childWithStdout(ndjson, 1));
+    const result = await outdatedTool.execute({}, makeCtx(), makeOpts());
+    expect(result.exit_code).toBe(0);
+    expect(result.packages).toEqual([
+      {
+        name: 'ms',
+        current: '2.0.0',
+        wanted: '2.0.0',
+        latest: '2.1.3',
+        type: 'dependencies',
+        location: 'ms',
+      },
+    ]);
+
+    // One event alone is valid JSON; it must not be read as a name → entry map.
+    spawnMocks.spawn.mockImplementation(() =>
+      childWithStdout('{"type":"error","data":"Couldn\'t find package"}\n', 1),
+    );
+    const failed = await outdatedTool.execute({}, makeCtx(), makeOpts());
+    expect(failed.exit_code).toBe(1);
+    expect(failed.packages).toEqual([]);
+  });
+
   it('returns "All packages up to date" when stdout is empty and exit code is 0', async () => {
     spawnMocks.spawn.mockImplementation(() => childWithStdout('', 0));
     const result = await outdatedTool.execute({}, makeCtx(), makeOpts());

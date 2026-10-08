@@ -283,6 +283,10 @@ export function parseFormatterCounts(
     changed = 0;
   } else if (fixedMatch?.[1] !== undefined) {
     changed = Number(fixedMatch[1]);
+  } else if (/\bNo fixes applied\b/i.test(output)) {
+    // Biome 2: "Formatted N files … No fixes applied." — N files PROCESSED,
+    // none written (already formatted, or aborted on a parse error).
+    changed = 0;
   } else if (formattedCountMatch?.[1] !== undefined) {
     changed = Number(formattedCountMatch[1]);
   }

@@ -65,4 +65,16 @@ describe('compileGitignore', () => {
     const m = compileGitignore(['node_modules']);
     expect(m('packages\\app\\node_modules\\lib.js', false)).toBe(true);
   });
+
+  it('applies a negation to the path it matches, not to everything under it', () => {
+    // Verdicts from `git ls-files -o -i --exclude-standard` on real trees: a
+    // `!rule` re-included whole subtrees that git keeps ignored.
+    expect(compileGitignore(['[ab]', '!foo/'])('foo/a/x.ts', false)).toBe(true);
+    expect(compileGitignore(['[ab]/*', '!/a*'])('a/ab', false)).toBe(true);
+    expect(compileGitignore(['**/*.ts/*', '!b/'])('b/x.ts/x.ts', false)).toBe(true);
+    expect(compileGitignore(['foo', '!/f*o*'])('foobar/foo/foobar', false)).toBe(true);
+    // …while a matched path itself is still re-included.
+    expect(compileGitignore(['a', '!a/'])('a/x', false)).toBe(false);
+    expect(compileGitignore(['*.log', '!keep.log'])('logs/keep.log', false)).toBe(false);
+  });
 });

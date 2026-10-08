@@ -1264,6 +1264,9 @@
     "packages/tools/src/diff.ts": [
       "refLooksLikeOutsidePath"
     ],
+    "packages/tools/src/format.ts": [
+      "parseFormatterCounts"
+    ],
     "packages/tools/src/grep.ts": [
       "__setRgAvailableForTests"
     ],

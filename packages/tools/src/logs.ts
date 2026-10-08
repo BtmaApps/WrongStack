@@ -348,31 +348,27 @@ function parseLogLines(output: string, filterRe: RegExp | null): LogEntry[] {
 }
 
 function parseLine(line: string): LogEntry | null {
-  const tsRe = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+(?:\[?(\w+)\]?)\s*(.*)/;
-  const match = tsRe.exec(line);
+  const tsMatch = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+(.*)/.exec(line);
+  const timestamp = tsMatch?.[1] ?? '';
+  const rest = tsMatch ? (tsMatch[2] ?? '') : line;
 
-  if (match) {
-    return {
-      timestamp: match[1] ?? '',
-      level: match[2]?.toLowerCase() ?? 'info',
-      message: match[3] ?? '',
-    };
+  // Only a LEADING level token (`INFO x`, `[warn] x`, `error: x`) is the level
+  // and leaves the message. Any first word was taken as the level
+  // (`…Z Server listening` → level "server", message "listening"), and a level
+  // word mid-line cut the message down to what followed it.
+  const lead =
+    /^\[?(ERROR|ERR|WARN|WARNING|INFO|DEBUG|TRACE|FATAL|CRITICAL|CRIT|NOTICE|VERBOSE)\b\]?:?\s*(.*)/i.exec(
+      rest,
+    );
+  if (lead) {
+    return { timestamp, level: lead[1]!.toLowerCase(), message: lead[2] ?? '' };
   }
 
-  const levelRe = /(ERROR|WARN|INFO|DEBUG|TRACE)\s+(.*)/i;
-  const levelMatch = levelRe.exec(line);
-
-  if (levelMatch) {
-    return {
-      timestamp: '',
-      level: levelMatch[1]?.toLowerCase() ?? 'info',
-      message: levelMatch[2] ?? line,
-    };
-  }
-
+  // A level word elsewhere labels the line; the message stays whole.
+  const levelMatch = /(ERROR|WARN|INFO|DEBUG|TRACE)\s+/i.exec(rest);
   return {
-    timestamp: '',
-    level: 'info',
-    message: line,
+    timestamp,
+    level: levelMatch?.[1]?.toLowerCase() ?? 'info',
+    message: rest,
   };
 }
