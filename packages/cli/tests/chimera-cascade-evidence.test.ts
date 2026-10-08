@@ -95,4 +95,54 @@ describe('verifyCascadeEvidence', () => {
     expect(result.status).toBe('failed');
     expect(result.checks[0]).toEqual(expect.objectContaining({ actualExitCode: 126, ok: false }));
   });
+
+  it.skipIf(process.platform !== 'win32')(
+    'tears down a timed-out check that runs behind the cmd.exe shim',
+    async () => {
+      const fs = await import('node:fs');
+      const os = await import('node:os');
+      const path = await import('node:path');
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'chimera-timeout-'));
+      const bin = path.join(dir, 'bin');
+      fs.mkdirSync(bin);
+      fs.writeFileSync(
+        path.join(bin, 'hang.cjs'),
+        "require('node:fs').writeFileSync('hang.pid', String(process.pid)); setInterval(() => {}, 1000);",
+      );
+      // npm cmd-shim spelling: `%~dp0` is wrong for a quoted call without CALL :label.
+      fs.writeFileSync(
+        path.join(bin, 'pnpm.cmd'),
+        '@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nCALL :find_dp0\r\nnode "%dp0%hang.cjs" %*\r\n',
+      );
+      const savedPath = process.env['PATH'];
+      process.env['PATH'] = `${bin};${savedPath ?? ''}`;
+      const alive = (pid: number): boolean => {
+        try {
+          process.kill(pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      try {
+        const result = await verifyCascadeEvidence(
+          { typecheck: { command: 'pnpm typecheck', exitCode: 0 } },
+          dir,
+          undefined,
+          2000,
+        );
+        expect(result.status).toBe('failed');
+        const pid = Number(fs.readFileSync(path.join(dir, 'hang.pid'), 'utf8'));
+        const deadline = Date.now() + 5000;
+        while (alive(pid) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+        const leaked = alive(pid);
+        if (leaked) process.kill(pid);
+        expect(leaked).toBe(false);
+      } finally {
+        process.env['PATH'] = savedPath;
+        fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      }
+    },
+    20_000,
+  );
 });

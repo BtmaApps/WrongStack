@@ -3,6 +3,7 @@ import { StringDecoder } from 'node:string_decoder';
 import type { Context } from '@wrongstack/core/agent';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import { buildWin32CmdShimInvocation } from '../utils/win32-cmd.js';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -197,7 +198,6 @@ export function runCommand(
     try {
       child = spawn(command, spawnArgs, {
         cwd,
-        timeout,
         windowsHide: true,
         ...(windowsVerbatimArguments ? { windowsVerbatimArguments } : {}),
       });
@@ -239,10 +239,25 @@ export function runCommand(
       // stderr itself failed — nowhere left to record; swallow.
     });
 
+    // Not spawn's `timeout`: it kills only the direct child — through the
+    // cmd.exe shim that is cmd.exe — and the program, still holding the
+    // pipes, kept `close` from ever firing. Kill the tree and drop the pipes.
+    let killedByTimeout = false;
+    const timer =
+      timeout > 0
+        ? setTimeout(() => {
+            killedByTimeout = true;
+            treeKill(child);
+            child.stdout?.destroy();
+            child.stderr?.destroy();
+          }, timeout)
+        : undefined;
+
     let settled = false;
     const finish = (result: DevCommandResult): void => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
       resolve(result);
     };
 
@@ -259,9 +274,9 @@ export function runCommand(
       });
     });
     child.on('close', (code, signal) => {
-      // This handle never calls kill() itself — the ONLY kill is the spawn
-      // `timeout` option — so `child.killed` at close time means our timeout
-      // fired. The raw close args differ by platform: POSIX reports
+      // The ONLY kill is the timeout timer above, so `killedByTimeout` at
+      // close time means our timeout fired. The raw close args differ by
+      // platform: POSIX reports
       // close(null, 'SIGTERM'), while Windows TerminateProcess reports
       // close(1, null) — a signal-gated timeout check would never fire on
       // Windows and the timeout would render as a plain EXIT 1.
@@ -270,7 +285,7 @@ export function runCommand(
       // close(0, null) must never be mislabeled 124/TIMEOUT. A genuine
       // timeout kill reports close(null, SIGTERM) on POSIX and close(1,
       // null) on Windows — both non-zero, both still caught.
-      const timedOut = child.killed && code !== 0;
+      const timedOut = killedByTimeout && code !== 0;
       const diedBySignal = signal !== null && !timedOut;
       const exitCode = timedOut
         ? EXIT_TIMEOUT

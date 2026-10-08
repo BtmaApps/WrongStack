@@ -46,4 +46,10 @@ describe('Brain LLM deadlines', () => {
     ).rejects.toThrow('broken');
     expect(remove).toHaveBeenCalledTimes(2);
   });
+
+  it('does not collapse a deadline above the timer maximum into an immediate abort', async () => {
+    // Node clamps setTimeout delays above 2^31-1 ms to 1 ms.
+    const call = () => new Promise<string>((resolve) => setTimeout(() => resolve('ok'), 20));
+    await expect(callWithDeadline(call, undefined, 3_000_000_000, 'timeout')).resolves.toBe('ok');
+  });
 });

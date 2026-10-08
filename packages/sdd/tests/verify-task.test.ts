@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { TaskResult } from '@wrongstack/core/types/multi-agent.js';
@@ -125,6 +125,67 @@ describe('makeCommandVerifier', () => {
     expect(out.ok).toBe(false);
     expect(out.reason).toContain('timed out');
   });
+
+  it.skipIf(process.platform !== 'win32')(
+    'on timeout tears down a verifier running under a .cmd shim, not just cmd.exe',
+    async () => {
+      const dir = mkdtempSync(path.join(os.tmpdir(), 'ws-verify-hang-'));
+      const pidFile = path.join(dir, 'hang.pid').replace(/\\/g, '/');
+      writeFileSync(
+        path.join(dir, 'hang.cjs'),
+        "require('node:fs').writeFileSync(process.argv[2], String(process.pid)); setInterval(() => {}, 1000);",
+      );
+      writeFileSync(path.join(dir, 'hang.cmd'), '@node "%~dp0hang.cjs" %*\r\n');
+      const alive = (pid: number): boolean => {
+        try {
+          process.kill(pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      let pid = -1;
+      try {
+        const verify = makeCommandVerifier({ timeoutMs: 3000 });
+        const shim = path.join(dir, 'hang.cmd').replace(/\\/g, '/');
+        const out = await verify({
+          task: task({ verificationCommand: `${shim} ${pidFile}` }),
+          result,
+          cwd,
+        });
+        expect(out.reason).toContain('timed out');
+        pid = Number(readFileSync(pidFile, 'utf8'));
+        const deadline = Date.now() + 5000;
+        while (alive(pid) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+        expect(alive(pid)).toBe(false);
+      } finally {
+        if (pid > 0 && alive(pid)) process.kill(pid);
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    20_000,
+  );
+
+  it.skipIf(process.platform !== 'win32')(
+    'finds a .cmd verifier through a quoted PATH entry',
+    async () => {
+      const dir = mkdtempSync(path.join(os.tmpdir(), 'ws verify quoted-'));
+      writeFileSync(path.join(dir, 'wsverifyok.cmd'), '@exit /b 0\r\n');
+      const savedPath = process.env['PATH'];
+      try {
+        process.env['PATH'] = `"${dir}";${savedPath ?? ''}`;
+        const out = await makeCommandVerifier()({
+          task: task({ verificationCommand: 'wsverifyok' }),
+          result,
+          cwd,
+        });
+        expect(out).toEqual({ ok: true });
+      } finally {
+        process.env['PATH'] = savedPath;
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('honours a custom metadata key', async () => {
     const verify = makeCommandVerifier({ metadataKey: 'check' });

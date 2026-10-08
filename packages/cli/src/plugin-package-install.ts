@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import { resolveExecInvocation } from '@wrongstack/plugins/runtime';
 import { errorResult, globalPluginsRoot, upsertPlugin } from './plugin-config.js';
 import type {
@@ -90,7 +91,10 @@ function runPackageManagerInstall(
       });
       return;
     }
-    execFile(
+    let settled = false;
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const child = execFile(
       invocation.cmd,
       invocation.args,
       {
@@ -99,20 +103,32 @@ function runPackageManagerInstall(
         // untrusted package lifecycle scripts — with the full inherited
         // environment. Strip credentials via the shared child env.
         env: buildChildEnv(),
-        timeout: 300_000,
         maxBuffer: 16 * 1024 * 1024,
         windowsHide: true,
         ...(invocation.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
       },
       (err, stdout, stderr) => {
+        settled = true;
+        clearTimeout(timer);
         const code = err ? ((err as NodeJS.ErrnoException).code ?? 1) : 0;
         resolvePromise({
-          code: typeof code === 'number' ? code : 1,
+          code: typeof code === 'number' && !timedOut ? code : 1,
           stdout: typeof stdout === 'string' ? stdout : '',
           stderr: typeof stderr === 'string' ? stderr : '',
         });
       },
     );
+    // Not execFile's `timeout`: on the Windows `.cmd` shim it kills only
+    // cmd.exe, and the real install kept writing into the plugins root after
+    // the command had already reported failure. Kill the tree, drop the pipes.
+    if (!settled) {
+      timer = setTimeout(() => {
+        timedOut = true;
+        treeKill(child);
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+      }, 300_000);
+    }
   });
 }
 

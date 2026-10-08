@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the setup-time version probe and the async formatter process.
 const mockExecSync = vi.fn((cmd: string): string => {
@@ -30,6 +30,9 @@ vi.mock('node:fs/promises', () => ({
   access: mockAccess,
   stat: mockStat,
 }));
+
+const treeKillSpy = vi.hoisted(() => vi.fn());
+vi.mock('@wrongstack/core/utils/tree-kill', () => ({ treeKill: treeKillSpy }));
 
 const formatOnSavePlugin = (await import('../src/format-on-save')).default;
 
@@ -506,5 +509,35 @@ describe('cross-plugin coordination with import-organizer', () => {
       toolResult: { content: 'ok', isError: false },
     });
     expect(result?.additionalContext).toContain('format-on-save');
+  });
+});
+
+describe('formatter timeout', () => {
+  it('kills the whole formatter tree on timeout, not just the cmd.exe wrapper', async () => {
+    vi.useFakeTimers();
+    try {
+      const child = { stdout: { destroy: vi.fn() }, stderr: { destroy: vi.fn() } };
+      let finish: ((error: Error | null) => void) | undefined;
+      mockExecFile.mockImplementationOnce((_cmd, _args, _options, callback) => {
+        finish = callback;
+        return child;
+      });
+      const api = makeApi({ extensions: { 'format-on-save': { timeoutMs: 5000 } } });
+      await formatOnSavePlugin.setup(api as never);
+      const pending = getHook(api)({
+        toolName: 'write',
+        toolInput: { path: 'src/slow.ts', content: 'x' },
+        toolResult: { content: 'ok', isError: false },
+      });
+      await vi.waitFor(() => expect(finish).toBeDefined());
+      await vi.advanceTimersByTimeAsync(5000);
+      // execFile's own `timeout` killed only cmd.exe and left the formatter running.
+      expect(treeKillSpy).toHaveBeenCalledWith(child);
+      expect(child.stdout.destroy).toHaveBeenCalled();
+      finish?.(new Error('killed'));
+      expect(await pending).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

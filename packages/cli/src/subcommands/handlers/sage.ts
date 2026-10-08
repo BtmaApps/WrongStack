@@ -86,7 +86,10 @@ export function findExecutableOnPath(cmd: string): string | null {
     process.platform === 'win32' && path.extname(cmd) === ''
       ? (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
       : [''];
-  for (const dir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+  for (const rawDir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    // cmd.exe and libuv accept a quoted Windows entry; joined verbatim it
+    // named no file and an installed wstack.cmd looked absent.
+    const dir = process.platform === 'win32' ? rawDir.trim().replace(/^"|"$/g, '') : rawDir;
     if (!dir) continue;
     for (const suffix of suffixes) {
       const candidate = path.join(dir, cmd + suffix);

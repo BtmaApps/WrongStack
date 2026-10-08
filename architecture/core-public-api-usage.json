@@ -274,9 +274,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils/tree-kill": {
-      "files": 5,
+      "files": 14,
       "typeOnly": 0,
-      "runtimeOrMixed": 5
+      "runtimeOrMixed": 14
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
       "files": 20,
@@ -27112,7 +27112,61 @@
     },
     {
       "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/cli/src/chimera-cascade-evidence.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/cli/src/plugin-package-install.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/cli/src/slash-commands/dev.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
       "file": "packages/plug-lsp/src/server/lsp-server.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/plugin-sdk/src/runtime/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/plugins/src/dependency-vulnerability-gate/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/plugins/src/format-on-save/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/plugins/src/import-organizer/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/sdd/src/verify-task.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/security-scanner/src/package-audit.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

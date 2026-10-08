@@ -10,6 +10,8 @@ export interface KillableChild {
   readonly pid?: number | undefined;
   /** Non-null once Node has observed that the child exited. */
   readonly exitCode?: number | null | undefined;
+  /** Non-null once Node has observed that the child was ended by a signal. */
+  readonly signalCode?: NodeJS.Signals | null | undefined;
   kill(signal?: NodeJS.Signals | number): boolean | void;
 }
 
@@ -60,6 +62,10 @@ export function treeKill(child: KillableChild, opts: TreeKillOptions = {}): void
   }
 
   if (process.platform === 'win32') {
+    // Same stale-PID rule as the POSIX backstop: once Node has observed the
+    // exit (a code, or a signal after an earlier kill), `taskkill /T /F` by
+    // that PID may hit an unrelated process tree.
+    if (child.exitCode != null || child.signalCode != null) return;
     try {
       const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
         stdio: 'ignore',

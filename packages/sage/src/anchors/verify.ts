@@ -1,9 +1,9 @@
-import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/core/coordination';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
+import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/core/coordination';
 import type {
   AnchorVerificationResult,
   MemoryAnchor,
@@ -402,7 +402,10 @@ async function commandExists(
   }
   const extensions = isWin32 ? ['.exe', '.cmd', '.bat', '.com', ''] : [''];
   const pathVar = process.env['PATH'] ?? '';
-  for (const dir of pathVar.split(path.delimiter)) {
+  for (const rawDir of pathVar.split(path.delimiter)) {
+    // cmd.exe and libuv accept a quoted Windows entry; joined verbatim it
+    // named no file and an installed tool's anchor was demoted to 'stale'.
+    const dir = isWin32 ? rawDir.trim().replace(/^"|"$/g, '') : rawDir;
     if (!dir) continue;
     for (const ext of extensions) {
       signal?.throwIfAborted();

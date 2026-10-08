@@ -54,6 +54,29 @@ describe('resolveWin32Command', () => {
     },
   );
 
+  it.skipIf(process.platform !== 'win32')(
+    'resolves through a quoted PATH entry and never through an empty one (win32)',
+    () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'w32 quoted-'));
+      const cwd = process.cwd();
+      try {
+        const full = path.join(dir, 'mytool.cmd');
+        fs.writeFileSync(full, '@echo off');
+        process.env['PATHEXT'] = '.CMD';
+        // cmd.exe and libuv both honour a quoted entry.
+        process.env['PATH'] = `"${dir}"`;
+        expect(resolveWin32Command('mytool')).toBe(full);
+        // An empty entry must not become a lookup in the process cwd.
+        process.chdir(dir);
+        process.env['PATH'] = `${os.tmpdir()};;""`;
+        expect(resolveWin32Command('mytool')).toBe('mytool');
+      } finally {
+        process.chdir(cwd);
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('returns the original command when it cannot be found on PATH (win32)', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
     process.env['PATHEXT'] = '.CMD';

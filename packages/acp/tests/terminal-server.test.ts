@@ -58,6 +58,26 @@ describe('TerminalServer', () => {
     expect(out.output).toContain('world');
   });
 
+  it.skipIf(process.platform !== 'win32')(
+    'runs a .cmd that lives in a quoted PATH entry',
+    async () => {
+      const binDir = path.join(projectRoot, 'quoted bin');
+      await fsp.mkdir(binDir);
+      await fsp.writeFile(path.join(binDir, 'wsquoted.cmd'), '@echo QUOTED-RAN\r\n');
+      const savedPath = process.env['PATH'];
+      try {
+        // cmd.exe and libuv both accept a quoted entry.
+        process.env['PATH'] = `"${binDir}";${savedPath ?? ''}`;
+        const { terminalId } = server.create({ sessionId: 's1', command: 'wsquoted' });
+        const exit = await server.waitForExit(terminalId);
+        expect(server.output(terminalId).output).toContain('QUOTED-RAN');
+        expect(exit.exitCode).toBe(0);
+      } finally {
+        process.env['PATH'] = savedPath;
+      }
+    },
+  );
+
   it('returns a non-zero exit code for a failing command', async () => {
     const { terminalId } = server.create({
       sessionId: 's1',

@@ -49,6 +49,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { basename, isAbsolute } from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import {
   clearLocalBinCache,
   releaseHandle,
@@ -314,12 +315,16 @@ function runCommand(
     let stdoutBytes = 0;
     let stderrBytes = 0;
     const signal = AbortSignal.timeout(timeoutMs);
+    let child: ReturnType<typeof spawn> | undefined;
     const onAbort = (): void => {
       timedOut = true;
+      // Not spawn's `signal`: it kills only the direct child — through the
+      // cmd.exe shim that is cmd.exe — and the linter (a `--write` one) kept
+      // running and could rewrite the file later. Kill the whole tree.
+      if (child) treeKill(child);
       settle({ code: null, stdout: '', stderr: '', timedOut: true });
     };
     signal.addEventListener('abort', onAbort, { once: true });
-    let child: ReturnType<typeof spawn>;
     // Platform-adjust before spawning: `npx`/`pnpm`/`biome` are `.cmd`
     // shims on Windows and `spawn` without a shell ignores PATHEXT, so the
     // bare name failed ENOENT and this plugin never ran there at all.
@@ -336,7 +341,6 @@ function runCommand(
       child = spawn(invocation.cmd, invocation.args, {
         cwd,
         stdio: ['ignore', 'pipe', 'pipe'],
-        signal,
         windowsHide: true,
         ...(invocation.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
       });

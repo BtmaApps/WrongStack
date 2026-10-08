@@ -1,6 +1,6 @@
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { verifyMemoryAnchors } from '../src/anchors/verify.js';
 import type { MemoryAnchor, Sage } from '../src/types.js';
@@ -165,4 +165,23 @@ describe('command anchor verification via existence probe (2026-08-02)', () => {
     const result = await verifyMemoryAnchors(tempDir, makeMemory([anchor]));
     expect(result.anchors[0]?.status).toBe('verified');
   });
+
+  it.skipIf(process.platform !== 'win32')(
+    'verifies a tool whose PATH entry is quoted (no wrongful demotion)',
+    async () => {
+      const binDir = path.join(tempDir, 'quoted bin');
+      await mkdir(binDir, { recursive: true });
+      await writeFile(path.join(binDir, 'wsquotedtool.cmd'), '@echo off\r\n');
+      const savedPath = process.env['PATH'];
+      try {
+        // cmd.exe and libuv both accept a quoted entry.
+        process.env['PATH'] = `"${binDir}"`;
+        const anchor: MemoryAnchor = { type: 'command', command: 'wsquotedtool --version' };
+        const result = await verifyMemoryAnchors(tempDir, makeMemory([anchor]));
+        expect(result.anchors[0]?.status).toBe('verified');
+      } finally {
+        process.env['PATH'] = savedPath;
+      }
+    },
+  );
 });

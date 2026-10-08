@@ -125,7 +125,10 @@ export function findOnPath(cmd: string): string | null {
       ? (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
       : [''];
 
-  for (const dir of (process.env['PATH'] ?? '').split(delimiter)) {
+  for (const rawDir of (process.env['PATH'] ?? '').split(delimiter)) {
+    // cmd.exe and libuv accept a quoted Windows entry (`"C:\Program Files\x"`);
+    // joined verbatim it named no real file and the tool looked missing.
+    const dir = process.platform === 'win32' ? rawDir.trim().replace(/^"|"$/g, '') : rawDir;
     if (!dir) continue;
     const base = join(dir, cmd);
     for (const suffix of suffixes) {

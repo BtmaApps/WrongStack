@@ -22,7 +22,10 @@
 // value — which may itself contain `"` and `&`, breaking out of the quoting this
 // module relies on. Refusing `%` outright is the only complete defence, and real
 // Windows paths and flags do not contain it.
-const WIN32_CMD_META = /[&|<>"%\r\n\0]/;
+// `^` is here because `call` re-parses its line and doubles every caret, quoted
+// or not: `react@^18` reached the shim as `react@^^18`. Refusing it beats
+// handing the program a silently different argument.
+const WIN32_CMD_META = /[&|<>"%^\r\n\0]/;
 
 export interface Win32CmdShimInvocation {
   command: string;
@@ -48,7 +51,7 @@ function assertSafeWin32CmdArgs(args: readonly unknown[]): void {
     if (typeof arg === 'string' && WIN32_CMD_META.test(arg)) {
       throw new Error(
         'win32 cmd shim spawn: argument contains a shell metacharacter ' +
-          '(one of & | < > ", or a newline) that could enable command injection ' +
+          '(one of & | < > " % ^, or a newline) that could enable command injection ' +
           'through the .cmd/.bat wrapper - refusing to run. Offending argument: ' +
           JSON.stringify(arg),
       );

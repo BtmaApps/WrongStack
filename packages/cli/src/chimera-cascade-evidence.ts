@@ -26,6 +26,7 @@
 
 import { spawn } from 'node:child_process';
 import type { CascadeEvidenceCheckResult, CascadeEvidenceStatus } from '@wrongstack/core/plugin';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import {
   buildWin32CmdShimInvocation,
   isWinCmdShim,
@@ -238,15 +239,32 @@ const runCascadeVerificationCommand: RunCommandFn = (
         cwd,
         stdio: 'ignore',
         windowsHide: true,
-        signal: AbortSignal.timeout(timeoutMs),
         ...(windowsVerbatimArguments ? { windowsVerbatimArguments } : {}),
       });
     } catch {
       resolve({ exitCode: CASCADE_EVIDENCE_RUN_ERROR_EXIT });
       return;
     }
-    child.on('error', () => resolve({ exitCode: CASCADE_EVIDENCE_RUN_ERROR_EXIT }));
-    child.on('close', (code) => resolve({ exitCode: code ?? CASCADE_EVIDENCE_RUN_ERROR_EXIT }));
+    // Not an abort signal: it kills only the direct child — through the
+    // cmd.exe shim that is cmd.exe — and the hung check kept running.
+    const spawned = child;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      treeKill(spawned);
+    }, timeoutMs);
+    child.on('error', () => {
+      clearTimeout(timer);
+      resolve({ exitCode: CASCADE_EVIDENCE_RUN_ERROR_EXIT });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({
+        exitCode: timedOut
+          ? CASCADE_EVIDENCE_RUN_ERROR_EXIT
+          : (code ?? CASCADE_EVIDENCE_RUN_ERROR_EXIT),
+      });
+    });
   });
 };
 

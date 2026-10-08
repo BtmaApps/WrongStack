@@ -339,6 +339,9 @@ function isAbortLikeError(err: unknown): boolean {
  */
 function resolvePermissionDeadline(value: number | undefined): number | null {
   if (value === Number.POSITIVE_INFINITY) return null;
-  if (value !== undefined && Number.isFinite(value) && value > 0) return Math.trunc(value);
+  // Node clamps setTimeout delays above 2^31-1 ms to 1 ms; cap instead.
+  if (value !== undefined && Number.isFinite(value) && value > 0) {
+    return Math.min(Math.trunc(value), 2_147_483_647);
+  }
   return DEFAULT_PERMISSION_TIMEOUT_MS;
 }

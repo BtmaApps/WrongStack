@@ -1,7 +1,8 @@
-import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 
 export type AuditablePackageManager = 'npm' | 'pnpm';
 export type PackageAuditSeverity = 'critical' | 'high' | 'moderate' | 'low' | 'info' | 'unknown';
@@ -96,18 +97,21 @@ const defaultExecutor: PackageAuditExecutor = (command, args, cwd) =>
       }
     }
     try {
-      execFile(
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const child = execFile(
         executable,
         [...execArgs],
         {
           cwd,
           encoding: 'utf8',
-          timeout: 120_000,
           maxBuffer: 10 * 1024 * 1024,
           windowsHide: true,
           ...(windowsVerbatimArguments ? { windowsVerbatimArguments } : {}),
         },
         (error, stdout, stderr) => {
+          settled = true;
+          clearTimeout(timer);
           const errorWithCode = error as (Error & { code?: string | number | undefined }) | null;
           resolve({
             stdout: stdout ?? '',
@@ -118,6 +122,15 @@ const defaultExecutor: PackageAuditExecutor = (command, args, cwd) =>
           });
         },
       );
+      // Not execFile's `timeout`: it kills only cmd.exe on the shim path and
+      // left the real npm/pnpm running. Kill the tree and drop the pipes.
+      if (!settled) {
+        timer = setTimeout(() => {
+          treeKill(child);
+          child.stdout?.destroy();
+          child.stderr?.destroy();
+        }, 120_000);
+      }
     } catch (error) {
       resolve({
         stdout: '',

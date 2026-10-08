@@ -18,6 +18,7 @@ import { accessSync } from 'node:fs';
 import * as path from 'node:path';
 import type { TaskNode, TaskResult } from '@wrongstack/core/types';
 import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 
 /**
  * The `.cmd`/`.bat` a Windows executable resolves to, if any. `npm test`,
@@ -31,7 +32,10 @@ function win32BatchTarget(executable: string): string | undefined {
   if (/\.(?:cmd|bat)$/i.test(executable)) return executable;
   if (/[\\/]/.test(executable) || path.extname(executable)) return undefined;
   const exts = (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').toLowerCase().split(';');
-  for (const dir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+  for (const rawDir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    // cmd.exe and libuv accept a quoted entry (`"C:\Program Files\nodejs"`);
+    // joined verbatim it named no file and `npm` was spawned bare -> ENOENT.
+    const dir = rawDir.trim().replace(/^"|"$/g, '');
     if (!dir) continue;
     for (const ext of exts) {
       if (!ext) continue;
@@ -328,7 +332,9 @@ export function makeCommandVerifier(options: CommandVerifierOptions = {}) {
       let timedOut = false;
       const timer = setTimeout(() => {
         timedOut = true;
-        child.kill();
+        // A .cmd shim runs the verifier as cmd.exe's child: kill() alone ended
+        // only the wrapper and left the hung verifier running for good.
+        treeKill(child);
         resolve({ ok: false, reason: `verification timed out: ${rawCommand}` });
       }, timeoutMs);
       child.on('exit', (code) => {

@@ -23,6 +23,9 @@ vi.mock('@wrongstack/core/utils', async (importOriginal) => {
   };
 });
 
+const treeKillSpy = vi.hoisted(() => vi.fn());
+vi.mock('@wrongstack/core/utils/tree-kill', () => ({ treeKill: treeKillSpy }));
+
 import { PackageAuditRunner } from '../src/package-audit.js';
 
 let root: string;
@@ -113,6 +116,34 @@ describe('default package audit executor', () => {
       success: false,
       skipped: false,
     });
+  });
+
+  it('kills the whole tree on timeout, not just the cmd.exe wrapper', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    vi.useFakeTimers();
+    try {
+      treeKillSpy.mockReset();
+      const child = {
+        pid: 4242,
+        stdout: { destroy: vi.fn() },
+        stderr: { destroy: vi.fn() },
+      };
+      let finish: ((error: Error | null, stdout?: string) => void) | undefined;
+      childProcess.execFile.mockImplementation((...args: unknown[]) => {
+        finish = args[3] as typeof finish;
+        return child;
+      });
+      const pending = new PackageAuditRunner().run(root);
+      await vi.waitFor(() => expect(finish).toBeDefined());
+      await vi.advanceTimersByTimeAsync(120_000);
+      // execFile's own `timeout` killed only cmd.exe and orphaned npm.
+      expect(treeKillSpy).toHaveBeenCalledWith(child);
+      expect(child.stdout.destroy).toHaveBeenCalled();
+      finish?.(Object.assign(new Error('killed'), { code: 1 }), '');
+      expect((await pending).success).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('maps non-numeric process failures to a null exit code', async () => {

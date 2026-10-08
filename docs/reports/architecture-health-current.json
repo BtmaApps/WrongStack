@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T17:52:25.473Z",
+  "generatedAt": "2026-10-08T12:22:05.766Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4889,
-    "testFiles": 4180,
-    "sourceLines": 1081661,
+    "testFiles": 4188,
+    "sourceLines": 1081921,
     "workspaceEdges": 133,
-    "moduleEdges": 16075,
+    "moduleEdges": 16077,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 615,
-      "testFiles": 602,
+      "testFiles": 603,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 602
+          "testFiles": 603
         }
       ]
     },
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1104,
-      "testFiles": 928,
+      "testFiles": 930,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 928
+          "testFiles": 930
         }
       ]
     },
@@ -381,7 +381,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 63,
-      "testFiles": 63,
+      "testFiles": 64,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -394,7 +394,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 63
+          "testFiles": 64
         }
       ]
     },
@@ -443,7 +443,7 @@
       "name": "@wrongstack/plugin-sdk",
       "dir": "packages/plugin-sdk",
       "sourceFiles": 11,
-      "testFiles": 6,
+      "testFiles": 7,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -457,7 +457,7 @@
         {
           "path": "packages/plugin-sdk/tsconfig.test.json",
           "error": null,
-          "testFiles": 6
+          "testFiles": 7
         }
       ]
     },
@@ -920,7 +920,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 295,
-      "testFiles": 277,
+      "testFiles": 280,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -946,7 +946,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 277
+          "testFiles": 280
         }
       ]
     },
@@ -3769,6 +3769,12 @@
       },
       {
         "file": "packages/cli/tests/plugin-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/plugin-package-install-timeout.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8334,6 +8340,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/goal/project-verifier-timeout.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/goal/project-verifier.test.ts",
         "projects": [
           "root-node"
@@ -11118,6 +11130,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/utils/win32-cmd.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/utils/win32-exe-search.test.ts",
         "projects": [
           "root-node"
@@ -11946,6 +11964,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/client-ping-complete.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/client-resources-prompts.test.ts",
         "projects": [
           "root-node"
@@ -12733,6 +12757,12 @@
       },
       {
         "file": "packages/plugin-sdk/tests/runtime-contracts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugin-sdk/tests/runtime-exec-process-tree.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21744,6 +21774,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/browser-live-watch-interval-unref.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/browser-live.test.ts",
         "projects": [
           "root-node"
@@ -22093,6 +22129,12 @@
       },
       {
         "file": "packages/webui-server/tests/goal-ws-handler.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/goal-ws-message-dispatch.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23191,6 +23233,12 @@
       },
       {
         "file": "packages/webui-server/tests/vector-memory-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/webui-status-logger-heartbeat-unref.test.ts",
         "projects": [
           "root-node"
         ]
@@ -26444,6 +26492,11 @@
       "relativeImports": 12
     },
     {
+      "file": "packages/plugin-sdk/src/runtime/index.ts",
+      "lines": 756,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/tools/src/codebase-index/skeleton-extractor.ts",
       "lines": 756,
       "relativeImports": 3
@@ -26597,11 +26650,6 @@
       "file": "packages/cli/src/boot/tui-session-resume.ts",
       "lines": 740,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/plugin-sdk/src/runtime/index.ts",
-      "lines": 740,
-      "relativeImports": 10
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",

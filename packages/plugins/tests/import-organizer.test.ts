@@ -13,19 +13,23 @@
  * linter installation. The plugin reads the file from disk to detect
  * the post-edit byte count, so tests write real files in a tmpdir.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'node:events';
+
 import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock child_process.spawn so we don't actually invoke biome or eslint.
 vi.mock('node:child_process', async () => {
   const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
   return { ...actual, spawn: vi.fn() };
 });
+
+const treeKillSpy = vi.hoisted(() => vi.fn());
+vi.mock('@wrongstack/core/utils/tree-kill', () => ({ treeKill: treeKillSpy }));
 
 import importOrganizerPlugin from '../src/import-organizer/index.js';
 
@@ -740,6 +744,33 @@ describe('issue #367 allowlist + oxlint + timeout', () => {
       toolResult: { content: 'ok', isError: false },
     });
     expect(result?.additionalContext).toMatch(/oxlint has no import-organize support/i);
+  });
+
+  it('kills the whole linter tree on timeout, not just the cmd.exe wrapper', async () => {
+    treeKillSpy.mockReset();
+    const api = createMockAPI();
+    api.config.extensions = { 'import-organizer': { timeoutMs: 30 } };
+    importOrganizerPlugin.setup(api as never);
+    const hook = (api.registerHook.mock.calls[0] as unknown[])[2] as (
+      input: unknown,
+    ) => Promise<unknown>;
+    const filePath = path.join(issueTmp, 'tree.ts');
+    await fs.writeFile(filePath, 'const x = 1;\n', 'utf8');
+    const child = new EventEmitter() as EventEmitter & {
+      stdout: EventEmitter;
+      stderr: EventEmitter;
+    };
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    vi.mocked(spawn).mockImplementationOnce(() => child as never);
+    await hook({
+      toolName: 'write',
+      toolInput: { path: filePath, content: '' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    // spawn's own `signal` killed only cmd.exe and left a `--write` linter running.
+    expect(treeKillSpy).toHaveBeenCalledWith(child);
+    expect(vi.mocked(spawn).mock.calls.at(-1)?.[2]).not.toHaveProperty('signal');
   });
 
   it('kills a hanging linter and increments errorCount', async () => {

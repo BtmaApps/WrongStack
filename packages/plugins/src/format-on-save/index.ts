@@ -32,6 +32,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, readFile, stat } from 'node:fs/promises';
 import type { Plugin } from '@wrongstack/core/types';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import {
   BoundedMap,
   clearLocalBinCache,
@@ -326,18 +327,23 @@ async function formatFile(filePath: string, timeoutMs: number): Promise<FormatRe
 
   try {
     await new Promise<void>((resolve, reject) => {
-      execFile(
+      let settled = false;
+      let timedOut = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const child = execFile(
         invocation.cmd,
         invocation.args,
         {
           encoding: 'utf-8',
-          timeout: timeoutMs,
           cwd: process.cwd(),
           windowsHide: true,
           maxBuffer: 16 * 1024 * 1024,
           ...(invocation.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
         },
         (err) => {
+          settled = true;
+          clearTimeout(timer);
+          if (timedOut) return reject(new Error(`formatter timed out after ${timeoutMs}ms`));
           if (err) {
             const e = err as NodeJS.ErrnoException & { killed?: boolean };
             // Formatters exit 0 on success even when they rewrite the file.
@@ -350,6 +356,16 @@ async function formatFile(filePath: string, timeoutMs: number): Promise<FormatRe
           resolve();
         },
       );
+      // Not execFile's `timeout`: it kills only cmd.exe on the shim path (a
+      // global `.cmd` formatter) and the `--write` formatter kept running.
+      if (!settled) {
+        timer = setTimeout(() => {
+          timedOut = true;
+          treeKill(child);
+          child.stdout?.destroy();
+          child.stderr?.destroy();
+        }, timeoutMs);
+      }
     });
   } catch {
     return null;

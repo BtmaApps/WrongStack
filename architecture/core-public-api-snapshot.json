@@ -1592,7 +1592,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 93,
-      "sourceLines": 22603
+      "sourceLines": 22612
     },
     {
       "directory": "extension",
@@ -1606,7 +1606,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 23,
-      "sourceLines": 4841
+      "sourceLines": 4854
     },
     {
       "directory": "hooks",
@@ -1781,7 +1781,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 83,
-      "sourceLines": 13902
+      "sourceLines": 13911
     },
     {
       "directory": "vcs",

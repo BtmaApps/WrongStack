@@ -34,6 +34,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, extname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 import { buildChildEnv } from '@wrongstack/core/utils/child-env';
+import { treeKill } from '@wrongstack/core/utils/tree-kill';
 
 export {
   type OptionalCouncilRequest,
@@ -373,8 +374,16 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
     // the callback fires because event-loop ordering guarantees the
     // 'abort' event listener runs before the execFile error callback
     // on the same scheduled microtask/macrotask boundary.
+    // Not execFile's `timeout`/`signal`: both kill only the direct child —
+    // through the cmd.exe shim that is cmd.exe — and the program kept running.
+    // Kill the tree, and stop waiting on pipes a surviving descendant holds.
+    let spawned: ReturnType<typeof execFile> | undefined;
     const onAbort = () => {
       timedOut = true;
+      if (!spawned) return;
+      treeKill(spawned);
+      spawned.stdout?.destroy();
+      spawned.stderr?.destroy();
     };
     // Adjust the invocation for the host platform BEFORE spawning. Without
     // this, `argv[0]` values like `npx`/`pnpm`/`tsc` — which are `.cmd`
@@ -408,8 +417,6 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
         // shared allowlist + secret-strip child env (operators can widen it
         // deliberately via WRONGSTACK_CHILD_ENV_PASSTHROUGH).
         env: buildChildEnv(),
-        timeout: options.timeoutMs,
-        signal: options.signal,
         maxBuffer: MAX_BUFFER_BYTES,
         // execFile defaults `encoding` to 'utf8', which makes the
         // stdout/stderr `data` events emit *strings*. The chunk arrays
@@ -425,6 +432,7 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
         ...(invocation.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
       },
       (err) => {
+        clearTimeout(timer);
         // Drop the abort listener on every completion path. Without this, a
         // caller reusing one signal across many exec() calls leaks a listener
         // per call (the { once } only fires on abort, not normal completion).
@@ -439,7 +447,11 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
           });
           return;
         }
-        if (spawnErrored) {
+        // execFile's own 'error' handler runs this callback BEFORE the
+        // listener below sets `spawnErrored`, so read the code off `err` too —
+        // a missing binary reported {code: 1, spawnError: false}.
+        const errCode = (err as NodeJS.ErrnoException | null)?.code;
+        if (spawnErrored || errCode === 'ENOENT' || errCode === 'EPERM' || errCode === 'EACCES') {
           resolvePromise({
             code: 127,
             stdout: Buffer.concat(stdoutChunks).toString('utf8'),
@@ -514,6 +526,10 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
         });
       },
     );
+    spawned = child;
+    // Node clamps delays above 2^31-1 ms to 1 ms, which would kill at once.
+    const timer = setTimeout(onAbort, Math.min(options.timeoutMs, 2_147_483_647));
+    if (options.signal?.aborted) onAbort();
     // When execFile kills the child due to its built-in timeout, the
     // 'exit' event fires with a non-null signal before the callback.
     // Set timedOut so the callback's dead-code branch becomes live

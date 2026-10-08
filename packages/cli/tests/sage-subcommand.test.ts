@@ -96,4 +96,23 @@ describe('wstack sage', () => {
     expect(findExecutableOnPath(process.execPath)).toBe(path.resolve(process.execPath));
     expect(findExecutableOnPath('definitely-not-a-real-command-4821')).toBeNull();
   });
+
+  it.skipIf(process.platform !== 'win32')(
+    'findExecutableOnPath sees a .cmd behind a quoted PATH entry',
+    () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ws sage quoted-'));
+      const savedPath = process.env['PATH'];
+      try {
+        fs.writeFileSync(path.join(dir, 'wsquotedtool.cmd'), '@echo off\r\n');
+        // cmd.exe and libuv both accept a quoted entry.
+        process.env['PATH'] = `"${dir}"`;
+        expect(findExecutableOnPath('wsquotedtool')?.toLowerCase()).toBe(
+          path.join(dir, 'wsquotedtool.cmd').toLowerCase(),
+        );
+      } finally {
+        process.env['PATH'] = savedPath;
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
 });

@@ -76,6 +76,18 @@ describe('treeKill', () => {
     expect(kill).toHaveBeenCalledTimes(1);
   });
 
+  it('on Windows does not taskkill a PID after the child has exited', () => {
+    // The PID may already belong to an unrelated process tree.
+    setPlatform('win32');
+    spawnMock.mockReturnValue(fakeKiller());
+    treeKill({ pid: 4321, exitCode: 0, kill: vi.fn() });
+    treeKill({ pid: 4322, exitCode: 1, kill: vi.fn() }, { force: true });
+    treeKill({ pid: 4324, exitCode: null, signalCode: 'SIGTERM', kill: vi.fn() });
+    expect(spawnMock).not.toHaveBeenCalled();
+    treeKill({ pid: 4323, exitCode: null, kill: vi.fn() });
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+  });
+
   it('on POSIX sends SIGTERM then a SIGKILL backstop', () => {
     setPlatform('linux');
     vi.useFakeTimers();

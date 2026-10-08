@@ -1,3 +1,9 @@
+/**
+ * Node clamps a setTimeout delay above 2^31-1 ms to 1 ms, which would turn a
+ * deliberately huge deadline into an immediate abort.
+ */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 /** Bound even injected callers that do not honor cancellation themselves. */
 export async function callWithDeadline<T>(
   call: (signal: AbortSignal) => Promise<T>,
@@ -9,7 +15,10 @@ export async function callWithDeadline<T>(
   const forwardAbort = () => controller.abort(parent?.reason);
   parent?.addEventListener('abort', forwardAbort, { once: true });
   if (parent?.aborted) forwardAbort();
-  const timer = setTimeout(() => controller.abort(new Error(timeoutMessage)), timeoutMs);
+  const timer = setTimeout(
+    () => controller.abort(new Error(timeoutMessage)),
+    Math.min(timeoutMs, MAX_TIMER_DELAY_MS),
+  );
   const { signal } = controller;
   let onAbort: (() => void) | undefined;
   try {

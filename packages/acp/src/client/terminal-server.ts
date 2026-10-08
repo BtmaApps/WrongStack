@@ -34,7 +34,10 @@ function win32BatchTarget(command: string): string | undefined {
   if (/\.(?:cmd|bat)$/i.test(command)) return command;
   if (/[\\/]/.test(command) || path.extname(command)) return undefined;
   const exts = (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').toLowerCase().split(';');
-  for (const dir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+  for (const rawDir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    // cmd.exe and libuv accept a quoted entry (`"C:\Program Files\nodejs"`);
+    // joined verbatim it named no file and `npm` was spawned bare -> ENOENT.
+    const dir = rawDir.trim().replace(/^"|"$/g, '');
     if (!dir) continue;
     for (const ext of exts) {
       if (!ext) continue;

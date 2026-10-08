@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
 // S4 (C2/C5): promote the canonical Windows `.cmd`/`.bat` shim
 // builder. The previous copy in this file (`assertSafeWin32ShellArgs`)
 // was a weaker quoting helper that predated the core-side
@@ -45,7 +46,13 @@ export function resolveWin32Command(cmd: string): string {
 
   const pathDirs = (process.env['PATH'] ?? '').split(path.delimiter);
 
-  for (const dir of pathDirs) {
+  for (const rawDir of pathDirs) {
+    // cmd.exe and libuv both accept a quoted entry (`"C:\Program Files\x"`);
+    // joined verbatim it named no real file, so the shim there was never
+    // found and the bare name failed ENOENT. An entry that is empty once
+    // unquoted would resolve against the process cwd — skip it.
+    const dir = rawDir.trim().replace(/^"|"$/g, '');
+    if (!dir) continue;
     const base = path.join(dir, cmd);
     // Check extensions in PATHEXT order. .EXE should win first because
     // it's typically listed first, and .exe doesn't need shell: true.

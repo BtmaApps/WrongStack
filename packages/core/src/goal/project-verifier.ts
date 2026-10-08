@@ -3,6 +3,7 @@ import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { buildChildEnv } from '../utils/child-env.js';
 import { toErrorMessage } from '../utils/error.js';
+import { treeKill } from '../utils/tree-kill.js';
 import { buildWin32CmdShimInvocation } from '../utils/win32-cmd.js';
 
 export interface GoalProjectVerifierOptions {
@@ -72,18 +73,21 @@ async function runStep(
       ? buildWin32CmdShimInvocation(manager, args)
       : { command: manager, args, windowsVerbatimArguments: false };
   return new Promise((resolve) => {
-    execFile(
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const child = execFile(
       invocation.command,
       invocation.args,
       {
         cwd,
-        timeout: timeoutMs,
         windowsHide: true,
         windowsVerbatimArguments: invocation.windowsVerbatimArguments,
         env: buildChildEnv(),
         maxBuffer: 8 * 1024 * 1024,
       },
       (err, stdout, stderr) => {
+        settled = true;
+        clearTimeout(timer);
         const output = `${stdout}${stderr}`.trim();
         if (!err) {
           resolve({ ok: true, output });
@@ -95,6 +99,15 @@ async function runStep(
         });
       },
     );
+    // execFile's own `timeout` kills only the direct child — through the
+    // cmd.exe shim that is cmd.exe, and the hung script kept running. Kill the
+    // tree, and stop waiting on pipes a surviving descendant may still hold.
+    if (settled) return;
+    timer = setTimeout(() => {
+      treeKill(child);
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+    }, timeoutMs);
   });
 }
 
