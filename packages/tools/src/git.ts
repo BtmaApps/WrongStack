@@ -325,7 +325,11 @@ function assertSafeWorktreeInput(input: GitInput, projectRoot: string): void {
 }
 
 function findGitDir(cwd: string, projectRoot: string): string | null {
-  const root = projectRoot;
+  // Compare one spelling per directory: a trailing separator or a different
+  // drive-letter case must not let the walk pass the project-root bound.
+  const pathKey = (p: string): string =>
+    process.platform === 'win32' ? resolve(p).toLowerCase() : resolve(p);
+  const root = pathKey(projectRoot);
   let dir = cwd;
   for (let i = 0; i < 20; i++) {
     try {
@@ -337,7 +341,7 @@ function findGitDir(cwd: string, projectRoot: string): string | null {
     } catch {
       // continue
     }
-    if (dir === root) break;
+    if (pathKey(dir) === root) break;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;

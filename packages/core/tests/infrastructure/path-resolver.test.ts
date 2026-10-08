@@ -158,5 +158,28 @@ describe('DefaultPathResolver', () => {
         await fs.rm(fakeHome, { recursive: true, force: true });
       }
     });
+
+    it.runIf(process.platform === 'win32')(
+      'holds the home guard when cwd spells home with a different case',
+      async () => {
+        const fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-home-case-'));
+        const prevUserProfile = process.env['USERPROFILE'];
+        const prevHome = process.env['HOME'];
+        try {
+          await fs.mkdir(path.join(fakeHome, '.git'));
+          const child = path.join(fakeHome, 'Empty-Subdir');
+          await fs.mkdir(child, { recursive: true });
+          process.env['USERPROFILE'] = fakeHome;
+          process.env['HOME'] = fakeHome;
+
+          const pr = new DefaultPathResolver(child.toUpperCase());
+          expect(pr.projectRoot.toLowerCase()).toBe(child.toLowerCase());
+        } finally {
+          process.env['USERPROFILE'] = prevUserProfile;
+          process.env['HOME'] = prevHome;
+          await fs.rm(fakeHome, { recursive: true, force: true });
+        }
+      },
+    );
   });
 });

@@ -87,6 +87,24 @@ describe('wstack-paths', () => {
     }
   });
 
+  // NTFS ignores case but the identity hash did not: `D:\Repo` and `d:\repo`
+  // (cmd.exe keeps the typed casing) were two projects with two session stores.
+  it.runIf(process.platform === 'win32')(
+    'gives one directory one identity whatever the path casing',
+    async () => {
+      const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-case-identity-'));
+      const dir = path.join(tmp, 'MyRepo');
+      try {
+        await fs.mkdir(dir);
+        const spellings = [dir, dir.toLowerCase(), dir.toUpperCase()];
+        expect(new Set(spellings.map((s) => projectSlug(s))).size).toBe(1);
+        expect(new Set(spellings.map((s) => projectHash(s))).size).toBe(1);
+      } finally {
+        await fs.rm(tmp, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('resolves global + project dirs under user home', () => {
     const paths = resolveWstackPaths({
       userHome: '/home/dev',

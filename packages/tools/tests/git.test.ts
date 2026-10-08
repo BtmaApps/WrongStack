@@ -35,6 +35,26 @@ describe('gitTool', () => {
     );
   });
 
+  it('does not drift into an ancestor repo when cwd spells the project root differently', async () => {
+    const base = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-git-bound-'));
+    try {
+      const outer = path.join(base, 'outer');
+      const proj = path.join(outer, 'proj');
+      await fs.mkdir(proj, { recursive: true });
+      execFileSync('git', ['init', '-q', outer], { windowsHide: true });
+      const ctx = {
+        cwd: proj + path.sep,
+        tools: [],
+        projectRoot: proj,
+      } as unknown as Parameters<typeof gitTool.execute>[1];
+      await expect(gitTool.execute({ command: 'status' }, ctx, makeOpts())).rejects.toThrow(
+        /Not in a git repository/,
+      );
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  });
+
   it('throws for raw args outside a git repo', async () => {
     const ctx = makeCtx('/');
     await expect(

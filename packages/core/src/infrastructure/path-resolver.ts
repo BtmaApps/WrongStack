@@ -31,13 +31,19 @@ export class DefaultPathResolver implements PathResolver {
     const root = path.parse(dir).root;
     const home = path.resolve(os.homedir());
     const startPath = path.resolve(start);
+    // Windows paths are case-insensitive: `c:\users\me` IS home even when
+    // os.homedir() spells it `C:\Users\me`, so the guard must not miss it.
+    const isHome =
+      process.platform === 'win32'
+        ? (p: string) => p.toLowerCase() === home.toLowerCase()
+        : (p: string) => p === home;
     while (dir !== root) {
       // Don't walk past the user home directory.  Home often has stray
       // markers (.git for dotfile tracking, package.json from global
       // tooling) that are unrelated to the actual working directory.
       // When cwd IS home we still check markers there — this guard
       // only fires during the upward walk from a subdirectory.
-      if (dir === home && dir !== startPath) {
+      if (isHome(dir) && dir !== startPath) {
         break;
       }
       for (const marker of PROJECT_MARKERS) {

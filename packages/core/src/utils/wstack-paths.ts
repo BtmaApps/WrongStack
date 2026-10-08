@@ -158,7 +158,27 @@ export interface WstackPaths {
  */
 export function canonicalProjectRoot(absRoot: string): string {
   if (typeof absRoot !== 'string' || !absRoot) return process.cwd();
-  const checkoutRoot = path.resolve(absRoot);
+  return onDiskCase(gitIdentityRoot(path.resolve(absRoot)));
+}
+
+/**
+ * The spelling the filesystem itself reports for `root`, when it differs from
+ * `root` by letter case alone. NTFS (and default APFS) ignore case, but the
+ * identity hash does not: `D:\Repo`, `d:\repo` and `D:\REPO` — cmd.exe keeps
+ * whatever casing was typed for `cd` — were three projects with three session
+ * stores. A difference beyond case (a symlink or junction) is left alone, so a
+ * symlinked root keeps the identity it already has.
+ */
+function onDiskCase(root: string): string {
+  try {
+    const real = fs.realpathSync.native(root);
+    return real !== root && real.toLowerCase() === root.toLowerCase() ? real : root;
+  } catch {
+    return root;
+  }
+}
+
+function gitIdentityRoot(checkoutRoot: string): string {
   const dotGit = path.join(checkoutRoot, '.git');
 
   try {
