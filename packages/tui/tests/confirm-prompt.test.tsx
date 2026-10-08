@@ -89,6 +89,26 @@ describe('ConfirmPrompt', () => {
     view.unmount();
   });
 
+  it('strips bidi overrides and invisible text from the summary and write targets', () => {
+    // JSON escaping leaves U+202E and tag characters raw; the dialog showed a
+    // reordered command / hidden text to the user approving it.
+    const view = render(
+      React.createElement(ConfirmPrompt, {
+        toolName: 'write',
+        input: { command: `cat notes‮txt.hs${String.fromCodePoint(0xe0041)}` },
+        writeTargets: ['r‮gnp.exe'],
+        suggestedPattern: 'write',
+        onDecision: vi.fn(),
+        onEnableYolo: vi.fn(),
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    expect(frame).toContain('cat notestxt.hs');
+    expect(frame).toContain('WRITES: rgnp.exe');
+    expect(frame).not.toMatch(/[\p{Bidi_Control}\p{Default_Ignorable_Code_Point}]/u);
+    view.unmount();
+  });
+
   it('renders button labels with [y], [n], [a], [d]', () => {
     const view = render(
       React.createElement(ConfirmPrompt, {

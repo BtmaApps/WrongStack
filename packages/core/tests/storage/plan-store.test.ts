@@ -2,7 +2,6 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isSessionError } from '../../src/types/errors.js';
 import {
   addPlanItem,
   clearPlan,
@@ -15,6 +14,7 @@ import {
   savePlan,
   setPlanItemStatus,
 } from '../../src/storage/plan-store.js';
+import { isSessionError } from '../../src/types/errors.js';
 
 describe('plan-store', () => {
   it('round-trips a plan through save/load', async () => {
@@ -72,6 +72,12 @@ describe('plan-store', () => {
     const out = formatPlan(plan);
     expect(out).toContain('[ ] alpha');
     expect(out).toContain('[~] beta');
+  });
+
+  it('formatPlan strips terminal controls from model-authored text', () => {
+    let plan = emptyPlan('s');
+    ({ plan } = addPlanItem(plan, 'ok\x1b]52;c;cm0=\x07\x1b[2J', 'd1\n\x1b[Hd2'));
+    expect(formatPlan(plan)).toBe('1. [ ] ok\n     d1\n     d2');
   });
 
   it('clearPlan empties items', () => {

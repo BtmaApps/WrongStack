@@ -67,10 +67,12 @@ const ANSI_ESCAPE_RE = /\x1b[ -/]*[@-~]/g;
  *
  * Unicode's own Bidi_Control set (LRM/RLM, U+061C ARABIC LETTER MARK,
  * U+202A–U+202E embedding/override, U+2066–U+2069 isolates) — a hand list
- * missed ALM — plus the zero-width U+200B–U+200D, U+2060 WORD JOINER,
- * U+2061–U+2064 invisible operators and U+FEFF.
+ * missed ALM — plus Default_Ignorable_Code_Point, Unicode's set of characters
+ * rendered invisibly: the zero-width U+200B–U+200D, U+2060–U+2064, U+FEFF, and
+ * what a hand list missed again — the Tag block U+E0000–U+E007F (a whole
+ * hidden sentence), U+3164 HANGUL FILLER, U+00AD, variation selectors.
  */
-const BIDI_AND_ZERO_WIDTH_RE = /[\p{Bidi_Control}​-‍⁠-⁤﻿]/gu;
+const BIDI_AND_ZERO_WIDTH_RE = /[\p{Bidi_Control}\p{Default_Ignorable_Code_Point}]/gu;
 
 /**
  * Strip terminal escapes, bidi/zero-width controls and non-printable characters

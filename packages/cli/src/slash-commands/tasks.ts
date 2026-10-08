@@ -16,11 +16,15 @@ import {
   formatTaskList,
   formatTaskProgress,
   recordCompletedWorkEvidence,
+  sanitizeTerminalText,
 } from '@wrongstack/core/utils';
 import { todoTool } from '@wrongstack/tools';
 import type { SlashCommandContext } from './command-context.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
 
+// Stored task titles and ids are model-authored (task tool) and the plain REPL
+// writes these messages straight to the TTY: every interpolation of them goes
+// through sanitizeTerminalText (OSC 52 clipboard writes, screen clears).
 function findTask(tasks: TaskItem[], query: string): { idx: number; item: TaskItem } | null {
   const value = query.trim();
   const asIndex = /^\d+$/.test(value) ? Number(value) : Number.NaN;
@@ -146,7 +150,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
           const planCfg = (await loadPlan(planPath)) ?? emptyPlan(sessionId);
           const { plan: updated } = addPlanItem(planCfg, found.item.title, found.item.description);
           await savePlan(planPath, updated);
-          outputMessage = `Planified "${found.item.title}" → plan item.\n${formatPlan(updated)}`;
+          outputMessage = `Planified "${sanitizeTerminalText(found.item.title)}" → plan item.\n${formatPlan(updated)}`;
           return file;
         });
         return { message: outputMessage };
@@ -232,7 +236,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
                   file.tasks.find((task) => task.id === dependencyId)?.status !== 'completed',
               );
               if (unmet.length > 0) {
-                outputMessage = `Cannot mark "${found.item.title}" ${nextStatus}; dependencies are unfinished: ${unmet.join(', ')}.`;
+                outputMessage = `Cannot mark "${sanitizeTerminalText(found.item.title)}" ${nextStatus}; dependencies are unfinished: ${unmet.map((id) => sanitizeTerminalText(id)).join(', ')}.`;
                 return file;
               }
             }
@@ -241,7 +245,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
             if (cmd === 'done') {
               completedTask = { id: found.item.id, title: found.item.title };
             }
-            outputMessage = `Marked ${verbMap[cmd] ?? cmd}: ${found.item.title}\n\n${formatTaskProgress(file.tasks)}`;
+            outputMessage = `Marked ${verbMap[cmd] ?? cmd}: ${sanitizeTerminalText(found.item.title)}\n\n${formatTaskProgress(file.tasks)}`;
             break;
           }
           case 'status': {
@@ -270,7 +274,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
                   file.tasks.find((task) => task.id === dependencyId)?.status !== 'completed',
               );
               if (unmet.length > 0) {
-                outputMessage = `Cannot mark "${found.item.title}" ${newStatus}; dependencies are unfinished: ${unmet.join(', ')}.`;
+                outputMessage = `Cannot mark "${sanitizeTerminalText(found.item.title)}" ${newStatus}; dependencies are unfinished: ${unmet.map((id) => sanitizeTerminalText(id)).join(', ')}.`;
                 return file;
               }
             }
@@ -279,7 +283,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
             if (newStatus === 'completed') {
               completedTask = { id: found.item.id, title: found.item.title };
             }
-            outputMessage = `Status → ${newStatus}: ${found.item.title}\n\n${formatTaskProgress(file.tasks)}`;
+            outputMessage = `Status → ${newStatus}: ${sanitizeTerminalText(found.item.title)}\n\n${formatTaskProgress(file.tasks)}`;
             break;
           }
           case 'depends':
@@ -311,13 +315,13 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
                   file.tasks.find((task) => task.id === dependencyId)?.status !== 'completed',
               );
               if (unmet.length > 0) {
-                outputMessage = `Cannot add unfinished dependencies to active task "${found.item.title}": ${unmet.join(', ')}.`;
+                outputMessage = `Cannot add unfinished dependencies to active task "${sanitizeTerminalText(found.item.title)}": ${unmet.map((id) => sanitizeTerminalText(id)).join(', ')}.`;
                 return file;
               }
             }
             found.item.dependsOn = depIds;
             found.item.updatedAt = new Date().toISOString();
-            outputMessage = `Dependencies set for "${found.item.title}": ${depIds.join(', ')}`;
+            outputMessage = `Dependencies set for "${sanitizeTerminalText(found.item.title)}": ${depIds.join(', ')}`;
             break;
           }
           case 'assign': {
@@ -334,7 +338,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
             }
             found.item.assignee = agent;
             found.item.updatedAt = new Date().toISOString();
-            outputMessage = `Assigned to ${agent}: "${found.item.title}"`;
+            outputMessage = `Assigned to ${agent}: "${sanitizeTerminalText(found.item.title)}"`;
             break;
           }
           case 'promote': {
@@ -352,7 +356,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
                 file.tasks.find((task) => task.id === dependencyId)?.status !== 'completed',
             );
             if (unmet.length > 0) {
-              outputMessage = `Cannot promote "${found.item.title}"; dependencies are unfinished: ${unmet.join(', ')}.`;
+              outputMessage = `Cannot promote "${sanitizeTerminalText(found.item.title)}"; dependencies are unfinished: ${unmet.map((id) => sanitizeTerminalText(id)).join(', ')}.`;
               return file;
             }
             found.item.status = 'in_progress';
@@ -387,7 +391,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
               (t) => (t as { promotedFromTask?: string }).promotedFromTask !== found.item.id,
             );
             todosToReplace = [...existing, ...todos];
-            outputMessage = `Promoted to ${todos.length} todo(s): "${found.item.title}"\n\n${formatTaskProgress(file.tasks)}`;
+            outputMessage = `Promoted to ${todos.length} todo(s): "${sanitizeTerminalText(found.item.title)}"\n\n${formatTaskProgress(file.tasks)}`;
             break;
           }
           case 'clear': {
@@ -398,7 +402,7 @@ export function buildTasksCommand(_opts: SlashCommandContext): SlashCommand {
             }
             const unfinished = file.tasks.filter((task) => task.status !== 'completed');
             if (unfinished.length > 0) {
-              outputMessage = `Cannot clear unfinished tasks: ${unfinished.map((task) => task.id).join(', ')}. Complete them first.`;
+              outputMessage = `Cannot clear unfinished tasks: ${unfinished.map((task) => sanitizeTerminalText(task.id)).join(', ')}. Complete them first.`;
               return file;
             }
             file.tasks = [];

@@ -1,4 +1,4 @@
-import { unifiedDiff, writeOut } from '@wrongstack/core/utils';
+import { sanitizeTerminalText, unifiedDiff, writeOut } from '@wrongstack/core/utils';
 import React from 'react';
 import { langFromPath } from '../highlight.js';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
@@ -285,7 +285,11 @@ export function ConfirmPrompt({
     }
   });
 
-  const inputSummary = stringifyInput(input);
+  // JSON escaping neutralises ESC but not bidi overrides or invisible text, and
+  // write targets are model-supplied paths printed raw: sanitize both before
+  // they reach the dialog the user approves. Core's copy is the security-owning
+  // one: the TUI's layout copy keeps ZWJ/tag sequences for emoji rendering.
+  const inputSummary = sanitizeTerminalText(stringifyInput(input));
   const inp = input as { path?: unknown | undefined };
   const diff = payloadDiff(input);
   const diffPath = typeof inp?.path === 'string' ? inp.path : undefined;
@@ -327,7 +331,11 @@ export function ConfirmPrompt({
           {boundaryReason ? <Text color="yellow">KANBAN BOUNDARY: {boundaryReason}</Text> : null}
           {writeTargets && writeTargets.length > 0 ? (
             <Text color="yellow">
-              WRITES: {writeTargets.slice(0, 5).join(', ')}
+              WRITES:{' '}
+              {writeTargets
+                .slice(0, 5)
+                .map((target) => sanitizeTerminalText(target))
+                .join(', ')}
               {writeTargets.length > 5 ? ` (+${writeTargets.length - 5} more)` : ''}
             </Text>
           ) : null}

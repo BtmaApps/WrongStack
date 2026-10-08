@@ -173,7 +173,12 @@ function renderUnknownList(items: unknown[], limit = DEFAULT_LIST_LIMIT): string
  */
 export function truncateForEvent(content: string, max = 400): string {
   if (!content) return '';
-  return content.length <= max ? content : `${content.slice(0, max - 1)}…`;
+  if (content.length <= max) return content;
+  // Never cut a surrogate pair: a lone half reaches providers (brain context)
+  // as an unpaired `\udXXX` escape.
+  let end = max - 1;
+  if (end > 0 && /[\uD800-\uDBFF]/.test(content[end - 1]!)) end--;
+  return `${content.slice(0, end)}…`;
 }
 
 /**

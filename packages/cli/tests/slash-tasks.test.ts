@@ -98,6 +98,28 @@ describe('buildTasksCommand', () => {
     expect(res?.message).toContain('dependencies are unfinished');
   });
 
+  it('sanitizes stored task titles and ids echoed to the terminal', async () => {
+    // Titles/ids are model-authored; the plain REPL writes the message raw.
+    const taskPath = path.join(tmpDir, 'hostile.json');
+    const completedWorkPath = path.join(tmpDir, 'completed-work.json');
+    const file = makeTaskFile('sess-1');
+    file.tasks[0] = { ...file.tasks[0]!, id: 'task-1\x1bc', title: 'dep' };
+    file.tasks.push({
+      ...file.tasks[0]!,
+      id: 'task-2',
+      title: 'Ship\x1b]52;c;cm0=\x07\x1b[2J',
+      dependsOn: ['task-1\x1bc'],
+    });
+    await saveTasks(taskPath, file);
+    const cmd = buildTasksCommand({} as never);
+
+    const res = await cmd.run('start task-2', makeCtx(taskPath, completedWorkPath));
+
+    expect(res?.message).toBe(
+      'Cannot mark "Ship" in_progress; dependencies are unfinished: task-1.',
+    );
+  });
+
   it('refuses to clear unfinished task coverage', async () => {
     const taskPath = path.join(tmpDir, 'coverage.json');
     const completedWorkPath = path.join(tmpDir, 'completed-work.json');

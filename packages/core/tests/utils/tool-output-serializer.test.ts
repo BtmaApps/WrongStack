@@ -762,6 +762,11 @@ describe('truncateForEvent', () => {
     expect(out.length).toBe(400);
     expect(out.endsWith('…')).toBe(true);
   });
+  it('never leaves a lone surrogate when an emoji straddles the cut', () => {
+    const out = truncateForEvent(`${'a'.repeat(398)}😀${'b'.repeat(10)}`, 400);
+    expect(out).toBe(`${'a'.repeat(398)}…`);
+    expect(out.isWellFormed()).toBe(true);
+  });
 });
 
 describe('sizeSignals', () => {

@@ -32,6 +32,29 @@ afterEach(() => {
 });
 
 describe('wireEventWiring', () => {
+  it('sanitizes streamed model text before it reaches the terminal', () => {
+    const handlers = new Map<string, Array<(payload: never) => void>>();
+    const evOn: EvOn = (event, handler) => {
+      handlers.set(event, [...(handlers.get(event) ?? []), handler]);
+    };
+    const renderer = { write: vi.fn() };
+    wireEventWiring({
+      evOn,
+      events: { emit: vi.fn() } as never,
+      renderer,
+      getProvider: () => 'provider',
+      getModel: () => 'model',
+      getSessionId: () => 'current',
+      projectSlug: 'wrongstack',
+      getActiveModeId: () => 'default',
+      tuiOwnsScreen: false,
+    });
+    for (const handler of handlers.get('provider.text_delta') ?? []) {
+      handler({ sessionId: 'current', text: 'ok\x1b]52;c;cm0=\x07\x1b[2J' } as never);
+    }
+    expect(renderer.write).toHaveBeenCalledWith('ok');
+  });
+
   it('streams only the active session and emits cumulative client status', () => {
     const handlers = new Map<string, Array<(payload: never) => void>>();
     const evOn: EvOn = (event, handler) => {

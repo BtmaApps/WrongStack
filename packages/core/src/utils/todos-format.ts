@@ -1,5 +1,6 @@
 import type { TodoItem } from '../types/context.js';
 import { color } from './color.js';
+import { sanitizeTerminalText } from './terminal-sanitize.js';
 
 /**
  * Canonical text rendering of the live todo list, shared by the CLI's
@@ -26,7 +27,10 @@ export function formatTodosList(todos: TodoItem[]): string {
         : t.status === 'in_progress'
           ? color.yellow('[~]')
           : color.dim('[ ]');
-    const text = t.status === 'in_progress' && t.activeForm ? t.activeForm : t.content;
+    // Model-authored (todo tool); `/todos` output reaches the TTY verbatim.
+    const text = sanitizeTerminalText(
+      t.status === 'in_progress' && t.activeForm ? t.activeForm : t.content,
+    );
     const label = t.status === 'completed' ? color.dim(text) : text;
     lines.push(`  ${color.dim(String(i + 1).padStart(2))}. ${mark} ${label}`);
   });

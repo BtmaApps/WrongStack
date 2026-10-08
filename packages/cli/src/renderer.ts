@@ -4,7 +4,7 @@ import type {
   TextBlock,
   ToolResultRenderMode,
 } from '@wrongstack/core/types';
-import { color } from '@wrongstack/core/utils';
+import { color, sanitizeTerminalText } from '@wrongstack/core/utils';
 import { renderDiff } from './diff-renderer.js';
 import { theme } from './theme.js';
 
@@ -141,8 +141,13 @@ export class TerminalRenderer implements Renderer {
     if (this.suppressStdout()) return;
     if (!this.lineStart) this.out.write('\n');
     const arrow = theme.primary('→');
-    const display = formatInputSummary(input);
-    this.out.write(`${arrow} ${theme.bold(name)}${display ? color.dim(` ${display}`) : ''}\n`);
+    // Tool names (MCP), inputs (model) and results (files, command output) are
+    // untrusted: an OSC 52 in a file the agent reads must not reach the TTY.
+    // Sanitized before the renderer adds its own colours; renderDiff already is.
+    const display = sanitizeTerminalText(formatInputSummary(input));
+    this.out.write(
+      `${arrow} ${theme.bold(sanitizeTerminalText(name))}${display ? color.dim(` ${display}`) : ''}\n`,
+    );
     this.lineStart = true;
   }
 
@@ -154,7 +159,9 @@ export class TerminalRenderer implements Renderer {
       this.clearRenderMode(name);
       return;
     }
-    const txt = typeof content === 'string' ? content : safeStringify(content);
+    const txt = sanitizeTerminalText(
+      typeof content === 'string' ? content : safeStringify(content),
+    );
     const prefix = isError ? theme.error('✘') : theme.success('✓');
     const renderMode = this.getRenderMode(name);
     // One-shot mode: consume the override so an unset call doesn't carry
@@ -167,7 +174,7 @@ export class TerminalRenderer implements Renderer {
     // serialised JSON. `summarize` already parses the structured value;
     // pull `text` out here when present so the preview head/tail match
     // what the user actually saw.
-    const bodyText = extractBodyText(content, name);
+    const bodyText = sanitizeTerminalText(extractBodyText(content, name));
 
     if (isError) {
       const firstLine = txt.split('\n')[0] ?? '';
@@ -181,7 +188,7 @@ export class TerminalRenderer implements Renderer {
     const isEditLike = name === 'edit' || name === 'write';
     const diff = extractDiff(content);
     if (isEditLike && diff) {
-      this.out.write(`  ${prefix} ${color.dim(summarize(content, name))}\n`);
+      this.out.write(`  ${prefix} ${color.dim(sanitizeTerminalText(summarize(content, name)))}\n`);
       const rendered = renderDiff(diff)
         .split('\n')
         .map((l) => `      ${l}`)
@@ -191,7 +198,7 @@ export class TerminalRenderer implements Renderer {
       return;
     }
 
-    const summary = summarize(content, name);
+    const summary = sanitizeTerminalText(summarize(content, name));
     const isReadLike =
       name === 'read' || name === 'grep' || name === 'glob' || name === 'bash' || name === 'exec';
 

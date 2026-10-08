@@ -335,10 +335,12 @@ function checkValue(field: ElicitationField, raw: unknown): Parsed<ElicitationVa
   switch (field.kind) {
     case 'string': {
       if (typeof raw !== 'string') return { ok: false, error: `${name} must be text` };
-      if (field.minLength !== undefined && raw.length < field.minLength) {
+      // JSON Schema counts characters (code points), not UTF-16 code units.
+      const length = [...raw].length;
+      if (field.minLength !== undefined && length < field.minLength) {
         return { ok: false, error: `${name} needs at least ${field.minLength} characters` };
       }
-      if (field.maxLength !== undefined && raw.length > field.maxLength) {
+      if (field.maxLength !== undefined && length > field.maxLength) {
         return { ok: false, error: `${name} allows at most ${field.maxLength} characters` };
       }
       return { ok: true, value: raw };

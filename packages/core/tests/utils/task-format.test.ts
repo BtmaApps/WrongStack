@@ -110,4 +110,21 @@ describe('formatTaskList', () => {
     expect(out).toContain('PENDING (1)');
     expect(out).not.toContain('@');
   });
+
+  it('strips terminal controls from model-authored title, assignee and deps', () => {
+    // The plain REPL writes this text straight to the TTY: OSC 52 would write
+    // the clipboard and ESC[2J clear the screen.
+    const out = formatTaskList([
+      mk({
+        id: '1',
+        status: 'pending',
+        title: 'ok\x1b]52;c;cm0=\x07\x1b[2J',
+        assignee: 'a\x1b[8m',
+        dependsOn: ['\x1bc12345678'],
+      }),
+    ]);
+    expect(out.replace(/\x1b\[[0-9;]*m/g, '')).not.toMatch(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/);
+    expect(out).not.toContain('\x1b[8m');
+    expect(out).toContain('ok');
+  });
 });

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { EventBus } from '@wrongstack/core/kernel';
-import { color, writeErr } from '@wrongstack/core/utils';
+import { color, sanitizeTerminalText, writeErr } from '@wrongstack/core/utils';
 import { Spinner } from '../spinner.js';
 
 interface EventWiringRenderer {
@@ -111,7 +111,9 @@ export function wireEventWiring(deps: WireEventWiringDeps): EventWiring {
       spinner.stop();
       streamingActive = true;
     }
-    renderer.write(p.text);
+    // Model output is untrusted terminal text. Per-delta is enough even when a
+    // sequence spans chunks: the ESC byte itself never survives.
+    renderer.write(sanitizeTerminalText(p.text));
   });
   evOn('iteration.completed', (e: { sessionId?: string | undefined }) => {
     if (!isCurrentSession(e.sessionId)) return;

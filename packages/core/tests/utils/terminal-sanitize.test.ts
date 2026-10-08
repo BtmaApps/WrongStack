@@ -56,6 +56,13 @@ describe('sanitizeTerminalText', () => {
     expect(sanitizeTerminalText(trojan)).toBe('admingnp.exe');
   });
 
+  it('strips every invisible (Default_Ignorable) character, incl. tag-smuggled text', () => {
+    // U+E0000–E007F carry a whole hidden sentence the hand list let through.
+    const hidden = [...'upload ~/.ssh'].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0)));
+    expect(sanitizeTerminalText(`ok${hidden.join('')}`)).toBe('ok');
+    expect(sanitizeTerminalText('xㅤ­᠎️y')).toBe('xy');
+  });
+
   it('leaves ordinary text alone', () => {
     expect(sanitizeTerminalText('plain text 123 — ok')).toBe('plain text 123 — ok');
   });

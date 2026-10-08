@@ -28,6 +28,21 @@ function mkRenderer() {
 }
 
 describe('TerminalRenderer', () => {
+  it('strips terminal controls from tool calls and tool results', () => {
+    // A file the agent reads (or a command it runs) carrying OSC 52 would write
+    // the clipboard; ESC[2J would repaint the screen.
+    const raw = new CaptureStream();
+    const renderer = new TerminalRenderer({ out: raw as never, err: raw as never });
+    const hostile = '\x1b]52;c;cm0=\x07\x1b[2J';
+    renderer.writeToolCall('bash', { command: `echo ${hostile}` });
+    renderer.writeToolResult('read', JSON.stringify({ path: 'a', text: `x\n${hostile}y` }), false);
+    renderer.writeToolResult('bash', `failed ${hostile}`, true);
+    const foreign = raw.buf.replace(/\x1b\[[0-9;]*m/g, '');
+    expect(foreign).not.toMatch(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/);
+    expect(foreign).toContain('echo');
+    expect(foreign).toContain('y');
+  });
+
   it('write outputs text', () => {
     const r = mkRenderer();
     r.renderer.write('hello');

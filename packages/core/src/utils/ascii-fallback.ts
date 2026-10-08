@@ -91,7 +91,7 @@ const MAP: Record<string, string> = {
   '═': '=',
   '║': '|',
   // Letterlike symbols that Unicode files under letters (`ℹ` is Ll).
-  'ℹ': 'i',
+  ℹ: 'i',
   '™': 'TM',
 };
 
@@ -101,7 +101,10 @@ const SPINNER = ['|', '/', '-', '\\'];
 
 // Grapheme clusters that carry text (letters, digits, currency, spaces) stay.
 const KEEP_RE = /[\p{L}\p{N}\p{Sc}]/u;
-const WIDE_RE = /\p{Emoji_Presentation}|\uFE0F|[\u{1F000}-\u{1FAFF}]/u;
+// East Asian Wide/Fullwidth symbols (`\uFF0C` `\u3002` `\uFF0B`, U+3000) are two columns
+// too; counting only emoji shifted every CJK line left by one per symbol.
+const WIDE_RE =
+  /\p{Emoji_Presentation}|\uFE0F|[\u{1F000}-\u{1FAFF}]|[\u1100-\u115F\u2329\u232A\u2630-\u2637\u268A-\u268F\u2E80-\u303E\u3041-\u33FF\uFE30-\uFE6B\uFF00-\uFF60\uFFE0-\uFFE6]/u;
 const SEGMENTER = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 function fallbackFor(cluster: string): string {

@@ -6,6 +6,7 @@ import type {
 } from '../types/task-graph.js';
 import { completionPercent } from '../types/task-graph.js';
 import { color } from './color.js';
+import { sanitizeTerminalText } from './terminal-sanitize.js';
 
 // Re-export graph types for convenience
 export type { TaskPriority, TaskStatus, TaskType };
@@ -174,15 +175,18 @@ export function formatTaskList(tasks: TaskItem[]): string {
     const icon = STATUS_ICON[status];
     lines.push(`  ${icon} ${status.toUpperCase()} (${group.length})`);
     for (const t of group) {
+      // Title, assignee and dependency ids are model-authored and this text is
+      // written straight to the TTY by the plain REPL: sanitize them (OSC 52,
+      // screen clears) — the formatter's own colour codes are added after.
       const prio = PRIORITY_ICON[t.priority];
       const type = TYPE_ICON[t.type];
       const deps =
         t.dependsOn && t.dependsOn.length > 0
-          ? ` ${color.dim('←')} ${color.dim(t.dependsOn.map((d) => d.slice(0, 8)).join(', '))}`
+          ? ` ${color.dim('←')} ${color.dim(t.dependsOn.map((d) => sanitizeTerminalText(d).slice(0, 8)).join(', '))}`
           : '';
-      const who = t.assignee ? ` ${color.dim(`@${t.assignee}`)}` : '';
+      const who = t.assignee ? ` ${color.dim(`@${sanitizeTerminalText(t.assignee)}`)}` : '';
       const hrs = t.estimateHours ? ` ${color.dim(`${t.estimateHours}h`)}` : '';
-      lines.push(`    ${type} ${prio} ${t.title}${deps}${who}${hrs}`);
+      lines.push(`    ${type} ${prio} ${sanitizeTerminalText(t.title)}${deps}${who}${hrs}`);
     }
   }
 

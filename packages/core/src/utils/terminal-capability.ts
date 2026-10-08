@@ -114,15 +114,16 @@ function parseColorDepth(env: {
   if (env.FORCE_COLOR !== undefined) return 3;
   // Explicit user opt-out.
   if (typeof env.NO_COLOR === 'string' && env.NO_COLOR !== '') return 0;
+  const term = (env.TERM ?? '').toLowerCase();
+  // TERM=dumb = no interactive capability at all — ahead of COLORTERM, which a
+  // dumb terminal (Emacs shell) often inherits from the one that launched it.
+  if (term === 'dumb') return 0;
   // Explicit terminal advertisement.
   const colorterm = (env.COLORTERM ?? '').toLowerCase();
   if (colorterm === 'truecolor' || colorterm === '24bit') return 3;
   // TERM strings that advertise rich color.
-  const term = (env.TERM ?? '').toLowerCase();
   if (term.includes('truecolor') || term.includes('24bit')) return 3;
   if (term.includes('256color')) return 2;
-  // TERM=dumb = no interactive capability at all.
-  if (term === 'dumb') return 0;
   // Default to 16-color — the safest floor. Modern terminals all override this.
   return 1;
 }

@@ -115,6 +115,17 @@ describe('todos-format / formatTodosList', () => {
     expect(typeof out).toBe('string');
     expect(out.includes('\n')).toBe(true);
   });
+
+  it('strips terminal controls from model-authored content and activeForm', () => {
+    const todos: TodoItem[] = [
+      { id: '1', content: 'a\x1b]52;c;cm0=\x07\x1b[2J', status: 'pending' },
+      { id: '2', content: 'b', activeForm: 'c\x1b[H\x1bc', status: 'in_progress' },
+    ];
+    const out = stripAnsi(formatTodosList(todos));
+    expect(out).not.toMatch(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/);
+    expect(out).toContain('[ ] a');
+    expect(out).toContain('[~] c');
+  });
 });
 
 // ── hasOpenTodos ───────────────────────────────────────────────────

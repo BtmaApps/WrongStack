@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import type { ConversationState } from '../core/conversation-state.js';
-import type { EventBus } from './event-bus-port.js';
 import { SessionError } from '../types/errors.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/error.js';
+import { sanitizeTerminalText } from '../utils/terminal-sanitize.js';
+import type { EventBus } from './event-bus-port.js';
 
 /**
  * Plan items are the strategic counterpart to todos. Where `ctx.todos`
@@ -221,16 +222,20 @@ export function clearPlan(plan: PlanFile): PlanFile {
   return { ...plan, items: [], updatedAt: new Date().toISOString() };
 }
 
-/** Render the plan as a short markdown-ish string suitable for slash output. */
+/**
+ * Render the plan as a short markdown-ish string suitable for slash output.
+ * Titles and details are model-authored (plan tool) and `/plan` output reaches
+ * the TTY verbatim through the plain REPL, so they are terminal-sanitized.
+ */
 export function formatPlan(plan: PlanFile): string {
   if (plan.items.length === 0) return 'Plan is empty.';
   const lines: string[] = [];
-  if (plan.title) lines.push(`# ${plan.title}`);
+  if (plan.title) lines.push(`# ${sanitizeTerminalText(plan.title)}`);
   plan.items.forEach((it, i) => {
     const mark = it.status === 'done' ? '[x]' : it.status === 'in_progress' ? '[~]' : '[ ]';
-    lines.push(`${i + 1}. ${mark} ${it.title}`);
+    lines.push(`${i + 1}. ${mark} ${sanitizeTerminalText(it.title)}`);
     if (it.details) {
-      for (const line of it.details.split('\n')) lines.push(`     ${line}`);
+      for (const line of sanitizeTerminalText(it.details).split('\n')) lines.push(`     ${line}`);
     }
   });
   return lines.join('\n');
