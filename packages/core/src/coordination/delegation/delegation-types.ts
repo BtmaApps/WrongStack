@@ -48,6 +48,8 @@ export interface DelegateInput {
   provider?: string | undefined;
   model?: string | undefined;
   tier?: string | undefined;
+  /** Leader-chosen reasoning effort; see `SubagentConfig.leaderEffort`. */
+  effort?: string | undefined;
   systemPromptOverride?: string | undefined;
   timeoutMs?: number | undefined;
   maxIterations?: number | undefined;

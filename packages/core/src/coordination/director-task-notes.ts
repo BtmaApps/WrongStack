@@ -21,7 +21,10 @@ export interface DirectorTaskNotesHost {
   fleetManager: FleetManager | undefined;
   scheduleManifest(): void;
   sessionTerminateListeners: Set<(sessionId: string) => void>;
-  subagentMeta: Map<string, { provider?: string | undefined; model?: string | undefined }>;
+  subagentMeta: Map<
+    string,
+    { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+  >;
   maxSpawns: number;
 }
 

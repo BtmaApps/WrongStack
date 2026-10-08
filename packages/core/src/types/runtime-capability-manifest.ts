@@ -305,7 +305,7 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     id: 'runtime.admin',
     pack: 'admin',
     exposure: 'internal',
-    tools: ['context_manager', 'mode', 'skill'],
+    tools: ['context_manager', 'mode', 'skill', 'leader_effort_set'],
   },
 ] as const satisfies readonly RuntimeCapabilityDefinition[];
 

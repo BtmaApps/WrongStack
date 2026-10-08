@@ -18,7 +18,12 @@ import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { attachTodosCheckpoint, loadTodosCheckpoint } from '@wrongstack/core/storage';
 import type { SessionWriter } from '@wrongstack/core/types';
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
-import { sessionScopedPath, toErrorMessage } from '@wrongstack/core/utils';
+import {
+  clearLeaderEffortOverride,
+  restoreLeaderEffortOverride,
+  sessionScopedPath,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import {
   lastAssistantTextOf,
   type SessionResumeContext,
@@ -301,6 +306,9 @@ export async function resumeSession(
       restoreSessionSubagentModelPlan(agent.ctx, resumed.data.events);
       restoreSessionPermissionOverrides(agent.ctx.meta, resumed.data);
       restoreRequiredSkillsFromEvents(agent.ctx, resumed.data.events);
+      // The previous session's override must not ride into this one.
+      clearLeaderEffortOverride(agent.ctx.meta);
+      restoreLeaderEffortOverride(agent.ctx.meta, resumed.data.events);
     } catch (err) {
       agent.ctx.session = oldWriter;
       agent.ctx.state.replaceMessages(oldMessages);

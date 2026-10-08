@@ -474,6 +474,7 @@
         "export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';",
         "export { capSageLines, SAGE_INJECTOR_HEADINGS, type SageOutputSplit, splitSageOutputBlock, } from './sage-output-block.js';",
         "export { checkConnectivity, resetConnectivityCache } from './connectivity.js';",
+        "export { clearLeaderEffortOverride, LEADER_EFFORT_META_KEY, readLeaderEffortOverride, restoreLeaderEffortOverride, } from './leader-effort-override.js';",
         "export { cliSpawnArgs, isStandaloneBinary, moduleDirFor, moduleUrlFor, scriptSpawnArgs, standalonePackageDir, wrongstackPackageJsonPath, } from '@wrongstack/persistence';",
         "export { completePartialObject } from './json-repair.js';",
         "export { computeMessageTokens, estimateMessageTokens, estimateRequestTokens, estimateRequestTokensCalibrated, estimateTextTokens, estimateToolDefTokens, estimateToolInputTokens, estimateToolResultTokens, getCalibrationState, type RequestTokenBreakdown, recordActualUsage, resetCalibration, } from './token-estimate.js';",
@@ -657,6 +658,7 @@
         "export { _resetDesignKitLoaderMemo, DefaultDesignKitLoader, type DesignKitLoaderOptions, getDesignKitLoader, resolveBundledDesignKitsDir, } from './design-kit-loader.js';",
         "export { _resetDesignRulesCache, clearPersistedActiveKit, designProjectDir, loadActiveKit, loadProjectDesignRules, type PersistedActiveKit, recordKitChoice, } from './design-project-store.js';",
         "export { activateDesign, clearActiveKit, detectFrontendFile, detectFrontendIntent, getDesignState, installDesignStudioMiddleware, makeDesignDetectToolCallMiddleware, makeDesignDetectUserInputMiddleware, makeDesignStudioRequestMiddleware, setActiveKit, } from './design-detect.js';",
+        "export { activeLeaderEffort, clearLeaderEffortOverride, LEADER_EFFORT_META_KEY, type LeaderEffortOverride, readLeaderEffortOverride, restoreLeaderEffortOverride, } from '../utils/leader-effort-override.js';",
         "export { applyModelRuntime, createModelRuntimeMiddleware, type ModelRuntimeMiddlewareOptions, mergeModelRuntime, type ResolvedModelRuntime, resolveCacheForRequest, resolveModelRuntime, resolveReasoningForRequest, } from './model-runtime.js';",
         "export { assembleBrainTiers, type BrainTierAssembly, type BrainTierAssemblyOptions, } from './brain-chain.js';",
         "export { buildCouncilJudgeSystemPrompt, buildCouncilJudgeUserPrompt, buildCouncilQuestionPrompt, buildCouncilVoterSystemPrompt, buildCouncilVoterUserPrompt, COUNCIL_JUDGE_PROMPT_PATH, COUNCIL_VOTER_PROMPT_PATH, } from './council-prompts.js';",
@@ -1571,14 +1573,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 237,
-      "sourceLines": 60989
+      "sourceLines": 61138
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 74,
-      "sourceLines": 15929
+      "sourceLines": 15932
     },
     {
       "directory": "design",
@@ -1592,7 +1594,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 93,
-      "sourceLines": 22660
+      "sourceLines": 22673
     },
     {
       "directory": "extension",
@@ -1634,7 +1636,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 23,
-      "sourceLines": 4495
+      "sourceLines": 4506
     },
     {
       "directory": "models",
@@ -1759,15 +1761,15 @@
       "directory": "tools",
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
-      "sourceFiles": 23,
-      "sourceLines": 4551
+      "sourceFiles": 24,
+      "sourceLines": 4813
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 85,
-      "sourceLines": 16380
+      "sourceLines": 16412
     },
     {
       "directory": "typesafe",
@@ -1780,8 +1782,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 83,
-      "sourceLines": 14047
+      "sourceFiles": 84,
+      "sourceLines": 14209
     },
     {
       "directory": "vcs",

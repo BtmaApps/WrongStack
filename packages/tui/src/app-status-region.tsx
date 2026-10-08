@@ -55,6 +55,11 @@ function mergeComposerOwnedChips(hiddenItems: readonly StatuslineItem[]): Status
   return [...merged];
 }
 
+/** The chip suffix for a leader-chosen effort, so it never reads as the user's. */
+function leaderEffortLabel(effort: string | undefined): string | undefined {
+  return effort ? `${effort} (leader)` : undefined;
+}
+
 export function AppStatusRegion({
   host,
   runtime,
@@ -73,6 +78,7 @@ export function AppStatusRegion({
     fleetRoster,
     getModeLabel,
     getSettings,
+    getLeaderEffort,
     onCoordinatorStart,
     onCoordinatorStop,
     tokenCounter,
@@ -170,11 +176,14 @@ export function AppStatusRegion({
           // settings picker is open we preview its live ←/→ selection:
           // saveSettings → configStore is async, so the persisted read would
           // lag the keystroke the way the animation style does.
+          // A `leader_effort_set` change outranks the persisted value only
+          // while the user has not changed effort since — `getLeaderEffort`
+          // already applies that rule, so a defined answer is the live one.
           effort={
             getSettings
               ? state.settingsPicker.open
                 ? state.settingsPicker.reasoningEffort
-                : getSettings().reasoningEffort
+                : (leaderEffortLabel(getLeaderEffort?.()) ?? getSettings().reasoningEffort)
               : undefined
           }
           version={appVersion}

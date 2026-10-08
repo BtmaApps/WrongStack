@@ -1,6 +1,14 @@
 // Execution domain: compaction, tool execution, error handling, retry, skill loading
 
 export {
+  activeLeaderEffort,
+  clearLeaderEffortOverride,
+  LEADER_EFFORT_META_KEY,
+  type LeaderEffortOverride,
+  readLeaderEffortOverride,
+  restoreLeaderEffortOverride,
+} from '../utils/leader-effort-override.js';
+export {
   AutoCompactionMiddleware,
   type ContextWindowBudgetSnapshot,
 } from './auto-compaction-middleware.js';

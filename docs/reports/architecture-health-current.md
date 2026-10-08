@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-08T12:36:39.037Z
+**Generated:** 2026-10-08T12:37:25.185Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4889 |
-| Production source lines | 1082781 |
-| Test files | 4190 |
+| Production source files | 4893 |
+| Production source lines | 1083620 |
+| Test files | 4192 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 16081 |
+| Relative module edges | 16111 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 615 | 603 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1104 | 932 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1106 | 934 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 45 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 105 | 82 | @wrongstack/persistence, @wrongstack/primitives |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 314 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 478 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 712 | 471 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 714 | 471 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 128 | 54 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 295 | 280 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -86,7 +86,9 @@ None.
 | 766 | `packages/tools/src/todo.ts` |
 | 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
 | 763 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
+| 762 | `packages/core/src/coordination/fleet-manager.ts` |
 | 762 | `packages/core/src/plugin/api.ts` |
+| 762 | `packages/webui-server/src/server/session-handlers.ts` |
 | 761 | `packages/cli/src/plugin-management.ts` |
 | 761 | `packages/cli/src/slash-commands/project.ts` |
 | 761 | `packages/techstack/src/policy/rulebook.ts` |
@@ -95,7 +97,6 @@ None.
 | 759 | `packages/core/src/coordination/sqlite-mailbox.ts` |
 | 758 | `packages/core/src/registry/tool-registry.ts` |
 | 758 | `packages/webui/src/components/MessageBubble/index.tsx` |
-| 757 | `packages/core/src/coordination/fleet-manager.ts` |
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
 | 756 | `packages/plugin-sdk/src/runtime/index.ts` |
 | 756 | `packages/techstack/src/adapters/npm.ts` |
@@ -104,24 +105,24 @@ None.
 | 755 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 755 | `packages/webui-hq/src/domain/fleet-topology.ts` |
 | 754 | `packages/providers/src/codex-websocket.ts` |
-| 754 | `packages/webui-server/src/server/session-handlers.ts` |
 | 753 | `packages/tools/src/session-kanban.ts` |
 | 753 | `packages/webui/src/components/DebugDashboard.tsx` |
 | 752 | `packages/cli/src/config-doctor.ts` |
+| 752 | `packages/cli/src/execution.ts` |
 | 752 | `packages/core/src/session-catalog/session-registry.ts` |
 | 752 | `packages/kanban/src/storage.ts` |
 | 752 | `packages/tui/src/components/context-panel-sections.tsx` |
+| 752 | `packages/tui/src/run-tui-options.ts` |
 | 751 | `packages/tui/src/components/sidebar-content.tsx` |
 | 751 | `packages/webui/src/components/SddWizard.tsx` |
-| 749 | `packages/cli/src/execution.ts` |
 | 749 | `packages/providers/src/openai-codex.ts` |
 | 749 | `packages/webui/src/components/ProviderTestView.tsx` |
+| 748 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 748 | `packages/tools/src/process-registry-persistent.ts` |
 | 747 | `packages/core/src/core/fallback-model.ts` |
 | 747 | `packages/tools/src/bash-stream.ts` |
 | 746 | `packages/core/src/core/agent-response.ts` |
 | 746 | `packages/core/src/core/fallback-profile-manager.ts` |
-| 746 | `packages/tui/src/run-tui-options.ts` |
 | 744 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 744 | `packages/tools/src/grep.ts` |
 | 743 | `packages/cli/src/hq-server.ts` |
@@ -129,7 +130,6 @@ None.
 | 742 | `packages/tui/src/components/agents-monitor.tsx` |
 | 741 | `packages/webui/src/components/ChimeraReviewsView.tsx` |
 | 741 | `packages/webui/src/components/TaskActivityTimeline.tsx` |
-| 740 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 | 739 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 739 | `packages/webui/src/components/InspectorPanel.tsx` |

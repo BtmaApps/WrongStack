@@ -191,6 +191,14 @@ export interface WSCodeAssistResult {
 }
 
 export type WSServerMessage =
+  | {
+      type: 'leader.effort_changed';
+      payload: {
+        sessionId?: string | undefined;
+        effort: string | null;
+        reason?: string | undefined;
+      };
+    }
   | WSQueueState
   | WSQueueDrained
   | WSSessionStart

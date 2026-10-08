@@ -106,6 +106,12 @@ type SessionEventVariant =
    */
   | { type: 'permission_overrides'; ts: string; overrides: SessionPermissionOverride[] }
   /**
+   * The leader changed (or, with `override: null`, reset) its OWN reasoning
+   * effort via `leader_effort_set`. Last event wins on resume; untrusted
+   * payload, normalized by `utils/leader-effort-override.ts`.
+   */
+  | { type: 'leader_effort'; ts: string; override: unknown }
+  /**
    * Session-scoped subagent model plan (lanes + role overlay). Last event wins
    * on resume; see `coordination/session-subagent-models.ts`.
    */

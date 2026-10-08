@@ -101,6 +101,12 @@ export {
   validateAgainstSchema,
 } from './json-schema-validate.js';
 export {
+  clearLeaderEffortOverride,
+  LEADER_EFFORT_META_KEY,
+  readLeaderEffortOverride,
+  restoreLeaderEffortOverride,
+} from './leader-effort-override.js';
+export {
   formatMemoryEvidenceBlock,
   MEMORY_EVIDENCE_TAG,
   sanitizeMemoryEvidenceBody,

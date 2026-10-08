@@ -28,7 +28,10 @@ export interface DirectorLifecycleHost {
   readonly tasks: DirectorTaskRegistry;
   readonly taskWorktrees: Map<string, WorktreeTaskStateUpdate>;
   readonly budgetPolicy: DirectorBudgetPolicy;
-  readonly subagentMeta: Map<string, { provider?: string | undefined; model?: string | undefined }>;
+  readonly subagentMeta: Map<
+    string,
+    { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+  >;
   readonly priceLookups: Map<
     string,
     {

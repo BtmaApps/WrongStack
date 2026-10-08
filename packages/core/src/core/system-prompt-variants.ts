@@ -132,7 +132,10 @@ export async function readSavedSystemPromptVariant(
     return undefined;
   }
   try {
-    const parsed = JSON.parse(raw) as { systemPrompt?: { variant?: unknown } | undefined };
+    // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as {
+      systemPrompt?: { variant?: unknown } | undefined;
+    };
     const variant = parsed.systemPrompt?.variant;
     return isSystemInstructionVariant(variant) ? variant : undefined;
   } catch {
@@ -163,7 +166,7 @@ export async function persistSystemPromptVariant(
   let existing: Record<string, unknown> = {};
   try {
     const raw = await fs.readFile(configPath, 'utf8');
-    existing = JSON.parse(raw) as Record<string, unknown>;
+    existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
   } catch (err) {
     if (fileExists) {
       throw new Error(

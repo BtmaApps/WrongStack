@@ -12,7 +12,11 @@ import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { loadTodosCheckpoint } from '@wrongstack/core/storage';
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
-import { sessionScopedPath } from '@wrongstack/core/utils';
+import {
+  clearLeaderEffortOverride,
+  restoreLeaderEffortOverride,
+  sessionScopedPath,
+} from '@wrongstack/core/utils';
 import { buildReplayPayload, type ReplaySource } from '@wrongstack/webui-protocol';
 import { createSessionCheckpointHandlers } from './session-checkpoint-handlers.js';
 import { createSessionContextHandlers } from './session-context-handlers.js';
@@ -145,6 +149,8 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
               (ctx.getAgent?.(next.id)?.ctx ?? ctx.context).meta,
               {},
             );
+            // Nor its leader's own effort override.
+            clearLeaderEffortOverride((ctx.getAgent?.(next.id)?.ctx ?? ctx.context).meta);
             // The new tab's Context was cloned from the leader's, so it runs
             // whatever tab 1 last chose. The record above was stamped from the
             // live config — the most recent choice made in ANY tab — and the
@@ -511,6 +517,8 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
           );
           restoreSessionPermissionOverrides(resumedContext.meta, resumed.data);
           restoreRequiredSkillsFromEvents(resumedContext, resumed.data.events);
+          clearLeaderEffortOverride(resumedContext.meta);
+          restoreLeaderEffortOverride(resumedContext.meta, resumed.data.events);
           // Re-queue background delegation results this session never
           // received. Never wakes by itself; the tab displaying the session
           // (below) or the next turn picks them up.

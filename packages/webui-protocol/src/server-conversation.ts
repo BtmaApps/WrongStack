@@ -27,6 +27,7 @@ export const SERVER_CONVERSATION_MESSAGE_TYPES = [
   'iteration.completed',
   'iteration.limit_reached',
   'iteration.started',
+  'leader.effort_changed',
   'model.refine_result',
   'modes.list',
   'provider.active_blocked',

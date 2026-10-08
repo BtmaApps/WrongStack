@@ -1,5 +1,5 @@
 import type { Context } from '../../core/context.js';
-import type { Usage } from '../../types/provider.js';
+import type { ReasoningEffort, Usage } from '../../types/provider.js';
 
 export interface AgentEventMap {
   /** Worker repetition detector, attributed to its host session and selected model. */
@@ -42,6 +42,17 @@ export interface AgentEventMap {
     err: Error;
     at: string;
     durationMs: number;
+  };
+  /**
+   * The leader changed its OWN reasoning effort (`leader_effort_set`).
+   * `effort` undefined = it reset back to the user's setting. UIs show it
+   * beside the user's effort control; it is in force only until the user
+   * changes effort themselves (see `utils/leader-effort-override.ts`).
+   */
+  'leader.effort_changed': {
+    sessionId?: string | undefined;
+    effort?: ReasoningEffort | undefined;
+    reason?: string | undefined;
   };
   /**
    * Fired by the `delegate` tool right before it hands work to a subagent

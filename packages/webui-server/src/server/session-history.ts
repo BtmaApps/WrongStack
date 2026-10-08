@@ -5,6 +5,7 @@ import {
   type SessionSummary,
   totalUsageTokens,
 } from '@wrongstack/core/types';
+import { LEADER_EFFORT_META_KEY, readLeaderEffortOverride } from '@wrongstack/core/utils';
 
 /**
  * Stable WebSocket projection for the WebUI history surfaces.
@@ -132,6 +133,8 @@ function labelForEvent(e: SessionEvent): string {
       return 'Session permission rules changed';
     case 'subagent_model_plan':
       return 'Subagent model plan updated';
+    case 'leader_effort':
+      return 'Leader changed its own effort';
     case 'session_resumed':
       return 'Session resumed';
     case 'session_forked':
@@ -261,6 +264,11 @@ function detailForEvent(e: SessionEvent): string {
         : e.overrides
             .map((o) => `${o.effect} ${o.tool}${o.pattern !== undefined ? ` ${o.pattern}` : ''}`)
             .join('; ');
+    case 'leader_effort': {
+      const rec = readLeaderEffortOverride({ [LEADER_EFFORT_META_KEY]: e.override });
+      if (!rec) return 'reset to the user setting';
+      return rec.reason ? `${rec.effort} — ${rec.reason}` : rec.effort;
+    }
     case 'subagent_model_plan': {
       const plan = normalizeSubagentModelPlan(e.plan);
       const pinned = plan.slots.filter(

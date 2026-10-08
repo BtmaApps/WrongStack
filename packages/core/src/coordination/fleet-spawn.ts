@@ -76,7 +76,10 @@ export interface DirectorFleetHost {
   // Per-subagent state
   readonly manifestEntries: Map<string, unknown>;
   readonly subagentBridges: Map<string, InMemoryAgentBridge>;
-  readonly subagentMeta: Map<string, { provider?: string | undefined; model?: string | undefined }>;
+  readonly subagentMeta: Map<
+    string,
+    { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+  >;
   readonly priceLookups: Map<
     string,
     {
@@ -246,6 +249,7 @@ export async function spawn(
     host.subagentMeta.set(result.subagentId, {
       provider: config.provider,
       model: config.model,
+      effort: config.modelRuntime?.reasoning?.effort,
     });
     if (priceLookup && config.provider && config.model) {
       host.priceLookups.set(`${config.provider}/${config.model}`, priceLookup);

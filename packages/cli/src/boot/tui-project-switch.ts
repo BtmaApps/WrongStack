@@ -24,6 +24,7 @@ import { DefaultSessionStore } from '@wrongstack/core/storage';
 import type { Config, MemoryPort, ModeStore, SkillLoader } from '@wrongstack/core/types';
 import {
   activateProjectStateGuard,
+  clearLeaderEffortOverride,
   resolveWstackPaths,
   sessionScopedPath,
 } from '@wrongstack/core/utils';
@@ -177,6 +178,7 @@ export async function switchProjectInPlace(
   context.state.replaceMessages([]);
   resetSessionSubagentPolicy(context);
   restoreSessionPermissionOverrides(context.meta, {});
+  clearLeaderEffortOverride(context.meta);
   restoreRequiredSkillsFromEvents(context, []);
   context.state.replaceTodos([]);
   context.clearFileTracking();

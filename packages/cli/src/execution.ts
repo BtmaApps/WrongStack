@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import { setQueuedMessagesSnapshot } from '@wrongstack/core/agent';
 import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/core/coordination';
+import { activeLeaderEffort } from '@wrongstack/core/execution';
 import { noOpVault } from '@wrongstack/core/security';
 import { attachTodosCheckpoint, QueueStore } from '@wrongstack/core/storage';
 import { normalizeTokenSavingTier } from '@wrongstack/core/types';
@@ -480,6 +481,8 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
             applyLiveSettings,
           }),
           ...createThemeAdapter({ configStore, wpaths }),
+          getLeaderEffort: () =>
+            activeLeaderEffort(context.meta, configStore.get().modelRuntime?.reasoning?.effort),
           configStore,
           effectiveMaxContext,
           titleAnimation:

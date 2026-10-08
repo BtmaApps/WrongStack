@@ -133,7 +133,7 @@ export class FleetManager implements IFleetManager {
   private readonly pendingTasks = new Map<string, { subagentId: string; description: string }>();
   private readonly subagentMeta = new Map<
     string,
-    { provider?: string | undefined; model?: string | undefined }
+    { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
   >();
   private readonly priceLookups = new Map<
     string,
@@ -213,10 +213,13 @@ export class FleetManager implements IFleetManager {
     return this.usage.snapshot();
   }
 
-  getSubagentMeta(
-    id: string,
-  ):
-    | { provider?: string | undefined; model?: string | undefined; name?: string | undefined }
+  getSubagentMeta(id: string):
+    | {
+        provider?: string | undefined;
+        model?: string | undefined;
+        effort?: string | undefined;
+        name?: string | undefined;
+      }
     | undefined {
     const meta = this.subagentMeta.get(id);
     const manifest = this.manifestEntries.get(id);
@@ -224,6 +227,7 @@ export class FleetManager implements IFleetManager {
     return {
       provider: meta?.provider ?? manifest?.provider,
       model: meta?.model ?? manifest?.model,
+      ...(meta?.effort ? { effort: meta.effort } : {}),
       name: manifest?.name,
     };
   }
@@ -474,6 +478,7 @@ export class FleetManager implements IFleetManager {
     this.subagentMeta.set(subagentId, {
       provider: config.provider,
       model: config.model,
+      effort: config.modelRuntime?.reasoning?.effort,
     });
     if (priceLookup && config.provider && config.model) {
       this.priceLookups.set(`${config.provider}/${config.model}`, priceLookup);

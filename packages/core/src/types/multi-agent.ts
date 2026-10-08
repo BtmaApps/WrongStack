@@ -2,6 +2,7 @@ import type { SubagentBudget } from '../coordination/subagent-budget.js';
 import type { SandboxConfig } from '../sandbox/types.js';
 import type { AgentBridge, BridgeMessage } from './agent-bridge.js';
 import type { ModelRuntimeConfig } from './config.js';
+import type { ReasoningEffort } from './provider.js';
 
 /** Internal, non-user-authored budget/depth inheritance for nested directors. */
 export interface SubagentSpawnLineage {
@@ -123,6 +124,31 @@ export interface SubagentConfig {
    * one-off statement more specific than a standing lane, and wins.
    */
   modelChosenByLeader?: boolean | undefined;
+
+  /**
+   * Reasoning effort the LEADER picked for this worker (`effort` on
+   * `spawn_subagent` / `delegate`).
+   *
+   * Kept apart from `modelRuntime` on purpose: a session lane's `lock` takes
+   * back the leader's provider/model, but a lane the user gave no effort says
+   * nothing about effort — so this survives the lock and is folded into
+   * `modelRuntime.reasoning.effort` at spawn time unless a user-authored layer
+   * (lane / session role overlay / explicit `/setmodel` role-or-phase route)
+   * set an effort of its own. The request pipeline then clamps it to whatever
+   * the worker's resolved model actually supports.
+   */
+  leaderEffort?: ReasoningEffort | undefined;
+
+  /**
+   * The spawning leader conversation's effort keys (`reasoningEffort`, the
+   * leader's own `leader_effort_set` override), copied at spawn time.
+   *
+   * When nothing chose an effort for this worker — no `leaderEffort`, no lane,
+   * route or tier effort — it inherits the effort the LEADER is actually running
+   * at, not merely the project setting: a WebUI tab's own effort and the
+   * leader's own override both count. Lowest precedence; fills only.
+   */
+  leaderConversationEffort?: Record<string, unknown> | undefined;
 
   /**
    * Working directory for this subagent's tools. Defaults to the factory's

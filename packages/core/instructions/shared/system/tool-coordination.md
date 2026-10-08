@@ -63,6 +63,11 @@ When a task decomposes into independent sub-tasks, fan out in one turn rather th
 <!--ws:end-->
 <!--ws:end-->
 
+<!--ws:if tool=leader_effort_set-->
+### Your own effort
+Match your reasoning effort to the phase you are in: before deep debugging, design, security or review work where being wrong is costly, raise it with `leader_effort_set`; for a run of mechanical, well-specified steps, lower it. Change it at phase boundaries, not every step, and give a one-line reason. If the user changes effort themselves, their choice wins — do not set it back.
+<!--ws:end-->
+
 <!--ws:if tool=todo,plan-->
 ### Plan-execute-verify loop
 ```

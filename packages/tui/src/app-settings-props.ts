@@ -11,6 +11,12 @@ export interface TuiSettingsProps {
   /** Settings shape — shared between getSettings and saveSettings. */
   getSettings?: (() => Settings) | undefined;
   /**
+   * The leader's own effort override (`leader_effort_set`), while it is in
+   * force. Display-only: kept apart from `getSettings` so the settings picker
+   * never reads — and on save persists — the leader's choice as the user's.
+   */
+  getLeaderEffort?: (() => string | undefined) | undefined;
+  /**
    * Live view over the persisted user config. The TUI uses this to:
    * - apply `themePreset` on boot (so `/theme` choices persist across
    *   restarts), and

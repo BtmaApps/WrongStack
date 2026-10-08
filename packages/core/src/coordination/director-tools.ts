@@ -14,6 +14,7 @@ import {
   resultErrorText,
   resultToText,
 } from './director-kanban-queue-helpers.js';
+import { LEADER_EFFORT_SCHEMA } from './director-spawn-model.js';
 import { kanbanDispatch } from './kanban-dispatch-port.js';
 
 export {
@@ -98,6 +99,7 @@ export function makeKanbanQueueTool(
           description:
             "Cost level for the dispatched workers ('budget' | 'standard' | 'premium'). Resolved from `modelTiers`; an explicit provider/model still wins.",
         },
+        effort: LEADER_EFFORT_SCHEMA,
         fallbackModels: { type: 'array', items: { type: 'string' } },
         tools: { type: 'array', items: { type: 'string' } },
         allowedCapabilities: { type: 'array', items: { type: 'string' } },

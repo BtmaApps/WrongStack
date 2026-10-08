@@ -9,21 +9,21 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { decodeProtocolMessage } from '../src/decoder.js';
-import { CLIENT_MESSAGE_TYPES, SERVER_MESSAGE_TYPES } from '../src/registry.js';
 import {
   CLIENT_COLLABORATION_MESSAGE_TYPES,
   CLIENT_CONVERSATION_MESSAGE_TYPES,
 } from '../src/client-conversation.js';
+import {
+  CLIENT_EXTENSION_MESSAGE_TYPES,
+  CLIENT_KNOWLEDGE_MESSAGE_TYPES,
+} from '../src/client-integrations.js';
 import { CLIENT_GOAL_MESSAGE_TYPES, CLIENT_SDD_MESSAGE_TYPES } from '../src/client-operations.js';
 import {
   CLIENT_CONFIGURATION_MESSAGE_TYPES,
   CLIENT_WORKSPACE_MESSAGE_TYPES,
 } from '../src/client-workspace.js';
-import {
-  CLIENT_EXTENSION_MESSAGE_TYPES,
-  CLIENT_KNOWLEDGE_MESSAGE_TYPES,
-} from '../src/client-integrations.js';
+import { decodeProtocolMessage } from '../src/decoder.js';
+import { CLIENT_MESSAGE_TYPES, SERVER_MESSAGE_TYPES } from '../src/registry.js';
 import {
   SERVER_COLLABORATION_MESSAGE_TYPES,
   SERVER_CONVERSATION_MESSAGE_TYPES,
@@ -138,6 +138,18 @@ describe('client message catalogs', () => {
 });
 
 describe('server message catalogs', () => {
+  it('accepts leader effort updates as server conversation messages', () => {
+    expect(
+      decodeProtocolMessage(
+        {
+          type: 'leader.effort_changed',
+          payload: { sessionId: 'session-1', effort: 'high' },
+        },
+        'server',
+      ).ok,
+    ).toBe(true);
+  });
+
   it('are non-empty, dotted, and duplicate-free', () => {
     for (const [name, types] of Object.entries(SERVER_CATALOGS)) {
       expect(types, `catalog ${name}`).toBeDefined();

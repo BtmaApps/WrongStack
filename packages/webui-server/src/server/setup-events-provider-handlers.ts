@@ -75,6 +75,19 @@ export function registerSetupEventsProviderHandlers({
     });
   });
 
+  // The leader changed its own effort; the composer shows it beside the user's
+  // select. `effort: null` = reset to the user's setting.
+  on('leader.effort_changed', (e) => {
+    broadcast(clients, {
+      type: 'leader.effort_changed',
+      payload: sessionPayload({
+        sessionId: e.sessionId,
+        effort: e.effort ?? null,
+        ...(e.reason ? { reason: e.reason } : {}),
+      }),
+    });
+  });
+
   on('token.threshold', (e) => {
     broadcast(clients, {
       type: 'token.threshold',

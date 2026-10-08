@@ -9,6 +9,7 @@ import {
   isEffort,
   resolveEffortOptions,
 } from '@/lib/reasoning-effort';
+import { activeLeaderEffortEntry, useLeaderEffortStore } from '@/stores/leader-effort-store';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { useSessionStore } from '@/stores/session-store';
 
@@ -25,6 +26,11 @@ import { useSessionStore } from '@/stores/session-store';
  * While `auto` is picked, a small hint under the select shows the LIVE
  * project-wide effort it follows (from the session.start snapshot); absent
  * when the project pins no effort — then the provider default applies.
+ *
+ * When the leader changed its OWN effort (`leader_effort_set`) and the user
+ * has not touched this tab's effort since, the hint names the leader's level
+ * instead — that is what the next request actually carries. The select itself
+ * keeps the user's choice; picking a value there ends the leader's override.
  */
 export function SessionEffortSelect() {
   const { t } = useAppTranslation();
@@ -33,18 +39,29 @@ export function SessionEffortSelect() {
   const effortLevels = useSessionStore((s) => s.reasoningEffortLevels);
   const projectEffort = useSessionStore((s) => s.projectReasoningEffort);
   const reasoningEffort = useLocalPrefs((s) => s.reasoningEffort);
+  const activeSessionId = useLocalPrefs((s) => s.activeSessionId);
+  const leaderEntry = useLeaderEffortStore((s) =>
+    activeSessionId ? s.bySession[activeSessionId] : undefined,
+  );
+  const leader = activeLeaderEffortEntry(leaderEntry, reasoningEffort);
 
   if (effortControlHidden(effortSupported)) return null;
 
   const options = resolveEffortOptions(effortLevels, reasoningEffort);
   const unsupported = effortNotAdvertised(effortLevels, reasoningEffort);
   const label = t('settings:agent.reasoningEffortLabel');
+  const leaderHint = leader
+    ? t('settings:agent.reasoningEffortLeaderHint', {
+        value: isEffort(leader.effort) ? t(effortLabelKey(leader.effort)) : leader.effort,
+      })
+    : undefined;
   const autoHint =
-    reasoningEffort === AUTO_EFFORT && projectEffort
+    leaderHint ??
+    (reasoningEffort === AUTO_EFFORT && projectEffort
       ? t('settings:agent.reasoningEffortAutoHint', {
           value: isEffort(projectEffort) ? t(effortLabelKey(projectEffort)) : projectEffort,
         })
-      : undefined;
+      : undefined);
 
   return (
     <span className="inline-flex shrink-0 flex-col items-stretch gap-0.5">
@@ -79,7 +96,12 @@ export function SessionEffortSelect() {
         {unsupported && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />}
       </label>
       {autoHint && (
-        <span className="pl-1 text-[10px] leading-tight text-muted-foreground">{autoHint}</span>
+        <span
+          className="pl-1 text-[10px] leading-tight text-muted-foreground"
+          title={leader?.reason}
+        >
+          {autoHint}
+        </span>
       )}
     </span>
   );

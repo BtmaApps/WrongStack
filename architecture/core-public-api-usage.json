@@ -49,9 +49,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/execution": {
-      "files": 83,
+      "files": 84,
       "typeOnly": 21,
-      "runtimeOrMixed": 79
+      "runtimeOrMixed": 80
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 764,
+      "files": 765,
       "typeOnly": 69,
-      "runtimeOrMixed": 723
+      "runtimeOrMixed": 724
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -4555,6 +4555,12 @@
       "file": "packages/cli/src/execute-deps.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 3
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/execution.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/execution",
@@ -26621,6 +26627,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/session-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/session-history.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

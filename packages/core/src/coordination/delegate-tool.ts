@@ -3,6 +3,7 @@ import { ToolCapabilities } from '../security/capabilities.js';
 import { ToolValidationError } from '../types/errors.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
+import { snapshotConversationEffort } from '../utils/leader-effort-override.js';
 import { DelegationTracker } from './delegation/delegation-tracker.js';
 import {
   buildDelegationResultExcerpt,
@@ -19,6 +20,7 @@ import {
   startDelegationAttempt,
   validateDelegationInput,
 } from './delegation/run-delegation.js';
+import { LEADER_EFFORT_SCHEMA } from './director-spawn-model.js';
 import { callerSessionId } from './origin-session.js';
 import { taskBoundarySchemaProperties } from './task-boundary.js';
 
@@ -158,6 +160,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
         description:
           "Cost/capability level for this worker: 'budget' (cheap + fast, for mechanical or well-specified work), 'standard' (the default), or 'premium' (expensive + most capable, for work where being wrong is costly). Resolved deterministically into a model, a failover chain, and a spend budget from `modelTiers` config, so you do NOT need to know any model id. Omit to let the routing table decide by role. An explicit `model` always wins over the tier.\n\nA cheaper tier is usually a SLOWER model. With `wait: true` the leader is blocked for the whole run, so `tier: 'budget'` there can cost more of your wall-clock than it saves in dollars. In the default background mode you keep working meanwhile, so that trade-off does not apply.",
       },
+      effort: LEADER_EFFORT_SCHEMA,
       systemPromptOverride: {
         type: 'string',
         description: 'Extra prompt text appended to the role baseline.',
@@ -209,7 +212,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
     description:
       "Hand a piece of work to a subagent. By default this call does NOT block: it spawns the worker and returns at once with `{status:'running', delegationId, taskId}`. When the worker finishes, its result is delivered to you automatically as a `[DELEGATION RESULT]` block (tagged with the same delegationId) at a later iteration — do not poll, sleep, or call `await_tasks` just to wait for it; keep doing other work. Several `delegate` calls in one turn fan out in parallel. Pass `wait: true` only when your very next step cannot proceed without the verdict (a review, a fact-check, a sign-off) AND the work is short: the call then blocks you until the worker returns and yields the full result inline. Each worker has its own context and LLM calls, an auto-extending budget, and a partial-completion handoff path (maxHandoffs, default 1); workers cannot recursively spawn. For finer control over reusable workers (several tasks on one worker, `await_tasks` with mode:'any'), use `spawn_subagent` + `assign_task` + `await_tasks`.",
     usageHint:
-      'Set `task` to the objective, then make the edges explicit: `scope` (what the work covers) and `outOfScope` (at least one concrete non-goal) are REQUIRED — the call is rejected without them, and the worker treats the rendered boundary block as a hard contract. Pick `role` from roster or pass `name` for free-form. Default is background: the result arrives on its own under the returned `delegationId` (`roll_up([taskId])` fetches the full result afterwards). Use `wait: true` only for short work that gates your next move. Raise `maxHandoffs` (default 1, cap 8) for very large tasks; pass larger `timeoutMs`/`maxIterations`/`maxToolCalls` only when needed.',
+      'Set `task` to the objective, then make the edges explicit: `scope` (what the work covers) and `outOfScope` (at least one concrete non-goal) are REQUIRED — the call is rejected without them, and the worker treats the rendered boundary block as a hard contract. Pick `role` from roster or pass `name` for free-form, and choose `effort` for the work (and `provider`/`model`/`tier` when the default does not fit). Default is background: the result arrives on its own under the returned `delegationId` (`roll_up([taskId])` fetches the full result afterwards). Use `wait: true` only for short work that gates your next move. Raise `maxHandoffs` (default 1, cap 8) for very large tasks; pass larger `timeoutMs`/`maxIterations`/`maxToolCalls` only when needed.',
     // H-10 (AT-03) part (a): `permission:'confirm'` forces a prompt on every
     // call, in every mode — the spawned worker's wide capabilities no longer
     // ride on a single innocuous-looking approval.
@@ -241,6 +244,11 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
         const ready = await prepareDelegation(validated, runtime, { sessionId, mode });
         if (ready.kind === 'result') return ready.result;
         const prepared = ready.prepared;
+        // What the leader runs at, for a worker nothing else picks an effort for.
+        const ownEffort = snapshotConversationEffort(
+          (_ctx as { meta?: Record<string, unknown> })?.meta,
+        );
+        if (ownEffort) prepared.cfg.leaderConversationEffort = ownEffort;
 
         if (mode === 'wait') {
           const hooks: DelegationHooks = {

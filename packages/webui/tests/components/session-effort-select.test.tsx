@@ -1,7 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionEffortSelect } from '../../src/components/ChatInput/session-effort-select';
+import { handleLeaderEffortChanged } from '../../src/hooks/ws-handlers/leader-effort-handler';
 import { i18n } from '../../src/i18n';
+import { useLeaderEffortStore } from '../../src/stores/leader-effort-store';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 import { useSessionStore } from '../../src/stores/session-store';
 
@@ -22,7 +24,8 @@ function effortSelect(): HTMLSelectElement {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useLocalPrefs.setState({ reasoningEffort: 'high' });
+  useLocalPrefs.setState({ reasoningEffort: 'high', activeSessionId: 'tab-1' });
+  useLeaderEffortStore.setState({ bySession: {} });
   useSessionStore.setState({
     reasoningEffortLevels: undefined,
     effortSupported: undefined,
@@ -102,5 +105,47 @@ describe('SessionEffortSelect (composer effort chip)', () => {
     });
     expect(effortSelect().value).toBe('auto');
     expect(container.textContent).not.toContain('Project setting');
+  });
+
+  it("names the leader's own effort until the user picks a value for this tab", () => {
+    const { container } = render(<SessionEffortSelect />);
+    act(() => {
+      handleLeaderEffortChanged({
+        type: 'leader.effort_changed',
+        payload: { sessionId: 'tab-1', effort: 'low', reason: 'mechanical renames' },
+      });
+    });
+    expect(screen.getByText('Leader: Low (its own choice)')).toBeTruthy();
+    // The select keeps the user's own choice; the leader's never becomes the pref.
+    expect(effortSelect().value).toBe('high');
+
+    fireEvent.change(effortSelect(), { target: { value: 'medium' } });
+    expect(container.textContent).not.toContain('Leader:');
+  });
+
+  it("ignores another tab's leader change and clears on reset", () => {
+    const { container } = render(<SessionEffortSelect />);
+    act(() => {
+      handleLeaderEffortChanged({
+        type: 'leader.effort_changed',
+        payload: { sessionId: 'tab-2', effort: 'max' },
+      });
+    });
+    expect(container.textContent).not.toContain('Leader:');
+
+    act(() => {
+      handleLeaderEffortChanged({
+        type: 'leader.effort_changed',
+        payload: { sessionId: 'tab-1', effort: 'xhigh' },
+      });
+    });
+    expect(container.textContent).toContain('Leader:');
+    act(() => {
+      handleLeaderEffortChanged({
+        type: 'leader.effort_changed',
+        payload: { sessionId: 'tab-1', effort: null },
+      });
+    });
+    expect(container.textContent).not.toContain('Leader:');
   });
 });

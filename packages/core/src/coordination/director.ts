@@ -217,7 +217,9 @@ export class Director extends DirectorCore implements DirectorFleetHost, ICoordi
    */
   resolvedModelFor(
     subagentId: string,
-  ): { provider?: string | undefined; model?: string | undefined } | undefined {
+  ):
+    | { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+    | undefined {
     return delegateResolvedModelFor(this.directorModelRoutingHost(), subagentId);
   }
 

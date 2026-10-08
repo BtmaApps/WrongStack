@@ -96,11 +96,11 @@ function createMockDirector() {
   const assignCalls: { task: TaskSpec }[] = [];
 
   const director = {
-    spawn: vi.fn<Parameters<Director['spawn']>, ReturnType<Director['spawn']>>(async (config) => {
+    spawn: vi.fn<Director['spawn']>(async (config) => {
       spawnCalls.push({ config });
       return `subagent-${config.name}-${spawnCalls.length}`;
     }),
-    assign: vi.fn<Parameters<Director['assign']>, ReturnType<Director['assign']>>(async (task) => {
+    assign: vi.fn<Director['assign']>(async (task) => {
       assignCalls.push({ task });
       return task.id;
     }),
@@ -1017,7 +1017,7 @@ describe('AutonomousCoordinator', () => {
       expect(director.assign).toHaveBeenCalledTimes(1);
 
       // Verify spawn was called with a SubagentConfig on the roster's light tier
-      const spawnCall = (director.spawn as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      const spawnCall = director.spawn.mock.calls[0]!;
       expect(spawnCall[0]).toMatchObject({
         role: 'general',
         maxIterations: LIGHT_BUDGET.maxIterations,
@@ -1028,7 +1028,7 @@ describe('AutonomousCoordinator', () => {
       expect(spawnCall[0].name.startsWith('worker-')).toBe(true);
 
       // Verify assign was called with the goal id and subagentId
-      const assignCall = (director.assign as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      const assignCall = director.assign.mock.calls[0]!;
       expect(assignCall[0]).toMatchObject({
         id: goal.id,
         description: 'A ready goal that should trigger director.spawn',

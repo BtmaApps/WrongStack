@@ -1,6 +1,8 @@
 import type { KanbanBoard, KanbanTask } from '@wrongstack/kanban';
 import type { SubagentConfig, TaskResult } from '../types/multi-agent.js';
+import type { ReasoningEffort } from '../types/provider.js';
 import { normalizeWorktreeOverride, stringArray } from './director-input-helpers.js';
+import { readLeaderEffort } from './director-spawn-model.js';
 import { kanbanBoundaryOps } from './kanban-ops-port.js';
 
 export interface KanbanQueueInput {
@@ -18,6 +20,11 @@ export interface KanbanQueueInput {
   provider?: string | undefined;
   model?: string | undefined;
   tier?: string | undefined;
+  /**
+   * Reasoning effort the leader picked for this dispatch pass. Not written to
+   * the board: it is this call's decision, like `delegate`'s `effort`.
+   */
+  effort?: ReasoningEffort | undefined;
   fallbackModels?: string[] | undefined;
   tools?: string[] | undefined;
   allowedCapabilities?: string[] | undefined;
@@ -43,6 +50,8 @@ export function normalizeKanbanQueueInput(input: unknown): KanbanQueueInput {
     provider: typeof raw.provider === 'string' ? raw.provider : undefined,
     model: typeof raw.model === 'string' ? raw.model : undefined,
     tier: typeof raw.tier === 'string' ? raw.tier : undefined,
+    // Throws a teaching error on an unknown level, before anything is claimed.
+    effort: readLeaderEffort(raw.effort),
     fallbackModels: stringArray(raw.fallbackModels),
     tools: stringArray(raw.tools),
     allowedCapabilities: stringArray(raw.allowedCapabilities),
@@ -89,6 +98,9 @@ export function buildKanbanSubagentConfig(
       : {}),
     ...(input.worktree !== undefined ? { worktree: input.worktree } : {}),
     ...((input.tier ?? assignment?.tier) ? { tier: input.tier ?? assignment?.tier } : {}),
+    // Survives a locked session lane like `delegate`'s effort does; only a
+    // user-authored effort outranks it (see `resolveDirectorSpawnModel`).
+    ...(input.effort ? { leaderEffort: input.effort } : {}),
     // A board's cost ceiling is an explicit decision by whoever queued the task,
     // so it is pinned: the tier layer may tighten a roster default, never this.
     ...(assignment?.costCeilingUsd !== undefined

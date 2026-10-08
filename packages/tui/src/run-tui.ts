@@ -275,6 +275,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         sessionsDir: opts.sessionsDir,
         projectRoot: opts.projectRoot,
         getSettings: opts.getSettings,
+        getLeaderEffort: opts.getLeaderEffort,
         saveSettings: opts.saveSettings,
         saveThemePreset: opts.saveThemePreset,
         configStore: opts.configStore,

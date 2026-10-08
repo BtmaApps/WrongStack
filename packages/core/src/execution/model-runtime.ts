@@ -28,6 +28,7 @@ import type {
   Request,
   RequestCacheControl,
 } from '../types/provider.js';
+import { activeLeaderEffort } from '../utils/leader-effort-override.js';
 
 export interface ResolvedModelRuntime {
   reasoning: Request['reasoning'];
@@ -321,6 +322,10 @@ function withConversationReasoning(
   // effort (or the provider default, when unset) applies.
   if (typeof effort === 'string' && effort !== 'auto') scoped.effort = effort;
   if (typeof preserve === 'boolean') scoped.preserve = preserve;
+  // The leader's own `leader_effort_set`, in force only while the user has not
+  // touched either effort setting since (see `leader-effort-override.ts`).
+  const leaderEffort = activeLeaderEffort(meta, settings?.reasoning?.effort);
+  if (leaderEffort) scoped.effort = leaderEffort;
   if (Object.keys(scoped).length === 0) return settings;
   return {
     ...(settings ?? {}),

@@ -66,7 +66,7 @@ export abstract class DirectorCore implements DirectorFleetHost {
   protected readonly tasks: DirectorTaskRegistry;
   readonly subagentMeta = new Map<
     string,
-    { provider?: string | undefined; model?: string | undefined }
+    { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
   >();
   readonly priceLookups = new Map<
     string,

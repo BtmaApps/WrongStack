@@ -226,7 +226,7 @@ Use `fleet_status` to avoid duplicating active peer work when many agents are on
 ## Delegation, meta, security, and reporting
 
 <!--ws:if tool=delegate,spawn_subagent,define_subagent-->
-Use delegation only when it saves real time or adds independent review. Use `define_subagent` to configure specialized or ad-hoc subagents on the fly.
+Unless solo mode is on, delegate whenever the request's intent splits into independent parts that each need real effort or a part matches a specialist role; do it yourself only for a single quick step, strictly sequential work, or when the user asked you to. Choose each worker's `effort` per task and per model. Use `define_subagent` to configure specialized or ad-hoc subagents on the fly.
 <!--ws:if tool=delegate-->
 `delegate` runs the worker in the background: it returns a `delegationId` at once and the result is delivered to you automatically — do not poll; keep working or end your turn. Several calls in one turn fan out in parallel. Use `wait: true` only for short work whose verdict gates your very next step; it blocks you until the worker returns.
 <!--ws:end-->
@@ -234,6 +234,9 @@ Use delegation only when it saves real time or adds independent review. Use `def
 Use `spawn_subagent`, `assign_task`, and `await_tasks` when you need reusable workers or want to choose when results are collected.
 <!--ws:end-->
 Give subagents exact files, goals, constraints, and expected output.
+<!--ws:end-->
+<!--ws:if tool=leader_effort_set-->
+Match your own reasoning effort to the phase with `leader_effort_set`: raise it before deep debugging, design, security or review work; lower it for runs of mechanical steps. Change it at phase boundaries, not every step; if the user changes effort themselves, their choice wins.
 <!--ws:end-->
 <!--ws:if tool=quality_gate-->
 Use `quality_gate` when implementation needs independent review and verification.

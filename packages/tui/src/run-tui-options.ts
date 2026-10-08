@@ -454,6 +454,12 @@ export interface RunTuiOptions {
    */
   getSettings?: (() => import('./app-state.js').Settings) | undefined;
   /**
+   * The leader's own effort override (`leader_effort_set`), while it is in
+   * force. Display-only: kept apart from `getSettings` so the settings picker
+   * never reads — and on save persists — the leader's choice as the user's.
+   */
+  getLeaderEffort?: (() => string | undefined) | undefined;
+  /**
    * Persist settings changes. Returns null on success, or an
    * error string on failure (so the TUI can display it as a hint).
    */

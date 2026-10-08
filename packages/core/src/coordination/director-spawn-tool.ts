@@ -1,18 +1,13 @@
 import { ToolCapabilities } from '../security/capabilities.js';
-
 import { ToolValidationError } from '../types/errors.js';
-
 import type { SubagentConfig } from '../types/multi-agent.js';
-
 import type { JSONSchema, Tool } from '../types/tool.js';
-
+import { snapshotConversationEffort } from '../utils/leader-effort-override.js';
 import type { DispatchLogEntry } from './agents/dispatch-log.js';
-
 import { type AgentDefinition, getAgentDefinition } from './agents/index.js';
-
 import type * as Host from './director-host-contracts.js';
-
 import { instantiateRosterConfig } from './director-input-helpers.js';
+import { LEADER_EFFORT_SCHEMA, readLeaderEffort } from './director-spawn-model.js';
 
 import { dispatchAgent } from './dispatcher.js';
 
@@ -89,6 +84,7 @@ export function makeSpawnTool(
         description:
           "Cost/capability level for this worker: 'budget' (cheap + fast, for mechanical or well-specified work), 'standard' (the default), or 'premium' (expensive + most capable, for work where being wrong is costly). Resolved deterministically into a model, a failover chain, and a spend budget from `modelTiers` config, so you do NOT need to know any model id. Omit to let the routing table decide by role. An explicit `model` always wins over the tier.\n\nThis is the RIGHT place to spend a cheap tier. Because this spawn is non-blocking, a budget-tier worker being slower costs you nothing — you keep working while it runs. The same tier on `delegate` would just make you wait longer.",
       },
+      effort: LEADER_EFFORT_SCHEMA,
       systemPromptOverride: {
         type: 'string',
         description: 'Extra prompt text appended after the role-base prompt.',
@@ -229,6 +225,15 @@ export function makeSpawnTool(
         cfg.model = i.model;
         cfg.modelChosenByLeader = true;
       }
+      // Effort rides apart from the pin: a locked lane takes the model back but
+      // leaves this decision with the leader (see `leaderEffort`).
+      const effort = readLeaderEffort(i.effort);
+      if (effort) cfg.leaderEffort = effort;
+      // What the leader runs at, for a worker nothing else picks an effort for.
+      const ownEffort = snapshotConversationEffort(
+        (ctx as { meta?: Record<string, unknown> } | undefined)?.meta,
+      );
+      if (ownEffort) cfg.leaderConversationEffort = ownEffort;
       if (typeof i.system_prompt === 'string') cfg.prompt = i.system_prompt;
       if (typeof i.systemPrompt === 'string') cfg.prompt = i.systemPrompt;
       if (typeof i.systemPromptOverride === 'string')
@@ -304,6 +309,8 @@ export function makeSpawnTool(
         subagentId,
         provider: resolved?.provider ?? cfg.provider,
         model: resolved?.model ?? cfg.model,
+        // Absent = the worker inherits the leader's session effort.
+        ...(resolved?.effort ? { effort: resolved.effort } : {}),
         name: cfg.name,
         role: cfg.role,
       };

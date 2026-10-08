@@ -4,8 +4,9 @@ import {
   createPluginManagerTool,
   type PluginManagerHookRunner,
 } from '@wrongstack/core/tools';
-import type { Config } from '@wrongstack/core/types';
+import type { Config, ReasoningConfig, ReasoningEffort } from '@wrongstack/core/types';
 import { updateJsonObjectFile } from '@wrongstack/core/utils';
+import { catalogProviderIdFor } from '@wrongstack/providers';
 import { PLUGIN_AUDIT_ENTRIES, runPluginManagementCommand } from '../plugin-management.js';
 
 type ConfigStoreLike = {
@@ -20,7 +21,12 @@ type ModelsRegistryLike = {
     modelId: string,
   ): Promise<
     | {
-        capabilities?: { maxContext?: number | undefined } | undefined;
+        capabilities?:
+          | {
+              maxContext?: number | undefined;
+              reasoningConfig?: ReasoningConfig | undefined;
+            }
+          | undefined;
         cost?:
           | {
               input?: number | undefined;
@@ -34,9 +40,17 @@ type ModelsRegistryLike = {
   >;
 };
 
+type LeaderEffortChange = {
+  sessionId?: string | undefined;
+  effort?: ReasoningEffort | undefined;
+  reason?: string | undefined;
+};
+
 /** Minimal event-bus shape: enough to observe context size and turn boundaries. */
 type EventsLike = {
   on(event: string, handler: (...args: unknown[]) => void): unknown;
+  /** Used to announce `leader.effort_changed` so the UIs can show it. */
+  emit?(event: 'leader.effort_changed', payload: LeaderEffortChange): unknown;
 };
 
 interface RegisterCliManagementToolsDeps {
@@ -123,6 +137,27 @@ export function registerCliManagementTools({
     getCurrentTier: () => tierState.currentTier,
     getContextTokens: () => (tierState.contextTokens > 0 ? tierState.contextTokens : undefined),
     getTurnsSinceTierSwitch: () => tierState.turns - tierState.switchedAtTurn,
+    ...(events?.emit
+      ? {
+          onEffortChanged: (change: LeaderEffortChange) => {
+            events.emit?.('leader.effort_changed', change);
+          },
+        }
+      : {}),
+    // `leader_effort_set` maps a request onto the levels the leader's model
+    // documents. An alias (`work` → `type: "anthropic"`) reads the catalog entry.
+    ...(modelsRegistry
+      ? {
+          getReasoningConfig: async (providerId: string, modelId: string) => {
+            const catalogId = catalogProviderIdFor(
+              providerId,
+              configStore.get().providers?.[providerId]?.type,
+            );
+            return (await modelsRegistry.getModel(catalogId, modelId))?.capabilities
+              ?.reasoningConfig;
+          },
+        }
+      : {}),
     onTierSwitched: (tier: string) => {
       tierState.currentTier = tier;
       tierState.switchedAtTurn = tierState.turns;

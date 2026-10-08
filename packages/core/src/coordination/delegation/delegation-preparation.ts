@@ -22,6 +22,7 @@ import type { EventBus } from '../../kernel/events.js';
 import { ToolValidationError } from '../../types/errors.js';
 import type { SubagentConfig } from '../../types/multi-agent.js';
 import type { Director } from '../director.js';
+import { readLeaderEffort } from '../director-spawn-model.js';
 import { applyRosterBudget, FLEET_ROSTER_BUDGETS } from '../fleet.js';
 import {
   composeBoundedTaskDescription,
@@ -95,6 +96,8 @@ export function validateDelegationInput(
       },
     };
   }
+  // Bad effort is a caller mistake: reject before any spawn cost, naming the levels.
+  readLeaderEffort(i.effort);
   // Hard boundary gate: a delegate without explicit edges produces a worker
   // that guesses its own scope. Reject before any spawn cost is incurred,
   // with an error that teaches the fix in one retry.
@@ -228,6 +231,11 @@ export async function prepareDelegation(
   // Record the tier and which budgets the caller pinned, so the spawn-time
   // tier layer can tighten roster defaults without ever overriding a number
   // the caller typed here.
+  // Leader-chosen effort travels apart from the provider/model pin so a locked
+  // session lane, which takes the model back, still leaves the effort decision
+  // with the leader (see `SubagentConfig.leaderEffort`).
+  const effort = readLeaderEffort(i.effort);
+  if (effort) cfg.leaderEffort = effort;
   if (i.tier) cfg.tier = i.tier;
   else if (!cfg.model && !cfg.provider && opts.suggestTier) {
     const suggested = await opts.suggestTier({ task: i.task, role: i.role });

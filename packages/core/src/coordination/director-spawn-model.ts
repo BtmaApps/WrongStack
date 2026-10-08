@@ -1,6 +1,14 @@
 import type { Config } from '../types/config.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { Logger } from '../types/logger.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
+import {
+  isReasoningEffort,
+  REASONING_EFFORT_LEVELS,
+  type ReasoningEffort,
+} from '../types/provider.js';
+import type { JSONSchema } from '../types/tool.js';
+import { conversationEffort } from '../utils/leader-effort-override.js';
 import type { ModelMatrixSource } from './model-matrix.js';
 import { resolveModelMatrixResolution, roleNeedsIndependentReviewModel } from './model-matrix.js';
 import type { ResolvedTierTarget } from './model-tier.js';
@@ -66,6 +74,10 @@ export function resolveDirectorSpawnModel(
   // and lets the layers below fill whatever it left unset.
   let tier = opts.tier;
   let planPinnedProvider = false;
+  // Set when a USER-authored layer (lane, session role overlay, explicit
+  // `/setmodel` role/phase route) chose this worker's effort. Only then does the
+  // leader's `leaderEffort` step aside — see the fold at the end.
+  let userEffortLayer: string | undefined;
   const plan = opts.sessionPlan;
   // "Use my model" carries no target of its own: it resolves to the session's
   // provider/model, which is exactly what the final fallback below already
@@ -115,6 +127,14 @@ export function resolveDirectorSpawnModel(
     if (planTarget.modelRuntime && !config.modelRuntime) {
       config.modelRuntime = planTarget.modelRuntime;
     }
+    // A lane effort is the user's call only where the lane's own pins win:
+    // with the lock on, or when the leader named no effort to keep.
+    if (
+      planTarget.modelRuntime?.reasoning?.effort !== undefined &&
+      (plan.lock || config.leaderEffort === undefined)
+    ) {
+      userEffortLayer = lane;
+    }
     if (planTarget.tier && !tier) {
       tier = planTarget.tier;
       config.tier = planTarget.tier;
@@ -145,6 +165,14 @@ export function resolveDirectorSpawnModel(
       if (entry.provider && !planPinnedProvider) config.provider = entry.provider;
       if (entry.fallbackProfile) config.fallbackProfile = entry.fallbackProfile;
       if (entry.modelRuntime) config.modelRuntime = entry.modelRuntime;
+      // An explicit role/phase route is a statement the user made; the `*`
+      // wildcard is only a default, so the leader's effort still beats it.
+      if (
+        entry.modelRuntime?.reasoning?.effort !== undefined &&
+        (resolution?.source === 'role' || resolution?.source === 'phase')
+      ) {
+        userEffortLayer ??= `/setmodel ${resolution.source} route`;
+      }
     }
   }
 
@@ -205,6 +233,42 @@ export function resolveDirectorSpawnModel(
     );
   }
 
+  // Leader-chosen effort. Folded in LAST so it beats every default layer (the
+  // matrix `*` route, the tier, the roster) and survives a lane lock that took
+  // the leader's provider/model away — the user's lane said nothing about
+  // effort, so the decision stays with the leader. Only a user-authored effort
+  // outranks it. Not clamped here: the request pipeline maps it onto the
+  // levels the resolved model actually supports (`nearestSupportedEffort`).
+  if (config.leaderEffort !== undefined) {
+    if (userEffortLayer) {
+      opts.logger?.info(
+        `spawn: leader effort "${config.leaderEffort}" for role "${config.role ?? '?'}" ` +
+          `yielded to the user's effort from ${userEffortLayer}`,
+      );
+    } else {
+      config.modelRuntime = {
+        ...config.modelRuntime,
+        reasoning: { ...config.modelRuntime?.reasoning, effort: config.leaderEffort },
+      };
+    }
+  }
+
+  // Nothing chose this worker's effort: follow what the leader itself runs at.
+  // Without this the worker silently fell back to the PROJECT effort even when
+  // the leader's tab, or the leader's own `leader_effort_set`, said otherwise.
+  if (config.modelRuntime?.reasoning?.effort === undefined && config.leaderConversationEffort) {
+    const inherited = conversationEffort(
+      config.leaderConversationEffort,
+      opts.config?.modelRuntime?.reasoning?.effort,
+    );
+    if (inherited) {
+      config.modelRuntime = {
+        ...config.modelRuntime,
+        reasoning: { ...config.modelRuntime?.reasoning, effort: inherited },
+      };
+    }
+  }
+
   // Check the tracker — if the resolved provider/model is blocked, log a
   // warning. The subagent itself will also check via its fallback extension
   // and rotate away, but this early warning helps debugging.
@@ -236,4 +300,26 @@ export function resolveDirectorSpawnModel(
 export function isHumanPinnedSpawn(config: SubagentConfig): boolean {
   if (config.modelChosenByLeader === true) return false;
   return Boolean(config.provider || config.model);
+}
+
+/**
+ * The `effort` input shared by every leader spawn tool (`delegate`,
+ * `spawn_subagent`), so the wording and the accepted levels
+ * cannot drift between them.
+ */
+export const LEADER_EFFORT_SCHEMA: JSONSchema = {
+  type: 'string',
+  enum: [...REASONING_EFFORT_LEVELS],
+  description:
+    "Reasoning effort for this worker — YOUR call, made per task and per model, just like provider/model. Match it to the work: 'low'/'minimal' for mechanical, well-specified edits or lookups; 'medium' for ordinary work; 'high'/'xhigh'/'max' for deep debugging, design, security or review where being wrong is costly; 'none' to switch reasoning off. It is applied to whatever model the worker resolves to (your pin, a user lane, the routing table or the tier) and mapped onto the nearest level that model supports. It survives a user's locked model lane; only an effort the user set on that lane or role wins over it. Omit to inherit your own session effort.",
+};
+
+/** Read and validate a leader-supplied `effort`; throws a teaching error on a bad value. */
+export function readLeaderEffort(value: unknown): ReasoningEffort | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (isReasoningEffort(value)) return value;
+  throw new ToolValidationError({
+    message: `Unknown effort ${JSON.stringify(value)}. Use one of: ${REASONING_EFFORT_LEVELS.join(', ')}.`,
+    field: 'effort',
+  });
 }

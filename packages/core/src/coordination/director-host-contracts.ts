@@ -31,7 +31,9 @@ interface DirectorSpawnPort {
   readonly resolvedModelFor?:
     | ((
         subagentId: string,
-      ) => { provider?: string | undefined; model?: string | undefined } | undefined)
+      ) =>
+        | { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+        | undefined)
     | undefined;
 }
 

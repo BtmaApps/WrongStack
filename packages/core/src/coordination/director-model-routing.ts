@@ -17,7 +17,10 @@ import type { SubagentSlotClaim } from './session-subagent-models.js';
 export interface DirectorModelRoutingHost {
   modelMatrix: ModelMatrixSource | undefined;
   fleetManager: FleetManager | undefined;
-  subagentMeta: Map<string, { provider?: string | undefined; model?: string | undefined }>;
+  subagentMeta: Map<
+    string,
+    { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+  >;
   appConfig: Config | (() => Config | undefined) | undefined;
   sessionProvider: string | (() => string | undefined) | undefined;
   sessionModel: string | (() => string | undefined) | undefined;
@@ -36,7 +39,9 @@ export function hasExplicitMatrixRoute(
 export function resolvedModelFor(
   host: DirectorModelRoutingHost,
   subagentId: string,
-): { provider?: string | undefined; model?: string | undefined } | undefined {
+):
+  | { provider?: string | undefined; model?: string | undefined; effort?: string | undefined }
+  | undefined {
   // Two homes for the same fact: `fleet-spawn` records into the FleetManager
   // when one is injected (the CLI/WebUI path) and into the Director's own map
   // otherwise (embedded + tests). Read both so the answer does not depend on

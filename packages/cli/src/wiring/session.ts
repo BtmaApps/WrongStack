@@ -27,6 +27,7 @@ import {
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
 import {
   expectDefined,
+  restoreLeaderEffortOverride,
   sessionScopedPath,
   toErrorMessage,
   type WstackPaths,
@@ -357,6 +358,7 @@ export async function setupSession(params: {
     restoreSessionSubagentModelPlan(context, restoredEvents);
   } else seedSessionSubagentPolicy(context);
   restoreRequiredSkillsFromEvents(context, restoredEvents);
+  restoreLeaderEffortOverride(context.meta, restoredEvents);
   restoreSessionPermissionOverrides(context.meta, {
     events: restoredEvents,
     permissionOverrides: restoredPermissionOverrides,

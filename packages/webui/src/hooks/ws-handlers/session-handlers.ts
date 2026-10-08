@@ -1,4 +1,5 @@
 import type { WSServerMessage } from '@/types';
+import { handleLeaderEffortChanged } from './leader-effort-handler';
 import {
   handleCompactionFailed,
   handleContextCompacted,
@@ -82,9 +83,7 @@ export {
   handleSessionRewound,
   handleToolLoopDetected,
 } from './session-execution-handlers';
-export {
-  handleSessionStart,
-} from './session-replay-handlers';
+export { handleSessionStart } from './session-replay-handlers';
 
 export const sessionHandlerMap: Partial<Record<string, (msg: WSServerMessage) => void>> = {
   'context.debug': handleContextDebug,
@@ -101,6 +100,7 @@ export const sessionHandlerMap: Partial<Record<string, (msg: WSServerMessage) =>
   'provider.fallback_pending': handleProviderFallbackPending,
   'provider.model_rerouted': handleProviderModelRerouted,
   'provider.model_switched': handleProviderModelSwitched,
+  'leader.effort_changed': handleLeaderEffortChanged,
   'provider.status_changed': handleProviderStatusChanged,
   'provider.active_blocked': handleProviderActiveBlocked,
   'provider.stream_error': handleProviderStreamError,
