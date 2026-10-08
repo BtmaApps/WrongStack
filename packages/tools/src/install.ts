@@ -7,7 +7,7 @@ import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { spawnStream } from './_spawn-stream.js';
 import { detectPackageManager, normalizeCommandOutput, safeResolveReal } from './_util.js';
-import { tryLegacyPackageOperation } from './languages/legacy-bridge.js';
+import { detectNonJsEcosystem, tryLegacyPackageOperation } from './languages/legacy-bridge.js';
 
 export type InstallSaveType = 'dependency' | 'dev' | 'optional';
 
@@ -151,6 +151,21 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
       });
     }
 
+    // A dry run must not install. yarn 1 silently ignores `--dry-run` and
+    // installs (package.json and yarn.lock rewritten), and the language
+    // planner below has no dry-run mode at all (`cargo fetch`,
+    // `go mod download`, … ran for real). Refuse instead.
+    const refuseDryRun = (manager: string): never => {
+      throw new ToolValidationError({
+        message: `install: dry_run is not supported for ${manager} projects — it has no dry-run mode, so nothing was run.`,
+        field: 'dry_run',
+      });
+    };
+    if (input.dry_run && !input.global) {
+      const nonJs = await detectNonJsEcosystem(cwd, ctx.projectRoot);
+      if (nonJs) refuseDryRun(nonJs);
+    }
+
     // Delegate to the language planner for non-JS ecosystems (Go, Rust, PHP, C#).
     if (!input.global) {
       const rawList = input.packages
@@ -196,6 +211,7 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
     }
 
     const pkgManager = await detectPackageManager(cwd, ctx.projectRoot);
+    if (input.dry_run && pkgManager === 'yarn') refuseDryRun(pkgManager);
     yield { type: 'log', text: `Resolving with ${pkgManager}…`, data: { phase: 'resolve' } };
 
     const globalFlag = input.global ? ['-g'] : [];

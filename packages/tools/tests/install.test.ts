@@ -309,6 +309,26 @@ describe('installTool', () => {
     }
   });
 
+  it('refuses a yarn dry run instead of running a real `yarn add`', async () => {
+    // yarn 1 silently ignores --dry-run: `yarn --dry-run add ms` installed ms
+    // and rewrote package.json while the tool reported dry_run: true.
+    spawnStreamMock.mockClear();
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'inst-yarn-dry-'));
+    try {
+      await fs.writeFile(path.join(dir, 'yarn.lock'), '');
+      await expect(
+        installTool.execute(
+          { packages: 'ms', dry_run: true },
+          makeCtx({ cwd: dir, projectRoot: dir }),
+          makeOpts(),
+        ),
+      ).rejects.toThrow(/dry_run is not supported for yarn/);
+      expect(spawnStreamMock).not.toHaveBeenCalled();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('honors save=dev for npm via --save-dev', async () => {
     spawnStreamMock.mockClear();
     await installTool.execute({ packages: 'foo', save: 'dev' }, makeCtx(), makeOpts());

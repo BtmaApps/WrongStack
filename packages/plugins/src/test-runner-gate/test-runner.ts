@@ -177,10 +177,13 @@ export interface RunnerConfig {
  * Uses `npx <runner> --version` to check availability.
  */
 export async function detectRunner(requested: Runner): Promise<RunnerConfig | null> {
+  // `npx --no --`: execFile's stdin is not a TTY, so npm exec assumed --yes and
+  // the availability probe itself downloaded and ran a missing runner from the
+  // registry. Only an installed runner may answer.
   const candidates: RunnerConfig[] = [
-    { name: 'vitest', command: 'npx vitest run', jsonFlags: '--reporter=json' },
-    { name: 'jest', command: 'npx jest', jsonFlags: '--json' },
-    { name: 'mocha', command: 'npx mocha', jsonFlags: '--reporter json' },
+    { name: 'vitest', command: 'npx --no -- vitest run', jsonFlags: '--reporter=json' },
+    { name: 'jest', command: 'npx --no -- jest', jsonFlags: '--json' },
+    { name: 'mocha', command: 'npx --no -- mocha', jsonFlags: '--reporter json' },
   ];
 
   // If a specific runner is requested, try only that one.
@@ -189,7 +192,7 @@ export async function detectRunner(requested: Runner): Promise<RunnerConfig | nu
     if (!match) return null;
     try {
       await new Promise<void>((resolve, reject) => {
-        const ex = resolveExec('npx', [`${match.name}`, '--version']);
+        const ex = resolveExec('npx', ['--no', '--', match.name, '--version']);
         execFile(
           ex.cmd,
           ex.args,
@@ -213,7 +216,7 @@ export async function detectRunner(requested: Runner): Promise<RunnerConfig | nu
   for (const candidate of candidates) {
     try {
       await new Promise<void>((resolve, reject) => {
-        const ex = resolveExec('npx', [`${candidate.name}`, '--version']);
+        const ex = resolveExec('npx', ['--no', '--', candidate.name, '--version']);
         execFile(
           ex.cmd,
           ex.args,

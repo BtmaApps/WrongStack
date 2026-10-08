@@ -133,7 +133,9 @@ export async function selectTestRunner(
     return { cmd: 'go', args: ['test', ...packages.map((p) => (p === './.' ? '.' : p))] };
   }
   if (runner === 'pytest') return { cmd: 'pytest', args: [...suites] };
-  return { cmd: 'npx', args: [...(await jsRunnerArgs(projectRoot)), ...suites] };
+  // `--no`: stdin is not a TTY, so npx would otherwise assume --yes and
+  // download + run whatever the registry serves as the runner's name.
+  return { cmd: 'npx', args: ['--no', '--', ...(await jsRunnerArgs(projectRoot)), ...suites] };
 }
 
 async function jsRunnerArgs(projectRoot: string): Promise<string[]> {

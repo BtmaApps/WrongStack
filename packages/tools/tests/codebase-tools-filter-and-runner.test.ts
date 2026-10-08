@@ -132,14 +132,16 @@ describe('selectTestRunner', () => {
       path.join(root, 'package.json'),
       JSON.stringify({ devDependencies: { jest: '^29.0.0' } }),
     );
+    // `--no`: non-TTY npx assumes --yes and would download + run whatever the
+    // registry serves under the runner's name when it is not installed.
     await expect(selectTestRunner(root, ['src/a.test.ts'])).resolves.toEqual({
       cmd: 'npx',
-      args: ['jest', 'src/a.test.ts'],
+      args: ['--no', '--', 'jest', 'src/a.test.ts'],
     });
     await fs.rm(path.join(root, 'package.json'));
     await expect(selectTestRunner(root, ['src/a.test.ts'])).resolves.toEqual({
       cmd: 'npx',
-      args: ['vitest', 'run', 'src/a.test.ts'],
+      args: ['--no', '--', 'vitest', 'run', 'src/a.test.ts'],
     });
   });
 

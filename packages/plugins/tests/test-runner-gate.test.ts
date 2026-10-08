@@ -349,7 +349,7 @@ describe('status tool', () => {
     const status = await getStatusTool(api).execute({});
     // Master switch defaults ON; opting in belongs to host enablement.
     expect(status.enabled).toBe(true);
-    expect(status.command).toBe('npx vitest run');
+    expect(status.command).toBe('npx --no -- vitest run');
     expect(status.counters.invocations).toBe(0);
   });
 });
@@ -445,7 +445,22 @@ describe('runner detection + config', () => {
     const api = makeApi();
     await testRunnerGatePlugin.setup(api as never);
     const status = await getStatusTool(api).execute({});
-    expect(status.command).toBe('npx vitest run');
+    expect(status.command).toBe('npx --no -- vitest run');
+  });
+
+  it('never lets the npx availability probe install a missing runner', async () => {
+    // execFile's stdin is not a TTY: plain `npx vitest --version` assumed
+    // --yes and downloaded + ran the registry's `vitest` just to probe.
+    mockExecFile.mockClear();
+    const api = makeApi();
+    await testRunnerGatePlugin.setup(api as never);
+    await getStatusTool(api).execute({});
+    const probes = mockExecFile.mock.calls
+      .map((c) => (c[1] as string[]).join(' '))
+      .filter((argv) => argv.includes('--version'));
+    expect(probes.length).toBeGreaterThan(0);
+    for (const argv of probes)
+      expect(argv).toMatch(/--no\s+--\s+(?:vitest|jest|mocha)\s+--version/);
   });
 
   it('is a no-op when runner not found and write occurs', async () => {
