@@ -157,7 +157,12 @@ export function extractCandidatesFromMessage(
     const start = match.index ?? 0;
     const end = start + match[0].length;
     const key = normalizeTerm(term);
-    return claimed.some((c) => c.key === key && start >= c.start && end <= c.end);
+    // Overlap, not containment: a later channel's span may WRAP an earlier
+    // claim (`**` + backtick + Term + backtick + `**` — the bold span
+    // encloses the backtick span) just as it may sit inside one (bare
+    // camelCase inside a claimed backtick span). Containment alone let the
+    // nesting case through, so one sighting counted as two mentions.
+    return claimed.some((c) => c.key === key && start < c.end && end > c.start);
   };
 
   // 1) Back-ticked identifiers.
@@ -337,6 +342,12 @@ export function hasCamelBoundary(identifier: string): boolean {
  */
 export function cleanBoldedCandidate(raw: string): string {
   return raw
+    // Bolded runs routinely wrap backticked identifiers (`**`git rebase`**`);
+    // those backticks are emphasis markup, not part of the term. Strip them
+    // so the bold channel never emits a term carrying literal backticks —
+    // which additionally could never match the definition-hint `stream`,
+    // where backticks are already removed.
+    .replace(/`/g, '')
     .replace(/^(?:the|a|an)\s+/i, '')
     .replace(/[.,;:!?]+$/g, '')
     .trim();

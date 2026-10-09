@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-09T20:11:58.504Z
+**Generated:** 2026-10-09T20:43:43.382Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4907 |
-| Production source lines | 1089941 |
+| Production source lines | 1089955 |
 | Test files | 4257 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 16163 |
@@ -86,9 +86,9 @@ None.
 | 796 | `packages/webui/src/components/ProviderTestView.tsx` |
 | 774 | `packages/core/src/session-catalog/session-registry.ts` |
 | 766 | `packages/tools/src/todo.ts` |
+| 766 | `packages/webui/src/components/MessageBubble/index.tsx` |
 | 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
 | 763 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
-| 763 | `packages/webui/src/components/MessageBubble/index.tsx` |
 | 762 | `packages/core/src/coordination/fleet-manager.ts` |
 | 762 | `packages/core/src/plugin/api.ts` |
 | 762 | `packages/tui/src/run-tui-options.ts` |

@@ -103,6 +103,10 @@ export const MessageBubble = memo(function MessageBubble({
   const { autonomy, yolo, showThinkingLogs } = localPrefs;
 
   // ── Hooks (must precede early return — Rules of Hooks) ──
+  // useIsFullChrome reads prefs. It has to run even when a thinking-only
+  // bubble returns null, or toggling "display reasoning" changes the hook
+  // count and React throws #300.
+  const fullChrome = useIsFullChrome();
   const { canAutoSubmit, recordAutoSubmit, recordPrompt, capWarned } = useAutoSubmitStreak();
   const canAutoSubmitNow = canAutoSubmit();
 
@@ -199,7 +203,6 @@ export const MessageBubble = memo(function MessageBubble({
   // only on hover-capable devices, so touch screens keep it visible. It stays
   // visible whenever it carries state: pinned, raw view, failed send, error,
   // editing, or the latest reply (its retry and run summary).
-  const fullChrome = useIsFullChrome();
   const footerQuiet =
     !fullChrome &&
     !isPinned &&

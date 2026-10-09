@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-09T20:11:58.504Z",
+  "generatedAt": "2026-10-09T20:43:43.382Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4907,
     "testFiles": 4257,
-    "sourceLines": 1089941,
+    "sourceLines": 1089955,
     "workspaceEdges": 133,
     "moduleEdges": 16163,
     "nonCommandSlashImports": 0,
@@ -26851,6 +26851,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/webui/src/components/MessageBubble/index.tsx",
+      "lines": 766,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/cli/src/subcommands/handlers/hq.ts",
       "lines": 764,
       "relativeImports": 12
@@ -26859,11 +26864,6 @@
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "lines": 763,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/webui/src/components/MessageBubble/index.tsx",
-      "lines": 763,
-      "relativeImports": 13
     },
     {
       "file": "packages/core/src/coordination/fleet-manager.ts",

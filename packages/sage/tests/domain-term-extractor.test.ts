@@ -162,6 +162,25 @@ describe('SageDomainTermExtractor — detection', () => {
     // Genuine repeats still count, across channels too.
     expect(run('`TaskGraph` then later `TaskGraph` again.')?.mentionCount).toBe(2);
     expect(run('`TaskGraph` first, then bare TaskGraph later.')?.mentionCount).toBe(2);
+
+    // Nested emphasis — bold wrapping backticks — is still ONE sighting: the
+    // bold span WRAPS the claimed backtick span, which a containment-only
+    // check missed, and the bold candidate used to keep its literal
+    // backticks as part of the term.
+    const nested = run('We shipped **`TaskGraph`** today.');
+    expect(nested?.mentionCount).toBe(1);
+    expect(nested?.confidence).toBe(0.7);
+
+    const rebased = ex
+      .extractFromConversation({
+        messages: [{ role: 'user', text: 'Use **`git rebase`** for history rewrites.' }],
+        minConfidence: 0,
+      })
+      .find((r) => r.term === 'git rebase');
+    expect(rebased?.mentionCount).toBe(1);
+
+    // Two genuine sightings still count twice when one is nested.
+    expect(run('`TaskGraph` first, then **`TaskGraph`** later.')?.mentionCount).toBe(2);
   });
 
   it('captures inline "TERM is DEFINITION" hints as the definition field', () => {
