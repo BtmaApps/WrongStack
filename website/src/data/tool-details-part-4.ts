@@ -134,6 +134,36 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
       },
     ],
   },
+  'codebase-read-symbol': {
+    longDescription:
+      'Read the exact implementation of a named declaration (function, method, class, interface, type, enum, variable) from a file using AST parsing. Returns line-numbered code in standard N→content format, eliminating offset guessing and saving context tokens.',
+    params: [
+      {
+        name: 'file',
+        type: 'string',
+        required: true,
+        description: 'Target file path (relative to project root or absolute within project).',
+      },
+      {
+        name: 'symbol',
+        type: 'string',
+        required: true,
+        description:
+          'Declaration name (function, method, class, interface, type, enum, variable). Qualify nested members as "ClassName.method" when the bare name is ambiguous. Not a test-case title.',
+      },
+      {
+        name: 'includeDocs',
+        type: 'boolean',
+        description: 'Keep leading JSDoc / docstrings in the output (defaults to true).',
+      },
+      {
+        name: 'target',
+        type: "'full' | 'body'",
+        description:
+          "Whether to read the full declaration ('full', default) or only the inner block ('body').",
+      },
+    ],
+  },
   'codebase-ast-replace': {
     longDescription:
       'Replace a named declaration using source-aware structure instead of fragile text matching. Use it for a function, method, class, interface, or variable when the target is unambiguous.',
@@ -437,36 +467,6 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         name: 'force',
         type: 'boolean',
         description: 'Undo even over files edited after the fix.',
-      },
-    ],
-  },
-  'codebase-read-symbol': {
-    longDescription:
-      'Read the exact implementation of a named declaration (function, method, class, interface, type, enum, variable) from a file using AST parsing. Returns line-numbered code in standard N→content format, eliminating offset guessing and saving context tokens.',
-    params: [
-      {
-        name: 'file',
-        type: 'string',
-        required: true,
-        description: 'Target file path (relative to project root or absolute within project).',
-      },
-      {
-        name: 'symbol',
-        type: 'string',
-        required: true,
-        description:
-          'Declaration name (function, method, class, interface, type, enum, variable). Qualify nested members as "ClassName.method" when the bare name is ambiguous. Not a test-case title.',
-      },
-      {
-        name: 'includeDocs',
-        type: 'boolean',
-        description: 'Keep leading JSDoc / docstrings in the output (defaults to true).',
-      },
-      {
-        name: 'target',
-        type: "'full' | 'body'",
-        description:
-          "Whether to read the full declaration ('full', default) or only the inner block ('body').",
       },
     ],
   },
