@@ -276,7 +276,8 @@ export class Bar {
         {
           cwd: tempDir,
           projectRoot: tempDir,
-        } as any,
+        } as never,
+        { signal: new AbortController().signal },
       );
 
       expect(out.symbol).toBe('runJob');
@@ -292,15 +293,19 @@ export class Bar {
 
   it('validates tool inputs and throws validation errors on missing fields', async () => {
     await expect(
-      codebaseReadSymbolTool.execute({ file: '', symbol: 'foo' }, {
-        projectRoot: process.cwd(),
-      } as any),
+      codebaseReadSymbolTool.execute(
+        { file: '', symbol: 'foo' },
+        { projectRoot: process.cwd() } as never,
+        { signal: new AbortController().signal },
+      ),
     ).rejects.toThrow(/file is required/);
 
     await expect(
-      codebaseReadSymbolTool.execute({ file: 'foo.ts', symbol: '' }, {
-        projectRoot: process.cwd(),
-      } as any),
+      codebaseReadSymbolTool.execute(
+        { file: 'foo.ts', symbol: '' },
+        { projectRoot: process.cwd() } as never,
+        { signal: new AbortController().signal },
+      ),
     ).rejects.toThrow(/symbol is required/);
   });
 });
