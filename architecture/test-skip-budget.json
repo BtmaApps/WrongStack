@@ -22,6 +22,11 @@
       "fingerprint": "8c370e3250d384cb"
     },
     {
+      "file": "packages/acp/tests/terminal-server-cwd-case.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "0f4e9d7d0988c23a"
+    },
+    {
       "file": "packages/acp/tests/terminal-server.test.ts",
       "kind": "skipIf",
       "fingerprint": "5ff5b6ad8219d119"

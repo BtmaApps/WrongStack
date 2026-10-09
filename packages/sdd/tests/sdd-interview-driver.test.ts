@@ -9,8 +9,9 @@ import { TaskGraphStore } from '../src/task-graph-store.js';
 // Each test runs a start→ingest→persist→read-back chain over real fs with a
 // per-test temp dir (recursive rm in afterEach); under parallel-suite load the
 // 5s default testTimeout fires before the fs chain finishes — timeouts only,
-// never assertion mismatches (classified 2026-10-05).
-vi.setConfig({ testTimeout: 15_000 });
+// never assertion mismatches (classified 2026-10-05). The approve→executing
+// case (~1.3 s alone) still overran 15 s in a loaded V8-coverage run (2026-10-09).
+vi.setConfig({ testTimeout: 45_000 });
 
 /**
  * Temp roots created by the tests, removed after each one. Without this every

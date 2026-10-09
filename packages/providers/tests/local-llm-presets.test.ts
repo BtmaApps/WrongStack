@@ -6,7 +6,7 @@ import {
   ollamaWireFormat,
   vllmWireFormat,
 } from '../src/presets/local-llm.js';
-import { WireFormatProvider } from '../src/wire-format.js';
+import { type WireFormatConfig, WireFormatProvider } from '../src/wire-format.js';
 
 /**
  * The local-LLM presets (Ollama, vLLM, LM Studio) all share an
@@ -38,8 +38,8 @@ function mkFetch(body: ReadableStream<Uint8Array>): typeof fetch {
     }) as never as Response) as never as typeof fetch;
 }
 
-async function collectFromPreset(
-  format: Parameters<typeof WireFormatProvider>[0],
+async function collectFromPreset<S>(
+  format: WireFormatConfig<S>,
   body: ReadableStream<Uint8Array>,
   model: string,
   apiKey = 'test-key',

@@ -97,13 +97,18 @@ describe('HelpOverlay', () => {
     view.unmount();
   });
 
-  it('scrolls to the tool color section via down-arrow keys', async () => {
+  it('scrolls to the tool color section via PgDn + down-arrow keys', async () => {
     const view = render(React.createElement(HelpOverlay));
-    // Walk the cursor past the end (clamped) so the window reaches the bottom.
-    for (let i = 0; i < 100; i++) {
-      view.stdin.write('\x1b[B');
-      await new Promise((resolve) => setImmediate(resolve));
-    }
+    // Page past the end (clamped), then step with ↓ at the bottom. 100 single
+    // ↓ re-renders took ~16 s alone and timed out under a loaded coverage run.
+    const press = async (seq: string, times: number) => {
+      for (let i = 0; i < times; i++) {
+        view.stdin.write(seq);
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+    await press('\x1b[6~', 30);
+    await press('\x1b[B', 3);
     const frame = view.lastFrame() ?? '';
     // At the exact bottom the section header AND the earliest pair rows are
     // above the fold; the bottom-most pair row + the 'N more' indicator are

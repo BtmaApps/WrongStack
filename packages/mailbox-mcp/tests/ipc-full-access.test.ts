@@ -64,7 +64,9 @@ describe('Mailbox MCP full-access IPC integration', () => {
     if (serverProcess && serverProcess.exitCode === null) {
       serverProcess.kill('SIGTERM');
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, 2_000);
+        // Under a loaded coverage run the child can take well over 2 s to
+        // exit; removing its project dir before then fails EBUSY on Windows.
+        const timer = setTimeout(resolve, 10_000);
         serverProcess?.once('exit', () => {
           clearTimeout(timer);
           resolve();
@@ -72,7 +74,7 @@ describe('Mailbox MCP full-access IPC integration', () => {
       });
     }
     if (projectDir) {
-      await rm(projectDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await rm(projectDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
     }
   });
 

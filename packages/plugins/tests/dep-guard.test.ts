@@ -62,8 +62,8 @@ function registryStub(
           status: 200,
           body: { time: { created: '2015-01-01T00:00:00Z' }, 'dist-tags': { latest: '1.0.0' } },
         },
-): ReturnType<typeof vi.fn> {
-  return vi.fn(async (url: string | URL) => {
+) {
+  return vi.fn(async (url: string | URL, _init?: RequestInit) => {
     const { status, body } = answer(String(url));
     return new Response(body === undefined ? null : JSON.stringify(body), { status });
   });
