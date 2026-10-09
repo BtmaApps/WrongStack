@@ -249,9 +249,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 18,
+      "files": 19,
       "typeOnly": 0,
-      "runtimeOrMixed": 18
+      "runtimeOrMixed": 19
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 16,
@@ -27029,6 +27029,12 @@
     {
       "specifier": "@wrongstack/core/utils/error",
       "file": "packages/techstack/src/store/sqlite.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/tools/src/browser/runtime.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

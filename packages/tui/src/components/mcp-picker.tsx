@@ -2,6 +2,7 @@ import type React from 'react';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
+import { displayWidth } from '../terminal-width.js';
 import type { McpPickerEditor } from '../ui-contracts.js';
 
 export interface McpPickerItem {
@@ -70,6 +71,17 @@ export function McpPicker({
   });
   const above = windowStart;
   const below = total - windowEnd;
+  // Round border (2) + paddingX (2). The long hint truncates away "Esc" on a
+  // 40- or 52-column terminal, so step down until the exit key still fits.
+  const hintColumns = Math.max(1, (columns ?? size.columns) - 4);
+  const subheaderText =
+    [
+      '↑/↓ select · a add · e edit · d remove · Enter toggle · r restart · Esc close',
+      'a add · e edit · d del · Enter on/off · r restart · Esc',
+      'a add · e edit · Enter · r · Esc',
+      'a/e · Enter · Esc',
+      'Esc',
+    ].find((text) => displayWidth(text) <= hintColumns) ?? 'Esc';
 
   if (editor) {
     const fields = [
@@ -132,9 +144,7 @@ export function McpPicker({
         MCP Servers
       </Text>
       <Text dimColor wrap="truncate-end">
-        {(columns ?? size.columns) < 70
-          ? 'a add · e edit · d del · Enter on/off · r restart · Esc'
-          : '↑/↓ select · a add · e edit · d remove · Enter toggle · r restart · Esc close'}
+        {subheaderText}
       </Text>
       <Box marginTop={compact ? 0 : 1} flexDirection="column">
         {items.length === 0 ? (

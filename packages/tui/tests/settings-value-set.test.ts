@@ -314,6 +314,8 @@ describe('getSettingsFieldValue', () => {
     readSymbols: true,
     nextStepsTool: false,
     nextStepsRequired: true,
+    rememberStartupChoices: true,
+    nextSystemPromptVariant: 'pro',
     // WrongProxy / WrongTrace (fields 59/60).
     wrongProxyEnabled: false,
     wrongProxyUrl: 'http://localhost:3444',
@@ -483,6 +485,8 @@ describe('formatAllSettingsSummary', () => {
     readSymbols: false,
     nextStepsTool: false,
     nextStepsRequired: true,
+    rememberStartupChoices: true,
+    nextSystemPromptVariant: 'pro',
     // WrongProxy / WrongTrace (fields 59/60).
     wrongProxyEnabled: false,
     wrongProxyUrl: 'http://localhost:3444',

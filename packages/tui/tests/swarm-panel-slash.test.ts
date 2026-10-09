@@ -55,6 +55,8 @@ const baseValues: SettingsPickerValues = {
   readSymbols: true,
   nextStepsTool: false,
   nextStepsRequired: true,
+  rememberStartupChoices: true,
+  nextSystemPromptVariant: 'pro',
   // WrongProxy / WrongTrace (fields 59/60).
   wrongProxyEnabled: false,
   wrongProxyUrl: 'http://localhost:3444',

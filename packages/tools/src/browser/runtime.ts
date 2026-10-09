@@ -6,6 +6,8 @@ import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Browser } from '@playwright/test';
+import { toErrorMessage } from '@wrongstack/core/utils/error';
+import { buildChildEnv } from '../_env.js';
 
 let installation: Promise<void> | undefined;
 type PlaywrightRuntime = Pick<typeof import('@playwright/test'), 'chromium'>;
@@ -26,7 +28,8 @@ function runInstaller(args: string[]): Promise<void> {
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
       timeout: 180_000,
-      ...(process.versions['bun'] ? { env: { ...process.env, BUN_BE_BUN: '1' } } : {}),
+      // npm/bun need PATH and the user cache, not provider keys.
+      env: buildChildEnv(process.versions['bun'] ? { extra: { BUN_BE_BUN: '1' } } : undefined),
     });
     const capture = (chunk: Buffer) => {
       output = (output + chunk.toString()).slice(-4000);
@@ -144,9 +147,8 @@ export async function launchBrowserRuntime(headless: boolean): Promise<Browser> 
     }
     return await chromium.launch({ headless });
   } catch (error) {
-    throw new Error(
-      `browser: Chromium setup/launch failed: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error },
-    );
+    throw new Error(`browser: Chromium setup/launch failed: ${toErrorMessage(error)}`, {
+      cause: error,
+    });
   }
 }

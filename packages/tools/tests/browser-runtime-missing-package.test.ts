@@ -24,6 +24,12 @@ describe('standalone binary browser provisioning', () => {
         export const homedir = () => ${JSON.stringify(root)};
         export const existsSync = path => path.endsWith('npm-cli.js') || exists(path);
         export const calls = [];
+        export function buildChildEnv(opts) {
+          return { ...process.env, ...(opts && opts.extra ? opts.extra : {}) };
+        }
+        export function toErrorMessage(error) {
+          return error instanceof Error ? error.message : String(error);
+        }
         export function spawn(runtime, args) {
           calls.push(args);
           const child = Object.assign(new EventEmitter(), { stdout: new EventEmitter(), stderr: new EventEmitter() });
@@ -47,10 +53,13 @@ describe('standalone binary browser provisioning', () => {
         );
         // A real Node importer outside the workspace has no Playwright package.
         // Replace only process/download dependencies; keep module resolution real.
+        const stubHref = JSON.stringify(pathToFileURL(stub).href);
         const source = readFileSync(new URL('../src/browser/runtime.ts', import.meta.url), 'utf8')
-          .replace("'node:child_process'", JSON.stringify(pathToFileURL(stub).href))
-          .replace("'node:os'", JSON.stringify(pathToFileURL(stub).href))
-          .replace("'node:fs'", JSON.stringify(pathToFileURL(stub).href));
+          .replace("'node:child_process'", stubHref)
+          .replace("'node:os'", stubHref)
+          .replace("'node:fs'", stubHref)
+          .replace("'../_env.js'", stubHref)
+          .replace("'@wrongstack/core/utils/error'", stubHref);
         writeFileSync(
           join(dir, 'runtime.mjs'),
           transformSync(source, { loader: 'ts', format: 'esm' }).code,
@@ -71,6 +80,10 @@ describe('standalone binary browser provisioning', () => {
         const result = spawnSync(process.execPath, [join(dir, 'probe.mjs')], {
           encoding: 'utf8',
           timeout: 10_000,
+          // Vitest puts the workspace store on NODE_PATH, so a bare
+          // import('@playwright/test') from the temp file would resolve the
+          // installed package and skip the missing-package path.
+          env: { ...process.env, NODE_PATH: '' },
         });
         expect(result.stderr).toBe('');
         expect(result.status).toBe(0);
