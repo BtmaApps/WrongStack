@@ -1,5 +1,5 @@
 import type { ProviderAuthRegistry } from '@wrongstack/core/registry';
-import { color } from '@wrongstack/core/utils';
+import { color, toErrorMessage } from '@wrongstack/core/utils';
 import {
   applyProviderAuthOutcome,
   createBuiltinProviderAuthRegistry,
@@ -132,9 +132,7 @@ export async function runProviderAuthLogin(
     const message =
       error instanceof DOMException && error.name === 'AbortError'
         ? 'Login cancelled.'
-        : error instanceof Error
-          ? error.message
-          : String(error);
+        : toErrorMessage(error);
     deps.renderer.writeError(`  Login failed: ${message}`);
     return 1;
   } finally {

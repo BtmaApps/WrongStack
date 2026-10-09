@@ -34,7 +34,7 @@
 import * as fs from 'node:fs/promises';
 import { HQ_CLI_DEFAULT_HOST } from '@wrongstack/core/hq';
 import type { LaunchMenuChoice } from '@wrongstack/core/types';
-import { atomicWrite, color, isStdinTTY, setRawMode } from '@wrongstack/core/utils';
+import { atomicWrite, color, isStdinTTY, setRawMode, withFileLock } from '@wrongstack/core/utils';
 import { DEFAULT_PORT as HQ_DEFAULT_PORT } from '../hq-server.js';
 import type { ReadlineInputReader } from '../input-reader.js';
 import type { TerminalRenderer } from '../renderer.js';
@@ -697,34 +697,37 @@ export async function persistMenuChoice(
   globalConfigPath: string,
   choice: LaunchMenuChoice,
 ): Promise<void> {
-  let fileExists = false;
-  try {
-    await fs.access(globalConfigPath);
-    fileExists = true;
-  } catch {}
+  // Under the shared config lock: see persistLaunchChoices.
+  await withFileLock(globalConfigPath, async () => {
+    let fileExists = false;
+    try {
+      await fs.access(globalConfigPath);
+      fileExists = true;
+    } catch {}
 
-  let existing: Record<string, unknown> = {};
-  try {
-    const raw = await fs.readFile(globalConfigPath, 'utf8');
-    // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
-    existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      // Same policy as persistLaunchChoices: refuse to overwrite a
-      // corrupt file silently.
-      throw new Error(
-        `Refusing to overwrite corrupt config at ${globalConfigPath} ` +
-          `(${(err as Error).message}). Fix or move the file aside before retrying.`,
-        { cause: err },
-      );
+    let existing: Record<string, unknown> = {};
+    try {
+      const raw = await fs.readFile(globalConfigPath, 'utf8');
+      // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+      existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
+    } catch (err) {
+      if (fileExists) {
+        // Same policy as persistLaunchChoices: refuse to overwrite a
+        // corrupt file silently.
+        throw new Error(
+          `Refusing to overwrite corrupt config at ${globalConfigPath} ` +
+            `(${(err as Error).message}). Fix or move the file aside before retrying.`,
+          { cause: err },
+        );
+      }
+      existing = {};
     }
-    existing = {};
-  }
 
-  const launch = (existing.launch ?? {}) as Record<string, unknown>;
-  existing.launch = { ...launch, menuChoice: choice };
+    const launch = (existing.launch ?? {}) as Record<string, unknown>;
+    existing.launch = { ...launch, menuChoice: choice };
 
-  await atomicWrite(globalConfigPath, JSON.stringify(existing, null, 2), {
-    mode: 0o600,
+    await atomicWrite(globalConfigPath, JSON.stringify(existing, null, 2), {
+      mode: 0o600,
+    });
   });
 }

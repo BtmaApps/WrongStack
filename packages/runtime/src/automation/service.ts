@@ -47,7 +47,12 @@ export class AutomationService {
     try {
       await this.recoverAbsentWorkers(now);
       if (this.stopped) return;
-      await this.store.scheduleDue(now);
+      try {
+        await this.store.scheduleDue(now);
+      } catch (error) {
+        // A refused schedule (e.g. run capacity) must not stall the runs already queued.
+        this.lastError = error instanceof Error ? error.message : 'Automation scheduling failed';
+      }
       while (!this.stopped && this.active.size < this.maxConcurrent) {
         const run = await this.store.claim(this.workerId, now);
         if (!run) break;

@@ -6,7 +6,7 @@ import { ConfigError, ERROR_CODES } from '../types/errors.js';
 import type { Logger } from '../types/logger.js';
 import type { RotatableSecretVault, SecretVault } from '../types/secret-vault.js';
 import { ENCRYPTED_PREFIX_PATTERN, encryptedPrefixForVersion } from '../types/secret-vault.js';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { encryptConfigSecrets, isSecretField } from './config-secrets.js';
 import { restrictFilePermissions as restrictPermissions } from './file-permissions.js';
 import {
@@ -447,11 +447,20 @@ export async function migratePlaintextSecrets(
   } catch {
     return { migrated: 0, file: configPath };
   }
+  const probe = { n: 0 };
+  walkCount(parsed, vault, probe);
+  if (probe.n === 0) return { migrated: 0, file: configPath };
+  // Work to do: redo read → encrypt → write under the config lock every other
+  // config writer holds, or a locked update landing in between is overwritten.
+  // (Only now: an unconditional lock would create a missing config's dir.)
   const counter = { n: 0 };
-  const migrated = walkCount(parsed, vault, counter);
+  await withFileLock(configPath, async () => {
+    const migrated = walkCount(JSON.parse(await fsp.readFile(configPath, 'utf8')), vault, counter);
+    if (counter.n === 0) return;
+    // atomicWrite: runs on every boot for legacy users — torn write = wipe.
+    await atomicWrite(configPath, JSON.stringify(migrated, null, 2), { mode: 0o600 });
+  });
   if (counter.n === 0) return { migrated: 0, file: configPath };
-  // atomicWrite: runs on every boot for legacy users — torn write = wipe.
-  await atomicWrite(configPath, JSON.stringify(migrated, null, 2), { mode: 0o600 });
   await restrictFilePermissions(
     configPath,
     logger ? { warn: (msg) => logger.warn(msg) } : undefined,

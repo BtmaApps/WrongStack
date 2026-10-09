@@ -23,7 +23,11 @@ export interface ShardScanHost {
   dir: string;
   shardManifestCache: Map<string, CachedShardManifest>;
   shardManifestPath: (shardKey: string) => string;
-  readSummaryManifest: (id: string) => Promise<SessionSummary | null>;
+  readSummaryManifest: (
+    id: string,
+    startTime?: number,
+    strict?: boolean,
+  ) => Promise<SessionSummary | null>;
   summaryHeaderFor: (ref: SessionFileRef) => Promise<SessionSummary | null>;
   summaryFor: (id: string) => Promise<SessionSummary>;
 }
@@ -98,10 +102,14 @@ export async function readOrBuildShardManifest(
       manifestPath,
       concurrency: LIST_SCAN_CONCURRENCY,
       collectSessionFilesInShard: (key) => collectSessionFilesInShard(host.dir, key),
-      readSummaryManifest: (id) => host.readSummaryManifest(id),
+      readSummaryManifest: (id) => host.readSummaryManifest(id, undefined, true),
       summaryHeaderFor: (ref) => host.summaryHeaderFor(ref),
       summaryFor: (id) => host.summaryFor(id),
     });
+    if (entry.transient) {
+      host.shardManifestCache.delete(shardKey);
+      return entry;
+    }
     try {
       const stat = await fsp.stat(manifestPath);
       host.shardManifestCache.set(shardKey, {

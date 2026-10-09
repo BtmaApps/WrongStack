@@ -155,6 +155,25 @@ describe('mcp.add / mcp.update consult the trust boundary (M1)', () => {
     expect((result!.payload as { message: string }).message).toContain('denied');
   });
 
+  it('mcp.remove does not stop or delete the server when the boundary denies', async () => {
+    // remove = stop + delete config: a superset of mcp.disable, which the
+    // boundary already gates. It used to skip the boundary entirely.
+    await seed({ github: { transport: 'stdio', command: 'node', args: ['x.js'], enabled: true } });
+    const ws = fakeWs();
+    const registry = makeRegistry();
+    await handleMcpRemove(
+      ws as never,
+      msg('mcp.remove', { name: 'github' }),
+      configPath,
+      registry,
+      denyAll,
+    );
+    expect((await readServers()).github).toBeDefined();
+    expect((registry as { stop: ReturnType<typeof vi.fn> }).stop).not.toHaveBeenCalled();
+    const result = ws.sent.find((m) => m.type === 'mcp.operation_result');
+    expect((result!.payload as { message: string }).message).toContain('denied');
+  });
+
   it('an allowing boundary leaves behavior unchanged', async () => {
     const allowAll = {
       evaluate: async () => ({

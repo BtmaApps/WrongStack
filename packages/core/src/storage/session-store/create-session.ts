@@ -35,7 +35,11 @@ export interface CreateSessionHost {
   ensureShardDir: (id: string) => Promise<string>;
   sessionPath: (id: string, ext: '.jsonl' | '.jsonl.gz' | '.summary.json') => string;
   invalidateShardManifestBySessionId: (id: string) => Promise<void>;
-  readSummaryManifest: (id: string) => Promise<SessionSummary | null>;
+  readSummaryManifest: (
+    id: string,
+    startTime?: number,
+    strict?: boolean,
+  ) => Promise<SessionSummary | null>;
   persistCatalogSummary: (summary: SessionSummary) => Promise<void>;
   archiveIdle: (policy?: Partial<SessionStoragePolicy>) => Promise<SessionArchiveIdleResult>;
   onIndexAppendCreate: (id: string) => void;
@@ -182,7 +186,8 @@ export async function executeCreateSession(
       onAppend: host.onAppend,
       onAppendBatch: host.onAppendBatch,
       resolveName: async () => {
-        const current = await host.readSummaryManifest(id);
+        // Strict: an unreadable manifest must not read as "no name" (see finalize).
+        const current = await host.readSummaryManifest(id, undefined, true);
         if (!current) return null;
         return current.name === undefined
           ? {}

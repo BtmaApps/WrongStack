@@ -51,6 +51,24 @@ describe('HQ Kanban snapshots', () => {
     expect((await new HqKanbanStore(dir).load('project-1')).boards[0]?.revision).toBe(3);
   });
 
+  it('keeps a project merged past the per-frame record cap across a restart', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'hq-kanban-'));
+    dirs.push(dir);
+    const store = new HqKanbanStore(dir);
+    const boards = Array.from({ length: 300 }, (_, i) =>
+      board(`board-${i}`, 1, '2026-07-22T12:00:00Z'),
+    );
+    await store.merge(snapshot(boards.slice(0, 250)));
+    await store.merge(snapshot(boards.slice(250)));
+    await store.drain();
+
+    const restarted = new HqKanbanStore(dir);
+    expect((await restarted.load('project-1')).boards).toHaveLength(300);
+    await restarted.merge(snapshot([board('board-new', 1, '2026-07-22T12:00:00Z')]));
+    await restarted.drain();
+    expect((await new HqKanbanStore(dir).load('project-1')).boards).toHaveLength(301);
+  });
+
   it('uses timestamps for equal revisions and lets a tombstone win exact ties', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'hq-kanban-'));
     dirs.push(dir);

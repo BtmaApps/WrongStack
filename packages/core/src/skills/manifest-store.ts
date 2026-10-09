@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 
 export interface InstalledSkillEntry {
   name: string;
@@ -52,6 +52,26 @@ export class SkillManifestStore {
     return this.cache;
   }
 
+  /**
+   * The manifest a mutation rewrites. Only a missing file starts empty: a
+   * manifest that could not be read or parsed is not written over, or every
+   * other installed skill would lose its record.
+   */
+  private async readForUpdate(): Promise<ManifestData> {
+    let raw: string;
+    try {
+      raw = await fs.readFile(this.manifestPath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { skills: [] };
+      throw error;
+    }
+    const data = JSON.parse(raw.replace(/^\uFEFF/, '')) as ManifestData;
+    if (!Array.isArray(data?.skills)) {
+      throw new Error(`${this.manifestPath} has no skills list; refusing to overwrite it`);
+    }
+    return data;
+  }
+
   async write(data: ManifestData): Promise<void> {
     const dir = path.dirname(this.manifestPath);
     await fs.mkdir(dir, { recursive: true });
@@ -60,19 +80,23 @@ export class SkillManifestStore {
   }
 
   async addEntry(entry: InstalledSkillEntry): Promise<void> {
-    this.invalidateCache();
-    const data = await this.read();
-    // Remove existing entry with the same name + scope
-    data.skills = data.skills.filter(
-      (s) =>
-        !(
-          s.name === entry.name &&
-          s.scope === entry.scope &&
-          (s.scope === 'user' || s.projectHash === entry.projectHash)
-        ),
-    );
-    data.skills.push(entry);
-    await this.write(data);
+    // Locked across processes: the CLI and the standalone WebUI install into
+    // the same manifest, and an unlocked read-modify-write drops an entry.
+    return withFileLock(this.manifestPath, async () => {
+      this.invalidateCache();
+      const data = await this.readForUpdate();
+      // Remove existing entry with the same name + scope
+      data.skills = data.skills.filter(
+        (s) =>
+          !(
+            s.name === entry.name &&
+            s.scope === entry.scope &&
+            (s.scope === 'user' || s.projectHash === entry.projectHash)
+          ),
+      );
+      data.skills.push(entry);
+      await this.write(data);
+    });
   }
 
   async removeEntry(
@@ -80,20 +104,22 @@ export class SkillManifestStore {
     scope: 'project' | 'user',
     projectHash?: string,
   ): Promise<boolean> {
-    this.invalidateCache();
-    const data = await this.read();
-    const before = data.skills.length;
-    data.skills = data.skills.filter(
-      (s) =>
-        !(
-          s.name === name &&
-          s.scope === scope &&
-          (scope === 'user' || projectHash === undefined || s.projectHash === projectHash)
-        ),
-    );
-    if (data.skills.length === before) return false;
-    await this.write(data);
-    return true;
+    return withFileLock(this.manifestPath, async () => {
+      this.invalidateCache();
+      const data = await this.readForUpdate();
+      const before = data.skills.length;
+      data.skills = data.skills.filter(
+        (s) =>
+          !(
+            s.name === name &&
+            s.scope === scope &&
+            (scope === 'user' || projectHash === undefined || s.projectHash === projectHash)
+          ),
+      );
+      if (data.skills.length === before) return false;
+      await this.write(data);
+      return true;
+    });
   }
 
   async findByName(name: string): Promise<InstalledSkillEntry[]> {

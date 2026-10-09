@@ -343,6 +343,28 @@ describe('BrainDecisionQueue', () => {
     await expect(pending).resolves.toEqual({ type: 'deny', reason: 'Not safe' });
     queue.dispose();
   });
+
+  it('keeps asking the human when the timeout is longer than a timer can wait', async () => {
+    // Node turns a delay over 2^31-1 ms into 1 ms; the 20 ms wait below is
+    // queued after that 1 ms timer, so it always fires first when unclamped.
+    const events = new EventBus();
+    const queue = new BrainDecisionQueue(events, {
+      timeoutMs: 3_000_000_000,
+      onTimeout: () => ({ type: 'answer', optionId: 'review', text: 'auto' }),
+    });
+    let settled = false;
+    const pending = queue.requestHumanDecision(request()).then((decision) => {
+      settled = true;
+      return decision;
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+
+    events.emit('brain.human_answered', { id: 'decision-1', optionId: 'review', at: Date.now() });
+    await expect(pending).resolves.toMatchObject({ type: 'answer', optionId: 'review' });
+    queue.dispose();
+  });
 });
 
 describe('formatHumanPrompt', () => {

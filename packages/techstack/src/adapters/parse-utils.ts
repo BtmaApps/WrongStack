@@ -5,6 +5,15 @@
  * package manifests; they are not general-purpose format parsers.
  */
 
+/**
+ * Drop a leading UTF-8 byte-order mark. Editors on Windows save JSON
+ * manifests with one; npm, Composer and vcpkg accept it, but `JSON.parse`
+ * throws and the adapter inventoried nothing.
+ */
+export function stripBom(text: string): string {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
 export function stripInlineComment(line: string, marker = '#'): string {
   let quote: '"' | "'" | undefined;
   let escaped = false;

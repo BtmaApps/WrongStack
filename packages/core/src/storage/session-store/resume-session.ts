@@ -36,7 +36,11 @@ export interface ResumeSessionParams {
   onAppend?: ((event: SessionEvent) => void) | undefined;
   onAppendBatch?: ((events: SessionEvent[]) => void) | undefined;
   load: (id: string) => Promise<SessionData>;
-  readSummaryManifest: (id: string) => Promise<SessionSummary | null>;
+  readSummaryManifest: (
+    id: string,
+    startTime?: number,
+    strict?: boolean,
+  ) => Promise<SessionSummary | null>;
   searchEvents: (
     id: string,
     predicate: (event: SessionEvent, index: number, ts: string) => boolean,
@@ -219,7 +223,8 @@ export async function executeResumeSession(params: ResumeSessionParams): Promise
         onAppend,
         onAppendBatch,
         resolveName: async () => {
-          const current = await readSummaryManifest(canonicalId);
+          // Strict: an unreadable manifest must not read as "no name" (see finalize).
+          const current = await readSummaryManifest(canonicalId, undefined, true);
           if (!current) return null;
           return current.name === undefined
             ? {}

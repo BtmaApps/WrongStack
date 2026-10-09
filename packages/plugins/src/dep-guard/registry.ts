@@ -328,7 +328,12 @@ export async function registryVerdict(
     }
   }
   if (targets.length === 0) return verdict;
-  const timeout = AbortSignal.timeout(cfg.registryTimeoutMs);
+  // Past 2^31-1 ms the timer fires after ~1 ms (every lookup "unchecked", a
+  // day-old package let through); >= 2^32 throws out of a never-throw path.
+  const budgetMs = Number.isFinite(cfg.registryTimeoutMs)
+    ? Math.min(Math.max(1, cfg.registryTimeoutMs), 2_147_483_647)
+    : 3000;
+  const timeout = AbortSignal.timeout(budgetMs);
   const signal = hookSignal ? AbortSignal.any([hookSignal, timeout]) : timeout;
   const results = await Promise.all(
     // Every package, in parallel: the time budget bounds the wait, not a count.

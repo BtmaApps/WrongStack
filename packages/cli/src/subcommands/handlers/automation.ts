@@ -275,8 +275,18 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
           mode: 0o600,
         }),
       );
+      let lastTickError: string | undefined;
       while (!abort.signal.aborted) {
-        await service.tick();
+        try {
+          await service.tick();
+          lastTickError = undefined;
+        } catch (error) {
+          // One failed tick (unreadable state, lock timeout) must not stop the
+          // worker and abort the runs in flight; report it once, retry next tick.
+          const message = toErrorMessage(error);
+          if (message !== lastTickError) deps.renderer.write(`automation: ${message}\n`);
+          lastTickError = message;
+        }
         await new Promise<void>((resolve) => {
           const done = () => {
             clearTimeout(timer);

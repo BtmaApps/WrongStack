@@ -104,6 +104,24 @@ describe('SkillManifestStore', () => {
     expect(all).toHaveLength(2);
   });
 
+  it('addEntry refuses to write over a manifest it could not parse', async () => {
+    await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+    const corrupt = '{"skills": [ {"name": "kept"';
+    await fs.writeFile(manifestPath, corrupt);
+    const store = new SkillManifestStore(manifestPath);
+    await expect(store.addEntry(makeEntry({ name: 'new' }))).rejects.toThrow();
+    await expect(store.removeEntry('kept', 'project')).rejects.toThrow();
+    expect(await fs.readFile(manifestPath, 'utf8')).toBe(corrupt);
+  });
+
+  it('addEntry refuses a manifest without a skills list', async () => {
+    await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+    await fs.writeFile(manifestPath, '{}');
+    const store = new SkillManifestStore(manifestPath);
+    await expect(store.addEntry(makeEntry())).rejects.toThrow(/refusing to overwrite/);
+    expect(await fs.readFile(manifestPath, 'utf8')).toBe('{}');
+  });
+
   it('removeEntry returns true and persists deletion on hit', async () => {
     const store = new SkillManifestStore(manifestPath);
     await store.addEntry(makeEntry({ name: 'a' }));

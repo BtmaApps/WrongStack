@@ -60,8 +60,12 @@ export interface RedactionProfile {
   readonly renderUnseparated: (match: string) => string;
 }
 
-/** `--flag`, `-password`/`-p`/`-a`/`-t`, or an env-var name. */
-const FLAG_NAME = /^--[\w-]+|^-(?:password|p|a|t)|^[A-Za-z_]\w*/;
+/**
+ * `--flag`, `-password`/`-p`/`-a`/`-t`/`-u`, or an env-var / header name. The
+ * bare name admits `-` so a header (`X-Api-Key: …`) is read whole: stopping at
+ * the hyphen put `-` where the separator test looks and rendered `Ap[REDACTED]`.
+ */
+const FLAG_NAME = /^--[\w-]+|^-(?:password|p|a|t|u)|^[A-Za-z_][\w-]*/;
 /**
  * Characters that may introduce a sensitive flag's value. `,` and `:` are
  * included because the pattern lists accept them as separators; leaving either
@@ -127,6 +131,26 @@ const AUTHORIZATION_HEADER_PATTERN = /\bAuthorization\s*:\s*(?:[A-Za-z]+\s+)?[^\
  * match, so it renders as `user:[REDACTED]` and the URL stays readable.
  */
 const URL_USERINFO_PASSWORD_PATTERN = /(?<=:\/\/)[^\s/:@]+:[^\s/@]+(?=@)/g;
+/**
+ * Shared: curl-style basic-auth credentials — `-u user:pass`, glued
+ * `-uuser:pass`, `--user user:pass`, `--proxy-user user:pass`. Only a value
+ * holding a `:` matches, so a bare user name (`sudo -u root`, `ps -u alice`)
+ * stays readable.
+ */
+const USER_CREDENTIAL_PATTERN =
+  /(?<![-\w])(?:-u|--(?:[\w-]+-)?user)(?:[=\s]+)?(?:"[^"\n]*:[^"\n]*"|'[^'\n]*:[^'\n]*'|[^\s,"']*:[^\s,]+)/g;
+
+/**
+ * Shared: a JSON field holding a secret (`curl -d '{"password":"…"}'`,
+ * `{"client_secret": "…"}`). The key-value rules need `[=:]` right after the
+ * name, and here the key's closing quote sits in between, so a request body
+ * reached every surface verbatim. The match starts at the `:` (the key is in
+ * the look-behind), so the separator rule renders `"password":[REDACTED]`.
+ * A shell-escaped body (`\"password\":\"…\"`) is covered too.
+ * The bare-value class excludes `[` so a second pass leaves `[REDACTED]` alone.
+ */
+const JSON_SECRET_FIELD_PATTERN =
+  /(?<=["'][\w-]*(?:password|passwd|pwd|secret|token|api[-_]?key|auth|credential|private[-_]?key|access[-_]?key|bearer|jwt|passphrase)\\?["']\s*):\s*(?:\\?["'](?:[^"'\\\n]|\\[^"'\n])*\\?["']|[^\s,{}[\]"'\\]+)/gi;
 
 /**
  * Secret keywords are matched as the FINAL hyphen-separated segment of a
@@ -163,10 +187,12 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   // env var–style secrets: TOKEN=x, API_KEY=y, TOKEN:z, PASSWORD="x y", …
   // `ACCESS_KEY`/`SECRET_KEY` are the cloud spellings (`AWS_SECRET_ACCESS_KEY=… aws s3 ls`,
   // `S3_SECRET_KEY`); without them the most common inline credential printed verbatim.
-  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
+  /(?:TOKEN|API[-_]?KEY|API[-_]?SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
   AUTHORIZATION_HEADER_PATTERN,
   URL_USERINFO_PASSWORD_PATTERN,
+  USER_CREDENTIAL_PATTERN,
+  JSON_SECRET_FIELD_PATTERN,
 ];
 
 /** Telegram outbound notifications: the highest-risk exfiltration surface. */
@@ -189,10 +215,12 @@ const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // is also why the separator admits surrounding whitespace, as the command
   // profile's does: `PASSWORD: hunter2` and `PASSWORD = hunter2` used to reach
   // the phone verbatim while `/ps` redacted them.
-  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
+  /(?:TOKEN|API[-_]?KEY|API[-_]?SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
   AUTHORIZATION_HEADER_PATTERN,
   URL_USERINFO_PASSWORD_PATTERN,
+  USER_CREDENTIAL_PATTERN,
+  JSON_SECRET_FIELD_PATTERN,
 ];
 
 export const COMMAND_REDACTION_PROFILE: RedactionProfile = {
@@ -264,6 +292,8 @@ export function redactSecrets(text: string): string {
 const BARE_SENSITIVE_LONG_FLAG = new RegExp(`^--(?:[\\w-]+-)?(?:${KEYWORDS})$`, 'i');
 // Short flags that carry a secret when bare (e.g. ["-p", "s3cr3t"]).
 const BARE_SENSITIVE_SHORT_FLAG = /^-(?:p|t|a)$/i;
+// curl-style user flags: the next arg is a secret only as `user:pass`.
+const BARE_USER_CREDENTIAL_FLAG = /^(?:-u|--(?:[\w-]+-)?user)$/;
 
 /**
  * Redact a command + argument vector WITHOUT corrupting the array shape.
@@ -300,6 +330,8 @@ export function redactCommandArgs(
       !flag.includes('[REDACTED]');
     // Only redact the following arg if it looks like a value, not another flag.
     if (isBareSensitive && !next.startsWith('-')) {
+      redactedArgs[i + 1] = '[REDACTED]';
+    } else if (BARE_USER_CREDENTIAL_FLAG.test(flag) && next.includes(':')) {
       redactedArgs[i + 1] = '[REDACTED]';
     }
   }

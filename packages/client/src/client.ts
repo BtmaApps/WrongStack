@@ -91,6 +91,8 @@ interface PendingRun {
 const MAX_SUBSCRIBED = 4;
 /** The close code `close()` sends; the server's own 1000 is a deliberate close too. */
 const NORMAL_CLOSURE = 1000;
+/** The server's refusal of a prompt sent while the session's run is going (no request id). */
+const BUSY_REFUSAL = /already (?:processing|in progress)/i;
 
 let idCounter = 0;
 function newId(prefix: string): string {
@@ -513,6 +515,12 @@ export class WrongStackClient {
     return undefined;
   }
 
+  private newestPendingRun(sessionId: string): Run | undefined {
+    let newest: Run | undefined;
+    for (const { run } of this.runs.values()) if (run.sessionId === sessionId) newest = run;
+    return newest;
+  }
+
   private failRuns(which: (pending: PendingRun) => boolean, error: WrongStackError): void {
     for (const [id, pending] of this.runs) {
       if (!which(pending)) continue;
@@ -527,7 +535,10 @@ export class WrongStackClient {
    */
   private failRunOn(sessionId: string, payload: ServerPayload<'error'>): void {
     if (payload.phase !== 'user_message' && payload.phase !== 'agent.run') return;
-    const run = this.pendingRun(sessionId);
+    // A busy refusal answers the prompt just sent, not the run still going.
+    const run = BUSY_REFUSAL.test(payload.message)
+      ? this.newestPendingRun(sessionId)
+      : this.pendingRun(sessionId);
     if (!run) return;
     this.runs.delete(run.id);
     run.fail(

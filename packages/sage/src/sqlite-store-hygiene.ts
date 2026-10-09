@@ -379,8 +379,14 @@ export async function runSqliteSageHygiene(
 
   const nowMs = ctx.now().getTime();
   const retentionMs = (opts?.retentionDays ?? 90) * 86_400_000;
+  // 0 (or any non-positive / non-finite value) turns AGE-based session GC off,
+  // like `purgeDeletedAfterDays`; an explicit `expiresAt` still applies. Read
+  // as days, 0 made every session memory "aged out" — written seconds ago too.
+  const sessionRetentionDays = opts?.sessionRetentionDays ?? DEFAULT_SESSION_RETENTION_DAYS;
   const sessionRetentionMs =
-    (opts?.sessionRetentionDays ?? DEFAULT_SESSION_RETENTION_DAYS) * 86_400_000;
+    Number.isFinite(sessionRetentionDays) && sessionRetentionDays > 0
+      ? sessionRetentionDays * 86_400_000
+      : Number.POSITIVE_INFINITY;
   const lowConfidenceMs = (opts?.archiveLowConfidenceAfterDays ?? 30) * 86_400_000;
   const unusedMs = (opts?.archiveUnusedAfterDays ?? 30) * 86_400_000;
   const unusedMinInjections = Math.max(1, Math.floor(opts?.unusedMinInjections ?? 10));

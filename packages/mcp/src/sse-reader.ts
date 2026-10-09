@@ -1,4 +1,5 @@
 import { ToolError } from '@wrongstack/core/types';
+import { MAX_MCP_HTTP_BODY_BYTES } from './read-body.js';
 
 /**
  * SSE-based MCP transport using native fetch.
@@ -11,19 +12,21 @@ import { ToolError } from '@wrongstack/core/types';
  * The SSE reader parses the SSE protocol (event:, data:, blank line to dispatch).
  */
 /**
- * Cap on the pending-line buffer. The upstream SSE parser
- * (packages/providers/src/sse.ts) already enforces 256 KB; this
- * reader is used only inside MCP HTTP transports, but defense-in-depth
- * says we should never let a malicious stream pin memory.
+ * Cap on the pending-line buffer and on one event's data. The legacy SSE
+ * transport receives EVERY JSON-RPC response over this stream, so the cap is
+ * the same 16 MiB response cap every other MCP path enforces — 256 KiB (the
+ * provider token-delta parser's cap) threw on a 300 KB tool result and tore
+ * the connection down. Still bounded: a malicious stream cannot pin more.
  */
-const SSE_READER_MAX_BUFFER = 256 * 1024;
+const SSE_READER_MAX_BUFFER = MAX_MCP_HTTP_BODY_BYTES;
 /** Max data lines buffered per event before flush. Prevents a malicious
  *  server from accumulating unbounded data: lines without a blank-line
  *  delimiter would grow this array indefinitely. */
 const SSE_READER_MAX_DATA_LINES = 1024;
 
 export class SSEReader {
-  private buffer = '';
+  private pending: string[] = [];
+  private pendingLength = 0;
   private skipLeadingLF = false;
   private dataLines: string[] = [];
   private dataLength = 0;
@@ -67,34 +70,46 @@ export class SSEReader {
   }
 
   feed(chunk: string): void {
-    const carried = this.buffer.length;
+    const carried = this.pendingLength;
     // A CRLF pair may straddle chunks; the CR already ended the line.
     if (this.skipLeadingLF && chunk.length > 0) {
       this.skipLeadingLF = false;
       if (chunk.startsWith('\n')) chunk = chunk.slice(1);
     }
-    this.buffer += chunk;
-    // Scan with a moving cursor and slice the retained tail ONCE at the end,
-    // instead of `buffer = buffer.slice(idx+1)` per line (which re-copies the
-    // whole remaining buffer for every newline — O(n²) for many small lines).
+    // The carried pieces hold no line terminator (every one was consumed), so
+    // only the new chunk is scanned, and the pieces are joined once when their
+    // line completes. Appending to one string and rescanning it on every read
+    // was O(n²) for a large event split over many reads.
     let start = 0;
-    for (let idx = 0; idx < this.buffer.length; idx++) {
-      const code = this.buffer.charCodeAt(idx);
+    for (let idx = 0; idx < chunk.length; idx++) {
+      const code = chunk.charCodeAt(idx);
       if (code !== 10 && code !== 13) continue;
-      this.processLine(this.buffer.slice(start, idx));
+      const head = chunk.slice(start, idx);
+      if (this.pending.length > 0) {
+        this.pending.push(head);
+        const line = this.pending.join('');
+        this.pending = [];
+        this.pendingLength = 0;
+        this.processLine(line);
+      } else {
+        this.processLine(head);
+      }
       if (code === 13) {
-        if (this.buffer.charCodeAt(idx + 1) === 10) idx++;
-        else if (idx + 1 === this.buffer.length) this.skipLeadingLF = true;
+        if (chunk.charCodeAt(idx + 1) === 10) idx++;
+        else if (idx + 1 === chunk.length) this.skipLeadingLF = true;
       }
       start = idx + 1;
     }
-    if (start > 0) this.buffer = this.buffer.slice(start);
+    if (start < chunk.length) {
+      this.pending.push(start > 0 ? chunk.slice(start) : chunk);
+      this.pendingLength += chunk.length - start;
+    }
     // The cap bounds an UNTERMINATED line, so it is checked after complete
     // lines are consumed. Checked before, one read carrying many small,
     // complete events (> cap in total) threw, and the transport dropped the
     // connection over events it could have delivered.
-    if (this.buffer.length <= SSE_READER_MAX_BUFFER) return;
-    if (start >= carried) {
+    if (this.pendingLength <= SSE_READER_MAX_BUFFER) return;
+    if (start > 0 || carried === 0) {
       // The unterminated tail lies wholly inside this chunk.
       throw new ToolError({
         message: `SSE: chunk size ${chunk.length} exceeds max buffer ${SSE_READER_MAX_BUFFER} — refusing to accumulate`,
@@ -109,7 +124,7 @@ export class SSEReader {
       toolName: 'mcp_transport_sse_reader',
       context: {
         phase: 'feed',
-        bufferLength: this.buffer.length,
+        bufferLength: this.pendingLength,
         maxBuffer: SSE_READER_MAX_BUFFER,
       },
     });
@@ -217,7 +232,8 @@ export class SSEReader {
   }
 
   reset(): void {
-    this.buffer = '';
+    this.pending = [];
+    this.pendingLength = 0;
     this.skipLeadingLF = false;
     this.dataLines = [];
     this.eventName = '';

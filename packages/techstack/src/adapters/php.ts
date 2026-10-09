@@ -18,6 +18,7 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripBom } from './parse-utils.js';
 import { fileExists, lockfileEvidence, manifestEvidence, workspaceRoot } from './paths.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ export class PhpAdapter implements EcosystemAdapter {
     // Parse composer.json
     let composerJson: ComposerJson;
     try {
-      composerJson = JSON.parse(content) as ComposerJson;
+      composerJson = JSON.parse(stripBom(content)) as ComposerJson;
     } catch {
       return [];
     }

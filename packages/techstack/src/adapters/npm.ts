@@ -21,6 +21,7 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripBom } from './parse-utils.js';
 import { lockfileEvidence, manifestEvidence, resolveIn, workspaceRoot } from './paths.js';
 
 // ── Lockfile types ───────────────────────────────────────────────────────
@@ -537,7 +538,7 @@ export class NpmAdapter implements EcosystemAdapter {
     let manifestContent: string;
     try {
       manifestContent = await readFile(manifestPath, 'utf-8');
-      pkg = JSON.parse(manifestContent) as PackageJson;
+      pkg = JSON.parse(stripBom(manifestContent)) as PackageJson;
     } catch {
       return []; // Can't read manifest — no dependencies
     }

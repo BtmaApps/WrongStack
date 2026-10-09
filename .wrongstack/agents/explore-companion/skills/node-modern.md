@@ -1,12 +1,11 @@
-## Proof runs — `[applied 14×, 14 ok]`
+## Proof runs
 
-- `tree` `.temp_files/proof-driven-bug-hunter/<round>/` before predicting how its proof runs: `run.mjs` present → scripted runner; absent → run `pnpm exec vitest run -c vitest.proof.config.mjs` yourself. Root `vitest.config.ts` excludes `**/.temp_files/**` — never assume a shared runner.
-- Treat `root: here`, `.replace(/\\/g, '/')`, and absolute `include` in `vitest.proof.config.mjs` as load-bearing on Windows: drop any one and Vitest resolves against `process.cwd()`/backslashes, silently collecting 0 tests instead of erroring.
+- `tree .temp_files/proof-driven-bug-hunter/<round>/` before predicting how its proof runs: `run.mjs` present → scripted runner; absent → `pnpm exec vitest run -c vitest.proof.config.mjs`. Root `vitest.config.ts` excludes `**/.temp_files/**` — never assume a shared runner.
+- Treat `root: here`, `.replace(/\\/g, '/')`, and absolute `include` in `vitest.proof.config.mjs` as load-bearing on Windows: removing any one makes Vitest resolve against `process.cwd()`/backslashes and silently collect 0 tests instead of erroring.
 
-## Evidence hygiene — `[applied 2×, 2 ok]`
+## Evidence hygiene
 
-- Re-run the exact repo-wide grep as the final step before reporting a zero-consumer dependency: sessions live-edit the tree (`pnpm-lock.yaml` and `packages/webui-hq/package.json` both dropped `@radix-ui/react-select` between rounds). A first-round hit that later reads zero is concurrent editing, not tool failure.
-- Claim ENOENT on an ignored `.temp_files/` artifact only after `tree`-ing that exact directory with `truncated=false`.
+- Before reporting a zero-consumer dependency verification, re-run the exact repo-wide grep as the final step: sessions here live-edit the tree (`pnpm-lock.yaml` and `packages/webui-hq/package.json` both dropped `@radix-ui/react-select` between grep rounds). A first-round hit that later reads zero is concurrent editing, not tool failure.
 
 ## Test discovery
 

@@ -222,6 +222,50 @@ describe('ToolExecutor — executeBatch', () => {
     ).toEqual(uses.map((use) => use.id));
   });
 
+  it('runs parallel writers of the same file one after another', async () => {
+    const order: string[] = [];
+    let active = 0;
+    let peakActive = 0;
+    const tool = { ...createMockTool({ name: 'writer' }), mutating: true };
+    tool.execute = async (input) => {
+      const { tag } = input as { tag: string };
+      active++;
+      peakActive = Math.max(peakActive, active);
+      order.push(`start ${tag}`);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      order.push(`end ${tag}`);
+      active--;
+      return tag;
+    };
+    const exec = new ToolExecutor(makeRegistry([tool]), {
+      permissionPolicy: {
+        evaluate: vi.fn().mockResolvedValue({ permission: 'auto', source: 'default' }),
+      },
+      secretScrubber: noopScrubber,
+    } as any);
+
+    await exec.executeBatch(
+      [
+        makeToolUse('writer', 'a', { path: 'src/x.ts', tag: 'a' }),
+        makeToolUse('writer', 'b', { path: '/test/src/x.ts', tag: 'b' }),
+      ],
+      makeCtx(),
+      'parallel',
+    );
+    expect(order).toEqual(['start a', 'end a', 'start b', 'end b']);
+
+    peakActive = 0;
+    await exec.executeBatch(
+      [
+        makeToolUse('writer', 'c', { path: 'src/x.ts', tag: 'c' }),
+        makeToolUse('writer', 'd', { path: 'src/y.ts', tag: 'd' }),
+      ],
+      makeCtx(),
+      'parallel',
+    );
+    expect(peakActive).toBe(2);
+  });
+
   it('handles tool execution error gracefully without throwing', async () => {
     const tool = createMockTool({ name: 'fail', error: new Error('boom') });
     const reg = makeRegistry([tool]);

@@ -99,7 +99,7 @@ export function startTechStackConsumer(opts: TechStackConsumerOptions): () => vo
     targetAgent = 'tech-stack',
     senderAgentId = 'dep-watcher',
     consumerAgentId = 'tech-stack-consumer',
-    pollIntervalMs = 5000,
+    pollIntervalMs: configuredPollMs,
     fileAuthorOpts,
     sessionId,
     currentAgentId,
@@ -107,6 +107,15 @@ export function startTechStackConsumer(opts: TechStackConsumerOptions): () => vo
     onLog,
     onError,
   } = opts;
+
+  // Config-sourced and unvalidated: NaN, <= 0 or > 2^31-1 ms makes Node fire
+  // every 1 ms, and each tick is another mailbox query.
+  const pollIntervalMs =
+    typeof configuredPollMs === 'number' &&
+    Number.isFinite(configuredPollMs) &&
+    configuredPollMs > 0
+      ? Math.min(configuredPollMs, 2_147_483_647)
+      : 5000;
 
   const state: ConsumerState = {
     running: true,

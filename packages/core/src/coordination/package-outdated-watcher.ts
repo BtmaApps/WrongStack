@@ -170,7 +170,7 @@ export function startPackageOutdatedWatcher(opts: PackageOutdatedWatcherOptions)
   const {
     mailbox,
     packageTrackerOpts,
-    pollIntervalMs = 60 * 60 * 1000,
+    pollIntervalMs: configuredPollMs,
     watcherAgentId = 'pkg-outdated-watcher',
     techStackAgentId = 'tech-stack',
     onNotify,
@@ -178,6 +178,14 @@ export function startPackageOutdatedWatcher(opts: PackageOutdatedWatcherOptions)
     onError,
   } = opts;
 
+  // Config-sourced and unvalidated: NaN, <= 0 or > 2^31-1 ms makes Node fire
+  // every 1 ms, and each tick is another mailbox query.
+  const pollIntervalMs =
+    typeof configuredPollMs === 'number' &&
+    Number.isFinite(configuredPollMs) &&
+    configuredPollMs > 0
+      ? Math.min(configuredPollMs, 2_147_483_647)
+      : 60 * 60 * 1000;
   const log = (msg: string) => onLog?.(msg);
   const handleError = (err: unknown) => onError?.(err);
 

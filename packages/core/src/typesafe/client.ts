@@ -164,7 +164,13 @@ export interface TypeSafeUsage {
 export function createTypeSafeClient(opts: TypeSafeClientOptions): TypeSafeClient {
   const endpoint = opts.endpoint?.trim() || DEFAULT_TYPESAFE_ENDPOINT;
   const model = opts.model?.trim() || DEFAULT_TYPESAFE_MODEL;
-  const timeoutMs = opts.timeoutMs ?? 4_000;
+  // The value can come from a hand-edited config file. Node clamps a timer over
+  // 2^31-1 ms to 1 ms and rejects one of 2^32 or more outright, which failed
+  // every call; keep it a usable timer delay.
+  const timeoutMs =
+    typeof opts.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
+      ? Math.min(opts.timeoutMs, 2_147_483_647)
+      : 4_000;
   const maxAttempts = Math.max(1, opts.maxAttempts ?? 2);
   const doFetch = opts.fetchImpl ?? fetch;
 

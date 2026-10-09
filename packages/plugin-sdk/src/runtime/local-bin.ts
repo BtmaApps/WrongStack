@@ -149,6 +149,14 @@ export interface ResolvedNodeBin {
   entry: string;
 }
 
+function isExistingFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function isInside(parent: string, candidate: string): boolean {
   const rel = relative(parent, candidate);
   return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
@@ -212,7 +220,14 @@ export function resolveNodeBin(
   const key = `${packageName}|${binName}|${cwd}`;
   const cached = binCache.get(key);
   if (cached !== undefined) {
-    if (cached.value !== null || Date.now() - cached.cachedAt < NEGATIVE_BIN_CACHE_TTL_MS) {
+    // A positive hit is re-checked: an upgrade/reinstall during the session
+    // moves the bin entry, and the stale path spawned ENOENT — read by every
+    // plugin as "tool not installed" until restart.
+    const live = cached.value === null || isExistingFile(cached.value.entry);
+    if (
+      live &&
+      (cached.value !== null || Date.now() - cached.cachedAt < NEGATIVE_BIN_CACHE_TTL_MS)
+    ) {
       return cached.value === null
         ? null
         : { ...cached.value, args: scriptSpawnArgs(cached.value.entry, extraArgs) };

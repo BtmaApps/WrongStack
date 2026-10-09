@@ -31,6 +31,7 @@ export async function authorizeMcpMutation(
     | 'mcp.update'
     | 'mcp.enable'
     | 'mcp.disable'
+    | 'mcp.remove'
     | 'mcp.wake'
     | 'mcp.restart'
     | 'mcp.discover'

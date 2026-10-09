@@ -1,5 +1,6 @@
 import type { AnyHookOutcome, HookInput } from '../types/hooks.js';
 import type { Logger } from '../types/logger.js';
+import { toErrorMessage } from '../utils/error.js';
 import { assertNotPrivateHost } from '../utils/ip-guard.js';
 import {
   type HookExecutionOptions,
@@ -101,11 +102,7 @@ export async function runHttpHookDetailed(
   } catch (err) {
     const timedOut = timeoutController.signal.aborted && !options.signal?.aborted;
     const kind = timedOut ? 'timeout' : options.signal?.aborted ? 'aborted' : 'error';
-    const message = timedOut
-      ? `timed out after ${timeoutMs}ms`
-      : err instanceof Error
-        ? err.message
-        : String(err);
+    const message = timedOut ? `timed out after ${timeoutMs}ms` : toErrorMessage(err);
     logger?.warn?.(`HTTP hook failed: ${message}`);
     return { outcome: null, failure: { kind, message } };
   } finally {

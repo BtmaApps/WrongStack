@@ -18,7 +18,11 @@ function collectDependencies(
 
 export function parseNodeDependencies(content: string): DetectedDependency[] {
   try {
-    const manifest: unknown = JSON.parse(content);
+    // npm accepts a leading UTF-8 BOM (Windows editors write one); JSON.parse
+    // does not, and the whole manifest read as zero dependencies.
+    const manifest: unknown = JSON.parse(
+      content.charCodeAt(0) === 0xfeff ? content.slice(1) : content,
+    );
     if (!isRecord(manifest)) return [];
     const dependencies = new Map<string, DetectedDependency>();
     collectDependencies(manifest.devDependencies, true, dependencies);

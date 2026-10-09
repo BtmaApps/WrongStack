@@ -23,7 +23,7 @@ import { capabilitiesForFamily } from './family-capabilities.js';
 import { openAIImagesBody, openAIImagesUrl, parseOpenAIImages } from './image-generation.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
 import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from './openai-chat-usage.js';
-import { shouldEmitReasoningEffort } from './openai-shared.js';
+import { shouldEmitReasoningEffort, streamedToolCallIndex } from './openai-shared.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
 import {
   learnReasoningEchoRefusal,
@@ -566,7 +566,7 @@ async function* parseOpenAIStream(
         yield { type: 'thinking_stop' };
       }
       for (const tc of choice.delta.tool_calls) {
-        const idx = tc.index ?? 0;
+        const idx = streamedToolCallIndex(toolByIndex, tc);
         let entry = toolByIndex.get(idx);
         if (!entry) {
           entry = {

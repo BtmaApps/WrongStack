@@ -21,7 +21,8 @@ export interface SageHygieneOptions {
   retentionDays?: number | undefined;
   /**
    * Soft-delete session-scoped memories older than this many days when they
-   * have no explicit `expiresAt`. Default: 7. Session scope is ephemeral;
+   * have no explicit `expiresAt`. Default: 7; 0 disables this age-based GC
+   * (`expiresAt` still applies). Session scope is ephemeral;
    * hygiene deletes these immediately instead of creating review candidates.
    */
   sessionRetentionDays?: number | undefined;

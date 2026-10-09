@@ -36,7 +36,8 @@ export function createMcpRouteTable(deps: WebuiDeps): McpRouteHandlers {
       handleMcpAdd(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
     update: (ws, msg) =>
       handleMcpUpdate(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
-    remove: (ws, msg) => handleMcpRemove(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
+    remove: (ws, msg) =>
+      handleMcpRemove(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
     enable: (ws, msg) =>
       handleMcpEnable(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
     disable: (ws, msg) =>

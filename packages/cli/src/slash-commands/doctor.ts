@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { SlashCommand } from '@wrongstack/core/types';
-import { atomicWrite, color, toErrorMessage } from '@wrongstack/core/utils';
+import { atomicWrite, color, toErrorMessage, withFileLock } from '@wrongstack/core/utils';
 import { type DoctorFinding, diagnoseConfig, type PluginSchemaInfo } from '../config-doctor.js';
 import { appendHistory } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
@@ -254,10 +254,14 @@ export function buildDoctorCommand(opts: SlashCommandContext): SlashCommand {
       const pluginSchemas = await loadPluginSchemas();
 
       for (const target of targets) {
-        let raw: string;
-        try {
-          raw = await fs.readFile(target.file, 'utf8');
-        } catch {
+        // A missing config is reported without the lock: withFileLock would
+        // create a missing project config's directory.
+        if (
+          !(await fs.stat(target.file).then(
+            () => true,
+            () => false,
+          ))
+        ) {
           if (!target.isProject) {
             lines.push(
               '',
@@ -267,93 +271,116 @@ export function buildDoctorCommand(opts: SlashCommandContext): SlashCommand {
           }
           continue;
         }
-
-        lines.push('', `${color.bold(target.label)} ${color.dim(target.file)}`);
-
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(stripBom(raw)) as Record<string, unknown>;
-        } catch (err) {
-          errorCount++;
-          const msg = toErrorMessage(err);
-          lines.push(`  ${color.red('✗')} invalid JSON — ${msg}`);
-          if (!applyFixes) {
-            fixableCount++;
-            lines.push(
-              color.dim('    → run /doctor fix to restore from the newest parsable backup'),
-            );
-            continue;
-          }
-          const backup = await findParsableBackup(target.file);
-          if (!backup) {
-            lines.push(`  ${color.red('✗')} no parsable backup found — restore the file manually`);
-            continue;
-          }
-          await backupSibling(target.file, raw, 'broken.bak');
-          await atomicWrite(target.file, backup.raw);
-          lines.push(
-            `  ${color.green('✓')} restored from ${backup.name} ${color.dim('(corrupt file kept as *.broken.bak)')}`,
-          );
-          raw = backup.raw;
-          parsed = JSON.parse(stripBom(raw)) as Record<string, unknown>;
-        }
-
-        const report = diagnoseConfig(parsed, pluginSchemas);
-
-        // Credential-bearing fields must never live in the project config —
-        // flag anything filterSafeForProject would refuse to write there.
-        if (target.isProject) {
-          const safe = filterSafeForProject(parsed);
-          for (const key of Object.keys(parsed)) {
-            if (!(key in safe)) {
-              report.findings.push({
-                path: key,
-                problem:
-                  'not project-safe — belongs in the active profile config (move it manually)',
-                severity: 'warning',
-              });
-            }
-          }
-        }
-
-        if (report.findings.length === 0) {
-          lines.push(`  ${color.green('✓')} healthy`);
-          continue;
-        }
-
-        const willWrite = applyFixes && report.changed;
-        for (const f of report.findings) {
-          if (f.severity === 'error') errorCount++;
-          else warningCount++;
-          if (f.fix) fixableCount++;
-          lines.push(formatFinding(f, willWrite && !!f.fix));
-        }
-
-        if (willWrite) {
-          await backupSibling(target.file, raw);
-          await atomicWrite(target.file, JSON.stringify(report.fixed, null, 2));
-          if (!target.isProject) {
-            try {
-              // History entry + in-memory mirror follow the /settings persist
-              // convention so the change shows up in config-history and takes
-              // effect without a restart.
-              const homeFn = () => path.dirname(path.dirname(target.file));
-              await appendHistory(
-                parsed,
-                report.fixed,
-                'config doctor auto-fix',
-                homeFn,
-                target.file,
+        // `fix`: read → diagnose → write under the config lock every other
+        // config writer holds; unlocked, a locked update landing in between (a
+        // provider key added elsewhere) was overwritten by the fixed snapshot.
+        // Report mode writes nothing and stays lock-free.
+        const diagnoseTarget = async (): Promise<void> => {
+          let raw: string;
+          try {
+            raw = await fs.readFile(target.file, 'utf8');
+          } catch {
+            if (!target.isProject) {
+              lines.push(
+                '',
+                `${color.bold(target.label)} ${color.dim(target.file)}`,
+                color.dim('  no config file — built-in defaults apply'),
               );
-            } catch {
-              // history is best-effort
             }
-            opts.configStore?.update(report.fixed as never);
+            return;
           }
-          lines.push(
-            `  ${color.green('✓')} fixes written ${color.dim('(backup: config.json.last + timestamped .bak)')}`,
-          );
-        }
+
+          lines.push('', `${color.bold(target.label)} ${color.dim(target.file)}`);
+
+          let parsed: Record<string, unknown>;
+          try {
+            parsed = JSON.parse(stripBom(raw)) as Record<string, unknown>;
+          } catch (err) {
+            errorCount++;
+            const msg = toErrorMessage(err);
+            lines.push(`  ${color.red('✗')} invalid JSON — ${msg}`);
+            if (!applyFixes) {
+              fixableCount++;
+              lines.push(
+                color.dim('    → run /doctor fix to restore from the newest parsable backup'),
+              );
+              return;
+            }
+            const backup = await findParsableBackup(target.file);
+            if (!backup) {
+              lines.push(
+                `  ${color.red('✗')} no parsable backup found — restore the file manually`,
+              );
+              return;
+            }
+            await backupSibling(target.file, raw, 'broken.bak');
+            await atomicWrite(target.file, backup.raw);
+            lines.push(
+              `  ${color.green('✓')} restored from ${backup.name} ${color.dim('(corrupt file kept as *.broken.bak)')}`,
+            );
+            raw = backup.raw;
+            parsed = JSON.parse(stripBom(raw)) as Record<string, unknown>;
+          }
+
+          const report = diagnoseConfig(parsed, pluginSchemas);
+
+          // Credential-bearing fields must never live in the project config —
+          // flag anything filterSafeForProject would refuse to write there.
+          if (target.isProject) {
+            const safe = filterSafeForProject(parsed);
+            for (const key of Object.keys(parsed)) {
+              if (!(key in safe)) {
+                report.findings.push({
+                  path: key,
+                  problem:
+                    'not project-safe — belongs in the active profile config (move it manually)',
+                  severity: 'warning',
+                });
+              }
+            }
+          }
+
+          if (report.findings.length === 0) {
+            lines.push(`  ${color.green('✓')} healthy`);
+            return;
+          }
+
+          const willWrite = applyFixes && report.changed;
+          for (const f of report.findings) {
+            if (f.severity === 'error') errorCount++;
+            else warningCount++;
+            if (f.fix) fixableCount++;
+            lines.push(formatFinding(f, willWrite && !!f.fix));
+          }
+
+          if (willWrite) {
+            await backupSibling(target.file, raw);
+            await atomicWrite(target.file, JSON.stringify(report.fixed, null, 2));
+            if (!target.isProject) {
+              try {
+                // History entry + in-memory mirror follow the /settings persist
+                // convention so the change shows up in config-history and takes
+                // effect without a restart.
+                const homeFn = () => path.dirname(path.dirname(target.file));
+                await appendHistory(
+                  parsed,
+                  report.fixed,
+                  'config doctor auto-fix',
+                  homeFn,
+                  target.file,
+                );
+              } catch {
+                // history is best-effort
+              }
+              opts.configStore?.update(report.fixed as never);
+            }
+            lines.push(
+              `  ${color.green('✓')} fixes written ${color.dim('(backup: config.json.last + timestamped .bak)')}`,
+            );
+          }
+        };
+        if (applyFixes) await withFileLock(target.file, diagnoseTarget);
+        else await diagnoseTarget();
       }
 
       lines.push(

@@ -357,9 +357,10 @@ export abstract class SessionStoreCore {
   protected async readSummaryManifest(
     id: string,
     startTime = Date.now(),
+    strict = false,
   ): Promise<SessionSummary | null> {
     const manifest = this.sessionPath(id, '.summary.json');
-    return readSummaryManifestFile(manifest, this.events, id, startTime);
+    return readSummaryManifestFile(manifest, this.events, id, startTime, strict);
   }
 
   protected async summaryHeaderFor(ref: SessionFileRef): Promise<SessionSummary | null> {

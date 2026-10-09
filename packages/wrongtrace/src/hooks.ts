@@ -55,6 +55,11 @@ import { getWrongTrace, preflightFileEdit } from './gate.js';
 export interface WrongTraceHookInput {
   toolName?: string | undefined;
   toolInput?: unknown;
+  /**
+   * The session this call runs in (HookRunner fills it per call). Wins over the
+   * pair's `sessionId()`: one pair can serve several sessions (WebUI tabs).
+   */
+  sessionId?: string | undefined;
 }
 
 /** Mutually-exclusive pre-flight verdict, mirroring core's contract. */
@@ -187,6 +192,14 @@ function claimedOwnerSetFor(counters: Map<string, number>): Map<string, string> 
   return map;
 }
 
+/**
+ * A claim belongs to the session that took it: another session's skipped
+ * PostToolUse on the same path must not release it.
+ */
+function claimKey(input: WrongTraceHookInput, path: string): string {
+  return input.sessionId ? `${input.sessionId}\0${path}` : path;
+}
+
 function acquireLock(counters: Map<string, number>, path: string): void {
   counters.set(path, (counters.get(path) ?? 0) + 1);
 }
@@ -221,13 +234,15 @@ export function createWrongTraceHookPair(
       if (!EDIT_TOOLS.has(input.toolName ?? '')) return undefined;
       const path = targetPathOf(input.toolInput);
       if (!path) return undefined;
+      const owner = `wrongstack:${input.sessionId || sessionId()}`;
+      const key = claimKey(input, path);
 
       try {
         // Self-owner exemption: OUR OWN held lock (leaked by an interrupted
         // earlier edit) must not deny this session's retry. lock_owner from
         // the daemon's file-health response is compared against this pair's
         // owner identity by preflightFileEdit.
-        const verdict = await preflightFileEdit(path, `wrongstack:${sessionId()}`);
+        const verdict = await preflightFileEdit(path, owner);
         if (verdict.kind === 'blocked') {
           const owner = verdict.risk.reasons.join('; ');
           emitSafe(emit, { kind: 'deny', path, reason: `WrongTrace lock: ${owner}` });
@@ -237,17 +252,16 @@ export function createWrongTraceHookPair(
         // Allow — and claim the lock so peers see this edit in flight.
         const wt = await getWrongTrace();
         if (wt.isAvailable) {
-          const owner = `wrongstack:${sessionId()}`;
           const res = await wt.lockFile(path, 'WrongStack edit in progress', {
             owner,
             ttlSeconds: 900,
           });
           if (res?.ok === true) {
-            acquireLock(counters, path);
+            acquireLock(counters, key);
             // Remember the identity this claim was actually acquired with —
             // the release-side owner-guard needs it (legacy post hooks are
             // built with an empty session identity and cannot re-derive it).
-            claimedOwnerSetFor(counters).set(path, owner);
+            claimedOwnerSetFor(counters).set(key, owner);
             emitSafe(emit, { kind: 'lock-acquired', path, owner });
           } else {
             // Peer grabbed it between the pre-flight and the claim (or our
@@ -258,8 +272,8 @@ export function createWrongTraceHookPair(
             // otherwise this racer's postToolUse would decrement a sibling's
             // claim and release the daemon lock mid-edit (the refcount
             // contract: only the LAST finisher releases).
-            acquireLock(counters, path);
-            racedSetFor(counters).add(path);
+            acquireLock(counters, key);
+            racedSetFor(counters).add(key);
             emitSafe(emit, { kind: 'lock-conflict-race', path });
           }
         }
@@ -284,9 +298,11 @@ export function createWrongTraceHookPair(
       // Only release a lock THIS pair claimed — a shared (module-level) map
       // would let one executor free another's active lock. Reference counts:
       // the daemon unlock happens only when the LAST sibling release lands.
-      if (!path || !counters.has(path)) return;
+      if (!path) return;
+      const key = claimKey(input, path);
+      if (!counters.has(key)) return;
       let shouldUnlock = false;
-      releaseLock(counters, path, () => {
+      releaseLock(counters, key, () => {
         shouldUnlock = true;
       });
       if (!shouldUnlock) return; // a sibling still holds this path
@@ -302,9 +318,9 @@ export function createWrongTraceHookPair(
           // empty session identity and cannot re-derive it; only when no
           // acquisition was recorded do we fall back to the pair's session
           // id (pure self-leak cleanup).
-          if (racedSetFor(counters).has(path)) {
-            const recordedOwner = claimedOwnerSetFor(counters).get(path);
-            const expectedOwner = recordedOwner ?? `wrongstack:${sessionId()}`;
+          if (racedSetFor(counters).has(key)) {
+            const recordedOwner = claimedOwnerSetFor(counters).get(key);
+            const expectedOwner = recordedOwner ?? `wrongstack:${input.sessionId || sessionId()}`;
             const health = await wt.getFileHealth(path);
             if (health?.lock_owner !== expectedOwner) return; // not ours — TTL reaps
           }
@@ -321,8 +337,8 @@ export function createWrongTraceHookPair(
       } catch {
         // TTL backstop will reap it.
       } finally {
-        racedSetFor(counters).delete(path);
-        claimedOwnerSetFor(counters).delete(path);
+        racedSetFor(counters).delete(key);
+        claimedOwnerSetFor(counters).delete(key);
       }
     },
   };

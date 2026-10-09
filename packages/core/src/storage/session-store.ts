@@ -183,7 +183,7 @@ export class DefaultSessionStore extends SessionStoreCore implements SessionStor
       onAppend: this.onAppend,
       onAppendBatch: this.onAppendBatch,
       load: (loadId) => this.load(loadId, onLoadProgress),
-      readSummaryManifest: (summaryId) => this.readSummaryManifest(summaryId),
+      readSummaryManifest: (...args) => this.readSummaryManifest(...args),
       searchEvents: (searchId, pred) => this.searchEvents(searchId, pred),
       persistCatalogSummary: (sum) => this.persistCatalogSummary(sum),
       logWarn: (msg, ctx) => this.logWarn(msg, ctx),

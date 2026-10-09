@@ -34,7 +34,11 @@ export interface SessionArchiveHost {
   clearLoadCache: (sessionId?: string) => void;
   sessionPath: (id: string, ext: '.jsonl' | '.jsonl.gz' | '.summary.json') => string;
   summaryFor: (id: string) => Promise<SessionSummary>;
-  readSummaryManifest: (id: string) => Promise<SessionSummary | null>;
+  readSummaryManifest: (
+    id: string,
+    startTime?: number,
+    strict?: boolean,
+  ) => Promise<SessionSummary | null>;
   invalidateShardManifestBySessionId: (id: string) => Promise<void>;
   appendToIndex: (summary: SessionSummary) => Promise<void>;
 }
@@ -123,7 +127,10 @@ export async function ensureArchiveSummarySidecar(
   host: SessionArchiveHost,
   id: string,
 ): Promise<void> {
-  if (await host.readSummaryManifest(id)) return;
+  // Strict: an unreadable (not missing) manifest may hold a rename; writing the
+  // header over it would erase the name, so the archive of this session fails
+  // (archiveIdle skips it and retries on its next pass).
+  if (await host.readSummaryManifest(id, undefined, true)) return;
   const located = await locateTranscript(host.dir, id);
   if (!located) return;
   const header = await readSessionSummaryHeader(

@@ -213,6 +213,31 @@ export async function resolveRealInsideRoot(absPath: string, ctx: Context): Prom
   }
 }
 
+const pathLocks = new Map<string, Promise<void>>();
+
+/**
+ * Run `fn` alone for `absPath` within this process. Read-modify-write file
+ * tools serialize on it: several agents share one process, and two of them
+ * interleaving read and write on one file would lose an edit.
+ */
+export async function withPathLock<T>(absPath: string, fn: () => Promise<T>): Promise<T> {
+  const key = process.platform === 'win32' ? absPath.toLowerCase() : absPath;
+  const previous = pathLocks.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.then(() => held);
+  pathLocks.set(key, tail);
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (pathLocks.get(key) === tail) pathLocks.delete(key);
+  }
+}
+
 /**
  * `safeResolve` + symlink realpath containment check, returning the CANONICAL
  * path (WS-048).

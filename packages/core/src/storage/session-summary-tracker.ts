@@ -45,6 +45,12 @@ export class SessionSummaryTracker {
   /** Type of the newest observed event; the terminal-marker signal. */
   private lastEventType: SessionEvent['type'] | undefined;
   private openToolUses = new Set<string>();
+  /**
+   * finalize() could not read the manifest's name (unreadable, not missing).
+   * A rename lives only in the manifest and the catalog, so the writer must not
+   * persist this summary over them; the counters can be rebuilt, the name not.
+   */
+  nameUnresolved = false;
 
   constructor(opts: SessionSummaryTrackerOptions) {
     this.id = opts.id;
@@ -290,7 +296,12 @@ export class SessionSummaryTracker {
       outcome: resolveSessionOutcome(this.lastEventType, this.hadSessionError),
     };
 
-    const resolvedName = this.resolveNameCb ? await this.resolveNameCb().catch(() => null) : null;
+    const resolvedName = this.resolveNameCb
+      ? await this.resolveNameCb().catch(() => {
+          this.nameUnresolved = true;
+          return null;
+        })
+      : null;
     if (resolvedName !== null) {
       const { name: _drop, ...summaryWithoutName } = this.summary;
       this.summary = {

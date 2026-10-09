@@ -213,6 +213,16 @@ describe('validateCommand', () => {
     expect(result).toContain('blocked');
   });
 
+  it('rejects a path-qualified executable that only shares an allowlisted basename (F402)', () => {
+    const config = makeConfig({ allow: new Set(['tsc']) });
+    expect(validateCommand('tsc --noEmit', config)).toBeNull();
+    for (const command of ['/tmp/x/tsc --noEmit', '..\\x\\tsc.exe -v', './node_modules/.bin/tsc']) {
+      expect(validateCommand(command, config)).toContain('bare executable name');
+    }
+    // The blocklist still answers first for a path-qualified blocked command.
+    expect(validateCommand('/bin/rm -x', config)).toContain('blocked');
+  });
+
   it('rejects environment variable expansion', () => {
     const result = validateCommand('echo $HOME', makeConfig({ allowAll: true }));
     expect(result).toContain('environment-variable expansion');

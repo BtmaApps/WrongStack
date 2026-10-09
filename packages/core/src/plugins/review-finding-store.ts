@@ -280,22 +280,51 @@ export class JsonlFindingStore implements FindingStore {
 
   async list(opts?: ListOptions): Promise<ChimeraFinding[]> {
     const all = await this._readAll();
-    let findings = all.map((e) => this._materialize(e));
+    return this._selectEntries(all, opts).map((entry) => entry.finding);
+  }
+
+  /**
+   * The same selection as {@link list}, with each finding's lifecycle events
+   * attached from the SAME read.
+   *
+   * `list()` materializes findings only, so a caller that also needs the events
+   * had to call `getEvents()` once per finding — and every `getEvents()` call
+   * re-reads and re-parses the whole JSONL. One WebUI report-detail request
+   * therefore cost `findings + 1` full file reads of the findings file.
+   */
+  async listWithEvents(
+    opts?: ListOptions,
+  ): Promise<Array<{ finding: ChimeraFinding; events: FindingLifecycleEvent[] }>> {
+    const all = await this._readAll();
+    return this._selectEntries(all, opts).map((entry) => ({
+      finding: entry.finding,
+      // `getEvents` returns events oldest-first; keep that response shape.
+      events: [...entry.events].sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
+    }));
+  }
+
+  /** Filter and order entries exactly like `list()`, over one `_readAll` result. */
+  private _selectEntries(
+    all: Array<{ finding: ChimeraFinding; events: FindingLifecycleEvent[] }>,
+    opts?: ListOptions,
+  ): Array<{ finding: ChimeraFinding; events: FindingLifecycleEvent[] }> {
+    let entries = all.map((e) => ({ finding: this._materialize(e), events: e.events }));
 
     if (opts?.severities && opts.severities.length > 0) {
       const sevs = new Set(opts.severities);
-      findings = findings.filter((f) => sevs.has(f.severity));
+      entries = entries.filter((e) => sevs.has(e.finding.severity));
     }
     if (opts?.statuses && opts.statuses.length > 0) {
       const sts = new Set(opts.statuses);
-      findings = findings.filter((f) => sts.has(f.status));
+      entries = entries.filter((e) => sts.has(e.finding.status));
     }
     if (opts?.file) {
       const pattern = opts.file.toLowerCase();
-      findings = findings.filter((f) => f.location?.file.toLowerCase().includes(pattern));
+      entries = entries.filter((e) => e.finding.location?.file.toLowerCase().includes(pattern));
     }
     if (opts?.reportId) {
-      findings = findings.filter((f) => f.originReport.reportId === opts.reportId);
+      const reportId = opts.reportId;
+      entries = entries.filter((e) => e.finding.originReport.reportId === reportId);
     }
 
     // Sort by severity (critical first), then by age (oldest first).
@@ -305,14 +334,14 @@ export class JsonlFindingStore implements FindingStore {
       medium: 2,
       low: 3,
     };
-    findings.sort((a, b) => {
-      const sa = severityRank[a.severity] - severityRank[b.severity];
+    entries.sort((a, b) => {
+      const sa = severityRank[a.finding.severity] - severityRank[b.finding.severity];
       if (sa !== 0) return sa;
-      return a.createdAt.localeCompare(b.createdAt);
+      return a.finding.createdAt.localeCompare(b.finding.createdAt);
     });
 
     const limit = opts?.limit ?? FINDING_DEFAULT_PAGE_SIZE;
-    return findings.slice(0, limit);
+    return entries.slice(0, limit);
   }
 
   async get(idOrFingerprint: string): Promise<ChimeraFinding | null> {

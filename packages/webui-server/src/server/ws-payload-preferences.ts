@@ -202,6 +202,8 @@ const NUMBER_PREF_KEYS = new Set([
   'multiDiffSummaryThreshold',
 ]);
 
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 /**
  * Per-key inclusive min/max bounds for `NUMBER_PREF_KEYS`. Entries absent
  * from this map fall back to the generic "must be a finite number" rule
@@ -235,8 +237,15 @@ const NUMBER_PREF_BOUNDS: Record<string, { min: number; max: number; integer?: b
   // `type: 'integer'`, so persisting a fractional interval would write a value
   // the Telegram config reader treats as out-of-schema.
   tgPollIntervalSec: { min: 1, max: 60, integer: true },
-  // Debounce / delay — non-negative ms.
-  autoReviewDebounceMs: { min: 0, max: Number.POSITIVE_INFINITY },
+  // Debounce / delay — non-negative ms that a Node timer can hold: past
+  // 2^31-1 Node fires after 1 ms, so a "practically never" breaker reset
+  // (35 days) killed every process the moment the breaker tripped.
+  autoReviewDebounceMs: { min: 0, max: MAX_TIMER_MS },
+  autonomyDelayMs: { min: 0, max: MAX_TIMER_MS },
+  enhanceDelayMs: { min: 0, max: MAX_TIMER_MS },
+  enhanceCountdownMs: { min: 0, max: MAX_TIMER_MS },
+  tgLongToolMs: { min: 0, max: MAX_TIMER_MS },
+  breakerAutoKillResetMs: { min: 0, max: MAX_TIMER_MS },
 };
 
 const STRING_PREF_KEYS = new Set([

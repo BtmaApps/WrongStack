@@ -81,12 +81,23 @@ function validAggressiveOn(value: unknown): value is 'warn' | 'soft' | 'hard' {
 
 export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
   const modes = new Map<string, CustomContextMode>();
+  // Set when the file exists but could not be read or parsed: save() must not
+  // replace modes this process never saw.
+  let unreadable = false;
 
   const load = async (): Promise<void> => {
     modes.clear();
+    unreadable = false;
+    let raw: string;
     try {
-      const raw = await fs.readFile(storePath(wrongstackDir), 'utf8');
-      const parsed = JSON.parse(raw) as { modes?: CustomContextMode[] };
+      raw = await fs.readFile(storePath(wrongstackDir), 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') unreadable = true;
+      return;
+    }
+    try {
+      // A hand-edited file may start with a UTF-8 BOM, which JSON.parse rejects.
+      const parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as { modes?: CustomContextMode[] };
       if (Array.isArray(parsed.modes)) {
         for (const value of parsed.modes) {
           if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
@@ -112,11 +123,14 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
         }
       }
     } catch {
-      // File missing or corrupt — start with empty custom modes.
+      unreadable = true;
     }
   };
 
   const save = async (): Promise<void> => {
+    if (unreadable) {
+      throw new Error(`${STORE_FILENAME} could not be read; refusing to overwrite it`);
+    }
     const arr = [...modes.values()];
     const json = JSON.stringify({ modes: arr }, null, 2);
     await atomicWrite(storePath(wrongstackDir), json);

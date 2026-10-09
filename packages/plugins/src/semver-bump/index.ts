@@ -260,11 +260,14 @@ const plugin: Plugin = {
         // repo half-bumped — some packages on the new version, some on the
         // old, and no record of which. A version bump has to be all or
         // nothing; the parse step is where it can still be abandoned safely.
-        const pending: { path: string; contents: string }[] = [];
+        const pending: { path: string; contents: string; original: string }[] = [];
+        const lockstep: string[] = [];
         for (const manifest of changed) {
           let pkgData: { version?: string };
+          let original: string;
           try {
-            pkgData = JSON.parse(await readFile(manifest, 'utf-8')) as { version?: string };
+            original = await readFile(manifest, 'utf-8');
+            pkgData = JSON.parse(original) as { version?: string };
           } catch (err: unknown) {
             throw new Error(
               `cannot bump: ${manifest} is not readable as JSON (${toErrorMessage(err)}). ` +
@@ -277,11 +280,41 @@ const plugin: Plugin = {
               `cannot bump: ${manifest} does not contain a JSON object. No manifests were modified.`,
             );
           }
+          // Only manifests on the repo's current version move with it: a
+          // workspace package with its own version (or none) is not lockstep.
+          if (pkgData.version !== currentVersion) continue;
           pkgData.version = newVersion;
-          pending.push({ path: manifest, contents: `${JSON.stringify(pkgData, null, 2)}\n` });
+          pending.push({
+            path: manifest,
+            contents: `${JSON.stringify(pkgData, null, 2)}\n`,
+            original,
+          });
+          lockstep.push(manifest);
         }
-        for (const { path, contents } of pending) {
-          await writeFile(path, contents, 'utf-8');
+        changed.splice(0, changed.length, ...lockstep);
+        // A write can still fail (EBUSY/EPERM from an editor or AV handle,
+        // ENOSPC): put back what was already written so the bump stays all or
+        // nothing instead of leaving the repo half on the new version.
+        const written: typeof pending = [];
+        try {
+          for (const entry of pending) {
+            await writeFile(entry.path, entry.contents, 'utf-8');
+            written.push(entry);
+          }
+        } catch (err: unknown) {
+          const notRestored: string[] = [];
+          for (const entry of written) {
+            await writeFile(entry.path, entry.original, 'utf-8').catch(() => {
+              notRestored.push(entry.path);
+            });
+          }
+          throw new Error(
+            `cannot bump: writing manifests failed (${toErrorMessage(err)}). ` +
+              (notRestored.length === 0
+                ? 'No manifests were modified.'
+                : `Could not restore: ${notRestored.join(', ')}.`),
+            { cause: err },
+          );
         }
       }
 

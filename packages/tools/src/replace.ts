@@ -15,7 +15,7 @@ import {
 } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
 import { compileUserRegex } from './_regex.js';
-import { isBinaryBuffer, sha256hex, truncateDiffPayload } from './_util.js';
+import { isBinaryBuffer, sha256hex, truncateDiffPayload, withPathLock } from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
 
 import { assertUsableGlobFilter, resolveFiles } from './replace-file-resolution.js';
@@ -169,84 +169,88 @@ export const replaceTool: Tool<ReplaceInput, ReplaceOutput> = {
       const rel = path.relative(realRoot, realPath);
       if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return null;
 
-      // Now stat the real target so we use its mode for atomicWrite.
-      const stat = await fs.stat(realPath).catch(() => null);
-      if (!stat?.isFile()) return null;
+      // Read -> rewrite -> write runs alone per file: two agents in one
+      // process would otherwise both rewrite the same original.
+      return withPathLock(realPath, async () => {
+        // Now stat the real target so we use its mode for atomicWrite.
+        const stat = await fs.stat(realPath).catch(() => null);
+        if (!stat?.isFile()) return null;
 
-      let content: string;
-      try {
-        const buf = await fs.readFile(realPath);
-        if (isBinaryBuffer(buf)) return null;
-        content = buf.toString('utf8');
-      } catch {
-        /* v8 ignore next -- readFile failing after a successful stat is a TOCTOU race; defensive. */
-        return null;
-      }
-
-      const style = detectNewlineStyle(content);
-      const contentLf = normalizeToLf(content);
-      re.lastIndex = 0;
-      const allMatches = [...contentLf.matchAll(re)];
-      if (allMatches.length === 0) return null;
-
-      // When replace_all is false, only act on the first match.
-      const matches = replaceAll ? allMatches : allMatches.slice(0, 1);
-      const count = matches.length;
-
-      // Rebuild: single forward pass through matches to avoid quadratic intermediate string allocations.
-      let newContentLf = '';
-      let lastIdx = 0;
-      for (let i = 0; i < matches.length; i++) {
-        const m = expectDefined(matches[i]);
-        const matchIdx = expectDefined(m.index);
-        newContentLf +=
-          contentLf.slice(lastIdx, matchIdx) + expandReplacement(input.replacement, m);
-        lastIdx = matchIdx + m[0].length;
-      }
-      newContentLf += contentLf.slice(lastIdx);
-      re.lastIndex = 0;
-
-      if (!dryRun) {
-        const newContent = toStyle(newContentLf, style);
-        // Write to the real path (already validated inside project root)
-        // so atomicWrite's temp-and-rename can't be redirected through a
-        // freshly-planted symlink at absPath.
-        signal?.throwIfAborted();
-        await atomicWrite(realPath, newContent, { mode: stat.mode & 0o777 });
-        // Same bookkeeping as `edit`: record the new mtime + hash (tagged
-        // 'write' so the permission bypass does not widen) so a later `edit`
-        // of this file doesn't trip the stale-read guard on our own write,
-        // and record the change for session rewind. Optional calls: embedders
-        // may hand in a duck-typed Context without these members.
-        const written = await fs.stat(realPath).catch(() => null);
-        if (written) {
-          ctx.recordRead?.(realPath, written.mtimeMs, 'write', sha256hex(newContent));
+        let content: string;
+        try {
+          const buf = await fs.readFile(realPath);
+          if (isBinaryBuffer(buf)) return null;
+          content = buf.toString('utf8');
+        } catch {
+          /* v8 ignore next -- readFile failing after a successful stat is a TOCTOU race; defensive. */
+          return null;
         }
-        ctx.session?.recordFileChange?.({
-          path: realPath,
-          action: 'modified',
-          before: content,
-          after: newContent,
-        });
-      }
 
-      const isIdentical = newContentLf === contentLf;
-      const rawDiff: string | undefined =
-        dryRun || matches.length > 0
-          ? isIdentical
-            ? '(no-op: replacement produced identical content)'
-            : unifiedDiff(content, toStyle(newContentLf, style), {
-                fromFile: absPath,
-                toFile: absPath,
-              })
-          : undefined;
+        const style = detectNewlineStyle(content);
+        const contentLf = normalizeToLf(content);
+        re.lastIndex = 0;
+        const allMatches = [...contentLf.matchAll(re)];
+        if (allMatches.length === 0) return null;
 
-      return {
-        path: absPath,
-        replacements: count,
-        rawDiff,
-        isIdentical,
-      };
+        // When replace_all is false, only act on the first match.
+        const matches = replaceAll ? allMatches : allMatches.slice(0, 1);
+        const count = matches.length;
+
+        // Rebuild: single forward pass through matches to avoid quadratic intermediate string allocations.
+        let newContentLf = '';
+        let lastIdx = 0;
+        for (let i = 0; i < matches.length; i++) {
+          const m = expectDefined(matches[i]);
+          const matchIdx = expectDefined(m.index);
+          newContentLf +=
+            contentLf.slice(lastIdx, matchIdx) + expandReplacement(input.replacement, m);
+          lastIdx = matchIdx + m[0].length;
+        }
+        newContentLf += contentLf.slice(lastIdx);
+        re.lastIndex = 0;
+
+        if (!dryRun) {
+          const newContent = toStyle(newContentLf, style);
+          // Write to the real path (already validated inside project root)
+          // so atomicWrite's temp-and-rename can't be redirected through a
+          // freshly-planted symlink at absPath.
+          signal?.throwIfAborted();
+          await atomicWrite(realPath, newContent, { mode: stat.mode & 0o777 });
+          // Same bookkeeping as `edit`: record the new mtime + hash (tagged
+          // 'write' so the permission bypass does not widen) so a later `edit`
+          // of this file doesn't trip the stale-read guard on our own write,
+          // and record the change for session rewind. Optional calls: embedders
+          // may hand in a duck-typed Context without these members.
+          const written = await fs.stat(realPath).catch(() => null);
+          if (written) {
+            ctx.recordRead?.(realPath, written.mtimeMs, 'write', sha256hex(newContent));
+          }
+          ctx.session?.recordFileChange?.({
+            path: realPath,
+            action: 'modified',
+            before: content,
+            after: newContent,
+          });
+        }
+
+        const isIdentical = newContentLf === contentLf;
+        const rawDiff: string | undefined =
+          dryRun || matches.length > 0
+            ? isIdentical
+              ? '(no-op: replacement produced identical content)'
+              : unifiedDiff(content, toStyle(newContentLf, style), {
+                  fromFile: absPath,
+                  toFile: absPath,
+                })
+            : undefined;
+
+        return {
+          path: absPath,
+          replacements: count,
+          rawDiff,
+          isIdentical,
+        };
+      });
     });
 
     const results: ReplaceOutput['results'] = [];

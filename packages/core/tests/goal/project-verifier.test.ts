@@ -50,6 +50,35 @@ describe('verifyGoalProject', () => {
     expect(args.join(' ')).not.toContain('lint');
   });
 
+  it('runs the scripts of a package.json saved with a UTF-8 BOM', async () => {
+    // A BOM used to read as "no configured scripts" → skipped, which the Goal
+    // hosts count as a pass: a failing typecheck was waved through.
+    await fs.mkdir(path.join(dir, 'node_modules'));
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      `\uFEFF${JSON.stringify({ scripts: { typecheck: 'tsc --noEmit' } })}`,
+    );
+    execFile.mockImplementation((_command, _args, _options, callback) => {
+      callback(new Error('exit 2'), '', 'type error');
+    });
+
+    await expect(verifyGoalProject({ cwd: dir })).resolves.toMatchObject({ ok: false });
+    expect(execFile).toHaveBeenCalledOnce();
+  });
+
+  it('fails (not skips) when package.json is not valid JSON', async () => {
+    // An invalid manifest used to read as "no configured scripts" → skipped,
+    // which the Goal hosts count as a pass; npm cannot run any script from it.
+    await fs.mkdir(path.join(dir, 'node_modules'));
+    await fs.writeFile(path.join(dir, 'package.json'), '{ "scripts": { "typecheck": "tsc", }, }');
+
+    await expect(verifyGoalProject({ cwd: dir })).resolves.toMatchObject({
+      ok: false,
+      output: expect.stringContaining('package.json could not be read'),
+    });
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
   it('fails closed with subprocess output', async () => {
     await fs.mkdir(path.join(dir, 'node_modules'));
     await fs.writeFile(

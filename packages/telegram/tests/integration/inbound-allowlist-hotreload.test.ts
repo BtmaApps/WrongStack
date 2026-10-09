@@ -212,6 +212,34 @@ describe('inbound allowlist hot-reload', () => {
     expect(bot.bufferCount).toBe(1);
   });
 
+  it('closes the gate when the last allowlisted user is removed, and reopens on a valid fix', async () => {
+    // Removing the LAST user under an explicit allowlist is an invalid config:
+    // the reload threw, ConfigStore swallowed it, and the removed user kept
+    // being admitted until a restart. Revocation must fail closed.
+    const initial = { ...BASE_TELEGRAM, inboundMode: 'allowlist', allowedUsers: ['111'] };
+    const { bot, reload } = await setupBot(initial);
+    const emptied = { ...BASE_TELEGRAM, inboundMode: 'allowlist', allowedUsers: [] };
+
+    reload(emptied);
+    bot.inbox.processMessage(msg(111, 111, 801, 'must be rejected'));
+    expect(bot.getMessages({ chatId: 111 }).some((m) => m.messageId === 801)).toBe(false);
+
+    // Fixing the config (prev is the rejected one) reopens the gate.
+    const handler = (api.onConfigChange as Mock).mock.calls[0]?.[0] as (
+      n: unknown,
+      p: unknown,
+    ) => void;
+    const configFrom = (section: Record<string, unknown>) => ({
+      version: 1,
+      cwd: process.cwd(),
+      plugins: [],
+      extensions: { [PLUGIN_NAME]: { ...section } },
+    });
+    handler(configFrom(initial), configFrom(emptied));
+    bot.inbox.processMessage(msg(111, 111, 802, 'admitted again'));
+    expect(bot.getMessages({ chatId: 111 }).some((m) => m.messageId === 802)).toBe(true);
+  });
+
   it('applies an allowedChats removal to the live gate (hot key)', async () => {
     const initial = {
       ...BASE_TELEGRAM,

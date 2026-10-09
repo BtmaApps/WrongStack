@@ -280,14 +280,13 @@ export function createChimeraRouteHandlers(deps: {
         }
 
         const events = await reportStore.getEvents(reportId);
-        const rawFindings = await findingStore.list({ reportId, limit: 9999 });
-
-        const findings: FindingWithEvents[] = await Promise.all(
-          rawFindings.map(async (finding) => {
-            const fEvents = await findingStore.getEvents(finding.id);
-            return { finding, events: fEvents };
-          }),
-        );
+        // One read: `list()` drops each finding's events, and fetching them
+        // with a `getEvents()` call per finding re-read the whole findings
+        // JSONL once per finding.
+        const findings: FindingWithEvents[] = await findingStore.listWithEvents({
+          reportId,
+          limit: 9999,
+        });
 
         deps.send(ws, {
           type: 'chimera.report.detail',

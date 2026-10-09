@@ -99,7 +99,8 @@ export async function readHqAlertsConfig(dataDir: string): Promise<HqAlertsConfi
   }
   let parsed: HqAlertsConfigFile;
   try {
-    parsed = JSON.parse(raw) as HqAlertsConfigFile;
+    // Notepad / PowerShell 5 save this hand-edited file with a UTF-8 BOM.
+    parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as HqAlertsConfigFile;
   } catch (err) {
     throw new Error(
       `HQ alerts-config at ${file} is not valid JSON: ${(err as Error).message}. ` +

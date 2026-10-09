@@ -405,6 +405,12 @@ export function validateCommand(
   if (config.block.has(base)) {
     return `Command "${base}" is blocked by the verifier security policy.`;
   }
+  // The allowlist names a command and is matched on the basename, but the
+  // configured-command branch spawns the RAW token: `/elsewhere/tsc` passed as
+  // `tsc` and ran a different binary. Same rule as constrained `pnpm exec`.
+  if (!config.allowAll && /[/\\]/.test(tokens[0] ?? '')) {
+    return `Command "${base}" must be a bare executable name; path-qualified executables are not permitted in the verifier.`;
+  }
   if (!config.allowAll && !config.allow.has(base)) {
     return `Command "${base}" is not in the verifier allowlist.`;
   }

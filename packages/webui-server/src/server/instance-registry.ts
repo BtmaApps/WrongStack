@@ -23,7 +23,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { SessionLiveStatus, SessionRegistryEntry } from '@wrongstack/core/storage';
-import { atomicWrite } from '@wrongstack/core/utils';
+import { atomicWrite, withFileLock } from '@wrongstack/core/utils';
 
 export type WebUIInstanceRole = 'standalone' | 'parent-shell' | 'session-child';
 
@@ -243,14 +243,23 @@ export function isPidAlive(pid: number): boolean {
 }
 
 async function load(file: string): Promise<RegistryFile> {
+  let raw: string;
   try {
-    const raw = await fs.readFile(file, 'utf8');
-    const parsed = JSON.parse(raw) as RegistryFile;
+    raw = await fs.readFile(file, 'utf8');
+  } catch (err) {
+    // Only a missing file is empty. A file that exists but cannot be read
+    // right now still lists live instances: rewriting it from "empty" would
+    // drop them for good, since each instance registers only at startup.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, instances: [] };
+    throw err;
+  }
+  try {
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as RegistryFile;
     if (parsed?.version === 1 && Array.isArray(parsed.instances)) {
       return parsed;
     }
   } catch {
-    // Missing or corrupt → start fresh.
+    // Corrupt → start fresh.
   }
   return { version: 1, instances: [] };
 }
@@ -276,10 +285,14 @@ export async function registerInstance(
   baseDir: string = defaultBaseDir(),
 ): Promise<void> {
   const file = registryPath(baseDir);
-  const data = await load(file);
-  const instances = prune(data.instances, record.pid);
-  instances.push(record);
-  await save(file, instances);
+  // Locked: instances start together (a shell and its session children), and
+  // an unlocked read-modify-write drops one of them for good.
+  await withFileLock(file, async () => {
+    const data = await load(file);
+    const instances = prune(data.instances, record.pid);
+    instances.push(record);
+    await save(file, instances);
+  });
 }
 
 /** Remove this instance (called on graceful shutdown). Also prunes dead pids. */
@@ -288,9 +301,11 @@ export async function unregisterInstance(
   baseDir: string = defaultBaseDir(),
 ): Promise<void> {
   const file = registryPath(baseDir);
-  const data = await load(file);
-  const instances = prune(data.instances, pid);
-  await save(file, instances);
+  await withFileLock(file, async () => {
+    const data = await load(file);
+    const instances = prune(data.instances, pid);
+    await save(file, instances);
+  });
 }
 
 /** List live instances, pruning any dead entries encountered. */
@@ -303,7 +318,11 @@ export async function listInstances(
   // Persist the pruned view so `cat`-ing the file also shows reality, but never
   // fail the list on a write error.
   if (live.length !== data.instances.length) {
-    await save(file, live).catch(() => {});
+    await withFileLock(file, async () => {
+      const current = await load(file);
+      const pruned = prune(current.instances);
+      if (pruned.length !== current.instances.length) await save(file, pruned);
+    }).catch(() => {});
   }
   return live;
 }

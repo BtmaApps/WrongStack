@@ -367,6 +367,21 @@ describe('ProcessRegistry circuit-breaker config', () => {
     expect(r.getBreakerCountdown()).toBeNull();
   });
 
+  it('clamps an over-long auto-reset window instead of firing after 1 ms', () => {
+    // Node fires a delay > 2^31-1 after 1 ms: a 35-day window killed every
+    // process the moment the breaker tripped. NaN armed the same 1 ms timer.
+    const r = getProcessRegistry();
+    r.setBreakerConfig({ enabled: true, autoKillResetMs: 35 * 86_400_000 });
+    r.register(makeProc({ pid: 10095 }));
+    for (let i = 0; i < 5; i++) r.afterCall(10, true);
+    expect(r.getBreakerCountdown()?.totalMs).toBe(2 ** 31 - 1);
+    vi.advanceTimersByTime(60_000);
+    expect(r.get(10095)?.killed).toBe(false);
+
+    r.setBreakerConfig({ autoKillResetMs: Number.NaN });
+    expect(r.getBreakerCountdown()).toBeNull();
+  });
+
   it('manual reset cancels the armed countdown', () => {
     const r = getProcessRegistry();
     r.setBreakerConfig({ enabled: true, autoKillResetMs: 10_000 });

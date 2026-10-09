@@ -18,7 +18,10 @@ export function loadProjectAgentConfig(
 ): ProjectAgentConfig | undefined {
   const cfgPath = path.join(roleDir(role, projectRoot), 'config.json');
   try {
-    return validateProjectAgentConfig(JSON.parse(readFileSync(cfgPath, 'utf8')));
+    // Hand-created files often carry a UTF-8 BOM (Notepad, PowerShell 5); a
+    // dropped override would run the role with the catalog's wider tool list.
+    const raw = readFileSync(cfgPath, 'utf8').replace(/^\uFEFF/, '');
+    return validateProjectAgentConfig(JSON.parse(raw));
   } catch {
     return undefined;
   }

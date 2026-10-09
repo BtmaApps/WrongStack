@@ -406,17 +406,13 @@ export class TerminalServer {
   private resolveCwd(cwd: string | undefined): string {
     if (!cwd) return this.projectRoot;
     const resolved = path.resolve(cwd);
-    const rootWithSep = this.projectRoot.endsWith(path.sep)
-      ? this.projectRoot
-      : this.projectRoot + path.sep;
-    if (resolved !== this.projectRoot && !resolved.startsWith(rootWithSep)) {
+    if (!isInsideRoot(resolved, this.projectRoot)) {
       return this.projectRoot;
     }
     try {
       const realRoot = realpathSync(this.projectRoot);
       const realCwd = realpathSync(resolved);
-      const realRootWithSep = realRoot.endsWith(path.sep) ? realRoot : realRoot + path.sep;
-      if (realCwd !== realRoot && !realCwd.startsWith(realRootWithSep)) {
+      if (!isInsideRoot(realCwd, realRoot)) {
         return realRoot;
       }
       return realCwd;
@@ -466,6 +462,18 @@ export class TerminalServer {
     }
     return Math.trunc(value);
   }
+}
+
+/**
+ * `child` is `root` or below it. Windows paths are case-insensitive: a client
+ * sending `d:\…` for a `D:\…` root must not fail the check and have its
+ * command silently run in the project root instead (FileServer does the same).
+ */
+function isInsideRoot(child: string, root: string): boolean {
+  const fold = (p: string) => (process.platform === 'win32' ? p.toLowerCase() : p);
+  const c = fold(child);
+  const r = fold(root);
+  return c === r || c.startsWith(r.endsWith(path.sep) ? r : r + path.sep);
 }
 
 /**

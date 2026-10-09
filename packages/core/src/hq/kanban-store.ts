@@ -2,7 +2,11 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { atomicWrite } from '../utils/atomic-write.js';
-import { type HqKanbanSnapshotPayload, isHqKanbanSnapshotPayload } from './protocol.js';
+import {
+  type HqKanbanSnapshotPayload,
+  isHqKanbanSnapshotPayload,
+  MAX_HQ_KANBAN_BOARDS,
+} from './protocol.js';
 import { BestEffortLatestQueue } from './write-queues.js';
 
 export const MAX_HQ_KANBAN_CACHE_PROJECTS = 32;
@@ -18,23 +22,43 @@ export class HqKanbanStore {
   }
 
   async load(projectId: string): Promise<HqKanbanSnapshotPayload> {
+    try {
+      return await this.loadStored(projectId);
+    } catch {
+      return emptyKanbanSnapshot(projectId);
+    }
+  }
+
+  /**
+   * The stored project state. Only a missing file is empty: a file that exists
+   * but cannot be read right now throws, so a merge never rewrites it from an
+   * empty state and drops every other writer's boards and tombstones.
+   */
+  private async loadStored(projectId: string): Promise<HqKanbanSnapshotPayload> {
     const cached = this.cache.get(projectId);
     if (cached !== undefined) {
       this.cache.delete(projectId);
       this.cache.set(projectId, cached);
       return structuredClone(cached);
     }
+    let content: string;
     try {
-      const content = await fs.readFile(this.filePath(projectId), 'utf8');
-      const snapshot: unknown = JSON.parse(content);
-      if (!isHqKanbanSnapshotPayload(snapshot) || snapshot.projectId !== projectId) {
-        return emptyKanbanSnapshot(projectId);
-      }
-      this.setCached(projectId, snapshot);
-      return structuredClone(snapshot);
+      content = await fs.readFile(this.filePath(projectId), 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyKanbanSnapshot(projectId);
+      throw error;
+    }
+    let snapshot: unknown;
+    try {
+      snapshot = JSON.parse(content);
     } catch {
       return emptyKanbanSnapshot(projectId);
     }
+    if (!isStoredKanbanSnapshot(snapshot) || snapshot.projectId !== projectId) {
+      return emptyKanbanSnapshot(projectId);
+    }
+    this.setCached(projectId, snapshot);
+    return structuredClone(snapshot);
   }
 
   /** Merge by revision, then timestamp. HQ never lets a stale writer win. */
@@ -64,7 +88,7 @@ export class HqKanbanStore {
   }
 
   private async mergeNow(incoming: HqKanbanSnapshotPayload): Promise<HqKanbanSnapshotPayload> {
-    const current = await this.load(incoming.projectId);
+    const current = await this.loadStored(incoming.projectId);
     const records = new Map<
       string,
       HqKanbanSnapshotPayload['boards'][number] | HqKanbanSnapshotPayload['tombstones'][number]
@@ -143,6 +167,26 @@ export class HqKanbanStore {
     const safe = createHash('sha256').update(projectId).digest('hex');
     return path.join(this.dirPath, `${safe}.json`);
   }
+}
+
+/**
+ * The merged state of every writer outgrows the per-frame record cap the wire
+ * validator enforces, so check the stored file one frame-sized slice at a time.
+ */
+function isStoredKanbanSnapshot(value: unknown): value is HqKanbanSnapshotPayload {
+  if (typeof value !== 'object' || value === null) return false;
+  const stored = value as HqKanbanSnapshotPayload;
+  if (!Array.isArray(stored.boards) || !Array.isArray(stored.tombstones)) return false;
+  const records = Math.max(stored.boards.length, stored.tombstones.length, 1);
+  for (let start = 0; start < records; start += MAX_HQ_KANBAN_BOARDS) {
+    const slice = {
+      ...stored,
+      boards: stored.boards.slice(start, start + MAX_HQ_KANBAN_BOARDS),
+      tombstones: stored.tombstones.slice(start, start + MAX_HQ_KANBAN_BOARDS),
+    };
+    if (!isHqKanbanSnapshotPayload(slice)) return false;
+  }
+  return true;
 }
 
 function emptyKanbanSnapshot(projectId: string): HqKanbanSnapshotPayload {

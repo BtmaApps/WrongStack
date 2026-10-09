@@ -230,6 +230,9 @@ export class BrainDecisionQueue {
         formAbort: AbortController;
       } = { request, resolve, askedAt, formAbort: new AbortController() };
       if (this.opts.timeoutMs && this.opts.timeoutMs > 0) {
+        // Capped at the largest timer delay: Node turns a longer one into 1 ms,
+        // which skipped the human and let the terminal policy decide.
+        const delayMs = Math.min(this.opts.timeoutMs, 2_147_483_647);
         entry.timer = setTimeout(() => {
           this.pending.delete(request.id);
           entry.formAbort.abort();
@@ -250,7 +253,7 @@ export class BrainDecisionQueue {
             `no human answer within ${this.opts.timeoutMs}ms`,
           );
           resolve(timedOut);
-        }, this.opts.timeoutMs);
+        }, delayMs);
       }
       this.pending.set(request.id, entry);
     });

@@ -103,6 +103,24 @@ describe('custom-context-modes', () => {
         expect(loaded?.name).toBe('Loaded Mode');
         expect(loaded?.custom).toBe(true);
       });
+
+      it('loads a file that starts with a UTF-8 BOM', async () => {
+        mockReadFile.mockResolvedValueOnce(
+          `${String.fromCharCode(0xfeff)}${JSON.stringify({ modes: [makeMode({ id: 'bom-mode' })] })}`,
+        );
+        const store = createCustomModeStore('/test/.wrongstack');
+        await store.load();
+        expect(store.modes.has('bom-mode')).toBe(true);
+      });
+
+      it('never overwrites a file it could not read', async () => {
+        mockReadFile.mockResolvedValueOnce('{"modes": [ {"id": "kept"');
+        const store = createCustomModeStore('/test/.wrongstack');
+        await store.load();
+        store.modes.set('new-mode', makeMode({ id: 'new-mode' }));
+        await expect(store.save()).rejects.toThrow(/refusing to overwrite/);
+        expect(mockAtomicWrite).not.toHaveBeenCalled();
+      });
     });
 
     describe('save', () => {

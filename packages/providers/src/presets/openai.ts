@@ -20,7 +20,7 @@ import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { stripCacheControl } from '../object-utils.js';
 import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from '../openai-chat-usage.js';
-import { isOpenAIEffort } from '../openai-shared.js';
+import { isOpenAIEffort, streamedToolCallIndex } from '../openai-shared.js';
 import { applyPromptCacheKey } from '../prompt-cache-key.js';
 import { normalizeOpenAI } from '../stop-reason.js';
 import { messagesToOpenAI, toolsToOpenAI } from '../tool-format/to-openai.js';
@@ -211,7 +211,7 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
         out.push({ type: 'thinking_stop' });
       }
       for (const tc of choice.delta.tool_calls) {
-        const idx = tc.index ?? 0;
+        const idx = streamedToolCallIndex(state.toolByIndex, tc);
         let entry = state.toolByIndex.get(idx);
         if (!entry) {
           entry = {

@@ -89,6 +89,9 @@ describe('createCloudConfigSyncPlugin', () => {
     [Number.NaN, 300_000],
     [Number.POSITIVE_INFINITY, 300_000],
     ['5m', 300_000],
+    // Past 2^31-1 ms Node fires every 1 ms: a monthly sync hammered the portal.
+    [2_592_000, 2_147_483_000],
+    [1e12, 2_147_483_000],
   ])('schedules intervalSeconds=%j at %dms', (intervalSeconds, expectedMs) => {
     const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
     const { plugin, api } = setup({

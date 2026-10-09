@@ -226,7 +226,7 @@ export function normalizeCouncilProfile(
     profile.judgeMaxTokens === undefined
       ? undefined
       : positiveInteger(profile.judgeMaxTokens, 'judgeMaxTokens', id);
-  const perCallTimeoutMs = positiveInteger(
+  const perCallTimeoutMs = timerBudget(
     profile.perCallTimeoutMs ?? DEFAULT_COUNCIL_PER_CALL_TIMEOUT_MS,
     'perCallTimeoutMs',
     id,
@@ -245,7 +245,7 @@ export function normalizeCouncilProfile(
   // The overall budget covers EVERY round, so an explicit budget written for
   // a single-round panel would now abort the panel mid-deliberation. Scale
   // the default by the round count and let an explicit value stand.
-  const overallTimeoutMs = positiveInteger(
+  const overallTimeoutMs = timerBudget(
     profile.overallTimeoutMs ?? DEFAULT_COUNCIL_OVERALL_TIMEOUT_MS * deliberationRounds,
     'overallTimeoutMs',
     id,
@@ -314,6 +314,11 @@ function fraction(value: number, field: string, profileId: string): number {
     throw new Error(`CouncilProfileRegistry: profile "${profileId}" ${field} must be in (0, 1].`);
   }
   return value;
+}
+
+/** A positive budget a Node timer can hold: past 2^31-1 ms it fires after ~1 ms. */
+function timerBudget(value: number, field: string, profileId: string): number {
+  return Math.min(positiveInteger(value, field, profileId), 2_147_483_647);
 }
 
 function positiveInteger(value: number, field: string, profileId: string): number {

@@ -230,13 +230,13 @@ export abstract class BaseHTTPTransport {
       typeof opts.startupTimeoutMs === 'number' &&
       Number.isFinite(opts.startupTimeoutMs) &&
       opts.startupTimeoutMs > 0
-        ? opts.startupTimeoutMs
+        ? Math.min(opts.startupTimeoutMs, 2_147_483_647)
         : 10_000;
     this.requestTimeout =
       typeof opts.requestTimeoutMs === 'number' &&
       Number.isFinite(opts.requestTimeoutMs) &&
       opts.requestTimeoutMs > 0
-        ? opts.requestTimeoutMs
+        ? Math.min(opts.requestTimeoutMs, 2_147_483_647)
         : MCP_CONSTANTS.REQUEST_TIMEOUT_MS;
     if (opts.tls) {
       if (opts.tls.rejectUnauthorized === false) {

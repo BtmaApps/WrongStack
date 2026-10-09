@@ -280,6 +280,32 @@ describe('WrongStackClient', () => {
     });
   });
 
+  it('pins a busy refusal on the prompt just sent, not on the run still going', async () => {
+    const { server, client } = await connected();
+    const running = client.send('first');
+    await server.frame('user_message');
+    const refused = client.send('second');
+    await server.frame('user_message');
+    server.emit({
+      type: 'error',
+      payload: {
+        phase: 'user_message',
+        message: 'Agent is already processing a request. Wait for the current run to finish.',
+        sessionId: 'sess_1',
+      },
+    });
+    await expect(refused.result).rejects.toMatchObject({ kind: 'server', retryable: true });
+    server.emit({
+      type: 'provider.text_delta',
+      payload: { text: 'ok', messageId: 'a', sessionId: 'sess_1' },
+    });
+    server.emit({
+      type: 'run.result',
+      payload: { requestId: running.id, status: 'done', iterations: 1, sessionId: 'sess_1' },
+    });
+    expect(await running.result).toMatchObject({ status: 'done', text: 'ok' });
+  });
+
   it('answers confirmations through the handler or by hand', async () => {
     server = await FakeServer.start();
     const asked: string[] = [];

@@ -10,6 +10,7 @@ import {
   hasDangerousCapabilityForSubagents,
   ToolCapabilities,
 } from '../security/capabilities.js';
+import { describeWriteTargets } from '../security/permission-helpers.js';
 import {
   pendingRequiredSkills,
   REQUIRED_SKILLS_LOADER_TOOL,
@@ -346,7 +347,18 @@ export class ToolExecutor extends ToolExecutorCore {
     }
 
     if (strategy === 'parallel') {
-      const outputs = await mapWithConcurrency(toolUses, this.maxParallelTools, safeRun);
+      // "All at once" still may not run two writers of one file together: each
+      // reads the file and writes it back whole, so the later write would drop
+      // the earlier edit. Calls that share a write target run in order.
+      const lanes = new Map<string, Promise<unknown>>();
+      const outputs = await mapWithConcurrency(toolUses, this.maxParallelTools, (use) => {
+        const keys = this.writeTargetKeys(use, ctx);
+        if (keys.length === 0) return safeRun(use);
+        const turn = Promise.all(keys.map((key) => lanes.get(key))).then(() => safeRun(use));
+        const settled = turn.catch(() => undefined);
+        for (const key of keys) lanes.set(key, settled);
+        return turn;
+      });
       return { outputs, remainingBudget: budget };
     }
 
@@ -367,6 +379,17 @@ export class ToolExecutor extends ToolExecutorCore {
       outputs: [...firstPass, ...secondPass],
       remainingBudget: budget,
     };
+  }
+
+  /** The files a mutating call writes, resolved the way the file tools resolve them. */
+  private writeTargetKeys(use: ToolUseBlock, ctx: Context): string[] {
+    const tool = this.registry.get(use.name);
+    if (!tool?.mutating) return [];
+    const base = ctx.workingDir ?? ctx.cwd ?? ctx.projectRoot ?? process.cwd();
+    return describeWriteTargets(tool, use.input).map((target) => {
+      const resolved = path.resolve(base, target);
+      return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+    });
   }
 
   private async withGovernedExecutionBridge<T>(ctx: Context, run: () => Promise<T>): Promise<T> {

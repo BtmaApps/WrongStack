@@ -27,6 +27,8 @@ interface CloudConfigSyncPluginOptions {
 
 const DEFAULT_INTERVAL_SECONDS = 300;
 const MIN_INTERVAL_SECONDS = 60;
+/** Longest interval a Node timer holds (2^31-1 ms); past it Node fires every 1 ms. */
+const MAX_INTERVAL_SECONDS = Math.floor((2 ** 31 - 1) / 1000);
 
 /**
  * CloudConfigSyncPlugin — background config synchronization with my.wrongstack.com.
@@ -142,7 +144,7 @@ export function createCloudConfigSyncPlugin(opts?: CloudConfigSyncPluginOptions)
         const configured = cfg.intervalSeconds;
         const seconds =
           typeof configured === 'number' && Number.isFinite(configured)
-            ? Math.max(MIN_INTERVAL_SECONDS, configured)
+            ? Math.min(MAX_INTERVAL_SECONDS, Math.max(MIN_INTERVAL_SECONDS, configured))
             : DEFAULT_INTERVAL_SECONDS;
         timer = setInterval(() => {
           void runPass().catch((err) => warn(`[cloud-config-sync] ${toErrorMessage(err)}`));

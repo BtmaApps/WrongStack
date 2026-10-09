@@ -305,6 +305,9 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
       }
       throw err;
     }
+    // RFC 6749 §6: a refresh response that omits `scope` keeps the scope
+    // originally granted; it arrives here as [] and used to erase it.
+    if (!tokenSet.scopes?.length) tokenSet = { ...tokenSet, scopes: state.tokenSet.scopes };
     const next = normalizeStoredAuthorization({
       ...state,
       tokenSet,

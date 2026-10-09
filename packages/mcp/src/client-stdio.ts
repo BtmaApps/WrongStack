@@ -163,7 +163,7 @@ export async function connectStdio(host: ClientStdioHost): Promise<void> {
     typeof host.opts.startupTimeoutMs === 'number' &&
       Number.isFinite(host.opts.startupTimeoutMs) &&
       host.opts.startupTimeoutMs > 0
-      ? host.opts.startupTimeoutMs
+      ? Math.min(host.opts.startupTimeoutMs, 2_147_483_647)
       : 10_000,
   );
   if (initialize.error) {

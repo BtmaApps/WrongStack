@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import {
   atomicWrite,
   detectNewlineStyle,
@@ -7,7 +8,6 @@ import {
   toStyle,
   unifiedDiff,
 } from '@wrongstack/core/utils';
-import { ToolValidationError } from '@wrongstack/core/types';
 import {
   adjustIndent,
   findLadderMatches,
@@ -18,7 +18,13 @@ import {
   TIER_LABEL,
 } from './_edit-match.js';
 import { checkSyntax } from './_syntax-check.js';
-import { isBinaryBuffer, safeResolveReal, sha256hex, truncateDiffPayload } from './_util.js';
+import {
+  isBinaryBuffer,
+  safeResolveReal,
+  sha256hex,
+  truncateDiffPayload,
+  withPathLock,
+} from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
 import { isPdf } from './pdf-text.js';
 
@@ -140,252 +146,261 @@ export const editTool: Tool<EditInput, EditOutput> = {
     }
 
     const absPath = await safeResolveReal(input.path, ctx);
-    const stat = await fs.stat(absPath).catch((err) => {
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+    // Read -> check -> write runs alone per file: two agents in one process
+    // would otherwise both edit the same original and the later write drops
+    // the earlier edit.
+    return withPathLock(absPath, async () => {
+      const stat = await fs.stat(absPath).catch((err) => {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new ToolValidationError({
+            message: `edit: file "${input.path}" does not exist. Use \`write\` instead.`,
+            field: 'path',
+            context: { exists: false },
+          });
+        }
+        throw err;
+      });
+      if (!stat.isFile()) {
         throw new ToolValidationError({
-          message: `edit: file "${input.path}" does not exist. Use \`write\` instead.`,
+          message: `edit: "${input.path}" is not a regular file`,
           field: 'path',
-          context: { exists: false },
         });
       }
-      throw err;
-    });
-    if (!stat.isFile()) {
-      throw new ToolValidationError({
-        message: `edit: "${input.path}" is not a regular file`,
-        field: 'path',
-      });
-    }
 
-    const autoRead = ctx.hasRead ? !ctx.hasRead(absPath) : false;
-    // Read BEFORE mtime check to eliminate TOCTOU window.
-    // The sequence must be: read content → check mtime → apply edit.
-    // If we check mtime first, a concurrent modification between the
-    // stat call and the read gives us stale content to search/replace.
-    const buf = await fs.readFile(absPath);
-    // `edit` rewrites the file from a utf8 decode, so a target that is not text
-    // comes back mangled: every invalid utf8 sequence becomes U+FFFD and the
-    // byte length changes. `read` refuses such files and `replace` skips them;
-    // `edit` used to write them. A PDF counts as non-text here even when its
-    // bytes happen to decode — `read` serves PDFs as pages, not as source text.
-    const pdfTarget = isPdf(absPath, buf);
-    if (pdfTarget || isBinaryBuffer(buf)) {
-      throw new ToolValidationError({
-        message:
-          `edit: "${input.path}" is not editable text (${pdfTarget ? 'PDF' : 'binary content'}). ` +
-          'Rewriting it would corrupt the file byte-wise — use `write` to replace it, and ' +
-          '`read` with `pages` to inspect a PDF.',
-        field: 'path',
-        context: { reason: pdfTarget ? 'pdf' : 'binary' },
-      });
-    }
-    const original = buf.toString('utf8');
-    const updated = await fs.stat(absPath);
-    const mtimeTolerance = process.platform === 'win32' ? 2000 : 1;
-    const originalHash = sha256hex(original);
-    // Optional call: embedders and older test fixtures may hand in a
-    // duck-typed Context without hash tracking — they fall back to mtime.
-    const lastReadHash = ctx.lastReadHash?.(absPath);
-    if (lastReadHash !== undefined) {
-      // Content hash is the authoritative arbiter when available: it closes
-      // the mtime tolerance window (an external write within 2 s of the read
-      // on Windows is invisible to mtime) and ignores content-preserving
-      // mtime bumps (touch, checkout of identical content).
-      if (lastReadHash !== originalHash) {
+      const autoRead = ctx.hasRead ? !ctx.hasRead(absPath) : false;
+      // Read BEFORE mtime check to eliminate TOCTOU window.
+      // The sequence must be: read content → check mtime → apply edit.
+      // If we check mtime first, a concurrent modification between the
+      // stat call and the read gives us stale content to search/replace.
+      const buf = await fs.readFile(absPath);
+      // `edit` rewrites the file from a utf8 decode, so a target that is not text
+      // comes back mangled: every invalid utf8 sequence becomes U+FFFD and the
+      // byte length changes. `read` refuses such files and `replace` skips them;
+      // `edit` used to write them. A PDF counts as non-text here even when its
+      // bytes happen to decode — `read` serves PDFs as pages, not as source text.
+      const pdfTarget = isPdf(absPath, buf);
+      if (pdfTarget || isBinaryBuffer(buf)) {
         throw new ToolValidationError({
-          message: `edit: file "${input.path}" was modified externally. Re-read it first.`,
+          message:
+            `edit: "${input.path}" is not editable text (${pdfTarget ? 'PDF' : 'binary content'}). ` +
+            'Rewriting it would corrupt the file byte-wise — use `write` to replace it, and ' +
+            '`read` with `pages` to inspect a PDF.',
           field: 'path',
-          context: { reason: 'external_modification' },
+          context: { reason: pdfTarget ? 'pdf' : 'binary' },
         });
       }
-    } else {
-      const lastReadMtime = ctx.lastReadMtime?.(absPath);
-      if (lastReadMtime !== undefined && updated.mtimeMs > lastReadMtime + mtimeTolerance) {
+      const original = buf.toString('utf8');
+      const updated = await fs.stat(absPath);
+      const mtimeTolerance = process.platform === 'win32' ? 2000 : 1;
+      const originalHash = sha256hex(original);
+      // Optional call: embedders and older test fixtures may hand in a
+      // duck-typed Context without hash tracking — they fall back to mtime.
+      const lastReadHash = ctx.lastReadHash?.(absPath);
+      if (lastReadHash !== undefined) {
+        // Content hash is the authoritative arbiter when available: it closes
+        // the mtime tolerance window (an external write within 2 s of the read
+        // on Windows is invisible to mtime) and ignores content-preserving
+        // mtime bumps (touch, checkout of identical content).
+        if (lastReadHash !== originalHash) {
+          throw new ToolValidationError({
+            message: `edit: file "${input.path}" was modified externally. Re-read it first.`,
+            field: 'path',
+            context: { reason: 'external_modification' },
+          });
+        }
+      } else {
+        const lastReadMtime = ctx.lastReadMtime?.(absPath);
+        if (lastReadMtime !== undefined && updated.mtimeMs > lastReadMtime + mtimeTolerance) {
+          throw new ToolValidationError({
+            message: `edit: file "${input.path}" was modified externally. Re-read it first.`,
+            field: 'path',
+            context: { reason: 'external_modification' },
+          });
+        }
+      }
+      if (autoRead && updated.mtimeMs > stat.mtimeMs + mtimeTolerance) {
         throw new ToolValidationError({
-          message: `edit: file "${input.path}" was modified externally. Re-read it first.`,
+          message: `edit: file "${input.path}" changed while being auto-read. Retry the edit.`,
           field: 'path',
-          context: { reason: 'external_modification' },
+          context: { reason: 'auto_read_race' },
         });
       }
-    }
-    if (autoRead && updated.mtimeMs > stat.mtimeMs + mtimeTolerance) {
-      throw new ToolValidationError({
-        message: `edit: file "${input.path}" changed while being auto-read. Retry the edit.`,
-        field: 'path',
-        context: { reason: 'auto_read_race' },
-      });
-    }
-    const autoReadNote = autoRead
-      ? `No prior read was recorded for "${input.path}"; edit auto-read the current file and applied the replacement only after the ambiguity checks passed.`
-      : undefined;
-    const style = detectNewlineStyle(original);
-    const fileLf = normalizeToLf(original);
-    const oldLf = normalizeToLf(input.old_string);
-    const newLf = normalizeToLf(input.new_string);
+      const autoReadNote = autoRead
+        ? `No prior read was recorded for "${input.path}"; edit auto-read the current file and applied the replacement only after the ambiguity checks passed.`
+        : undefined;
+      const style = detectNewlineStyle(original);
+      const fileLf = normalizeToLf(original);
+      const oldLf = normalizeToLf(input.old_string);
+      const newLf = normalizeToLf(input.new_string);
 
-    if (oldLf === newLf) {
-      // Only report a benign no-op when the text actually occurs in the file.
-      // Otherwise this is a wrong-target call (the model thinks the text is
-      // there but it is not) — surface the normal no-match error so the model
-      // can tell "already applied" apart from "wrong file/wrong text".
-      if (!fileLf.includes(oldLf)) {
+      if (oldLf === newLf) {
+        // Only report a benign no-op when the text actually occurs in the file.
+        // Otherwise this is a wrong-target call (the model thinks the text is
+        // there but it is not) — surface the normal no-match error so the model
+        // can tell "already applied" apart from "wrong file/wrong text".
+        if (!fileLf.includes(oldLf)) {
+          throw noMatchError(input.path, fileLf, oldLf);
+        }
+        if (autoRead) ctx.recordRead?.(absPath, updated.mtimeMs, 'user', originalHash);
+        return {
+          path: absPath,
+          replacements: 0,
+          diff: '(no-op: old and new are identical)',
+          matched_by: 'exact',
+          note: autoReadNote,
+        };
+      }
+
+      // Check abort signal before entering potentially slow matching logic
+      signal?.throwIfAborted();
+      const ladder = findLadderMatches(fileLf, oldLf);
+
+      if (!ladder) {
+        signal?.throwIfAborted();
         throw noMatchError(input.path, fileLf, oldLf);
       }
-      if (autoRead) ctx.recordRead?.(absPath, updated.mtimeMs, 'user', originalHash);
+
+      const { tier, matches } = ladder;
+      const count = matches.length;
+
+      if (ladder.ambiguous) {
+        const lines = matches.map((m) => m.startLine);
+        throw new ToolValidationError({
+          message:
+            `edit: old_string only matched fuzzily and ${count} candidate blocks scored too close ` +
+            `to distinguish (lines: ${lines.join(', ')}) in "${input.path}". ` +
+            `Re-read the file and use the exact text of the intended block.`,
+          field: 'old_string',
+          context: { occurrences: count, matchTier: tier },
+        });
+      }
+
+      // Fuzzy/indent-insensitive matches are single-target operations: applying
+      // them in bulk multiplies a low-confidence guess. replace_all therefore
+      // requires at least a trailing-whitespace-level match.
+      if (input.replace_all && tier !== 'exact' && tier !== 'trailing-whitespace') {
+        throw new ToolValidationError({
+          message:
+            `edit: old_string only matched via ${TIER_LABEL[tier]} in "${input.path}", ` +
+            `but replace_all requires an exact (or trailing-whitespace) match. ` +
+            `Re-read the file and use its exact text.`,
+          field: 'old_string',
+          context: { matchTier: tier },
+        });
+      }
+
+      if (count > 1 && !input.replace_all) {
+        const lines = matches.map((m) => m.startLine);
+        throw new ToolValidationError({
+          message:
+            `edit: old_string matched ${count} times in "${input.path}" (lines: ${lines.join(', ')})` +
+            `${tier === 'exact' ? '' : ` via ${TIER_LABEL[tier]}`}. ` +
+            `Add more context to make it unique, or set replace_all: true.`,
+          field: 'old_string',
+          context: { occurrences: count, matchTier: tier },
+        });
+      }
+
+      let newFileLf: string;
+      let tierNote: string | undefined;
+      if (tier === 'exact') {
+        newFileLf = input.replace_all
+          ? fileLf.split(oldLf).join(newLf)
+          : fileLf.replace(oldLf, () => newLf);
+      } else {
+        // Fallback tiers matched whole-line windows — splice by char offsets,
+        // right to left so earlier offsets stay valid. For indent-insensitive
+        // tiers, shift the replacement to the file's actual indentation.
+        let replacement = newLf;
+        let indentSuffix = '';
+        if (tier === 'whitespace-normalized' || tier === 'fuzzy') {
+          const first = matches[0] as (typeof matches)[number];
+          const matchedText = fileLf.slice(first.start, first.end);
+          const adjusted = adjustIndent(
+            newLf,
+            firstLineIndent(oldLf),
+            firstLineIndent(matchedText),
+          );
+          replacement = adjusted.text;
+          if (adjusted.adjusted) indentSuffix = '; replacement re-indented to match the file';
+        }
+        newFileLf = fileLf;
+        const applied = input.replace_all ? matches : matches.slice(0, 1);
+        for (let i = applied.length - 1; i >= 0; i--) {
+          const m = applied[i] as (typeof matches)[number];
+          newFileLf = newFileLf.slice(0, m.start) + replacement + newFileLf.slice(m.end);
+        }
+        const scoreSuffix =
+          ladder.score !== undefined ? `, similarity ${(ladder.score * 100).toFixed(1)}%` : '';
+        tierNote =
+          `old_string did not match exactly; applied via ${TIER_LABEL[tier]} at line ` +
+          `${(matches[0] as (typeof matches)[number]).startLine} ` +
+          `(confidence: ${TIER_CONFIDENCE[tier]}${scoreSuffix}${indentSuffix}). ` +
+          `Review the diff to confirm the intended target was edited.`;
+      }
+      const newFile = toStyle(newFileLf, style);
+
+      // Last exit before mutating the filesystem: a run aborted during the
+      // read/match phase must not leave the edit behind. (atomicWrite itself
+      // is all-or-nothing — the file is old or new, never partial.)
+      signal?.throwIfAborted();
+      await atomicWrite(absPath, newFile, { mode: updated.mode & 0o777 });
+
+      try {
+        enqueueReindex({ projectRoot: ctx.projectRoot, files: [absPath] });
+      } catch {
+        // Non-fatal background reindex
+      }
+
+      const written = await fs.stat(absPath);
+      // Record mtime + content hash so a later edit detects external
+      // modification, but tag as 'write' so the permission policy's
+      // write-smart-bypass does NOT treat this as "user already saw the
+      // content" (P1 #1).
+      ctx.recordRead?.(absPath, written.mtimeMs, 'write', sha256hex(newFile));
+
+      // Record for session rewind
+      ctx.session?.recordFileChange?.({
+        path: absPath,
+        action: 'modified',
+        before: original,
+        after: newFile,
+      });
+
+      // Check abort before diff generation (can be slow on large files)
+      signal?.throwIfAborted();
+      const { text: diff, truncated: diffTruncated } = truncateDiffPayload(
+        unifiedDiff(original, newFile, {
+          fromFile: input.path,
+          toFile: input.path,
+        }),
+        MAX_DIFF_BYTES,
+      );
+      const diffNote = diffTruncated
+        ? 'Diff truncated to the 256 KiB output budget — the full edit is on disk.'
+        : undefined;
+
+      // Post-edit syntax validation (TS/JS/JSON). The edit stays on disk —
+      // errors come back in the same turn so the model fixes them immediately.
+      const syntax = await checkSyntax(absPath, newFile, original).catch(() => undefined);
+      let syntaxNote: string | undefined;
+      if (syntax && syntax.errors.length > 0) {
+        syntaxNote = syntax.preExisting
+          ? `Syntax check: the file still has parse errors (they pre-date this edit) — see syntax_errors.`
+          : `Syntax check: this edit introduced ${syntax.errors.length} parse error(s) — fix them now, see syntax_errors.`;
+      }
+
+      const notes = [autoReadNote, tierNote, diffNote, syntaxNote].filter(Boolean);
+
       return {
         path: absPath,
-        replacements: 0,
-        diff: '(no-op: old and new are identical)',
-        matched_by: 'exact',
-        note: autoReadNote,
+        replacements: input.replace_all ? count : 1,
+        diff,
+        matched_by: tier,
+        syntax_errors: syntax && syntax.errors.length > 0 ? syntax.errors : undefined,
+        note: notes.length > 0 ? notes.join('\n') : undefined,
       };
-    }
-
-    // Check abort signal before entering potentially slow matching logic
-    signal?.throwIfAborted();
-    const ladder = findLadderMatches(fileLf, oldLf);
-
-    if (!ladder) {
-      signal?.throwIfAborted();
-      throw noMatchError(input.path, fileLf, oldLf);
-    }
-
-    const { tier, matches } = ladder;
-    const count = matches.length;
-
-    if (ladder.ambiguous) {
-      const lines = matches.map((m) => m.startLine);
-      throw new ToolValidationError({
-        message:
-          `edit: old_string only matched fuzzily and ${count} candidate blocks scored too close ` +
-          `to distinguish (lines: ${lines.join(', ')}) in "${input.path}". ` +
-          `Re-read the file and use the exact text of the intended block.`,
-        field: 'old_string',
-        context: { occurrences: count, matchTier: tier },
-      });
-    }
-
-    // Fuzzy/indent-insensitive matches are single-target operations: applying
-    // them in bulk multiplies a low-confidence guess. replace_all therefore
-    // requires at least a trailing-whitespace-level match.
-    if (input.replace_all && tier !== 'exact' && tier !== 'trailing-whitespace') {
-      throw new ToolValidationError({
-        message:
-          `edit: old_string only matched via ${TIER_LABEL[tier]} in "${input.path}", ` +
-          `but replace_all requires an exact (or trailing-whitespace) match. ` +
-          `Re-read the file and use its exact text.`,
-        field: 'old_string',
-        context: { matchTier: tier },
-      });
-    }
-
-    if (count > 1 && !input.replace_all) {
-      const lines = matches.map((m) => m.startLine);
-      throw new ToolValidationError({
-        message:
-          `edit: old_string matched ${count} times in "${input.path}" (lines: ${lines.join(', ')})` +
-          `${tier === 'exact' ? '' : ` via ${TIER_LABEL[tier]}`}. ` +
-          `Add more context to make it unique, or set replace_all: true.`,
-        field: 'old_string',
-        context: { occurrences: count, matchTier: tier },
-      });
-    }
-
-    let newFileLf: string;
-    let tierNote: string | undefined;
-    if (tier === 'exact') {
-      newFileLf = input.replace_all
-        ? fileLf.split(oldLf).join(newLf)
-        : fileLf.replace(oldLf, () => newLf);
-    } else {
-      // Fallback tiers matched whole-line windows — splice by char offsets,
-      // right to left so earlier offsets stay valid. For indent-insensitive
-      // tiers, shift the replacement to the file's actual indentation.
-      let replacement = newLf;
-      let indentSuffix = '';
-      if (tier === 'whitespace-normalized' || tier === 'fuzzy') {
-        const first = matches[0] as (typeof matches)[number];
-        const matchedText = fileLf.slice(first.start, first.end);
-        const adjusted = adjustIndent(newLf, firstLineIndent(oldLf), firstLineIndent(matchedText));
-        replacement = adjusted.text;
-        if (adjusted.adjusted) indentSuffix = '; replacement re-indented to match the file';
-      }
-      newFileLf = fileLf;
-      const applied = input.replace_all ? matches : matches.slice(0, 1);
-      for (let i = applied.length - 1; i >= 0; i--) {
-        const m = applied[i] as (typeof matches)[number];
-        newFileLf = newFileLf.slice(0, m.start) + replacement + newFileLf.slice(m.end);
-      }
-      const scoreSuffix =
-        ladder.score !== undefined ? `, similarity ${(ladder.score * 100).toFixed(1)}%` : '';
-      tierNote =
-        `old_string did not match exactly; applied via ${TIER_LABEL[tier]} at line ` +
-        `${(matches[0] as (typeof matches)[number]).startLine} ` +
-        `(confidence: ${TIER_CONFIDENCE[tier]}${scoreSuffix}${indentSuffix}). ` +
-        `Review the diff to confirm the intended target was edited.`;
-    }
-    const newFile = toStyle(newFileLf, style);
-
-    // Last exit before mutating the filesystem: a run aborted during the
-    // read/match phase must not leave the edit behind. (atomicWrite itself
-    // is all-or-nothing — the file is old or new, never partial.)
-    signal?.throwIfAborted();
-    await atomicWrite(absPath, newFile, { mode: updated.mode & 0o777 });
-
-    try {
-      enqueueReindex({ projectRoot: ctx.projectRoot, files: [absPath] });
-    } catch {
-      // Non-fatal background reindex
-    }
-
-    const written = await fs.stat(absPath);
-    // Record mtime + content hash so a later edit detects external
-    // modification, but tag as 'write' so the permission policy's
-    // write-smart-bypass does NOT treat this as "user already saw the
-    // content" (P1 #1).
-    ctx.recordRead?.(absPath, written.mtimeMs, 'write', sha256hex(newFile));
-
-    // Record for session rewind
-    ctx.session?.recordFileChange?.({
-      path: absPath,
-      action: 'modified',
-      before: original,
-      after: newFile,
     });
-
-    // Check abort before diff generation (can be slow on large files)
-    signal?.throwIfAborted();
-    const { text: diff, truncated: diffTruncated } = truncateDiffPayload(
-      unifiedDiff(original, newFile, {
-        fromFile: input.path,
-        toFile: input.path,
-      }),
-      MAX_DIFF_BYTES,
-    );
-    const diffNote = diffTruncated
-      ? 'Diff truncated to the 256 KiB output budget — the full edit is on disk.'
-      : undefined;
-
-    // Post-edit syntax validation (TS/JS/JSON). The edit stays on disk —
-    // errors come back in the same turn so the model fixes them immediately.
-    const syntax = await checkSyntax(absPath, newFile, original).catch(() => undefined);
-    let syntaxNote: string | undefined;
-    if (syntax && syntax.errors.length > 0) {
-      syntaxNote = syntax.preExisting
-        ? `Syntax check: the file still has parse errors (they pre-date this edit) — see syntax_errors.`
-        : `Syntax check: this edit introduced ${syntax.errors.length} parse error(s) — fix them now, see syntax_errors.`;
-    }
-
-    const notes = [autoReadNote, tierNote, diffNote, syntaxNote].filter(Boolean);
-
-    return {
-      path: absPath,
-      replacements: input.replace_all ? count : 1,
-      diff,
-      matched_by: tier,
-      syntax_errors: syntax && syntax.errors.length > 0 ? syntax.errors : undefined,
-      note: notes.length > 0 ? notes.join('\n') : undefined,
-    };
   },
 };
 

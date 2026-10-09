@@ -28,6 +28,7 @@
  */
 
 import { execFile } from 'node:child_process';
+import * as path from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
 import { releaseHandle } from '../runtime/index.js';
 
@@ -254,6 +255,38 @@ async function isCheckoutBranch(
 }
 
 /**
+ * Whether a switch's global options leave it in this repository. A switch run
+ * with `-C <elsewhere>`, `--git-dir` or `--work-tree` moves another checkout's
+ * branch; applying it here judged `git -C ../other checkout feat && git commit`
+ * on main as a commit on feat. Unknown cwd: only a bare switch counts.
+ */
+function switchesThisRepo(head: string, cwd: string | undefined): boolean {
+  if (/\s--(?:git-dir|work-tree)\b/.test(head)) return false;
+  const dirs = [...head.matchAll(/\s-C\s+("[^"]*"|'[^']*'|\S+)/g)].map((d) =>
+    (d[1] ?? '').replace(/^['"]|['"]$/g, ''),
+  );
+  if (dirs.length === 0) return true;
+  if (!cwd) return false;
+  const target = dirs.reduce((dir, next) => path.resolve(dir, next), cwd);
+  const same = (a: string) => (process.platform === 'win32' ? a.toLowerCase() : a);
+  return same(path.resolve(target)) === same(path.resolve(cwd));
+}
+
+/** The branch `git checkout -` would switch back to, when git can name it. */
+async function previousCheckoutBranch(
+  cwd: string | undefined,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const name = (await runGit(['rev-parse', '--abbrev-ref', '@{-1}'], cwd, signal)).trim();
+    return name && name !== 'HEAD' ? name : undefined;
+  } catch (err) {
+    if (signal.aborted) throw err;
+    return undefined;
+  }
+}
+
+/**
  * A plain `git checkout <x>` (no -b/-c/--orphan) is a branch switch only when
  * `<x>` IS a branch: `git checkout src/app.ts` restores a file and leaves HEAD
  * where it was. Reading every such target as a branch let
@@ -264,6 +297,8 @@ async function isCheckoutBranch(
 async function detectGitOpsInCommand(
   command: string,
   isBranch: (name: string) => Promise<boolean>,
+  previousBranch: () => Promise<string | undefined> = async () => undefined,
+  cwd?: string,
 ): Promise<GitCommandMatch[]> {
   const cmd = command.trim();
   const snippet = cmd.slice(0, 120);
@@ -277,10 +312,13 @@ async function detectGitOpsInCommand(
     events.push({ at: m.index ?? 0, op: m[1] as GitCommandMatch['type'] });
   }
   for (const m of cmd.matchAll(GIT_SWITCH_RE)) {
+    const head = m[0].slice(0, m[0].lastIndexOf(m[1] ?? '', m[0].length - (m[2] ?? '').length));
+    if (!switchesThisRepo(head, cwd)) continue;
     const args = (m[2] ?? '').trim().split(/\s+/).filter(Boolean);
     if (args.includes('--')) continue;
     const create = args.findIndex((a) => /^(?:-[bBcC]|--orphan)$/.test(a));
-    const target = create >= 0 ? args[create + 1] : args.find((a) => !a.startsWith('-'));
+    const target =
+      create >= 0 ? args[create + 1] : args.find((a) => a === '-' || !a.startsWith('-'));
     if (target) {
       events.push({
         at: m.index ?? 0,
@@ -294,9 +332,22 @@ async function detectGitOpsInCommand(
   events.sort((a, b) => a.at - b.at);
   const ops: GitCommandMatch[] = [];
   let onBranch: string | undefined;
+  // Branch before the last in-command switch: null = the branch the command
+  // started on, undefined = no switch yet (git's own previous branch).
+  let previous: string | null | undefined;
   for (const e of events) {
     if (e.to !== undefined) {
-      if (!e.verify || (await isBranch(e.to))) onBranch = e.to;
+      // `git checkout -` / `@{-1}` goes BACK; read literally it was ignored, so
+      // `git checkout feat && git checkout - && git commit` on main was judged
+      // as a commit on feat while git committed to main.
+      if (e.to === '-' || e.to === '@{-1}') {
+        const back = previous === undefined ? await previousBranch() : previous;
+        previous = onBranch ?? null;
+        onBranch = back ?? undefined;
+      } else if (!e.verify || (await isBranch(e.to))) {
+        previous = onBranch ?? null;
+        onBranch = e.to;
+      }
     } else if (e.op) ops.push({ type: e.op, snippet, onBranch });
   }
   return ops;
@@ -415,8 +466,11 @@ const plugin: Plugin = {
           inp['command'] ?? inp['CommandLine'] ?? inp['cmd'] ?? inp['script'] ?? inp['input'];
         const command = typeof rawCmd === 'string' ? rawCmd : undefined;
         if (typeof command !== 'string') return;
-        gitOps = await detectGitOpsInCommand(command, (name) =>
-          isCheckoutBranch(name, cwd, runtime.signal),
+        gitOps = await detectGitOpsInCommand(
+          command,
+          (name) => isCheckoutBranch(name, cwd, runtime.signal),
+          () => previousCheckoutBranch(cwd, runtime.signal),
+          cwd,
         );
       }
 

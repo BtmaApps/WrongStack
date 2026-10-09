@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -134,6 +134,30 @@ describe('persistent automation', () => {
     await store.enqueue(enabled.id);
     await store.setEnabled(disabled.id, false);
     expect((await store.claim('worker'))?.jobId).toBe(enabled.id);
+  });
+  it('still runs queued work when a due schedule is refused at run capacity', async () => {
+    const { store, spec } = await fixture();
+    const manual = await store.add(spec, 0);
+    await store.add({ ...spec, name: 'nightly', intervalMs: 60_000 }, 0);
+    const queued = await store.enqueue(manual.id, 'manual', 'k-queued', 'default', '', 1);
+    const state = JSON.parse(await readFile(store.file, 'utf8'));
+    const template = state.runs[0];
+    while (state.runs.length < 2000) {
+      state.runs.push({
+        ...template,
+        id: randomUUID(),
+        deliveryKey: randomUUID(),
+        status: 'completed',
+      });
+    }
+    await writeFile(store.file, JSON.stringify(state));
+    const execute = vi.fn(async (options: DockerWorkspaceOptions) => completed(options));
+    const service = new AutomationService(store, execute);
+    await service.tick(120_000);
+    await service.idle();
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0]?.[0].id).toBe(queued.id);
+    expect(service.lastError).toMatch(/capacity/);
   });
   it('refuses to overwrite malformed persistence', async () => {
     const { store, spec } = await fixture();

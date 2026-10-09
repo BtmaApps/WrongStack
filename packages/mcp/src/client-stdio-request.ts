@@ -7,6 +7,8 @@ import { nextJsonRpcId } from './transport-base.js';
 /**
  * The effective per-request timeout: an explicit positive `timeoutMs` wins,
  * then the client's configured `requestTimeoutMs`, then the package default.
+ * Capped at the largest timer delay: Node turns a longer one into 1 ms, which
+ * timed out every request to a server configured to "never" time out.
  */
 export function resolveRequestTimeoutMs(
   configuredMs: number | undefined,
@@ -16,9 +18,12 @@ export function resolveRequestTimeoutMs(
     typeof configuredMs === 'number' && Number.isFinite(configuredMs) && configuredMs > 0
       ? configuredMs
       : MCP_CONSTANTS.REQUEST_TIMEOUT_MS;
-  return typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
-    ? timeoutMs
-    : defaultTimeoutMs;
+  return Math.min(
+    typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? timeoutMs
+      : defaultTimeoutMs,
+    2_147_483_647,
+  );
 }
 
 /**

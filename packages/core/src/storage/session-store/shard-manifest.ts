@@ -10,6 +10,7 @@ export interface ReadOrBuildShardManifestOptions {
   manifestPath: string;
   concurrency: number;
   collectSessionFilesInShard(shardKey: string): Promise<SessionFileRef[]>;
+  /** Strict: rejects when the manifest exists but cannot be read. */
   readSummaryManifest(id: string): Promise<SessionSummary | null>;
   summaryHeaderFor(ref: SessionFileRef): Promise<SessionSummary | null>;
   summaryFor(id: string): Promise<SessionSummary>;
@@ -17,7 +18,7 @@ export interface ReadOrBuildShardManifestOptions {
 
 export async function readOrBuildShardManifestEntry(
   opts: ReadOrBuildShardManifestOptions,
-): Promise<ShardManifestEntry> {
+): Promise<ShardManifestEntry & { transient?: true }> {
   try {
     const raw = await fsp.readFile(opts.manifestPath, 'utf8');
     const parsed = JSON.parse(raw) as ShardManifestEntry;
@@ -30,11 +31,22 @@ export async function readOrBuildShardManifestEntry(
   }
 
   const refs = await opts.collectSessionFilesInShard(opts.shardKey);
+  // A session whose manifest is unreadable right now is listed from its journal
+  // header, which has no rename; such an entry serves this listing only and is
+  // never persisted or cached.
+  let transient = false;
   const candidates = await mapWithConcurrency(
     refs,
     opts.concurrency,
     async (ref): Promise<DirectorySummaryCandidate | null> => {
-      const manifest = await opts.readSummaryManifest(ref.id);
+      let manifest: SessionSummary | null;
+      try {
+        manifest = await opts.readSummaryManifest(ref.id);
+      } catch {
+        transient = true;
+        const header = await opts.summaryHeaderFor(ref);
+        return header ? { summary: header, needsBackfill: false } : null;
+      }
       if (manifest) return { summary: manifest, needsBackfill: false };
       const summary = await opts.summaryHeaderFor(ref);
       if (!summary) return null;
@@ -47,6 +59,7 @@ export async function readOrBuildShardManifestEntry(
     .map((candidate) => candidate.summary);
   summaries.sort(compareSessionSummaries);
   const entry: ShardManifestEntry = { summaries, ids: summaries.map((summary) => summary.id) };
+  if (transient) return { ...entry, transient: true };
   await atomicWrite(opts.manifestPath, JSON.stringify(entry), { mode: 0o600 }).catch(
     () => undefined,
   );

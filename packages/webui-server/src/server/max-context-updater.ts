@@ -67,11 +67,16 @@ export function createMaxContextUpdater(
   let lastTarget:
     | { provider: Provider; providerId: string; cfg: ProviderConfig | undefined }
     | undefined;
+  // Bumped per switch. A model switch fires this updater without awaiting it,
+  // so an older switch's resolution can finish after a newer one (lookup depth
+  // differs per path); only the newest target may publish its window.
+  let generation = 0;
 
   const apply = async (
     newProvider: Provider,
     providerId: string,
     providerCfg: ProviderConfig | undefined,
+    gen: number,
   ): Promise<void> => {
     const currentConfig = getConfig();
     let newMaxContext =
@@ -88,6 +93,7 @@ export function createMaxContextUpdater(
     } catch {
       // best-effort: use provider capability
     }
+    if (gen !== generation) return;
     newProvider.capabilities.maxContext = newMaxContext;
     modelCapabilitiesRef.current =
       newMaxContext > 0
@@ -129,7 +135,7 @@ export function createMaxContextUpdater(
   modelsRegistry.onCatalogChanged?.(() => {
     const provider = lastTarget?.provider ?? context.provider;
     if (!provider) return;
-    void apply(provider, lastTarget?.providerId ?? provider.id, lastTarget?.cfg).catch(
+    void apply(provider, lastTarget?.providerId ?? provider.id, lastTarget?.cfg, generation).catch(
       (err: unknown) => {
         logger.debug(`max-context re-resolve after catalog change failed: ${toErrorMessage(err)}`);
       },
@@ -138,6 +144,7 @@ export function createMaxContextUpdater(
 
   return async (newProvider, providerId = newProvider.id, providerCfg) => {
     lastTarget = { provider: newProvider, providerId, cfg: providerCfg };
+    const gen = ++generation;
     // A catalog fetched minutes ago (boot's background refresh, the last
     // switch) is current — don't make every switch wait on models.dev.
     await refreshCatalogIfStale(modelsRegistry).catch((err) => {
@@ -145,6 +152,7 @@ export function createMaxContextUpdater(
         `models.dev refresh failed for ${providerId}/${context.model}: ${toErrorMessage(err)}; using cached catalog`,
       );
     });
-    await apply(newProvider, providerId, providerCfg);
+    if (gen !== generation) return;
+    await apply(newProvider, providerId, providerCfg, gen);
   };
 }

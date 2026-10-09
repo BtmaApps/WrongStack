@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 let statusShouldThrow = false;
 let allShouldThrow = false;
 let currentBranch = 'main';
+let previousBranch = '';
 const mockExecFile = vi.fn(
   (
     _cmd: string,
@@ -20,7 +21,11 @@ const mockExecFile = vi.fn(
       allShouldThrow || (statusShouldThrow && command.includes('status --porcelain'))
         ? new Error('git failed')
         : null;
-    const stdout = command.includes('branch --show-current') ? `${currentBranch}\n` : '';
+    const stdout = command.includes('branch --show-current')
+      ? `${currentBranch}\n`
+      : command.includes('@{-1}')
+        ? `${previousBranch}\n`
+        : '';
     queueMicrotask(() => cb(error, error ? '' : stdout));
   },
 );
@@ -76,6 +81,7 @@ beforeEach(() => {
   statusShouldThrow = false;
   allShouldThrow = false;
   currentBranch = 'main';
+  previousBranch = '';
 });
 
 describe('branch-guard - branch switches', () => {
@@ -115,6 +121,48 @@ describe('branch-guard - branch switches', () => {
     expect(await run('git checkout -b feat/new && git commit -m y')).toBe('allowed');
     currentBranch = 'main';
     expect(await run('git switch feat/y && git commit -m z')).toBe('allowed');
+  });
+
+  // `git checkout -` was read as a literal target and ignored, so
+  // `git checkout feat && git checkout - && git commit` on main was judged as
+  // a commit on feat while git committed to main.
+  it('follows a switch back to the previous branch', async () => {
+    const api = makeApi();
+    branchGuardPlugin.setup(api as never);
+    const hook = getHook(api) as (input: unknown) => Promise<{ decision?: string } | void>;
+    const run = async (command: string) =>
+      (await hook({ toolName: 'bash', toolInput: { command } }))?.decision ?? 'allowed';
+    currentBranch = 'main';
+
+    expect(await run('git checkout feat/x && git checkout - && git commit -m x')).toBe('block');
+    expect(await run('git switch feat/x && git switch - && git commit -m x')).toBe('block');
+    expect(await run('git checkout feat/x && git checkout @{-1} && git commit -m x')).toBe('block');
+    expect(
+      await run('git checkout feat/x && git checkout - && git checkout - && git commit -m x'),
+    ).toBe('allowed');
+
+    currentBranch = 'feat/x';
+    previousBranch = 'main';
+    expect(await run('git checkout - && git commit -m x')).toBe('block');
+    previousBranch = 'feat/y';
+    expect(await run('git checkout - && git commit -m x')).toBe('allowed');
+  });
+
+  // A switch run against another checkout was applied to this one, so
+  // `git -C ../other checkout feat && git commit` on main was judged as a
+  // commit on feat while git committed to main.
+  it('ignores a switch that runs in another repository', async () => {
+    const api = makeApi();
+    branchGuardPlugin.setup(api as never);
+    const hook = getHook(api) as (input: unknown) => Promise<{ decision?: string } | void>;
+    const run = async (command: string) =>
+      (await hook({ toolName: 'bash', toolInput: { command } }))?.decision ?? 'allowed';
+    currentBranch = 'main';
+
+    expect(await run('git -C ../other checkout feat/x && git commit -m x')).toBe('block');
+    expect(await run('git --git-dir=../other/.git switch feat/x && git commit -m x')).toBe('block');
+    expect(await run('git --work-tree ../other switch feat/x && git commit -m x')).toBe('block');
+    expect(await run('git -C . checkout feat/x && git commit -m x')).toBe('allowed');
   });
 });
 

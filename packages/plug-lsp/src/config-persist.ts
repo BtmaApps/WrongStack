@@ -73,7 +73,8 @@ async function readConfigFile(target: string): Promise<Record<string, unknown>> 
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1 };
     throw err;
   }
-  const parsed: unknown = JSON.parse(raw);
+  // A leading UTF-8 BOM is dropped, as the config loader does when it reads this file.
+  const parsed: unknown = JSON.parse(raw.replace(/^\uFEFF/, ''));
   // A corrupt file must fail loudly: silently starting from {} would drop the
   // credentials this file also holds.
   const record = asRecord(parsed);

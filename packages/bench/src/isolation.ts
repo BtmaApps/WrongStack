@@ -182,7 +182,9 @@ async function writeOverlayConfig(
 ): Promise<Record<string, unknown>> {
   let raw: unknown = {};
   try {
-    raw = JSON.parse(await fs.readFile(src, 'utf8'));
+    // The CLI's config loader ignores a leading UTF-8 BOM; a BOM here used to
+    // fail the parse and seed the sandbox with an overlay-only config.
+    raw = JSON.parse((await fs.readFile(src, 'utf8')).replace(/^﻿/, ''));
   } catch {
     if (!required) return {};
   }

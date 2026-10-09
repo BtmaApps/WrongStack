@@ -258,6 +258,31 @@ describe('semver_bump', () => {
     expect(res.tag).toBe('v1.2.4');
   });
 
+  it('leaves independently versioned workspace packages alone', async () => {
+    fsm.existsSync.mockImplementation((p: string) => {
+      const s = String(p);
+      if (s.endsWith('bump-version.mjs')) return false;
+      return s.endsWith('package.json') || s.endsWith('packages') || s.endsWith('apps');
+    });
+    fsm.readdirSync.mockImplementation((dir: string) =>
+      String(dir).endsWith('packages')
+        ? ['core', 'indie', 'tools'].map((name) => ({ name, isDirectory: () => true }))
+        : [],
+    );
+    fsm.readFileSync.mockImplementation((p: string) => {
+      const s = String(p).replace(/\\/g, '/');
+      if (s.includes('/indie/')) return '{"name":"indie","version":"4.0.0"}';
+      if (s.includes('/tools/')) return '{"name":"tools","private":true}';
+      return '{"version":"1.2.3"}';
+    });
+    const { tools } = setup();
+    const res = await tools.semver_bump!.execute({ part: 'patch' });
+    expect(res.newVersion).toBe('1.2.4');
+    const written = fsm.writeFileSync.mock.calls.map(([p]) => String(p).replace(/\\/g, '/'));
+    expect(written.some((p) => p.endsWith('packages/core/package.json'))).toBe(true);
+    expect(written.some((p) => p.includes('/indie/') || p.includes('/tools/'))).toBe(false);
+  });
+
   it('delegates to the repo bump script when present', async () => {
     fsm.existsSync.mockImplementation((p: string) => {
       const s = String(p);

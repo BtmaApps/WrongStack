@@ -174,6 +174,37 @@ describe('Ollama preset', () => {
     expect(ollamaWireFormat.buildHeaders('anything')).toEqual({});
   });
 
+  it('keeps parallel tool calls apart when the delta omits index (F401)', async () => {
+    const call = (id: string, q: string) =>
+      JSON.stringify({
+        choices: [
+          {
+            delta: {
+              tool_calls: [{ id, function: { name: 'lookup', arguments: `{"q":"${q}"}` } }],
+            },
+          },
+        ],
+      });
+    const events = await collectFromPreset(
+      ollamaWireFormat,
+      sseBody([
+        call('call_a', 'x'),
+        call('call_b', 'y'),
+        JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }),
+        '[DONE]',
+      ]),
+      'llama3.1:8b',
+    );
+    const stops = events.filter((e) => e.type === 'tool_use_stop') as Array<{
+      id: string;
+      input: unknown;
+    }>;
+    expect(stops.map((e) => [e.id, e.input])).toEqual([
+      ['call_a', { q: 'x' }],
+      ['call_b', { q: 'y' }],
+    ]);
+  });
+
   it('injects keep_alive by default', () => {
     const body = ollamaWireFormat.buildBody({
       model: 'llama3.1:8b',

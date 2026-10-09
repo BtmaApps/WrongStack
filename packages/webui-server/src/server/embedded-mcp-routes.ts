@@ -31,7 +31,8 @@ export function createEmbeddedMcpRoutes(deps: EmbeddedMessageRouterDeps) {
       handleMcpAdd(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
     update: (ws, msg) =>
       handleMcpUpdate(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
-    remove: (ws, msg) => handleMcpRemove(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
+    remove: (ws, msg) =>
+      handleMcpRemove(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
     enable: (ws, msg) =>
       handleMcpEnable(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
     disable: (ws, msg) =>

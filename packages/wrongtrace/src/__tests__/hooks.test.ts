@@ -304,4 +304,50 @@ describe('createWrongTraceHookPair gate events', () => {
     await pair.postToolUse({ toolName: 'edit', toolInput: { path: 'src/foo.ts' } });
     expect(unlockCalls).toBe(2);
   });
+
+  it('claims for the session in the payload when one pair serves several sessions', async () => {
+    const locks = new Map<string, string>();
+    globalThis.fetch = makeFetch(async (url, init) => {
+      const u = new URL(url);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/file/health') {
+        const owner = locks.get(u.searchParams.get('path') ?? '');
+        return jsonResponse({
+          health_score: 100,
+          is_fragile: false,
+          recent_thrashing_count: 0,
+          is_locked: owner !== undefined,
+          ...(owner ? { lock_owner: owner } : {}),
+        });
+      }
+      if (u.pathname === '/api/guardrail/lock') {
+        const held = locks.get(body.path);
+        if (held && held !== body.owner) return jsonResponse({ ok: false, owner: held }, 409);
+        locks.set(body.path, body.owner);
+        return jsonResponse({ ok: true, path: body.path, status: 'locked' });
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        locks.delete(body.path);
+        return jsonResponse({ ok: true, path: body.path, status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+
+    // The WebUI shape: one pair, its closure names the foreground tab only.
+    const pair = createWrongTraceHookPair(() => 'tab-1');
+    const call = (sessionId: string) => ({
+      toolName: 'edit',
+      toolInput: { path: 'src/foo.ts' },
+      sessionId,
+    });
+    expect(await pair.preToolUse(call('tab-1'))).toEqual({ action: 'allow' });
+    expect((await pair.preToolUse(call('tab-2')))?.action).toBe('deny');
+    // The denied call's skipped PostToolUse must leave tab-1's claim alone.
+    await pair.postToolUse(call('tab-2'));
+    await pair.postToolUse({ toolName: 'edit', toolInput: {}, sessionId: 'tab-1' });
+    expect(locks.get('src/foo.ts')).toBe('wrongstack:tab-1');
+    await pair.postToolUse(call('tab-1'));
+    expect(locks.has('src/foo.ts')).toBe(false);
+  });
 });

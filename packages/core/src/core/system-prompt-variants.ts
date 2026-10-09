@@ -12,7 +12,7 @@
  */
 
 import * as fs from 'node:fs/promises';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { estimateTextTokens } from '../utils/token-estimate.js';
 import { loadInstructionBundle, type SystemInstructionVariant } from './instruction-bundle.js';
 import { buildIdentityLayer } from './system-prompt-builder.js';
@@ -157,29 +157,33 @@ export async function persistSystemPromptVariant(
   configPath: string,
   variant: SystemInstructionVariant,
 ): Promise<void> {
-  let fileExists = false;
-  try {
-    await fs.access(configPath);
-    fileExists = true;
-  } catch {}
+  // Under the config lock every other profile-config writer holds: unlocked,
+  // a locked update landing between this read and write was overwritten.
+  await withFileLock(configPath, async () => {
+    let fileExists = false;
+    try {
+      await fs.access(configPath);
+      fileExists = true;
+    } catch {}
 
-  let existing: Record<string, unknown> = {};
-  try {
-    const raw = await fs.readFile(configPath, 'utf8');
-    existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new Error(
-        `Refusing to overwrite corrupt config at ${configPath} ` +
-          `(${(err as Error).message}). Fix or move the file aside before retrying.`,
-        { cause: err },
-      );
+    let existing: Record<string, unknown> = {};
+    try {
+      const raw = await fs.readFile(configPath, 'utf8');
+      existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
+    } catch (err) {
+      if (fileExists) {
+        throw new Error(
+          `Refusing to overwrite corrupt config at ${configPath} ` +
+            `(${(err as Error).message}). Fix or move the file aside before retrying.`,
+          { cause: err },
+        );
+      }
+      existing = {};
     }
-    existing = {};
-  }
 
-  const systemPrompt = (existing.systemPrompt ?? {}) as Record<string, unknown>;
-  existing.systemPrompt = { ...systemPrompt, variant };
+    const systemPrompt = (existing.systemPrompt ?? {}) as Record<string, unknown>;
+    existing.systemPrompt = { ...systemPrompt, variant };
 
-  await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+    await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+  });
 }

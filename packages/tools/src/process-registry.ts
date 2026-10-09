@@ -99,6 +99,8 @@ export interface RegistryStats {
 
 const DEFAULT_GRACE_MS = 2000;
 const WIN32_TASKKILL_TIMEOUT_MS = 5000;
+/** Longest delay a Node timer holds; past it Node fires after 1 ms. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 interface Win32TreeKillOptions {
   /**
@@ -368,7 +370,12 @@ export class ProcessRegistryImpl {
     autoKillResetMs?: number | undefined;
   }): void {
     if (cfg.enabled !== undefined) this.breaker.setEnabled(cfg.enabled);
-    if (cfg.autoKillResetMs !== undefined) this.autoKillResetMs = Math.max(0, cfg.autoKillResetMs);
+    if (cfg.autoKillResetMs !== undefined) {
+      // Unclamped, a "practically never" window (35 days) or NaN armed a 1 ms
+      // timer and killed every process the moment the breaker tripped.
+      const ms = cfg.autoKillResetMs;
+      this.autoKillResetMs = Number.isNaN(ms) ? 0 : Math.min(Math.max(0, ms), MAX_TIMER_MS);
+    }
 
     if (this.autoKillResetMs <= 0) {
       this._cancelAutoKillReset();

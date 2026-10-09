@@ -5,6 +5,7 @@ const mockReadFile = vi.hoisted(() => vi.fn());
 
 vi.mock('@wrongstack/core/utils', () => ({
   atomicWrite: mockAtomicWrite,
+  withFileLock: (_file: string, fn: () => Promise<unknown>) => fn(),
 }));
 
 vi.mock('node:fs/promises', () => ({
@@ -185,6 +186,14 @@ describe('instance-registry', () => {
       await unregisterInstance(99999, '/tmp/base');
 
       expect(mockAtomicWrite).toHaveBeenCalled();
+    });
+
+    it('refuses to rewrite a registry it could not read', async () => {
+      mockReadFile.mockRejectedValue({ code: 'EBUSY' });
+      await expect(registerInstance(sampleRecord, '/tmp/test-base')).rejects.toMatchObject({
+        code: 'EBUSY',
+      });
+      expect(mockAtomicWrite).not.toHaveBeenCalled();
     });
 
     it('handles corrupt file gracefully', async () => {

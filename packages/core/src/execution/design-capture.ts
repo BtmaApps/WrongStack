@@ -178,7 +178,6 @@ export function parseCssTokens(text: string): {
     }
     if (trimmed.startsWith('}') || trimmed === '') {
       ctx = trimmed === '' ? ctx : 'light';
-      continue;
     }
   }
   return { light, dark, palettes, unparsed };
@@ -229,7 +228,7 @@ export function parseDartTokens(text: string): {
   const dark: Record<string, string> = {};
   let ctx: 'light' | 'dark' = 'light';
   for (const line of text.split('\n')) {
-    const open = /^(\S[^\{(]*)(?:\(|\{)\s*$/.exec(line.trim());
+    const open = /^(\S[^{(]*)(?:\(|\{)\s*$/.exec(line.trim());
     if (open) {
       const head = open[1] ?? '';
       ctx = /dark/i.test(head) ? 'dark' : 'light';

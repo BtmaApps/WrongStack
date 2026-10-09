@@ -510,10 +510,33 @@ const plugin: Plugin = {
       // plugin for those to take effect.  A future iteration will attempt
       // an atomic bot rebuild for restart keys (build → health-check →
       // swap → rollback on failure).
+      // Last config the handler applied; the diff base when `prev` is itself a
+      // rejected (unreadable) config.
+      let appliedTg: TelegramPluginConfig = cfg;
+      let inboundClosedByInvalidConfig = false;
       const unlistenConfig = api.onConfigChange((next, prev) => {
         // Build full TelegramPluginConfig snapshots for the P2.2 classifier.
-        const nextTg = readTelegramConfigFromConfig(next);
-        const prevTg = readTelegramConfigFromConfig(prev);
+        let nextTg: TelegramPluginConfig;
+        try {
+          nextTg = readTelegramConfigFromConfig(next);
+        } catch (err) {
+          // An invalid inbound config — typically the LAST allowlisted user
+          // removed under `inboundMode: "allowlist"` — threw here, the store
+          // swallowed it, and the OLD gate kept admitting the removed sender
+          // until a restart. Revocation must fail closed.
+          bot.inbox.updateAllowlist(new Set([DENY_ALL_INBOUND]), new Set([DENY_ALL_INBOUND]));
+          inboundClosedByInvalidConfig = true;
+          log.warn(
+            `Telegram config change rejected (${(err as Error).message}); inbound closed until the config is fixed`,
+          );
+          return;
+        }
+        let prevTg: TelegramPluginConfig;
+        try {
+          prevTg = readTelegramConfigFromConfig(prev);
+        } catch {
+          prevTg = appliedTg;
+        }
         const changedKeys = diffConfigKeys(prevTg, nextTg);
         const hotKeys = changedKeys.filter((c) => c.classification === 'hot').map((c) => c.key);
         const restartKeys = changedKeys
@@ -613,10 +636,17 @@ const plugin: Plugin = {
         // immediately. Without this, the classifier reports the change as
         // hotApplied while the inbox gate (built once at setup) keeps
         // admitting removed senders until a plugin restart.
-        if (hotSet.has('inboundMode') || hotSet.has('allowedUsers') || hotSet.has('allowedChats')) {
+        if (
+          inboundClosedByInvalidConfig ||
+          hotSet.has('inboundMode') ||
+          hotSet.has('allowedUsers') ||
+          hotSet.has('allowedChats')
+        ) {
           const sets = inboundAllowlist(nextTg);
           bot.inbox.updateAllowlist(sets.allowedUsers, sets.allowedChats);
+          inboundClosedByInvalidConfig = false;
         }
+        appliedTg = nextTg;
         // notifyChatId is RESTART-REQUIRED: the inbound allowlist
         // (built at setup) still uses the old value.  Applying the new
         // one here would make outbound notifications target a chat the

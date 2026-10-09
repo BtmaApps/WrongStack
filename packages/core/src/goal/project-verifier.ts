@@ -43,22 +43,35 @@ async function detectPackageManager(root: string): Promise<string> {
   return 'npm';
 }
 
+/**
+ * The manifest's string scripts. Only a MISSING package.json means "nothing to
+ * verify"; any other read or parse failure throws — npm cannot run a script
+ * from it either, and treating it as "no scripts" returned skipped, which the
+ * Goal hosts count as a pass.
+ */
 async function readScripts(cwd: string): Promise<Record<string, string>> {
+  let raw: string;
   try {
-    const parsed = JSON.parse(await fsp.readFile(path.join(cwd, 'package.json'), 'utf8')) as {
-      scripts?: unknown;
-    };
-    if (!parsed.scripts || typeof parsed.scripts !== 'object' || Array.isArray(parsed.scripts)) {
-      return {};
-    }
-    return Object.fromEntries(
-      Object.entries(parsed.scripts).filter((entry): entry is [string, string] => {
-        return typeof entry[1] === 'string';
-      }),
-    );
-  } catch {
+    raw = await fsp.readFile(path.join(cwd, 'package.json'), 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw err;
+  }
+  // A leading UTF-8 BOM (npm runs such a manifest) must not read as "no scripts".
+  const parsed = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as {
+    scripts?: unknown;
+  } | null;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('package.json is not a JSON object');
+  }
+  if (!parsed.scripts || typeof parsed.scripts !== 'object' || Array.isArray(parsed.scripts)) {
     return {};
   }
+  return Object.fromEntries(
+    Object.entries(parsed.scripts).filter((entry): entry is [string, string] => {
+      return typeof entry[1] === 'string';
+    }),
+  );
 }
 
 async function runStep(
@@ -123,7 +136,15 @@ export async function verifyGoalProject(
     return { ok: true, skipped: true, output: 'verify skipped: node_modules not found' };
   }
 
-  const scripts = await readScripts(options.cwd);
+  let scripts: Record<string, string>;
+  try {
+    scripts = await readScripts(options.cwd);
+  } catch (err) {
+    return {
+      ok: false,
+      output: `[verify] package.json could not be read: ${(err as Error).message}`,
+    };
+  }
   const steps = (options.steps ?? ['typecheck', 'lint']).filter((step) => scripts[step]);
   if (steps.length === 0) {
     return { ok: true, skipped: true, output: 'verify skipped: no configured scripts' };

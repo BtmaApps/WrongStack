@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MAX_MCP_HTTP_BODY_BYTES } from '../src/read-body.js';
 import {
   extractJsonRpcResults,
   SSEReader,
@@ -637,16 +638,32 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
   it('SSEReader throws when buffer exceeds SSE_READER_MAX_BUFFER', () => {
     const r = new SSEReader();
     r.onMessage(() => {});
-    // Feed enough data to exceed 256KB limit
-    const large = 'x'.repeat(257 * 1024);
+    // Feed enough data to exceed the 16 MiB MCP response cap
+    const large = 'x'.repeat(MAX_MCP_HTTP_BODY_BYTES + 1);
     expect(() => r.feed(large)).toThrow(/exceeds max buffer/);
   });
 
   it('SSEReader caps data accumulated across chunks', () => {
     const r = new SSEReader();
-    const chunk = 'x'.repeat(140 * 1024);
+    const chunk = 'x'.repeat(MAX_MCP_HTTP_BODY_BYTES / 2 + 1);
     r.feed(chunk);
-    expect(() => r.feed(chunk)).toThrow(/pending line exceeds 262144 bytes/);
+    expect(() => r.feed(chunk)).toThrow(/pending line exceeds 16777216 bytes/);
+  });
+
+  it('SSEReader delivers a response larger than 256 KiB split over many reads (F399)', () => {
+    // The legacy SSE transport receives every response over this stream; a
+    // 300 KB tools/call result used to throw and tear the connection down.
+    const r = new SSEReader();
+    const seen: number[] = [];
+    r.onMessage((m) => seen.push(m.id as number));
+    const payload = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 3,
+      result: { text: 'x'.repeat(300 * 1024) },
+    });
+    const wire = `event: message\r\ndata: ${payload}\r\n\r\n`;
+    for (let i = 0; i < wire.length; i += 4093) r.feed(wire.slice(i, i + 4093));
+    expect(seen).toEqual([3]);
   });
 
   it('SSEReader dispatches events from multiple feeds in order', () => {

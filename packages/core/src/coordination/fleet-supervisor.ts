@@ -118,7 +118,12 @@ export class FleetSupervisor {
     const c = opts.config ?? {};
     this.cfg = {
       enabled: c.enabled !== false,
-      intervalMs: c.intervalMs ?? DEFAULTS.intervalMs,
+      // A timer delay: Node turns one over 2^31-1 ms (or 0/negative/NaN) into
+      // 1 ms, which ran the scan back-to-back instead of every few seconds.
+      intervalMs:
+        typeof c.intervalMs === 'number' && Number.isFinite(c.intervalMs) && c.intervalMs > 0
+          ? Math.min(c.intervalMs, 2_147_483_647)
+          : DEFAULTS.intervalMs,
       cooldownMs: c.cooldownMs ?? DEFAULTS.cooldownMs,
       maxInterventionsPerSubagent:
         c.maxInterventionsPerSubagent ?? DEFAULTS.maxInterventionsPerSubagent,

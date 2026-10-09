@@ -28,8 +28,17 @@ export interface MetadataCheckpointContext {
  * it gone.
  */
 async function manifestName(manifestFile: string): Promise<Pick<SessionSummary, 'name'> | null> {
+  let raw: string;
   try {
-    const parsed = JSON.parse(await fsp.readFile(manifestFile, 'utf8')) as { name?: unknown };
+    raw = await fsp.readFile(manifestFile, 'utf8');
+  } catch (err) {
+    // Unreadable right now is not "no manifest": writing the snapshot anyway
+    // would erase a rename. Throw so the checkpoint fails and retries.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+  try {
+    const parsed = JSON.parse(raw) as { name?: unknown };
     return typeof parsed.name === 'string' ? { name: parsed.name } : {};
   } catch {
     return null;
@@ -89,6 +98,13 @@ export interface ClosePersistContext {
   traceId?: string | undefined;
   events?: EventBus | undefined;
   onCloseCb?: ((summary: SessionSummary) => void | Promise<void>) | undefined;
+  /**
+   * The session name could not be read back (manifest unreadable, not missing).
+   * A rename lives only in the manifest and the catalog row, so writing this
+   * summary would erase it from both; skip the write and leave them as the last
+   * checkpoint left them. The counters are rebuildable from the transcript.
+   */
+  nameUnresolved?: boolean | undefined;
 }
 
 export async function persistSessionCloseSummary(
@@ -98,6 +114,22 @@ export async function persistSessionCloseSummary(
   const manifestT0 = Date.now();
   let manifestOutcome: 'success' | 'failure' = 'success';
   let manifestError: string | undefined;
+  if (ctx.nameUnresolved) {
+    if (ctx.manifestFile) {
+      ctx.events?.emit('storage.write', {
+        sessionId: ctx.sessionId,
+        store: 'session',
+        filePath: ctx.manifestFile,
+        operation: 'close',
+        outcome: 'failure',
+        durationMs: 0,
+        error:
+          'summary manifest unreadable at close; final summary skipped to keep the session name',
+        ...(ctx.traceId !== undefined ? { traceId: ctx.traceId } : {}),
+      });
+    }
+    return;
+  }
   const idxT0 = Date.now();
   let idxOutcome: 'success' | 'failure' = 'success';
   let idxError: string | undefined;

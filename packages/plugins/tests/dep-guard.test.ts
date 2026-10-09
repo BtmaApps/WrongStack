@@ -102,6 +102,30 @@ describe('registry check (hallucinated / just-published / vulnerable packages)',
     expect(out?.reason).toMatch(/allow/);
   });
 
+  it.each([35 * DAY, 2 ** 32])(
+    'still refuses a just-published package with registryTimeoutMs=%d',
+    async (registryTimeoutMs) => {
+      // Past 2^31-1 ms AbortSignal.timeout fires after ~1 ms (every lookup
+      // "unchecked", the install let through); 2^32 threw ERR_OUT_OF_RANGE.
+      const created = new Date(Date.now() - 2 * DAY).toISOString();
+      const respond = registryStub(() => ({
+        status: 200,
+        body: { time: { created }, 'dist-tags': { latest: '0.0.1' } },
+      }));
+      vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        init?.signal?.throwIfAborted();
+        return respond(url, init);
+      });
+      const out = await runInstall('pnpm add react-query-utilz', {
+        registryTimeoutMs,
+        vulnerabilityCheck: false,
+      });
+      expect(out?.decision).toBe('block');
+      expect(out?.reason).toMatch(/first published 2 day\(s\) ago/);
+    },
+  );
+
   it('only warns about a just-published package in warn mode', async () => {
     const created = new Date(Date.now() - DAY).toISOString();
     vi.stubGlobal(

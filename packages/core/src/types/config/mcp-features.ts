@@ -388,8 +388,9 @@ export interface SageConfig {
         retentionDays?: number | undefined;
         /**
          * Soft-delete session-scoped memories without `expiresAt` after this
-         * many days. Default: 7. Session scope is ephemeral and is deleted
-         * by hygiene immediately (no review candidate).
+         * many days. Default: 7. 0 disables age-based session GC (`expiresAt`
+         * still applies). Session scope is ephemeral and is deleted by hygiene
+         * immediately (no review candidate).
          */
         sessionRetentionDays?: number | undefined;
         /** Archive low-confidence memories after this many days. Default: 30. */

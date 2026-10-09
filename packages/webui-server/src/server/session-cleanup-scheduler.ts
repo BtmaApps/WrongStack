@@ -37,8 +37,10 @@ export function resolveEmptySessionCleanupInterval(
 ): number {
   if (value === undefined || value.trim() === '') return DEFAULT_EMPTY_SESSION_CLEANUP_INTERVAL_MS;
   const parsed = Number(value);
+  // Capped at the largest timer delay: Node turns a longer one into 1 ms, which
+  // ran this destructive sweep back-to-back instead of rarely.
   return Number.isFinite(parsed) && parsed >= 1_000
-    ? Math.floor(parsed)
+    ? Math.min(Math.floor(parsed), 2_147_483_647)
     : DEFAULT_EMPTY_SESSION_CLEANUP_INTERVAL_MS;
 }
 

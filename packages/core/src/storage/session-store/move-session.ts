@@ -54,7 +54,9 @@ export async function executeMoveSession(
     if (!located || located.state === 'cold')
       throw new Error(`Session ${id} could not be restored.`);
   }
-  const name = (await host.readSummaryManifest(id))?.name;
+  // Strict: the name lives only in this manifest, which the move deletes; an
+  // unreadable (not missing) manifest must refuse the move, not drop the name.
+  const name = (await host.readSummaryManifest(id, undefined, true))?.name;
 
   const lease = host.catalogClient
     ? await host.catalogClient

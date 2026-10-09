@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { buildPurl } from '../registry/purl.js';
 import type { DependencyObservation, DependencyScope, EcosystemId, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
-import { stripInlineComment } from './parse-utils.js';
+import { stripBom, stripInlineComment } from './parse-utils.js';
 import { manifestEvidence } from './paths.js';
 
 interface CppDependency {
@@ -127,7 +127,7 @@ function parseConanPy(source: string): CppDependency[] {
 function parseVcpkgJson(content: string): CppDependency[] {
   const deps: CppDependency[] = [];
   try {
-    const json = JSON.parse(content) as {
+    const json = JSON.parse(stripBom(content)) as {
       dependencies?: Array<string | { name: string; version?: string; 'version>='?: string }>;
     };
     for (const dep of json.dependencies ?? []) {

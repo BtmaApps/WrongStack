@@ -314,17 +314,48 @@ const GIT_MESSAGE_FLAG_RE = new RegExp(
 const GIT_COMMIT_RE =
   /\bgit(?:\s+(?:-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|--(?:git-dir|work-tree|namespace|exec-path|super-prefix)\s+(?!-)\S+|--?(?![Cc]\s)[A-Za-z][\w-]*(?:=\S+)?))*\s+commit(?![a-zA-Z0-9_-])/;
 
-function extractMessageFromBash(command: string): string | null {
-  const parts: string[] = [];
-  for (const m of command.matchAll(GIT_MESSAGE_FLAG_RE)) {
-    // Exactly one alternative's group is defined per match.
-    const value = m[1] ?? m[2] ?? m[3];
-    if (value !== undefined) parts.push(value);
+const GIT_COMMIT_RE_ALL = new RegExp(GIT_COMMIT_RE.source, 'g');
+
+/**
+ * The arguments of each `git commit` in the command: from the subcommand to
+ * the next unquoted shell separator. Scanning the whole line took another
+ * command's -m as the subject — `git tag -m "chore: v1" && git commit -m oops`
+ * validated the tag message and let the commit through.
+ */
+function commitSegments(command: string): string[] {
+  const segments: string[] = [];
+  for (const m of command.matchAll(GIT_COMMIT_RE_ALL)) {
+    const start = (m.index ?? 0) + m[0].length;
+    let quote: string | null = null;
+    let i = start;
+    for (; i < command.length; i++) {
+      const c = command[i];
+      if (quote) {
+        if (quote === '"' && c === '\\') i++;
+        else if (c === quote) quote = null;
+      } else if (c === '"' || c === "'") quote = c;
+      else if (c === ';' || c === '&' || c === '|' || c === '\n') break;
+    }
+    segments.push(command.slice(start, i));
   }
-  if (parts.length === 0) return null;
-  // git separates repeated -m values with a blank line; the first is the
-  // subject, which is what `parseCommitMessage` validates.
-  return parts.join('\n\n');
+  return segments;
+}
+
+/** One message per `git commit` in the command that passes -m/--message. */
+function extractMessagesFromBash(command: string): string[] {
+  const messages: string[] = [];
+  for (const segment of commitSegments(command)) {
+    const parts: string[] = [];
+    for (const m of segment.matchAll(GIT_MESSAGE_FLAG_RE)) {
+      // Exactly one alternative's group is defined per match.
+      const value = m[1] ?? m[2] ?? m[3];
+      if (value !== undefined) parts.push(value);
+    }
+    // git separates repeated -m values with a blank line; the first is the
+    // subject, which is what `parseCommitMessage` validates.
+    if (parts.length > 0) messages.push(parts.join('\n\n'));
+  }
+  return messages;
 }
 
 // ---------------------------------------------------------------------------
@@ -469,8 +500,11 @@ const plugin: Plugin = {
         if (typeof command !== 'string') return;
         // Only intercept git commit commands (not plumbing like commit-tree).
         if (!GIT_COMMIT_RE.test(command)) return;
-        message = extractMessageFromBash(command);
-        if (!message) return; // No -m flag found — can't validate, let it through.
+        const messages = extractMessagesFromBash(command);
+        // No -m flag found — can't validate, let it through.
+        if (messages.length === 0) return;
+        // Every commit in the command is checked; report the first bad one.
+        message = messages.find((m) => !parseCommitMessage(m, cfg).valid) ?? messages[0]!;
       } else {
         return; // Not a commit tool.
       }

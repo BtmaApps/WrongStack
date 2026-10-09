@@ -26,6 +26,7 @@ import { parseToolInput } from '../_tool-input.js';
 import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
+import { streamedToolCallIndex } from '../openai-shared.js';
 import { normalizeOpenAI } from '../stop-reason.js';
 import { messagesToOpenAI, toolsToOpenAI } from '../tool-format/to-openai.js';
 import { defineWireFormat } from '../wire-format.js';
@@ -261,7 +262,7 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
           out.push({ type: 'thinking_stop' });
         }
         for (const tc of choice.delta.tool_calls) {
-          const idx = tc.index ?? 0;
+          const idx = streamedToolCallIndex(state.toolByIndex, tc);
           let entry = state.toolByIndex.get(idx);
           if (!entry) {
             entry = {

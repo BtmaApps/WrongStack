@@ -148,9 +148,13 @@ export async function handleMcpRemove(
   msg: WSClientMessage,
   globalConfigPath: string,
   mcpRegistry?: MCPRegistry,
+  trustBoundary?: TrustBoundary,
 ): Promise<void> {
   const d = deps(ws, globalConfigPath, mcpRegistry);
   if (!d) return;
+  // Remove stops the server AND deletes its config — a superset of disable,
+  // so a boundary that refuses mcp.disable must not be bypassable here.
+  if (!(await authorizeMcpMutation(ws, 'mcp.remove', name(msg), trustBoundary))) return;
   const result = await removeMcp(name(msg), d);
   if (result.ok) {
     send(ws, { type: 'mcp.server.removed', payload: { name: name(msg) } });

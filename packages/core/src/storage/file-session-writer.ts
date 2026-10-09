@@ -522,6 +522,7 @@ export class FileSessionWriter implements SessionWriter {
         traceId: this.traceId,
         events: this.events,
         onCloseCb: this.onCloseCb,
+        nameUnresolved: this.summaryTracker.nameUnresolved,
       },
       summary,
     );

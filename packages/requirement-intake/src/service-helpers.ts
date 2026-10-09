@@ -31,12 +31,15 @@ import type {
 import { deterministicSummary, deterministicTitle, normalizeRequestType } from './validation.js';
 import { deriveVibeState } from './vibe.js';
 
-export function appendItems(target: string[], raw: string): void {
-  const items = raw
+function splitItems(raw: string): string[] {
+  return raw
     .split(/[\n,;]+/)
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
-  for (const item of items) {
+}
+
+export function appendItems(target: string[], raw: string): void {
+  for (const item of splitItems(raw)) {
     if (!target.includes(item) && target.length < MAX_ARRAY_ITEMS) {
       target.push(item);
     }
@@ -45,7 +48,14 @@ export function appendItems(target: string[], raw: string): void {
 
 /** Answer fields that also update a record property. */
 export const ANSWER_FIELD_MAPPING: Readonly<
-  Record<string, { set: (record: RequirementIntakeRecord, value: string) => void }>
+  Record<
+    string,
+    {
+      set: (record: RequirementIntakeRecord, value: string) => void;
+      /** The list an append-only answer feeds; an update takes its old items back out. */
+      list?: (record: RequirementIntakeRecord) => string[];
+    }
+  >
 > = {
   business_goal: {
     set: (record, value) => {
@@ -71,21 +81,25 @@ export const ANSWER_FIELD_MAPPING: Readonly<
     set: (record, value) => {
       appendItems(record.targetUsers, value);
     },
+    list: (record) => record.targetUsers,
   },
   constraints: {
     set: (record, value) => {
       appendItems(record.constraints, value);
     },
+    list: (record) => record.constraints,
   },
   provided_context: {
     set: (record, value) => {
       appendItems(record.providedContext, value);
     },
+    list: (record) => record.providedContext,
   },
   project_component: {
     set: (record, value) => {
       appendItems(record.providedContext, value);
     },
+    list: (record) => record.providedContext,
   },
   priority: {
     set: (record, value) => {
@@ -375,6 +389,7 @@ export function applyAnswerUpdateToRecord(
       { field: 'answerId', message: `answer not found: ${answerId}` },
     ]);
   }
+  const previous = answer.answer;
   answer.answer = newAnswer;
   answer.answeredAt = Date.now();
   const question = record.questions.find((candidate) => candidate.field === answer.field);
@@ -383,6 +398,21 @@ export function applyAnswerUpdateToRecord(
     question.status = 'answered';
   }
   const mapping = ANSWER_FIELD_MAPPING[answer.field];
+  const list = mapping?.list?.(record);
+  if (list) {
+    // Withdraw the replaced answer's items, keeping those another answer still gives.
+    const stillGiven = new Set(
+      record.answers
+        .filter(
+          (other) => other !== answer && ANSWER_FIELD_MAPPING[other.field]?.list?.(record) === list,
+        )
+        .flatMap((other) => splitItems(other.answer)),
+    );
+    for (const item of splitItems(previous)) {
+      const at = list.indexOf(item);
+      if (at >= 0 && !stillGiven.has(item)) list.splice(at, 1);
+    }
+  }
   if (mapping) {
     mapping.set(record, newAnswer);
     const sourceKey = answer.field as keyof RequirementIntakeRecord['fieldSources'];

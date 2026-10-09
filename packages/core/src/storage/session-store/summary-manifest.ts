@@ -25,9 +25,22 @@ export async function readSummaryManifestFile(
   events: EventBus | undefined,
   id: string,
   startTime = Date.now(),
+  /**
+   * Rethrow read errors that may hide a real manifest (EBUSY, EPERM, EIO…).
+   * Missing (ENOENT) or not a file (EISDIR) holds no name and still reads as
+   * null, as does a corrupt manifest.
+   */
+  strict = false,
 ): Promise<SessionSummary | null> {
+  let raw: string;
   try {
-    const raw = await fsp.readFile(manifestPath, 'utf8');
+    raw = await fsp.readFile(manifestPath, 'utf8');
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (strict && code !== 'ENOENT' && code !== 'EISDIR') throw err;
+    return null;
+  }
+  try {
     emitSessionStoreRead(events, id, manifestPath, 'summary', 'success', Date.now() - startTime);
     return JSON.parse(raw) as SessionSummary;
   } catch {
@@ -53,7 +66,9 @@ export async function executeSummaryFor(
   const t0 = Date.now();
   let outcome: 'success' | 'failure' = 'success';
   let errorMsg: string | undefined;
-  const fromManifest = await readSummaryManifestFile(manifest, host.events, id, t0);
+  // Strict: the rebuild below comes from the journal, which never carries a
+  // rename; writing it over an unreadable (not missing) manifest erases the name.
+  const fromManifest = await readSummaryManifestFile(manifest, host.events, id, t0, true);
   if (fromManifest) return fromManifest;
 
   try {

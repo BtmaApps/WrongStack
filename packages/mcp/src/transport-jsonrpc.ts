@@ -68,6 +68,17 @@ function isJsonRpcMethodEnvelope(v: unknown): v is JsonRpcMethodEnvelope {
  */
 export function extractJsonRpcEnvelopes(text: string): JsonRpcEnvelope[] {
   const out: JsonRpcEnvelope[] = [];
+  // A plain `application/json` reply is ONE JSON value that may span lines
+  // (pretty-printed); the per-line scan below would drop it entirely.
+  const whole = text.trim();
+  if (whole.startsWith('{') && /[\r\n]/.test(whole)) {
+    try {
+      const parsed = JSON.parse(whole);
+      if (isJsonRpcResult(parsed) || isJsonRpcMethodEnvelope(parsed)) return [parsed];
+    } catch {
+      /* not a single JSON value — NDJSON or SSE framing */
+    }
+  }
   let dataBuf: string[] = [];
   const flush = () => {
     if (dataBuf.length === 0) return;

@@ -3,7 +3,7 @@
 // atomic write of the resolved choices back to the global config.
 
 import * as fs from 'node:fs/promises';
-import { atomicWrite, color } from '@wrongstack/core/utils';
+import { atomicWrite, color, withFileLock } from '@wrongstack/core/utils';
 import type { ReadlineInputReader } from '../input-reader.js';
 import type { TerminalRenderer } from '../renderer.js';
 
@@ -214,34 +214,39 @@ export async function persistLaunchChoices(
   configPath: string,
   choices: LaunchModeChoices,
 ): Promise<void> {
-  let fileExists = false;
-  try {
-    await fs.access(configPath);
-    fileExists = true;
-  } catch {}
+  // Under the config lock every other config writer holds (provider CRUD,
+  // updateJsonObjectFile): unlocked, a locked update landing between this
+  // read and write was silently overwritten.
+  await withFileLock(configPath, async () => {
+    let fileExists = false;
+    try {
+      await fs.access(configPath);
+      fileExists = true;
+    } catch {}
 
-  let existing: Record<string, unknown> = {};
-  try {
-    const raw = await fs.readFile(configPath, 'utf8');
-    // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
-    existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new Error(
-        `Refusing to overwrite corrupt config at ${configPath} ` +
-          `(${(err as Error).message}). Fix or move the file aside before retrying.`,
-        { cause: err },
-      );
+    let existing: Record<string, unknown> = {};
+    try {
+      const raw = await fs.readFile(configPath, 'utf8');
+      // A leading UTF-8 BOM is valid (RFC 8259); the config loader accepts it.
+      existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as Record<string, unknown>;
+    } catch (err) {
+      if (fileExists) {
+        throw new Error(
+          `Refusing to overwrite corrupt config at ${configPath} ` +
+            `(${(err as Error).message}). Fix or move the file aside before retrying.`,
+          { cause: err },
+        );
+      }
+      // No existing file — start fresh, that's fine.
+      existing = {};
     }
-    // No existing file — start fresh, that's fine.
-    existing = {};
-  }
 
-  existing.yolo = choices.yolo;
-  existing.launch = {
-    mode: choices.mode,
-    autonomy: choices.autonomy,
-  };
+    existing.yolo = choices.yolo;
+    existing.launch = {
+      mode: choices.mode,
+      autonomy: choices.autonomy,
+    };
 
-  await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+    await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+  });
 }

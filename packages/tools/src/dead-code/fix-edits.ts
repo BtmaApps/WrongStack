@@ -76,6 +76,26 @@ function statementRange(ts: Ts, sf: TS.SourceFile, node: TS.Node): [number, numb
   return [start, end];
 }
 
+/**
+ * Removing a statement: a variable whose initializer has side effects
+ * (`const h = start();`) loses only its binding — the expression stays.
+ */
+function removalEdit(ts: Ts, sf: TS.SourceFile, stmt: TS.Statement): Edit {
+  const [start, end] = statementRange(ts, sf, stmt);
+  const init = ts.isVariableStatement(stmt)
+    ? stmt.declarationList.declarations[0]?.initializer
+    : undefined;
+  if (!init || isPureExpression(ts, init)) return { start, end, text: '' };
+  const expr = init.getText(sf);
+  const lineStart = sf.text.lastIndexOf('\n', stmt.getStart(sf) - 1) + 1;
+  const indent = /^[ \t]*/.exec(sf.text.slice(lineStart))![0];
+  const eol = sf.text.includes('\r\n') ? '\r\n' : '\n';
+  const wrapped = /^(\{|function\b|class\b|let\s*\[)/.test(expr) ? `(${expr})` : expr;
+  const tail = sf.text.slice(start, end).endsWith('\n') ? eol : '';
+  const atLineStart = start === 0 || sf.text[start - 1] === '\n';
+  return { start, end, text: `${atLineStart ? indent : ''}${wrapped};${tail}` };
+}
+
 function nextTokenStart(text: string, pos: number): number {
   let i = pos;
   while (i < text.length && /\s/.test(text[i]!)) i++;
@@ -211,8 +231,7 @@ export function computeFileEdit(ts: Ts, file: string, text: string, ops: FileOps
     const exportedAs = exportMod ? (defaultMod ? 'default' : name) : null;
 
     if (name && deleteLocals.has(name)) {
-      const [s, e] = statementRange(ts, sf, stmt);
-      edits.push({ start: s, end: e, text: '' });
+      edits.push(removalEdit(ts, sf, stmt));
       continue;
     }
     if (exportedAs === 'default' && name === null && removeAnonymousDefault) {
@@ -276,9 +295,49 @@ function isPureExpression(ts: Ts, e: TS.Expression): boolean {
   ) {
     return true;
   }
-  if (ts.isArrowFunction(e) || ts.isFunctionExpression(e)) return true;
-  if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e)) {
+  if (ts.isArrowFunction(e) || ts.isFunctionExpression(e) || ts.isClassExpression(e)) return true;
+  if (
+    ts.isParenthesizedExpression(e) ||
+    ts.isAsExpression(e) ||
+    ts.isSatisfiesExpression(e) ||
+    ts.isNonNullExpression(e) ||
+    ts.isTypeOfExpression(e) ||
+    ts.isVoidExpression(e)
+  ) {
     return isPureExpression(ts, e.expression);
+  }
+  if (ts.isArrayLiteralExpression(e)) {
+    return e.elements.every((el) => !ts.isSpreadElement(el) && isPureExpression(ts, el));
+  }
+  if (ts.isObjectLiteralExpression(e)) {
+    return e.properties.every(
+      (p) =>
+        ts.isShorthandPropertyAssignment(p) ||
+        ts.isMethodDeclaration(p) ||
+        ts.isGetAccessorDeclaration(p) ||
+        ts.isSetAccessorDeclaration(p) ||
+        (ts.isPropertyAssignment(p) &&
+          !ts.isComputedPropertyName(p.name) &&
+          isPureExpression(ts, p.initializer)),
+    );
+  }
+  if (ts.isTemplateExpression(e)) {
+    return e.templateSpans.every((span) => isPureExpression(ts, span.expression));
+  }
+  if (ts.isPrefixUnaryExpression(e)) {
+    return (
+      e.operator !== ts.SyntaxKind.PlusPlusToken &&
+      e.operator !== ts.SyntaxKind.MinusMinusToken &&
+      isPureExpression(ts, e.operand)
+    );
+  }
+  if (ts.isConditionalExpression(e)) {
+    return [e.condition, e.whenTrue, e.whenFalse].every((x) => isPureExpression(ts, x));
+  }
+  if (ts.isBinaryExpression(e)) {
+    const op = e.operatorToken.kind;
+    const assigns = op >= ts.SyntaxKind.FirstAssignment && op <= ts.SyntaxKind.LastAssignment;
+    return !assigns && isPureExpression(ts, e.left) && isPureExpression(ts, e.right);
   }
   if (ts.isPropertyAccessExpression(e)) return isPureExpression(ts, e.expression);
   return false;
@@ -369,12 +428,12 @@ export function cascadeCleanup(ts: Ts, file: string, original: string, current: 
       if (modifierOf(ts, stmt, ts.SyntaxKind.ExportKeyword)) continue;
       const name = declaredName(ts, stmt);
       if (name && orphaned(name)) {
-        const [s, e] = statementRange(ts, sf, stmt);
-        edits.push({ start: s, end: e, text: '' });
+        edits.push(removalEdit(ts, sf, stmt));
       } else if (name && ts.isVariableStatement(stmt) && writeOnly(name)) {
         const assignments = pureAssignmentStatements(ts, sf, name);
         if (assignments !== null) {
-          for (const node of [stmt, ...assignments]) {
+          edits.push(removalEdit(ts, sf, stmt));
+          for (const node of assignments) {
             const [s, e] = statementRange(ts, sf, node);
             edits.push({ start: s, end: e, text: '' });
           }

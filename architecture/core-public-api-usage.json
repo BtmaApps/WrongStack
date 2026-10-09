@@ -179,8 +179,8 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 142,
-      "typeOnly": 35,
+      "files": 143,
+      "typeOnly": 36,
       "runtimeOrMixed": 137
     },
     "@wrongstack/core/tasking": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 769,
+      "files": 770,
       "typeOnly": 69,
-      "runtimeOrMixed": 728
+      "runtimeOrMixed": 729
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -249,9 +249,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 19,
+      "files": 18,
       "typeOnly": 0,
-      "runtimeOrMixed": 19
+      "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 16,
@@ -279,9 +279,9 @@
       "runtimeOrMixed": 14
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
-      "files": 20,
+      "files": 21,
       "typeOnly": 3,
-      "runtimeOrMixed": 20
+      "runtimeOrMixed": 21
     },
     "@wrongstack/core/worktree": {
       "files": 22,
@@ -12850,6 +12850,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/webui-credential-watcher-host-owned.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/wiring-provider-runtime-setup.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24286,6 +24292,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/launch-choice-config-lock.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/mailbox-bridge-mutation.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -26932,12 +26944,6 @@
     },
     {
       "specifier": "@wrongstack/core/utils/error",
-      "file": "packages/cli/src/webui-server/credential-watcher.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils/error",
       "file": "packages/techstack/src/remediation.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -27287,6 +27293,12 @@
     {
       "specifier": "@wrongstack/core/wiring/proxy-rewrite",
       "file": "packages/cli/tests/proxy-probe.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/wiring/proxy-rewrite",
+      "file": "packages/cli/tests/webui-credential-watcher-host-owned.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

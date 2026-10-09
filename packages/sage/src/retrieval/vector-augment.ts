@@ -211,6 +211,9 @@ export async function augmentLexicalWithVectorRecall(
     if (lexicalById.has(sageId)) {
       classified.push({ sageId, hit, kind: 'boost' });
     } else if (
+      // Weight 0 is "pure lexical": a materialized hit would still be kept at
+      // finalScore 0 whenever the lexical list is shorter than `limit`.
+      weight > 0 &&
       options.materializeVectorOnly &&
       hit.score >= vectorOnlyThreshold &&
       materializeBudget > 0

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T20:37:16.369Z",
+  "generatedAt": "2026-10-09T08:05:07.305Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4894,
-    "testFiles": 4216,
-    "sourceLines": 1085339,
+    "testFiles": 4233,
+    "sourceLines": 1086257,
     "workspaceEdges": 133,
-    "moduleEdges": 16112,
+    "moduleEdges": 16118,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -109,7 +109,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 48,
-      "testFiles": 53,
+      "testFiles": 54,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -123,7 +123,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 53
+          "testFiles": 54
         }
       ]
     },
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 615,
-      "testFiles": 605,
+      "testFiles": 608,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 605
+          "testFiles": 608
         }
       ]
     },
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1106,
-      "testFiles": 936,
+      "testFiles": 940,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 936
+          "testFiles": 940
         }
       ]
     },
@@ -489,7 +489,7 @@
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
       "sourceFiles": 11,
-      "testFiles": 10,
+      "testFiles": 12,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -500,7 +500,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 10
+          "testFiles": 12
         }
       ]
     },
@@ -601,7 +601,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 144,
-      "testFiles": 127,
+      "testFiles": 128,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -616,7 +616,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 127
+          "testFiles": 128
         }
       ]
     },
@@ -766,7 +766,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 315,
-      "testFiles": 299,
+      "testFiles": 302,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +782,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 299
+          "testFiles": 302
         }
       ]
     },
@@ -920,7 +920,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 295,
-      "testFiles": 280,
+      "testFiles": 283,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -946,7 +946,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 280
+          "testFiles": 283
         }
       ]
     },
@@ -1513,6 +1513,12 @@
       },
       {
         "file": "packages/acp/tests/terminal-server-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/terminal-server-cwd-case.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3516,6 +3522,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/launch-choice-config-lock.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/launch-menu.test.ts",
         "projects": [
           "root-node"
@@ -4968,6 +4980,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/subcommands/automation-serve-tick-failure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/subcommands/chronicle.test.ts",
         "projects": [
           "root-node"
@@ -5245,6 +5263,12 @@
       },
       {
         "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/webui-credential-watcher-host-owned.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6961,6 +6985,12 @@
       },
       {
         "file": "packages/core/tests/coordination/project-agent-capture.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/project-agent-config-io.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9672,6 +9702,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/session-search-locale-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/skills/bundled-frontmatter.test.ts",
         "projects": [
           "root-node"
@@ -9703,6 +9739,12 @@
       },
       {
         "file": "packages/core/tests/skills/limits.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/skills/manifest-store-concurrency.test.ts",
         "projects": [
           "root-node"
         ]
@@ -10405,6 +10447,12 @@
       },
       {
         "file": "packages/core/tests/storage/session-tree.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/session-unreadable-manifest-keeps-name.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13638,6 +13686,12 @@
         ]
       },
       {
+        "file": "packages/primitives/tests/redaction-header-and-json-secrets.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/primitives/tests/redaction-single-source.test.ts",
         "projects": [
           "root-node"
@@ -13645,6 +13699,12 @@
       },
       {
         "file": "packages/primitives/tests/redaction-spaced-and-quoted-values.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/primitives/tests/redaction-user-credentials.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15229,6 +15289,12 @@
       },
       {
         "file": "packages/sage/tests/sqlite-store-hygiene-session-gc-toctou.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/sqlite-store-hygiene-session-retention-off.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17658,7 +17724,19 @@
         ]
       },
       {
+        "file": "packages/tools/tests/dead-code-delete-initializer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/dead-code-engine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/dead-code-side-effect-initializer.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17701,6 +17779,12 @@
       },
       {
         "file": "packages/tools/tests/e2e-plan.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/edit-concurrent-agents.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21912,6 +21996,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/chimera-report-detail-reads.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/chimera-routes.test.ts",
         "projects": [
           "root-node"
@@ -22296,6 +22386,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/instance-registry-concurrency.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/instance-registry.test.ts",
         "projects": [
           "root-node"
@@ -22447,6 +22543,12 @@
       },
       {
         "file": "packages/webui-server/tests/mailbox-routes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/max-context-updater-stale-switch.test.ts",
         "projects": [
           "root-node"
         ]
@@ -26670,6 +26772,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/techstack/src/adapters/npm.ts",
+      "lines": 757,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/tui/src/components/sidebar-panels-task.tsx",
       "lines": 757,
       "relativeImports": 12
@@ -26683,11 +26790,6 @@
       "file": "packages/plugin-sdk/src/runtime/index.ts",
       "lines": 756,
       "relativeImports": 10
-    },
-    {
-      "file": "packages/techstack/src/adapters/npm.ts",
-      "lines": 756,
-      "relativeImports": 4
     },
     {
       "file": "packages/tools/src/codebase-index/skeleton-extractor.ts",

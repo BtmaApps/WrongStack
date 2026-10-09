@@ -46,6 +46,12 @@ describe('transport JSON-RPC validation', () => {
     expect(envelopes).toHaveLength(3);
   });
 
+  it('extracts a pretty-printed application/json reply that spans lines (F398)', () => {
+    const response = { jsonrpc: '2.0', id: 5, result: { tools: [] } };
+    expect(extractJsonRpcEnvelopes(JSON.stringify(response, null, 2))).toEqual([response]);
+    expect(extractJsonRpcEnvelopes(JSON.stringify({ other: 1 }, null, 2))).toEqual([]);
+  });
+
   it('ignores malformed method envelopes and plain noise', () => {
     expect(
       extractJsonRpcEnvelopes(

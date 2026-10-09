@@ -84,3 +84,26 @@ export function shouldEmitReasoningEffort(req: Request): boolean {
   if (effort === undefined) return false;
   return isOpenAIEffort(effort);
 }
+
+/**
+ * Map key for one streamed `delta.tool_calls[]` entry. `index` is the wire's
+ * key, but some OpenAI-compatible endpoints omit it and send each parallel
+ * call whole, under its own `id`. Defaulting every such delta to 0 appended
+ * call #2's arguments to call #1 (unparseable JSON) and dropped call #2.
+ */
+export function streamedToolCallIndex(
+  byIndex: ReadonlyMap<number, { id?: string | undefined }>,
+  toolCall: { index?: number | undefined; id?: string | undefined },
+): number {
+  if (typeof toolCall.index === 'number') return toolCall.index;
+  let last = -1;
+  for (const [key, entry] of byIndex) {
+    if (toolCall.id && entry.id === toolCall.id) return key;
+    if (key > last) last = key;
+  }
+  if (last === -1) return 0;
+  // No id continues the latest call; so does the first id of a call that
+  // started without one.
+  if (!toolCall.id || !byIndex.get(last)?.id) return last;
+  return last + 1;
+}

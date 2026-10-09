@@ -1,13 +1,13 @@
 /**
- * Hot-reload provider credentials and routing configuration when config.json changes on disk.
+ * Refresh provider panels, routing configuration and the display language when
+ * config.json changes on disk. The live provider itself is rebuilt by the CLI
+ * host's provider-runtime watcher (see the note in the callback).
  *
  * @module webui-server/credential-watcher
  */
 
 import { TOKENS } from '@wrongstack/core/kernel';
 import { watchProviderConfig } from '@wrongstack/core/storage';
-import { toErrorMessage } from '@wrongstack/core/utils/error';
-import { makeProviderFromConfig } from '@wrongstack/providers';
 import type { CliWebUIOptions } from '../webui-server-options.js';
 import type { WSServerMessage } from './contracts.js';
 import { getVault } from './provider-config.js';
@@ -30,9 +30,6 @@ export function startWebuiCredentialWatcher({
     return undefined;
   }
 
-  let lastActiveCfg = JSON.stringify(
-    opts.appConfig?.providers?.[opts.agent.ctx.provider.id] ?? null,
-  );
   let lastUiLocale = opts.appConfig?.uiLocale;
 
   const watcher = watchProviderConfig(
@@ -113,34 +110,12 @@ export function startWebuiCredentialWatcher({
         }
       }
 
-      const activeId = opts.agent.ctx.provider.id;
-      const newCfgStr = JSON.stringify(snapshot.providers[activeId] ?? null);
-      if (newCfgStr === lastActiveCfg) return; // active provider creds unchanged
-      lastActiveCfg = newCfgStr;
-      try {
-        const newCfg = snapshot.providers[activeId] ?? {
-          type: activeId,
-          ...(snapshot.apiKey !== undefined ? { apiKey: snapshot.apiKey } : {}),
-          ...(snapshot.baseUrl !== undefined ? { baseUrl: snapshot.baseUrl } : {}),
-        };
-        const oldMax = opts.agent.ctx.provider.capabilities?.maxContext;
-        // Keep the saved factory type (e.g. "ai-gateway") so a credential
-        // hot-reload rebuilds the same transport instead of downgrading an
-        // alias to a generic config-only provider.
-        const prov = makeProviderFromConfig(activeId, {
-          ...newCfg,
-          type: newCfg.type ?? activeId,
-        });
-        // Key-only change keeps the same model/context window — preserve the
-        // resolved maxContext instead of falling back to the family default.
-        if (oldMax != null && prov.capabilities) prov.capabilities.maxContext = oldMax;
-        opts.agent.ctx.provider = prov;
-        console.log(`[WebUI] Provider credentials reloaded from config.json (${activeId})`);
-      } catch (err) {
-        console.warn(
-          `[WebUI] Credential hot-reload failed for ${activeId}: ${toErrorMessage(err)}`,
-        );
-      }
+      // The live provider is NOT rebuilt here. opts.agent.ctx is the CLI host's
+      // context, whose provider-runtime watcher rebuilds it from the same file
+      // with every layer, the removed-account block and the WrongProxy/WrongTrace
+      // rewrite. A second, bare rebuild racing it from this independent debounce
+      // replaced the host's proxied provider with a direct one whenever it
+      // landed last.
     },
     {
       warn: (m) =>
