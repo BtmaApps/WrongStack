@@ -22,6 +22,7 @@
  * @module dep-watcher
  */
 
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import type { Mailbox } from './mailbox-types.js';
 import {
@@ -222,7 +223,7 @@ export function makeDependencyWatcherConfig(
    * Never throws — an unreadable or half-written manifest yields an empty
    * delta rather than breaking the watcher.
    */
-  async function readDelta(manifestPath: string): Promise<DependencyDelta> {
+  async function readDelta(manifestPath: string): Promise<DependencyDelta | 'unchanged'> {
     const key = manifestPath.replaceAll('\\', '/');
     try {
       const absolute = isAbsolutePath(manifestPath)
@@ -232,7 +233,22 @@ export function makeDependencyWatcherConfig(
       const current = parseDeclaredDependencies(content, key);
       const delta = diffDeclaredDependencies(baselines.get(key), current);
       baselines.set(key, current);
-      return delta;
+
+      // Content gate. On Windows `fs.watch` subscribes to last-access and
+      // attribute changes too, and NTFS refreshes a file's last-access time at
+      // most once an hour — so the first READ of package.json / tsconfig.json
+      // each hour (an index build, tsc, an editor) arrives as `change`. Observed
+      // live: tsconfig.json untouched since 09-25 drove an audit spawn every
+      // hour, including right at session start. A metadata-only event is not a
+      // dependency change, so the bytes decide.
+      const fingerprint = createHash('sha256').update(content).digest('hex');
+      const previous = fingerprints.get(key);
+      fingerprints.set(key, fingerprint);
+      if (previous !== undefined) return previous === fingerprint ? 'unchanged' : delta;
+      // First sighting: no fingerprint to compare. A file not written since the
+      // watcher started cannot have changed under it.
+      const { mtimeMs } = await fs.stat(absolute);
+      return mtimeMs < startedAt ? 'unchanged' : delta;
     } catch {
       return { added: [], changed: [], removed: [] };
     }
@@ -254,6 +270,10 @@ export function makeDependencyWatcherConfig(
 
   // Last-known declared dependency set per manifest, used to compute the delta.
   const baselines = new Map<string, DeclaredDependencyMap>();
+  // Last-seen content hash per manifest, and when watching began — see the
+  // content gate in `readDelta`.
+  const fingerprints = new Map<string, string>();
+  const startedAt = Date.now();
 
   return {
     watchPaths: unique,
@@ -286,6 +306,7 @@ export function makeDependencyWatcherConfig(
           try {
             const fileName = entry.path.split('/').pop()?.split('\\').pop() ?? entry.path;
             const delta = await readDelta(entry.path);
+            if (delta === 'unchanged') return;
             const body: string[] = [
               `Manifest: ${entry.path}`,
               `File: ${entry.path}`,

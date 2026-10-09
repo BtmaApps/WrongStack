@@ -311,6 +311,45 @@ describe('makeDependencyWatcherConfig', () => {
       expect(args.subject).toContain('package.json');
     });
 
+    it('ignores metadata-only events on a manifest whose bytes did not change', async () => {
+      // Windows fs.watch reports NTFS last-access refreshes (hourly, on first
+      // read) as `change`; an untouched tsconfig.json spawned an audit hourly.
+      const manifestPath = path.join(projectRoot, 'package.json');
+      const manifest = (deps: Record<string, string>) =>
+        JSON.stringify({ name: 'sandbox', dependencies: deps });
+      await fs.writeFile(manifestPath, manifest({ react: '18.2.0' }), 'utf8');
+      const past = new Date(Date.now() - 60 * 60 * 1000);
+      await fs.utimes(manifestPath, past, past);
+
+      const cfg = makeDependencyWatcherConfig({
+        projectRoot,
+        mailbox,
+        targetAgent: 'tech-stack',
+        debounceMs: 10,
+      });
+      const spy = vi.spyOn(mailbox, 'send');
+      const settle = () => new Promise((r) => setTimeout(r, 150));
+
+      // Not written since the watcher started: last-access/attribute noise.
+      await fs.utimes(manifestPath, new Date(), past);
+      await cfg.onChange(makeEntry({ path: 'package.json' }));
+      await settle();
+      expect(spy).not.toHaveBeenCalled();
+
+      // Rewritten with identical bytes: still no dependency change.
+      await fs.writeFile(manifestPath, manifest({ react: '18.2.0' }), 'utf8');
+      await cfg.onChange(makeEntry({ path: 'package.json' }));
+      await settle();
+      expect(spy).not.toHaveBeenCalled();
+
+      // A real edit goes through and names the delta.
+      await fs.writeFile(manifestPath, manifest({ react: '18.2.0', zod: '3.23.8' }), 'utf8');
+      await cfg.onChange(makeEntry({ path: 'package.json' }));
+      await waitForSend(spy);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect((spy.mock.calls[0]![0] as { subject: string }).subject).toContain('zod');
+    });
+
     it('handles mailbox.send rejection gracefully (no crash)', async () => {
       const brokenMailbox = {
         send: vi.fn().mockRejectedValue(new Error('network error')),
