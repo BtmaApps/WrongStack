@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1383,
-      "typeOnly": 1215,
+      "files": 1384,
+      "typeOnly": 1216,
       "runtimeOrMixed": 420
     },
     "@wrongstack/core/types/limits": {
@@ -15641,6 +15641,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/boot-auto-select-provider.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/boot-launch-choices.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

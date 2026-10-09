@@ -43,7 +43,9 @@ describe('embedded WebUI provider CRUD round trip', () => {
     const sent: Array<{ type: string; payload: Record<string, unknown> }> = [];
     const operations = createEmbeddedProviderOperations({
       providerStore: createProviderConfigStore(configPath, () => bootConfig.providers as never),
-      send: (_ws, message) => sent.push(message as never),
+      send: (_ws: WebSocket, message: { type: string; payload: Record<string, unknown> }) => {
+        sent.push(message);
+      },
       broadcast: () => undefined,
       ...(authRegistry ? { providerAuthRegistry: authRegistry } : {}),
     } as never);

@@ -1,3 +1,4 @@
+import type { Config } from '@wrongstack/core/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +19,9 @@ vi.mock('../src/pre-launch.js', () => ({
 
 import { applyBootLaunchChoices, type BootLaunchInput } from '../src/boot-launch-choices.js';
 
-function fixture(overrides: Partial<BootLaunchInput> = {}): BootLaunchInput {
+function fixture(
+  overrides: Omit<Partial<BootLaunchInput>, 'config'> & { config?: Partial<Config> } = {},
+): BootLaunchInput {
   return {
     isInteractiveTTY: false,
     simpleUiFullAuto: false,
