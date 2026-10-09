@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-09T11:48:09.086Z",
+  "generatedAt": "2026-10-09T13:48:32.586Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4894,
+    "sourceFiles": 4897,
     "testFiles": 4233,
-    "sourceLines": 1086278,
+    "sourceLines": 1086427,
     "workspaceEdges": 133,
-    "moduleEdges": 16118,
+    "moduleEdges": 16123,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 615,
+      "sourceFiles": 616,
       "testFiles": 608,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -765,7 +765,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 315,
+      "sourceFiles": 317,
       "testFiles": 302,
       "workspaceDependencies": [
         "@wrongstack/core",

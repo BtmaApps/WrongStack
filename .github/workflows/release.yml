@@ -160,6 +160,9 @@ jobs:
         with:
           # The SHA `verify` validated — same anti-movable-tag rule as publish.
           ref: ${{ needs.verify.outputs.sha }}
+          # Regression proofs read historical revisions with `git show <sha>:…`
+          # (english-leak-boundaries needle proof); a shallow clone fails them.
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)

@@ -16,12 +16,15 @@
  * the code point where those differ (`toLowerCase()` -> `i` + U+0307,
  * `toLocaleLowerCase()` -> `i`).
  *
- * Two triggers are asserted:
+ * `toLocaleLowerCase()` follows the host's default locale: under `tr` it folds
+ * U+0130 to `i`, elsewhere (en-US CI runners) to `i` + U+0307. The contract is
+ * parity, so each needle's expected answer is derived from the host fold and
+ * all three paths must give it:
  *   1. plain-ASCII needle `istanbul` against a title containing `İstanbul`
- *      (U+0130) -> every path matches. This is the A-vs-B headline symptom.
- *   2. two-code-point needle `i` + U+0307 against the same title -> every path
- *      rejects it. A plain `İstanbul` needle masks the B-vs-C disagreement,
- *      because each side folds both of its operands.
+ *      (U+0130) — the A-vs-B headline symptom (matches under `tr`).
+ *   2. two-code-point needle `i` + U+0307 against the same title — a plain
+ *      `İstanbul` needle masks the B-vs-C disagreement, because each side
+ *      folds both of its operands.
  */
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
@@ -77,25 +80,44 @@ function catalogIds(needle: string): string[] {
   return rows.map((row) => row.id);
 }
 
+/** What the canonical fold answers on this host — the answer every path must give. */
+function hostMatches(needle: string): boolean {
+  return TITLE.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+}
+
+async function readerIds(needle: string): Promise<string[]> {
+  const reader = new DefaultSessionReader({ store: readerStore() });
+  return (await reader.query({ titleContains: needle })).map((s) => s.id);
+}
+
 describe('session-search locale parity (U+0130)', () => {
-  it('A: the SQLite catalog path matches a plain-ASCII needle against a U+0130 title', () => {
-    expect(catalogIds(ASCII_NEEDLE)).toHaveLength(1);
-  });
+  for (const [label, needle] of [
+    ['plain-ASCII needle', ASCII_NEEDLE],
+    ['two-code-point needle', DECOMPOSED_NEEDLE],
+  ] as const) {
+    describe(label, () => {
+      const expected = hostMatches(needle) ? [SESSION_ID] : [];
 
-  it('B: the canonical matcher matches it', () => {
-    expect(matchesSessionFilter(summary(), { titleContains: ASCII_NEEDLE })).toBe(true);
-  });
+      it('A: the SQLite catalog path follows the host fold', () => {
+        // The row mapper is stubbed, so the row count is what this path answers.
+        expect(catalogIds(needle)).toHaveLength(expected.length);
+      });
 
-  it('C: the session reader matches it', async () => {
-    const reader = new DefaultSessionReader({ store: readerStore() });
-    const out = await reader.query({ titleContains: ASCII_NEEDLE });
-    expect(out.map((s) => s.id)).toEqual([SESSION_ID]);
-  });
+      it('B: the canonical matcher follows the host fold', () => {
+        expect(matchesSessionFilter(summary(), { titleContains: needle })).toBe(
+          expected.length === 1,
+        );
+      });
 
-  it('all three reject the two-code-point needle, so B and C agree', async () => {
-    expect(catalogIds(DECOMPOSED_NEEDLE)).toHaveLength(0);
-    expect(matchesSessionFilter(summary(), { titleContains: DECOMPOSED_NEEDLE })).toBe(false);
-    const reader = new DefaultSessionReader({ store: readerStore() });
-    expect(await reader.query({ titleContains: DECOMPOSED_NEEDLE })).toHaveLength(0);
+      it('C: the session reader follows the host fold', async () => {
+        expect(await readerIds(needle)).toEqual(expected);
+      });
+    });
+  }
+
+  it('the two needles fold apart, so the second trigger still separates B from C', () => {
+    // Exactly one of them matches on any host: under `tr` the ASCII needle, elsewhere the
+    // decomposed one. A path that mixed `toLowerCase()` with `toLocaleLowerCase()` fails one.
+    expect(hostMatches(ASCII_NEEDLE)).not.toBe(hostMatches(DECOMPOSED_NEEDLE));
   });
 });
