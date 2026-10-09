@@ -59,13 +59,20 @@ describe('crash recovery', () => {
     const holder: { registry?: LSPRegistry } = {};
     const tracker = new DocumentTracker(() => holder.registry!, log, root);
     const events = new EventBus();
+    let crashes = 0;
+    events.on('lsp.server.crashed', () => {
+      crashes++;
+    });
     const registry = new LSPRegistry(cfg, tracker, { cwd: root, log, events });
     holder.registry = registry;
     await registry.bind(root, 'lazy');
     await registry.findForPath(source, new AbortController().signal);
     await tracker.open(source);
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    // The first instance reports `ready` and exits 25ms later. A fixed sleep
+    // before polling for `ready` let a loaded coverage run see that first
+    // instance still `ready` and send the request into the dying process.
+    await waitFor(() => crashes > 0, 5000);
     await waitFor(async () => registry.get('crashy')?.state === 'ready', 5000);
 
     const tools = new Map(

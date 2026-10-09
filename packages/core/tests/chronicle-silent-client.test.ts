@@ -63,7 +63,11 @@ describe('chronicle project server silent-client reap', () => {
       );
       await waitForMetadataFile<{ authToken: string }>(metadataPath);
       const client = await connectFrame(endpoint);
-      expect((await client.nextFrame()).type).toBe('hello');
+      // `hello` proves the daemon registered this socket, so the stop below is
+      // the reap and not a plain no-client idle stop. The daemon runs in this
+      // worker: under the coverage run a stalled loop fires the frame timer
+      // ahead of the already-queued read, so give it the stop-drain budget.
+      expect((await client.nextFrame(15_000)).type).toBe('hello');
       // Deliberately send nothing at all — not even an unauthenticated ping.
       await waitForMetadataRemoval(metadataPath, 15_000);
       await waitForEndpointClosed(endpoint, 5_000);
