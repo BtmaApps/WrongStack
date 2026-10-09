@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.36] — 2026-10-09
+
+A delegation and hardening release. The leader now tunes its own reasoning
+effort per phase and picks an effort for each worker it delegates to; MCP
+clients gain spec ping and completion; and an evidence-led audit closes
+credential leaks, path-bound escapes and data-loss paths across config,
+storage, watchers and tool-output parsing. Type checks move to a pinned Bun
+checker.
+
+### Added
+
+- **Leader effort controls.** With `leader_effort_set` the leader raises its reasoning effort before debugging, design, security or review work and lowers it for mechanical runs. Requests map onto the levels the leader's model documents, the change is announced to every surface (`leader.effort_changed`), and an effort the user sets always wins.
+- **Per-delegation effort.** `delegate` and Director spawns accept an `effort` for each worker. A worker that is not given one inherits the leader's current conversation effort instead of falling back to the model default.
+- **MCP ping and completion.** `MCPClient.ping()` sends the 2024-11-05 liveness probe and `MCPClient.complete()` sends `completion/complete`, both validating spec-shaped results.
+
+### Changed
+
+- **Pinned Bun typechecking.** Workspace and CI type checks run Bun's TypeScript 7 checker at a pinned version; `pnpm setup:bun` verifies or provisions it (integrity-checked, no lifecycle scripts) and there is no `tsc` fallback. `WRONGSTACK_BUN_TYPECHECK` points at an externally managed Bun. See [CONTRIBUTING](CONTRIBUTING.md).
+- **WebUI polish.** Semantic colors, chips and surface shadows come from one token set; modals keep keyboard ownership; panels expose recoverable empty/error states; operator labels and panel copy are fully translated.
+- **Delegation guidance.** Outside solo mode, the system prompt asks the leader to delegate when a request splits into independent parts that each need real effort, and to choose each worker's effort per task and model.
+
+### Fixed
+
+- **Credentials and redaction.** Child processes no longer inherit credential-bearing environment variables, and a project-local binary cannot shadow an LSP server. The redactor masks `curl -u user:pass`, hyphenated API-key headers and JSON `password` fields. The Telegram allowlist fails closed on a bad hot-reload, and MCP OAuth refresh keeps the stored scopes.
+- **Config and data safety.** Every user-editable config, profile and manifest reader accepts a UTF-8 BOM. An unreadable profile or state file fails loudly instead of being read as empty and written back over providers and keys. Unreadable checkpoint references are retained, and shared logs are written serially.
+- **Paths and processes.** Project paths normalize their casing and are bounded at the home directory and git traversal. Timed-out subprocesses take their whole tree with them, and quoted Windows paths resolve. Millisecond preferences beyond 2^31−1 are clamped instead of firing immediately.
+- **Watchers.** Deleting a watched directory no longer produces an event storm, stale project activations are discarded, and the dependency watcher ignores Windows metadata-only change events.
+- **Tool output and verification.** Formatter, log and `outdated` output parse correctly, and `.gitignore` negation is honored. Runners no longer download tools implicitly, and installs that do not support dry runs are refused. An invalid `package.json` no longer passes a verify gate, and the Kanban verification allowlist matches the spawned path rather than its basename. The dead-code fixer keeps side-effecting initializers, and concurrent agents can edit or replace in the same file safely.
+- **Providers and context.** Multipart response text is preserved, invalid catalog dates are tolerated and index-less parallel tool calls stay separate. Council recovers its final JSON from surrounding reasoning. Context compaction keeps valid tool pairs together and measures message content safely.
+- **Protocols and surfaces.** MCP parses streamable JSON replies whole and buffers large SSE events. ACP keeps shared session indexes and rejects malformed frames. Terminal output sanitizes untrusted text without splitting Unicode. The TUI diff view keeps diff-like source lines, and Telegram defers polling when its offset is unreadable.
+- **Dependencies and memory.** Workspace sources and partial version constraints are told apart. Setting `sessionRetentionDays <= 0` disables SAGE's age-based cleanup. Expired circuit-breaker failures are pruned before stats are reported.
+
 ## [1.0.35] — 2026-10-07
 
 A hardening release. Command guards, secret redaction and dependency audits

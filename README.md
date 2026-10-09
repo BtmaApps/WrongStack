@@ -55,25 +55,26 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.35
+### What's new in 1.0.36
 
-- **Guard and secret hardening:** process-kill and path guards see through
-  `cmd /c`, launchers and every `taskkill`/`Stop-Process` target; redaction
-  covers prefixed names, any-case bearer schemes and secrets across the scan
-  boundary; vault key rotation re-encrypts nested ciphertext.
-- **Dependency audits that match the ecosystem:** package-less installs are
-  audited as tree installs, option values are no longer read as packages, and
-  manifests plus real `pip-audit`/`cargo-audit`/`bundler-audit` reports parse
-  as their tools define them.
-- **Cache-stable ChatGPT/Codex prompts:** volatile system blocks follow durable
-  history, so turn-specific context keeps the cached prefix intact. See
-  [OpenAI cache management](docs/openai-cache-management.md).
-- **HQ Hide idle:** Fleet Map and Cockpit share a persisted toggle that hides
-  idle agents and reports how many are hidden.
-- **Fixes** across ignore/glob matching, edit nesting, dead-code entries, goal
-  resume/stop, MCP request ids, effort pickers, SAGE kinds and WebUI recovery.
+- **Effort that follows the work:** the leader raises or lowers its own
+  reasoning effort per phase with `leader_effort_set`, and gives each delegated
+  worker an `effort` for its task; unset workers inherit the leader's effort.
+  An effort you set always wins.
+- **MCP ping and completion:** MCP clients send the spec liveness probe and
+  `completion/complete`, validating the results.
+- **Hardening from an evidence-led audit:** child processes no longer inherit
+  credential variables, every config reader accepts UTF-8 BOMs, and unreadable
+  config files fail loudly instead of being overwritten. Path bounds, subprocess
+  tree cleanup, watcher storms and tool-output parsing are also fixed.
+- **WebUI polish:** unified semantic colors and chips, modal keyboard
+  ownership, recoverable panel states and complete translations.
+- **Pinned Bun typechecking** for contributors: `pnpm setup:bun` provisions the
+  checker, and there is no `tsc` fallback.
 
-1.0.34 added [project goals](docs/architecture/project-goals.md),
+1.0.35 hardened command guards, secret redaction and dependency audits, and
+kept ChatGPT/Codex prompt caches stable. 1.0.34 added
+[project goals](docs/architecture/project-goals.md),
 [explicit continuation](docs/slash/nextsteps.md), [YOLO+](docs/slash/yolo.md)
 and the [dead-code workflow](docs/tools/dead-code.md).
 
@@ -736,7 +737,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.35** — current repository version; semver from 1.0.0 onward
+- **v1.0.36** — current repository version; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

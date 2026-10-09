@@ -362,10 +362,41 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.36',
+    date: '2026-10-09',
+    tagline: 'Phase-aware leader effort, per-worker effort routing, and audit-driven hardening',
+    latest: true,
+    highlights: [
+      'leader_effort_set lets the leader raise its reasoning effort for debugging, design, security or review and lower it for mechanical runs; requests map onto the model’s documented levels and a user-set effort always wins',
+      'delegate and Director spawns take an effort per worker; workers without one inherit the leader’s current conversation effort',
+      'MCP clients send the 2024-11-05 ping and completion/complete requests and validate spec-shaped results',
+      'Child processes no longer inherit credential-bearing environment variables, and a project-local binary cannot shadow an LSP server; redaction covers curl -u, hyphenated API-key headers and JSON password fields',
+      'Every user-editable config, profile and manifest reader accepts a UTF-8 BOM; unreadable files fail loudly instead of being read as empty and written back',
+      'Path bounds, subprocess-tree timeouts, watcher storms, Windows metadata-only change events and tool-output parsing are fixed; runners never download implicitly',
+      'Context compaction keeps tool pairs together, Council recovers its final JSON from reasoning, and index-less parallel tool calls stay separate',
+      'WebUI semantic colors, chips and shadows share one token set, with modal keyboard ownership, recoverable panel states and complete translations',
+      'Workspace and CI type checks run a pinned Bun TypeScript 7 checker provisioned by pnpm setup:bun, with no tsc fallback',
+    ],
+  },
+  {
+    version: '1.0.35',
+    date: '2026-10-07',
+    tagline:
+      'Guard and secret hardening, ecosystem-accurate dependency audits, cache-stable Codex prompts',
+    highlights: [
+      'Process-kill and path guards unwrap cmd /c, launchers and path/.exe command heads and collect every taskkill and Stop-Process target',
+      'Redaction covers prefixed secret names, bearer schemes in any case and secrets straddling the 64 KB scan boundary; vault key rotation re-encrypts nested ciphertext',
+      'Package-less installs are audited as whole-tree installs and option values are no longer read as package names; the license audit inspects the actual install directory',
+      'Manifests and real pip-audit, cargo-audit and bundler-audit reports parse as their ecosystems define them',
+      'ChatGPT and Codex send volatile system blocks after durable history, so turn-specific context keeps the cached prefix intact',
+      'HQ Fleet Map and Cockpit share a persisted Hide idle toggle that reports how many agents are hidden',
+      'Fixes for ignore/glob matching, edit nesting, dead-code entries, goal resume/stop, MCP request ids, effort pickers, SAGE kinds and WebUI recovery',
+    ],
+  },
+  {
     version: '1.0.34',
     date: '2026-10-06',
     tagline: 'Isolated project goals, explicit continuation, and reviewable dead-code cleanup',
-    latest: true,
     highlights: [
       '/goals and My Goals track project runs, owning sessions, task/phase progress, blockers and final verification; new git-backed goals retain dedicated branches for review',
       'Session YOLO+ removes confirmation prompts while retaining user-authored refusal rules and tool-declared denials; WebUI tabs and their workers keep separate policy',
