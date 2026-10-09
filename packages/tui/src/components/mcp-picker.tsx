@@ -2,6 +2,7 @@ import type React from 'react';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
+import type { McpPickerEditor } from '../ui-contracts.js';
 
 export interface McpPickerItem {
   name: string;
@@ -11,6 +12,9 @@ export interface McpPickerItem {
   description?: string | undefined;
   toolCount: number;
   lazy?: boolean | undefined;
+  command?: string | undefined;
+  url?: string | undefined;
+  args?: string[] | undefined;
 }
 
 interface McpPickerProps {
@@ -20,6 +24,7 @@ interface McpPickerProps {
   selected: number;
   busy?: boolean | undefined;
   hint?: string | undefined;
+  editor?: McpPickerEditor | undefined;
 }
 
 /** Colourise an MCP connection status string. */
@@ -48,6 +53,7 @@ export function McpPicker({
   hint,
   maxRows,
   columns,
+  editor,
 }: McpPickerProps): React.ReactElement {
   const size = useTerminalSize();
   const budget = maxRows ?? Math.max(8, size.rows - 6);
@@ -65,6 +71,61 @@ export function McpPicker({
   const above = windowStart;
   const below = total - windowEnd;
 
+  if (editor) {
+    const fields = [
+      ['Name', editor.name],
+      ['Transport (stdio / streamable-http / sse)', editor.transport],
+      [
+        editor.transport === 'stdio' || !editor.transport ? 'Command (empty for preset)' : 'URL',
+        editor.target,
+      ],
+      ['Arguments (JSON array)', editor.args],
+    ];
+    return (
+      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+        <Text bold color="cyan">
+          {editor.mode === 'remove'
+            ? 'Remove MCP server'
+            : editor.mode === 'add'
+              ? 'Add MCP server'
+              : 'Edit MCP server'}
+        </Text>
+        {editor.mode === 'remove' ? (
+          <Text>Remove "{editor.name}" from config? y confirm · n/Esc cancel</Text>
+        ) : (
+          <>
+            <Text dimColor wrap="truncate-end">
+              Tab fields · Enter save · Ctrl+U clear · Esc cancel
+            </Text>
+            {fields.map(([label, value], index) =>
+              !compact || editor.field === index ? (
+                <Text
+                  key={label}
+                  color={editor.field === index ? 'cyan' : undefined}
+                  wrap="truncate-end"
+                >
+                  {editor.field === index ? '›' : ' '} {label}: {value}
+                  {editor.field === index ? '▌' : ''}
+                </Text>
+              ) : null,
+            )}
+            {!compact ? (
+              <Text dimColor wrap="truncate-end">
+                New servers start disabled; Enter on the server row enables them.
+              </Text>
+            ) : null}
+          </>
+        )}
+        {hint ? (
+          <Text color="yellow" wrap="truncate-end">
+            {hint}
+          </Text>
+        ) : null}
+        {busy ? <Text dimColor>Saving…</Text> : null}
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
       <Text bold color="cyan">
@@ -72,8 +133,8 @@ export function McpPicker({
       </Text>
       <Text dimColor wrap="truncate-end">
         {(columns ?? size.columns) < 70
-          ? '↑↓ · Enter toggle · r restart · Esc'
-          : '↑/↓ select · Enter/←/→ toggle enable · r restart · Esc close'}
+          ? 'a add · e edit · d del · Enter on/off · r restart · Esc'
+          : '↑/↓ select · a add · e edit · d remove · Enter toggle · r restart · Esc close'}
       </Text>
       <Box marginTop={compact ? 0 : 1} flexDirection="column">
         {items.length === 0 ? (

@@ -95,7 +95,7 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
   },
   browser_open: {
     longDescription:
-      'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',
+      'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Missing Playwright/Chromium installs automatically. For trusted private or localhost targets, ask the operator to run /browser allow <origin> once for this project.',
     params: [
       {
         name: 'url',
@@ -131,7 +131,7 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
   },
   browser_navigate: {
     longDescription:
-      'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first; private and localhost origins require an explicit allowlist.',
+      'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first. If private or localhost access is blocked, show the operator the exact /browser allow <origin> command from the error.',
     params: [
       {
         name: 'sessionId',
@@ -372,6 +372,18 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
         type: 'string[]',
         required: true,
         description: 'Project-local file paths to upload through the selected file input.',
+      },
+    ],
+  },
+  browser_close: {
+    longDescription:
+      'Close an owned browser session and reclaim its resources, returning trace-artifact metadata when tracing was enabled.',
+    params: [
+      {
+        name: 'sessionId',
+        type: 'string',
+        required: true,
+        description: 'Browser session id returned by browser_open.',
       },
     ],
   },

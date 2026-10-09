@@ -119,7 +119,7 @@ export abstract class ToolExecutorCore {
     const decision = await this.opts.permissionPolicy.evaluate(tool, use.input, ctx);
     let effectivePermission = decision.permission;
     const policy = this.opts.permissionPolicy;
-    const yolo = policy.getYolo?.() === true;
+    const yolo = policy.yoloModeFor?.(ctx).yolo ?? policy.getYolo?.() === true;
     // A trust-file `auto` must not widen into arbitrary dangerous-capability
     // execution, so it still confirms below. YOLO, an explicit
     // `--allowed-tools` grant and an approval the user gave at a confirm

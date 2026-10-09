@@ -30,8 +30,10 @@ contexts as safety nets.
   loopback, link-local, reserved, and metadata addresses by default. The same guard runs on browser
   subrequests. Every Chromium connection passes through a loopback guard proxy that resolves once,
   validates every DNS answer, and connects to the selected IP directly to prevent DNS rebinding.
-  For trusted local development fixtures, set an exact comma-separated origin allowlist such as
-  `WRONGSTACK_BROWSER_PRIVATE_ORIGINS=http://127.0.0.1:4173`; other ports and origins remain blocked.
+  For trusted local development fixtures, use `/browser allow http://127.0.0.1:4173`.
+  An exact comma-separated environment allowlist such as
+  `WRONGSTACK_BROWSER_PRIVATE_ORIGINS=http://127.0.0.1:4173` is also supported;
+  other ports and origins remain blocked.
   The former broad `WRONGSTACK_BROWSER_ALLOW_PRIVATE=1` switch is no longer consumed by the
   first-party browser tools; replace it with explicit origins.
 - Downloads are disabled. Uploads are restricted to existing files inside `projectRoot`.
@@ -66,6 +68,10 @@ node scripts/check-browser-runtime.mjs
 node scripts/check-browser-runtime.mjs --smoke
 ```
 
-If Chromium is unavailable, repair it with `node scripts/check-browser-runtime.mjs --install`.
+Missing Chromium is installed automatically on the first `browser_open`.
+Use `/browser install` to prepare it immediately, or
+`node scripts/check-browser-runtime.mjs --install` for a standalone doctor repair.
+Allow a local development origin directly with `/browser allow http://localhost:3000`;
+this project setting takes effect immediately, including in existing browser sessions.
 Linux CI/base images that also need system libraries can add `--with-deps`. The CI matrix validates
 launch and a real page interaction on Ubuntu and Windows; the release job repeats the Linux check.

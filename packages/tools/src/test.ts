@@ -91,7 +91,10 @@ export const testTool: Tool<TestInput, TestOutput> = {
     return final;
   },
   async *executeStream(input, ctx, opts): AsyncGenerator<ToolStreamEvent<TestOutput>> {
-    const cwd = input.cwd ? await safeResolveReal(input.cwd, ctx) : ctx.cwd;
+    const cwd =
+      input.cwd || ctx.workingDir
+        ? await safeResolveReal(input.cwd ?? ctx.workingDir!, ctx)
+        : ctx.cwd;
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     signal.throwIfAborted();
     const VALID_RUNNERS: ReadonlySet<string> = new Set(['vitest', 'jest', 'mocha', 'auto', 'none']);

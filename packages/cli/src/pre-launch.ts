@@ -13,6 +13,7 @@ export {
   LaunchAbortedError,
   type LaunchModeChoices,
   persistLaunchChoices,
+  promptStopAskingStartupQuestions,
   runLaunchPrompts,
 } from './pre-launch/launch-prompts.js';
 export {

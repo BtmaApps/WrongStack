@@ -47,6 +47,9 @@ Prefer `codebase-search` when you know the symbol name, before `grep`, `glob`, o
 <!--ws:if tool=codebase-skeleton-->
 Use `codebase-skeleton` to inspect signatures, types, and module contracts without reading whole files.
 <!--ws:end-->
+<!--ws:if tool=codebase-read-symbol-->
+Use `codebase-read-symbol` to read a specific function or class implementation with line numbers without guessing file offsets.
+<!--ws:end-->
 <!--ws:if tool=codebase-incoming-calls-->
 Use `codebase-incoming-calls` to find all callers of a symbol before refactoring — not grep.
 <!--ws:end-->

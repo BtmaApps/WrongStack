@@ -2,6 +2,8 @@ import type { BrainHeuristicsConfig } from '../../coordination/brain-heuristics.
 import type { BrainRule } from '../../coordination/brain-rules.js';
 
 export interface SkillsConfig {
+  /** Local bundled-skill recommendations and bounded primary body preload. Default true; no API/account. */
+  localSuggest?: boolean | undefined;
   /**
    * Read skills from foreign coding-agent directories (`<project>/.claude/skills`
    * and `~/.claude/skills`). Default `true`. Lets Claude Code / Codex / Gemini /

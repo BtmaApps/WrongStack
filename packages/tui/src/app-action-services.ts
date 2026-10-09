@@ -75,6 +75,7 @@ export type AppActionServices =
   | { type: 'mcpPickerSetItems'; items: McpPickerItem[] }
   | { type: 'mcpPickerBusy'; busy: boolean }
   | { type: 'mcpPickerHint'; text?: string | undefined }
+  | { type: 'mcpPickerEditor'; editor?: import('./ui-contracts.js').McpPickerEditor | undefined }
   | { type: 'toolsPickerOpen'; items?: ToolPickerItem[] | undefined }
   | { type: 'toolsPickerClose' }
   | { type: 'toolsPickerMove'; delta: number }

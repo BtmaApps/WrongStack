@@ -1,203 +1,88 @@
 ---
 name: security-scanner
-description: |
-  Use this skill when scanning code or configuration for security vulnerabilities.
-  Triggers: user says "security", "vulnerability", "CVE", "secret",
-  "injection", "XSS", "SQL injection", "audit security", "supply chain".
-version: 1.3.0
-required-capabilities: [filesystem.read, code.inspect]
+description: "Review owned source, configuration and dependency metadata for supported security findings with precise evidence and remediation. Use when assessing authorization, data exposure, unsafe boundaries, credentials or advisories; treat scanner hits as candidates and scope severity to actual reachability and impact."
+version: 1.4.1
+required-capabilities: [filesystem.read]
 required-tools: []
-optional-capabilities: [dependencies.manage]
+optional-capabilities: [verification.run, web.research, filesystem.write]
+trigger: "assessing authorization, data exposure, unsafe boundaries, credentials or advisories; treat scanner hits as candidates and scope severity to actual reachability and impact."
+metadata:
+  routing-group: quality
 ---
 
 # Security Scanner
 
+## Selection card
+- Task: Review source trust boundaries and defensive security. / TR: Kaynak güven sınırlarını ve savunma güvenliğini incele.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
 ## Overview
 
-Scans code, configs, and dependencies for security issues. Reports with severity (CRITICAL/HIGH/MEDIUM/LOW) and concrete remediation steps. Pairs with `npm audit` for supply chain scanning.
+Provide a defensive, evidence-led review of the requested source and configuration.
+Separate confirmed findings, supported static concerns and validation gaps.
+Use local, non-destructive tests of defensive behavior where appropriate.
 
 ## Rules
 
-1. Always provide remediation — "found X" without "do Y" is useless.
-2. Verify regex matches before flagging — generic patterns cause false positives.
-3. Don't scan `node_modules` — use `npm audit` for supply chain issues.
-4. Don't flag test fixtures — mock credentials in tests are acceptable.
-5. Always run dependency audit — supply chain is a real attack vector.
-6. Flag config issues (TLS disabled, HTTP in production) as CRITICAL.
-7. Never echo a full secret into the report — redact it (short prefix + char count, e.g. `ghp_…36 chars`). Cite `file:line` you have read; don't flag from a pattern guess.
-
-## Patterns
-
-### Do
-
-```typescript
-// ✅ SAFE — parameterized query
-db.query("SELECT * FROM users WHERE id = $1", [userId]);
-
-// ✅ SAFE — escape user input
-element.textContent = userInput;
-
-// ✅ SAFE — execFile with args array
-execFile('find', ['.', '-name', userInput], { signal: AbortSignal.timeout(5000) });
-```
-
-### Don't
-
-```typescript
-// ❌ CRITICAL — hardcoded AWS credentials
-const awsKey = "[REDACTED:aws_access_key]";
-
-// ❌ CRITICAL — private key committed
-const pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIE...";
-
-// ❌ HIGH — XSS via innerHTML
-element.innerHTML = userInput;
-
-// ❌ HIGH — shell injection
-exec(`find . -name ${userInput}`);
-
-// ❌ HIGH — SQL injection
-const query = "SELECT * FROM users WHERE id = " + userId;
-```
+1. Identify scope, assets, entrypoints and trust boundaries. Read surrounding
+   validators, authorization and cleanup before interpreting a scanner hit.
+2. Give every finding a real location, reachable condition, violated contract,
+   impact, evidence level and concrete remediation.
+3. Severity follows impact, exposure and prerequisites. TLS, CORS or HTTP patterns
+   are not automatically Critical without their deployed context.
+4. Redact credentials completely where possible. A test directory can contain
+   real leaked credentials; distinguish known dummy fixtures from genuine values.
+5. Use the ecosystem's dependency audit and exact lockfile affected ranges when
+   in scope. Audit output alone does not prove exploitable runtime usage.
+6. Do not contact suspected credentials/services or build attack workflows.
+   Prefer source evidence and bounded tests that verify protective contracts.
 
 ## Workflow
 
-```
-1. Scope:  Accept paths or use sensible defaults
-2. Secrets:  Credential patterns (plus the secret_scanner_test tool when that plugin is loaded)
-3. Injection:  The security-ast-scan tool per file when available, then read every hit
-4. Config:  Check TLS, crypto, auth configurations
-5. Audit:  Run package audit
-6. Report:  Prioritized markdown with remediation
-```
+1. Map the requested surface and preserve current dirty work.
+2. Collect candidates from available scanners and focused source searches.
+   Exclude dependency/build trees from generic source scanning; inspect vendored
+   or generated code only when it forms the actual requested boundary.
+3. Trace untrusted inputs to privileged operations and protective checks.
+   Check object-level authorization, logging/redaction, resource limits and
+   lifecycle ownership where applicable.
+4. For dependencies, verify official advisories and affected/resolved versions.
+   Distinguish direct, transitive, build-only and production use.
+5. Review each candidate independently for reachability and existing protection.
+   Use non-destructive local negative tests; label untested deployment assumptions.
+6. Report prioritized findings and precise defensive fixes. For review-only
+   requests, leave production files unchanged; apply authorized remediation
+   within scope and run the affected checks.
 
-## Severity levels
+## Remediation principles
 
-| Level | Meaning | Action |
-|-------|---------|--------|
-| **CRITICAL** | Active exploit possible | Fix immediately |
-| **HIGH** | Vulnerability likely exploitable | Fix before release |
-| **MEDIUM** | Risk exists but harder to exploit | Fix soon |
-| **LOW** | Best practice violation | Consider fixing |
+- Validate and authorize at the operation/data boundary.
+- Use parameterized data queries and structured process arguments; identifiers
+  still need explicit allowlists where the API cannot parameterize them.
+- Use semantic DOM/text APIs for text and maintained sanitization for authorized HTML.
+- Bound filesystem access to owned roots and enforce the correct path/ownership model.
+- Keep secrets out of source, logs, artifacts and error responses. Removing a
+  committed credential is incomplete without the owner's rotation/revocation process.
+- Apply URL/origin policies and trusted service boundaries according to real deployment.
 
-## Secret patterns
+## Report
 
-```
-| Pattern | Example | Level |
-|---------|---------|-------|
-| GitHub token | `ghp_[a-zA-Z0-9]{36}` | CRITICAL |
-| AWS Access Key | `(AKIA|ASIA)[0-9A-Z]{16}` | CRITICAL |
-| AWS Secret | base64 40-char | CRITICAL |
-| Private Key PEM | `-----BEGIN.*PRIVATE KEY-----` | CRITICAL |
-| JWT | `eyJ[a-zA-Z0-9_-]+` | HIGH |
-| Generic API Key | 32+ random chars | MEDIUM |
-| Bearer token | `Authorization: Bearer xxx` | HIGH |
-```
+| Severity | Location | Condition / impact | Evidence | Defensive fix |
+|---|---|---|---|---|
+| <level> | <file:line> | <reachable scenario> | <source/test/advisory> | <concrete change> |
 
-## Real examples
+Include examined scope, rejected candidates, dependency-audit availability and
+missing live configuration. “No confirmed findings in this scope” is a valid
+result; do not claim the application is universally secure.
 
-```typescript
-// ❌ CRITICAL — hardcoded AWS credentials
-const awsKey = "[REDACTED:aws_access_key]";
+## Acceptance checks
 
-// ❌ CRITICAL — private key committed
-const pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIE...";
-
-// ❌ HIGH — JWT in code
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-
-// ❌ HIGH — XSS via innerHTML
-element.innerHTML = userInput;
-
-// ❌ HIGH — shell injection
-exec(`find . -name ${userInput}`);
-
-// ❌ HIGH — SQL injection
-const query = "SELECT * FROM users WHERE id = " + userId;
-
-// ✅ SAFE — parameterized query
-db.query("SELECT * FROM users WHERE id = $1", [userId]);
-
-// ✅ SAFE — escape user input
-element.textContent = userInput;
-```
-
-## Injection vectors
-
-| Construct | Safe alternative |
-|-----------|-------------------|
-| `eval(str)`, `new Function(str)` | Parse instead (`JSON.parse`, a real parser); `new Function` evaluates strings exactly like `eval` |
-| `innerHTML = x` | `textContent` or DOMPurify.sanitize |
-| `exec(\`cmd ${input}\`)` | `execFile` with args array |
-| `SQL = "SELECT * FROM " + table` | parameterized query |
-| `fs.readFile(path + userInput)` | `path.resolve` + allowlist |
-| `fetch(userSuppliedUrl)` (SSRF) | Allowlist hosts; block private, loopback, and metadata addresses after DNS resolution |
-| `Object.assign(target, JSON.parse(body))` (prototype pollution) | Reject `__proto__` and `constructor` keys; validate with a schema |
-| `/orders/:id` loaded without an ownership check (broken object-level authorization) | Authorize against the specific object on every request |
-| `new RegExp(userInput)`, nested quantifiers on user input (ReDoS) | Escape input, bound its length, use linear-time patterns |
-
-## Configuration checks
-
-```
-- TLS verification disabled? → CRITICAL for production
-- HTTP instead of HTTPS? → MEDIUM for production
-- Secrets in env vars logged to console? → CRITICAL
-- Hardcoded credentials in config? → CRITICAL
-- Overly permissive CORS? → MEDIUM
-- Missing rate limiting? → MEDIUM-HIGH
-```
-
-## Anti-patterns
-
-- **Don't scan `node_modules`** — use `npm audit` instead
-- **Don't report without remediation** — "found X" is useless without "do Y"
-- **Don't ignore false positives** — verify regex matches before flagging (especially generic patterns)
-- **Don't skip dependency scanning** — supply chain is a real attack vector
-- **Don't flag test fixtures** — mock credentials in tests are ok, but not in production code
-
-## Remediation template
-
-```
-## Remediation Checklist
-- [ ] Remove hardcoded credentials from `src/config.ts`
-- [ ] Move secrets to environment variables, add to .gitignore
-- [ ] Use parameterized queries in `src/db/` files
-- [ ] Add rate limiting to `src/api/` routes
-
-<nextsteps>
-1. Fix the hardcoded API key in src/config.ts
-2. Fix the shell injection in src/auth/login.ts
-3. Fix the missing rate limiting in src/api/routes.ts
-</nextsteps>
-```
-
-## Out of scope
-
-- **Don't echo a full secret in the report.** Redact. A `ghp_…36 chars` is enough for the reader to find and rotate it. The unredacted value in a report is itself a leak.
-- **Don't flag a `file:line` you haven't read.** Generic patterns cause false positives; verify the line is real before reporting. No "looks like a secret" findings.
-- **Don't flag test fixtures as leaked secrets.** Mock credentials in `tests/` and `__fixtures__` are expected. Skip them; flag leaks in production code.
-- **Don't scan `node_modules`.** Use `npm audit` / `pnpm audit` for supply chain. Grepping `node_modules` is a noise machine.
-- **Don't report without remediation.** "Found X" without "do Y" is a finding the user has to research themselves. Always include the fix.
-- **Don't claim CRITICAL without proof of exploitability.** Severity ladders are real. A pattern hit is a lead, not a warrant. State the input that triggers the bug and the consequence.
-- **Don't bypass dependency audit.** Supply chain is an attack vector; skipping `npm audit` / lockfile review is skipping the scanner.
-- **Don't disable TLS or relax auth configs as a "config option" without flagging CRITICAL.** TLS disabled in production is a CRITICAL, not a config note.
-
-## Before returning
-
-- [ ] Every `file:line` opened and confirmed; no flag from a regex guess
-- [ ] Secrets redacted in the report (prefix + char count, never the value)
-- [ ] Test fixtures skipped for secrets; flagged only for leak/unawaited patterns
-- [ ] `node_modules` not scanned; supply chain via `npm audit` / lockfile review
-- [ ] Every finding carries a remediation; "found X" without "do Y" not shipped
-- [ ] Severity passes the ladder; CRITICAL reserved for proven exploitability
-- [ ] Dependency audit included; CVE/version drift covered
-- [ ] TLS / HTTP / CORS / rate-limit configuration checked and reported
-- [ ] False-positive rate called out with a cause when it exceeds 30%
-- [ ] Summary counts match the findings listed; `<nextsteps>` mirrors them in severity order
+- Verify defensive findings and fixes against scoped source evidence; state unresolved claims.
 
 ## Skills in scope
 
-- `bug-hunter` — for general code quality bugs found during security scan
-- `audit-log` — for dependency version audit trails
-- `git-flow` — for committing security patches properly
-- `output-standards` — for standardized `<nextsteps>` formatting
+- code-review — changed-contract review.
+- tech-stack — affected package versions.
+- data-governance — sensitive data handling.
+- testing — defensive regression checks.

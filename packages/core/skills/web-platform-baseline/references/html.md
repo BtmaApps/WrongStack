@@ -1,77 +1,51 @@
-<!-- verified: 2026-09-16 | live check against MDN, web.dev Baseline, caniuse -->
-<!-- One row below is explicitly marked UNVERIFIED. Do not assert it without checking. -->
+<!-- verified: 2026-10-09 | source: WebDX web-features 3.42.0, live npm release data -->
 
-# HTML & platform APIs baseline
+Baseline is a compatibility summary, not a substitute for the supported browser,
+device and assistive-technology matrix. High means widely available; low means
+newly available; false means limited across the complete tracked surface.
+The table names exact compatibility keys where the aggregate feature includes
+additional syntax with different support. Recheck the current data before an
+architectural decision; do not infer unsupported behavior from an aggregate alone.
 
-Re-verify anything below if `verified:` is more than 90 days old.
+Source: [WebDX feature data](https://github.com/web-platform-dx/web-features)
+via [npm release metadata](https://registry.npmjs.org/web-features/latest).
 
-## Overlays
+# HTML and platform APIs
 
-| Feature | Tier | Replaces |
+| Feature / exact surface | Current tier | Source feature id |
 |---|---|---|
-| **`<dialog>` + `showModal()`** | Widely available | Custom modal with a hand-rolled focus trap, scroll lock, and `Escape` handler |
-| **Popover API** (`popover`, `popovertarget`) | **Newly available** (Baseline Jan 2025; reaches *widely available* ~Jul 2027) | JS-managed dropdown/tooltip open state and light-dismiss — pair with a fallback for older targets |
-| `::backdrop` | Widely available | A manually rendered overlay div |
-| **Anchor positioning** | **Baseline since Jan 2026** (see `css.md`) | Popper / Floating UI for placement and flipping |
+| dialog/showModal | Widely available (Baseline 2022-03-14) | dialog |
+| Popover | Newly available (Baseline 2025-01-27) | popover |
+| field-sizing | Newly available (Baseline 2026-06-16) | field-sizing |
+| datalist | Limited | datalist |
+| Lazy image/iframe loading | Widely available (Baseline 2023-12-19) | loading-lazy |
+| fetchpriority | Newly available (Baseline 2024-10-29) | fetch-priority |
+| details/summary | Widely available (Baseline 2020-01-15) | details |
+| Exclusive details (name) | Newly available (Baseline 2024-09-03) | details-name |
+| inert | Widely available (Baseline 2023-04-11) | inert |
+| structuredClone | Widely available (Baseline 2022-03-14) | structured-clone |
+| Intl core | Widely available (Baseline 2017-09-28) | intl |
+| Intl.DurationFormat | Newly available (Baseline 2025-03-04) | intl-duration-format |
+| Same-document view transitions | Newly available (Baseline 2025-10-14) | view-transitions |
+| Cross-document view transitions | Limited | cross-document-view-transitions |
+| Speculation Rules | Limited | speculation-rules |
 
-`<dialog>` gives focus management, inertness of the background, `Escape` to
-close, and `::backdrop` for free. Reaching for a modal library is now the
-exception that needs justifying.
+## Semantic and integration checks
 
-## Forms
+- Native dialog provides a useful modal boundary, but still needs an accessible
+  name, intentional initial/return focus and verified scrolling behavior.
+- Popover manages display/light-dismiss; choose semantics and keyboard behavior
+  from the actual widget. It is not automatically a menu or accessible combobox.
+- Native datalist support does not establish consistent screen-reader behavior.
+- Server validation remains necessary even when browser constraint validation runs.
+- Choose image dimensions, srcset/sizes and loading priority from the actual
+  content; the LCP resource generally should not be lazy-loaded.
+- Clipboard access needs the supported secure-context/permission path and a
+  visible success/error result.
+- Use native controls, associated labels, meaningful landmarks and heading order.
+  One h1 is a useful page convention, not a standalone WCAG success criterion.
+- For new features, check the exact syntax and target versions in MDN and the
+  relevant specification; CSS @supports cannot prove JavaScript API semantics.
 
-| Feature | Tier | Notes |
-|---|---|---|
-| Constraint validation (`required`, `pattern`, `:user-invalid`) | Widely available | Prefer `:user-invalid` over `:invalid` — it waits until the user has interacted |
-| `<input type="date|time|color|range">` | Widely available | Check the design impact; native pickers vary by platform |
-| `<datalist>` | Widely available | Simple autocomplete without a library |
-| **`field-sizing: content`** | **Baseline since Jun 2026** | Auto-growing textarea without JS measurement |
-| **Customizable select** (`appearance: base-select`, `::picker(select)`) | **Limited** — Chrome/Edge 135+; Safari shipping/TP around 27; Firefox behind a flag in Nightly | Purely additive: an unsupporting browser renders a normal native select |
-| `inputmode`, `enterkeyhint`, `autocomplete` | Widely available | Mobile keyboard correctness — cheap, routinely forgotten |
-
-Always set `autocomplete` on real fields (name, email, address, one-time-code).
-It is an accessibility and conversion win, and it is free.
-
-## Media & loading
-
-| Feature | Tier | Notes |
-|---|---|---|
-| `loading="lazy"` | Widely available | Below-the-fold images |
-| `fetchpriority` | Widely available | Raise the LCP image, lower the rest |
-| `<picture>` / `srcset` / `sizes` | Widely available | Serve the right bytes per viewport |
-| `decoding="async"` | Widely available | Avoid decode jank |
-| Explicit `width`/`height` or `aspect-ratio` | — | **Mandatory** — the main source of layout shift |
-| AVIF / WebP | Widely available | With a fallback source |
-
-## Structure & semantics
-
-| Feature | Tier | Notes |
-|---|---|---|
-| Landmarks (`header/nav/main/aside/footer`) | Widely available | One `main`, one `h1` |
-| `<details>` / `<summary>` | Widely available | A real disclosure widget in the a11y tree, keyboard-operable, zero JS |
-| `<details name="…">` (exclusive accordion) | Newly available | Accordion without JS |
-| `inert` | Widely available | Disable a background region wholesale |
-| **Declarative Shadow DOM** | **Widely available** — Chrome/Edge 111+, Firefox 123+, Safari 16.4+ | SSR-able components with no client JS for first render |
-| `<template>` + Web Components | Widely available | Only when framework-independence is a requirement |
-
-## Platform APIs commonly hand-rolled
-
-| API | Tier | Replaces |
-|---|---|---|
-| `IntersectionObserver` | Widely available | Scroll listeners for visibility |
-| `ResizeObserver` | Widely available | Window resize handlers (but prefer container queries in CSS) |
-| `AbortController` / `AbortSignal` | Widely available | Manual cancellation flags |
-| `structuredClone` | Widely available | `JSON.parse(JSON.stringify(x))` |
-| `Intl.*` (`NumberFormat`, `DateTimeFormat`, `RelativeTimeFormat`, `ListFormat`) | Widely available | Hand-written date/number/list formatting — **always** use `Intl` |
-| `navigator.clipboard` | Widely available | `document.execCommand('copy')` |
-| View Transition API | Newly available | Hand-built FLIP transitions |
-| Speculation Rules (prerender/prefetch) | **UNVERIFIED** — last live check could not confirm a tier | Do not assert support for this one; check before recommending it |
-
-## Reminders that keep costing time
-
-- Every `<img>` needs dimensions or `aspect-ratio`.
-- Every icon-only control needs an accessible name (`aria-label`), and an emoji
-  is not a name.
-- A `<div onClick>` is not a button — it loses keyboard, focus, and role.
-- `tabindex` values above 0 are always a bug.
-- Use `Intl` before writing any formatting string by hand.
+When a row is limited, define a usable fallback. Do not add a framework or
+polyfill unless the actual product requirements need it.

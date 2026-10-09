@@ -5,18 +5,6 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart2: Record<string, ToolDetail> = {
-  browser_close: {
-    longDescription:
-      'Close an owned browser session and reclaim its resources, returning trace-artifact metadata when tracing was enabled.',
-    params: [
-      {
-        name: 'sessionId',
-        type: 'string',
-        required: true,
-        description: 'Browser session id returned by browser_open.',
-      },
-    ],
-  },
   e2e_plan: {
     longDescription:
       'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',
@@ -356,14 +344,14 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
   },
   exec: {
     longDescription:
-      'Execute a command directly without shell interpretation, using explicit program arguments. Prefer it when argument safety and predictable process invocation matter.',
+      'Execute a command directly without shell interpretation, preserving every argument. YOLO/YOLO+ permit executables beyond the default roster, filesystem-scoped Git -C and temporary development settings; explicit tools.exec.deny entries still refuse. Prefer it for predictable process invocation.',
     params: [
       {
         name: 'command',
         type: 'string',
         required: true,
         description:
-          'The base command to run. Must be in the internal allowlist (e.g. "node", "pnpm", "git", "tsc").',
+          'Executable name or path. Outside YOLO it must be in the command roster; explicit tools.exec.deny entries apply in every mode.',
       },
       {
         name: 'args',
@@ -378,11 +366,12 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'timeout',
         type: 'integer',
-        description: 'Per-command timeout in milliseconds (default 30000, max 600000).',
+        description:
+          'Per-command timeout in milliseconds (default 30000; prompt-mode max 600000). In YOLO/YOLO+, longer explicit timeouts are honored and 0 disables the command timer; parent cancellation still applies.',
       },
     ],
     doNotUseWhen: [
-      'the operation requires pipes, redirection, shell expansion, or a non-allowlisted command.',
+      'the operation requires pipes, redirection or shell expansion; outside YOLO, a non-allowlisted command also needs bash or an explicit config allowance.',
     ],
     useInstead: ['bash'],
     notes: [
@@ -439,7 +428,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
   },
   fetch: {
     longDescription:
-      'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Use it for a known page or endpoint, not for general web discovery.',
+      'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Project origins allowed with /network allow (or /browser allow) are shared with the browser and HTTP reader. Use for a known page or endpoint.',
     params: [
       {
         name: 'url',
@@ -1389,6 +1378,107 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
     notes: [
       '`action: "replace"` — set the complete task list (tasks ordered by priority)',
       '`action: "status"` — update a task\'s status (e.g. pending→in_progress, in_progress→completed)',
+    ],
+  },
+  git: {
+    longDescription:
+      'Inspect or run scoped Git operations in the project, including status, diff, history, branches, and commits. Review the target and working tree before mutating operations.',
+    params: [
+      {
+        name: 'command',
+        type: "'status' | 'log' | 'diff' | 'commit' | 'branch' | 'checkout' | 'stash' | 'push' | 'pull' | 'fetch' | 'reset' | 'worktree'",
+        required: true,
+        description: 'Git subcommand',
+      },
+      {
+        name: 'files',
+        type: 'string',
+        description:
+          'File(s) for status/diff: single path, comma-separated list, or "**/*.ts" glob',
+      },
+      {
+        name: 'message',
+        type: 'string',
+        description: 'Commit message (required for commit)',
+      },
+      {
+        name: 'branch',
+        type: 'string',
+        description: 'Branch name for checkout/branch',
+      },
+      {
+        name: 'format',
+        type: "'short' | 'oneline' | 'stat' | 'graph'",
+        description: 'Log format (default: short)',
+      },
+      {
+        name: 'limit',
+        type: 'integer',
+        description: 'Limit for log (default: 20)',
+      },
+      {
+        name: 'dry_run',
+        type: 'boolean',
+        description: 'For commit: show what would be committed',
+      },
+      {
+        name: 'worktreeAction',
+        type: "'list' | 'add' | 'remove' | 'prune'",
+        description: 'Worktree action: list, add, remove, prune',
+      },
+      {
+        name: 'worktreePath',
+        type: 'string',
+        description: 'Path for worktree add/remove (e.g. "../wt-feature-xyz")',
+      },
+      {
+        name: 'newBranch',
+        type: 'boolean',
+        description: 'Create new branch when adding worktree',
+      },
+      {
+        name: 'force',
+        type: 'boolean',
+        description: 'Force operation (e.g. worktree remove --force)',
+      },
+    ],
+    notes: [
+      '`command`: one of the supported subcommands (status, log, diff, commit, etc.)',
+      'Use `message` only for commit operations.',
+      'Use `files` array for operations that take paths (status, diff, add, etc.).',
+    ],
+  },
+  patch: {
+    longDescription:
+      'Apply a unified diff to project files with patch-style context checking. Use it for a reviewed multi-file change when exact patch content is available.',
+    params: [
+      {
+        name: 'patch',
+        type: 'string',
+        required: true,
+        description: 'Unified diff patch content',
+      },
+      {
+        name: 'directory',
+        type: 'string',
+        description: 'Root directory for patch (default: cwd)',
+      },
+      {
+        name: 'strip',
+        type: 'integer',
+        description: 'Strip leading path components (default: 1)',
+      },
+      {
+        name: 'dry_run',
+        type: 'boolean',
+        description: 'Preview without applying',
+      },
+    ],
+    doNotUseWhen: ['you do not already have a unified diff or only need one precise replacement.'],
+    useInstead: ['edit'],
+    notes: [
+      'Use `dry_run: true` to see what would happen without modifying files.',
+      'On failure it creates .rej and .orig files for manual review.',
     ],
   },
 };

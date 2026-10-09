@@ -76,6 +76,9 @@ export interface McpPickerItem {
   description?: string | undefined;
   toolCount: number;
   lazy?: boolean | undefined;
+  command?: string | undefined;
+  url?: string | undefined;
+  args?: string[] | undefined;
 }
 
 export interface ToolPickerItem {
@@ -382,6 +385,16 @@ export interface PickerDeps {
       }>)
     | undefined;
   getMcpServers?: (() => McpPickerItem[]) | undefined;
+  onMcpManage?:
+    | ((
+        action: 'add' | 'edit' | 'remove',
+        input: Pick<McpPickerItem, 'name' | 'transport' | 'command' | 'url' | 'args'>,
+      ) => Promise<{
+        items: McpPickerItem[];
+        message?: string | undefined;
+        error?: string | undefined;
+      }>)
+    | undefined;
   onMcpToggle?:
     | ((name: string) => Promise<{
         items: McpPickerItem[];

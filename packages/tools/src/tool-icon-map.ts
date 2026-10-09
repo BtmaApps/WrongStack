@@ -168,6 +168,7 @@ export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
   'codebase-incoming-calls': 'index',
   'codebase-outgoing-calls': 'index',
   'codebase-invariant-check': 'index',
+  'codebase-read-symbol': 'file',
   'dead-code-scan': 'index',
   'dead-code-fix': 'edit',
   codebase_index: 'index',
@@ -176,6 +177,7 @@ export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
   codebase_incoming_calls: 'index',
   codebase_outgoing_calls: 'index',
   codebase_invariant_check: 'index',
+  codebase_read_symbol: 'file',
   dead_code_scan: 'index',
 
   // Data

@@ -171,7 +171,16 @@ export function handleRefineResultMessage(message: ServerMessage, deps: MessageH
   }
   if (action.kind === 'send') {
     setRefineState(null);
-    dispatchUserMessage(action.text);
+    // The refinement came back unchanged: send the original with the images that
+    // were attached to it (every other refine exit forwards them).
+    if (current.images?.length) {
+      dispatchUserMessage(
+        action.text,
+        current.images.map((image) => ({ ...image, mediaType: image.mime })),
+      );
+    } else {
+      dispatchUserMessage(action.text);
+    }
     return;
   }
   setRefineState(action.state);

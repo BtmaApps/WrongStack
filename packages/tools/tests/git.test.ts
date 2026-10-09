@@ -15,6 +15,19 @@ const makeOpts = () => ({ signal: new AbortController().signal });
 const repoRoot = path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 
 describe('gitTool', () => {
+  it('finds the project repository from more than 20 directory levels below it', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-git-deep-'));
+    try {
+      execFileSync('git', ['init', '-q', root], { windowsHide: true });
+      const nested = path.join(root, ...Array.from({ length: 23 }, () => 'd'));
+      await fs.mkdir(nested, { recursive: true });
+      const ctx = { cwd: nested, tools: [], projectRoot: root } as any;
+      const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
+      expect(result.exitCode).toBe(0);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
   it('has correct metadata', () => {
     expect(gitTool.name).toBe('git');
     expect(gitTool.permission).toBe('confirm');

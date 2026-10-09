@@ -8,6 +8,7 @@
 import { allServers } from '@wrongstack/core/infrastructure';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Config, ConfigStore } from '@wrongstack/core/types';
+import { readJsonObjectFile } from '@wrongstack/core/utils';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { PickerDeps, PluginPickerItem, ToolPickerItem } from '../execute-deps.js';
 import { patchConfig } from '../utils.js';
@@ -29,6 +30,20 @@ interface RuntimePickerDepsInput {
 }
 
 export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDeps {
+  const syncMcpConfig = async () => {
+    const saved = await readJsonObjectFile(input.profileConfigPath);
+    if (
+      saved.mcpServers &&
+      typeof saved.mcpServers === 'object' &&
+      !Array.isArray(saved.mcpServers)
+    ) {
+      input.setConfig(
+        patchConfig(input.getConfig(), {
+          mcpServers: saved.mcpServers as NonNullable<Config['mcpServers']>,
+        }),
+      );
+    }
+  };
   const listMcpItems = async () => {
     const { listMcp } = await import('@wrongstack/mcp');
     const items = await listMcp({
@@ -44,6 +59,9 @@ export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDe
       description: server.description,
       toolCount: server.tools.length,
       lazy: server.lazy,
+      command: server.command,
+      url: server.url,
+      args: server.args,
     }));
   };
 
@@ -59,6 +77,9 @@ export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDe
           enabled?: boolean;
           description?: string;
           lazy?: boolean;
+          command?: string;
+          url?: string;
+          args?: string[];
         }
       >;
       const liveMap = new Map(input.mcpRegistry.list().map((server) => [server.name, server]));
@@ -72,6 +93,9 @@ export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDe
           description: config.description,
           toolCount: live?.toolCount ?? 0,
           lazy: config.lazy,
+          command: config.command,
+          url: config.url,
+          args: config.args,
         };
       });
     },
@@ -83,10 +107,24 @@ export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDe
         presets: allServers(),
       };
       const live = input.mcpRegistry.list().find((server) => server.name === name);
-      const isCurrentlyEnabled = live !== undefined && live.state !== 'idle';
+      const configured = input.getConfig().mcpServers?.[name];
+      const isCurrentlyEnabled = configured
+        ? configured.enabled !== false
+        : live !== undefined && live.state !== 'idle';
       const result = isCurrentlyEnabled
         ? await disableMcp(name, deps)
         : await enableMcp(name, deps);
+      if (configured && result.ok) {
+        input.setConfig(
+          patchConfig(input.getConfig(), {
+            mcpServers: {
+              ...input.getConfig().mcpServers,
+              [name]: { ...configured, enabled: !isCurrentlyEnabled },
+            },
+          }),
+        );
+      }
+      await syncMcpConfig();
       return {
         items: await listMcpItems(),
         message: result.ok
@@ -94,7 +132,7 @@ export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDe
             ? `${result.server.status === 'connected' ? '●' : '○'} ${name}`
             : result.message
           : undefined,
-        error: result.ok ? undefined : result.message,
+        error: result.ok ? result.registryError : result.message,
       };
     },
     onMcpRestart: async (name) => {
@@ -111,6 +149,32 @@ export function createRuntimePickerDeps(input: RuntimePickerDepsInput): PickerDe
         items: await listMcpItems(),
         message: `Restarted "${name}".`,
         error: undefined,
+      };
+    },
+    onMcpManage: async (action, server) => {
+      const { addMcp, updateMcp, removeMcp } = await import('@wrongstack/mcp');
+      const deps = {
+        configPath: input.profileConfigPath,
+        registry: input.mcpRegistry,
+        presets: allServers(),
+      };
+      const data =
+        server.command || server.url
+          ? { ...server, ...(action === 'add' ? { enabled: false } : {}) }
+          : { name: server.name, ...(action === 'add' ? { enabled: false } : {}) };
+      const result =
+        action === 'remove'
+          ? await removeMcp(server.name, deps)
+          : action === 'add'
+            ? await addMcp(data, deps)
+            : await updateMcp(data, deps);
+      // Operations can save config successfully yet report a runtime error.
+      // Refresh the in-memory projection from disk in either case.
+      await syncMcpConfig();
+      return {
+        items: await listMcpItems(),
+        message: result.ok ? result.message : undefined,
+        error: result.ok ? result.registryError : result.message,
       };
     },
     getToolsItems: input.getToolItems,

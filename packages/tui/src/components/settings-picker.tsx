@@ -24,6 +24,7 @@ import {
   MODE_DESC,
   SETTINGS_FIELD_LABELS,
   STATUSLINE_MODE_DESCS,
+  SYSTEM_PROMPT_CHOICE_LABELS,
   TOKEN_SAVING_TIER_DESCS,
   toolResultViewSettingRow,
 } from './settings-picker-model.js';
@@ -101,6 +102,8 @@ export function SettingsPicker({
   sageMemoryInjectThreshold,
   nextStepsTool,
   nextStepsRequired,
+  rememberStartupChoices,
+  nextSystemPromptVariant,
   readSymbols,
   panelPositions,
   // WrongProxy / WrongTrace: pick these from the same slice as
@@ -422,7 +425,9 @@ export function SettingsPicker({
         ? 'type a URL · Enter ✓ · Esc ✗ (http://host:port or https://host:port)'
         : 'Where the local proxy daemon listens. Probed at <url>/api/health every 30s.',
     },
-    { section: 'Display' },
+    // Second display-ish block (fields 61-62, appended after Integrations).
+    // A distinct name: two "Display" headers in one list read as a glitch.
+    { section: 'Layout' },
     {
       label: 'Right sidebar',
       value: `${boolVal(showSidebar ?? true)}${sidebarPinned ? ' · pinned' : ''}`,
@@ -441,6 +446,19 @@ export function SettingsPicker({
       label: 'Require next steps',
       value: boolVal(nextStepsRequired),
       detail: 'Every finished turn ends with <nextsteps> or a completion marker (/nextsteps)',
+    },
+    { section: 'Startup' },
+    {
+      label: 'Reuse startup choices',
+      value: boolVal(rememberStartupChoices),
+      detail:
+        'On: launch with the last model, system prompt and mode/YOLO/autonomy without asking. Off: ask every launch',
+    },
+    {
+      label: 'System prompt',
+      value: SYSTEM_PROMPT_CHOICE_LABELS[nextSystemPromptVariant] ?? nextSystemPromptVariant,
+      detail:
+        'Lite / Standard / Pro / Scout — applies from the next session; this session keeps its current prompt',
     },
   ];
 

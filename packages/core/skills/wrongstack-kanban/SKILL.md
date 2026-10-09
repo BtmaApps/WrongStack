@@ -5,13 +5,20 @@ description: |
   survives the session and other agents can see it. Covers card detail, the
   managed Backlog→Todo→Running→Review→Done lifecycle, lease-fenced dispatch,
   and what "verified" means before a card reaches Done.
-trigger: working with the kanban tool, managing project work through boards, or advancing a managed card's lifecycle
-version: 1.0.0
+trigger: "Record substantial project work on WrongStack's IPC-backed Kanban board so it survives the session and other agents can see it. Covers card detail, the managed Backlog\u2192Todo\u2192Running\u2192Review\u2192Done lifecycle, lease-fenced dispatch, and what \"verified\" means before a card reaches Done."
+version: 1.1.1
 required-capabilities: [work.plan]
 required-tools: [kanban]
+metadata:
+  routing-group: integration
 ---
 
 # WrongStack Kanban
+
+## Selection card
+- Task: Operate WrongStack task-board lifecycle. / TR: WrongStack görev panosu yaşam döngüsünü yönet.
+- Start: Identify the host, protocol, enabled integration and authorization scope.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## What the board is for
 
@@ -150,6 +157,14 @@ filled in as it becomes known.
 - [ ] Completion went through the verifier; "Done" means the verifier actually ran
 - [ ] Todo/task/plan rows preserve `kanbanBoardId` / `kanbanTaskId` bindings in full-list updates
 - [ ] Card count scaled to the size of the work; no invented subtasks
+
+## Board identity and lost leases
+
+Persist exact task/board/lease ids from current results, not titles or old notes.
+When a heartbeat or mutation loses its expected lease, stop acting as that
+assignment's owner and reread state; do not continue mutating under a stale claim.
+Keep work evidence tied to the checked source snapshot. A board persistence
+failure can be reported without pretending the completion gate accepted the card.
 
 ## Related skills
 

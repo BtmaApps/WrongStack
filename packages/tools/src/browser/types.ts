@@ -23,6 +23,8 @@ export interface BrowserNetworkEntry {
   url: string;
   status?: number | undefined;
   failed?: boolean | undefined;
+  /** Network-policy refusal and the exact project-origin command, when blocked. */
+  error?: string | undefined;
   at: string;
 }
 

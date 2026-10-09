@@ -3,13 +3,21 @@ name: audit-log
 description: |
   Use this skill when analyzing WrongStack session journals to explain what happened in a session — tool usage and failures, token spend and cache efficiency, compactions, delegations, loops, and errors.
   Triggers: user says "audit", "session analysis", "analyze the session", "log analysis", "why did this session cost so much", "token usage", "what went wrong in that run", "usage patterns".
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [execution.shell, code.inspect]
+trigger: "Use this skill when analyzing WrongStack session journals to explain what happened in a session \u2014 tool usage and failures, token spend and cache efficiency, compactions, delegations, loops, and errors."
+metadata:
+  routing-group: workflow
 ---
 
 # Audit Log — WrongStack session journals
+
+## Selection card
+- Task: Inspect session journal evidence and provenance. / TR: Oturum journal kanıtı ve kaynağını incele.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -143,6 +151,16 @@ Parsed 18,402 lines, 3 malformed and skipped. Subagent transcripts not included.
 - [ ] Tool failures joined by id; token and cache figures from `usage`
 - [ ] Coverage stated (lines parsed, subagent transcripts included or not)
 - [ ] Nothing sensitive quoted unredacted; journal untouched
+
+## Accounting and attribution
+
+Inspect the writer/provider adapter for usage semantics before computing cache
+ratios. Some providers include cached tokens in input, others report additional
+buckets; never add overlapping counters or count session_end totals again.
+Join tool ids within the correct session/agent namespace and record missing
+requests/results. Separate tool errors, cancelled work and infrastructure failures.
+Reported model, fallback model and billed provider can differ. Price estimates
+need dated model pricing; omit dollar totals when pricing/usage is unavailable.
 
 ## Skills in scope
 

@@ -58,6 +58,49 @@ cannot ask, so for them a refusal stays a refusal.
 
 The status line shows `YOLO+` instead of `YOLO` while it is active.
 
+## Tool-side behavior
+
+The executor passes the effective conversation mode to both ordinary and streaming
+tools after authorization. A WebUI tab's mode takes precedence over the process
+default; ordinary subagent auto-approval does not imply YOLO, while explicit
+leader YOLO+ is inherited by its workers.
+
+| Control | Prompt mode | YOLO / YOLO+ |
+|---|---|---|
+| `exec` command roster | Default roster plus configured allow entries | Additional executable names and paths may run |
+| `tools.exec.deny` | Refuses | Refuses, including an executable path whose basename is denied |
+| `exec` publish/deploy verb block | Refuses | Central permission policy decides; plain YOLO may still ask for the publish kind |
+| `exec` argument count | Every supplied argument is preserved | Every supplied argument is preserved |
+| `exec` explicit timeout | Capped at ten minutes | Longer durations are honored; `timeout: 0` disables the command timer while parent cancellation remains active |
+| Git development options through `exec` | Existing option restrictions apply | `git -C <directory>` follows the configured filesystem scope; temporary color, line-ending, long-path and diff settings with `git -c key=value` are accepted |
+| Private development URLs | One exact project origin allowance | The same project allowance is reused across browser, `fetch` and `read_url_content` |
+| Selected working directory | `test`, `lint`, `format`, `typecheck` and `install` follow the session directory | Same behavior; an explicit `cwd` overrides it |
+
+Use `/network allow http://localhost:3000` (alias of `/browser allow`) once for
+your trusted development server. Scheme, host and port must match. Revoke it
+with `/network remove http://localhost:3000`; redirects to other origins need
+their own allowance. Network refusals show the exact command in the TUI.
+Loopback shortcuts work too: `/network allow localhost:3000`,
+`/network allow 127.0.0.1:3000`, or `/network allow [::1]:3000`. They normalize
+to one exact HTTP origin and support the same `remove` command.
+
+Git directory flags are checked against the session's existing filesystem
+scope, then passed as resolved paths. The accepted temporary config keys
+cover `color.ui`, `color.diff`, `color.status`, `color.branch`, `color.decorate`,
+`core.autocrlf`, `core.eol`, `core.longpaths`, `core.quotepath`, `core.filemode`,
+`core.ignorecase`, `diff.algorithm`, `diff.renames`, `diff.context`,
+`diff.mnemonicprefix`, `diff.noprefix`, and `advice.detachedhead`.
+Their options no longer produce a generic danger banner; the actual Git
+operation still determines the assessment and permission decision.
+
+Tool input validation, configured filesystem scope, enforced sandbox tiers,
+browser ownership, protected WrongStack processes, TLS validation and bounded
+memory remain runtime controls at every approval level. `git` searches to the
+project boundary instead of stopping after an arbitrary 20 parent directories.
+The built-in `pnpm deploy <folder>` prepares a local portable package and does
+not trigger the external-publish gate; `pnpm run deploy` remains gated because
+that user-defined script may publish or deploy externally.
+
 ## CLI Flags
 
 | Flag | Effect |

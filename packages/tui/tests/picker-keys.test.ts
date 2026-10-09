@@ -1483,6 +1483,101 @@ describe('usePickerKeys — plugin picker', () => {
     runPickerKey(host, '', key({ leftArrow: true }), false);
     expect(onPluginPickerToggle).toHaveBeenCalled();
   });
+
+  it('does not toggle plugin or change selection on mouse click', () => {
+    const onPluginPickerToggle = vi.fn();
+    const host = makeHost(
+      baseState({
+        pluginPicker: {
+          open: true,
+          items: [{ id: 'p1', name: 'Plugin 1', enabled: false }],
+          selected: 0,
+          busy: false,
+        },
+      }),
+      { onPluginPickerToggle },
+    );
+
+    // Left click press (isEnter=true from overlayPointerKey)
+    runPickerKey(
+      host,
+      '',
+      key({
+        mouse: {
+          kind: 'press',
+          button: 'left',
+          x: 10,
+          y: 25,
+          wheel: 0,
+          shift: false,
+          meta: false,
+          ctrl: false,
+          motion: false,
+        },
+      }),
+      true,
+    );
+    expect(onPluginPickerToggle).not.toHaveBeenCalled();
+    expect(host.dispatch).not.toHaveBeenCalled();
+
+    // Mouse release
+    runPickerKey(
+      host,
+      '',
+      key({
+        mouse: {
+          kind: 'release',
+          button: 'left',
+          x: 10,
+          y: 25,
+          wheel: 0,
+          shift: false,
+          meta: false,
+          ctrl: false,
+          motion: false,
+        },
+      }),
+      false,
+    );
+    expect(onPluginPickerToggle).not.toHaveBeenCalled();
+    expect(host.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('still supports mouse wheel for navigation in plugin picker', () => {
+    const host = makeHost(
+      baseState({
+        pluginPicker: {
+          open: true,
+          items: [
+            { id: 'p1', name: 'Plugin 1', enabled: false },
+            { id: 'p2', name: 'Plugin 2', enabled: true },
+          ],
+          selected: 0,
+          busy: false,
+        },
+      }),
+    );
+
+    runPickerKey(
+      host,
+      '',
+      key({
+        mouse: {
+          kind: 'wheel',
+          button: 'none',
+          x: 10,
+          y: 25,
+          wheel: -1,
+          shift: false,
+          meta: false,
+          ctrl: false,
+          motion: false,
+        },
+      }),
+      false,
+    );
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'pluginPickerMove', delta: 1 });
+  });
 });
 
 describe('usePickerKeys — MCP picker', () => {

@@ -30,7 +30,8 @@ export function buildMcpSlashCommand(opts: SlashCommandContext): SlashCommand {
   return {
     name: 'mcp',
     category: 'Config',
-    description: 'Manage MCP servers and explicitly select resources/prompts for insertion.',
+    description:
+      'Manage MCP servers in a panel: add, edit, remove, toggle and restart; select resources/prompts.',
     aliases: ['mcp-servers'],
     argsHint: '[list|resources|prompts|read|get|auth|add|remove|enable|disable|restart] [...args]',
     help: [

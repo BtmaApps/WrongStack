@@ -5,25 +5,33 @@ description: |
   graph before a non-trivial implementation, or runs the WrongStack /sdd workflow.
   Triggers: user says "/sdd", "spec", "specification", "task graph", "SDD",
   "acceptance criteria".
-version: 2.1.0
+version: 2.2.1
 required-capabilities: [work.plan, filesystem.write]
 required-tools: []
+trigger: "Use this skill when the user wants a written spec, acceptance criteria, or a task graph before a non-trivial implementation, or runs the WrongStack /sdd workflow."
+metadata:
+  routing-group: workflow
 ---
 
 # Spec-Driven Development — WrongStack
 
+## Selection card
+- Task: Define acceptance criteria and dependent tasks. / TR: Kabul kriteri ve bağımlı görevler tanımla.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
 ## Overview
 
-Every non-trivial change starts with a spec. The spec is the source of truth — it defines what to build, how to verify it, and what counts as done. SDD uses `/sdd` slash commands to create specs, generate task graphs, and track execution.
+For an SDD task, start with a spec proportionate to its scope. The spec is the source of truth — it defines what to build, how to verify it, and what counts as done. SDD uses `/sdd` slash commands to create specs, generate task graphs, and track execution.
 
 ## Rules
 
-1. Every non-trivial task needs a spec before writing code — you'll rewrite it anyway.
+1. Use SDD for requested specifications or tasks that benefit from explicit acceptance and dependency tracking.
 2. Spec must have acceptance criteria — without them, you can't know when it's done.
 3. Record real dependencies between tasks, and only real ones — unchained tasks are the ones that can run in parallel.
 4. Spec must be specific: "Users authenticate via OAuth2 with PKCE" not "improve auth".
-5. Skipping `/sdd` for urgent tasks backfires — the spec is what makes "urgent" possible.
-6. When the spec reveals a multi-file refactor, delegate to `refactor-planner` first.
+5. For urgent work, keep acceptance and recovery explicit without forcing unnecessary ceremony.
+6. When the spec reveals a refactor, apply the refactor-planner skill to sequence it.
 
 ## When to use
 
@@ -122,31 +130,30 @@ The critical path finds:
 **Eternal stage flow:** `decide → execute → reflect → sleep | paused | stopped`
 Stage shown in real-time. Pause stops after current iteration completes.
 
-## Anti-patterns
+## Boundaries
 
-- **Writing code before the spec** — you'll rewrite it anyway
-- **Spec that's too vague** — "improve auth" is not a spec, "Users authenticate via OAuth2 with PKCE" is
-- **Invented dependencies** — chaining independent tasks serializes work that could run in parallel
-- **Spec without acceptance criteria** — how do you know when it's done?
-- **Skipping /sdd for urgent tasks** — the spec is what makes "urgent" possible
-
-## Out of scope
-
-- **Don't start coding before the spec exists.** You'll rewrite the code anyway — the spec is what makes the rewrite possible. SDD comes first or the spec is fiction.
-- **Don't accept a spec without acceptance criteria.** "Done" must be a checkable state. Without criteria, the task has no formal end and the verifier has nothing to run.
-- **Don't write vague requirements.** "Improve auth" is not a requirement; "Users authenticate via OAuth2 with PKCE, sessions expire after 24h" is. If a requirement can't be tested, it's not a requirement.
-- **Don't skip `/sdd` because the task is urgent.** Urgency without a spec produces urgency-shaped rework. The spec is what makes "urgent" possible to ship correctly.
-- **Don't start a multi-file refactor from SDD.** When the spec reveals a refactor, delegate to `refactor-planner` for the phased plan. SDD defines the goal; refactor-planner sequences the work.
-- **Don't execute the task graph yourself unless the user asks.** SDD produces the plan and task graph; an executor (the leader, a subagent, or the user) picks it up.
+Use explicit acceptance for SDD work. Avoid invented dependencies, vague
+requirements and implicit goals/schedules. Planning-only work returns the spec;
+an implementation request continues into the authorized execution and checks.
 
 ## Before returning
 
-- [ ] Spec has explicit acceptance criteria the verifier can run as commands
+- [ ] Spec has observable acceptance criteria with commands or user-journey checks
 - [ ] Every requirement is specific enough to be tested, not "improve X"
 - [ ] Real dependencies recorded; independent tasks left unchained so they can run in parallel
 - [ ] Spec template matches the work type (feature/bugfix/refactor/infra/integration/cli-command)
-- [ ] Multi-file refactors are routed to `refactor-planner`, not absorbed into SDD tasks
+- [ ] Multi-file refactors use refactor-planner sequencing while preserving task scope
 - [ ] Critical path called out; bottlenecks named; parallel groups identified
+
+## Proportional scope and execution
+
+Use a written spec when the task needs it or the user requested the SDD workflow.
+A small concrete fix can proceed directly; do not open a planning ceremony solely
+to satisfy this skill. Separate planning-only requests from implementation:
+when execution is already authorized, continue through the task graph and verify.
+Record acceptance behavior, environment boundaries and requirement-to-evidence
+links. Commands are valuable checks but not every product criterion is a command.
+Do not start goals, eternal mode or scheduled work without the required authorization.
 
 ## Skills in scope
 

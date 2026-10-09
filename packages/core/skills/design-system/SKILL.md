@@ -1,331 +1,101 @@
 ---
 name: design-system
-description: |
-  Use this skill BEFORE writing or restyling ANY user-facing interface. It
-  drives the WrongStack Design Studio engine: commit to a kit, tune it
-  (radius / density / font / motion), materialize the tokens into a real theme
-  file, build against those tokens, then verify adherence. Trigger it whenever
-  the user asks to build, redesign, restyle, "make it look better", or ship a
-  UI, frontend, landing page, marketing site, dashboard, admin panel, settings
-  screen, onboarding flow, component, modal, form, email template, mobile
-  screen, or design system — and whenever Tailwind, shadcn/ui, React, Next.js,
-  React Native, Flutter, SwiftUI, or Jetpack Compose styling, theming, colors,
-  palette, dark mode, border-radius, spacing, elevation, shadows, typography,
-  or fonts come up. Also trigger on softer phrasings that imply visual work:
-  "clean up the layout", "it looks generic", "match our
-  brand", "add dark mode". Trigger even when the user never says the word
-  "design" — if the output has pixels, this skill runs first.
-version: 2.2.0
-required-capabilities: [filesystem.read, filesystem.write, documentation.author]
-required-tools: [design]
-optional-capabilities: [browser.interact]
+description: "Create and maintain coherent visual tokens, themes and shared component states using the existing project system or WrongStack Design Studio. Use when designing or substantially restyling interfaces, palettes, typography or themes; small UI fixes should extend the existing system without a kit migration."
+version: 2.3.1
+required-capabilities: [filesystem.read, filesystem.write]
+required-tools: []
+optional-capabilities: [verification.run, web.research]
+trigger: "designing or substantially restyling interfaces, palettes, typography or themes; small UI fixes should extend the existing system without a kit migration."
+metadata:
+  routing-group: design
 ---
 
 # Design System Engine — WrongStack
 
-## The contract
+## Selection card
+- Task: Define shared colors, typography and component tokens. / TR: Paylaşılan renk, tipografi ve bileşen tokenı tanımla.
+- Start: Identify the target surface, reference, user task and existing tokens.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
-Inspect the existing system first. Reuse its components, semantic tokens,
-framework and supported themes unless the user requests a replacement. The kit
-loop below applies to greenfield UI or an authorized system migration; an
-established project does not need a kit pin just to satisfy the scanner.
-Use the `design-craft` skill for substantial visual decisions and rendered review.
+## Overview
 
-Default-framework UI is a failure, not a neutral starting point. Unstyled
-shadcn, `bg-blue-500`, stock Bootstrap gray, or "I'll pick colors as I go" all
-produce the same forgettable result and leave the codebase with no source of
-truth.
+Build from a real token source and verify the rendered result. Latest web target
+checked 2026-10-09: Tailwind CSS 4.3.3 with CSS-first theme variables.
+An existing theme is a valid source; Design Studio is a useful system generator,
+not a requirement to replace an established design.
 
-WrongStack ships a Design Studio: 50+ curated kits, each a complete **design
-system** — not a palette. Every kit carries its own radius scale, spacing
-rhythm, type ramp, motion curves, and elevation steps. The job here is to
-commit to ONE kit *before* any markup exists, push its tokens into a real file
-the build reads, and then write UI that only ever references those tokens.
+## Rules
 
-Tokens in a file beat design intentions in a prompt. That is the whole idea.
+1. Inspect existing tokens, components, framework, fonts, assets, themes and
+   .design/rules.md. Preserve the user's explicit brief and reference direction.
+2. For a new system, choose a coherent kit/source before broad styling. Tune
+   semantic roles, type, spacing, radii, elevation and motion together.
+3. Use real token names from generated/source files. Never guess that a kit
+   exposes a particular utility or that an unimported token file changes the app.
+4. Keep light/dark or other requested themes on shared semantic roles. Ship the
+   supported themes rather than inventing an unrequested theme migration.
+5. Token adherence is separate from composition, accessibility and interaction
+   quality. Scanner percentages are not visual or WCAG certificates.
+6. Treat documented accessibility thresholds accurately; target-size AA/AAA and
+   project touch preferences differ. Preserve keyboard and reduced-motion behavior.
 
----
+## Design Studio loop
 
-## The loop (never reorder; skip only explicit exceptions)
+For a new kit or authorized migration:
 
-```
-list → use → tune → materialize → BUILD → verify → fix drift
-```
-
-Steps 1–3 are cheap and happen before the first line of JSX/Dart/Swift. `tune`
-is optional when the chosen kit already fits; otherwise keep the order intact.
-If new UI lacks a token source, establish one before adding more styling.
-Existing project tokens are a valid source; do not restyle established UI merely
-because it has no kit pin.
-
----
-
-## Step 1 — Commit to a kit
-
-```
-design {action:"list"}                      # browse available kits
-design {action:"foundations"}               # read the stack-agnostic baseline
-design {action:"use", kit:"<id>", stack:"web|react-native|flutter|swiftui|compose"}
-```
-
-`use` loads the kit's **full spec for that stack** — pass the right `stack` or
-the materialized output will be the wrong shape.
-
-| Target | `stack` |
-|---|---|
-| Next.js, Vite, Remix, any Tailwind v4 / shadcn web app | `web` |
-| Expo / bare React Native | `react-native` |
-| Flutter (any platform) | `flutter` |
-| iOS native | `swiftui` |
-| Android native | `compose` |
-
-### Picking the kit
-
-If the user pinned one with `/design <kit-id>`, that decision is final — use it
-and move on. Otherwise:
-
-1. Run `design {action:"list"}` and read the kit descriptions. Do not pick from
-   memory; the roster changes.
-2. Match the kit to the **product's tone**, not to personal taste. Useful
-   signals to reason from: audience (consumer vs. operator vs. developer),
-   information density (marketing page vs. data table), emotional register
-   (playful, editorial, clinical, brutalist, corporate-trustworthy), and any
-   brand assets the user already has.
-3. If several kits fit, compare their layout, density and type implications;
-   choose the best fit with a short rationale unless the user wants to choose
-   or an unresolved requirement materially changes the outcome.
-4. If the user gives zero signal and does not want to choose, pick the kit that
-   best fits the product archetype, **say which one and why in one sentence**,
-   and continue. Silence is not permission to fall back to defaults.
-
-To change kits later: `/design swap <kit-id>` — this drops the old overrides
-deliberately, so re-apply any tuning that still matters afterward.
-
----
-
-## Step 2 — Tune (optional, but prefer knobs over raw tokens)
-
-```
-design {action:"tune", tune:{ radius:"lg", density:"compact",
-                              font:"Space Grotesk", motion:"snappy" }}
-```
-
-| Knob | Values | Use it when |
-|---|---|---|
-| `radius` | `none` `sm` `md` `lg` `xl` `full`, or a base length like `"1rem"` | The kit's roundness fights the product's tone |
-| `density` | `compact` `cozy` `comfortable` | Scales the whole spacing rhythm — `compact` for dashboards and data tables, `comfortable` for marketing and mobile |
-| `font` | any family name | Brand typeface, or the kit's face is unavailable |
-| `motion` | `snappy` `smooth` `none` | Tool-like UI wants `snappy`; content sites want `smooth` |
-
-Knobs rescale the *entire* system coherently. Setting individual tokens by hand
-does not — a hand-edited radius leaves the other five steps of the scale
-untouched and the result reads as sloppy rather than intentional.
-
-For a genuinely specific color (brand primary, a mandated status color):
-
-```
-design {action:"set", set:{ primary:"oklch(62% 0.2 25)", "dark.bg":"#111" }}
-```
-
-Use the `design` tool's `set` action for the handful of values the brand actually dictates. Everything
-else stays on the kit.
-
----
-
-## Step 3 — Materialize
-
-```
+~~~
+design {action:"list"}
+design {action:"use", kit:"<actual-id>", stack:"web"}
+design {action:"tune", tune:{radius:"lg", density:"compact", motion:"snappy"}}
 design {action:"materialize"}
-design {action:"materialize", out:"src/theme/tokens.ts", force:true}
-```
+~~~
 
-This writes the tuned tokens to a real theme file. Omit `out` for the conventional
-path, pass `out` for a custom project-relative path, and use `force:true` only
-when intentionally overwriting an existing file.
+Tune only when needed; use set for explicit brand/semantic overrides.
+Supported stacks are web, react-native, flutter, swiftui and compose.
+Read the current tool schema and result rather than copying guessed kit ids.
 
-Default paths and output shapes:
+Materialize after final tuning, inspect its actual token exports, and import
+the output through the real app entry/theme provider. A force overwrite requires
+checking the owned target and preserving existing project customization.
 
-- **web** → `src/styles/design-tokens.css`; CSS custom properties + a Tailwind v4 `@theme` block, in OKLCH
-- **react-native** → `src/theme/design-tokens.ts`; TypeScript `lightTheme` / `darkTheme` constants + numeric `scale`
-- **flutter** → `lib/theme/design_tokens.dart`; `AppColorsLight` / `AppColorsDark` classes + `AppScale`
-- **swiftui** → `Theme/DesignTokens.swift`; `AppColorsLight` / `AppColorsDark` enums + `AppScale`
-- **compose** → `ui/theme/DesignTokens.kt`; `AppColorsLight` / `AppColorsDark` objects + `AppScale`
+## Workflow
 
-Then, without exception:
+1. Establish the existing source or selected kit and explain its fit briefly.
+2. Reuse shared primitives. Add missing semantic tokens at the source rather
+   than scattering literals across screens.
+3. Build loading/empty/error/populated and relevant interactive states. Use
+   representative content and long labels.
+4. With a pinned kit, run design {action:"verify"} and inspect actual drift.
+   Composition heuristics need rendered evidence; do not change useful symmetry
+   merely to clear a score.
+5. Render affected desktop/narrow/short viewports and supported themes.
+   Check focus, contrast, scrolling, reduced motion and task completion.
+6. For native stacks, inspect actual theme constants and device evidence;
+   a scanner that only understands web classes cannot certify native output.
 
-1. **Import the generated file** into the app entry (global stylesheet / theme
-   provider / `MaterialApp` theme / etc.). Unimported tokens enforce nothing.
-2. **Read the generated file before writing UI.** It is the ground truth for
-   which token names exist. Do not guess names from this document or from
-   another project — use the ones actually in the file.
-3. Re-run the `design` tool with the `materialize` action after any later `tune` or `set`, or the code and the
-   tokens silently diverge.
+## Precedence
 
----
+Follow the user's task and host instructions, then project design rules,
+the actual token source and kit defaults. Accessibility requirements should be
+implemented and clearly explained; a kit's stylistic preferences do not outrank
+the user's chosen outcome.
 
-## Step 4 — Build against the tokens
+## Before returning
 
-Because `materialize` maps the kit into `@theme`, the ordinary utilities now
-resolve to the kit. Write plain, semantic utilities:
+- Token source and imports verified; kit changes intentional.
+- Relevant component/data states implemented.
+- Scanner findings checked against actual source and brief.
+- Rendered and interaction evidence recorded, with unknowns explicit.
 
-```html
-<div class="bg-bg text-fg border border-border rounded-lg p-4 shadow-2">
-  <h2 class="text-lg font-semibold">Title</h2>
-  <p class="text-base text-muted-fg">Body copy.</p>
-</div>
-```
+## Sources
 
-Confirm the exact names against the materialized file — the token vocabulary is
-per-kit, and semantic slots (surface, muted, accent, destructive, ring…) vary.
-
-### Drift — what it looks like and what to write instead
-
-| Don't | Why it breaks | Do |
-|---|---|---|
-| `bg-blue-500`, `text-gray-700` | Framework palette, not the kit — and no dark variant | `bg-primary`, `text-muted-fg` |
-| `#1f2937`, `oklch(...)` inline | Invisible to the theme; can't be re-tuned or swapped | `var(--color-bg)` or the matching semantic token |
-| `rounded-[7px]`, `p-[13px]` | Off-scale value; breaks the rhythm everywhere it appears | nearest step: `rounded-lg`, `p-3` |
-| `dark:bg-slate-900` hand-written | Two hardcoded themes instead of one token set | one token that already resolves per mode |
-| `style={{ boxShadow: '0 2px 8px …' }}` | Bypasses the elevation scale | `shadow-2` |
-| A one-off `<Button>` with custom classes | Divergence multiplies per screen | extend the shared component |
-
-If a token you need genuinely does not exist, that is a signal to `set` or
-`tune` it into the system — not to write a literal.
-
-### Every interactive element ships its full state set
-
-Default · hover · `:focus-visible` · active · disabled · loading. Every data
-surface ships empty · loading · error · populated. A happy-path-only screen is
-an unfinished screen, and skeletons/empty states are where hardcoded grays
-sneak back in — use tokens there too.
-
----
-
-## Step 5 — Verify
-
-```
-design {action:"verify"}
-```
-
-Scans for color / radius / spacing drift and composition review signals. With
-a pinned kit, run it before declaring the work done:
-
-- Confirm each finding against the token source and brief. Fix actual drift;
-  composition heuristics require context and rendered evidence, not automatic restyling.
-- If the same violation keeps recurring, the system is missing a token: `tune`
-  or `set` it, `materialize` again, then re-verify.
-- Re-run after corrections. Explain intentional design choices that remain
-  flagged; do not alter equal rows or useful symmetry to game the scanner.
-
-Auto-verify middleware also appends non-blocking warnings to write results
-during editing — self-correct on the very next edit rather than batching them
-up for the end.
-
----
-
-## Non-negotiable foundations
-
-These hold under every kit, at every density, on every stack. They are the
-floor, not a style preference — no kit or user override lowers them.
-
-- **Responsive, mobile-first.** Check 320 / 768 / 1024 / 1440. No horizontal
-  scroll at any width. Touch targets ≥ 44px. Respect safe-area insets on native.
-- **Light and dark from one token set.** Never a hardcoded color, ever.
-- **WCAG 2.2 AA.** Semantic markup, exactly one `h1`, visible `:focus-visible`
-  rings, 4.5:1 contrast on body text, every control labelled, and meaning never
-  carried by color alone (pair it with an icon, text, or shape).
-- **Motion respects `prefers-reduced-motion`.** Animate `transform` and
-  `opacity`; avoid animating layout properties.
-- **Real content, real edge cases.** Long strings, empty lists, failed requests,
-  zero states, RTL if the product needs it.
-
-Pull the complete baseline any time with `design {action:"foundations"}`.
-
----
-
-## Stack notes
-
-- **web** — Tailwind v4 `@theme`, OKLCH. shadcn/ui components inherit the kit
-  once the theme file is imported; restyle its primitives at the token level
-  rather than per-usage.
-- **react-native** — no utility classes, so the discipline moves into the
-  generated TypeScript `scale` export and `lightTheme` / `darkTheme` constants:
-  spacing comes from `scale`, never a bare number literal; colors come from the
-  theme constants, never an inline hex string. Safe-area insets and platform
-  navigation conventions still apply on top of the kit.
-- **flutter / swiftui / compose** — no utility classes, so the discipline moves
-  into `AppScale` and the color constants: spacing comes from the scale, never a
-  bare number literal; colors come from the constants, never a `Color(0xFF…)` /
-  `UIColor` literal. Safe-area insets and platform navigation conventions still
-  apply on top of the kit.
-
----
-
-## Delegated / roster frontend work
-
-The active kit, its overrides, and auto-verify-on-write follow into spawned
-subagents through the shared `.design/active.json`. The subagent inherits the
-pin, but not the judgment — when delegating UI work, state explicitly in the
-brief: build against the token utilities, no literals, and run
-`design {action:"verify"}` clean before returning. Spot-check what comes back.
-
----
-
-## Precedence when instructions conflict
-
-1. **Foundations** (accessibility, responsiveness, reduced motion) — never
-   overridden, by anyone.
-2. **Explicit instruction from the user in this conversation.**
-3. **`.design/rules.md`** — project overrides, these win over kit defaults.
-4. **Active kit + tuning** in `.design/active.json`.
-5. **Kit defaults.**
-
-Read `.design/rules.md` when it exists — it encodes decisions someone already
-made and re-litigating them wastes everyone's time.
-
----
-
-## Edge cases
-
-- **Codebase already has a design system.** Extend it by default. Inspect its
-  source tokens and shared primitives; migrate only when requested. Review
-  against those tokens without reporting a score from an unrelated kit.
-- **User hands over brand colors or a Figma palette.** Still commit to a kit —
-  the kit supplies radius, spacing, type, motion and elevation, which a palette
-  does not. Layer the brand colors in with `set`.
-- **A tiny one-line fix to existing styled UI.** Skip the ceremony, match the
-  surrounding tokens, and don't introduce a literal.
-- **User rejects the whole system** ("just use plain HTML"). Comply, but say
-  once, briefly, what they're giving up. Don't argue twice.
-
----
-
-## Out of scope
-
-- **Don't let framework defaults make the design decisions.** Establish hierarchy, content and semantic tokens using the existing system or a selected kit.
-- **Don't confuse a kit pin with a design decision.** Existing systems are valid; new systems need a coherent token source before implementation.
-- **Don't hand-tune individual tokens to fix one-off screens.** Knobs (`radius`, `density`, `font`, `motion`) rescale the whole system coherently. A hand-edited radius leaves five scale steps untouched; the result reads as sloppy.
-- **Don't use framework palette colors directly.** `bg-blue-500`, `text-gray-700`, `dark:bg-slate-900` are not part of the kit and break dark mode. Use the semantic tokens the materialized file exposes.
-- **Don't override foundations.** Accessibility, responsiveness, reduced motion, and WCAG 2.2 AA are the floor. No kit or user override lowers them.
-- **Don't restyle shadcn primitives per-usage.** They inherit the kit once the theme file is imported. Restyle at the token level, not per screen.
-- **Don't deliver a UI without light + dark + every interactive state.** Default, hover, `:focus-visible`, active, disabled, loading, empty, error. A happy-path-only screen is an unfinished screen.
-
-## Before saying you're done
-
-- Token source identified: existing project system, or kit with the correct `stack`.
-- When using a kit, `materialize` run *after* the final `tune`/`set`, and the file imported.
-- Zero hardcoded colors, radii, or spacing anywhere in the diff.
-- Light and dark both checked.
-- Interactive states and empty/loading/error states present.
-- Keyboard path works; focus rings visible.
-- With a pinned kit, `design {action:"verify"}` findings reviewed and actual drift fixed.
-- Rendered review completed for the affected surface, or missing evidence stated.
-  A heuristic palette percentage is not a visual quality or accessibility score.
+[Tailwind theme variables](https://tailwindcss.com/docs/theme),
+[WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 
 ## Skills in scope
 
-- `react-modern` — for React 19+ component patterns that consume the tokens
-- `typescript-strict` — for typing theme constants, `lightTheme` / `darkTheme` exports
-- `plugin-author` — when shipping a tool that emits design-system output
-- `output-standards` — for the `<nextsteps>` shape in design audit / verify reports
-- `sdd` — for spec-driven design system work that crosses packages
+- design-craft — product direction and composition.
+- design-critique — rendered review.
+- accessibility — input/focus/conformance checks.
+- motion-design — motion roles and interruption.
+- react-modern — components consuming the theme.

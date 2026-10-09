@@ -17,13 +17,18 @@ export async function assertBrowserUrlAllowed(
   if (!opts.allowPrivateHosts && !isAllowedPrivateOrigin(url, opts.allowedPrivateOrigins)) {
     const normalizedHost = unbracket(url.hostname).replace(/\.+$/, '').toLowerCase();
     if (normalizedHost === 'localhost' || normalizedHost.endsWith('.localhost')) {
-      throw new Error('browser: blocked localhost target');
+      throw new Error(
+        `browser: blocked localhost target. Allow this project origin with /browser allow ${url.origin}`,
+      );
     }
     // The shared guard labels its refusals "fetch:", which read as if the
     // browser tool had called fetch.
     await assertNotPrivateHost(url.hostname).catch((err: unknown) => {
       if (err instanceof Error && err.message.startsWith('fetch: ')) {
-        throw new Error(`browser: ${err.message.slice('fetch: '.length)}`, { cause: err });
+        const hint = /private|loopback/i.test(err.message)
+          ? `. Allow this project origin with /browser allow ${url.origin}`
+          : '';
+        throw new Error(`browser: ${err.message.slice('fetch: '.length)}${hint}`, { cause: err });
       }
       throw err;
     });
@@ -61,13 +66,17 @@ export async function resolvePinnedBrowserTarget(
   const literalFamily = net.isIP(hostname);
   if (literalFamily === 4 || literalFamily === 6) {
     if (!allowPrivate && isPrivateAddress(hostname, literalFamily)) {
-      throw new Error(`browser: blocked private/loopback address "${hostname}"`);
+      throw new Error(
+        `browser: blocked private/loopback address "${hostname}". Allow this project origin with /browser allow ${url.origin}`,
+      );
     }
     return { url, address: hostname, family: literalFamily };
   }
   const normalizedHost = hostname.replace(/\.+$/, '').toLowerCase();
   if ((normalizedHost === 'localhost' || normalizedHost.endsWith('.localhost')) && !allowPrivate) {
-    throw new Error('browser: blocked localhost target');
+    throw new Error(
+      `browser: blocked localhost target. Allow this project origin with /browser allow ${url.origin}`,
+    );
   }
 
   const lookup = opts.lookup ?? ((host) => dns.lookup(host, { all: true }));
@@ -86,7 +95,9 @@ export async function resolvePinnedBrowserTarget(
       throw new Error(`browser: DNS returned an unsupported address family for "${hostname}"`);
     }
     if (!allowPrivate && isPrivateAddress(record.address, record.family)) {
-      throw new Error(`browser: resolved to private address ${record.address}`);
+      throw new Error(
+        `browser: resolved to private address ${record.address}. Allow this project origin with /browser allow ${url.origin}`,
+      );
     }
   }
   const selected = records[0]!;

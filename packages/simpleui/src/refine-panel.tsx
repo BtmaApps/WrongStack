@@ -68,6 +68,10 @@ export function RefinePanel({
   // refineStartNow's ref-status check wouldn't catch it because
   // refineStateRef.current isn't updated between the two invocations.
   const countdownFiredRef = useRef(false);
+  // A new countdown round can start on the SAME mounted panel (ready/failed ->
+  // countdown). In that commit the zero-watcher still sees the previous round's
+  // `countdown === 0`; it must wait until the reset value has been rendered.
+  const countdownResetPendingRef = useRef(false);
 
   // ── Pre-refine countdown (3-2-1 grace period) ──────────────────────────
   // The interval only decrements state; the zero-reached side effect lives
@@ -91,6 +95,7 @@ export function RefinePanel({
       return;
     }
     countdownFiredRef.current = false;
+    countdownResetPendingRef.current = true;
     setCountdown(preRefineSeconds);
     const timer = setInterval(() => {
       setCountdown((prev) => Math.max(0, prev - 1));
@@ -99,7 +104,12 @@ export function RefinePanel({
   }, [state.status]);
 
   useEffect(() => {
-    if (state.status === 'countdown' && countdown <= 0 && !countdownFiredRef.current) {
+    if (state.status !== 'countdown') return;
+    if (countdownResetPendingRef.current) {
+      if (countdown > 0) countdownResetPendingRef.current = false;
+      return;
+    }
+    if (countdown <= 0 && !countdownFiredRef.current) {
       countdownFiredRef.current = true;
       onStartRefineRef.current();
     }

@@ -219,9 +219,13 @@ export function hasExternalPublish(command: string): boolean {
     const cmd = commandName(tokens[i]);
     if (!cmd) continue;
     const args = commandSegment(tokens, i + 1);
+    // pnpm's built-in deploy assembles a portable package in a local folder.
+    // A user-defined `pnpm run deploy` remains an external-publish risk.
+    const localPnpmDeploy =
+      cmd === 'pnpm' && !args.some((arg) => ['run', 'run-script', 'exec', 'dlx'].includes(arg));
     if (
       ['npm', 'pnpm', 'yarn', 'bun'].includes(cmd) &&
-      (args.includes('publish') || args.includes('deploy'))
+      (args.includes('publish') || (args.includes('deploy') && !localPnpmDeploy))
     ) {
       return true;
     }

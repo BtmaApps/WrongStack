@@ -231,8 +231,8 @@ export function createToolCoach(catalog: readonly Tool[]): ToolCoach {
         const name = byId.get(result.tool_use_id);
         if (!name || result.is_error || explorationAdvised) continue;
         if (['codebase-context', 'codebase-search', 'grep', 'glob', 'tree'].includes(name)) {
-          const inspect = ['read', 'codebase-skeleton'].filter((candidate) =>
-            byName.has(candidate),
+          const inspect = ['read', 'codebase-read-symbol', 'codebase-skeleton'].filter(
+            (candidate) => byName.has(candidate),
           );
           if (inspect.length > 0) {
             explorationAdvised = true;

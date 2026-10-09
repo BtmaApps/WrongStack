@@ -105,6 +105,7 @@ export const TOOL_OVERVIEW_REGISTRY: Readonly<Record<string, OverviewKind>> = {
   browser_close: 'browser',
   e2e_plan: 'e2e',
   'codebase-ast-replace': 'file',
+  'codebase-read-symbol': 'file',
   'codebase-invariant-check': 'codebase',
   'codebase-stats': 'codebase',
   'codebase-skeleton': 'codebase',

@@ -32,7 +32,6 @@
  * `docs/skills-suggestion.md` for how to evaluate them on real turns.
  */
 
-import { isSkillHiddenFromPrompt } from '../../core/system-prompt-skill-bodies.js';
 import type { SkillLoader } from '../../types/skill.js';
 import type {
   ChoiceAnswer,
@@ -41,6 +40,11 @@ import type {
   TypeSafeQuestion,
 } from '../../typesafe/index.js';
 import { stripFrontmatter } from '../frontmatter.js';
+import {
+  isSkillHiddenFromPrompt,
+  skillPromptExclusionReasons,
+  skillUseWhenText,
+} from '../prompt-discovery.js';
 
 /** Question id for the ranking Choice in both passes. */
 const WHICH = 'which';
@@ -50,6 +54,8 @@ const FITS_PREFIX = 'fits::';
 export interface SkillSuggesterOptions {
   client: TypeSafeClient;
   loader: SkillLoader;
+  /** Optional host catalog for previews; live callers can override per request. */
+  availableToolNames?: readonly string[] | undefined;
   /** Candidates carried from pass 1 into pass 2. Default 3. */
   shortlistSize?: number | undefined;
   /** Body characters each shortlisted skill contributes in pass 2. Default 700. */
@@ -123,6 +129,8 @@ export interface SkillSuggestionTrace {
 }
 
 export interface ExplainOptions {
+  /** Host catalog, including on-demand tools. Omit for inventory-only previews. */
+  availableToolNames?: readonly string[] | undefined;
   /**
    * Run pass 2 even when the gate rejected the turn. Eval mode only: a
    * threshold sweep has to know what pass 2 WOULD have said at a lower gate,
@@ -220,7 +228,10 @@ export function createSkillSuggester(opts: SkillSuggesterOptions): SkillSuggeste
     const trimmed = request.trim();
     if (!trimmed) return emptyTrace('roster-too-small');
     try {
-      const roster = await loadRoster(opts.loader);
+      const roster = await loadRoster(
+        opts.loader,
+        options?.availableToolNames ?? opts.availableToolNames,
+      );
       // One candidate is not a choice — the agent's manifest already says
       // this skill exists, and a forced "pick one of one" would suggest it on
       // every turn that clears the gate.
@@ -316,13 +327,18 @@ export function redecide(
  * order. `roster`/`external` audiences are withheld from that manifest, so
  * suggesting one would point at an entry the model cannot read.
  */
-async function loadRoster(loader: SkillLoader): Promise<RosterEntry[]> {
+async function loadRoster(
+  loader: SkillLoader,
+  availableToolNames?: readonly string[],
+): Promise<RosterEntry[]> {
   const [entries, manifests] = await Promise.all([loader.listEntries(), loader.list()]);
   const byName = new Map(manifests.map((manifest) => [manifest.name, manifest]));
   const roster: RosterEntry[] = [];
   for (const entry of entries) {
     if (isSkillHiddenFromPrompt(entry.audience)) continue;
-    const trigger = entry.trigger.replace(/\s+/g, ' ').trim();
+    const manifest = byName.get(entry.name);
+    if (manifest && skillPromptExclusionReasons(manifest, availableToolNames).length > 0) continue;
+    const trigger = skillUseWhenText(manifest?.description, manifest?.trigger, entry.trigger);
     if (!trigger) continue;
     roster.push({
       name: entry.name,

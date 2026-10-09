@@ -68,7 +68,10 @@ export const typecheckTool: Tool<TypecheckInput, TypecheckOutput> = {
     return final;
   },
   async *executeStream(input, ctx, opts): AsyncGenerator<ToolStreamEvent<TypecheckOutput>> {
-    const cwd = input.cwd ? await safeResolveReal(input.cwd, ctx) : ctx.cwd;
+    const cwd =
+      input.cwd || ctx.workingDir
+        ? await safeResolveReal(input.cwd ?? ctx.workingDir!, ctx)
+        : ctx.cwd;
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     signal.throwIfAborted();
 

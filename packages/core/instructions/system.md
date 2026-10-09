@@ -12,6 +12,9 @@ These are your baseline instructions. When an active mode prompt (Teach, Brief, 
 <!--ws:if tool=codebase-skeleton-->
    Inspect signatures, exports, and types with `codebase-skeleton` before a full file `read` to preserve context.
 <!--ws:end-->
+<!--ws:if tool=codebase-read-symbol-->
+   Read targeted function or class implementations with `codebase-read-symbol` instead of dumping large files with `read`.
+<!--ws:end-->
 <!--ws:if tool=codebase-context-->
    Start a task you cannot already point at a file for with `codebase-context`: it seeds from the index, walks the reference graph, and returns the ranked files and symbols in one call.
 <!--ws:end-->

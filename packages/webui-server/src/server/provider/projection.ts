@@ -44,7 +44,7 @@ export function projectSavedProviders(
   return Object.entries(providers).map(([id, cfg]) => {
     const keys = normalizeKeys(cfg);
     const active = keys.find((key) => key.label === cfg.activeKey) ?? keys[0];
-    const models = cfg.models;
+    const models = modelIds(cfg.models);
     const view: SavedProviderView = {
       id,
       type: cfg.type,
@@ -64,6 +64,26 @@ export function projectSavedProviders(
     if (picked !== undefined) view.pickedModelId = picked;
     return view;
   });
+}
+
+/**
+ * The allowlist as model ids. Rows come straight from the config file, where
+ * the loader also accepts model.dev-style `{ id, ... }` objects; the wire
+ * contract (and every panel rendering it) is `string[]`.
+ */
+function modelIds(models: unknown): string[] | undefined {
+  if (!Array.isArray(models)) return undefined;
+  const ids: string[] = [];
+  for (const entry of models) {
+    const id =
+      typeof entry === 'string'
+        ? entry
+        : entry && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string'
+          ? (entry as { id: string }).id.trim()
+          : '';
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 /** Shared scrubber for probe error/body redaction. */

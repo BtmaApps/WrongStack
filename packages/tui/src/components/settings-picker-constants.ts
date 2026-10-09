@@ -2,9 +2,7 @@ import type { ReasoningEffort as CoreReasoningEffort } from '@wrongstack/core/ty
 import { TOTAL_SETTINGS_FIELD_COUNT } from '../ui-contracts.js';
 import { ANIMATION_STYLE_DESCS, ANIMATION_STYLES } from './animation-style.js';
 
-export {
-  TOOL_RESULT_VIEW_MODES,
-} from '../tool-result-view-mode.js';
+export { TOOL_RESULT_VIEW_MODES } from '../tool-result-view-mode.js';
 
 /** Selectable presets for the auto-proceed delay, so the field is fully
  *  keyboard-cyclable (←/→) instead of needing typed numeric input. */
@@ -52,6 +50,19 @@ export type ReasoningEffort = CoreReasoningEffort;
 
 export const CACHE_TTLS = ['default', '5m', '1h'] as const;
 export type CacheTtl = (typeof CACHE_TTLS)[number];
+
+/**
+ * System-prompt variants in startup-menu order. Mirrors core
+ * `SYSTEM_PROMPT_VARIANT_OPTIONS` (`default` is shown as "Standard").
+ */
+export const SYSTEM_PROMPT_CHOICES = ['lite', 'default', 'pro', 'scout'] as const;
+export type SystemPromptChoice = (typeof SYSTEM_PROMPT_CHOICES)[number];
+export const SYSTEM_PROMPT_CHOICE_LABELS: Record<SystemPromptChoice, string> = {
+  lite: 'Lite',
+  default: 'Standard',
+  pro: 'Pro',
+  scout: 'Scout',
+};
 
 export const STATUSLINE_MODE_DESCS: Record<StatuslineMode, string> = {
   minimum: 'Single line with essential chips only (default)',
@@ -263,4 +274,6 @@ export const SETTINGS_FIELD_LABELS: readonly string[] = [
   'Tool result view', // 62
   'Tool Coach', // 63
   'Require next steps', // 64
+  'Reuse startup choices', // 65
+  'System prompt', // 66
 ];

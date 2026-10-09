@@ -4,13 +4,21 @@ description: |
   Use this skill when writing, fixing, reviewing, or planning tests in any project, in whatever runner the project already uses.
   Also use it to write the failing proof for a suspected bug and to promote that proof into a durable regression test.
   Triggers: user says "test", "unit test", "integration test", "e2e", "mock", "coverage", "flaky", "failing test", "regression test", "write tests", "vitest", "jest", "pytest", "go test", "proof", "red/green".
-version: 2.1.0
+version: 2.2.1
 required-capabilities: [filesystem.read, verification.run]
 required-tools: []
 optional-capabilities: [execution.shell, code.inspect]
+trigger: "Use this skill when writing, fixing, reviewing, or planning tests in any project, in whatever runner the project already uses. Also use it to write the failing proof for a suspected bug and to promote that proof into a durable regression test."
+metadata:
+  routing-group: quality
 ---
 
 # Testing
+
+## Selection card
+- Task: Write meaningful behavior and regression tests. / TR: Anlamlı davranış ve regresyon testleri yaz.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -21,9 +29,10 @@ cost.
 
 ## Rules
 
-1. Match the project before writing anything. Find the runner (package.json
-   scripts, vitest/jest config, pytest.ini or pyproject, go.mod, Cargo.toml),
-   the test layout, the naming, and the helpers neighbouring tests already use.
+1. **Pre-flight: Inspect repo runner & live version first.** Inspect `package.json` test scripts,
+   runner configs (`vitest.config.ts`, `playwright.config.ts`, `pytest.ini`, `Cargo.toml`),
+   and existing suites. Query `registry.npmjs.org/<runner>/latest` to confirm active flags
+   (e.g. Vitest 5 options, fake timers) and match the project's runner layout before writing tests.
 2. See it fail first. A regression test must fail without the fix — a test that
    was never red proves nothing.
 3. Test behaviour through the public surface. Don't assert on private helpers or
@@ -158,6 +167,16 @@ describe('withRetry', () => {
 - [ ] Assertions target behaviour with specific matchers
 - [ ] Mocks, timers, and environment restored; no order dependence
 - [ ] Commands and results reported exactly, including skips and filters
+
+## Source resolution and safe red runs
+
+Current stable targets checked 2026-10-09: Vitest 5.0.3 and Playwright 1.64.0.
+Inspect their engine/peer requirements and installed configuration before upgrades.
+Pin runtime/source resolution so tests do not compare two stale builds.
+For red/green checks in a shared tree, use preserved snapshots or an isolated
+copy; do not temporarily overwrite a concurrently edited production file.
+Drive async races with barriers/deferred completion and reserve real-system
+checks for the boundary they actually verify. Serialize shared build/coverage writers.
 
 ## Skills in scope
 

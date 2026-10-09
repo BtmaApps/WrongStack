@@ -39,7 +39,7 @@ export const toolCatalog = [
   {
     name: 'browser_open',
     summary:
-      'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',
+      'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Missing Playwright/Chromium installs automatically. For trusted private or localhost targets, ask the operator to run /browser allow <origin> once for this project.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
@@ -63,7 +63,7 @@ export const toolCatalog = [
   {
     name: 'browser_navigate',
     summary:
-      'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first; private and localhost origins require an explicit allowlist.',
+      'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first. If private or localhost access is blocked, show the operator the exact /browser allow <origin> command from the error.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
@@ -239,7 +239,7 @@ export const toolCatalog = [
   {
     name: 'exec',
     summary:
-      'Execute a command directly without shell interpretation, using explicit program arguments. Prefer it when argument safety and predictable process invocation matter.',
+      'Execute a command directly without shell interpretation, preserving every argument. YOLO/YOLO+ permit executables beyond the default roster, filesystem-scoped Git -C and temporary development settings; explicit tools.exec.deny entries still refuse. Prefer it for predictable process invocation.',
     permission: 'confirm',
     mutating: true,
     category: 'Shell, Git & web',
@@ -255,7 +255,7 @@ export const toolCatalog = [
   {
     name: 'fetch',
     summary:
-      'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Use it for a known page or endpoint, not for general web discovery.',
+      'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Project origins allowed with /network allow (or /browser allow) are shared with the browser and HTTP reader. Use for a known page or endpoint.',
     permission: 'confirm',
     mutating: false,
     category: 'Shell, Git & web',
@@ -501,6 +501,14 @@ export const toolCatalog = [
     category: 'Discovery & index',
   },
   {
+    name: 'codebase-read-symbol',
+    summary:
+      'Read the exact implementation of a named declaration (function, method, class, interface, type, enum, variable) from a file using AST parsing. Returns line-numbered code with exact line numbers.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Discovery & index',
+  },
+  {
     name: 'codebase-ast-replace',
     summary:
       'Replace a named declaration using source-aware structure instead of fragile text matching. Use it for a function, method, class, interface, or variable when the target is unambiguous.',
@@ -586,6 +594,14 @@ export const toolCatalog = [
       'Remove dead code by dead-code-scan finding id: re-scans, applies, typechecks, rolls back on failure and keeps an undo backup. Only for ids the user chose after reviewing the scan.',
     permission: 'confirm',
     mutating: true,
+    category: 'Discovery & index',
+  },
+  {
+    name: 'codebase-read-symbol',
+    summary:
+      'Read the exact implementation of a named declaration (function, method, class, interface, type, enum, variable) from a file using AST parsing. Returns line-numbered code in standard N→content format, eliminating offset guessing and saving context tokens.',
+    permission: 'auto',
+    mutating: false,
     category: 'Discovery & index',
   },
 ] as const;
@@ -1408,9 +1424,9 @@ export const PLUGIN_COUNT = pluginCatalog.length;
  */
 // generated:tool-tier-counts
 export const TOOL_TIER_COUNTS = {
-  off: 72,
-  minimal: 28,
-  light: 28,
-  medium: 51,
-  aggressive: 28,
+  off: 73,
+  minimal: 29,
+  light: 29,
+  medium: 52,
+  aggressive: 29,
 } as const;

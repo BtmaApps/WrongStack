@@ -81,7 +81,11 @@ import {
 } from '@wrongstack/core/execution';
 import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
 import { TOKENS } from '@wrongstack/core/kernel';
-import { createSkillMentionMiddleware, createSkillSuggestionSetup } from '@wrongstack/core/skills';
+import {
+  createLocalSkillSuggestionSetup,
+  createSkillMentionMiddleware,
+  createSkillSuggestionSetup,
+} from '@wrongstack/core/skills';
 import { type AnnotationsStore, SessionMemoryConsolidator } from '@wrongstack/core/storage';
 import {
   type Config,
@@ -308,8 +312,22 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     skillLoader: config.features.skills ? input.skillLoader : undefined,
     logger,
     getSessionId: () => input.sessionGetter().id,
+    getAvailableToolNames: () =>
+      (context.catalogTools.length > 0 ? context.catalogTools : context.tools).map(
+        (tool) => tool.name,
+      ),
   });
   if (skillSuggestion) pipelines.request.use(skillSuggestion);
+  const localSkillSuggestion = createLocalSkillSuggestionSetup({
+    config,
+    skillLoader: input.skillLoader,
+    logger,
+    getAvailableToolNames: () =>
+      (context.catalogTools.length > 0 ? context.catalogTools : context.tools).map(
+        (tool) => tool.name,
+      ),
+  });
+  if (localSkillSuggestion) pipelines.request.use(localSkillSuggestion);
   if (config.features.skills && input.skillLoader)
     pipelines.request.use(createSkillMentionMiddleware(input.skillLoader));
   const codebaseIndexing = setupWebUICodebaseIndexing({

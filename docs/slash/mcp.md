@@ -8,7 +8,7 @@ used by the CLI subcommand.
 
 | Command | Effect |
 |---|---|
-| `/mcp` | List available presets and configured servers |
+| `/mcp` | Open the MCP management panel in TUI; list servers in other REPL surfaces |
 | `/mcp list` | Same as `/mcp` |
 | `/mcp add <name>` | Add a server preset to config, disabled by default |
 | `/mcp add <name> --enable` | Add a preset and enable it immediately |
@@ -29,7 +29,13 @@ Alias: `/mcp-servers`.
 MCP servers can be managed from every surface, all backed by the active profile
 config (`mcpServers` key) and the **same** in-process `MCPRegistry`:
 
-- **REPL / TUI** — the `/mcp` command above (`mcp-utils.ts`).
+- **REPL / TUI** — `/mcp` opens a panel: `a` adds a preset or custom server,
+  `e` edits transport/command/URL/arguments, `d` removes with confirmation,
+  Enter enables/disables, and `r` restarts. Tab moves between editor fields;
+  Ctrl+U clears the focused field; Enter saves and Esc cancels. Arguments are
+  a JSON string array, preserving spaces inside individual arguments. Existing
+  environment and authorization settings are preserved when editing. New
+  servers are saved disabled and can be enabled from the list.
 - **WebUI** — Settings → MCP panel in `wstack --webui`. Add/remove/enable/
   disable/restart/discover and live status + tool names are wired to a real
   registry. SSE / streamable-http servers (e.g. `context7`) persist their `url`.

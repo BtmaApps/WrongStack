@@ -15,18 +15,39 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseEvalJsonl } from '@wrongstack/core/skills';
+import { parseEvalJsonl, parseSkillFrontmatter } from '@wrongstack/core/skills';
 import { describe, expect, it } from 'vitest';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const EN = path.join(REPO_ROOT, '.wrongstack/skill-suggest-eval.jsonl');
-const TR = path.join(REPO_ROOT, '.wrongstack/skill-suggest-eval-tr.jsonl');
+const PAIRS = [
+  ['.wrongstack/skill-suggest-eval.jsonl', '.wrongstack/skill-suggest-eval-tr.jsonl'],
+  [
+    'packages/core/tests/fixtures/skill-suggest-bundle-en.jsonl',
+    'packages/core/tests/fixtures/skill-suggest-bundle-tr.jsonl',
+  ],
+].map((pair) => pair.map((file) => path.join(REPO_ROOT, file)));
 
 function load(file: string) {
   return parseEvalJsonl(fs.readFileSync(file, 'utf8'));
 }
 
-describe('skill-suggest eval fixtures', () => {
+describe.each(PAIRS)('skill-suggest eval fixtures %s / %s', (EN, TR) => {
+  it('labels only current bundled skills visible to the main agent', () => {
+    const root = path.join(REPO_ROOT, 'packages/core/skills');
+    const visible = new Set(
+      fs.readdirSync(root).flatMap((name) => {
+        const file = path.join(root, name, 'SKILL.md');
+        if (!fs.existsSync(file)) return [];
+        const parsed = parseSkillFrontmatter(fs.readFileSync(file, 'utf8'));
+        return ['roster', 'external'].includes(parsed.audience?.trim().toLowerCase() ?? '')
+          ? []
+          : [parsed.name];
+      }),
+    );
+    for (const request of load(EN).requests) {
+      if (request.gold) expect(visible.has(request.gold), request.text).toBe(true);
+    }
+  });
   it('parse without malformed lines', () => {
     for (const file of [EN, TR]) {
       const { requests, errors } = load(file);

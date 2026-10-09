@@ -97,14 +97,14 @@ describe('execTool', () => {
     );
   });
 
-  it('respects MAX_ARGS limit', async () => {
+  it('preserves arguments beyond the former 20-argument limit', async () => {
     const ctx = makeCtx();
     const manyArgs = Array(30).fill('arg');
     const outcome = await settle(
       execTool.execute({ command: 'echo', args: manyArgs as string[] }, ctx, makeOpts()),
     );
-    // args should be sliced to MAX_ARGS; the call is never refused for it
     expectNotRefused(outcome);
+    if (outcome.result) expect(outcome.result.args).toEqual(manyArgs);
   });
 
   it('caps per-call timeout at MAX_TIMEOUT_MS (600s), not the 30s default', async () => {

@@ -6,6 +6,7 @@ import { deadCodeScanTool } from '../src/dead-code/index.js';
 import {
   codebaseAstReplaceTool,
   codebaseInvariantCheckTool,
+  codebaseReadSymbolTool,
   codebaseSkeletonTool,
   securityAstScanTool,
 } from '../src/index.js';
@@ -81,6 +82,12 @@ describe('codebase tool path confinement (H-5/H-6 / VF-06, VF-07)', () => {
         ctx(),
         execOpts,
       ),
+    ).rejects.toThrow(/outside project root/);
+  });
+
+  it('codebase-read-symbol errors on an out-of-root path', async () => {
+    await expect(
+      codebaseReadSymbolTool.execute({ file: outside(), symbol: 'a' }, ctx(), execOpts),
     ).rejects.toThrow(/outside project root/);
   });
 

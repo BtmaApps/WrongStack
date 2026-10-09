@@ -7,7 +7,11 @@ import type { Config, ModelsRegistry } from '@wrongstack/core/types';
 import { color, isStdinTTY, toErrorMessage, writeErr } from '@wrongstack/core/utils';
 import { isSetupProvider, SETUP_MODEL_ID, SETUP_PROVIDER_ID } from '@wrongstack/providers';
 import { type BootConfigResult, bootConfig } from './boot-config.js';
-import { autoSelectSavedProvider, validateSavedProviderModel } from './boot-provider-selection.js';
+import {
+  autoSelectSavedProvider,
+  shouldReuseStartupChoices,
+  validateSavedProviderModel,
+} from './boot-provider-selection.js';
 import type { ReadlineInputReader } from './input-reader.js';
 import { type PickerResult, runPicker, saveToGlobalConfig } from './picker.js';
 import { hasAnyCredential, runFirstRunSetup } from './pre-launch.js';
@@ -122,6 +126,13 @@ export async function resolveBootProviderModel(
         if (!savedStatus.ok) {
           renderer.writeWarning(
             `Saved provider/model is no longer usable (${savedStatus.reason ?? 'unknown reason'}); choose a provider.\n`,
+          );
+        } else if (shouldReuseStartupChoices(config)) {
+          // "Reuse startup choices" is on and the saved pair is still usable:
+          // take it without the Continue question.
+          skipPicker = true;
+          renderer.write(
+            `\n  ${color.green('▶')} ${color.bold(savedProvider)} / ${color.bold(savedModel)}\n\n`,
           );
         } else {
           const answer = (

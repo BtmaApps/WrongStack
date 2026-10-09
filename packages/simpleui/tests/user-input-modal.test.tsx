@@ -16,6 +16,65 @@ afterEach(() => {
 });
 
 describe('SimpleUI structured user input', () => {
+  it('attaches the focus trap to the dialog and cancels via Escape', () => {
+    const send = vi.fn();
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+    act(() =>
+      root.render(
+        <UserInputModal
+          send={send}
+          input={{
+            queuedCount: 1,
+            pending: {
+              sessionId: 's1',
+              request: {
+                id: 'r9',
+                title: 'Escape hatch',
+                tabs: [
+                  {
+                    id: 't',
+                    label: 'T',
+                    questions: [{ id: 'q', prompt: 'Q?', kind: 'text', required: false }],
+                  },
+                ],
+              },
+            },
+          }}
+        />,
+      ),
+    );
+
+    // The dialog container itself carries the trap (ref + focusability).
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement | null;
+    expect(dialog).not.toBeNull();
+    expect(dialog?.getAttribute('tabindex')).toBe('-1');
+
+    // Tab from the last focusable wraps to the first — the trap is live.
+    const buttons = Array.from(host.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+    expect(buttons.length).toBeGreaterThan(0);
+    buttons[buttons.length - 1]!.focus();
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+      );
+    });
+    expect(document.activeElement).toBe(buttons[0]);
+
+    // Escape cancels the pending request (house defaultPrevented pattern).
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      );
+    });
+    expect(send).toHaveBeenCalledWith('user.input_submit', {
+      sessionId: 's1',
+      response: { requestId: 'r9', status: 'cancelled', answers: [] },
+    });
+  });
+
   it('preselects the recommendation, edits another tab, and submits one result', () => {
     const send = vi.fn();
     const host = document.createElement('div');

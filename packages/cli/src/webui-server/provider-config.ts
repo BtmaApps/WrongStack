@@ -89,11 +89,18 @@ export interface ProviderConfigStore {
  *
  * @param configProvidersRef Optional callback that returns the in-memory
  *   merged `config.providers` map (from the boot config loader which merges
- *   global + project-local configs). When provided, `load()` returns from
- *   this ref instead of re-reading the single global config file on disk.
- *   This prevents a mismatch where providers stored in the project-local
- *   config (`config.local.json`) are visible to the agent but invisible
- *   to the WebUI's saved-providers panel.
+ *   the profile config with `config.local.json`, extra sources and flags).
+ *   Rows another layer contributes are shown read-only next to the profile's
+ *   own rows, so a provider the agent can see is never invisible in the
+ *   WebUI's saved-providers panel.
+ *
+ * The ref is a BOOT snapshot: `ConfigLoader.load()` returns a frozen Config,
+ * so the credential watcher can never refresh it. Owned rows therefore always
+ * come from disk on every `load()`. Serving them from the ref made the store
+ * compare a stale view against fresh disk: after the first save every edit of
+ * that provider was refused as "comes from another config file", a provider
+ * added (or OAuth account signed in) after boot never appeared, and removing
+ * it silently left it on disk.
  */
 export function createProviderConfigStore(
   globalConfigPath: string | undefined,
@@ -102,14 +109,41 @@ export function createProviderConfigStore(
   if (configProvidersRef && globalConfigPath) {
     const views = new WeakMap<
       Record<string, ProviderConfig>,
-      { view: Record<string, ProviderConfig>; disk: Record<string, ProviderConfig> }
+      {
+        view: Record<string, ProviderConfig>;
+        disk: Record<string, ProviderConfig>;
+        inherited: Record<string, ProviderConfig>;
+      }
     >();
     const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    // Classify against the disk as it was at boot — the moment the ref was
+    // built — so a later OAuth token refresh on disk is not mistaken for
+    // another layer overriding the account.
+    let inherited: Promise<Record<string, ProviderConfig>> | undefined;
+    const inheritedRows = (): Promise<Record<string, ProviderConfig>> => {
+      inherited ??= loadSavedProviders(globalConfigPath)
+        .then((bootDisk) => rowsFromOtherLayers(configProvidersRef(), bootDisk))
+        .catch((err: unknown) => {
+          inherited = undefined;
+          throw err;
+        });
+      return inherited;
+    };
+    void inheritedRows().catch(() => undefined);
+    const compose = (
+      disk: Record<string, ProviderConfig>,
+      layered: Record<string, ProviderConfig>,
+    ): Record<string, ProviderConfig> => {
+      const providers = structuredClone(disk);
+      for (const [id, row] of Object.entries(layered)) providers[id] = structuredClone(row);
+      return providers;
+    };
     return {
       load: async () => {
+        const layered = await inheritedRows();
         const disk = await loadSavedProviders(globalConfigPath);
-        const providers = structuredClone(configProvidersRef());
-        views.set(providers, { view: structuredClone(providers), disk });
+        const providers = compose(disk, layered);
+        views.set(providers, { view: structuredClone(providers), disk, inherited: layered });
         return providers;
       },
       save: async (providers) => {
@@ -121,7 +155,7 @@ export function createProviderConfigStore(
         snapshots.track(pending);
         for (const id of new Set([...Object.keys(baseline.view), ...Object.keys(providers)])) {
           if (equal(baseline.view[id], providers[id])) continue;
-          if (!equal(baseline.view[id], baseline.disk[id])) {
+          if (Object.hasOwn(baseline.inherited, id)) {
             throw new Error(
               `Provider "${id}" comes from another config file. Edit its source config or create a new auth profile alias.`,
             );
@@ -131,14 +165,15 @@ export function createProviderConfigStore(
         }
         await saveProviders(globalConfigPath, pending);
         // Preserve inherited rows in the UI, without copying their credentials
-        // into the writable file. Include concurrent edits to owned rows.
-        for (const id of Object.keys(providers)) {
-          if (equal(baseline.view[id], baseline.disk[id])) delete providers[id];
-        }
-        for (const [id, record] of Object.entries(pending)) {
-          if (equal(baseline.view[id], baseline.disk[id])) providers[id] = record;
-        }
-        views.set(providers, { view: structuredClone(providers), disk: structuredClone(pending) });
+        // into the writable file. `pending` now holds concurrent edits too.
+        const next = compose(pending, baseline.inherited);
+        for (const id of Object.keys(providers)) delete providers[id];
+        Object.assign(providers, next);
+        views.set(providers, {
+          view: structuredClone(providers),
+          disk: structuredClone(pending),
+          inherited: baseline.inherited,
+        });
       },
     };
   }
@@ -149,4 +184,44 @@ export function createProviderConfigStore(
         : loadSavedProviders(globalConfigPath),
     save: (providers) => saveProviders(globalConfigPath, providers),
   };
+}
+
+/**
+ * The key the config loader resolves for a row: an explicit `apiKey` wins,
+ * else the `activeKey` entry of `apiKeys[]`, else its first entry.
+ */
+function resolvedApiKey(cfg: ProviderConfig): string | undefined {
+  if (cfg.apiKey) return cfg.apiKey;
+  const keys = (Array.isArray(cfg.apiKeys) ? cfg.apiKeys : []).filter(
+    (k) => !!k && typeof k.label === 'string' && typeof k.apiKey === 'string',
+  );
+  const chosen = cfg.activeKey ? (keys.find((k) => k.label === cfg.activeKey) ?? keys[0]) : keys[0];
+  return chosen?.apiKey;
+}
+
+/**
+ * Rows of the merged boot config that the profile file does not own: absent
+ * from it, or overridden by another layer in a field that picks the account
+ * or endpoint. Loader normalizations (`apiKey` mirrored from `apiKeys[]`,
+ * inline model objects) leave those fields alone, so they do not count.
+ */
+function rowsFromOtherLayers(
+  merged: Record<string, ProviderConfig>,
+  bootDisk: Record<string, ProviderConfig>,
+): Record<string, ProviderConfig> {
+  const rows: Record<string, ProviderConfig> = {};
+  for (const [id, row] of Object.entries(merged)) {
+    if (!row || typeof row !== 'object') continue;
+    const owned = bootDisk[id];
+    if (
+      !owned ||
+      row.type !== owned.type ||
+      row.family !== owned.family ||
+      row.baseUrl !== owned.baseUrl ||
+      resolvedApiKey(row) !== resolvedApiKey(owned)
+    ) {
+      rows[id] = structuredClone(row);
+    }
+  }
+  return rows;
 }

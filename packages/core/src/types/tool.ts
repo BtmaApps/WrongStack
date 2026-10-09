@@ -245,6 +245,8 @@ export interface Tool<I = unknown, O = unknown> {
       signal: AbortSignal;
       /** The id of this call, when the executor runs it for a `tool_use` block. */
       toolUseId?: string | undefined;
+      /** Effective session mode supplied by the host after permission checks. */
+      autonomy?: 'prompt' | 'yolo' | 'yolo-plus' | undefined;
     },
   ): Promise<O>;
   /**
@@ -296,7 +298,7 @@ export interface Tool<I = unknown, O = unknown> {
   executeStream?(
     input: I,
     ctx: AgentContext,
-    opts: { signal: AbortSignal },
+    opts: { signal: AbortSignal; autonomy?: 'prompt' | 'yolo' | 'yolo-plus' | undefined },
   ): AsyncIterable<ToolStreamEvent<O>>;
   /**
    * Optional teardown hook fired by the executor when the tool's run is

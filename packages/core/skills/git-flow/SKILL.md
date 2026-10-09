@@ -3,12 +3,20 @@ name: git-flow
 description: |
   Use this skill when committing, branching, opening a pull request, resolving conflicts, or recovering from a git mistake in any repository.
   Triggers: user mentions "commit", "branch", "PR", "pull request", "merge", "rebase", "conflict", "stash", "cherry-pick", "revert", "bisect", "reflog", "force push".
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [version-control.manage]
 required-tools: []
+trigger: "Use this skill when committing, branching, opening a pull request, resolving conflicts, or recovering from a git mistake in any repository."
+metadata:
+  routing-group: workflow
 ---
 
 # Git Workflow
+
+## Selection card
+- Task: Manage scoped commits, branches and pull requests. / TR: Kapsamlı commit, branch ve pull request yönet.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -118,6 +126,15 @@ reason, the trade-off, and anything a reviewer can't see in the diff.
 - [ ] Message matches the repository's convention and explains why
 - [ ] No hook bypass; no force push to shared history
 - [ ] Anything destructive was inspected first and is recoverable
+
+## Exact state and shared index
+
+Recheck the index and owned paths immediately before a commit. Hooks may produce
+additional artifacts: inspect them and verify the resulting commit after hooks
+finish. In a shared checkout, an alternate index can isolate authorized paths
+without consuming another writer's staged work; it still needs the normal hooks.
+Use structured PR input or a body file to preserve newlines. Pin the PR head
+and required CI results before any authorized merge.
 
 ## Skills in scope
 

@@ -26,6 +26,7 @@ import {
   SAGE_THRESHOLD_PRESETS,
   SETTINGS_MODES,
   STATUSLINE_MODES,
+  SYSTEM_PROMPT_CHOICES,
   THINKING_WORD_FIELD,
   THINKING_WORD_PRESETS,
   TOKEN_SAVING_TIERS,
@@ -614,6 +615,30 @@ export function cycleSettingsValue(inputs: {
           ...state,
           settingsPicker: { ...sp, nextStepsRequired: !sp.nextStepsRequired, hint: undefined },
         };
+      // Field 65: reuse last startup choices (model / system prompt / launch mode)
+      if (f === 65)
+        return {
+          ...state,
+          settingsPicker: {
+            ...sp,
+            rememberStartupChoices: !sp.rememberStartupChoices,
+            hint: bootHint,
+          },
+        };
+      // Field 66: system prompt for the NEXT session — the running session
+      // keeps the prompt (and tool surface) it was built with.
+      if (f === 66) {
+        const i = SYSTEM_PROMPT_CHOICES.indexOf(sp.nextSystemPromptVariant);
+        const base = i < 0 ? 0 : i;
+        const next =
+          SYSTEM_PROMPT_CHOICES[
+            (base + action.delta + SYSTEM_PROMPT_CHOICES.length) % SYSTEM_PROMPT_CHOICES.length
+          ] ?? 'pro';
+        return {
+          ...state,
+          settingsPicker: { ...sp, nextSystemPromptVariant: next, hint: bootHint },
+        };
+      }
       if (f >= PANEL_POSITION_FIELD_START && f - PANEL_POSITION_FIELD_START < PANEL_IDS.length) {
         const PANEL_POSITION_CYCLE = ['bottom', 'sidebar'] as const;
         const panelId = PANEL_IDS[f - PANEL_POSITION_FIELD_START]!;

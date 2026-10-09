@@ -144,6 +144,7 @@ const INDEX_READ = [
   'codebase-stats',
   'codebase-search',
   'codebase-skeleton',
+  'codebase-read-symbol',
   'codebase-context',
   'codebase-repo-map',
   'codebase-incoming-calls',

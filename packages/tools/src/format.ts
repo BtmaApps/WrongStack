@@ -101,7 +101,10 @@ export const formatTool: Tool<FormatInput, FormatOutput> = {
 
     let cwd: string;
     try {
-      cwd = input.cwd ? await safeResolveReal(input.cwd, ctx) : ctx.cwd;
+      cwd =
+        input.cwd || ctx.workingDir
+          ? await safeResolveReal(input.cwd ?? ctx.workingDir!, ctx)
+          : ctx.cwd;
     } catch (err) {
       throw new ToolValidationError({
         message: `format: ${(err as Error).message}`,

@@ -276,6 +276,14 @@ export interface LaunchConfig {
    */
   autonomy?: 'off' | 'auto' | undefined;
   /**
+   * Reuse the last startup choices — provider/model, system-prompt variant,
+   * and mode/YOLO/autonomy — without the "Continue with these?" questions.
+   * Only applies once a choice has been saved (first run still asks) and
+   * never overrides an explicit CLI flag. `false` asks on every launch.
+   * Default: true (unset = reuse).
+   */
+  rememberStartupChoices?: boolean | undefined;
+  /**
    * Last mode chosen from the interactive launch menu
    * (`packages/cli/src/boot/launch-menu.ts`).
    *

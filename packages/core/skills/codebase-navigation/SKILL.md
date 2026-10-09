@@ -3,13 +3,21 @@ name: codebase-navigation
 description: |
   Use this skill when starting work in an unfamiliar codebase or area — finding where something is implemented, how a request flows, what depends on a piece of code, or where a change should go — before reading files one by one.
   Triggers: user says "where is", "how does this work", "find the code that", "explain this codebase", "what calls", "what uses", "architecture", "entry point", "which file handles", "get familiar with".
-version: 1.0.0
+version: 1.1.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [code.inspect]
+trigger: "Use this skill when starting work in an unfamiliar codebase or area \u2014 finding where something is implemented, how a request flows, what depends on a piece of code, or where a change should go \u2014 before reading files one by one."
+metadata:
+  routing-group: workflow
 ---
 
 # Codebase Navigation
+
+## Selection card
+- Task: Locate repository entry points and owning modules. / TR: Depo giriş noktalarını ve sorumlu modülleri bul.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -27,7 +35,7 @@ same moves work with glob, grep, and ranged reads.
    exact text for strings, config keys, and error messages.
 3. Read skeletons before bodies — signatures, types, and exports carry most of a
    module's contract.
-4. Once you know the line, read that range, not the whole file.
+4. Once you know the symbol, inspect it with codebase-read-symbol; read line ranges with read only when unindexed or non-declaration content.
 5. Trace relationships through the reference graph (callers, callees, imports)
    instead of guessing from file names.
 6. Don't conclude absence from one empty search. Retry with another query, a
@@ -44,6 +52,7 @@ same moves work with glob, grep, and ranged reads.
 | Code for a described behaviour | codebase-context tool | grep for domain words; glob for likely file names |
 | A symbol by name or kind | codebase-search tool | grep for the declaration |
 | A module's contract | codebase-skeleton tool | Read only exports and type definitions |
+| Specific declaration / implementation | codebase-read-symbol tool | Ranged read with offset and limit |
 | Who calls this, what it calls | codebase-incoming-calls and codebase-outgoing-calls tools | grep the name, read the call sites |
 | What breaks if it changes | codebase-impact-analysis tool | Callers plus the tests that import it |
 | Whether the index is trustworthy | codebase-stats tool; codebase-index tool to build or refresh | — |
@@ -103,6 +112,14 @@ Not traced: whether the email worker retries on failure
 - [ ] Claims about location and flow cite file:line
 - [ ] Absence claims backed by more than one search method
 - [ ] Untraced links in a flow labelled as such
+
+## Resolve source identity
+
+Check workspace exports, aliases, generated modules and build resolution before
+assuming the file you read is the code a caller executes. Record source vs.
+dist entrypoints and index freshness. Search dynamic registries/config keys when
+symbol references are empty; generated public APIs can have external consumers.
+Prefer bounded rg searches for exact text when no indexed surface is available.
 
 ## Skills in scope
 

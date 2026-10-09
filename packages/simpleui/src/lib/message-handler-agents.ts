@@ -23,7 +23,7 @@ export function handleProviderFallbackMessage(
   message: ServerMessage,
   deps: MessageHandlerDeps,
 ): void {
-  const { sessionIdRef, setRunning, setActivity } = deps;
+  const { sessionIdRef, setMessages, setRunning, setActivity } = deps;
   const payload = message.payload ?? {};
   // The server broadcasts fallback events to every connected client.
   // Only react to the session this tab is viewing — otherwise one
@@ -36,6 +36,11 @@ export function handleProviderFallbackMessage(
       ? (payload['to'] as Record<string, unknown>)
       : undefined;
   const fallbackModel = typeof target?.['model'] === 'string' ? target['model'] : '';
+  // The fallback model re-streams the whole reply: drop what the failed model
+  // had already streamed so the new stream does not append to it.
+  setMessages((current) =>
+    current.some((item) => item.streaming) ? current.filter((item) => !item.streaming) : current,
+  );
   setRunning(true);
   setActivity(fallbackModel ? `Fallback · ${fallbackModel}` : 'Switching fallback model');
   // Clear any pending fallback modal — the switch happened.

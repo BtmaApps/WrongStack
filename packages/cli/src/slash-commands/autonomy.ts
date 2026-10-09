@@ -30,9 +30,9 @@ export function buildAutonomyCommand(opts: SlashCommandContext): SlashCommand {
     help: [
       'Usage:',
       '  /autonomy            Show current autonomy status',
-      '  /autonomy off        Disabled — agent stops after each turn (default)',
+      '  /autonomy off        Disabled — agent stops after each turn',
       '  /autonomy suggest    Show next-step suggestions after each turn',
-      '  /autonomy on         Auto-continue — agent picks next step and proceeds',
+      '  /autonomy on         Auto-continue — agent picks next step and proceeds (default)',
       '  /autonomy eternal    Goal-driven loop — runs forever against /goal',
       '                       (prompts to confirm an existing goal; `--keep` to skip prompt)',
       '  /autonomy parallel   Parallel mode — 4-8 agents per tick, fan-out parallelism',

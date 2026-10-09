@@ -164,7 +164,7 @@ const UI_PREFERENCES_TREE: ContractNode = {
     readAdvancedMode: true,
     panelPositions: true,
   },
-  launch: { mode: true, autonomy: true },
+  launch: { mode: true, autonomy: true, rememberStartupChoices: true },
   uiLocale: true,
 };
 

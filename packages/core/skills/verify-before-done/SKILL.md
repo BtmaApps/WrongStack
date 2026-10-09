@@ -3,13 +3,21 @@ name: verify-before-done
 description: |
   Use this skill before telling the user a code change is finished, fixed, or working — to prove it with the project's own checks and report exactly what was and wasn't verified.
   Triggers: finishing an implementation or fix, writing the final summary of code changes, "done", "is it working", "did you test it", "make sure it works", "verify", "ready to merge".
-version: 1.1.0
+version: 1.2.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [verification.run, execution.shell, version-control.manage, code.inspect]
+trigger: "Use this skill before telling the user a code change is finished, fixed, or working \u2014 to prove it with the project's own checks and report exactly what was and wasn't verified."
+metadata:
+  routing-group: quality
 ---
 
 # Verify Before Done
+
+## Selection card
+- Task: Prove a claimed fix or completion actually works. / TR: Düzeltme veya tamamlanma iddiasını çalıştırarak kanıtla.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -119,6 +127,16 @@ Notes
 - [ ] Applicable checks run with the project's commands, results read
 - [ ] Behaviour exercised directly where tests don't cover it
 - [ ] Report separates verified, not verified, and pre-existing issues
+
+## Final input identity
+
+Record which source revision/dirty snapshot each check used. Later source changes
+invalidate relevant earlier checks; repeat only the affected verification.
+For documentation/skills, verify loading, links, examples and discovery rather
+than generating tests that merely match new prose.
+Retain proofs/logs when the audit workflow or user requests evidence retention;
+cleanup only owned disposable files. Report local builds, hosted CI, publication
+and live behavior as separate outcomes, each with its own evidence.
 
 ## Skills in scope
 

@@ -8,6 +8,7 @@ import {
 import { guardedFetch } from './_fetch-guard.js';
 import { getTurndown } from './_turndown.js';
 import { capBytesWithNotice } from './_util.js';
+import { browserPrivateOrigins } from './browser/policy.js';
 
 export interface ReadUrlContentInput {
   /** Target web page URL to read. */
@@ -129,11 +130,19 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
       requested === undefined ? undefined : Math.min(Math.max(1, requested), MAX_READ_URL_BYTES);
     const signal = opts?.signal ?? ctx?.signal ?? new AbortController().signal;
 
-    const res = await guardedFetch(rawUrl, 5, signal, {
-      'user-agent': 'Mozilla/5.0 (compatible; WrongStackReader/1.0; +https://wrongstack.dev)',
-      accept:
-        'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/json;q=0.5,*/*;q=0.1',
-    });
+    const res = await guardedFetch(
+      rawUrl,
+      5,
+      signal,
+      {
+        'user-agent': 'Mozilla/5.0 (compatible; WrongStackReader/1.0; +https://wrongstack.dev)',
+        accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/json;q=0.5,*/*;q=0.1',
+      },
+      {
+        allowedPrivateOrigins: browserPrivateOrigins(ctx?.projectRoot ?? ctx?.cwd ?? process.cwd()),
+      },
+    );
 
     const contentType = res.headers.get('content-type') ?? 'text/plain';
     const normalizedType = contentType.toLowerCase();

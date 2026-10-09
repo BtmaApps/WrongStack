@@ -25,6 +25,7 @@ import {
 import { DEFAULT_ALLOWED_COMMANDS } from './exec-allowlist.js';
 import { validateArgs } from './exec-arg-validation.js';
 import { execSafetyCommandName, normalizeExecCommandName } from './exec-command-name.js';
+import { validateGitDevelopmentArgs } from './exec-git-development-args.js';
 import { checkExecKillCommand } from './exec-kill-guard.js';
 import { getProcessRegistry, redactCommand } from './process-registry.js';
 
@@ -33,6 +34,7 @@ const isWin = process.platform === 'win32';
 // The live, effective allowlist: DEFAULT ∪ config.allow − config.deny. Replaced
 // wholesale by configureExecPolicy(); defaults until boot wires the config.
 let allowedCommands: Set<string> = new Set([...DEFAULT_ALLOWED_COMMANDS].map(normalizeCmd));
+let deniedCommands: Set<string> = new Set();
 
 function normalizeCmd(c: string): string {
   return normalizeExecCommandName(c);
@@ -56,12 +58,14 @@ export function configureExecPolicy(
     if (n) next.add(n);
   }
   for (const c of opts.deny ?? []) next.delete(normalizeCmd(c));
+  deniedCommands = new Set((opts.deny ?? []).map(normalizeCmd).filter(Boolean));
   allowedCommands = next;
 }
 
 /** Reset the exec allowlist to the built-in defaults (tests / re-init). */
 export function resetExecPolicy(): void {
   allowedCommands = new Set([...DEFAULT_ALLOWED_COMMANDS].map(normalizeCmd));
+  deniedCommands = new Set();
 }
 
 // -----------------------------------------------------------------------
@@ -119,7 +123,6 @@ export function getExecAllowlist(): string[] {
   return [...allowedCommands].sort();
 }
 
-const MAX_ARGS = 20;
 const DEFAULT_TIMEOUT_MS = 30_000;
 // Hard ceiling for the per-call `timeout` parameter. The old clamp used
 // DEFAULT_TIMEOUT_MS as the ceiling too, which silently capped EVERY call at
@@ -159,22 +162,23 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
   name: 'exec',
   category: 'Shell',
   description:
-    'Execute a command from a **curated command roster** with argument validation and confirm gating. ' +
+    'Execute a command directly with argument validation and permission gating. Outside YOLO, the curated command roster applies; YOLO/YOLO+ accept other executables while explicit tools.exec.deny entries still refuse. ' +
     'This is the **preferred** alternative to the `bash` tool for running development tools (node, npm, pnpm, tsc, git, tests, linters, etc.). ' +
     'It is NOT a sandbox — several rostered commands (node, python, powershell, …) can run arbitrary code — so prefer least-privilege commands.',
   usageHint:
     'PREFERRED SHELL TOOL for most cases.\n\n' +
     'Use this instead of `bash` whenever possible.\n' +
-    '- `command` must be in the allowlist. Defaults cover JS (node/npm/pnpm/yarn/bun/deno/tsc/vitest/eslint/biome), Go, Rust, Python (python/pip/uv/uvx/pipx/poetry/pdm/conda/pytest/ruff), Ruby, JVM, .NET, native builds (make/cmake/bazel/just), Swift, Dart/Flutter, Zig, and git. Users can extend it via `tools.exec.allow` in config.\n' +
+    '- Outside YOLO, `command` must be in the allowlist. Defaults cover common development toolchains; extend them with `tools.exec.allow`. YOLO/YOLO+ permit additional executables; explicit `tools.exec.deny` entries still refuse.\n' +
     '- Supply only the executable in `command` (e.g. "uv") and put subcommands/options in `args` (e.g. ["run", "pytest"]). Windows executable suffixes and casing are normalized for policy checks; explicit paths require their own trusted allow entry.\n' +
     '- Arguments are passed as a clean array (no shell interpretation).\n' +
+    '- In YOLO/YOLO+, Git global `-C <directory>` options follow the configured filesystem scope, and temporary color, line-ending, long-path and diff settings via `-c key=value` are accepted.\n' +
     '- `cwd` is validated to stay inside the project.\n' +
     '- If a command is not allowlisted, the error explains how to add it; for one-off arbitrary commands, fall back to `bash` (with strong justification).\n' +
     'The curated roster + confirm gating narrows the surface compared to full shell access, ' +
     'but this is not a sandbox — prefer least-privilege commands.',
   selection: {
     doNotUseWhen:
-      'the operation requires pipes, redirection, shell expansion, or a non-allowlisted command.',
+      'the operation requires pipes, redirection or shell expansion; outside YOLO, a non-allowlisted command also needs bash or an explicit config allowance.',
     useInstead: ['bash'],
   },
   permission: 'confirm',
@@ -188,13 +192,10 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
   subjectKey: 'command',
   mutating: true,
   riskTier: 'standard',
-  // Executor-level abort ceiling. Must sit ABOVE the per-call timeout ceiling
-  // (MAX_TIMEOUT_MS): the tool's own timer resolves with exit 124 + registry
-  // tree-kill; the executor's AbortSignal.timeout is a blunt abort that would
-  // otherwise fire first and discard the structured timeout result. The 10s
-  // margin covers the kill/teardown window. The tool owns that timer, so the
-  // executor must not also clamp to `tools.maxToolTimeoutMs` (300s by
-  // default), which cut every `timeout` above 5 minutes short.
+  // The tool owns its command timer and tree-kill settlement. Prompt mode
+  // has a ten-minute ceiling; YOLO honors longer explicit durations and 0.
+  // Keep only parent cancellation in the executor so its default ceiling
+  // cannot interrupt a command the operator authorized for longer.
   managesOwnTimeout: true,
   timeoutMs: MAX_TIMEOUT_MS + 10_000,
   capabilities: ['shell.restricted'],
@@ -205,7 +206,7 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
       command: {
         type: 'string',
         description:
-          'The base command to run. Must be in the internal allowlist (e.g. "node", "pnpm", "git", "tsc").',
+          'Executable name or path. Outside YOLO it must be in the command roster; explicit tools.exec.deny entries apply in every mode.',
       },
       args: {
         type: 'array',
@@ -218,7 +219,8 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
       },
       timeout: {
         type: 'integer',
-        description: 'Per-command timeout in milliseconds (default 30000, max 600000).',
+        description:
+          'Per-command timeout in milliseconds (default 30000; prompt-mode max 600000). In YOLO/YOLO+, longer explicit timeouts are honored and 0 disables the command timer; parent cancellation still applies.',
       },
     },
     required: ['command'],
@@ -238,7 +240,12 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
     const cmd = (input.command ?? '').trim();
     if (!cmd) throw new Error('exec: empty command');
 
-    if (!isExecCommandAllowed(cmd)) {
+    const unattended = opts?.autonomy === 'yolo' || opts?.autonomy === 'yolo-plus';
+    const safetyCmd = execSafetyCommandName(cmd);
+    if (deniedCommands.has(normalizeCmd(cmd)) || deniedCommands.has(safetyCmd)) {
+      throw new Error(`exec: command "${cmd}" is explicitly denied by tools.exec.deny.`);
+    }
+    if (!unattended && !isExecCommandAllowed(cmd)) {
       throw new Error(
         `exec: command "${cmd}" not in allowlist. ` +
           `Add it to your active profile config (~/.wrongstack/profiles/<name>/config.json) ` +
@@ -247,20 +254,22 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
       );
     }
 
-    const args = (input.args ?? []).slice(0, MAX_ARGS);
+    const args = [...(input.args ?? [])];
     const rawTimeout =
       typeof input.timeout === 'number' && !Number.isNaN(input.timeout)
         ? input.timeout
         : DEFAULT_TIMEOUT_MS;
-    const timeout = Math.max(1, Math.min(rawTimeout, MAX_TIMEOUT_MS));
+    const timeout =
+      unattended && rawTimeout === 0
+        ? undefined
+        : Math.max(1, Math.min(rawTimeout, unattended ? 2_147_483_647 : MAX_TIMEOUT_MS));
 
     // Heuristic danger assessment. Computed once here, attached to every
     // return from this point on (including error returns) so the UI can
     // render a banner for 'caution' / 'destructive' levels. The `bypass`
     // argument is wired from `config.tools.exec.danger.bypass` (see
     // `configureDangerBypass`); rule ids in that set are skipped.
-    const safetyCmd = execSafetyCommandName(cmd);
-    const danger: DangerAssessment = detectDanger(safetyCmd, args, dangerBypass);
+    let danger: DangerAssessment = detectDanger(safetyCmd, args, dangerBypass);
 
     // Kill guard: check if the command targets protected WrongStack processes
     // (taskkill /F /IM node.exe, Stop-Process -Name node, wmic process delete, etc.)
@@ -271,28 +280,43 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
       );
     }
 
-    // Validate args against per-command security patterns
-    const argError = validateArgs(safetyCmd, args);
-    if (argError) {
-      throw new Error(`exec: ${argError}`);
-    }
-
     // Default cwd is the SESSION working dir (set via `set_working_dir`),
     // falling back to the launch cwd. Historically this ignored `workingDir`,
     // so `set_working_dir` silently had no effect on exec.
     const defaultCwd = ctx.workingDir ?? ctx.cwd;
-    let cwd: string;
-    try {
-      // Resolve cwd inside the project root and verify realpath containment so
-      // an in-project symlink cannot redirect allowlisted commands outside.
-      cwd = input.cwd
-        ? await safeResolveReal(input.cwd, ctx)
-        : await safeResolveReal(defaultCwd, ctx);
-    } catch (err) {
-      throw new Error(`exec: cwd "${input.cwd ?? defaultCwd}" resolves outside project root`, {
-        cause: err,
-      });
+    const resolveCwd = async (): Promise<string> => {
+      try {
+        // Resolve cwd inside the project root and verify realpath containment so
+        // an in-project symlink cannot redirect allowlisted commands outside.
+        return input.cwd
+          ? await safeResolveReal(input.cwd, ctx)
+          : await safeResolveReal(defaultCwd, ctx);
+      } catch (err) {
+        throw new Error(`exec: cwd "${input.cwd ?? defaultCwd}" resolves outside project root`, {
+          cause: err,
+        });
+      }
+    };
+    let cwd: string | undefined;
+    let validatedGitArgumentIndexes: ReadonlySet<number> | undefined;
+    if (unattended && safetyCmd === 'git') {
+      cwd = await resolveCwd();
+      const validatedGitArgs = await validateGitDevelopmentArgs(args, ctx, cwd);
+      validatedGitArgumentIndexes = validatedGitArgs;
+      if (validatedGitArgs.size > 0) {
+        danger = detectDanger(
+          safetyCmd,
+          args.filter((_arg, index) => !validatedGitArgs.has(index)),
+          dangerBypass,
+        );
+      }
     }
+    const argError = validateArgs(safetyCmd, args, {
+      allowPublish: unattended,
+      validatedGitArgumentIndexes,
+    });
+    if (argError) throw new Error(`exec: ${argError}`);
+    cwd ??= await resolveCwd();
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     if (signal.aborted) {
       return {
@@ -327,7 +351,7 @@ function runCommand(
   cmd: string,
   args: string[],
   cwd: string,
-  timeout: number,
+  timeout: number | undefined,
   signal: AbortSignal,
   sessionId: string | undefined,
   danger: DangerAssessment,
@@ -521,12 +545,14 @@ function runCommand(
       });
     }
 
-    timer = setTimeout(() => {
-      killed = true;
-      timedOut = true;
-      if (typeof pid === 'number') registry.kill(pid);
-      else child.kill('SIGTERM');
-    }, timeout);
+    if (timeout !== undefined) {
+      timer = setTimeout(() => {
+        killed = true;
+        timedOut = true;
+        if (typeof pid === 'number') registry.kill(pid);
+        else child.kill('SIGTERM');
+      }, timeout);
+    }
 
     if (isWin) {
       if (signal.aborted) onAbort();

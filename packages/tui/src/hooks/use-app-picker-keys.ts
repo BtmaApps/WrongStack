@@ -111,6 +111,7 @@ export function useAppPickerKeys({
   const {
     openProjectPicker,
     restartSelectedMcpServer,
+    saveMcpEditor,
     toggleSelectedMcpServer,
     toggleSelectedPlugin,
     toggleSelectedTool,
@@ -669,6 +670,7 @@ export function useAppPickerKeys({
     onPluginPickerToggle: toggleSelectedPlugin,
     onMcpPickerToggle: toggleSelectedMcpServer,
     onMcpPickerRestart: restartSelectedMcpServer,
+    onMcpPickerSave: saveMcpEditor,
     onToolsPickerToggle: toggleSelectedTool,
     onHelpPanelEnter: () => {
       // Intentionally a no-op: help panel is purely informational

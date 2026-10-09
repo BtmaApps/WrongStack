@@ -1,0 +1,83 @@
+// Draft synthetic cases for the expanded bundle; paired by position.
+// Labels require review before calibration; no live accuracy is claimed.
+{"text": "Bu App Router rotasını güncel kararlı Next.js sürümüne taşı, async params ve cache davranışını da düzelt.", "gold": "nextjs-modern"}
+{"text": "Bu React sayfasındaki kartlar arasına reduced-motion tercihine uyan yaylı geçişler ekle.", "gold": "motion-design"}
+{"text": "Three.js WebGPU sahnesini TSL materyalle kur ve draw call sayısını ölç.", "gold": "threejs-3d"}
+{"text": "Remotion kompozisyonunu kare zamanlaması sabit, altyazılı ürün demosuna render et.", "gold": "media-production"}
+{"text": "Motion Canvas generator sahnesinde sıralama algoritmasını açık zaman çizelgesi işaretleriyle canlandır.", "gold": "motion-canvas-video"}
+{"text": "Manim Community MathTex ile ikinci derece denklem formülünün türetilmesini canlandır ve önizleme render et.", "gold": "manim-video"}
+{"text": "Bu giriş için yapılı bir müzik üretim promptu hazırla ve seslendirme parçasının seviyesini normalize et.", "gold": "audio-studio"}
+{"text": "Bu Markdown bölümlerinden düzenlenebilir DOCX teklif üret ve render edilen sayfaları doğrula.", "gold": "office-documents"}
+{"text": "Tipli binding kullanan Cloudflare Worker rotası yaz ve Wrangler ile yerel smoke kontrolü yap.", "gold": "cloudflare-workers"}
+{"text": "Salt okunur envanter aracını sunan TypeScript MCP sunucusu kur ve protokol yanıtlarını test et.", "gold": "mcp-development"}
+{"text": "Tutarlı açık ve koyu renkler için semantik OKLCH tokenları ve Tailwind tema tanımları oluştur.", "gold": "design-system"}
+{"text": "Verilen Figma yerleşimini mevcut bileşen tokenlarıyla uygula ve breakpointleri karşılaştır.", "gold": "design-to-code"}
+{"text": "Bu çok adımlı ödeme akışında klavye odağını, yüklenme, boş, hata ve başarı durumlarını tasarla.", "gold": "interaction-design"}
+{"text": "Bu ürün arayüzü için tutarlı çizgi kalınlığında, dışa aktarılabilir SVG ikon varyantları oluştur.", "gold": "design-assets"}
+{"text": "Bu telefon formunu safe area, başparmak erişimi ve sanal klavyeden kaçınma için yeniden tasarla.", "gold": "mobile-design"}
+{"text": "Bu modal diyaloğun klavye gezintisini ve ekran okuyucu duyurularını düzelt.", "gold": "accessibility"}
+{"text": "Bu açık ve koyu bileşen durumları için Playwright ekran görüntüsü baseline kontrolleri ekle.", "gold": "visual-regression"}
+{"text": "Arayüz metinlerini dışarı al, çoğul mesajları ve RTL yerleşim desteğini uygula.", "gold": "i18n-localization"}
+{"text": "Expo Router ekranı ekle, native izinleri bağla ve Android emülatörde doğrula.", "gold": "react-native-expo"}
+{"text": "Dart modelleriyle Flutter ekranı yap ve widget davranışını doğrula.", "gold": "flutter-mobile"}
+{"text": "SwiftUI ana ekran widgetını WidgetKit zaman çizelgesi yenilemeleriyle uygula.", "gold": "swift-ios"}
+{"text": "Yaşam döngüsüne duyarlı durum toplamayla Jetpack Compose ayarlar ekranı kur.", "gold": "kotlin-android"}
+{"text": "Mobil uygulama sürümü için imzalama, version code ve mağaza gönderim çıktılarını hazırla.", "gold": "mobile-release"}
+{"text": "Fiziksel telefonda kaydırma takılmasını, açılış gecikmesini ve bellek baskısını ölçüp düzelt.", "gold": "mobile-performance"}
+{"text": "Bu istemci çevrimdışıyken yapılan düzenlemeler için outbox ve çakışma çözümü uygula.", "gold": "offline-sync"}
+{"text": "Doğrulanmış host key ve ayrı identity dosyasıyla SSH host alias yapılandır.", "gold": "ssh-operations"}
+{"text": "Bu systemd servisinin açılışını düzelt, journal kayıtlarını ve yeniden başlatma davranışını doğrula.", "gold": "linux-service-ops"}
+{"text": "Bu servis takılmasını teşhis etmek için SSH üzerinden uzak süreç ve ağ kanıtlarını topla.", "gold": "remote-debugging"}
+{"text": "Bu uygulamayı mevcut VPS sunucumuza health check ve geri alınabilir sürüm dizini geçişiyle deploy et.", "gold": "vps-deploy"}
+{"text": "Nginx upstream yönlendirmesini, WebSocket aktarımını ve TLS sertifika yenilemesini yapılandır.", "gold": "reverse-proxy-tls"}
+{"text": "Docker Compose hazır olma sırasını ve servis yeniden başlamalarında named volume davranışını düzelt.", "gold": "compose-operations"}
+{"text": "Bu containerı root olmayan kullanıcı, asgari capability ve salt okunur kök dosya sistemiyle güçlendir.", "gold": "container-hardening"}
+{"text": "Çalışan bu containerın neden DNS çözemediğini veya eş servise ulaşamadığını teşhis et.", "gold": "container-debugging"}
+{"text": "Desteklenen üç Node sürümünde kontrolleri çalıştıran GitHub Actions matrisi yaz.", "gold": "ci-cd"}
+{"text": "Bu uygulama sürümü için health kontrolüne bağlı yükseltme ve rollback tasarla, prova et.", "gold": "release-rollback"}
+{"text": "Bu veritabanı yedeğini izole instance içine geri yükle ve kurtarma hedeflerini doğrula.", "gold": "backup-recovery"}
+{"text": "API deploymentımız için Kubernetes horizontal pod autoscaler kur ve doğrula.", "gold": "kubernetes-operations"}
+{"text": "Subnet içeren Terraform VPC modülü yaz ve uygulamadan önce planını incele.", "gold": "infrastructure-as-code"}
+{"text": "Bu bulut uygulama mimarisi için bölgeleri, hata alanlarını ve yönetilen depolamayı seç.", "gold": "cloud-architecture"}
+{"text": "Bu üretim kesintisini teşhis et, kanıtları koru ve zaman sıralı olay devri hazırla.", "gold": "incident-response"}
+{"text": "Astro içerik koleksiyonu ve istemcide hydrate edilen etkileşimli island uygula.", "gold": "astro-modern"}
+{"text": "Vue composable ve sunucu tarafı veri çekmeyle Nuxt rotası kur.", "gold": "vue-nuxt"}
+{"text": "Svelte runes ve progressive enhancement kullanan SvelteKit form action uygula.", "gold": "sveltekit-modern"}
+{"text": "Signals ve tipli reactive form kullanan Angular standalone bileşen uygula.", "gold": "angular-modern"}
+{"text": "Şema doğrulaması, düzgün kapanış ve isteğe özgü hata yönetimiyle Node HTTP servisi kur.", "gold": "node-backend"}
+{"text": "Pydantic doğrulaması ve async veritabanı oturumuyla tipli FastAPI endpoint kur.", "gold": "python-backend"}
+{"text": "Context iptali ve düzgün sunucu kapanışıyla Go HTTP handler uygula.", "gold": "go-services"}
+{"text": "Bu parserı açık sahiplik modeli ve yapılı parse hatalarıyla Rust diline taşı.", "gold": "rust-systems"}
+{"text": "Dependency injection ve cancellation token kullanan ASP.NET Core minimal API uygula.", "gold": "dotnet-backend"}
+{"text": "Bean Validation ve transaction sınırlarıyla Spring Boot endpoint kur.", "gold": "java-spring"}
+{"text": "Bu endpoint için Laravel request validator, policy ve Eloquent transaction uygula.", "gold": "php-laravel"}
+{"text": "Tablonun tamamını tarayan bu PostgreSQL sorgusunu EXPLAIN ANALYZE ile optimize et.", "gold": "database-development"}
+{"text": "Eski ve yeni uygulama instance sürümleriyle uyumlu expand-contract şema geçişi planla.", "gold": "database-migrations"}
+{"text": "Tekilleştirme ve dead-letter queue içeren yeniden denenebilir arka plan işi uygula.", "gold": "queues-jobs"}
+{"text": "Bu istemci yeniden bağlandığında WebSocket yeniden bağlanma ve sıralı replay uygula.", "gold": "realtime-systems"}
+{"text": "Bu giriş akışı için oturum döndürme, güvenli cookie ve iptal mekanizması uygula.", "gold": "authentication-sessions"}
+{"text": "İmzalı ödeme webhooklarını doğrula ve tekrarlı olay işlemeyi idempotent yap.", "gold": "payments-webhooks"}
+{"text": "Sahiplik kontrolleri ve yaşam döngüsü temizliğiyle süreli imzalı nesne yükleme uygula.", "gold": "storage-uploads"}
+{"text": "Tipli şema doğrulaması, sayfalama ve sorgu karmaşıklığı sınırlarıyla GraphQL resolver uygula.", "gold": "graphql-development"}
+{"text": "Şu kısa selamı İngilizceye çevir: günaydın.", "gold": null}
+{"text": "27 çarpı 14 kaç eder?", "gold": null}
+{"text": "Siyah bir kedi için isim öner.", "gold": null}
+{"text": "İki satırlık doğum günü mesajı yaz.", "gold": null}
+{"text": "Az önce yapıştırdığım paragrafı tek cümlede özetle.", "gold": null}
+{"text": "Bu cümlenin anlamını değiştirmeden yazımını düzelt.", "gold": null}
+{"text": "Üç vejetaryen kahvaltı fikri öner.", "gold": null}
+{"text": "Beş kilometreyi metreye çevir.", "gold": null}
+{"text": "İngilizce persistent sözcüğü ne demek?", "gold": null}
+{"text": "Haftanın günlerini alfabetik sırayla listele.", "gold": null}
+{"text": "Bu cümleyi daha samimi bir tonla yeniden yaz.", "gold": null}
+{"text": "Gökyüzünün neden mavi göründüğünü bir çocuğa anlat.", "gold": null}
+{"text": "Kediler hakkında kısa bir fıkra anlat.", "gold": null}
+{"text": "Çayı ve kahveyi iki cümlede karşılaştır.", "gold": null}
+{"text": "Portekiz'in başkenti neresi?", "gold": null}
+{"text": "Bu isim listesini virgülle ayrılmış cümleye dönüştür.", "gold": null}
+{"text": "Metafor ile benzetme arasındaki farkı açıkla.", "gold": null}
+{"text": "Sonbahar yağmuru hakkında haiku yaz.", "gold": null}
+{"text": "90 dakikayı saate çevir.", "gold": null}
+{"text": "Asal sayıyı tek cümlede tanımla.", "gold": null}
+{"text": "Bu akşam yemeği davetine nazik cevap öner.", "gold": null}
+{"text": "Kağıt uçağın nasıl katlanacağını anlat.", "gold": null}

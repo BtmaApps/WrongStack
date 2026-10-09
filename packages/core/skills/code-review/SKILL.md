@@ -3,13 +3,21 @@ name: code-review
 description: |
   Use this skill when asked to review code changes — a pull request, a branch, a commit range, or the current diff — for correctness, security, and maintainability before they merge.
   Triggers: user says "review", "code review", "review this PR", "review my changes", "look over the diff", "is this ready to merge", "PR feedback", "anything wrong with this change".
-version: 1.0.0
+version: 1.1.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [version-control.manage, code.inspect, verification.run]
+trigger: "Use this skill when asked to review code changes \u2014 a pull request, a branch, a commit range, or the current diff \u2014 for correctness, security, and maintainability before they merge."
+metadata:
+  routing-group: quality
 ---
 
 # Code Review
+
+## Selection card
+- Task: Review implementation correctness and maintainability. / TR: Uygulama doğruluğunu ve bakım kolaylığını incele.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -114,6 +122,14 @@ When nothing blocks, say so plainly. A short approval is a complete review.
 - [ ] Severity ranked; nits few and labelled
 - [ ] What was and wasn't verified is stated
 - [ ] No files modified unless fixes were requested
+
+## Evidence identity
+
+Read both tracked changes and relevant untracked additions for a local review;
+git diff alone omits untracked files. Pin the reviewed head/base and preserve
+pre-existing edits. Use merge-base semantics for branch intent and exact-head
+CI for release decisions. A green check for an older revision cannot approve
+the current diff. Separate source-supported concerns from tested failures.
 
 ## Skills in scope
 

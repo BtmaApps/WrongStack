@@ -64,12 +64,12 @@ function baseConfig(overrides: Partial<Config> = {}): Config {
   };
 }
 
-function makeAdapter(initial = baseConfig()) {
+function makeAdapter(initial = baseConfig(), onDisk: Config = initial) {
   const dir = mkdtempSync(path.join(tmpdir(), 'wstack-tui-settings-'));
   const globalConfig = path.join(dir, 'global', 'config.json');
   const inProjectConfig = path.join(dir, 'project', '.wrongstack', 'config.json');
   mkdirSync(path.dirname(globalConfig), { recursive: true });
-  writeFileSync(globalConfig, JSON.stringify(initial, null, 2), 'utf8');
+  writeFileSync(globalConfig, JSON.stringify(onDisk, null, 2), 'utf8');
 
   const configStore = new DefaultConfigStore(initial);
   const applied: unknown[] = [];
@@ -105,6 +105,30 @@ describe('TUI settings adapter', () => {
     expect(JSON.parse(readFileSync(globalConfig, 'utf8')).autonomy.nextSteps).toBe('optional');
     expect(await adapter.saveSettings({ nextStepsRequired: true })).toBeNull();
     expect(configStore.get().autonomy?.nextSteps).toBe('required');
+  });
+
+  it('saves the system prompt for the next session without touching the running one', async () => {
+    const { adapter, configStore, globalConfig } = makeAdapter(
+      baseConfig({ systemPrompt: { variant: 'pro' } } as never),
+    );
+    expect(adapter.getSettings().nextSystemPromptVariant).toBe('pro');
+    expect(await adapter.saveSettings({ nextSystemPromptVariant: 'lite' })).toBeNull();
+    // Next launch reads the profile file …
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).systemPrompt.variant).toBe('lite');
+    // … while this session's prompt (status bar, tool surface) stays as built.
+    expect(configStore.get().systemPrompt?.variant).toBe('pro');
+    expect(adapter.getSettings().systemPromptVariant).toBe('pro');
+    expect(adapter.getSettings().nextSystemPromptVariant).toBe('lite');
+  });
+
+  it('seeds the next-session system prompt from the profile file, not a launch-only pick', async () => {
+    // Store says scout (picked "for this launch only" outside a project); disk says lite.
+    const { adapter } = makeAdapter(
+      baseConfig({ systemPrompt: { variant: 'scout' } } as never),
+      baseConfig({ systemPrompt: { variant: 'lite' } } as never),
+    );
+    await expect.poll(() => adapter.getSettings().nextSystemPromptVariant).toBe('lite');
+    expect(adapter.getSettings().systemPromptVariant).toBe('scout');
   });
 
   it('keeps required next steps in the profile under project scope', async () => {

@@ -134,7 +134,9 @@ export function handleRunErrorMessage(
   setActivity('');
   setMessages((current) =>
     retainSimpleChatMessages([
-      ...current,
+      // The error ends the run, so whatever was still streaming is settled
+      // (not `final`: no suggestions) exactly as run.result would settle it.
+      ...current.map((item) => (item.streaming ? { ...item, streaming: false } : item)),
       {
         id: messageId('error'),
         role: 'system',

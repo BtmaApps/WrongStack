@@ -4,7 +4,7 @@ import { ToolCapabilities } from '@wrongstack/core/security';
 import type { Tool } from '@wrongstack/core/types';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { BrowserSessionManager, browserInstallationDiagnostics } from './manager.js';
-import { parsePrivateOriginAllowlist } from './security.js';
+import { browserPrivateOrigins } from './policy.js';
 import type { BrowserFrame, BrowserLiveDetails, BrowserLiveSummary } from './types.js';
 
 const managers = new Map<string, BrowserSessionManager>();
@@ -21,9 +21,7 @@ function managerFor(ctx: Context): BrowserSessionManager {
     const wpaths = resolveWstackPaths({ projectRoot: root });
     manager = new BrowserSessionManager({
       artifactRoot: path.join(wpaths.projectDir, 'browser-artifacts'),
-      allowedPrivateOrigins: parsePrivateOriginAllowlist(
-        process.env['WRONGSTACK_BROWSER_PRIVATE_ORIGINS'],
-      ),
+      allowedPrivateOrigins: browserPrivateOrigins(root),
     });
     managers.set(root, manager);
   }
@@ -158,9 +156,13 @@ export interface BrowserCloseInput {
 
 export const browserOpenTool: Tool<BrowserOpenInput> = {
   name: 'browser_open',
+  // Package and browser downloads each have a three-minute subprocess limit;
+  // the default one-minute executor ceiling would abort first-use setup.
+  timeoutMs: 420_000,
+  managesOwnTimeout: true,
   description:
     'Open an isolated first-party Playwright browser session, optionally navigating to a URL. ' +
-    'Private/localhost origins are blocked by default; enable specific origins via the WRONGSTACK_BROWSER_PRIVATE_ORIGINS env allowlist.',
+    'Allow a private/localhost origin for this project with /browser allow <origin>, or WRONGSTACK_BROWSER_PRIVATE_ORIGINS. Missing Playwright/Chromium is installed automatically.',
   usageHint: 'browser_open({ url?, width?, height?, trace? })',
   permission: 'confirm',
   mutating: true,
@@ -222,7 +224,7 @@ export const browserNavigateTool: Tool<BrowserNavigateInput> = {
   name: 'browser_navigate',
   description:
     'Navigate an owned browser session to an approved http(s) URL. ' +
-    'Private/localhost origins are blocked by default; enable specific origins via the WRONGSTACK_BROWSER_PRIVATE_ORIGINS env allowlist.',
+    'Allow a private/localhost origin for this project with /browser allow <origin>, or WRONGSTACK_BROWSER_PRIVATE_ORIGINS.',
   usageHint: 'browser_navigate({ sessionId, url })',
   permission: 'confirm',
   mutating: true,

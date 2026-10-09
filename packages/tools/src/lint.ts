@@ -86,7 +86,10 @@ export const lintTool: Tool<LintInput, LintOutput> = {
     return final;
   },
   async *executeStream(input, ctx, opts): AsyncGenerator<ToolStreamEvent<LintOutput>> {
-    const cwd = input.cwd ? await safeResolveReal(input.cwd, ctx) : ctx.cwd;
+    const cwd =
+      input.cwd || ctx.workingDir
+        ? await safeResolveReal(input.cwd ?? ctx.workingDir!, ctx)
+        : ctx.cwd;
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     signal.throwIfAborted();
     const VALID_LINTERS: ReadonlySet<string> = new Set(['biome', 'eslint', 'tslint', 'auto']);

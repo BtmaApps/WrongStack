@@ -3,13 +3,21 @@ name: observability
 description: |
   Use this skill when adding or reviewing logging, metrics, or tracing in an application, or when a production problem can't be diagnosed from the signals that exist today.
   Triggers: user says "logging", "logs", "trace", "tracing", "metrics", "observability", "instrument", "OpenTelemetry", "structured logging", "log level", "correlation id", "monitoring", "alert".
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [code.inspect]
+trigger: "Use this skill when adding or reviewing logging, metrics, or tracing in an application, or when a production problem can't be diagnosed from the signals that exist today."
+metadata:
+  routing-group: data
 ---
 
 # Observability
+
+## Selection card
+- Task: Instrument logs, traces, metrics and service signals. / TR: Log, trace, metrik ve servis sinyallerini ekle.
+- Start: Identify the data owner, query/schema, consistency and recovery contract.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -107,6 +115,15 @@ export async function reserveStock(sku: string, qty: number): Promise<void> {
 - [ ] No secrets or personal data; redaction configured centrally
 - [ ] Errors logged once, at the handling site
 - [ ] Metric labels bounded; outbound I/O traced
+
+## Trace continuity and shutdown
+
+Verify context propagation across queues, callbacks and detached tasks rather
+than assuming an id on the inbound log reaches every span. Trace links may
+represent asynchronous causality better than a false parent-child relation.
+Bound exporter buffers and shutdown flush; telemetry failure must not create
+unbounded work or silently break the primary task. Record sampling and missing
+signals when interpreting incident counts or latency distributions.
 
 ## Skills in scope
 

@@ -4,13 +4,21 @@ description: |
   Use this skill when something is broken and the cause is unknown — a failing test, a crash, an error message, wrong output, a regression, a hang, or behaviour that differs between environments — and it has to be found and fixed at the root.
   Also use it to build the failing proof for a suspected defect before fixing it, as in a proof-driven bug hunt.
   Triggers: user says "debug", "broken", "doesn't work", "failing", "error", "exception", "stack trace", "crash", "regression", "it used to work", "hangs", "why does", "root cause", "works on my machine", "reproduce", "prove it".
-version: 1.1.0
+version: 1.2.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [execution.shell, verification.run, code.inspect, version-control.manage]
+trigger: "Use this skill when something is broken and the cause is unknown \u2014 a failing test, a crash, an error message, wrong output, a regression, a hang, or behaviour that differs between environments \u2014 and it has to be found and fixed at the root. Also use it to build the failing proof for a suspected defect before fixing it, as in a proof-driven bug hunt."
+metadata:
+  routing-group: quality
 ---
 
 # Debugging
+
+## Selection card
+- Task: Reproduce and diagnose a reported failure. / TR: Bildirilen hatayı yeniden üret ve teşhis et.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -168,6 +176,14 @@ src/net/retry.ts:41 — create a fresh timeout signal per attempt, combined with
 - [ ] Fix at the cause; no swallowed errors or special-casing
 - [ ] Regression test seen red, then green; related suites pass
 - [ ] Temporary instrumentation removed
+
+## Runtime identity and diagnostic experiments
+
+Check the running process, source/build path, configuration and revision before
+trusting a reproduction. A rebuilt binary is not in use until the relevant
+process reloads/restarts. When reproduction is incomplete, temporary diagnostic
+changes may be warranted; label them as experiments and do not call them a fix.
+Preserve audit proof artifacts when the task/runbook requires retained evidence.
 
 ## Skills in scope
 

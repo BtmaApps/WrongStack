@@ -1,23 +1,39 @@
 # Security Scanner (Compact)
 
-Scans code, configs, and dependencies for security issues. Reports with severity and concrete remediation.
+<!-- source-version: 1.4.1 -->
+
+## Selection card
+- Task: Review source trust boundaries and defensive security. / TR: Kaynak güven sınırlarını ve savunma güvenliğini incele.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
+## Overview
+
+Provide a defensive, evidence-led review of the requested source and configuration.
+Separate confirmed findings, supported static concerns and validation gaps.
+Use local, non-destructive tests of defensive behavior where appropriate.
 
 ## Rules
 
-1. Always provide remediation — "found X" without "do Y" is useless.
-2. Don't scan `node_modules` — use `npm audit` for supply chain.
-3. Don't flag test fixtures — mock credentials in tests are acceptable.
-4. Always run dependency audit — supply chain is a real attack vector.
-5. Flag config issues (TLS disabled, HTTP in production) as CRITICAL.
+1. Identify scope, assets, entrypoints and trust boundaries. Read surrounding
+   validators, authorization and cleanup before interpreting a scanner hit.
+2. Give every finding a real location, reachable condition, violated contract,
+   impact, evidence level and concrete remediation.
+3. Severity follows impact, exposure and prerequisites. TLS, CORS or HTTP patterns
+   are not automatically Critical without their deployed context.
+4. Redact credentials completely where possible. A test directory can contain
+   real leaked credentials; distinguish known dummy fixtures from genuine values.
+5. Use the ecosystem's dependency audit and exact lockfile affected ranges when
+   in scope. Audit output alone does not prove exploitable runtime usage.
+6. Do not contact suspected credentials/services or build attack workflows.
+   Prefer source evidence and bounded tests that verify protective contracts.
 
-## Critical patterns
+## Detailed workflow
 
-| Pattern | Severity |
-|---------|----------|
-| Hardcoded GitHub token `ghp_[a-zA-Z0-9]{36}` | CRITICAL |
-| Hardcoded AWS key `AKIA[0-9A-Z]{16}` (`ASIA` for temporary keys) | CRITICAL |
-| Private key PEM `-----BEGIN.*PRIVATE KEY-----` | CRITICAL |
-| `innerHTML = x` — use `textContent` | HIGH |
-| `exec(\`cmd ${input}\`)` — use `execFile` with args | HIGH |
-| SQL concatenation — use parameterized queries | CRITICAL |
-| JWT in code `eyJ[a-zA-Z0-9_-]+` | HIGH |
+Load the full security-scanner skill before relying on its specialized modes,
+references or output contracts. Its current SKILL.md is the source of truth;
+this compact body does not expand task scope or authorization.
+
+## Acceptance checks
+
+- Verify defensive findings and fixes against scoped source evidence; state unresolved claims.

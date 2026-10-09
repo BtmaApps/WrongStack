@@ -1,193 +1,101 @@
 ---
 name: skill-creator
-description: |
-  Use this skill when the user wants to create or improve a WrongStack skill (SKILL.md).
-  Triggers: user says "create a skill", "new skill", "add a skill", "skill definition".
-version: 1.3.0
-required-capabilities: [filesystem.write, runtime.admin]
-required-tools: [bash, skill]
+description: "Create, improve and validate WrongStack SKILL.md bundles with precise discovery, progressive resources and current runtime contracts. Use when authoring skills, improving triggers or maintaining bundled skills; respect the requested destination and preserve existing audience and capability metadata."
+version: 1.4.1
+required-capabilities: [filesystem.read, filesystem.write]
+required-tools: []
+trigger: "authoring skills, improving triggers or maintaining bundled skills; respect the requested destination and preserve existing audience and capability metadata."
+optional-capabilities: [verification.run, web.research]
+metadata:
+  routing-group: workflow
 ---
 
 # Skill Creator — WrongStack
 
+## Selection card
+- Task: Author and validate bundled or project skills. / TR: Bundled veya proje skilli yaz ve doğrula.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
 ## Overview
 
-Guides the creation of new WrongStack skills. A skill is a Markdown file with YAML frontmatter — the full description tells the model when to use it. You are the wizard: ask questions, validate answers, write the file. Use the `/skill-gen` sub-commands to do the mechanical parts (validation, scaffolding) deterministically.
+Skills guide the agent; the runtime owns tool schemas, permissions and execution.
+Write instructions that change useful decisions, then validate discovery,
+resources and behavior. The [Agent Skills specification](https://agentskills.io/specification)
+was reviewed on 2026-10-09; WrongStack adds audience and runtime capability fields.
 
 ## Rules
 
-1. Write a complete `description` (1–1024 characters) explaining what the skill does and when to use it. The full description is disclosed to the model.
-2. Name must be kebab-case: `my-skill`, `docker-deploy` — lowercase, hyphens only.
-3. Skills live in `.wrongstack/skills/<name>/SKILL.md` (project level).
-4. After the trigger sentence, add `Triggers: user says "X", "Y", "Z".`.
-5. Content must be actionable — rules, patterns, anti-patterns, not just prose.
-6. End with "Skills in scope" listing related skills for delegation.
-7. Don't let skill names collide with existing skills.
-
-## Authoring commands (use these)
-
-The `/skill-gen` command is a toolkit — pick the right sub-command for the job instead of writing files by hand:
-
-| Sub-command | When to use |
-|---|---|
-| `/skill-gen` (bare) | Open-ended creation: you (the agent) ask questions one at a time, then write the file. Best for nuanced skills. |
-| `/skill-gen skeleton <name> --desc "..." --trigger a,b` | Quick scaffold: generates a valid SKILL.md skeleton the user edits. Use when the name + trigger are already known. |
-| `/skill-gen from-prompt "<text>"` | Turn an existing prompt/instruction into a skill draft. Use when the user hands you a prompt and says "make this a skill". |
-| `/skill-gen validate <name>` | Validate an existing skill file, or check a proposed name before writing. |
-| `/skill-gen view <name>` | Read-only: show a skill's body. |
-| `/skill-gen edit <name>` | Open the skill in `$EDITOR`/`$VISUAL`. |
-| `/skill-gen list` | List skills with their source layer. |
-
-After writing a skill with the wizard flow, run `/skill reload`, then `/skill-gen validate <name>` to check its YAML, name, field limits, and body. Use `/skill use <name> <task>` to explicitly apply it. Skeletons and prompt drafts refresh the loader automatically.
-
-## Patterns
-
-### Do
-
-```markdown
----
-name: docker-deploy
-description: |
-  Use this skill when deploying Docker containers to a production cluster.
-  Triggers: user says "docker", "container", "deploy", "dockerfile", "image".
-version: 1.0.0
----
-
-# Docker Deploy — WrongStack
-
-## Overview
-...
-## Rules
-...
-## Patterns
-...
-## Skills in scope
-```
-
-### Don't
-
-```markdown
----
-name: MySkill # ❌ PascalCase
-name: my_skill      # ❌ underscore
-description: |
-  This skill is about Docker.  # ❌ no trigger sentence
----
-```
-
-## Skill format
-
-Every skill is a Markdown file with YAML frontmatter:
-
-```markdown
----
-name: my-skill-name
-description: |
-  Use this skill when <trigger situation>.
-  Triggers: user says "keyword", "another keyword".
-version: 1.0.0
----
-
-# Skill Title
-
-## Overview
-What this skill does.
-
-## Rules
-- Rule 1
-- Rule 2
-
-## Patterns
-### Do
-\`\`\`ts
-// good example
-\`\`\`
-
-### Don't
-\`\`\`ts
-// bad example
-\`\`\`
-
-## Workflow
-1. Step one
-2. Step two
-```
-
-## File structure
-
-A skill is a directory containing `SKILL.md` plus optional resource subdirectories (the agentskills.io layout):
-
-```
-<name>/
-  SKILL.md            ← required: metadata + instructions
-  scripts/            ← optional: executable code (run via bash)
-  references/         ← optional: docs loaded on demand (REFERENCE.md, …)
-  assets/             ← optional: templates, data, snippets
-  …                   ← any other subdirectories
-```
-
-Skills live under these paths (priority order, first-seen wins by name):
-
-1. **Project**: `<project>/.wrongstack/skills/<name>/`
-2. **Project foreign**: `<project>/.claude/skills/<name>/`, `<project>/.{codex,cursor,agents,…}/skills/<name>/`
-3. **User profile**: `~/.wrongstack/profiles/<profile>/skills/<name>/`
-4. **User foreign**: `~/.claude/skills/<name>/`, `~/.{codex,cursor,agents,…}/skills/<name>/`
-5. **Bundled**: `packages/core/skills/<name>/` (read-only, core team)
-
-For user-created skills: always use path 1 (project level).
-
-## Resource files (scripts / references / assets)
-
-Bundled resources are NOT injected into the prompt — the agent loads them on demand via the `skill` tool (agentskills.io progressive disclosure, tier 3):
-
-- `skill({ name: "<name>" })` → lists every bundled file (scripts/, references/, assets/, any subdir, recursively).
-- `skill({ name: "<name>", resource: "references/REF.md" })` → returns that file's content. Scripts come back with an absolute path so the agent runs them via `bash`.
-
-Keep `SKILL.md` under ~500 lines; move deep reference material into `references/`. Reference files with relative paths from the skill root. Scripts must be self-contained and safe to run. Only add the subdirectories a skill actually needs — empty directories don't persist in git, so create a file (e.g. `scripts/README.md`) if you want the directory tracked.
+1. Use a 1–64 character lowercase kebab-case name matching its directory.
+   Description is 1–1024 characters and states capability plus activation context.
+2. Respect the requested destination. Default new project skills to
+   .wrongstack/skills/<name>/SKILL.md; bundled maintenance belongs in
+   packages/core/skills/<name>/SKILL.md when that is the user's requested scope.
+3. Preserve supported audience, metadata and extension fields. Intentional
+   shadowing is valid; accidental same-layer overwrite is not.
+4. Keep the entrypoint below 200 lines as an authoring target. Move substantial
+   conditional workflows to linked resources; keep essential scope, stopping
+   conditions and authorization in the entrypoint.
+5. Verify latest stable technology targets from official sources. Record exact
+   version/date/URL and refresh before installs; no version guesses or stale
+   examples presented as current.
+6. Declare only real runtime requirements. Optional tools should appear in
+   plain prose: backticked canonical names are inferred as required by the
+   prompt builder even when the sentence says “optional”.
 
 ## Workflow
 
-1. **Ask the name** — suggest kebab-case, validate format
-2. **Ask the trigger** — "What situation should activate this skill?"
-3. **Ask the coverage** — what rules, patterns, workflows?
-4. **Generate the SKILL.md** — write to `.wrongstack/skills/<name>/SKILL.md`
-5. **Confirm** — show the path, remind them to use `/skill` to list skills
+1. Read existing skills, loader, consumers and nearest tests. Identify realistic
+   positive and negative activation cases; avoid catchall descriptions.
+2. Preserve the skill's actual role: reviewer, planner, operator or implementer.
+   An implementation request should not stop at a plan unless scope requires it.
+3. Write essential decisions, representative patterns, observable completion
+   checks and proportionate fallback behavior. Do not add scripts, templates or
+   directories without a concrete use.
+4. Link each resource from the entrypoint with when to read it. In progressive
+   mode, load through the skill tool using name/resource/offset and continue
+   pages until nextOffset is absent.
+5. Validate with /skill-gen validate <name> in a running WrongStack session.
+   For bundled source maintenance, run the checker below. A filesystem shell
+   cannot execute slash commands directly.
+6. Check actual discovery/body/resource loading and meaningful scenarios.
+   Structural validation alone does not prove improved model behavior.
+7. Bump the informational skill version for changed behavior. Update catalogs
+   through their official writers and preserve parser-sensitive output formats.
 
-## Validation Checklist
+## Bundle check
 
-Before writing the file, verify:
-- [ ] Name is valid kebab-case
-- [ ] Name doesn't collide with existing skills
-- [ ] Description has a clear trigger sentence
-- [ ] Content is actionable (rules, patterns, not just prose)
-- [ ] File will be placed in `.wrongstack/skills/`
+From the repository root:
 
-## Out of scope
+~~~powershell
+bun run packages/core/skills/skill-creator/scripts/check-bundle.ts
+~~~
 
-- **Don't write skills without running `/skill-gen validate <name>` first.** A name that collides with an existing skill or breaks the kebab-case rule is a wall hit after the file is written. Validate first, always.
-- **Don't ship a skill with a vague description.** "This skill is about Docker" matches nothing. First sentence = trigger; rest = `Triggers: user says "..."` listing concrete keywords.
-- **Don't name skills in PascalCase or with underscores.** `MySkill` and `my_skill` are wrong; only `my-skill` (kebab-case) loads. The loader rejects the others.
-- **Don't place project skills outside `.wrongstack/skills/<name>/`.** Bundled, user-profile, and foreign paths are for other owners. User-created skills always go in the project directory.
-- **Don't write prose-only skills.** Rules, patterns, anti-patterns, code examples — the content has to be actionable. Prose without a checkable rule does not constrain the model.
-- **Don't skip "Skills in scope".** Without the hand-off list, the model doesn't know where to delegate adjacent questions. The list is what makes the skill part of a system.
-- **Don't forget to bump the version on structural change.** New section, scope change, rule change → major or minor bump. Patch only for wording.
-- **Don't move work into the skill that belongs in `/skill-gen`.** The sub-commands are the deterministic layer: validation, scaffolding, from-prompt conversion. The wizard is for the parts they can't do.
+This helper checks frontmatter, real tool/capability names, related skill
+targets, local resource links and runtime discovery. It does not install
+dependencies, change files or invoke a model.
+
+## Optional authoring surfaces
+
+Use the host's /skill-gen skeleton, from-prompt, validate, view, edit and list
+commands when relevant. After manual writes, /skill reload refreshes discovery;
+/skill use <name> <task> activates instructions, while a preview is only a preview.
+
+Discovery order is project WrongStack, project foreign, user/profile, user
+foreign, configured extra directories, then bundled; first name wins.
+Use installed source to confirm enabled foreign layers and ordering.
 
 ## Before returning
 
-- [ ] Name is kebab-case; `/skill-gen validate <name>` passed
-- [ ] Name doesn't collide with bundled, project, or user-profile skills
-- [ ] First sentence of `description` is a concrete trigger; trigger keywords follow
-- [ ] File path is `.wrongstack/skills/<name>/SKILL.md` for project skills
-- [ ] Content is actionable: rules, patterns, anti-patterns, code examples
-- [ ] "Out of scope" lists what the skill is NOT for and where to hand off
-- [ ] "Before returning" gives the model a mechanical completion check
-- [ ] "Skills in scope" names the hand-off targets and the reason for each
-- [ ] Version bumped appropriately; change recorded in CHANGELOG.md
-- [ ] `/skill-gen validate <name>` re-run after writing; loads cleanly
+- Destination, name, description and audience correct.
+- Required surfaces exist; optional integrations have a real fallback.
+- Linked resources load and changed helpers execute successfully.
+- Behavioral checks distinguished from structural checks.
+- Catalogs synchronized; verification results and unknowns reported.
 
 ## Skills in scope
 
-- `prompt-engineering` — for crafting the skill description and prompt text
-- `git-flow` — for committing the new skill file
-- `output-standards` — for standardized `<nextsteps>` formatting
+- prompt-engineering — discriminating triggers and instruction contracts.
+- testing — meaningful authoring and loading checks.
+- tech-stack — version verification.
+- output-standards — parser-compatible response formats.

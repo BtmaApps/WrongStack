@@ -11,6 +11,9 @@ describe('browser private-host refusal wording', () => {
     await expect(
       assertBrowserUrlAllowed('http://127.0.0.1:9/', { navigation: true }),
     ).rejects.toThrow(/^browser: blocked private/);
+    await expect(
+      assertBrowserUrlAllowed('http://127.0.0.1:9/', { navigation: true }),
+    ).rejects.toThrow('/browser allow http://127.0.0.1:9');
   });
 
   it('still allows an allowlisted private origin', async () => {

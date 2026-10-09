@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 377,
-      "typeOnly": 295,
-      "runtimeOrMixed": 102
+      "files": 381,
+      "typeOnly": 298,
+      "runtimeOrMixed": 103
     },
     "@wrongstack/core/agent-catalog": {
       "files": 21,
@@ -74,8 +74,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 163,
-      "typeOnly": 99,
+      "files": 164,
+      "typeOnly": 100,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 143,
+      "files": 144,
       "typeOnly": 36,
-      "runtimeOrMixed": 137
+      "runtimeOrMixed": 138
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1379,
-      "typeOnly": 1212,
-      "runtimeOrMixed": 419
+      "files": 1383,
+      "typeOnly": 1215,
+      "runtimeOrMixed": 420
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 770,
+      "files": 773,
       "typeOnly": 69,
-      "runtimeOrMixed": 729
+      "runtimeOrMixed": 732
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -385,6 +385,12 @@
       "file": "packages/cli/src/boot/tui-session-resume.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/boot/tui-settings-adapter.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -1402,6 +1408,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/src/exec-git-development-args.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/src/exec.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1780,6 +1792,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/project-network-origins.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/replace-rg.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1841,6 +1859,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/todo-identity-regression.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/tool-working-directory.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -2794,7 +2818,7 @@
     },
     {
       "specifier": "@wrongstack/core/cloud-provider",
-      "file": "packages/simpleui/src/auth-panel.tsx",
+      "file": "packages/simpleui/src/auth-panel-saved.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -6323,6 +6347,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/tests/domain/session-transcript-refetch.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/tests/domain/session-transcript-switch.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -12838,6 +12868,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/tui-settings-reset-defaults.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/vibe-agent-e2e.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -14482,6 +14518,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/browser.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/btw.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16096,6 +16138,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/runtime-picker-mcp-management.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/sdd-format.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16295,6 +16343,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/tui-settings-adapter.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/tui-settings-reset-defaults.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -19356,6 +19410,12 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/codebase-index/codebase-read-symbol-tool.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
@@ -24178,6 +24238,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/wiring/runtime-picker-deps.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/wiring/sdd-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -25438,6 +25504,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/browser/policy.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/browser/security.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -25823,6 +25895,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/tests/background-log.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/browser-policy.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

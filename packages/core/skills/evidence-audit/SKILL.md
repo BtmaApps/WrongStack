@@ -3,11 +3,20 @@ name: evidence-audit
 description: Evidence-led audit/fix rounds for any codebase in any language. Finds only defects that a runnable proof reproduces on current code, applies the narrowest in-scope patch, verifies with a second proof, promotes high-risk proofs to permanent regression tests, and reports exact validation results. Use whenever the user asks to audit, bug-hunt, "find real bugs in", "prove and fix", "continue the audit round on", or "what is actually broken in" a package, module, directory, or service, even without the word "audit", and for turning .temp_files proof scripts into regression tests. Do not use for a single already-reported bug, an unscoped security claim, or general refactoring.
 required-capabilities: [filesystem.read, filesystem.write, execution.shell, verification.run, version-control.manage]
 required-tools: []
+trigger: "description: Evidence-led audit/fix rounds for any codebase in any language. Finds only defects that a runnable proof reproduces on current code, applies the narrowest in-scope patch, verifies with a second proof, promotes high-risk proofs to permanent regression tests, and reports exact validation results. Use whenever the user asks to audit, bug-hunt, \"find real bugs in\", \"prove and fix\", \"continue the audit round on\", or \"what is actually broken in\" a package, module, directory, or service, even without the word \"audit\", and for turning .temp_files proof scripts into regression tests. Do not use for a single already-reported bug, an unscoped security claim, or general refactoring."
+version: 1.1.1
+metadata:
+  routing-group: quality
 ---
 
 # Evidence-led audit
 
 Invoke as `$evidence-audit <scope>`. The text after the skill name is the scope. Every round produces the same thing: a ledger of findings where each finding has a proof that fails on current code, a patch that touches only the scope, and a verifier that passes after the patch. Nothing without a proof becomes a patch. Nothing without a verifier is called fixed. This holds in every language and every repo: an unproven "improvement" is a regression risk with no upside.
+
+## Selection card
+- Task: Find, prove, fix and independently verify real defects. / TR: Gerçek kusuru bul, kanıtla, düzelt ve bağımsız doğrula.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Setup (every round, before any analysis)
 
@@ -148,3 +157,17 @@ ALWAYS end the round with this exact layout, taken from the ledger:
 - [ ] Validation steps are reported with exact commands and results; unrun steps say `NOT RUN`.
 - [ ] No commit/push/reset/cleanup performed without explicit authorization.
 - [ ] Ledger on disk matches the report; IDs are stable across rounds.
+
+## Session authorization and source drift
+
+If the user already authorized independent scope selection or continued rounds,
+choose a concrete next scope and record its paths; do not repeat the setup
+question. Preserve existing edits while repairing an in-scope path—“dirty” does
+not mean that path is forbidden. If source changes during proof/patch/verify,
+reread and rerun the unchanged proof before attributing the result.
+If the user requested review only, record proofs and findings without applying
+production fixes; audit-and-fix authorization remains distinct.
+
+## Acceptance checks
+
+- Retain an executable before-proof, narrow fix and independent passing verification.

@@ -287,8 +287,14 @@ export function SessionTopbar(props: SessionTopbarProps) {
             {hasUpdate ? <span className="version-chip-update">→ v{latestVersion}</span> : null}
           </span>
         ) : null}
-        <div className={`connection ${connection}`} title={`WebSocket: ${connection}`}>
+        <div
+          className={`connection ${connection}`}
+          role="status"
+          aria-label={`WebSocket: ${connection}`}
+          title={`WebSocket: ${connection}`}
+        >
           <span
+            aria-hidden="true"
             className={`connection-ping-dot ${connection === 'open' ? 'good' : connection === 'connecting' ? 'poor' : 'bad'}`}
           />
           {connection === 'open' ? <Wifi size={15} /> : <WifiOff size={15} />}

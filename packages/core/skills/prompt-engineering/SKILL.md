@@ -3,13 +3,21 @@ name: prompt-engineering
 description: |
   Use this skill when designing, critiquing, or fixing system prompts, tool descriptions, skill definitions, or other LLM instruction text — including when a model ignores, over-applies, or misreads its instructions.
   Triggers: user mentions "prompt", "system prompt", "system instruction", "tool description", "skill description", "few-shot", "the model keeps ignoring", "eval", "usage hint".
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run]
+trigger: "Use this skill when designing, critiquing, or fixing system prompts, tool descriptions, skill definitions, or other LLM instruction text \u2014 including when a model ignores, over-applies, or misreads its instructions."
+metadata:
+  routing-group: workflow
 ---
 
 # Prompt Engineering
+
+## Selection card
+- Task: Design grounded instructions and output contracts. / TR: Kaynağa dayalı yönerge ve çıktı sözleşmesi tasarla.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -107,6 +115,15 @@ selection, not for documentation:
 - [ ] Emphasis reserved for real hard constraints
 - [ ] Tool and skill descriptions say when to use, inputs, outputs, and alternatives
 - [ ] Checked against representative and edge-case inputs
+
+## Behavioral evaluation
+
+Pin realistic inputs and observable success criteria before changing a prompt.
+Include near-miss activation cases, ambiguous instructions and untrusted source
+text. Compare tool choice, task completion and output validity against the old
+prompt; regex/phrase presence alone is structural evidence.
+Record model/version/settings and repeated-run variability for meaningful
+quality claims. Instructions cannot substitute for runtime validation or permissions.
 
 ## Skills in scope
 

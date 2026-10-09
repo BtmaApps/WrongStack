@@ -354,6 +354,8 @@ export function tryToolsSettingsPickerKeys(
       dispatch({ type: 'pluginPickerMove', delta: 1 });
       return true;
     }
+    // Mouse clicks must not change selections / toggle plugins — only Enter / ← / → keys.
+    if (key.mouse) return true;
     if (key.leftArrow || key.rightArrow || isEnter) {
       if (debouncedEnter(host)) return true;
       void host.onPluginPickerToggle?.();
@@ -364,7 +366,68 @@ export function tryToolsSettingsPickerKeys(
 
   // ── MCP server picker ──────────────────────────────────────
   if (state.mcpPicker.open) {
+    if (state.mcpPicker.busy) {
+      if (key.escape) dispatch({ type: 'mcpPickerClose' });
+      return true;
+    }
+    const editor = state.mcpPicker.editor;
+    if (editor) {
+      if (key.escape || (editor.mode === 'remove' && input.toLowerCase() === 'n')) {
+        dispatch({ type: 'mcpPickerEditor' });
+      } else if (editor.mode === 'remove') {
+        if (input.toLowerCase() === 'y') void host.onMcpPickerSave?.();
+      } else if (isEnter) {
+        if (!debouncedEnter(host)) void host.onMcpPickerSave?.();
+      } else if (key.tab || key.downArrow || key.upArrow) {
+        const first = editor.mode === 'edit' ? 1 : 0;
+        const count = 4 - first;
+        dispatch({
+          type: 'mcpPickerEditor',
+          editor: {
+            ...editor,
+            field:
+              first + ((editor.field - first + (key.upArrow || key.shift ? count - 1 : 1)) % count),
+          },
+        });
+      } else {
+        const field = (['name', 'transport', 'target', 'args'] as const)[editor.field]!;
+        const value =
+          key.ctrl && input.toLowerCase() === 'u'
+            ? ''
+            : key.backspace
+              ? pickerBackspace(editor[field])
+              : !key.ctrl && !key.meta
+                ? editor[field] + pickerInputText(input)
+                : editor[field];
+        dispatch({ type: 'mcpPickerEditor', editor: { ...editor, [field]: value } });
+      }
+      return true;
+    }
     if (key.ctrl || key.meta) return true;
+    const mode =
+      input.toLowerCase() === 'a'
+        ? 'add'
+        : input.toLowerCase() === 'e'
+          ? 'edit'
+          : input.toLowerCase() === 'd'
+            ? 'remove'
+            : undefined;
+    if (mode) {
+      const item = mode === 'add' ? undefined : state.mcpPicker.items[state.mcpPicker.selected];
+      if (mode !== 'add' && !item) return true;
+      dispatch({
+        type: 'mcpPickerEditor',
+        editor: {
+          mode,
+          field: mode === 'edit' ? 1 : 0,
+          name: item?.name ?? '',
+          transport: item?.transport ?? 'stdio',
+          target: item?.transport === 'stdio' ? (item.command ?? '') : (item?.url ?? ''),
+          args: JSON.stringify(item?.args ?? []),
+        },
+      });
+      return true;
+    }
     if (key.escape) {
       dispatch({ type: 'mcpPickerClose' });
       return true;

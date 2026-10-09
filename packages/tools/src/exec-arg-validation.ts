@@ -96,7 +96,7 @@ const BLOCKED_SUBCOMMANDS: Record<string, ReadonlySet<string>> = {
   docker: new Set(['push']),
   podman: new Set(['push']),
   npm: new Set(['publish', 'deploy']),
-  pnpm: new Set(['publish', 'deploy']),
+  pnpm: new Set(['publish']),
   yarn: new Set(['publish']),
 };
 
@@ -137,12 +137,19 @@ function positionalArgs(args: string[]): { values: string[]; followsBareOption: 
   return { values, followsBareOption };
 }
 
-export function validateArgs(cmd: string, args: string[]): string | null {
+export function validateArgs(
+  cmd: string,
+  args: string[],
+  options: {
+    allowPublish?: boolean | undefined;
+    validatedGitArgumentIndexes?: ReadonlySet<number> | undefined;
+  } = {},
+): string | null {
   const positional = positionalArgs(args);
   const candidates = candidateSubcommandCount(positional.followsBareOption);
 
   const blockedSubcommands = BLOCKED_SUBCOMMANDS[cmd];
-  if (blockedSubcommands) {
+  if (blockedSubcommands && !options.allowPublish) {
     const subcommand = positional.values
       .slice(0, candidates)
       .find((value) => blockedSubcommands.has(value));
@@ -150,7 +157,7 @@ export function validateArgs(cmd: string, args: string[]): string | null {
   }
 
   const blockedSequences = BLOCKED_SUBCOMMAND_SEQUENCES[cmd];
-  if (blockedSequences) {
+  if (blockedSequences && !options.allowPublish) {
     const actual = positional.values;
     for (let start = 0; start < candidates; start++) {
       const blocked = blockedSequences.find((seq) =>
@@ -164,8 +171,9 @@ export function validateArgs(cmd: string, args: string[]): string | null {
   // and reports the option rather than the spelling that happened to be used.
   const blockedOptions = BLOCKED_OPTION_NAMES[cmd];
   if (blockedOptions) {
-    for (const arg of args) {
+    for (const [index, arg] of args.entries()) {
       if (arg === '--') break; // everything after `--` is a positional operand
+      if (cmd === 'git' && options.validatedGitArgumentIndexes?.has(index)) continue;
       if (blockedOptions.has(optionName(arg))) {
         return `Blocked option "${optionName(arg)}" for command "${cmd}"`;
       }
@@ -175,8 +183,9 @@ export function validateArgs(cmd: string, args: string[]): string | null {
   const blocked = BLOCKED_ARG_PATTERNS[cmd];
   if (!blocked) return null;
 
-  for (const arg of args) {
+  for (const [index, arg] of args.entries()) {
     if (arg === '--') break;
+    if (cmd === 'git' && options.validatedGitArgumentIndexes?.has(index)) continue;
     // The rm path patterns are written with `/`; Windows also separates with
     // `\`, so `..\outside`, `\\host\share` and `\Windows` walked past every
     // one of them. Test the slash-normalized spelling as well.

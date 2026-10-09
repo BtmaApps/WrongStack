@@ -8,6 +8,43 @@ import { describe, expect, it, vi } from 'vitest';
 import { useProviderEventBridge } from '../src/hooks/use-provider-event-bridge.js';
 
 describe('useProviderEventBridge', () => {
+  it('shows browser origin guidance as a visible warning outside the tool result', () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const { unmount } = renderHook(() => {
+      useProviderEventBridge({
+        events,
+        agent: { ctx: { session: { id: 'browser-session' }, todos: [] } } as never,
+        dispatch,
+        streamingTextRef: useRef(''),
+        streamSegmentsRef: useRef([]),
+        pendingDeltaRef: useRef(''),
+        flushTimerRef: useRef(null),
+        sessionGenerationRef: useRef(1),
+        activeRunGenerationRef: useRef(1),
+        assistantCommittedThisRunRef: useRef(false),
+        setMemoryContextMonitor: vi.fn(),
+      });
+    });
+    act(() =>
+      events.emit('tool.executed', {
+        id: 'browser-blocked',
+        name: 'browser_open',
+        ok: false,
+        durationMs: 1,
+        output:
+          'browser: blocked localhost target. Allow this project origin with /browser allow http://localhost:3000',
+      }),
+    );
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'addEntry',
+      entry: {
+        kind: 'warn',
+        text: expect.stringContaining('/browser allow http://localhost:3000'),
+      },
+    });
+    unmount();
+  });
   it('keeps provider deltas render-neutral until the canonical response arrives', () => {
     vi.useFakeTimers();
     try {

@@ -10,6 +10,7 @@ import {
 import { ALLOW_PRIVATE, assertNotPrivate, guardedFetch } from './_fetch-guard.js';
 import { getTurndown } from './_turndown.js';
 import { capBytesWithNotice } from './_util.js';
+import { browserPrivateOrigins } from './browser/policy.js';
 
 export type FetchFormat = 'markdown' | 'text' | 'raw';
 
@@ -144,6 +145,9 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
     }
 
     const trimmedUrl = input.url.trim();
+    const allowedPrivateOrigins = browserPrivateOrigins(
+      ctx.projectRoot ?? ctx.cwd ?? process.cwd(),
+    );
     let u: URL;
     try {
       u = new URL(trimmedUrl);
@@ -176,13 +180,22 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
         field: 'url',
       });
     }
-    if (u.protocol === 'http:' && !ALLOW_PRIVATE) {
+    const approvedOrigin = allowedPrivateOrigins.includes(u.origin);
+    if (u.protocol === 'http:' && !ALLOW_PRIVATE && !approvedOrigin) {
       throw new ToolValidationError({
-        message: 'fetch: http:// blocked (HTTPS required by default)',
+        message: `fetch: http:// blocked (HTTPS required by default). For a trusted development origin, run /network allow ${u.origin}`,
         field: 'url',
       });
     }
-    await assertNotPrivate(u.hostname);
+    if (!approvedOrigin)
+      await assertNotPrivate(u.hostname).catch((error: unknown) => {
+        if (error instanceof Error)
+          throw new ToolValidationError({
+            message: `${error.message}. For a trusted development origin, run /network allow ${u.origin}`,
+            field: 'url',
+          });
+        throw error;
+      });
 
     yield { type: 'log', text: `GET ${trimmedUrl}` };
 
@@ -205,7 +218,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
     try {
       let res: Response;
       try {
-        res = await guardedFetch(trimmedUrl, 5, combined);
+        res = await guardedFetch(trimmedUrl, 5, combined, undefined, { allowedPrivateOrigins });
       } catch (err) {
         // A user-initiated cancel propagates unchanged. Our own timeout and any
         // transport failure get a diagnostic message: undici throws an opaque

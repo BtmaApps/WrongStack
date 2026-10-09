@@ -12,6 +12,7 @@ import {
   codebaseIndexTool,
   codebaseInvariantCheckTool,
   codebaseOutgoingCallsTool,
+  codebaseReadSymbolTool,
   codebaseRepoMapTool,
   codebaseSearchTool,
   codebaseSkeletonTool,
@@ -86,13 +87,13 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   project_kit: projectKitTool.description,
   project_kit_run: projectKitRunTool.description,
   browser_open:
-    'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',
+    'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Missing Playwright/Chromium installs automatically. For trusted private or localhost targets, ask the operator to run /browser allow <origin> once for this project.',
   browser_list:
     'List browser sessions owned by this agent, including their state and current page, without exposing sessions owned by other agents.',
   browser_status:
     'Check whether the managed Playwright Chromium installation is available before attempting browser automation.',
   browser_navigate:
-    'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first; private and localhost origins require an explicit allowlist.',
+    'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first. If private or localhost access is blocked, show the operator the exact /browser allow <origin> command from the error.',
   browser_snapshot:
     'Inspect the current page through a bounded accessibility snapshot, with redacted console and network summaries. Prefer this before interacting with page elements.',
   browser_screenshot:
@@ -129,6 +130,8 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Record or ask a focused clarification when a missing decision would materially change the implementation. Do not use it for questions that can be answered from the repository.',
   'codebase-ast-replace':
     'Replace a named declaration using source-aware structure instead of fragile text matching. Use it for a function, method, class, interface, or variable when the target is unambiguous.',
+  'codebase-read-symbol':
+    'Read the exact implementation of a named declaration (function, method, class, interface, type, enum, variable) from a file using AST parsing. Returns line-numbered code in standard N→content format, eliminating offset guessing and saving context tokens.',
   'codebase-invariant-check':
     'Compare candidate code with its original source and report structural invariants that may have changed. Use before writing a risky refactor; it validates but does not modify files.',
   'codebase-stats':
@@ -162,10 +165,10 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   glob: 'Find project files by glob pattern, respecting repository boundaries and ignore rules. Use it to locate candidate paths before reading or editing them.',
   grep: 'Search project text with a bounded regular expression and contextual matches. Use it for exact literals or patterns when semantic codebase search is not appropriate.',
   bash: 'Run a shell command in the project with bounded output and timeout controls. Use it for development commands after checking side effects; background mode returns a process handle.',
-  exec: 'Execute a command directly without shell interpretation, using explicit program arguments. Prefer it when argument safety and predictable process invocation matter.',
+  exec: 'Execute a command directly without shell interpretation, preserving every argument. YOLO/YOLO+ permit executables beyond the default roster, filesystem-scoped Git -C and temporary development settings; explicit tools.exec.deny entries still refuse. Prefer it for predictable process invocation.',
   pwsh: 'Execute a PowerShell command in the project with timeout, output, and background controls. Use it for Windows-native project operations and verify commands that can modify state.',
   fetch:
-    'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Use it for a known page or endpoint, not for general web discovery.',
+    'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Project origins allowed with /network allow (or /browser allow) are shared with the browser and HTTP reader. Use for a known page or endpoint.',
   search:
     'Search the public web for current external information, then inspect selected results with fetch. Use it when repository evidence is insufficient or the fact may have changed.',
   todo: 'Create, update, or list the session’s concrete work items and their progress. Use it to keep multi-step work visible; it does not implement the tasks itself.',
@@ -266,6 +269,7 @@ export const TIER1_TOOLS: Tool[] = [
   editTool,
   clarifyTool,
   codebaseAstReplaceTool,
+  codebaseReadSymbolTool,
   codebaseInvariantCheckTool,
   codebaseStatsTool,
   codebaseSearchTool,
@@ -351,6 +355,7 @@ const rawBuiltinTools: Tool[] = [
   editTool,
   clarifyTool,
   codebaseAstReplaceTool,
+  codebaseReadSymbolTool,
   codebaseInvariantCheckTool,
   codebaseStatsTool,
   codebaseSearchTool,

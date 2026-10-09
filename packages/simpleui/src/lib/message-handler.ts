@@ -253,6 +253,14 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'provider.retry':
+        // The retry re-streams the whole reply: drop what the failed attempt
+        // had already streamed (any pending delta was flushed above) so the
+        // new stream does not append to it.
+        setMessages((current) =>
+          current.some((item) => item.streaming)
+            ? current.filter((item) => !item.streaming)
+            : current,
+        );
         setRunning(true);
         setActivity(
           `Retrying ${typeof payload['providerId'] === 'string' ? payload['providerId'] : 'provider'}`,
@@ -351,14 +359,29 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         // <nextsteps> block. If that response was absent, retain the exact
         // structured suggestions instead of silently losing the tool result.
         if (completedToolNextSteps.length > 0) {
+          // The updater below runs when React renders, after this handler has
+          // reset the shared variable: capture the steps by value.
+          const pendingSteps = completedToolNextSteps;
           setMessages((current) => {
-            const hasRenderedSuggestions = current.some(
-              (item) =>
-                item.role === 'assistant' &&
-                item.final === true &&
-                ((item.nextSteps?.length ?? 0) > 0 ||
-                  projectAssistantMessage(item.text).nextSteps.length > 0),
-            );
+            // Only THIS turn's reply can already carry the steps. Scanning the
+            // whole transcript let the first turn that ever rendered chips
+            // suppress the tool-provided steps of every later turn.
+            let turnStart = 0;
+            for (let index = current.length - 1; index >= 0; index -= 1) {
+              if (current[index]?.role === 'user') {
+                turnStart = index + 1;
+                break;
+              }
+            }
+            const hasRenderedSuggestions = current
+              .slice(turnStart)
+              .some(
+                (item) =>
+                  item.role === 'assistant' &&
+                  item.final === true &&
+                  ((item.nextSteps?.length ?? 0) > 0 ||
+                    projectAssistantMessage(item.text).nextSteps.length > 0),
+              );
             return hasRenderedSuggestions
               ? current
               : retainSimpleChatMessages([
@@ -368,7 +391,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
                     role: 'assistant',
                     text: '',
                     final: true,
-                    nextSteps: completedToolNextSteps,
+                    nextSteps: pendingSteps,
                     ts: new Date().toISOString(),
                   },
                 ]);

@@ -76,8 +76,37 @@ describe.skipIf(!playwrightAvailable)('BrowserSessionManager guard regressions',
       await expect(
         manager.navigate(opened.id, 'leader', `${origin}/redirect`, signal),
       ).rejects.toThrow(/redirected to a blocked address/);
+      await expect(
+        manager.navigate(opened.id, 'leader', `${origin}/redirect`, signal),
+      ).rejects.toThrow(`/browser allow ${forbiddenOrigin}`);
       const [session] = await manager.list('leader');
       expect(session?.url).toBe('about:blank');
+      expect(forbiddenConnections).toBe(0);
+    } finally {
+      await manager.dispose();
+    }
+  }, 30_000);
+
+  it('keeps the allow command in blocked subresource evidence', async () => {
+    const manager = new BrowserSessionManager({
+      artifactRoot: path.join(tmp, 'artifacts'),
+      allowedPrivateOrigins: [origin],
+    });
+    const signal = new AbortController().signal;
+    try {
+      const opened = await manager.open('leader', { url: origin, trace: false }, signal);
+      await manager.evaluate(
+        opened.id,
+        'leader',
+        `fetch(${JSON.stringify(forbiddenOrigin)}).catch(() => 'blocked')`,
+        signal,
+      );
+      const snapshot = await manager.snapshot(opened.id, 'leader', signal);
+      expect(
+        snapshot.network.some(
+          (entry) => entry.failed && entry.error?.includes(`/browser allow ${forbiddenOrigin}`),
+        ),
+      ).toBe(true);
       expect(forbiddenConnections).toBe(0);
     } finally {
       await manager.dispose();

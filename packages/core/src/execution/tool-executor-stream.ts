@@ -13,6 +13,7 @@ interface StreamedToolExecutionOptions {
   progressEmitIntervalMs: number;
   progressTailChars: number;
   progressHeadChars: number;
+  autonomy?: 'prompt' | 'yolo' | 'yolo-plus' | undefined;
 }
 
 export async function executeStreamedTool({
@@ -25,6 +26,7 @@ export async function executeStreamedTool({
   progressEmitIntervalMs,
   progressTailChars,
   progressHeadChars,
+  autonomy,
 }: StreamedToolExecutionOptions): Promise<unknown> {
   let finalOutput: unknown;
   let sawFinal = false;
@@ -36,7 +38,7 @@ export async function executeStreamedTool({
       context: { reason: 'streaming_not_supported' },
     });
   }
-  const stream = tool.executeStream(input, ctx, { signal });
+  const stream = tool.executeStream(input, ctx, { signal, autonomy });
   const iter = stream[Symbol.asyncIterator]();
   let progressTail = '';
   let progressHead = '';

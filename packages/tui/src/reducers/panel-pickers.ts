@@ -46,6 +46,7 @@ const panelPickerActionTypes = [
   'mcpPickerSetItems',
   'mcpPickerBusy',
   'mcpPickerHint',
+  'mcpPickerEditor',
   'toolsPickerOpen',
   'toolsPickerClose',
   'toolsPickerMove',
@@ -358,7 +359,10 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       };
     }
     case 'mcpPickerClose':
-      return { ...state, mcpPicker: { ...state.mcpPicker, open: false, busy: false } };
+      return {
+        ...state,
+        mcpPicker: { ...state.mcpPicker, open: false, busy: false, editor: undefined },
+      };
     case 'mcpPickerMove': {
       const count = state.mcpPicker.items.length;
       if (count === 0) return state;
@@ -385,6 +389,11 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       return { ...state, mcpPicker: { ...state.mcpPicker, busy: action.busy } };
     case 'mcpPickerHint':
       return { ...state, mcpPicker: { ...state.mcpPicker, hint: action.text } };
+    case 'mcpPickerEditor':
+      return {
+        ...state,
+        mcpPicker: { ...state.mcpPicker, editor: action.editor, hint: undefined },
+      };
     case 'toolsPickerOpen': {
       const items = action.items ?? state.toolsPicker.items;
       return {

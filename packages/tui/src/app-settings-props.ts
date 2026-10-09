@@ -49,6 +49,16 @@ export interface TuiSettingsProps {
     | undefined;
   /** Load MCP server rows for the interactive MCP picker. */
   getMcpServers?: (() => McpPickerItem[]) | undefined;
+  onMcpManage?:
+    | ((
+        action: 'add' | 'edit' | 'remove',
+        input: Pick<McpPickerItem, 'name' | 'transport' | 'command' | 'url' | 'args'>,
+      ) => Promise<{
+        items: McpPickerItem[];
+        message?: string | undefined;
+        error?: string | undefined;
+      }>)
+    | undefined;
   /** Toggle one MCP server (enable/disable) from the interactive picker. */
   onMcpToggle?:
     | ((name: string) => Promise<{

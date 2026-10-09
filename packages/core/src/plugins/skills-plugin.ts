@@ -10,6 +10,7 @@ import type { SkillLoader } from '../types/skill.js';
 import type { SlashCommand } from '../types/slash-command.js';
 import { color } from '../utils/color.js';
 import { buildSkillGeneratorCommand } from './skills-plugin-authoring.js';
+import { skillDiscoveryReport } from './skills-plugin-diagnostics.js';
 import {
   buildSkillImportCommand,
   buildSkillInstallCommand,
@@ -107,8 +108,17 @@ export function buildSkillCommand(skillLoader?: SkillLoader): SlashCommand {
     name: 'skill',
     description:
       'Show skill details or list available skills. Use /skill-gen to create new skills.',
-    async run(args: string) {
+    argsHint: '[name|use <name> <task>|reload|diagnostics]',
+    help: 'List skills with /skill, inspect one with /skill <name>, or use /skill diagnostics to explain sources, shadowing and progressive prompt exclusions. /skill reload rescans the catalog.',
+    async run(args, ctx) {
       if (!skillLoader) return { message: 'No skill loader configured.' };
+      if (args.trim() === 'diagnostics') {
+        const tools = ctx && (ctx.catalogTools.length > 0 ? ctx.catalogTools : ctx.tools);
+        return skillDiscoveryReport(
+          skillLoader,
+          tools?.map((tool) => tool.name),
+        );
+      }
       if (args.trim() === 'reload') {
         skillLoader.invalidateCache();
         return { message: `Reloaded ${(await skillLoader.list()).length} skills.` };

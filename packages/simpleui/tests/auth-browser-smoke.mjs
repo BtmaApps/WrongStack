@@ -17,13 +17,13 @@ const emit = (type, payload) => listeners.forEach(fn => fn({type, payload}));
 const socket = { onMessage: fn => { listeners.add(fn); return () => listeners.delete(fn); }, send: (type, payload) => {
   window.__sent.push({type, payload});
   queueMicrotask(() => {
-    if (type === 'providers.saved') emit('providers.saved', { providers: [{id:'openai', apiKeys:[{label:'work', maskedKey:'sk-a…1234', isActive:true}]}] });
+    if (type === 'providers.saved') emit('providers.saved', { providers: [{id:'openai', type:'openai', family:'openai', apiKeys:[{label:'work', maskedKey:'sk-a…1234', isActive:true},{label:'backup', maskedKey:'sk-b…5678', isActive:false}]}, {id:'ollama-local', type:'ollama-local', family:'openai-compatible', baseUrl:'http://127.0.0.1:11434/v1', apiKeys:[]}] });
     if (type === 'auth.oauth.list') emit('auth.oauth.providers', {providers:[{id:'chatgpt',providerId:'openai-codex',label:'ChatGPT'}]});
-    if (type === 'providers.list') emit('provider.catalog', {providers:[{id:'openai',name:'OpenAI',family:'openai',apiBase:'https://api.openai.com/v1'}]});
+    if (type === 'providers.list') emit('provider.catalog', {providers:[{id:'openai',name:'OpenAI',family:'openai',apiBase:'https://api.openai.com/v1',envVars:['OPENAI_API_KEY'],modelCount:42},{id:'anthropic',name:'Anthropic',family:'anthropic',modelCount:12},{id:'deepseek',name:'DeepSeek',family:'deepseek',modelCount:3}]});
     if (type === 'provider.add') emit('key.operation_result', {success:true,message:'Auth profile saved',requestId:payload.requestId});
     if (type === 'auth.oauth.start') emit('auth.oauth.status', {kind:'chatgpt',phase:'awaiting_browser',authorizeUrl:'https://example.test/login'});
     if (type === 'key.delete') emit('key.operation_result', {success:false,message:'Disk full',requestId:payload.requestId});
-    if (type === 'key.add') emit('key.operation_result', {success:true,message:'Key saved',requestId:payload.requestId});
+    if (type === 'key.add' || type === 'key.update') emit('key.operation_result', {success:true,message:'Key saved',requestId:payload.requestId});
   });
 }};
 createRoot(document.getElementById('root')).render(React.createElement(React.Fragment, null, React.createElement('button', {onClick: () => dispatchSimplePanel('open-auth')}, 'Open credentials'), React.createElement(AuthPanel, {socketRef: {current:socket}})));
@@ -70,33 +70,65 @@ try {
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__auth_smoke`);
     await page.getByRole('button', { name: 'Open credentials' }).click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByText('openai', { exact: true }).waitFor();
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    await dialog.locator('.auth-card-head strong', { hasText: /^openai$/ }).waitFor();
+    const shot = async (name) => {
+      if (process.env.AUTH_SMOKE_SHOTS)
+        await page.screenshot({
+          path: path.join(process.env.AUTH_SMOKE_SHOTS, `${width}x${height}-${name}.png`),
+        });
+    };
+    await page.waitForTimeout(250);
+    await shot('saved');
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+    });
+    // :root[data-theme="light"] transitions color for 200ms.
+    await page.waitForTimeout(400);
+    await shot('saved-light');
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.theme;
+    });
+    const localCard = dialog.locator('.auth-card').filter({ hasText: 'ollama-local' });
+    await localCard.getByRole('button', { name: 'Edit' }).click();
+    assert.equal(await localCard.getByLabel('Base URL').inputValue(), 'http://127.0.0.1:11434/v1');
+    await shot('edit');
+    await localCard.getByRole('button', { name: 'Cancel' }).click();
+    await dialog.getByRole('button', { name: 'Delete key work' }).click();
     assert.equal(
       await page.evaluate(() => window.__sent.some((m) => m.type === 'key.delete')),
       false,
     );
+    await shot('confirm');
     await dialog.getByRole('button', { name: 'Confirm deletion' }).click();
     await dialog.getByRole('status').filter({ hasText: 'Disk full' }).waitFor();
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await dialog.getByLabel('Provider or saved alias').fill('openai');
-    await dialog.getByLabel('API key', { exact: true }).fill('test-browser-secret');
-    await dialog.getByRole('button', { name: 'Save key' }).click();
+    await dialog.getByRole('alert').getByRole('button', { name: 'Cancel', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Replace' }).first().click();
+    await dialog.getByLabel('New key for “work”').fill('test-browser-secret');
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await dialog.getByRole('status').filter({ hasText: 'Key saved' }).waitFor();
-    assert.equal(await dialog.getByLabel('API key', { exact: true }).inputValue(), '');
-    await dialog.getByLabel('Auth profile alias', { exact: true }).fill('work-account');
-    await dialog.getByLabel('Account API key', { exact: true }).fill('work-account-key');
-    await dialog.getByRole('button', { name: 'Save auth profile' }).click();
+    assert.equal(await dialog.getByLabel('New key for “work”').count(), 0);
+    await dialog.getByRole('tab', { name: 'Add provider' }).click();
+    await dialog.getByRole('searchbox').fill('open');
+    await shot('catalog');
+    await dialog.getByRole('button', { name: /OpenAI/ }).click();
+    assert.equal(await dialog.getByLabel('Auth profile alias').inputValue(), 'openai-2');
+    await dialog.getByLabel('Auth profile alias').fill('work-account');
+    await dialog.getByLabel('API key', { exact: true }).fill('work-account-key');
+    await shot('add-key');
+    await dialog.getByRole('button', { name: 'Save provider' }).click();
     await dialog.getByRole('status').filter({ hasText: 'Auth profile saved' }).waitFor();
-    assert.equal(await dialog.getByLabel('Account API key', { exact: true }).inputValue(), '');
+    await dialog.getByRole('list', { name: 'Saved providers' }).waitFor();
     const created = await page.evaluate(() =>
       window.__sent.find((message) => message.type === 'provider.add'),
     );
     assert.equal(created.payload.id, 'work-account');
     assert.equal(created.payload.type, 'openai');
     assert.equal(created.payload.apiKey, 'work-account-key');
+    await dialog.getByRole('tab', { name: 'Add provider' }).click();
+    await dialog.getByRole('tab', { name: 'Subscription' }).click();
     await dialog.getByRole('button', { name: 'Sign in with ChatGPT' }).click();
     await dialog.getByRole('link', { name: 'Open sign-in page' }).waitFor();
+    await shot('oauth');
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,

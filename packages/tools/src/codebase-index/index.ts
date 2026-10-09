@@ -28,6 +28,11 @@ export {
   replaceSymbolInFile,
 } from './ast-symbol-mutator.js';
 export {
+  type ReadSymbolOptions,
+  type ReadSymbolResult,
+  readSymbolInFile,
+} from './ast-symbol-reader.js';
+export {
   cancelPendingReindexes,
   checkCodebaseIndexServerHealth,
   codebaseIndexStats,
@@ -100,6 +105,11 @@ export {
   type OutgoingCallsInput,
   type OutgoingCallsOutput,
 } from './codebase-outgoing-calls-tool.js';
+export {
+  type CodebaseReadSymbolInput,
+  type CodebaseReadSymbolOutput,
+  codebaseReadSymbolTool,
+} from './codebase-read-symbol-tool.js';
 export {
   type CodebaseRepoMapInput,
   type CodebaseRepoMapOutput,

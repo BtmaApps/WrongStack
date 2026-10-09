@@ -174,6 +174,8 @@ export function createTestState(
       readSymbols: false,
       nextStepsTool: false,
       nextStepsRequired: true,
+      rememberStartupChoices: true,
+      nextSystemPromptVariant: 'pro',
       // WrongProxy / WrongTrace: match app-initial-state defaults (switch
       // off, daemon default URL, no edit in progress).
       wrongProxyEnabled: false,

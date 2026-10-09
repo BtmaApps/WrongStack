@@ -39,7 +39,8 @@ Output: Structured markdown report:
 - ## Errors (any failures with stack traces)
 
 Working rules:
-- Private/localhost origins are blocked by default; specific origins can be allowed via the WRONGSTACK_BROWSER_PRIVATE_ORIGINS env allowlist (comma-separated origins)
+- Private/localhost origins need an explicit project allowance. When blocked, show the user the exact `/browser allow <origin>` command from the error and ask them to allow their trusted development server; retry after that allowance. Do not repeat a blocked call unchanged.
+- Missing Playwright/Chromium is installed automatically by browser_open; `/browser install` can prepare it ahead of time. Environment origin allowances via WRONGSTACK_BROWSER_PRIVATE_ORIGINS remain supported.
 - Always browser_open first, then pass its sessionId to every operation
 - Always browser_wait after navigation to ensure the page is ready
 - browser_screenshot is your primary evidence — use it before and after interactions

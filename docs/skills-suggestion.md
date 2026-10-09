@@ -1,4 +1,50 @@
-# Skill suggestion (TypeSafe)
+# Automatic skill recommendations
+
+## Local engine (default on)
+
+CLI/TUI and WebUI evaluate the latest user message before the model call. The
+model does not need to call skill-search, request a skill, or know its id first.
+`skills.localSuggest` defaults to `true`. This path uses curated English/Turkish
+intent rules over the effective bundled catalog; it makes no network/API call
+and needs no Jev account or credential.
+
+For a specific task it recommends its specialist. For overlapping or multiple
+technical domains it recommends skill-router with up to three candidates. An
+unknown implementation task can fall back to the router; simple conversation
+and requests without actionable task evidence stay silent. These are lexical
+heuristics, not a semantic model or calibrated confidence probabilities.
+
+The primary skill's complete frontmatter-free body is placed in a volatile
+system block if readable and at most 12,000 characters. Larger or unreadable
+bodies are not presented as a complete excerpt: the block explicitly asks the
+model to load the skill. Supporting skills and needed resources still load
+through the skill tool. Preloading does not emit skill activation events or
+satisfy an explicit skill-loading gate; it grants no permissions or tools.
+
+The engine excludes hidden audiences, unavailable required tools/capabilities,
+and ids shadowed by non-bundled sources. It rechecks identity/version, tools and
+the latest message after reading a body. Retry passes replace its own prior
+volatile block; a new unrelated message removes stale advice. Stable prompt
+prefixes and the request's messages remain untouched.
+
+Explicit `$skill-name` selections take precedence. A completed opt-in TypeSafe
+judgment also takes precedence; if the remote path is disabled or unavailable,
+the local engine works independently. A local miss emits no claim that nothing
+in the catalog can solve the task: the model still has its normal skill manifest.
+
+Disable local advice with a configuration preference:
+
+```json
+{ "skills": { "localSuggest": false } }
+```
+
+`features.skills: false` disables the skill feature entirely. Inspect local
+recommendations in debug logs (`local skill suggestion: ...`); user messages
+and body contents are not copied into those logs. The fixed TR/EN fixtures are
+regression checks used to refine aliases, not held-out or live-model accuracy.
+
+## Optional TypeSafe engine
+
 
 **Off by default.** Turning it on sends the latest user message to a third-party
 API before each new turn. Read [What leaves the machine](#what-leaves-the-machine)
@@ -170,7 +216,13 @@ sent — but a user message often quotes them, and that message is sent verbatim
 Treat enabling this as a decision to send your prompts to TypeSafe.
 
 Skills whose `audience` is `roster` or `external` are excluded: they never reach
-the agent's manifest, so pointing at one would name an entry it cannot read.
+the main agent's manifest. Live CLI and WebUI suggestions also exclude skills
+missing required runtime capabilities or tools, using the complete host catalog
+including on-demand tools. The prompt and suggester share this eligibility rule
+and preserve full descriptions plus distinct triggers. The turn cache is refreshed
+when the host tool set changes. Standalone previews without a tool registry are
+inventory-only; they do not prove runtime availability. `/skill diagnostics`
+explains the discovered sources, shadowed copies and prompt exclusions locally.
 
 ## Failure behavior
 
@@ -243,7 +295,7 @@ roster with a different shape from yours. They are config-exposed because the
 right values depend on your roster and on what a wrong load costs you.
 
 A starter set lives at **`.wrongstack/skill-suggest-eval.jsonl`** — 53 cases
-drafted against this roster (37 covered, 16 not). Its labels are inferred from
+updated for the current bundle (40 covered, 13 not). Its labels are inferred from
 each skill's own frontmatter trigger, not from how anyone actually works, so
 correct them before trusting a number: a wrong label counts against the
 suggester on every run.
@@ -266,6 +318,10 @@ for something specific your roster has no skill for.
 wstack skill-suggest --eval .wrongstack/skill-suggest-eval.jsonl --sweep
 ```
 
+Malformed lines, duplicate requests and unknown labels stop evaluation before
+network judgments. Missing or failed judgments stop accuracy scoring and threshold
+sweeps; an unavailable answer is not counted as a correct no-skill decision.
+
 Each run prints what it spent and **which model version answered**. `jev-latest`
 is an alias; a sweep table that cannot name its version is a calibration with no
 date on it. If two versions answer within one run, the alias moved mid-run and
@@ -287,17 +343,35 @@ wstack skill-suggest --eval .wrongstack/skill-suggest-eval.jsonl --sweep
 wstack skill-suggest --eval .wrongstack/skill-suggest-eval-tr.jsonl --sweep
 ```
 
-Kept 1:1, the **delta** between the two runs is the language effect and nothing
-else — which is why they are two files rather than one blended set, and why
+Kept 1:1, the two sets allow a language comparison when model version, roster,
+tools and settings are held constant. Repeat runs to account for model variability.
+That is why they are two files rather than one blended set, and why
 `skill-suggest-eval-fixtures.test.ts` fails if they drift apart. A label
 corrected in one file has to be corrected in the other.
+
+The expanded bundle has an additional paired set:
+
+```sh
+wstack skill-suggest --eval packages/core/tests/fixtures/skill-suggest-bundle-en.jsonl --sweep
+wstack skill-suggest --eval packages/core/tests/fixtures/skill-suggest-bundle-tr.jsonl --sweep
+```
+
+These 81 synthetic cases contain 59 covered tasks and 22 no-skill requests,
+including video engines, design, mobile, infrastructure and backend distinctions.
+Every covered label names a currently bundled main-agent skill. Review overlapping
+specialties and use actual task samples before tuning thresholds. Fixture checks
+verify pairing, labels and data integrity; they do not measure model accuracy or
+whether the main agent follows the selected skill.
 
 If the Turkish run misses materially more at the same thresholds, the honest
 responses are: lower `gateThreshold` for this deployment, translate the three
 gate questions, or accept the loss and write it down. Averaging the two runs
 produces a threshold that is wrong for both.
 
-Measured on this repo's 46-skill roster, 2026-09-17, `jev-1.13.0`:
+Historical measurement on the former 46-skill roster, 2026-09-17, `jev-1.13.0`.
+The catalog, labels and first-pass descriptions have since changed. These figures
+and the tuning advice below are archival, not validation of the current 99-skill
+bundle; rerun both sets before adopting those thresholds:
 
 ```
   covered (37 cases)

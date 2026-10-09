@@ -224,6 +224,8 @@ export function AppViewPickers({
             sageMemoryInjectThreshold={state.settingsPicker.sageMemoryInjectThreshold}
             nextStepsTool={state.settingsPicker.nextStepsTool}
             nextStepsRequired={state.settingsPicker.nextStepsRequired}
+            rememberStartupChoices={state.settingsPicker.rememberStartupChoices}
+            nextSystemPromptVariant={state.settingsPicker.nextSystemPromptVariant}
             readSymbols={state.settingsPicker.readSymbols}
             panelPositions={state.settingsPicker.panelPositions}
             // WrongProxy / WrongTrace (fields 59–60): the runtime probe
@@ -277,6 +279,7 @@ export function AppViewPickers({
             selected={state.mcpPicker.selected}
             busy={state.mcpPicker.busy}
             hint={state.mcpPicker.hint}
+            editor={state.mcpPicker.editor}
           />
         ) : null}
         {state.toolsPicker.open ? (

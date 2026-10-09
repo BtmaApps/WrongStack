@@ -29,6 +29,7 @@ export {
   SkillManifestStore,
 } from './manifest-store.js';
 export { createSkillMentionMiddleware } from './mention-middleware.js';
+export { skillPromptExclusionReasons } from './prompt-discovery.js';
 export { githubDirectAdapter } from './registry/github-direct-adapter.js';
 export type {
   RegistrySearchOptions,
@@ -108,3 +109,8 @@ export {
   type TypeSafeQuestion,
   unknownGoldLabels,
 } from './suggest/index.js';
+export {
+  createLocalSkillSuggestionSetup,
+  type LocalSkillRecommendation,
+  recommendLocalSkills,
+} from './suggest/local.js';

@@ -14,8 +14,11 @@ export interface SettingsPickerJumpChord {
 }
 
 export const SETTINGS_PICKER_JUMP_CHORDS: ReadonlyArray<SettingsPickerJumpChord> = Object.freeze([
-  { mod: 'ctrl', letter: 'i', field: 20, label: 'Index on session start' },
-  { mod: 'ctrl', letter: 'm', field: 21, label: 'Multi-diff summary' },
+  // Index / multi-diff ride Alt, not Ctrl: without the kitty keyboard
+  // protocol a terminal sends Ctrl+I as Tab and Ctrl+M as Return, so those
+  // chords never arrived (and Ctrl+M activated the focused row instead).
+  { mod: 'alt', letter: 'i', field: 20, label: 'Index on session start' },
+  { mod: 'alt', letter: 'm', field: 21, label: 'Multi-diff summary' },
   { mod: 'ctrl', letter: 'w', field: 22, label: 'Thinking word' },
   { mod: 'ctrl', letter: 'r', field: 17, label: 'Refine preview countdown' },
   { mod: 'ctrl', letter: 'e', field: 18, label: 'Refine' },
@@ -56,6 +59,22 @@ export const SETTINGS_PICKER_JUMP_CHORDS: ReadonlyArray<SettingsPickerJumpChord>
   { mod: 'alt-shift', letter: 'v', field: 62, label: 'Tool result view' },
 ]);
 
+/**
+ * Picker row labels that differ from {@link SETTINGS_FIELD_LABELS}. The
+ * canonical labels stay the `/settings <name>` slugs users already type;
+ * these make the names shown on screen resolve too.
+ */
+const SETTINGS_FIELD_ROW_LABELS: ReadonlyArray<readonly [number, string]> = [
+  [7, 'Next-step prediction'],
+  [8, 'MCP servers'],
+  [9, 'Plugins'],
+  [10, 'Memory'],
+  [11, 'Skills'],
+  [14, 'Allow outside project'],
+  [25, 'Preserve thinking'],
+  [27, 'Auto-compact'],
+];
+
 export function settingsPickerJumpField(
   mod: SettingsPickerJumpMod,
   letter: string,
@@ -77,6 +96,12 @@ export function settingsPickerJumpByName(name: string): number | undefined {
   if (exact) return exact.field;
   const canonical = SETTINGS_FIELD_LABELS.findIndex((label) => settingsPickerSlug(label) === query);
   if (canonical >= 0) return canonical;
+  // The label a row shows in the picker, when it differs from the canonical
+  // one — checked before the fuzzy passes so `/settings memory off` reaches
+  // the "Memory" row rather than the first chord label containing "memory".
+  for (const [field, label] of SETTINGS_FIELD_ROW_LABELS) {
+    if (settingsPickerSlug(label) === query) return field;
+  }
 
   const queryTokens = query.split('-');
   for (const c of SETTINGS_PICKER_JUMP_CHORDS) {

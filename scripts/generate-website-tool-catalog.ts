@@ -66,6 +66,7 @@ const runtimeNames = new Set(builtinTools.map((tool) => tool.name));
 const newToolCategories: Readonly<Record<string, ToolCategory>> = {
   present_artifact: 'Work & state',
   'dead-code-fix': 'Discovery & index',
+  'codebase-read-symbol': 'Discovery & index',
 };
 const newEntries = builtinTools
   .filter((tool) => !websiteNames.has(tool.name) && Object.hasOwn(newToolCategories, tool.name))

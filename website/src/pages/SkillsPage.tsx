@@ -98,7 +98,7 @@ export function SkillsPage() {
               icon: PackageOpen,
               title: 'Bundled',
               path: 'Shipped with @wrongstack/core',
-              body: 'Bundled skills cover security, testing, and refactoring, plus design-craft, design-critique, and web-platform-baseline for UI implementation and review.',
+              body: 'Bundled skills cover design, mobile and native apps, web and backend frameworks, authorized SSH/Linux operations, containers, deployment and recovery, plus data, authentication, billing, testing and security workflows.',
             },
             {
               icon: Globe,

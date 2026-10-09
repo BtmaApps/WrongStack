@@ -116,6 +116,12 @@ export interface AppKeyHandlerOptions {
    * called when the click missed or the write failed.
    */
   onHistoryCopy?: ((entryId: number) => void) | undefined;
+  /**
+   * Set only while the /mailbox panel is open. Its open flag lives in the
+   * mailbox view-model hook, not reducer state, so the Esc panel table
+   * (`ESC_CLOSE_PANELS`) cannot see it; the Esc route calls this instead.
+   */
+  closeMailboxPanel?: (() => void) | undefined;
 }
 
 /**

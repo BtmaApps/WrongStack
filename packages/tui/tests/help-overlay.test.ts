@@ -22,7 +22,11 @@ describe('helpSections', () => {
     // Monitor chords are listed with terminal-safe alternatives first.
     expect(keys).toContain('F2 or Ctrl+F');
     expect(keys).toContain('F3 or Ctrl+G');
-    expect(keys).toContain('F4 or /worktree');
+    expect(keys).toContain('F4, Ctrl+T or /worktree');
+    // Chord-only monitors without an F-key slot are listed too.
+    expect(keys).toContain('Ctrl+B');
+    expect(keys).toContain('Ctrl+P');
+    expect(keys).toContain('/mailbox');
     expect(keys).toContain('?');
     expect(keys).toContain('/help');
     expect(keys).toContain('Ctrl+S or /settings');
@@ -80,9 +84,10 @@ describe('helpSections', () => {
       const entry = settings()?.entries.find((e) => e.keys === 'Multi-diff summary');
       expect(entry?.desc).toContain('0 = off');
       expect(entry?.desc).toContain('default 5');
-      // Surfacing the Ctrl+M jump in the overlay so the keyboard shortcut
-      // doesn't stay hidden from anyone reading the help text.
-      expect(entry?.desc).toContain('Ctrl+M');
+      // Surfacing the Alt+M jump in the overlay so the keyboard shortcut
+      // doesn't stay hidden from anyone reading the help text. (Ctrl+M is
+      // Return on the wire, so it can never be a chord.)
+      expect(entry?.desc).toContain('Alt+M');
     });
 
     it('surfaces the Ctrl+<letter> jump chords advertised by the picker', () => {
@@ -90,7 +95,7 @@ describe('helpSections', () => {
       // from `?` — the overlay stays in sync with the keyboard handler.
       const descriptions = (settings()?.entries ?? []).map((e) => e.desc);
       for (const chord of [
-        'Ctrl+I',
+        'Alt+I',
         'Ctrl+W',
         'Ctrl+R',
         'Ctrl+E',

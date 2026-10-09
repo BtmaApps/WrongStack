@@ -78,11 +78,15 @@ const NAME_POOL: readonly string[] = [
 
 /** Stable name assignments — an agent keeps its name forever once assigned. */
 const nameCache = new Map<string, string>();
+/** Display names already handed out. `nameCache` is keyed by agent id, so it
+ *  cannot answer "is this NAME taken?". */
+const usedNames = new Set<string>();
 let nameCursor = 0;
 
 /** Clear the name cache (e.g. on session reset). */
 export function resetAgentNameCache(): void {
   nameCache.clear();
+  usedNames.clear();
   nameCursor = 0;
 }
 
@@ -101,7 +105,7 @@ function nextPoolName(): string {
   for (let attempt = 0; attempt < NAME_POOL.length; attempt++) {
     const name = NAME_POOL[nameCursor % NAME_POOL.length];
     nameCursor++;
-    if (name !== undefined && !nameCache.has(name)) return name;
+    if (name !== undefined && !usedNames.has(name)) return name;
   }
   // Pool exhausted — fall back to a numbered variant. `NAME_POOL` is a
   // non-empty literal above, but its declared type is `readonly string[]`,
@@ -109,7 +113,7 @@ function nextPoolName(): string {
   const base = NAME_POOL[0] ?? 'Agent';
   for (let suffix = 2; ; suffix++) {
     const name = `${base} ${suffix}`;
-    if (!nameCache.has(name)) return name;
+    if (!usedNames.has(name)) return name;
   }
 }
 
@@ -132,19 +136,29 @@ function assignName(id: string, name: string, task?: string | undefined): string
     explicitName.toLowerCase() !== id.toLowerCase()
   ) {
     nameCache.set(id, explicitName);
+    usedNames.add(explicitName);
     return explicitName;
   }
 
   if (task?.trim()) {
     const derived = taskToName(task.trim());
     // Avoid collisions with pool names by appending a suffix if needed.
-    const unique = nameCache.has(derived) ? `${derived} #${id.slice(0, 4)}` : derived;
+    let unique = derived;
+    for (let length = 4; usedNames.has(unique); length++) {
+      unique = `${derived} #${id.slice(0, length)}`;
+      if (length >= id.length) {
+        // Even the full id did not separate them: number the label instead.
+        for (let n = 2; usedNames.has(unique); n++) unique = `${derived} #${id} ${n}`;
+      }
+    }
     nameCache.set(id, unique);
+    usedNames.add(unique);
     return unique;
   }
 
   const poolName = nextPoolName();
   nameCache.set(id, poolName);
+  usedNames.add(poolName);
   return poolName;
 }
 

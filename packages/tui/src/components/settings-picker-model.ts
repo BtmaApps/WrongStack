@@ -14,6 +14,7 @@ import {
   formatPreRefineSeconds,
   formatSettingsDelay,
   SETTINGS_FIELD_LABELS,
+  SYSTEM_PROMPT_CHOICE_LABELS,
 } from './settings-picker-constants.js';
 
 export * from './settings-picker-constants.js';
@@ -68,6 +69,7 @@ export function getSettingsFieldValue(
     [43, 'showSageMemoryInject'],
     [45, 'nextStepsTool'],
     [64, 'nextStepsRequired'],
+    [65, 'rememberStartupChoices'],
     // WrongProxy / WrongTrace master switch (field 59). The companion
     // URL field (60) is text-typed, see getSettingsFieldValue.
     [59, 'wrongProxyEnabled'],
@@ -98,6 +100,13 @@ export function getSettingsFieldValue(
     [40, 'showAgentSwarmPanel'],
     [62, 'toolResultViewMode'],
   ];
+  if (field === 66) {
+    return {
+      ok: true,
+      label,
+      displayValue: SYSTEM_PROMPT_CHOICE_LABELS[values.nextSystemPromptVariant],
+    };
+  }
   for (const [f, key] of ENUM_KEYS) {
     if (field !== f) continue;
     return { ok: true, label, displayValue: String(values[key]) };
@@ -179,16 +188,12 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ name: string; fields: readonly number[]
     fields: [8, 9, 10, 11, 12, 13, 14],
   },
   {
-    name: 'Agent guidance',
-    fields: [63, 64],
-  },
-  {
     name: 'Tools',
-    fields: [15, 16, 17, 18, 19, 20, 21, 22, 42, 45],
+    fields: [15, 16, 17, 18, 19, 20, 21],
   },
   {
     name: 'Reasoning',
-    fields: [23, 24, 25, 26],
+    fields: [22, 23, 24, 25, 26],
   },
   {
     name: 'Context',
@@ -212,7 +217,7 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ name: string; fields: readonly number[]
   },
   {
     name: 'Display',
-    fields: [39, 40, 41, 43, 44, 61, 62],
+    fields: [39, 40, 41, 42, 43, 44, 45],
   },
   {
     name: 'Panels',
@@ -227,6 +232,18 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ name: string; fields: readonly number[]
     // to avoid shifting the panel-position block 46–58 indices.
     name: 'Integrations',
     fields: [59, 60],
+  },
+  {
+    name: 'Layout',
+    fields: [61, 62],
+  },
+  {
+    name: 'Agent guidance',
+    fields: [63, 64],
+  },
+  {
+    name: 'Startup',
+    fields: [65, 66],
   },
 ];
 
@@ -291,7 +308,8 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   // (self-driving) and yolo on (auto-approve). Live values still come from
   // config via getSettings(); these are the "reset to default" targets.
   mode: 'auto',
-  delayMs: 0,
+  // Core default `autonomy.autoProceedDelayMs` (DEFAULT_AUTONOMY_CONFIG).
+  delayMs: 15_000,
   titleAnimation: true,
   yolo: true,
   fleetChat: 'off',
@@ -304,7 +322,8 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   featureSkills: true,
   featureModelsRegistry: true,
   featureToolCoach: true,
-  tokenSavingTier: 'off',
+  // Core default `features.tokenSavingMode`.
+  tokenSavingTier: 'auto',
   allowOutsideProjectRoot: true,
   contextAutoCompact: true,
   contextStrategy: 'hybrid',
@@ -326,7 +345,8 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   reasoningEffort: 'medium',
   reasoningPreserve: false,
   thinkingWord: 'thinking',
-  cacheTtl: 'default',
+  // Core default `modelRuntime.cache.ttl`.
+  cacheTtl: '1h',
   configScope: 'global',
   animationStyle: 'rainbow',
   breakerEnabled: false,
@@ -336,10 +356,14 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   showAgentSwarmPanel: 'bottom',
   panelPositions: DEFAULT_PANEL_POSITIONS,
   readSymbols: false,
-  showSageMemoryInject: true,
-  sageMemoryInjectThreshold: 0.85,
+  showSageMemoryInject: false,
+  // Core default `Sage.inject.relationFloor`.
+  sageMemoryInjectThreshold: 0.9,
   nextStepsTool: false,
   nextStepsRequired: true,
+  rememberStartupChoices: true,
+  // Core default `systemPrompt.variant`.
+  nextSystemPromptVariant: 'pro',
   // WrongProxy / WrongTrace. Defaults mirror the WebUI `LocalPrefs`
   // DEFAULTS in `packages/webui/src/stores/local-prefs.ts` (master
   // switch off, URL 'http://localhost:3444'). Required keys here
@@ -425,6 +449,8 @@ function buildResetPatch(field: number): SettingsPickerPatch | null {
     [44, 'sageMemoryInjectThreshold'],
     [45, 'nextStepsTool'],
     [64, 'nextStepsRequired'],
+    [65, 'rememberStartupChoices'],
+    [66, 'nextSystemPromptVariant'],
     // WrongProxy / WrongTrace: appended at the end so the existing
     // 46+13 = 59 entries are not shifted (the picker caps + scrolls;
     // field 59 is boolean, 60 is text). See `Settings.wrongProxy*`

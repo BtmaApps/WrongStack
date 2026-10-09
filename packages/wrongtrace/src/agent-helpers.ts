@@ -335,7 +335,14 @@ export async function getRecentActivity(
     if (runId) entry.runId = runId;
     matched.push(entry);
   }
-  matched.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  // Compare instants, not strings: RFC3339 stamps with different UTC offsets
+  // do not order lexically. Unparseable stamps fall back to string order.
+  matched.sort((a, b) => {
+    const ta = Date.parse(a.at);
+    const tb = Date.parse(b.at);
+    if (!Number.isNaN(ta) && !Number.isNaN(tb) && ta !== tb) return tb - ta;
+    return a.at < b.at ? 1 : a.at > b.at ? -1 : 0;
+  });
   return matched.slice(0, safeLimit);
 }
 

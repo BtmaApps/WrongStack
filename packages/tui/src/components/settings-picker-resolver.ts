@@ -33,6 +33,8 @@ import {
   SETTINGS_FIELD_LABELS,
   SETTINGS_MODES,
   STATUSLINE_MODES,
+  SYSTEM_PROMPT_CHOICE_LABELS,
+  SYSTEM_PROMPT_CHOICES,
   TOKEN_SAVING_TIERS,
   TOOL_RESULT_VIEW_MODES,
 } from './settings-picker-constants.js';
@@ -87,6 +89,7 @@ export function resolveSettingsFieldValue(
     [43, 'showSageMemoryInject'],
     [45, 'nextStepsTool'],
     [64, 'nextStepsRequired'],
+    [65, 'rememberStartupChoices'],
     [59, 'wrongProxyEnabled'],
     [61, 'showSidebar'],
   ]);
@@ -132,6 +135,24 @@ export function resolveSettingsFieldValue(
     return {
       ok: false,
       error: `Invalid value "${input}" for ${label}. Valid: ${FLEET_CHAT_MODES.join(', ')}.`,
+    };
+  }
+
+  // ── System prompt for the next session (accepts "standard" for default) ──
+  if (field === 66) {
+    const variant = raw === 'standard' ? 'default' : raw;
+    const match = SYSTEM_PROMPT_CHOICES.find((v) => v === variant);
+    if (match) {
+      return {
+        ok: true,
+        patch: { nextSystemPromptVariant: match },
+        label,
+        displayValue: SYSTEM_PROMPT_CHOICE_LABELS[match],
+      };
+    }
+    return {
+      ok: false,
+      error: `Invalid value "${input}" for ${label}. Valid: lite, standard, pro, scout.`,
     };
   }
 

@@ -72,6 +72,13 @@ Skills are discovered at boot across the layers below. The first layer with a gi
 | 7 | `config.skills.extraDirs` | User-config only | Any extra directory (stripped from in-project config) |
 | 8 (lowest) | Bundled with `@wrongstack/core` | Ships with the package | General-purpose skills (git-flow, bug-hunter, etc.) |
 
+Use `/skill diagnostics` to inspect the winning source and path for each name,
+the paths of shadowed copies, rejected metadata, and progressive prompt exclusion
+reasons. With a session context, it checks required capabilities and tools against
+the host catalog, including on-demand tools. Without that context, runtime
+availability is explicitly unchecked. Hidden audiences remain separately listed;
+prompt eligibility does not guarantee that a skill body can activate successfully.
+
 ### Directory structure
 
 ```
@@ -115,13 +122,14 @@ Control which foreign tools are scanned with `skills.foreignSources` (default: a
 | `mode` | `'progressive'` | `'progressive'` injects only a name+trigger manifest (the agent loads bodies via the `skill` tool); `'eager'` injects skill bodies into the prompt up to `eagerMaxChars`. |
 | `eagerMaxChars` | `24000` | In eager mode, the total chars of skill bodies injected (highest-priority first); the rest become a load-on-demand manifest. Bounds prompt cost when many skills are discovered. Ignored in progressive mode. |
 | `extraDirs` | `[]` | Extra directories to scan (lowest priority). **User config only** — stripped from a repo-committed `<project>/.wrongstack/config.json`. |
+| `localSuggest` | `true` | Local, API-free bundled recommendations before each model call, with bounded primary-body preload. Explicit selections take precedence. |
 | `suggest` | off | Per-turn skill suggestion via TypeSafe. **User config only** — the whole subtree is stripped from a repo-committed config. See [skills-suggestion.md](./skills-suggestion.md). |
 
 ## Progressive disclosure & the `skill` tool
 
-By default (`mode: 'progressive'`) WrongStack follows the agentskills.io three-tier model: the prompt carries each skill's name, full description, and optional trigger, and the agent calls the **`skill`** tool to load a skill's full body on demand. Set `skills.mode: 'eager'` to inject discovered skill bodies into the system prompt up to the configured budget instead.
+By default (`mode: 'progressive'`) WrongStack follows the agentskills.io three-tier model: the prompt carries each skill's name, full description, and optional trigger, and the agent calls the **`skill`** tool to load a skill's full body on demand. Set `skills.mode: 'eager'` to inject discovered skill bodies into the system prompt up to the configured budget instead. The default local recommendation engine can additionally preload one task-matched primary body (at most 12,000 characters) into a volatile block without a model search/load request. It still requires actual tool loading for supporting resources or explicit loading gates.
 
-Discovery and context ordering are deterministic: layers are traversed by priority and entries inside each layer are sorted by skill name. The environment block always receives every discovered name and trigger, except skills whose `audience` is `roster` or `external`. In eager mode, bodies are added in that same stable order until `eagerMaxChars`; overflow remains in the manifest. In progressive mode, the manifest is the context contract and the `skill` tool is the deterministic body/resource loading path.
+Discovery and context ordering are deterministic: layers are traversed by priority and entries inside each layer are sorted by skill name. The progressive manifest preserves each skill's full description and additional explicit trigger, removing duplicate text within that row. It excludes `roster`/`external` audiences and skills whose required capabilities or tools are unavailable. Optional capabilities do not exclude a skill. In eager mode, bodies are added in the same stable order until `eagerMaxChars`; overflow remains in the manifest. In progressive mode, the manifest is the context contract and the `skill` tool is the deterministic body/resource loading path.
 
 The `skill` tool also handles **bundled resources** (tier 3) — scripts, references, assets, any subdirectory:
 
@@ -137,6 +145,12 @@ Use the `skill` tool (not `read`) for skill resources: it works for foreign skil
 ```
 
 ## Suggesting which skill to load
+
+The default local engine (`skills.localSuggest: true`) recommends bundled skills
+before each model call, independently of skill-search and Jev. It matches curated
+TR/EN task terms, checks the effective catalog and runtime tools, and preloads a
+bounded complete primary body when possible. Simple conversation stays silent;
+explicit selections and completed opt-in remote judgments take precedence.
 
 At a few dozen skills, a name + trigger line is not always enough for the agent
 to tell close neighbours apart (`design-craft` vs `design-critique`), and the
@@ -171,49 +185,149 @@ Foreign skills are usable as-is, but to **own, edit, or commit** one, import it 
 
 ---
 
+## Bundled routing
+
+Every bundled entrypoint includes an English/Turkish selection card, an initial
+action and acceptance guidance. For exact single-technology work, load the
+specialist directly. For ambiguous or multi-domain work, load `skill-router` and
+consult its complete selection map and overlap decisions. Progressive, eager and compact prompts
+surface this routing rule when the maintained bundled router is runtime-eligible,
+including eager/compact body-budget overflow.
+
+The router covers actual bundled ids, including their audience restrictions.
+A skill does not grant tools or permissions. Version snapshots must be refreshed
+through `tech-stack` before new setups/upgrades; failed checks remain unverified.
+
 ## Bundled skills
 
-WrongStack ships with 37 bundled skills:
+WrongStack ships with 99 bundled skills:
 
 | Skill | Description |
 |---|---|
+| `accessibility` | Semantic controls, keyboard/focus behavior and evidenced WCAG checks |
+| `angular-modern` | Build and upgrade Angular applications with typed components, reactive state, dependency injection and verified routing |
 | `api-design` | REST API design, error codes, pagination, auth patterns |
+| `astro-modern` | Build and upgrade Astro content sites and applications with deliberate islands, content contracts and rendering modes |
+| `audio-studio` | Current music/TTS models, soundtrack prompts and validated audio delivery |
 | `audit-log` | Session log parsing, anomaly detection, cost and tool usage analysis |
+| `authentication-sessions` | Implement application sign-in, sessions and identity integration with explicit account/tenant authorization |
 | `auto-review` | Configure and operate the built-in continuous code-review plugin |
+| `backup-recovery` | Design and verify backups and restoration for owned databases, files and application state |
 | `bug-hunter` | Systematic bug and code smell detection, severity ranking |
 | `chimera` | Post-session code quality review of changed files |
+| `ci-cd` | Reproducible CI, exact-source artifacts and deployment evidence |
+| `cloud-architecture` | Choose and design cloud services from concrete application, data, availability and operational requirements |
+| `cloudflare-workers` | Worker runtime, typed bindings, isolation and deployment verification |
+| `code-quality` | Source-confirmed unused code, dependencies and bundle waste |
 | `code-review` | On-demand review of a PR, branch, or diff: blast radius and severity-ranked findings |
 | `codebase-navigation` | Orient, locate, and trace code with the codebase index before reading files |
+| `codex-adversarial-review` | Read-only adversarial review with an explicit fix-confirmation boundary |
+| `compose-operations` | Operate and evolve multi-service Docker Compose environments with explicit networks, volumes and environment boundaries |
+| `container-debugging` | Diagnose reported container build, startup, network, permission and resource failures |
+| `container-hardening` | Review and improve container image/runtime protection for an owned application with tested compatibility |
+| `data-governance` | Schema ownership, PII handling, retention, lineage, access policy, migration safety |
+| `database-development` | Implement database access, models and queries with explicit consistency, transactions and bounded results |
+| `database-migrations` | Schema evolution, bounded backfills and tested recovery |
 | `debugging` | Root-cause an observed failure: reproduce, localize, fix at the cause, prove it |
+| `design-assets` | Prepare icons, SVGs, images, fonts and illustrations for product use with correct rights, formats and rendering |
+| `design-craft` | Product-specific composition, typography, content and rendered critique |
+| `design-critique` | Scored, evidenced audit of an existing UI across structure, type, color, surface, states, and copy |
+| `design-system` | Build consistent interfaces from shared visual tokens and component rules |
+| `design-to-code` | Implement supplied Figma designs, screenshots or design specifications as working interfaces |
 | `docker-deploy` | Docker containerization, multi-stage builds, image scanning |
+| `dotnet-backend` | Build and upgrade ASP.NET Core services with typed contracts, dependency lifetimes and verified persistence |
 | `evidence-audit` | Proof-driven audit rounds: reproduce, apply a scope-only fix, verify, and promote high-risk regressions |
+| `flutter-mobile` | Build and upgrade Flutter applications with typed state, navigation, platform plugins and device verification |
 | `git-flow` | Commit message style, branch hygiene, safe history operations |
+| `go-services` | Build and upgrade Go services, workers and CLI applications with context propagation and explicit ownership |
+| `graphql-development` | Build and evolve GraphQL schemas/resolvers with typed contracts, authorization and bounded query work |
+| `i18n-localization` | Implement localization with translated messages, locale-aware formatting and adaptable layouts |
+| `incident-response` | Diagnose and recover an owned service incident with bounded changes, timeline evidence and verified health. Use during outages, bad deployments or data/service degradation; preserve evidence and separate mitigation from root-cause repair |
+| `infrastructure-as-code` | Build and maintain Terraform, OpenTofu, Pulumi or cloud-native IaC with reviewable plans and protected state |
+| `interaction-design` | Design and implement task-oriented interaction flows, forms, navigation and recovery states |
+| `java-spring` | Build and upgrade Java/Spring services with explicit transaction, concurrency and deployment contracts |
+| `kotlin-android` | Build and upgrade native Android applications with Kotlin, Compose/View UI and lifecycle-aware work |
+| `kubernetes-operations` | Operate and deploy owned Kubernetes workloads with explicit cluster, namespace and rollout identity |
+| `linux-service-ops` | Configure and troubleshoot application services on an authorized Linux host with explicit service ownership |
 | `mailbox-bridge` | Loopback HTTP bridge that exposes the project's shared WrongStack mailbox so external agents (Claude Code, Aider, scripts) can read, send, and acknowledge messages |
+| `manim-video` | Manim Community mathematical/scientific animation and rendered video |
+| `mcp-development` | Versioned MCP contracts, schemas, transport and lifecycle |
+| `media-production` | Renderer selection across Remotion, Motion Canvas, Manim, AI and FFmpeg |
 | `mnemosyne` | Deterministic and LLM-supported curation of SAGE memory entries |
+| `mobile-design` | Design and implement mobile interfaces for touch, keyboards, safe areas and native navigation |
+| `mobile-performance` | Measure and improve mobile startup, scrolling, animation and resource usage on representative devices |
+| `mobile-release` | Prepare and verify signed mobile releases, test-channel distribution and store submission artifacts |
+| `motion-canvas-video` | TypeScript generator scenes, narration cues and Motion Canvas export |
+| `motion-design` | Current Motion/GSAP/CSS animation with reduced motion and cleanup |
 | `multi-agent` | Leader/worker roles, task delegation, result aggregation, fleet management |
-| `node-modern` | Node.js ≥ 22 idioms: ESM-only, native fetch, AbortSignal patterns |
+| `nextjs-modern` | Latest stable Next.js 16 App Router, Server Actions and explicit cache policy |
+| `node-backend` | Build and upgrade Node.js HTTP services with typed validation, lifecycle ownership and production behavior |
+| `node-modern` | Latest stable Node/Bun, module compatibility and resource ownership |
 | `observability` | Structured logging, traces, metrics, redaction, instrumentation |
+| `office-documents` | Word/Excel/PowerPoint/PDF generation, recalculation and visual verification |
+| `offline-sync` | Implement offline-capable applications with local persistence, queued changes and explicit synchronization conflicts |
 | `output-standards` | Output formatting standards, `<nextsteps>` conventions |
+| `payments-webhooks` | Implement payment-provider integration and reliable authenticated webhook processing for an owned application |
+| `php-laravel` | Build and upgrade PHP/Laravel applications with validated requests, policy authorization and reliable jobs/data access |
 | `plugin-author` | Creating, reviewing, or refactoring a WrongStack plugin |
 | `prompt-engineering` | System prompt design, tool descriptions, trigger sentences |
-| `react-modern` | React 19+ Server Components, useTransition, Suspense, the `use` hook |
+| `python-backend` | Build and upgrade Python services with explicit environments, validation, async boundaries and resource cleanup |
+| `queues-jobs` | Implement reliable asynchronous jobs and message consumers with explicit delivery, retry and shutdown semantics |
+| `react-modern` | Current React component/action/effect semantics and framework boundaries |
+| `react-native-expo` | Build and upgrade React Native or Expo applications with navigation, native modules and verified platform integration |
+| `realtime-systems` | Implement WebSocket, SSE or established realtime transports with explicit authentication, ordering and reconnect behavior |
 | `refactor-planner` | Dependency mapping, risk assessment, phased planning, migration strategy |
+| `release-rollback` | Plan and execute authorized release promotion or rollback with exact artifact and data compatibility |
+| `remote-debugging` | Diagnose a reported application failure on explicitly authorized remote hosts using bounded logs and runtime evidence |
 | `research-web` | Web research methodology — disciplined search + fetch workflow, source validation, cross-referencing, structured context-manager injection |
-| `wrongstack-mailbox` | External-facing client for the project's shared WrongStack mailbox — register as an online agent, read messages, send replies, broadcast, and stay visible in the WebUI fleet |
+| `reverse-proxy-tls` | Configure and troubleshoot reverse proxies, HTTPS, domains and upstream routing for an authorized application |
+| `rust-systems` | Build and upgrade Rust services, CLI and systems components with explicit error, async and resource contracts |
 | `sdd` | Spec parsing, task graph generation, dependency tracking, done-condition execution |
 | `security-scanner` | Code and configuration security vulnerability scanning |
 | `skill-creator` | Guide to creating new WrongStack skills with YAML frontmatter |
-| `tech-stack` | Package version validation, ecosystem preference maps, dead-package detection |
+| `skill-router` | Choose specialists and order ambiguous or multi-domain workflows using the bundled selection map |
+| `ssh-operations` | Connect to and administer explicitly authorized hosts through OpenSSH with verified identity and bounded operations |
+| `storage-uploads` | Implement owned file/object storage and upload/download flows with validated metadata, access and lifecycle |
+| `sveltekit-modern` | Build and upgrade Svelte and SvelteKit applications with reactive state, server loads, actions and deployment adapters |
+| `swift-ios` | Build and upgrade native iOS applications with Swift, SwiftUI/UIKit and correct lifecycle/concurrency ownership |
+| `tech-stack` | Latest stable registry verification, migration and compatibility evidence |
 | `testing` | vitest patterns, mocking, coverage, unit/integration/e2e test strategy |
+| `threejs-3d` | Current Three.js/R3F, renderer compatibility and GPU resource ownership |
 | `typescript-strict` | Strict null checks, exhaustive switch, branded types, discriminated unions |
 | `verify-before-done` | Prove a change works with the project's own checks before reporting it done |
-| `data-governance` | Schema ownership, PII handling, retention, lineage, access policy, migration safety |
-| `design-system` | Build consistent interfaces from shared visual tokens and component rules |
-| `design-craft` | The taste layer over `design-system`: forced composition/type/color/copy decisions, the brief, and the slop inventory |
-| `design-critique` | Scored, evidenced audit of an existing UI across structure, type, color, surface, states, and copy |
+| `visual-regression` | Detect unintended UI changes with reproducible rendered screenshots and reviewed baselines |
+| `vps-deploy` | Deploy an owned application to an explicitly authorized VPS with versioned artifacts, service identity and live health evidence |
+| `vue-nuxt` | Build and upgrade Vue or Nuxt applications with reactive state, server rendering and typed data boundaries |
+| `web-performance` | LCP/INP/CLS and matched before/after browser profiling |
 | `web-platform-baseline` | Dated, refreshable modern CSS/HTML/a11y facts with a staleness rule — never assert browser support from memory |
 | `wrongstack-kanban` | Deterministic Kanban task lifecycle, verification, and evidence enforcement |
+| `wrongstack-mailbox` | External-facing client for the project's shared WrongStack mailbox — register as an online agent, read messages, send replies, broadcast, and stay visible in the WebUI fleet |
 | `wrongstack-mailbox-mcp` | Coordinate with agents through the project-scoped Mailbox MCP server |
+
+Versioned recommendations are checked against live registries and official sources.
+The dated snapshot is in [tech-stack/current-versions](../packages/core/skills/tech-stack/references/current-versions.md);
+refresh it before installations or upgrades. Latest stable packages can have
+incompatible peers: Motion Canvas 3.17.2 currently declares Vite 4/5, not Vite 8.
+Expo SDK and Angular compiler combinations also require their documented
+compatibility matrix. A latest registry tag can point to a preview; the
+[live version helper](../packages/core/skills/tech-stack/scripts/check-versions.mjs)
+reports stable selections, preview tags, engines and peer requirements.
+
+The expanded catalog covers design handoff/interaction/visual checks; mobile
+frameworks, native platforms and release; authorized SSH/Linux operations;
+containers, VPS/proxy/rollback/recovery; web and backend frameworks; databases,
+queues, realtime, storage, auth, billing, localization and cloud/IaC workflows.
+Load the relevant skill and its conditional references; do not activate every
+framework merely because it appears in the catalog.
+
+Run the read-only bundle authoring check from the repository root:
+
+```powershell
+bun run packages/core/skills/skill-creator/scripts/check-bundle.ts
+```
+
+Compact SKILL.save.md variants are active runtime instructions, not backup files.
+They must be kept consistent with their full runbooks.
 
 Override any bundled skill by creating a project- or user-level skill with the same `name`.
 

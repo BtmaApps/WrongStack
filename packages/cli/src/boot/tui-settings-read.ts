@@ -163,6 +163,7 @@ export function readTuiSettings(configStore: ConfigStore): Record<string, unknow
         | undefined) ?? 5,
     nextStepsTool: cfg.tools?.nextsteps?.enabled === true,
     nextStepsRequired: resolveNextStepsMode(autonomy?.nextSteps) === 'required',
+    rememberStartupChoices: cfg.launch?.rememberStartupChoices !== false,
     restrictFsToRoot: resolvedRestrict,
     autoProceedMaxIterations:
       ((cfg.autonomy as Record<string, unknown> | undefined)?.autoProceedMaxIterations as number) ??

@@ -63,6 +63,25 @@ async function run(mw: ReturnType<typeof createSkillSuggestionMiddleware>, reque
 }
 
 describe('createSkillSuggestionMiddleware', () => {
+  it('re-evaluates when host tools change, but reuses a reordered equivalent catalog', async () => {
+    const suggester = suggesterOf(HIT);
+    let tools = ['read', 'skill'];
+    const mw = createSkillSuggestionMiddleware({ suggester, getAvailableToolNames: () => tools });
+    const request = userRequest('Review and improve this module');
+    await run(mw, request);
+    tools = ['skill', 'read'];
+    await run(mw, request);
+    expect(suggester.explain).toHaveBeenCalledTimes(1);
+    tools = ['read', 'skill', 'bash'];
+    await run(mw, request);
+    expect(suggester.explain).toHaveBeenCalledTimes(2);
+    expect(suggester.explain).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.any(AbortSignal),
+      { availableToolNames: tools },
+    );
+  });
+
   it('does not tell the model no skill fits when the real client fails', async () => {
     const loader = {
       listEntries: async () => [

@@ -112,6 +112,11 @@ export function routeEscClosePanels(ctx: KeyRouteContext, key: KeyEvent): boolea
       ctx.lastEscAtRef.current = 0;
       return true;
     }
+    if (ctx.closeMailboxPanel) {
+      ctx.closeMailboxPanel();
+      ctx.lastEscAtRef.current = 0;
+      return true;
+    }
     if (escSelfOwnedPanelOpen(ctx.state)) {
       // Sidebar twins do not mount the bottom component's useInput handler.
       const positions = effectivePanelPositions(ctx.state, ctx.getSettings?.());

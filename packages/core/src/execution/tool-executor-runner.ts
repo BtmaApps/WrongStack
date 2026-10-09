@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Context } from '../core/context.js';
+import { resolveEventSessionId } from '../core/context.js';
 import { runWithNetworkTelemetry } from '../observability/network-telemetry.js';
 import { runWithProcessTelemetry } from '../observability/process-telemetry.js';
+import { isYoloLockedOff } from '../security/process-lockdown.js';
 import type { Tool } from '../types/tool.js';
 import type { ToolExecutorOptions } from '../types/tool-executor.js';
-import { resolveEventSessionId } from '../core/context.js';
 import { executeStreamedTool } from './tool-executor-stream.js';
 import { abortReasonToError, clampTimeoutMs } from './tool-executor-support.js';
 
@@ -47,6 +48,13 @@ export async function runToolWithTimeout(
       ]);
 
   let output: unknown;
+  const policy = opts.permissionPolicy;
+  const mode = policy?.yoloModeFor?.(ctx) ?? {
+    yolo: policy?.getYolo?.() === true,
+    yoloPlus: policy?.getYoloPlus?.() === true,
+  };
+  const autonomy =
+    !mode.yolo || isYoloLockedOff() ? 'prompt' : mode.yoloPlus ? 'yolo-plus' : 'yolo';
   const execute = () =>
     typeof tool.executeStream === 'function'
       ? executeStreamedTool({
@@ -59,9 +67,14 @@ export async function runToolWithTimeout(
           progressEmitIntervalMs: config.progressEmitIntervalMs,
           progressTailChars: config.progressTailChars,
           progressHeadChars: config.progressHeadChars,
+          autonomy,
         })
       : (async () =>
-          tool.execute(input, ctx, { signal: combined, ...(toolUseId ? { toolUseId } : {}) }))();
+          tool.execute(input, ctx, {
+            signal: combined,
+            autonomy,
+            ...(toolUseId ? { toolUseId } : {}),
+          }))();
 
   const telemetryToolCallId = toolUseId ?? `nested-${randomUUID()}`;
   const toolPromise: Promise<unknown> = opts.events

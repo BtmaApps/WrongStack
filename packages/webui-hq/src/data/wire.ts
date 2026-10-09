@@ -137,6 +137,9 @@ export function armSnapshotRefresh(store: HqStoreApi): () => void {
       .catch(() => undefined)
       .finally(() => {
         inFlight = null;
+        // A reject that landed mid-flight was refused above with the flag still
+        // raised (and no further false->true edge will ever fire): serve it now.
+        if (store.getState().needsSnapshotRefresh) refresh();
       });
   };
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-09T13:48:32.586Z",
+  "generatedAt": "2026-10-09T20:11:58.504Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4897,
-    "testFiles": 4233,
-    "sourceLines": 1086427,
+    "sourceFiles": 4907,
+    "testFiles": 4257,
+    "sourceLines": 1089941,
     "workspaceEdges": 133,
-    "moduleEdges": 16123,
+    "moduleEdges": 16163,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 959
+    "testOnlyExports": 960
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 616,
-      "testFiles": 608,
+      "testFiles": 613,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 608
+          "testFiles": 613
         }
       ]
     },
@@ -243,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1106,
-      "testFiles": 940,
+      "sourceFiles": 1110,
+      "testFiles": 943,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 940
+          "testFiles": 943
         }
       ]
     },
@@ -691,8 +691,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 125,
-      "testFiles": 89,
+      "sourceFiles": 127,
+      "testFiles": 93,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -713,7 +713,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 89
+          "testFiles": 93
         }
       ]
     },
@@ -765,8 +765,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 317,
-      "testFiles": 302,
+      "sourceFiles": 320,
+      "testFiles": 309,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,15 +782,15 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 302
+          "testFiles": 309
         }
       ]
     },
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 478,
-      "testFiles": 418,
+      "sourceFiles": 479,
+      "testFiles": 421,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -813,7 +813,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 418
+          "testFiles": 421
         }
       ]
     },
@@ -875,7 +875,7 @@
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
       "sourceFiles": 124,
-      "testFiles": 54,
+      "testFiles": 55,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -891,7 +891,7 @@
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 54
+          "testFiles": 55
         }
       ]
     },
@@ -954,7 +954,7 @@
       "name": "@wrongstack/wrongtrace",
       "dir": "packages/wrongtrace",
       "sourceFiles": 11,
-      "testFiles": 8,
+      "testFiles": 9,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -965,7 +965,7 @@
         {
           "path": "packages/wrongtrace/tsconfig.test.json",
           "error": null,
-          "testFiles": 8
+          "testFiles": 9
         }
       ]
     },
@@ -4080,6 +4080,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/runtime-picker-mcp-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/safe-mode.test.ts",
         "projects": [
           "root-node"
@@ -4297,6 +4303,12 @@
       },
       {
         "file": "packages/cli/tests/slash-brain.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-browser.test.ts",
         "projects": [
           "root-node"
         ]
@@ -4860,6 +4872,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/startup-choices-reuse.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/static-serve.test.ts",
         "projects": [
           "root-node"
@@ -5184,6 +5202,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/tui-settings-reset-defaults.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/tui-startup-output.test.ts",
         "projects": [
           "root-node"
@@ -5371,6 +5395,12 @@
       },
       {
         "file": "packages/cli/tests/webui-server/provider-config.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/webui-server/provider-crud-roundtrip.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8214,6 +8244,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/execution/tool-autonomy-mode.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/execution/tool-error-taxonomy.test.ts",
         "projects": [
           "root-node"
@@ -9744,6 +9780,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/skills/local-skill-suggestion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/skills/manifest-store-concurrency.test.ts",
         "projects": [
           "root-node"
@@ -9751,6 +9793,12 @@
       },
       {
         "file": "packages/core/tests/skills/manifest-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/skills/prompt-discovery.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15912,6 +15960,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/agent-name-uniqueness.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/app-shell.test.tsx",
         "projects": [
           "root-node"
@@ -16056,6 +16110,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/message-handler-nextsteps-deferred.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/message-handler-session-start.test.ts",
         "projects": [
           "root-node"
@@ -16134,6 +16194,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/refine-panel-countdown-restart.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/refine-panel.test.tsx",
         "projects": [
           "root-node"
@@ -16141,6 +16207,12 @@
       },
       {
         "file": "packages/simpleui/tests/refine-restore.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/refine-result-images.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17214,6 +17286,24 @@
         ]
       },
       {
+        "file": "packages/tools/tests/browser-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/browser-runtime-missing-package.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/browser-runtime.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/browser-security-error-label.test.ts",
         "projects": [
           "root-node"
@@ -17646,6 +17736,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-read-symbol-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-repo-map-ranked.test.ts",
         "projects": [
           "root-node"
@@ -17797,6 +17893,12 @@
       },
       {
         "file": "packages/tools/tests/edit.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/exec-autonomy.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18384,6 +18486,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/project-network-origins.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/project-server-auth-gate.test.ts",
         "projects": [
           "root-node"
@@ -18738,6 +18846,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/tool-working-directory.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/toolflow-presentation.test.ts",
         "projects": [
           "root-node"
@@ -18997,6 +19111,12 @@
       },
       {
         "file": "packages/tui/tests/brain-panel-reducer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/browser-access-hint.test.ts",
         "projects": [
           "root-node"
         ]
@@ -19530,6 +19650,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/history-archive-stale-index.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/history-archive-write-ordering.test.ts",
         "projects": [
           "root-node"
@@ -19789,6 +19915,12 @@
       },
       {
         "file": "packages/tui/tests/markdown-table.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/mcp-panel-management.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -21649,6 +21781,12 @@
       },
       {
         "file": "packages/webui-hq/tests/domain/session-transcript-refetch.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/tests/domain/session-transcript-switch.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -26448,6 +26586,12 @@
         ]
       },
       {
+        "file": "packages/wrongtrace/src/__tests__/baseurl-and-activity-order.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/wrongtrace/src/__tests__/client.test.ts",
         "projects": [
           "root-node"
@@ -26732,6 +26876,11 @@
       "relativeImports": 24
     },
     {
+      "file": "packages/tui/src/run-tui-options.ts",
+      "lines": 762,
+      "relativeImports": 18
+    },
+    {
       "file": "packages/webui-server/src/server/session-handlers.ts",
       "lines": 762,
       "relativeImports": 10
@@ -26772,6 +26921,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "lines": 758,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/techstack/src/adapters/npm.ts",
       "lines": 757,
       "relativeImports": 5
@@ -26802,14 +26956,14 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
-      "lines": 755,
-      "relativeImports": 9
-    },
-    {
       "file": "packages/webui-hq/src/domain/fleet-topology.ts",
       "lines": 755,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/cli/src/execution.ts",
+      "lines": 754,
+      "relativeImports": 42
     },
     {
       "file": "packages/providers/src/codex-websocket.ts",
@@ -26832,11 +26986,6 @@
       "relativeImports": 2
     },
     {
-      "file": "packages/cli/src/execution.ts",
-      "lines": 752,
-      "relativeImports": 42
-    },
-    {
       "file": "packages/kanban/src/storage.ts",
       "lines": 752,
       "relativeImports": 8
@@ -26845,11 +26994,6 @@
       "file": "packages/tui/src/components/context-panel-sections.tsx",
       "lines": 752,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/tui/src/run-tui-options.ts",
-      "lines": 752,
-      "relativeImports": 18
     },
     {
       "file": "packages/tui/src/components/sidebar-content.tsx",
@@ -26902,6 +27046,11 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/webui-server/src/server/backend-services.ts",
+      "lines": 746,
+      "relativeImports": 16
+    },
+    {
       "file": "packages/core/src/utils/tool-output-renderers.ts",
       "lines": 744,
       "relativeImports": 1
@@ -26927,19 +27076,14 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/tui/src/hooks/use-picker-keys-tools-settings.ts",
+      "lines": 740,
+      "relativeImports": 6
+    },
+    {
       "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
       "lines": 740,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/cli/src/hq-server.ts",
-      "lines": 739,
-      "relativeImports": 17
-    },
-    {
-      "file": "packages/webui/src/components/InspectorPanel.tsx",
-      "lines": 739,
-      "relativeImports": 4
     }
   ],
   "testOnlyExports": [
@@ -29458,6 +29602,10 @@
     {
       "file": "packages/tui/src/brain-panel-model.ts",
       "name": "personaCycle"
+    },
+    {
+      "file": "packages/tui/src/browser-access-hint.ts",
+      "name": "browserAccessHint"
     },
     {
       "file": "packages/tui/src/components/animation-style.ts",

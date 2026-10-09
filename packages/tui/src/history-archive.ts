@@ -83,6 +83,8 @@ export class HistoryArchive {
 
   /** Byte-offset index: index → { offset, length }. Built on first load. */
   private index: OffsetIndexEntry[] | null = null;
+  /** Bumped on every invalidation so an in-flight scan can tell its result is stale. */
+  private indexGeneration = 0;
   /** Total entries written so far (monotonic counter). */
   // ── Write serialisation ──────────────────────────────────────────────
 
@@ -200,13 +202,23 @@ export class HistoryArchive {
    * The index is cached for the lifetime of the archive object.
    */
   private async buildIndex(): Promise<void> {
-    if (this.index !== null) return;
+    // An append that lands while a scan is awaiting invalidates the scan's
+    // snapshot (it was sized before the append): rescan instead of caching it.
+    for (;;) {
+      if (this.index !== null) return;
+      const generation = this.indexGeneration;
+      const built = await this.scanIndex();
+      if (generation === this.indexGeneration) {
+        this.index = built;
+        return;
+      }
+    }
+  }
+
+  private async scanIndex(): Promise<OffsetIndexEntry[]> {
     const handle = await this.ensureOpen();
     const stat = await handle.stat();
-    if (stat.size === 0) {
-      this.index = [];
-      return;
-    }
+    if (stat.size === 0) return [];
 
     // Stream the file in bounded chunks instead of materializing it: RSS
     // must not grow with archive size (the whole point of the index is to
@@ -257,7 +269,7 @@ export class HistoryArchive {
       // used to overshoot by one byte and drop it as a corrupt record.
       pushLine(pending, lineStart, read - lineStart);
     }
-    this.index = idx;
+    return idx;
   }
 
   /** Serialise writes through a FIFO promise chain with per-drain batching. */
@@ -285,6 +297,7 @@ export class HistoryArchive {
         await handle.appendFile(batch, 'utf8');
         // Invalidate the index since new data was appended.
         this.index = null;
+        this.indexGeneration++;
       } catch {
         // Best-effort: a write failure must never crash the TUI.
         // The entry is lost from the archive but remains in the

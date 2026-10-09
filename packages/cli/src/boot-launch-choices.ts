@@ -4,12 +4,17 @@ import type { Config } from '@wrongstack/core/types';
 import { color, toErrorMessage, type WstackPaths, writeErr } from '@wrongstack/core/utils';
 import { maybeRunSystemPromptMenu } from './boot/system-prompt-menu.js';
 import type { BootPhaseExit } from './boot-provider-gate.js';
-import { shouldPrintYoloNotice } from './boot-provider-selection.js';
+import {
+  REUSE_STARTUP_CHOICES_HINT,
+  shouldPrintYoloNotice,
+  shouldReuseStartupChoices,
+} from './boot-provider-selection.js';
 import type { ReadlineInputReader } from './input-reader.js';
 import {
   isOutsideProject,
   LaunchAbortedError,
   persistLaunchChoices,
+  promptStopAskingStartupQuestions,
   runLaunchPrompts,
 } from './pre-launch.js';
 import type { TerminalRenderer } from './renderer.js';
@@ -42,6 +47,7 @@ export async function applyBootLaunchChoices(
     projectRoot,
   } = input;
   if (isInteractiveTTY) {
+    const reuseLast = shouldReuseStartupChoices(config);
     // System prompt (Lite / Standard / Pro). The gate itself lives in
     // `maybeRunSystemPromptMenu` so the non-TTY skip is unit-testable —
     // as a bare `if` here it was unreachable from any test.
@@ -56,6 +62,7 @@ export async function applyBootLaunchChoices(
         projectDir: wpaths.inProjectInstructions,
       },
       outsideProject: await isOutsideProject(projectRoot),
+      reuseLast,
     });
     if (promptMenu.aborted) {
       await reader.close();
@@ -109,6 +116,7 @@ export async function applyBootLaunchChoices(
         yoloPinned,
         autonomyPinned,
         lastChoices,
+        reuseLast,
       });
     } catch (err) {
       if (err instanceof LaunchAbortedError) {
@@ -146,6 +154,27 @@ export async function applyBootLaunchChoices(
       });
     }
 
+    if (reuseLast && lastChoices) {
+      renderer.write(`  ${color.dim(REUSE_STARTUP_CHOICES_HINT)}\n\n`);
+    }
+
+    // "Reuse startup choices" is off and the gates above actually asked
+    // something: offer to stop asking from the next launch on. The system-
+    // prompt menu ran when it returned a variant; the launch gate asked when
+    // saved choices existed and not every field was flag-pinned.
+    const launchGateAsked =
+      lastChoices !== undefined &&
+      !(modePinned !== undefined && yoloPinned !== undefined && autonomyPinned !== undefined);
+    let rememberStartupChoices: boolean | undefined;
+    if (!reuseLast && (promptMenu.variant !== undefined || launchGateAsked)) {
+      if (await promptStopAskingStartupQuestions({ renderer, reader })) {
+        rememberStartupChoices = true;
+        config = patchConfig(config, {
+          launch: { ...config.launch, rememberStartupChoices: true },
+        });
+      }
+    }
+
     // Persist launch preferences so the next boot remembers them.
     // When --webui is active the mode is pinned to REPL (TUI owns stdout),
     // but we must NOT persist that choice — the user's last non-webui mode
@@ -156,7 +185,7 @@ export async function applyBootLaunchChoices(
         const toPersist = flags['webui']
           ? { ...choices, mode: lastChoices?.mode ?? config.launch?.mode ?? 'tui' }
           : choices;
-        await persistLaunchChoices(profileConfigPath, toPersist);
+        await persistLaunchChoices(profileConfigPath, toPersist, { rememberStartupChoices });
       } catch {
         // Best-effort — never blocks launch.
       }

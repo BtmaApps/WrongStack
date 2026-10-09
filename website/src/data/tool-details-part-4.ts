@@ -5,150 +5,6 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart4: Record<string, ToolDetail> = {
-  clarify: {
-    longDescription:
-      'Record or ask a focused clarification when a missing decision would materially change the implementation. Do not use it for questions that can be answered from the repository.',
-    params: [
-      {
-        name: 'title',
-        type: 'string',
-        description: 'Short form title.',
-      },
-      {
-        name: 'description',
-        type: 'string',
-        description: 'Why these answers are needed.',
-      },
-      {
-        name: 'submitLabel',
-        type: 'string',
-        description: 'Submit button label.',
-      },
-      {
-        name: 'question',
-        type: 'string',
-        description: 'Question shown to the user.',
-      },
-      {
-        name: 'context',
-        type: 'string',
-        description: 'Optional decision context shown below the question.',
-      },
-      {
-        name: 'type',
-        type: "'single_select' | 'multi_select' | 'text'",
-        description: 'Input mode; defaults to single_select when options are present.',
-      },
-      {
-        name: 'options',
-        type: 'Array<string | object>',
-        description:
-          'Selectable string labels or labelled option objects for this legacy single question.',
-      },
-      {
-        name: 'recommendedOption',
-        type: 'string',
-        description: 'Recommended option id or label for one-choice questions.',
-      },
-      {
-        name: 'recommendedOptions',
-        type: 'string[]',
-        description: 'Recommended option ids or labels for multi-select questions.',
-      },
-      {
-        name: 'recommendedText',
-        type: 'string',
-        description: 'Suggested initial answer for a text question.',
-      },
-      {
-        name: 'recommendationReason',
-        type: 'string',
-        description: 'Brief rationale for the recommended answer.',
-      },
-      {
-        name: 'isMultiSelect',
-        type: 'boolean',
-        description: 'Legacy alias for type: multi_select.',
-      },
-      {
-        name: 'is_multi_select',
-        type: 'boolean',
-        description: 'Legacy snake_case alias for type: multi_select.',
-      },
-      {
-        name: 'allowCustomResponse',
-        type: 'boolean',
-        description: 'Allow a write-in answer in addition to listed options.',
-      },
-      {
-        name: 'required',
-        type: 'boolean',
-        description: 'Whether the user must answer before submitting the form.',
-      },
-      {
-        name: 'placeholder',
-        type: 'string',
-        description: 'Placeholder text for a text response.',
-      },
-      {
-        name: 'questions',
-        type: 'object[]',
-        description: 'Legacy flat list of questions; prefer tabs for grouped decisions.',
-      },
-      {
-        name: 'tabs',
-        type: 'object[]',
-        description: 'Preferred grouped form input; each tab contains one or more questions.',
-      },
-    ],
-    notes: ['Use only for high-cost irreversible forks; adopt established defaults autonomously.'],
-  },
-  tool_use: {
-    longDescription:
-      'Invoke a registered tool by its exact name, including one not listed in this request. Use it for a tool found through tool_search; the call still goes through the same permission and capability checks as a direct call.',
-    params: [
-      {
-        name: 'tool',
-        type: 'string',
-        required: true,
-        description:
-          'The exact registered name of the tool to invoke (e.g. "bash", "read", "codebase-search").',
-      },
-      {
-        name: 'input',
-        type: 'object',
-        description: "The input object matching the target tool's inputSchema.",
-      },
-    ],
-    notes: [
-      'Only use when you are certain of the exact tool name and its expected input shape.',
-      'Prefer using the normal tool calling mechanism when possible.',
-      'Very useful in batch-tool-use or when orchestrating complex workflows programmatically.',
-    ],
-  },
-  'codebase-index': {
-    longDescription:
-      'Build or refresh the local semantic codebase index, optionally for selected languages. Use it when index results are absent or stale; force performs a full reindex.',
-    params: [
-      {
-        name: 'force',
-        type: 'boolean',
-        description:
-          'Force a reindex that ignores mtime/content-hash caches. Without `langs` it clears the index and rebuilds every file; with `langs` it re-parses only those languages and keeps the rest.',
-      },
-      {
-        name: 'langs',
-        type: "Array<'c' | 'cpp' | 'csharp' | 'css' | 'dart' | 'elixir' | 'go' | 'graphql' | 'haskell' | 'html' | 'java' | 'js' | 'json' | 'jsx' | 'kotlin' | 'lua' | 'md' | 'other' | 'php' | 'proto' | 'py' | 'r' | 'rs' | 'ruby' | 'scala' | 'shell' | 'sql' | 'svelte' | 'swift' | 'toml' | 'ts' | 'tsx' | 'vue' | 'yaml' | 'zig'>",
-        description:
-          'Limit reindex to specific languages: c, cpp, csharp, css, dart, elixir, go, graphql, haskell, html, java, js, json, jsx, kotlin, lua, md, other, php, proto, py, r, rs, ruby, scala, shell, sql, svelte, swift, toml, ts, tsx, vue, yaml, zig',
-      },
-    ],
-    notes: [
-      'First run (or after major changes): consider `force: true` for a clean rebuild.',
-      'Normal usage: call without arguments for fast incremental updates.',
-      'Use `langs` to restrict to specific languages if you only care about certain parts of the project.',
-    ],
-  },
   'codebase-search': {
     longDescription:
       'Search indexed symbols, signatures, and documentation with optional language, kind, path, or LSP-kind filters. Use it for semantic discovery before broad text search.',
@@ -581,6 +437,36 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         name: 'force',
         type: 'boolean',
         description: 'Undo even over files edited after the fix.',
+      },
+    ],
+  },
+  'codebase-read-symbol': {
+    longDescription:
+      'Read the exact implementation of a named declaration (function, method, class, interface, type, enum, variable) from a file using AST parsing. Returns line-numbered code in standard N→content format, eliminating offset guessing and saving context tokens.',
+    params: [
+      {
+        name: 'file',
+        type: 'string',
+        required: true,
+        description: 'Target file path (relative to project root or absolute within project).',
+      },
+      {
+        name: 'symbol',
+        type: 'string',
+        required: true,
+        description:
+          'Declaration name (function, method, class, interface, type, enum, variable). Qualify nested members as "ClassName.method" when the bare name is ambiguous. Not a test-case title.',
+      },
+      {
+        name: 'includeDocs',
+        type: 'boolean',
+        description: 'Keep leading JSDoc / docstrings in the output (defaults to true).',
+      },
+      {
+        name: 'target',
+        type: "'full' | 'body'",
+        description:
+          "Whether to read the full declaration ('full', default) or only the inner block ('body').",
       },
     ],
   },

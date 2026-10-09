@@ -37,6 +37,7 @@ import type { SkillSuggester, SkillSuggestion } from './skill-suggester.js';
 export interface SkillSuggestionMiddlewareOptions {
   suggester: SkillSuggester;
   getSessionId?: (() => string | undefined) | undefined;
+  getAvailableToolNames?: (() => readonly string[]) | undefined;
   /**
    * Hard deadline for both TypeSafe passes combined. The suggestion is an
    * optimization sitting in front of the user's turn; past this point the turn
@@ -61,6 +62,7 @@ const MAX_TRACKED_SESSIONS = 256;
 interface CachedSuggestion {
   /** The user text this answer was computed for. */
   query: string;
+  toolsKey: string | undefined;
   suggestion: SkillSuggestion | undefined;
   /** An unavailable evaluation must not become a negative relevance claim. */
   evaluated: boolean;
@@ -93,9 +95,14 @@ export function createSkillSuggestionMiddleware(
           const sessionId = opts.getSessionId?.();
           const sessionKey = sessionId ?? '<no-session>';
           const cached = bySession.get(sessionKey);
+          const availableToolNames = opts.getAvailableToolNames?.();
+          const toolsKey =
+            availableToolNames === undefined
+              ? undefined
+              : JSON.stringify([...new Set(availableToolNames)].sort());
           let suggestion: SkillSuggestion | undefined;
           let evaluated = false;
-          if (cached && cached.query === query) {
+          if (cached && cached.query === query && cached.toolsKey === toolsKey) {
             suggestion = cached.suggestion;
             evaluated = cached.evaluated;
           } else {
@@ -110,7 +117,7 @@ export function createSkillSuggestionMiddleware(
             (timer as unknown as { unref?: () => void }).unref?.();
             try {
               const trace = await Promise.race([
-                opts.suggester.explain(query, controller.signal),
+                opts.suggester.explain(query, controller.signal, { availableToolNames }),
                 deadline,
               ]);
               evaluated =
@@ -123,7 +130,7 @@ export function createSkillSuggestionMiddleware(
             // A miss is cached too: "nothing fits" is an answer, and re-asking
             // it on every tool-loop iteration is the same waste as re-asking a
             // hit.
-            remember(sessionKey, { query, suggestion, evaluated });
+            remember(sessionKey, { query, toolsKey, suggestion, evaluated });
             try {
               if (evaluated) opts.onSuggestion?.({ suggestion, sessionId });
             } catch {

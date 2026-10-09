@@ -47,8 +47,14 @@ export async function runLaunchPrompts(opts: {
   autonomyPinned?: 'off' | 'auto' | undefined;
   /** Saved launch preferences from a previous session (persisted to config). */
   lastChoices?: LaunchModeChoices | undefined;
+  /**
+   * `launch.rememberStartupChoices`: accept the saved preferences without the
+   * "Continue with these?" question. A CLI flag that diverges from the saved
+   * value still opens the individual prompts.
+   */
+  reuseLast?: boolean | undefined;
 }): Promise<LaunchModeChoices> {
-  const { renderer, reader, modePinned, yoloPinned, autonomyPinned, lastChoices } = opts;
+  const { renderer, reader, modePinned, yoloPinned, autonomyPinned, lastChoices, reuseLast } = opts;
 
   // If EVERY field is pinned by CLI flags, skip all prompts entirely.
   if (modePinned !== undefined && yoloPinned !== undefined && autonomyPinned !== undefined) {
@@ -99,14 +105,16 @@ export async function runLaunchPrompts(opts: {
       `\n  ${color.dim('Last settings:')} ${color.bold(modeLabel)} · YOLO ${onOff(effective.yolo)} · Autonomy ${effective.autonomy === 'auto' ? color.green('auto') : color.dim('off')}\n`,
     );
 
-    const answer = (
-      await reader.readLine(
-        `  ${color.amber('?')} Continue with these? ${color.dim('[Y/n/q]')} ${color.dim('(auto Y in 5s)')} `,
-        { timeoutMs: 5000, defaultAnswer: 'y' },
-      )
-    )
-      .trim()
-      .toLowerCase();
+    const answer = reuseLast
+      ? 'y'
+      : (
+          await reader.readLine(
+            `  ${color.amber('?')} Continue with these? ${color.dim('[Y/n/q]')} ${color.dim('(auto Y in 5s)')} `,
+            { timeoutMs: 5000, defaultAnswer: 'y' },
+          )
+        )
+          .trim()
+          .toLowerCase();
 
     if (answer === 'q') {
       renderer.write(color.dim('  Goodbye!\n'));
@@ -202,17 +210,46 @@ function buildBadges(chosen: LaunchModeChoices): string[] {
 }
 
 /**
+ * Asked after the startup questions ran because "Reuse startup choices" is
+ * off: offers to turn it on so the next launches stop asking. Defaults to
+ * "no" (Enter / timeout) — the user chose to be asked, so silence keeps it.
+ * Returns true when the user wants to stop being asked.
+ */
+export async function promptStopAskingStartupQuestions(opts: {
+  renderer: TerminalRenderer;
+  reader: ReadlineInputReader;
+}): Promise<boolean> {
+  const answer = (
+    await opts.reader.readLine(
+      `  ${color.amber('?')} Stop asking these startup questions? ${color.dim('(reuse the last choices from now on)')} ${color.dim('[y/N]')} ${color.dim('(auto N in 5s)')} `,
+      { timeoutMs: 5000, defaultAnswer: 'n' },
+    )
+  )
+    .trim()
+    .toLowerCase();
+  const stop = answer === 'y' || answer === 'yes';
+  if (stop) {
+    opts.renderer.write(
+      `  ${color.green('▶')} ${color.dim('Startup questions off — turn back on with /settings reuse-startup-choices off.')}\n\n`,
+    );
+  }
+  return stop;
+}
+
+/**
  * Persist the user's launch-mode choices (mode, yolo, autonomy)
  * back to the global config file so the next boot can offer a one-line
  * "Continue with these?" summary instead of re-asking every question.
  *
  * Reads the existing config, updates only the `yolo` and `launch` keys,
  * and writes back atomically. Other fields (including encrypted secrets)
- * pass through round-trip unchanged.
+ * pass through round-trip unchanged. `extra.rememberStartupChoices`, when
+ * given, is written to `launch.rememberStartupChoices` in the same write.
  */
 export async function persistLaunchChoices(
   configPath: string,
   choices: LaunchModeChoices,
+  extra?: { rememberStartupChoices?: boolean | undefined },
 ): Promise<void> {
   // Under the config lock every other config writer holds (provider CRUD,
   // updateJsonObjectFile): unlocked, a locked update landing between this
@@ -242,9 +279,19 @@ export async function persistLaunchChoices(
     }
 
     existing.yolo = choices.yolo;
+    // Spread the existing block: `launch` also carries `menuChoice` and
+    // `rememberStartupChoices`, which a whole-object replace would erase.
+    const launch =
+      existing.launch && typeof existing.launch === 'object'
+        ? (existing.launch as Record<string, unknown>)
+        : {};
     existing.launch = {
+      ...launch,
       mode: choices.mode,
       autonomy: choices.autonomy,
+      ...(extra?.rememberStartupChoices !== undefined
+        ? { rememberStartupChoices: extra.rememberStartupChoices }
+        : {}),
     };
 
     await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });

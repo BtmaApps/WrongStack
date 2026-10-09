@@ -331,7 +331,7 @@ function findGitDir(cwd: string, projectRoot: string): string | null {
     process.platform === 'win32' ? resolve(p).toLowerCase() : resolve(p);
   const root = pathKey(projectRoot);
   let dir = cwd;
-  for (let i = 0; i < 20; i++) {
+  for (;;) {
     try {
       const stat = statSync(resolve(dir, '.git'));
       // A normal repo has a `.git` directory; a linked worktree has a `.git`

@@ -111,8 +111,19 @@ export async function runSystemPromptMenu(deps: {
    * replaced silently — the gate still defaults to it.
    */
   suggestScout?: boolean | undefined;
+  /**
+   * `launch.rememberStartupChoices`: return the saved variant without the
+   * "Continue with …?" question. No effect on first run (nothing saved).
+   */
+  reuseLast?: boolean | undefined;
 }): Promise<SystemInstructionVariant> {
-  const { renderer, reader, paths, lastVariant, suggestScout } = deps;
+  const { renderer, reader, paths, lastVariant, suggestScout, reuseLast } = deps;
+  if (lastVariant && reuseLast) {
+    renderer.write(
+      `  ${color.green('▶')} ${color.bold(labelFor(lastVariant))} ${color.dim('system prompt')}\n`,
+    );
+    return lastVariant;
+  }
   const tokens = await countSystemPromptTokens(paths);
   const defaultVariant: SystemInstructionVariant = suggestScout
     ? 'scout'
@@ -230,6 +241,8 @@ export async function maybeRunSystemPromptMenu(opts: {
   persist?: typeof persistSystemPromptVariant | undefined;
   /** The launch folder is not a project — see `runSystemPromptMenu`. */
   outsideProject?: boolean | undefined;
+  /** Reuse the saved variant without asking — see `runSystemPromptMenu`. */
+  reuseLast?: boolean | undefined;
 }): Promise<SystemPromptMenuOutcome> {
   if (!opts.isInteractiveTTY) return { aborted: false, changed: false };
   if (shouldSkipSystemPromptMenu(opts.flags)) return { aborted: false, changed: false };
@@ -246,6 +259,7 @@ export async function maybeRunSystemPromptMenu(opts: {
       lastVariant: savedVariant,
       paths: opts.paths,
       suggestScout: opts.outsideProject,
+      reuseLast: opts.reuseLast,
     });
     if (chosen === savedVariant) return { variant: chosen, aborted: false, changed: false };
     // Scout picked for a scratch folder is this launch's choice, not the

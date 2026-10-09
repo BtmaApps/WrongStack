@@ -1,5 +1,10 @@
 import { SKILL_LIMITS } from '../skills/limits.js';
 import {
+  isSkillHiddenFromPrompt,
+  skillPromptExclusionReasons,
+  skillUseWhenText,
+} from '../skills/prompt-discovery.js';
+import {
   missingRequiredRuntimeTools,
   missingRuntimeCapabilities,
   runtimeToolReferencesFromText,
@@ -86,10 +91,21 @@ export function fenceIfUntrusted(
  * loads their bodies directly — and `external` skills ship for other coding
  * agents. Both stay loadable through the `skill` tool and listed by `/skill`.
  */
-const PROMPT_HIDDEN_AUDIENCES: ReadonlySet<string> = new Set(['roster', 'external']);
+export { isSkillHiddenFromPrompt } from '../skills/prompt-discovery.js';
 
-export function isSkillHiddenFromPrompt(audience: string | undefined): boolean {
-  return audience !== undefined && PROMPT_HIDDEN_AUDIENCES.has(audience.trim().toLowerCase());
+function bundledRoutingGuidance(
+  skills: readonly SkillManifest[],
+  tools: readonly string[],
+): string[] {
+  const router = skills.find((skill) => skill.name === 'skill-router');
+  if (router?.source !== 'bundled' || skillPromptExclusionReasons(router, tools).length > 0)
+    return [];
+  return [
+    'Choose by requested action and exact technology. For a clear task, load its specialist directly.',
+    'For unclear, overlapping or multi-domain work, load `skill-router` first and use its selection map.',
+    'Load only the skills needed for each phase; follow their acceptance checks before claiming completion.',
+    'For new setups/upgrades, verify current stable versions and compatibility with `tech-stack`.',
+  ];
 }
 
 export async function buildProgressiveSkillManifestText(
@@ -106,21 +122,14 @@ export async function buildProgressiveSkillManifestText(
       '|---|---|',
     ];
     const manifests = new Map((await loader.list()).map((manifest) => [manifest.name, manifest]));
+    lines.splice(1, 0, ...bundledRoutingGuidance([...manifests.values()], availableToolNames));
     for (const e of entries) {
       if (isSkillHiddenFromPrompt(e.audience)) continue;
       const manifest = manifests.get(e.name);
-      if (
-        manifest &&
-        (missingRuntimeCapabilities(manifest.requiredCapabilities, availableToolNames).length > 0 ||
-          missingRequiredRuntimeTools(manifest.requiredTools, availableToolNames).length > 0)
-      ) {
+      if (manifest && skillPromptExclusionReasons(manifest, availableToolNames).length > 0) {
         continue;
       }
-      const trigger = (
-        [manifest?.description, manifest?.trigger].filter(Boolean).join(' ') ||
-        e.trigger ||
-        ''
-      )
+      const trigger = skillUseWhenText(manifest?.description, manifest?.trigger, e.trigger)
         .replace(/\|/g, '\\|')
         .replace(/\n+/g, ' ')
         .trim();
@@ -143,6 +152,7 @@ export async function buildFullSkillBodiesText(
     const bodies: string[] = [];
     const overflow: string[] = [];
     let used = 0;
+    let routerAdmitted = false;
     for (const s of skills) {
       if (isSkillHiddenFromPrompt(s.audience)) continue;
       if (
@@ -162,6 +172,7 @@ export async function buildFullSkillBodiesText(
           continue;
         }
         const entry = `## Skill: ${s.name}${foreignProvenanceTag(s.source, s.originTool)}\n\n${fenceIfUntrusted(s.source, s.name, capSkillBody(trimmed), s.originTool)}`;
+        routerAdmitted ||= s.name === 'skill-router' && s.source === 'bundled';
         if (used + entry.length <= budget) {
           bodies.push(entry);
           used += entry.length;
@@ -180,7 +191,9 @@ export async function buildFullSkillBodiesText(
           : '## Other available skills (not injected — load with the `skill` tool)';
       out += `${out ? '\n\n---\n\n' : ''}${note}\n${overflow.join('\n')}`;
     }
-    return out;
+    return routerAdmitted
+      ? [...bundledRoutingGuidance(skills, availableToolNames), '', out].join('\n')
+      : out;
   } catch {
     return '';
   }
@@ -197,6 +210,7 @@ export async function buildCompactSkillBodiesText(
     const bodies: string[] = [];
     const overflow: string[] = [];
     let used = 0;
+    let routerAdmitted = false;
     for (const s of skills) {
       if (isSkillHiddenFromPrompt(s.audience)) continue;
       if (
@@ -216,6 +230,7 @@ export async function buildCompactSkillBodiesText(
           continue;
         }
         const entry = `## Skill: ${s.name}${foreignProvenanceTag(s.source, s.originTool)}\n\n${fenceIfUntrusted(s.source, s.name, clean, s.originTool)}`;
+        routerAdmitted ||= s.name === 'skill-router' && s.source === 'bundled';
         if (used + entry.length <= budget) {
           bodies.push(entry);
           used += entry.length;
@@ -234,7 +249,9 @@ export async function buildCompactSkillBodiesText(
           : '## Other available skills (not injected — load with the `skill` tool)';
       out += `${out ? '\n\n---\n\n' : ''}${note}\n${overflow.join('\n')}`;
     }
-    return out;
+    return routerAdmitted
+      ? [...bundledRoutingGuidance(skills, availableToolNames), '', out].join('\n')
+      : out;
   } catch {
     return '';
   }

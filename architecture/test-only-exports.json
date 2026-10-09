@@ -1322,6 +1322,9 @@
     "packages/tui/src/brain-panel-model.ts": [
       "personaCycle"
     ],
+    "packages/tui/src/browser-access-hint.ts": [
+      "browserAccessHint"
+    ],
     "packages/tui/src/components/animation-style.ts": [
       "CYCLE_INTERVAL_SECONDS",
       "CYCLE_ORDER",

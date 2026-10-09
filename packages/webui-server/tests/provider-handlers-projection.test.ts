@@ -1,6 +1,6 @@
 import type { ProviderConfig } from '@wrongstack/core/types';
-import { describe, expect, it } from 'vitest';
 import { projectSavedProviders, type SavedProviderView } from '@wrongstack/webui-server';
+import { describe, expect, it } from 'vitest';
 
 /**
  * `projectSavedProviders` is the canonical projection from
@@ -27,6 +27,16 @@ function asView(input: Record<string, ProviderConfig>): SavedProviderView[] {
 describe('projectSavedProviders', () => {
   it('returns an empty list for an empty input', () => {
     expect(asView({})).toEqual([]);
+  });
+
+  it('projects model.dev-style inline model objects in a config file as ids', () => {
+    const [view] = asView({
+      local: cfg({
+        models: [{ id: 'qwen3' }, 'llama3', { id: ' qwen3 ' }, { name: 'no id' }] as never,
+      }),
+    });
+    expect(view?.models).toEqual(['qwen3', 'llama3']);
+    expect(view?.pickedModelId).toBe('qwen3');
   });
 
   it('passes through the id, family, and baseUrl verbatim', () => {

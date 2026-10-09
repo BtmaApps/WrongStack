@@ -5,107 +5,6 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart3: Record<string, ToolDetail> = {
-  git: {
-    longDescription:
-      'Inspect or run scoped Git operations in the project, including status, diff, history, branches, and commits. Review the target and working tree before mutating operations.',
-    params: [
-      {
-        name: 'command',
-        type: "'status' | 'log' | 'diff' | 'commit' | 'branch' | 'checkout' | 'stash' | 'push' | 'pull' | 'fetch' | 'reset' | 'worktree'",
-        required: true,
-        description: 'Git subcommand',
-      },
-      {
-        name: 'files',
-        type: 'string',
-        description:
-          'File(s) for status/diff: single path, comma-separated list, or "**/*.ts" glob',
-      },
-      {
-        name: 'message',
-        type: 'string',
-        description: 'Commit message (required for commit)',
-      },
-      {
-        name: 'branch',
-        type: 'string',
-        description: 'Branch name for checkout/branch',
-      },
-      {
-        name: 'format',
-        type: "'short' | 'oneline' | 'stat' | 'graph'",
-        description: 'Log format (default: short)',
-      },
-      {
-        name: 'limit',
-        type: 'integer',
-        description: 'Limit for log (default: 20)',
-      },
-      {
-        name: 'dry_run',
-        type: 'boolean',
-        description: 'For commit: show what would be committed',
-      },
-      {
-        name: 'worktreeAction',
-        type: "'list' | 'add' | 'remove' | 'prune'",
-        description: 'Worktree action: list, add, remove, prune',
-      },
-      {
-        name: 'worktreePath',
-        type: 'string',
-        description: 'Path for worktree add/remove (e.g. "../wt-feature-xyz")',
-      },
-      {
-        name: 'newBranch',
-        type: 'boolean',
-        description: 'Create new branch when adding worktree',
-      },
-      {
-        name: 'force',
-        type: 'boolean',
-        description: 'Force operation (e.g. worktree remove --force)',
-      },
-    ],
-    notes: [
-      '`command`: one of the supported subcommands (status, log, diff, commit, etc.)',
-      'Use `message` only for commit operations.',
-      'Use `files` array for operations that take paths (status, diff, add, etc.).',
-    ],
-  },
-  patch: {
-    longDescription:
-      'Apply a unified diff to project files with patch-style context checking. Use it for a reviewed multi-file change when exact patch content is available.',
-    params: [
-      {
-        name: 'patch',
-        type: 'string',
-        required: true,
-        description: 'Unified diff patch content',
-      },
-      {
-        name: 'directory',
-        type: 'string',
-        description: 'Root directory for patch (default: cwd)',
-      },
-      {
-        name: 'strip',
-        type: 'integer',
-        description: 'Strip leading path components (default: 1)',
-      },
-      {
-        name: 'dry_run',
-        type: 'boolean',
-        description: 'Preview without applying',
-      },
-    ],
-    doNotUseWhen: ['you do not already have a unified diff or only need one precise replacement.'],
-    useInstead: ['edit'],
-    notes: [
-      'Use `dry_run: true` to see what would happen without modifying files.',
-      'On failure it creates .rej and .orig files for manual review.',
-    ],
-  },
   json: {
     longDescription:
       'Read, query, validate, or merge JSON/JSON5/YAML files while preserving valid structure (read-only — does not write). Use it instead of raw text edits when reading or querying structured data.',
@@ -808,6 +707,150 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       'Use when you need to find the right tool for a job.',
       '`query` searches names and descriptions.',
       'You can filter by `tags` (category), `permission`, or `mutating`.',
+    ],
+  },
+  clarify: {
+    longDescription:
+      'Record or ask a focused clarification when a missing decision would materially change the implementation. Do not use it for questions that can be answered from the repository.',
+    params: [
+      {
+        name: 'title',
+        type: 'string',
+        description: 'Short form title.',
+      },
+      {
+        name: 'description',
+        type: 'string',
+        description: 'Why these answers are needed.',
+      },
+      {
+        name: 'submitLabel',
+        type: 'string',
+        description: 'Submit button label.',
+      },
+      {
+        name: 'question',
+        type: 'string',
+        description: 'Question shown to the user.',
+      },
+      {
+        name: 'context',
+        type: 'string',
+        description: 'Optional decision context shown below the question.',
+      },
+      {
+        name: 'type',
+        type: "'single_select' | 'multi_select' | 'text'",
+        description: 'Input mode; defaults to single_select when options are present.',
+      },
+      {
+        name: 'options',
+        type: 'Array<string | object>',
+        description:
+          'Selectable string labels or labelled option objects for this legacy single question.',
+      },
+      {
+        name: 'recommendedOption',
+        type: 'string',
+        description: 'Recommended option id or label for one-choice questions.',
+      },
+      {
+        name: 'recommendedOptions',
+        type: 'string[]',
+        description: 'Recommended option ids or labels for multi-select questions.',
+      },
+      {
+        name: 'recommendedText',
+        type: 'string',
+        description: 'Suggested initial answer for a text question.',
+      },
+      {
+        name: 'recommendationReason',
+        type: 'string',
+        description: 'Brief rationale for the recommended answer.',
+      },
+      {
+        name: 'isMultiSelect',
+        type: 'boolean',
+        description: 'Legacy alias for type: multi_select.',
+      },
+      {
+        name: 'is_multi_select',
+        type: 'boolean',
+        description: 'Legacy snake_case alias for type: multi_select.',
+      },
+      {
+        name: 'allowCustomResponse',
+        type: 'boolean',
+        description: 'Allow a write-in answer in addition to listed options.',
+      },
+      {
+        name: 'required',
+        type: 'boolean',
+        description: 'Whether the user must answer before submitting the form.',
+      },
+      {
+        name: 'placeholder',
+        type: 'string',
+        description: 'Placeholder text for a text response.',
+      },
+      {
+        name: 'questions',
+        type: 'object[]',
+        description: 'Legacy flat list of questions; prefer tabs for grouped decisions.',
+      },
+      {
+        name: 'tabs',
+        type: 'object[]',
+        description: 'Preferred grouped form input; each tab contains one or more questions.',
+      },
+    ],
+    notes: ['Use only for high-cost irreversible forks; adopt established defaults autonomously.'],
+  },
+  tool_use: {
+    longDescription:
+      'Invoke a registered tool by its exact name, including one not listed in this request. Use it for a tool found through tool_search; the call still goes through the same permission and capability checks as a direct call.',
+    params: [
+      {
+        name: 'tool',
+        type: 'string',
+        required: true,
+        description:
+          'The exact registered name of the tool to invoke (e.g. "bash", "read", "codebase-search").',
+      },
+      {
+        name: 'input',
+        type: 'object',
+        description: "The input object matching the target tool's inputSchema.",
+      },
+    ],
+    notes: [
+      'Only use when you are certain of the exact tool name and its expected input shape.',
+      'Prefer using the normal tool calling mechanism when possible.',
+      'Very useful in batch-tool-use or when orchestrating complex workflows programmatically.',
+    ],
+  },
+  'codebase-index': {
+    longDescription:
+      'Build or refresh the local semantic codebase index, optionally for selected languages. Use it when index results are absent or stale; force performs a full reindex.',
+    params: [
+      {
+        name: 'force',
+        type: 'boolean',
+        description:
+          'Force a reindex that ignores mtime/content-hash caches. Without `langs` it clears the index and rebuilds every file; with `langs` it re-parses only those languages and keeps the rest.',
+      },
+      {
+        name: 'langs',
+        type: "Array<'c' | 'cpp' | 'csharp' | 'css' | 'dart' | 'elixir' | 'go' | 'graphql' | 'haskell' | 'html' | 'java' | 'js' | 'json' | 'jsx' | 'kotlin' | 'lua' | 'md' | 'other' | 'php' | 'proto' | 'py' | 'r' | 'rs' | 'ruby' | 'scala' | 'shell' | 'sql' | 'svelte' | 'swift' | 'toml' | 'ts' | 'tsx' | 'vue' | 'yaml' | 'zig'>",
+        description:
+          'Limit reindex to specific languages: c, cpp, csharp, css, dart, elixir, go, graphql, haskell, html, java, js, json, jsx, kotlin, lua, md, other, php, proto, py, r, rs, ruby, scala, shell, sql, svelte, swift, toml, ts, tsx, vue, yaml, zig',
+      },
+    ],
+    notes: [
+      'First run (or after major changes): consider `force: true` for a clean rebuild.',
+      'Normal usage: call without arguments for fast incremental updates.',
+      'Use `langs` to restrict to specific languages if you only care about certain parts of the project.',
     ],
   },
 };

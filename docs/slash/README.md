@@ -35,6 +35,7 @@ separately below.
 | `/plugin` | `/plugins` | [plugin manager](plugin.md) |
 | `/prune` | — | [prune](prune.md) |
 | `/mcp` | `/mcp-servers` | [MCP](mcp.md) |
+| `/browser` | `/network` | [Browser setup and local origins](browser.md) |
 | `/suggest` | `/next-steps`, `/what-next` | [suggest](suggest.md) |
 | `/auth` | — | [auth](auth.md) |
 | `/diag`, `/stats` | — | [diagnostics and stats](diag-stats.md) |

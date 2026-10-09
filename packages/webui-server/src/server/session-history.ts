@@ -70,6 +70,16 @@ function blockText(block: ContentBlock | string): string {
   }
 }
 
+/** `value.slice(0, max)` that never keeps half of a surrogate pair. */
+function cutText(value: string, max: number): string {
+  let end = max;
+  if (end > 0) {
+    const last = value.charCodeAt(end - 1);
+    if (last >= 0xd800 && last <= 0xdbff) end--;
+  }
+  return value.slice(0, end);
+}
+
 function userContentPreview(content: string | ContentBlock[]): string {
   const text = (
     typeof content === 'string'
@@ -84,7 +94,7 @@ function userContentPreview(content: string | ContentBlock[]): string {
     .trim()
     .replace(/\s+/g, ' ');
   const normalized = text || '(non-text input)';
-  return normalized.length > 160 ? `${normalized.slice(0, 159)}…` : normalized;
+  return normalized.length > 160 ? `${cutText(normalized, 159)}…` : normalized;
 }
 
 interface SessionInspectEvent {
@@ -148,7 +158,7 @@ function labelForEvent(e: SessionEvent): string {
           : Array.isArray(e.content)
             ? e.content.map(blockText).join('')
             : '[input]';
-      return `User: ${content.length > 100 ? content.slice(0, 100) + '…' : content}`;
+      return `User: ${content.length > 100 ? cutText(content, 100) + '…' : content}`;
     }
     case 'llm_request':
       return 'LLM request';
@@ -171,7 +181,7 @@ function labelForEvent(e: SessionEvent): string {
     case 'context_snapshot':
       return 'Context snapshot';
     case 'error':
-      return `Error: ${e.message.length > 100 ? e.message.slice(0, 100) + '…' : e.message}`;
+      return `Error: ${e.message.length > 100 ? cutText(e.message, 100) + '…' : e.message}`;
     case 'session_end':
       return 'Session ended';
     case 'message_appended':
@@ -203,13 +213,13 @@ function labelForEvent(e: SessionEvent): string {
     case 'task_completed':
       return `Task done: ${e.title}`;
     case 'task_failed':
-      return `Task failed: ${e.title} — ${e.error.length > 80 ? e.error.slice(0, 80) + '…' : e.error}`;
+      return `Task failed: ${e.title} — ${e.error.length > 80 ? cutText(e.error, 80) + '…' : e.error}`;
     case 'agent_spawned':
       return `Agent spawned: ${e.role}`;
     case 'agent_stopped':
       return 'Agent stopped';
     case 'agent_error':
-      return `Agent error: ${e.error.length > 80 ? e.error.slice(0, 80) + '…' : e.error}`;
+      return `Agent error: ${e.error.length > 80 ? cutText(e.error, 80) + '…' : e.error}`;
     case 'provider_retry':
       return `Retry: ${e.description} (attempt ${e.attempt})`;
     case 'provider_error':
@@ -357,7 +367,7 @@ function detailForEvent(e: SessionEvent): string {
     case 'checkpoint':
       return `prompt #${e.promptIndex}`;
     case 'delegate_started':
-      return e.task.length > 80 ? `${e.task.slice(0, 79)}…` : e.task;
+      return e.task.length > 80 ? `${cutText(e.task, 79)}…` : e.task;
     case 'delegate_completed':
       return `${e.summary} · ${e.iterations} iterations · ${e.toolCalls} tools`;
     case 'delegation_delivered':

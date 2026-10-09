@@ -1,17 +1,45 @@
 # Codebase Navigation (Compact)
 
-Orient, locate, trace, then read only the lines that matter.
+<!-- source-version: 1.1.1 -->
+
+## Selection card
+- Task: Locate repository entry points and owning modules. / TR: Depo giriş noktalarını ve sorumlu modülleri bul.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
+## Overview
+
+Reading files top to bottom is the slowest way to understand code and the
+fastest way to fill the context window. Navigate from structure to detail:
+orient, locate, trace, then read only the lines that matter. WrongStack's
+codebase index turns most of these steps into a single call; without it, the
+same moves work with glob, grep, and ranged reads.
 
 ## Rules
 
-1. Orient first: manifests, README/AGENTS, layout, entry points, test locations.
-2. Search by meaning (codebase-context), by name (codebase-search), by exact text (grep).
-3. Skeletons before bodies (codebase-skeleton).
-4. Read ranges, not whole files.
-5. Trace callers and callees through the index, not file names.
-6. One empty search is not proof of absence; retry another way.
-7. Keep a running map so nothing is read twice.
+1. Orient before diving: project manifests, README / AGENTS / CONTRIBUTING, the
+   top-level layout, entry points, and where tests live.
+2. Search by meaning when you don't know the name, by name when you do, and by
+   exact text for strings, config keys, and error messages.
+3. Read skeletons before bodies — signatures, types, and exports carry most of a
+   module's contract.
+4. Once you know the line, read that range, not the whole file.
+5. Trace relationships through the reference graph (callers, callees, imports)
+   instead of guessing from file names.
+6. Don't conclude absence from one empty search. Retry with another query, a
+   wider scope, or exact grep — dynamic registration, string dispatch, and
+   generated code are invisible to indexes.
+7. Keep a running map of key files, entry points, and traced flows so nothing
+   gets read twice.
 
-## Index tools
+## Detailed workflow
 
-codebase-repo-map (overview), codebase-impact-analysis (what breaks), codebase-stats and codebase-index (health and rebuild).
+Load the full codebase-navigation skill before relying on its specialized modes,
+references or output contracts. Its current SKILL.md is the source of truth;
+this compact body does not expand task scope or authorization.
+
+## Before returning
+
+- [ ] Claims about location and flow cite file:line
+- [ ] Absence claims backed by more than one search method
+- [ ] Untraced links in a flow labelled as such

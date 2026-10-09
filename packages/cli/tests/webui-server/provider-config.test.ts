@@ -203,6 +203,94 @@ describe('provider-config', () => {
       expect((await loadSavedProviders(configPath))['shared']?.apiKey).toBe('disk-key');
     });
 
+    // The ref is the frozen boot Config: it never sees a later write.
+    const frozenRef = (providers: Record<string, unknown>) => {
+      const config = Object.freeze({ providers: structuredClone(providers) });
+      return () => config.providers as never;
+    };
+
+    it('keeps editing a provider after the first save against a frozen boot ref', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      const owned = { alpha: { type: 'openai', apiKey: 'a' } };
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: owned }));
+      const store = createProviderConfigStore(configPath, frozenRef(owned));
+      const first = await store.load();
+      first['alpha']!.models = ['m1'];
+      await store.save(first);
+      const second = await store.load();
+      expect(second['alpha']?.models).toEqual(['m1']);
+      second['alpha']!.models = ['m2'];
+      await store.save(second);
+      expect((await loadSavedProviders(configPath))['alpha']?.models).toEqual(['m2']);
+    });
+
+    it('shows a provider added after boot and removes it from disk', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      const owned = { alpha: { type: 'openai', apiKey: 'a' } };
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: owned }));
+      const store = createProviderConfigStore(configPath, frozenRef(owned));
+      const adding = await store.load();
+      adding['beta'] = { type: 'openai', apiKey: 'b' } as never;
+      await store.save(adding);
+      const removing = await store.load();
+      expect(removing['beta']?.apiKey).toBe('b');
+      delete removing['beta'];
+      delete removing['alpha'];
+      await store.save(removing);
+      expect(await loadSavedProviders(configPath)).toEqual({});
+      expect(await store.load()).toEqual({});
+    });
+
+    it('treats a multi-key row whose apiKey the loader mirrored as owned', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      const disk = {
+        multi: {
+          type: 'openai',
+          apiKeys: [
+            { label: 'one', apiKey: 'k1', createdAt: '2026-01-01T00:00:00.000Z' },
+            { label: 'two', apiKey: 'k2', createdAt: '2026-01-01T00:00:00.000Z' },
+          ],
+          activeKey: 'two',
+        },
+      };
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: disk }));
+      const store = createProviderConfigStore(
+        configPath,
+        frozenRef({ multi: { ...disk.multi, apiKey: 'k2' } }),
+      );
+      const providers = await store.load();
+      providers['multi']!.activeKey = 'one';
+      await store.save(providers);
+      expect((await loadSavedProviders(configPath))['multi']?.activeKey).toBe('one');
+    });
+
+    it('still deletes an OAuth account whose token was refreshed on disk after boot', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      const account = (token: string) => ({
+        type: 'openai-codex',
+        apiKeys: [
+          {
+            label: 'oauth',
+            apiKey: token,
+            authMethod: 'oauth',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: { codex: account('t1') } }));
+      const store = createProviderConfigStore(
+        configPath,
+        frozenRef({ codex: { ...account('t1'), apiKey: 't1' } }),
+      );
+      await store.load();
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: { codex: account('t2') } }));
+      const providers = await store.load();
+      expect(providers['codex']?.apiKeys?.[0]?.apiKey).toBe('t2');
+      delete providers['codex'];
+      await store.save(providers);
+      expect(await loadSavedProviders(configPath)).toEqual({});
+    });
+
     it('returns a store with load and save methods', () => {
       const store = createProviderConfigStore(path.join(tempDir, 'config.json'));
       expect(typeof store.load).toBe('function');

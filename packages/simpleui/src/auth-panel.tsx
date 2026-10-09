@@ -1,83 +1,70 @@
-import { KeyRound, X } from 'lucide-react';
+import { ExternalLink, KeyRound, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { type AddMode, AddProvider, type CatalogProvider } from './auth-panel-add.js';
+import { type SavedProvider, SavedProviders, type Strategy } from './auth-panel-saved.js';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
-import { ProviderCloudSettings } from './provider-cloud-settings.js';
 
-interface SavedProvider {
-  id: string;
-  type?: string;
-  cloud?: import('@wrongstack/core/cloud-provider').NativeCloudSettings | undefined;
-  apiKeys: { label: string; maskedKey: string; isActive: boolean }[];
-}
-interface Strategy {
-  id: string;
-  providerId: string;
-  label: string;
-}
 interface LoginState {
   kind: string;
   phase: string;
+  providerId?: string;
   authorizeUrl?: string;
   verificationUri?: string;
   userCode?: string;
+  bound?: boolean;
   message?: string;
 }
+
+type Status = { tone: 'info' | 'ok' | 'error'; text: string };
+
+const PHASE_TEXT: Record<string, string> = {
+  starting: 'Starting sign-in…',
+  awaiting_browser: 'Finish signing in on the page that opened.',
+  awaiting_code: 'Enter this code on the verification page.',
+  exchanging: 'Exchanging the authorization code…',
+  fetching_models: 'Saving the account and fetching its models…',
+};
 
 /** Provider credentials use the same vault-backed operations as the full WebUI. */
 export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSocket | null> }) {
   const [open, setOpen] = useState(false);
   const [providers, setProviders] = useState<SavedProvider[]>([]);
-  const [catalog, setCatalog] = useState<
-    { id: string; name: string; family: string; apiBase?: string }[]
-  >([]);
-  const [accountType, setAccountType] = useState('openai');
-  const [accountAlias, setAccountAlias] = useState('');
-  const [accountKey, setAccountKey] = useState('');
+  const [catalog, setCatalog] = useState<CatalogProvider[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [providerId, setProviderId] = useState('');
-  const [label, setLabel] = useState('default');
-  const [apiKey, setApiKey] = useState('');
-  const [customId, setCustomId] = useState('');
-  const [customApiKey, setCustomApiKey] = useState('');
-  const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:11434/v1');
-  const [family, setFamily] = useState('openai-compatible');
-  const [models, setModels] = useState('');
-  const [alias, setAlias] = useState('');
-  const [code, setCode] = useState('');
+  const [view, setView] = useState<'saved' | 'add' | null>(null);
+  const [addMode, setAddMode] = useState<AddMode>('key');
   const [login, setLogin] = useState<LoginState | null>(null);
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [confirm, setConfirm] = useState<{
-    type: string;
-    payload: Record<string, unknown>;
-    text: string;
-  } | null>(null);
+  const [status, setStatus] = useState<Status | null>(null);
   const activeKind = useRef<string | null>(null);
   const requestRef = useRef<SocketRequestHandle | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, open);
+
+  const cancelSignIn = useCallback(() => {
+    if (activeKind.current)
+      socketRef.current?.send('auth.oauth.cancel', { kind: activeKind.current });
+    activeKind.current = null;
+    setLogin(null);
+    setCode('');
+  }, [socketRef]);
+
   const close = useCallback(() => {
     requestRef.current?.cancel();
     requestRef.current = null;
     setBusy(false);
-    if (activeKind.current)
-      socketRef.current?.send('auth.oauth.cancel', { kind: activeKind.current });
-    activeKind.current = null;
+    cancelSignIn();
     setOpen(false);
-    setApiKey('');
-    setCustomApiKey('');
-    setAccountKey('');
-    setCode('');
-    setLogin(null);
-    setConfirm(null);
-  }, [socketRef]);
+    setView(null);
+  }, [cancelSignIn]);
 
   useEffect(() => {
     const offOpen = onSimplePanel('open-auth', () => {
-      setMessage('');
+      setStatus(null);
       setOpen(true);
     });
     const offPanel = onPanelActivation((panel) => {
@@ -93,23 +80,34 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
     if (!open) return;
     const socket = socketRef.current;
     if (!socket) {
-      setMessage('Connect to the server to manage credentials.');
+      setStatus({ tone: 'error', text: 'Connect to the server to manage credentials.' });
       return;
     }
     const off = socket.onMessage((frame) => {
       if (frame.type === 'providers.saved')
-        setProviders(frame.payload['providers'] as SavedProvider[]);
+        setProviders(
+          [...(frame.payload['providers'] as SavedProvider[])].sort((a, b) =>
+            a.id.localeCompare(b.id),
+          ),
+        );
       if (frame.type === 'provider.catalog')
-        setCatalog(frame.payload['providers'] as typeof catalog);
+        setCatalog(frame.payload['providers'] as CatalogProvider[]);
       if (frame.type === 'auth.oauth.providers')
         setStrategies(frame.payload['providers'] as Strategy[]);
       if (frame.type === 'auth.oauth.status' && frame.payload['kind'] === activeKind.current) {
         const next = frame.payload as unknown as LoginState;
-        setLogin(next);
         if (next.phase === 'success' || next.phase === 'error') {
           activeKind.current = null;
-          setMessage(next.message ?? next.phase);
+          setLogin(null);
           setCode('');
+          setStatus({
+            tone: next.phase === 'success' ? 'ok' : 'error',
+            text: next.message ?? (next.phase === 'success' ? 'Signed in.' : 'Sign-in failed.'),
+          });
+          if (next.phase === 'success') setView('saved');
+        } else {
+          // Status frames omit fields an earlier phase carried (the alias, the link).
+          setLogin((prev) => ({ ...prev, ...next }));
         }
       }
     });
@@ -133,43 +131,58 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
     };
   }, [open, socketRef, close]);
 
-  const mutate = async (type: string, payload: Record<string, unknown>) => {
-    const socket = socketRef.current;
-    if (!socket || requestRef.current) return;
-    setBusy(true);
-    setMessage('Saving…');
-    try {
-      const requestId = crypto.randomUUID();
-      const request = socketRequest({
-        socket,
-        sendType: type,
-        payload: { ...payload, requestId },
-        expectType: 'key.operation_result',
-        accept: (frame) =>
-          (frame.payload as Record<string, unknown> | undefined)?.['requestId'] === requestId,
-      });
-      requestRef.current = request;
-      const result = await request.promise;
-      if (requestRef.current !== request) return;
-      requestRef.current = null;
-      setMessage(
-        typeof result?.['message'] === 'string'
-          ? result['message']
-          : 'No response from the server. Try again.',
-      );
-      if (result?.['success'] === true) {
-        setApiKey('');
-        setCustomApiKey('');
-        setAccountKey('');
-        setConfirm(null);
-        socket.send('providers.saved');
+  /** Send one credential operation and wait for ITS result. Resolves true on success. */
+  const mutate = useCallback(
+    async (type: string, payload: Record<string, unknown>): Promise<boolean> => {
+      const socket = socketRef.current;
+      if (!socket || requestRef.current) return false;
+      setBusy(true);
+      setStatus({ tone: 'info', text: 'Saving…' });
+      try {
+        const requestId = crypto.randomUUID();
+        const request = socketRequest({
+          socket,
+          sendType: type,
+          payload: { ...payload, requestId },
+          expectType: 'key.operation_result',
+          accept: (frame) =>
+            (frame.payload as Record<string, unknown> | undefined)?.['requestId'] === requestId,
+        });
+        requestRef.current = request;
+        const result = await request.promise;
+        if (requestRef.current !== request) return false;
+        requestRef.current = null;
+        const ok = result?.['success'] === true;
+        setStatus({
+          tone: ok ? 'ok' : 'error',
+          text:
+            typeof result?.['message'] === 'string'
+              ? result['message']
+              : 'No response from the server. Try again.',
+        });
+        if (ok) socket.send('providers.saved');
+        return ok;
+      } finally {
+        if (!requestRef.current) setBusy(false);
       }
-    } finally {
-      if (!requestRef.current) setBusy(false);
-    }
-  };
+    },
+    [socketRef],
+  );
+
+  const startSignIn = useCallback(
+    (strategy: Strategy, alias: string) => {
+      if (activeKind.current) return;
+      activeKind.current = strategy.id;
+      setCode('');
+      setStatus(null);
+      setLogin({ kind: strategy.id, phase: 'starting', providerId: alias });
+      socketRef.current?.send('auth.oauth.start', { kind: strategy.id, providerId: alias });
+    },
+    [socketRef],
+  );
 
   if (!open) return null;
+  const current = view ?? (providers.length > 0 ? 'saved' : 'add');
   return (
     <>
       <button
@@ -188,384 +201,125 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
       >
         <header className="settings-head">
           <strong id="simple-auth-title">
-            <KeyRound size={17} /> Provider credentials
+            <KeyRound size={17} /> Providers &amp; keys
           </strong>
           <button type="button" aria-label="Close provider credentials" onClick={close}>
             <X size={18} />
           </button>
         </header>
         <div className="auth-panel-body">
-          <p>API keys are encrypted in your active profile. Saved keys are shown masked.</p>
-          <p role="status" aria-live="polite">
-            {message}
+          <div className="auth-segmented auth-views" role="tablist" aria-label="Credentials view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={current === 'saved'}
+              className={current === 'saved' ? 'active' : ''}
+              onClick={() => {
+                setView('saved');
+                if (!busy) setStatus(null);
+              }}
+            >
+              Saved ({providers.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={current === 'add'}
+              className={current === 'add' ? 'active' : ''}
+              onClick={() => {
+                setView('add');
+                if (!busy) setStatus(null);
+              }}
+            >
+              Add provider
+            </button>
+          </div>
+          <p
+            role="status"
+            aria-live="polite"
+            className={status ? `auth-status ${status.tone}` : 'auth-status'}
+          >
+            {status?.text ?? ''}
           </p>
-          <section aria-label="Auth profiles">
-            <h3>Add account / auth profile</h3>
-            <p>
-              Each account has its own alias and credential. Select alias/model in a fallback chain.
-            </p>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const alias = accountAlias.trim();
-                if (providers.some((profile) => profile.id === alias)) {
-                  setMessage(`Auth profile “${alias}” already exists. Choose another alias.`);
-                  return;
-                }
-                const type = accountType.trim();
-                const source = catalog.find((provider) => provider.id === type);
-                if (!source) {
-                  setMessage(
-                    'Choose a provider from the catalog, or use the custom provider form.',
-                  );
-                  return;
-                }
-                void mutate('provider.add', {
-                  id: alias,
-                  type,
-                  family: source.family,
-                  baseUrl: source.apiBase,
-                  apiKey: accountKey.trim(),
-                });
-              }}
-            >
-              <label>
-                Provider type
-                <input
-                  list="simple-auth-provider-types"
-                  value={accountType}
-                  onChange={(e) => setAccountType(e.target.value)}
-                  required
-                />
-              </label>
-              <datalist id="simple-auth-provider-types">
-                {catalog.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </option>
-                ))}
-              </datalist>
-              <label>
-                Auth profile alias
-                <input
-                  value={accountAlias}
-                  onChange={(e) => setAccountAlias(e.target.value)}
-                  placeholder="openai-work"
-                  required
-                />
-              </label>
-              <label>
-                Account API key
-                <input
-                  type="password"
-                  autoComplete="off"
-                  value={accountKey}
-                  onChange={(e) => setAccountKey(e.target.value)}
-                  required
-                />
-              </label>
-              <button
-                type="submit"
-                className="primary"
-                disabled={busy || !accountType.trim() || !accountAlias.trim() || !accountKey.trim()}
-              >
-                Save auth profile
-              </button>
-            </form>
-          </section>
-          <section aria-label="API key management">
-            <h3>Add or update an API key</h3>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void mutate('key.add', {
-                  providerId: providerId.trim(),
-                  label: label.trim(),
-                  apiKey: apiKey.trim(),
-                });
-              }}
-            >
-              <label>
-                Provider or saved alias
-                <input
-                  value={providerId}
-                  onChange={(e) => setProviderId(e.target.value)}
-                  placeholder="openai, anthropic, openrouter…"
-                  required
-                />
-              </label>
-              <label>
-                Key label
-                <input value={label} onChange={(e) => setLabel(e.target.value)} required />
-              </label>
-              <label>
-                API key
-                <input
-                  type="password"
-                  autoComplete="off"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  required
-                />
-              </label>
-              <button
-                type="submit"
-                className="primary"
-                disabled={busy || !providerId.trim() || !label.trim() || !apiKey.trim()}
-              >
-                Save key
-              </button>
-            </form>
-          </section>
-          <section aria-label="OAuth accounts">
-            <h3>Sign in with your account</h3>
-            <p>Subscription sign-in may be subject to your provider’s terms.</p>
-            <label>
-              Account alias (optional)
-              <input
-                value={alias}
-                onChange={(e) => setAlias(e.target.value)}
-                placeholder="Leave blank to create a new account alias"
-              />
-            </label>
-            {strategies.map((strategy) => (
-              <button
-                type="button"
-                key={strategy.id}
-                disabled={Boolean(activeKind.current)}
-                onClick={() => {
-                  activeKind.current = strategy.id;
-                  setCode('');
-                  setLogin({ kind: strategy.id, phase: 'Starting sign-in…' });
-                  let target = alias.trim() || strategy.providerId;
-                  if (!alias.trim())
-                    for (let n = 2; providers.some((profile) => profile.id === target); n++)
-                      target = `${strategy.providerId}-${n}`;
-                  socketRef.current?.send('auth.oauth.start', {
-                    kind: strategy.id,
-                    providerId: target,
-                  });
-                }}
-              >
-                Sign in with {strategy.label}
-              </button>
-            ))}
-            {login && (
-              <div>
-                <p>{login.phase.replaceAll('_', ' ')}</p>
-                {(login.authorizeUrl || login.verificationUri) && (
-                  <a
-                    href={login.authorizeUrl ?? login.verificationUri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open sign-in page
-                  </a>
-                )}
-                {login.userCode && (
-                  <p>
-                    Enter code: <strong>{login.userCode}</strong>
-                  </p>
-                )}
-                {activeKind.current && (
-                  <>
-                    {!login.userCode && (
-                      <form
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          socketRef.current?.send('auth.oauth.code', {
-                            kind: login.kind,
-                            input: code.trim(),
-                          });
-                        }}
-                      >
-                        <label>
-                          Redirect URL or authorization code
-                          <input
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                            autoComplete="off"
-                          />
-                        </label>
-                        <button type="submit" disabled={!code.trim()}>
-                          Submit code
-                        </button>
-                      </form>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        socketRef.current?.send('auth.oauth.cancel', { kind: login.kind });
-                        activeKind.current = null;
-                        setLogin(null);
-                        setCode('');
-                      }}
-                    >
-                      Cancel sign-in
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-          <section aria-label="Local and custom providers">
-            <details>
-              <summary>Add a local server or custom provider</summary>
+          {login && (
+            <section className="auth-login" aria-label="Sign-in progress">
               <p>
-                Use a separate alias for each endpoint. Local servers can be saved without an API
-                key.
+                <strong>{PHASE_TEXT[login.phase] ?? login.phase.replaceAll('_', ' ')}</strong>
+                {login.providerId && <span className="auth-meta"> · {login.providerId}</span>}
               </p>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void mutate('provider.add', {
-                    id: customId.trim(),
-                    family,
-                    baseUrl: baseUrl.trim(),
-                    apiKey: customApiKey.trim() || undefined,
-                    models: models
-                      .split(',')
-                      .map((model) => model.trim())
-                      .filter(Boolean),
-                  });
-                }}
-              >
-                <label>
-                  Provider alias
-                  <input
-                    value={customId}
-                    onChange={(e) => setCustomId(e.target.value)}
-                    placeholder="my-local-server"
-                    required
-                  />
-                </label>
-                <label>
-                  Protocol
-                  <select value={family} onChange={(e) => setFamily(e.target.value)}>
-                    <option value="openai-compatible">OpenAI compatible</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic</option>
-                    <option value="google">Google</option>
-                  </select>
-                </label>
-                <label>
-                  Base URL
-                  <input
-                    type="url"
-                    value={baseUrl}
-                    onChange={(e) => setBaseUrl(e.target.value)}
-                    required
-                  />
-                </label>
-                <label>
-                  Model IDs (comma separated)
-                  <input
-                    value={models}
-                    onChange={(e) => setModels(e.target.value)}
-                    placeholder="llama3.2, qwen3"
-                  />
-                </label>
-                <label>
-                  API key (optional)
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    value={customApiKey}
-                    onChange={(e) => setCustomApiKey(e.target.value)}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="primary"
-                  disabled={busy || !customId.trim() || !baseUrl.trim()}
+              {login.userCode && <code className="auth-user-code">{login.userCode}</code>}
+              {(login.authorizeUrl || login.verificationUri) && (
+                <a
+                  href={login.authorizeUrl ?? login.verificationUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  Save provider
-                </button>
-              </form>
-            </details>
-          </section>
-          <section aria-label="Saved providers">
-            <h3>Saved providers</h3>
-            {providers.length === 0 && <p>No saved providers yet.</p>}
-            {providers.map((provider) => (
-              <article key={provider.id}>
-                <h4>{provider.id}</h4>
-                <ProviderCloudSettings type={provider.type ?? provider.id} cloud={provider.cloud} busy={busy} onSave={cloud => mutate('provider.update', { id: provider.id, cloud })} />
-                <button type="button" onClick={() => setAlias(provider.id)}>
-                  Use this alias for sign-in
-                </button>
-                {provider.apiKeys.map((key) => (
-                  <div className="auth-key-row" key={key.label}>
-                    <span>
-                      {key.label} · {key.maskedKey}
-                      {key.isActive ? ' · Active' : ''}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={busy || key.isActive}
-                      onClick={() =>
-                        void mutate('key.set_active', { providerId: provider.id, label: key.label })
-                      }
-                    >
-                      Use
+                  Open sign-in page <ExternalLink size={13} />
+                </a>
+              )}
+              {login.phase === 'awaiting_browser' && (
+                <details open={login.bound === false}>
+                  <summary>
+                    {login.bound === false
+                      ? 'Paste the redirect URL or code here'
+                      : 'Browser on another machine? Paste the redirect URL'}
+                  </summary>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      socketRef.current?.send('auth.oauth.code', {
+                        kind: login.kind,
+                        input: code.trim(),
+                      });
+                    }}
+                  >
+                    <label>
+                      Redirect URL or authorization code
+                      <input
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+                    <button type="submit" disabled={!code.trim()}>
+                      Submit code
                     </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        setProviderId(provider.id);
-                        setLabel(key.label);
-                        setApiKey('');
-                      }}
-                    >
-                      Update
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        setConfirm({
-                          type: 'key.delete',
-                          payload: { providerId: provider.id, label: key.label },
-                          text: `Delete key “${key.label}” from ${provider.id}?`,
-                        })
-                      }
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    setConfirm({
-                      type: 'provider.remove',
-                      payload: { providerId: provider.id },
-                      text: `Remove ${provider.id} and all its saved keys?`,
-                    })
-                  }
-                >
-                  Remove provider
-                </button>
-              </article>
-            ))}
-          </section>
-          {confirm && (
-            <div role="alert">
-              <p>{confirm.text}</p>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void mutate(confirm.type, confirm.payload)}
-              >
-                Confirm deletion
+                  </form>
+                </details>
+              )}
+              <button type="button" onClick={cancelSignIn}>
+                Cancel sign-in
               </button>
-              <button type="button" disabled={busy} onClick={() => setConfirm(null)}>
-                Cancel
-              </button>
-            </div>
+            </section>
           )}
+          {current === 'saved' ? (
+            <SavedProviders
+              providers={providers}
+              strategies={strategies}
+              busy={busy}
+              signInBusy={login !== null}
+              mutate={mutate}
+              onSignIn={startSignIn}
+              onAdd={() => setView('add')}
+            />
+          ) : (
+            <AddProvider
+              mode={addMode}
+              setMode={setAddMode}
+              catalog={catalog}
+              providers={providers}
+              strategies={strategies}
+              busy={busy}
+              signInBusy={login !== null}
+              mutate={mutate}
+              onSaved={() => setView('saved')}
+              onSignIn={startSignIn}
+            />
+          )}
+          <p className="auth-hint auth-foot">
+            Keys are encrypted in your active profile and only ever shown masked.
+          </p>
         </div>
       </div>
     </>

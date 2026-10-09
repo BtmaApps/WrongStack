@@ -1,0 +1,83 @@
+// Draft synthetic cases for the expanded bundle; paired by position.
+// Labels require review before calibration; no live accuracy is claimed.
+{"text": "Migrate this App Router route to the current stable Next.js, including its async params and cache behavior.", "gold": "nextjs-modern"}
+{"text": "Add reduced-motion-aware spring transitions between the cards in this React page.", "gold": "motion-design"}
+{"text": "Build a Three.js WebGPU scene with a TSL material and profile its draw calls.", "gold": "threejs-3d"}
+{"text": "Render a Remotion composition into a captioned product demo with deterministic frame timing.", "gold": "media-production"}
+{"text": "Create a Motion Canvas generator scene that animates a sorting algorithm with explicit timeline cues.", "gold": "motion-canvas-video"}
+{"text": "Animate the derivation of the quadratic formula using Manim Community MathTex and render a preview.", "gold": "manim-video"}
+{"text": "Draft a structured music-generation prompt and prepare a normalized voiceover track for this intro.", "gold": "audio-studio"}
+{"text": "Generate an editable DOCX proposal from these Markdown sections and verify the rendered pages.", "gold": "office-documents"}
+{"text": "Implement a Cloudflare Worker route with typed bindings and a Wrangler local smoke check.", "gold": "cloudflare-workers"}
+{"text": "Create a TypeScript MCP server exposing a read-only inventory tool and test its protocol responses.", "gold": "mcp-development"}
+{"text": "Define semantic OKLCH tokens and a Tailwind theme for consistent light and dark colors.", "gold": "design-system"}
+{"text": "Implement this supplied Figma layout with the existing component tokens and compare breakpoints.", "gold": "design-to-code"}
+{"text": "Specify keyboard focus, loading, empty, error and success states for this multi-step checkout.", "gold": "interaction-design"}
+{"text": "Create export-ready SVG icon variants with consistent stroke widths for this product UI.", "gold": "design-assets"}
+{"text": "Redesign this phone form for safe areas, thumb reach and virtual keyboard avoidance.", "gold": "mobile-design"}
+{"text": "Fix keyboard navigation and screen-reader announcements for this modal dialog.", "gold": "accessibility"}
+{"text": "Add Playwright screenshot baselines for these light and dark component states.", "gold": "visual-regression"}
+{"text": "Externalize UI strings and implement plural messages and RTL layout support.", "gold": "i18n-localization"}
+{"text": "Add an Expo Router screen with native permissions and validate it on an Android emulator.", "gold": "react-native-expo"}
+{"text": "Build a Flutter screen with Dart models and validate its widget behavior.", "gold": "flutter-mobile"}
+{"text": "Implement a SwiftUI home-screen widget with WidgetKit timeline refreshes.", "gold": "swift-ios"}
+{"text": "Build a Jetpack Compose settings screen with lifecycle-aware state collection.", "gold": "kotlin-android"}
+{"text": "Prepare signing, version codes and store submission artifacts for the mobile app release.", "gold": "mobile-release"}
+{"text": "Measure and repair scrolling jank, startup latency and memory pressure on a physical phone.", "gold": "mobile-performance"}
+{"text": "Implement an outbox and conflict resolution for edits made while this client is offline.", "gold": "offline-sync"}
+{"text": "Configure an SSH host alias using a verified host key and a dedicated identity file.", "gold": "ssh-operations"}
+{"text": "Repair this systemd service startup and verify its journal and restart behavior.", "gold": "linux-service-ops"}
+{"text": "Collect remote process and network evidence over SSH to diagnose this service hang.", "gold": "remote-debugging"}
+{"text": "Deploy this app to our existing VPS with a health check and a reversible release directory switch.", "gold": "vps-deploy"}
+{"text": "Configure Nginx upstream routing, WebSocket forwarding and TLS certificate renewal.", "gold": "reverse-proxy-tls"}
+{"text": "Fix Docker Compose readiness ordering and named-volume behavior across service restarts.", "gold": "compose-operations"}
+{"text": "Harden this container with a non-root user, minimal capabilities and a read-only root filesystem.", "gold": "container-hardening"}
+{"text": "Diagnose why this running container cannot resolve DNS or reach its peer service.", "gold": "container-debugging"}
+{"text": "Write a GitHub Actions matrix running checks on three supported Node versions.", "gold": "ci-cd"}
+{"text": "Design and rehearse health-gated promotion and rollback for this app release.", "gold": "release-rollback"}
+{"text": "Restore this database backup into an isolated instance and verify recovery objectives.", "gold": "backup-recovery"}
+{"text": "Set up and verify a Kubernetes horizontal pod autoscaler for our API deployment.", "gold": "kubernetes-operations"}
+{"text": "Write a Terraform VPC module with subnets and review its plan before applying it.", "gold": "infrastructure-as-code"}
+{"text": "Choose regions, failure domains and managed storage for this cloud application architecture.", "gold": "cloud-architecture"}
+{"text": "Triage this production outage, preserve evidence and prepare a time-ordered incident handoff.", "gold": "incident-response"}
+{"text": "Implement an Astro content collection and a client-hydrated interactive island.", "gold": "astro-modern"}
+{"text": "Build a Nuxt route using Vue composables and server-side data fetching.", "gold": "vue-nuxt"}
+{"text": "Implement a SvelteKit form action with Svelte runes and progressive enhancement.", "gold": "sveltekit-modern"}
+{"text": "Implement an Angular standalone component using signals and typed reactive forms.", "gold": "angular-modern"}
+{"text": "Create a Node HTTP service with schema validation, graceful shutdown and request-scoped errors.", "gold": "node-backend"}
+{"text": "Build a typed FastAPI endpoint with Pydantic validation and an async database session.", "gold": "python-backend"}
+{"text": "Implement a Go HTTP handler with context cancellation and graceful server shutdown.", "gold": "go-services"}
+{"text": "Port this parser to Rust with explicit ownership and structured parse errors.", "gold": "rust-systems"}
+{"text": "Implement an ASP.NET Core minimal API with dependency injection and cancellation tokens.", "gold": "dotnet-backend"}
+{"text": "Build a Spring Boot endpoint with Bean Validation and transaction boundaries.", "gold": "java-spring"}
+{"text": "Implement a Laravel request validator, policy and Eloquent transaction for this endpoint.", "gold": "php-laravel"}
+{"text": "Use EXPLAIN ANALYZE to tune this PostgreSQL query that scans the entire table.", "gold": "database-development"}
+{"text": "Plan an expand-contract schema migration compatible with old and new app instances.", "gold": "database-migrations"}
+{"text": "Implement a retryable background job with deduplication and a dead-letter queue.", "gold": "queues-jobs"}
+{"text": "Implement WebSocket reconnection and ordered replay after this client reconnects.", "gold": "realtime-systems"}
+{"text": "Implement session rotation, secure cookies and revocation for this login flow.", "gold": "authentication-sessions"}
+{"text": "Verify signed payment webhooks and make duplicate event handling idempotent.", "gold": "payments-webhooks"}
+{"text": "Implement expiring signed object uploads with ownership checks and lifecycle cleanup.", "gold": "storage-uploads"}
+{"text": "Implement a GraphQL resolver with typed schema validation, pagination and query complexity limits.", "gold": "graphql-development"}
+{"text": "Translate this short greeting into Turkish: good morning.", "gold": null}
+{"text": "What is 27 multiplied by 14?", "gold": null}
+{"text": "Give me a name for a black cat.", "gold": null}
+{"text": "Write a two-line birthday greeting.", "gold": null}
+{"text": "Summarize the paragraph I just pasted in one sentence.", "gold": null}
+{"text": "Spell-check this sentence without changing its meaning.", "gold": null}
+{"text": "Suggest three vegetarian breakfast ideas.", "gold": null}
+{"text": "Convert five kilometers to meters.", "gold": null}
+{"text": "What does the English word persistent mean?", "gold": null}
+{"text": "List the weekdays in alphabetical order.", "gold": null}
+{"text": "Rewrite this sentence in a friendlier tone.", "gold": null}
+{"text": "Explain why the sky looks blue to a child.", "gold": null}
+{"text": "Tell me a short joke about cats.", "gold": null}
+{"text": "Compare tea and coffee in two sentences.", "gold": null}
+{"text": "What is the capital of Portugal?", "gold": null}
+{"text": "Turn this list of names into a comma-separated sentence.", "gold": null}
+{"text": "Explain the difference between a metaphor and a simile.", "gold": null}
+{"text": "Write a haiku about autumn rain.", "gold": null}
+{"text": "Convert 90 minutes into hours.", "gold": null}
+{"text": "Define a prime number in one sentence.", "gold": null}
+{"text": "Suggest a polite reply to this dinner invitation.", "gold": null}
+{"text": "Explain how to fold a paper airplane.", "gold": null}

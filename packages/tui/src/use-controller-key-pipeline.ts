@@ -89,6 +89,7 @@ export function useControllerKeyPipeline({
   pasteClipboardText,
   pasteClipboardImage,
   onHistoryCopy,
+  closeMailboxPanel,
   pasteAccumRef,
   pasteFlushTimerRef,
   commitPaste,
@@ -227,6 +228,7 @@ export function useControllerKeyPipeline({
     toggleSelectedPlugin: () => Promise<void>;
     toggleSelectedMcpServer: () => Promise<void>;
     restartSelectedMcpServer: () => Promise<void>;
+    saveMcpEditor: () => Promise<void>;
     toggleSelectedTool: () => Promise<void>;
   };
   authPanelController: import('./hooks/use-auth-panel.js').AuthPanelController;
@@ -313,6 +315,8 @@ export function useControllerKeyPipeline({
   pasteClipboardText: () => Promise<void>;
   pasteClipboardImage: () => Promise<void>;
   onHistoryCopy: (entryId: number) => void;
+  /** Defined only while the /mailbox panel is open (Esc closes it). */
+  closeMailboxPanel: (() => void) | undefined;
   pasteAccumRef: React.MutableRefObject<import('./paste-accumulator.js').PasteAccumState>;
   pasteFlushTimerRef: React.MutableRefObject<NodeJS.Timeout | null>;
   commitPaste: (full: string) => Promise<void>;
@@ -470,6 +474,7 @@ export function useControllerKeyPipeline({
     pasteClipboardText,
     pasteClipboardImage,
     onHistoryCopy,
+    closeMailboxPanel,
     tryPickerKey,
     pasteAccumRef,
     pasteFlushTimerRef,

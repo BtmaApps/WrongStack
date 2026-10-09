@@ -118,6 +118,10 @@ export type Settings = {
   nextStepsTool: boolean;
   /** Leader must end every finished turn with <nextsteps> or the completion marker (`autonomy.nextSteps: 'required'`). Default: true. */
   nextStepsRequired: boolean;
+  /** Launch with the last model, system prompt and mode/YOLO/autonomy instead of asking (`launch.rememberStartupChoices`). Default: true. */
+  rememberStartupChoices: boolean;
+  /** System prompt the NEXT session starts with (`systemPrompt.variant` in the profile config); the running session keeps its own. */
+  nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
   /** Prompt cache TTL. */
   cacheTtl: CacheTtl;
   /** Where to persist settings: 'global' or 'project'. */

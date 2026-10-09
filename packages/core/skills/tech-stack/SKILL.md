@@ -1,146 +1,113 @@
 ---
 name: tech-stack
-description: |
-  Use this skill when validating package versions, checking for outdated dependencies,
-  or evaluating third-party libraries in any ecosystem. Triggers: user says "dependency",
-  "package version", "outdated", "npm audit", "deprecated package", "tech stack".
-version: 1.3.0
-required-capabilities: [dependencies.manage]
+description: "Validate and upgrade dependencies against live registries and official migration guides in any ecosystem. Use when choosing packages, requesting latest versions, investigating deprecations, or planning a dependency upgrade; preserve the project package manager and distinguish recommendations from installs."
+version: 1.5.1
+required-capabilities: [filesystem.read]
 required-tools: []
-optional-capabilities: [web.research]
+optional-capabilities: [verification.run, web.research, filesystem.write]
+trigger: "choosing packages, requesting latest versions, investigating deprecations, or planning a dependency upgrade; preserve the project package manager and distinguish recommendations from installs."
+metadata:
+  routing-group: workflow
 ---
 
-# Tech Stack Validator (Language-Agnostic)
+# Tech Stack Validator
+
+## Selection card
+- Task: Verify latest stable versions and migration constraints. / TR: Son kararlı sürüm ve geçiş kısıtını doğrula.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
-Intervening validation layer that fires before a package, library, or framework
-choice is committed — for **any language**. Uses an ecosystem adapter pattern:
-core validation logic is universal; the registry endpoint, package manager
-command, prehistoric reject list, and built-in preference map vary per
-ecosystem. Runs as a single-shot delegate — fast, read-only, fire-and-forget.
+Use the latest stable release for new recommendations and requested upgrades.
+Verify it live; neither an old repository pin nor a remembered version defines
+the target. The [version snapshot](references/current-versions.md) records what
+was checked on 2026-10-09, not a permanent claim of latest.
 
 ## Rules
 
-1. **Detect the ecosystem first.** Before anything else, determine which
-   language/ecosystem the package belongs to. Two strategies, tried in order:
-   - **Explicit**: The user names the language ("add `requests` to our Python project")
-   - **Implied**: Scan project files for ecosystem markers:
-     - `package.json` (js), `tsconfig.json` (ts) → **JavaScript/TypeScript**
-     - `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements.txt` → **Python**
-     - `Cargo.toml` → **Rust**
-     - `go.mod` → **Go**
-     - `Gemfile` → **Ruby**
-     - `*.csproj`, `*.fsproj`, `packages.config` → **.NET**
-     - `composer.json` → **PHP**
-     - `mix.exs` → **Elixir**
-     - `pom.xml`, `build.gradle` → **Java/JVM**
-   - If multiple markers exist, ask the user which ecosystem.
-   - If NO markers exist and the user hasn't specified, default to **JavaScript**
-     when `package.json` is present, otherwise ask.
+1. Identify the relevant workspace manifest, lockfile, runtime and package
+   manager. A multi-language repo does not require a question when scope identifies
+   the package. Distinguish declared range, resolved version and proposed target.
+2. Query the authoritative registry. Read the latest stable tag, release date,
+   engine constraints, peer ranges, deprecation/yank status and upstream notices.
+   A latest tag can point to a prerelease: inspect semver and resolve a published
+   non-deprecated stable release separately. Maven latest/release fields can also
+   point at milestones; never label them stable without checking the qualifier.
+   A timeout, 403 or registry outage is unknown status, not proof of nonexistence.
+3. Recommend the latest stable release. If compatibility blocks it, state the
+   blocker and required migration; do not quietly substitute an older release.
+   Prereleases require a deliberate user choice.
+4. Compare capabilities before replacing a dependency with a built-in. Native
+   fetch, UUIDs and filesystem APIs often suffice; interception, server WebSockets,
+   database semantics or specialized formatting may justify maintained packages.
+5. Age is not a deprecation signal. Do not reject Axios, Jest, Rollup, ESLint,
+   pip or any other maintained tool because an alternative exists. Cite an actual
+   upstream notice or demonstrated incompatibility.
+6. Validation is read-only unless adding/upgrading is authorized. A proposed
+   install command and an auto next-step marker do not grant permission.
 
-2. **Verify existence.** Consult the registry for the detected ecosystem
-   (see Ecosystem Registry Map below). Fetch the package endpoint. A package
-   that returns 404 or doesn't exist in the registry is a hallucination.
+## Workflow
 
-3. **Check latest version.** Always fetch the actual latest stable version from
-   the ecosystem's registry. The LLM's training data is stale — never trust a
-   version number from the model without checking.
+1. Gather current and target versions. Choose the smallest coherent upgrade
+   group: React/react-dom, runner/coverage plugins, related SDK packages.
+2. Read official migration notes for each crossed major; list changed APIs,
+   runtimes, module formats, config and adapter requirements.
+3. Evaluate package necessity, maintenance, licensing and install scripts as
+   relevant. Known-advisory hits require affected-range and reachability review.
+4. When implementation is requested, use the existing manager to change
+   manifests and regenerate lockfiles. Do not hand-edit resolved dependencies.
+5. Run the repository's install/build/type/test checks for the affected surface.
+   Capture the actual resolved target. Keep unrelated baseline changes separate.
+6. Report APPROVED, REJECTED or NEEDS_INVESTIGATION, with evidence and a
+   concrete next action. Approval describes the assessment, not installation.
 
-4. **Reject dead packages.** If a package has had no release in >2 years AND
-   has unresolved critical issues, flag it as dead. Suggest a maintained
-   replacement. Registry-specific dead signals:
-   - npm: `"deprecated"` field, archived GitHub repo
-   - PyPI: yanked releases, `Development Status :: 7 - Inactive` classifier
-   - Crates.io: yanked versions, archived repo
-   - Rubygems: `"version": null` for yanked, archived repo
-   - NuGet: deprecated flag, `listed: false`
+## Registry adapters
 
-5. **Reject prehistoric technology.** Any package/library/pattern that was
-   superseded ≥5 years ago is automatically rejected. Use the per-ecosystem built-in
-   preference map below before greenlighting any third-party dependency.
+| Ecosystem | Authoritative lookup | Selection detail |
+|---|---|---|
+| npm | registry.npmjs.org/<package> | latest tag plus stable semver validation; inspect engines/peers |
+| Python | pypi.org/pypi/<package>/json | requires-python, yanked files and prereleases |
+| Rust | crates.io/api/v1/crates/<package> | stable, non-yanked; verify rust-version |
+| Go | proxy.golang.org/<escaped-module>/@latest | JSON Version; respect module major paths |
+| Ruby | rubygems.org/api/v1/gems/<package>.json | runtime and platform constraints |
+| .NET | NuGet v3 service index and registration | listed stable releases; inspect frameworks |
+| PHP | repo.packagist.org/p2/<vendor>/<package>.json | stable normalization and PHP constraints |
+| Elixir | hex.pm/api/packages/<package> | stable release and Elixir/OTP requirements |
+| JVM | Maven Central metadata for group/artifact | stable version and JDK requirements |
 
-6. **Prefer built-in over third-party.** Every modern language runtime ships
-   standard library that obsoletes packages. Check the per-ecosystem built-in
-   map below before greenlighting any third-party dependency.
+Scoped npm names and case-sensitive Go modules need registry-specific encoding;
+do not infer latest from the first array item or highest lexicographic string.
 
-7. **Single-shot budget.** This agent is not for deep analysis — it should
-   complete in 1–2 iterations. Detect → search registry → verify → report.
-   Do not recursively analyze transitive dependencies.
+## Live npm inspection
 
-## Ecosystem Registry Map
+For current npm targets and preview-tag detection, run the read-only helper:
 
-The central dispatch table. When verifying a package, use the adapter for the
-detected ecosystem:
+~~~powershell
+bun run packages/core/skills/tech-stack/scripts/check-versions.mjs expo react-native prisma @prisma/client
+~~~
 
-| ID | Language | Registry Host | Path Template | Version Field | Package Manager | Install Command |
-|----|----------|--------------|---------------|---------------|-----------------|-----------------|
-| `js` | JavaScript/TS | `registry.npmjs.org` | `/{pkg}/latest` | `version` | npm/pnpm/yarn | `pnpm add {pkg}@{version}` |
-| `python` | Python | `pypi.org` | `/pypi/{pkg}/json` | `info.version` | pip/poetry/uv | `pip install {pkg}=={version}` |
-| `rust` | Rust | `crates.io` | `/api/v1/crates/{pkg}` | `crate.max_stable_version` | cargo | `cargo add {pkg}@{major}` |
-| `go` | Go | `proxy.golang.org` | `/{pkg}/@latest` | *(plain text)* | go | `go get {pkg}@{version}` |
-| `ruby` | Ruby | `rubygems.org` | `/api/v1/gems/{pkg}.json` | `version` | bundler | `gem "{pkg}", "~> {major}.{minor}"` |
-| `dotnet` | .NET | `api.nuget.org` | `/v3/registration5-gz-semver2/{pkg_lower}/index.json` | `items[0].upper` | dotnet | `dotnet add package {pkg} --version {version}` |
-| `php` | PHP | `repo.packagist.org` | `/p2/{vendor}/{pkg}.json` | `packages[..].0.version` | composer | `composer require {vendor}/{pkg}:^{major}.{minor}` |
-| `elixir` | Elixir | `hex.pm` | `/api/packages/{pkg}` | `releases[0].version` | mix | `{:pkg, "~> {major}.{minor}"}` (add to mix.exs) |
-| `jvm` | Java/JVM | `search.maven.org` | `/solrsearch/select?q=g:{group}+AND+a:{artifact}&rows=1&wt=json` | `response.docs[0].latestVersion` | maven/gradle | `implementation '{group}:{artifact}:{version}'` |
+It reports selected stable version, latest tag, engines, peers, source and checked
+UTC time. It performs bounded public registry reads and installs nothing.
+Use official platform release metadata for non-npm runtimes and service versions.
 
-## Output format
+## Report
 
-```
-### Tech Stack Validation — <package>
+| Package | Installed | Latest stable | Decision | Source / checked date |
+|---|---|---|---|---|
+| <name> | <resolved> | <live result> | <compatible / migration needed> | <registry URL> |
 
-**Ecosystem**: <detected ecosystem>
-**Status**: APPROVED | REJECTED | NEEDS_INVESTIGATION
+Include upgrade deltas, resolved engine/peer constraints, validation commands
+and any access failures. State when a source could not be verified.
 
-**Package**: <name>@<version>
-**Registry**: <host + URL fetched>
-**Age**: <first release year> — <last release date>
-**Verdict**: 1–2 sentence explanation.
+## Acceptance checks
 
-When REJECTED:
-**"This isn't code, this is X-year-old technology."**
-**Replaced by**: <modern alternative>
-**Migration**: <one concrete step>
-
-When APPROVED:
-**Install**: `<ecosystem install command>`
-**Note**: <any caveats about the version, semver range, or compatibility>
-
-<nextsteps>
-1. Add <package>@<version> to the project auto="true"
-</nextsteps>
-```
-
-## Out of scope
-
-- **Don't trust version numbers from the model.** Training data is stale. The registry is the truth; fetch the latest version from the registry, not from memory.
-- **Don't recursively analyze transitive dependencies.** This skill is single-shot. 1–2 iterations: detect → search registry → verify → report. Deep dependency analysis is a different workflow.
-- **Don't greenlight prehistoric technology.** Anything superseded ≥5 years ago is rejected by default. Use the per-ecosystem built-in preference map.
-- **Don't add a third-party package when the standard library covers it.** Prefer built-in. Every modern runtime ships an obsoleting API; check the built-in map before greenlighting any dependency.
-- **Don't accept a dead package.** A package with no release in >2 years and unresolved critical issues is dead; suggest a maintained replacement. "Deprecated" / "yanked" / "archived" are the dead signals, not opinions.
-- **Don't pick a random ecosystem.** Detect from project files first; ask when multiple markers exist; default to JavaScript only when `package.json` is present and nothing else is.
-- **Don't deep-dive CVEs.** Known-CVE work is `security-scanner`'s lane. This skill validates existence, version, and deprecation — not vulnerability surface.
-- **Don't approve without a registry URL.** The reader needs to verify; cite the registry endpoint that was actually fetched.
-
-## Before returning
-
-- [ ] Ecosystem detected (explicit or via project file scan)
-- [ ] Registry endpoint fetched; package existence verified
-- [ ] Latest version pulled from the registry, not from training memory
-- [ ] Dead-package signals checked (`deprecated`, yanked, archived)
-- [ ] Prehistoric-tech check ran against the per-ecosystem preference map
-- [ ] Built-in vs. third-party preference map consulted
-- [ ] Status is APPROVED / REJECTED / NEEDS_INVESTIGATION with one-sentence verdict
-- [ ] On REJECTED, modern alternative named with a migration step
-- [ ] Registry URL cited so the reader can verify
-- [ ] No transitive dependency recursion; single-shot budget honored
+- Record installed/resolved and live stable targets, dated sources, blockers and checks actually run.
 
 ## Skills in scope
 
-- `node-modern` — for Node.js built-in vs. third-party decisions
-- `react-modern` — for React version checks
-- `typescript-strict` — for TypeScript version alignment
-- `security-scanner` — for packages with known CVEs
-- `docker-deploy` — for base image version pinning
-- `output-standards` — for standardized `<nextsteps>` formatting
+- node-modern — runtime and standard-library compatibility.
+- react-modern — coordinated React upgrades.
+- typescript-strict — compiler and module-resolution behavior.
+- security-scanner — advisory assessment and remediation.
+- ci-cd — installation and release reproducibility.

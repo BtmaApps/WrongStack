@@ -6,13 +6,21 @@ description: |
   code change during a session.
   Triggers: user says "auto review", "otomatik review", "auto code review",
   "her değişiklikte review", "/auto-review".
-version: 2.1.0
+version: 2.2.1
 required-capabilities: [version-control.manage]
 required-tools: [git]
 optional-capabilities: [fleet.delegate, verification.run]
+trigger: "Use this skill to configure and understand the built-in auto-review plugin (wstack-auto-review) that fires automated code review subagents on every code change during a session."
+metadata:
+  routing-group: quality
 ---
 
 # Auto Review — Built-in Plugin
+
+## Selection card
+- Task: Operate the built-in automatic review plugin. / TR: Yerleşik otomatik review pluginini yönet.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -127,6 +135,19 @@ threshold leave the user to decide later whether to act. Set `cascadeOn` to
 - [ ] Reports go to the mailbox + `chimera.report_available` notification, not to peer mail
 - [ ] Follow-up fix agents only when findings meet the `cascadeOn` threshold (default `high`)
 - [ ] Debounce and `maxFilesPerBatch` tuned for the workload, not at default
+
+## Validate the effective configuration
+
+Read effective runtime settings and the current plugin/Director wiring, rather
+than assuming the presence of this skill starts a reviewer. Distinguish configured,
+queued, running, completed and persisted reviews. Record the reviewed file snapshot
+when edits continue during review; stale findings need confirmation on current code.
+Keep review completion, runtime cascade decisions and user-authorized changes
+separate. Check the stored report and finding state before claiming delivery.
+
+## Acceptance checks
+
+- Verify plugin configuration and a real review event; distinguish a generated report from fixes applied.
 
 ## Skills in scope
 

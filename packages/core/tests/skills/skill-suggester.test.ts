@@ -12,6 +12,7 @@ interface FakeSkill {
   trigger: string;
   description?: string;
   audience?: string;
+  requiredTools?: string[];
   body?: string;
 }
 
@@ -19,7 +20,9 @@ function loaderOf(skills: FakeSkill[]): SkillLoader {
   const manifests: SkillManifest[] = skills.map((s) => ({
     name: s.name,
     description: s.description ?? s.trigger,
+    trigger: s.trigger,
     audience: s.audience,
+    requiredTools: s.requiredTools,
     path: `/${s.name}/SKILL.md`,
     source: 'bundled',
   }));
@@ -108,6 +111,28 @@ function rerank(winner: string, fits: Record<string, number>): SystemOneResult {
 }
 
 describe('createSkillSuggester', () => {
+  it('excludes unavailable runtime candidates and keeps full description in the first pass', async () => {
+    const client = clientOf(wide(0.1, { 'design-craft': 0.6, 'git-flow': 0.4 }));
+    const roster = [
+      ...ROSTER,
+      { name: 'browser', trigger: 'Inspect a browser', requiredTools: ['browser_navigate'] },
+    ];
+    roster[0] = {
+      ...ROSTER[0]!,
+      description: 'Build an accessible interface. Do not use for critique.',
+    };
+    await createSkillSuggester({ client, loader: loaderOf(roster) }).explain(
+      'Build an interface',
+      undefined,
+      { availableToolNames: [] },
+    );
+    const criteria = (client.calls[0]!.questions.which as { criteria: Record<string, string> })
+      .criteria;
+    expect(criteria).not.toHaveProperty('browser');
+    expect(criteria['design-craft']).toContain('Do not use for critique.');
+    expect(criteria['design-craft']).toContain('building or reshaping UI');
+  });
+
   it('does not pass a partial gate as if all three judgments had answered', async () => {
     const partial = wide(0.9, { 'design-craft': 0.6, 'design-critique': 0.4 });
     delete partial.answers['gate::prose_suffices'];

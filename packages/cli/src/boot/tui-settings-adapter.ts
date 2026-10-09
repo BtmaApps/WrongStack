@@ -10,6 +10,12 @@
  * reverse: read → modify → encrypt → atomic-write for every section,
  * then syncs the in-memory store and applies live runtime effects.
  */
+import {
+  isSystemInstructionVariant,
+  persistSystemPromptVariant,
+  readSavedSystemPromptVariant,
+  type SystemInstructionVariant,
+} from '@wrongstack/core/agent';
 import type { Config, ConfigStore, FleetChatVerbosity, SecretVault } from '@wrongstack/core/types';
 
 import type { WstackPaths } from '@wrongstack/core/utils';
@@ -48,8 +54,43 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
   // single source of truth and the precedence rules.
   const deriveFsAccess = deriveFsAccessPair;
 
+  // System prompt chosen for the next session. Kept out of the live
+  // ConfigStore on purpose: the store's variant drives this session's status
+  // bar and tool surface, which must keep describing the prompt it runs on.
+  let nextSystemPromptVariant: SystemInstructionVariant | undefined;
+  // Seed from disk: a Scout picked "for this launch only" outside a project
+  // is in the store but not saved, so the store alone would show the wrong
+  // next-session value.
+  void (async () => {
+    const saved = await readSavedSystemPromptVariant(
+      activeProfileConfigPath(wpaths, configStore.get()),
+    );
+    if (saved && nextSystemPromptVariant === undefined) nextSystemPromptVariant = saved;
+  })().catch(() => undefined);
+
+  function getSettings(): Record<string, unknown> {
+    const settings = readTuiSettings(configStore);
+    return {
+      ...settings,
+      nextSystemPromptVariant: nextSystemPromptVariant ?? settings.systemPromptVariant,
+    };
+  }
+
   async function saveSettings(s: LiveSettingsInput): Promise<string | null> {
     try {
+      // Profile config, like the startup menu that reads it next launch
+      // (`readSavedSystemPromptVariant(profileConfigPath)`). The picker
+      // auto-saves its whole snapshot, so write only on an actual change.
+      if (isSystemInstructionVariant(s.nextSystemPromptVariant)) {
+        const pending = getSettings().nextSystemPromptVariant;
+        if (s.nextSystemPromptVariant !== pending) {
+          await persistSystemPromptVariant(
+            activeProfileConfigPath(wpaths, configStore.get()),
+            s.nextSystemPromptVariant,
+          );
+          nextSystemPromptVariant = s.nextSystemPromptVariant;
+        }
+      }
       // Persist the full TUI settings snapshot to one target file. This keeps
       // global/project scope switches coherent: autonomy, UX, refine, and the
       // other settings all land in the newly selected scope together.
@@ -81,6 +122,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         s.multiDiffSummaryThreshold !== undefined ||
         s.nextStepsTool !== undefined ||
         s.nextStepsRequired !== undefined ||
+        s.rememberStartupChoices !== undefined ||
         s.restrictFsToRoot !== undefined ||
         s.nextPrediction !== undefined ||
         s.debugStream !== undefined ||
@@ -237,6 +279,11 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
             const idx = (decrypted.indexing as Record<string, unknown>) ?? {};
             idx.onSessionStart = s.indexOnStart;
             decrypted.indexing = idx;
+          }
+          if (s.rememberStartupChoices !== undefined) {
+            const launch = (decrypted.launch as Record<string, unknown>) ?? {};
+            launch.rememberStartupChoices = s.rememberStartupChoices;
+            decrypted.launch = launch;
           }
           if (
             s.maxIterations !== undefined ||
@@ -446,6 +493,14 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
                 } as Config['indexing'],
               }
             : {}),
+          ...(s.rememberStartupChoices !== undefined
+            ? {
+                launch: {
+                  ...currentConfig.launch,
+                  rememberStartupChoices: s.rememberStartupChoices,
+                },
+              }
+            : {}),
           ...(s.maxIterations !== undefined ||
           s.multiDiffSummaryThreshold !== undefined ||
           s.nextStepsTool !== undefined ||
@@ -532,5 +587,5 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
     }
   }
 
-  return { getSettings: () => readTuiSettings(configStore), saveSettings };
+  return { getSettings, saveSettings };
 }

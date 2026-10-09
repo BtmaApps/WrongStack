@@ -55,6 +55,7 @@ export interface PickerKeysHost {
   onPluginPickerToggle: (() => Promise<void> | void) | undefined;
   onMcpPickerToggle: (() => Promise<void> | void) | undefined;
   onMcpPickerRestart: (() => Promise<void> | void) | undefined;
+  onMcpPickerSave?: (() => Promise<void> | void) | undefined;
   onToolsPickerToggle: (() => Promise<void> | void) | undefined;
   onHelpPanelEnter: (() => void) | undefined;
   onBrainRiskChange: ((delta: number) => void) | undefined;

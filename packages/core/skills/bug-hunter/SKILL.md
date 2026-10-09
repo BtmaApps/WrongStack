@@ -11,10 +11,13 @@ description: |
   dangerous here", "clean pass before release". Also use it when running as a
   cascade agent behind a chimera review, or as a fan-out worker auditing a chunk
   of files in parallel — those modes have extra constraints documented below.
-version: 2.1.0
+version: 2.2.1
 required-capabilities: [filesystem.read, code.inspect]
 required-tools: []
 optional-capabilities: [verification.run]
+trigger: "Use this skill when scanning source code for bugs, anti-patterns, code smells, or quality issues in a codebase, or when running a proof-driven bug hunt that must find, prove, fix, and verify one real defect. Trigger on the explicit vocabulary \u2014 \"bug\", \"bug hunt\", \"/bughunt\", \"scan for issues\", \"find problems\", \"anti-pattern\", \"code smell\", \"static analysis\" \u2014 and on the task shape, which is how it usually arrives: \"audit these files\", \"scan this module\", \"check for leaks\", \"something's wrong in X\", \"look for anything dangerous here\", \"clean pass before release\". Also use it when running as a cascade agent behind a chimera review, or as a fan-out worker auditing a chunk of files in parallel \u2014 those modes have extra constraints documented below."
+metadata:
+  routing-group: quality
 ---
 
 # Bug Hunter
@@ -22,6 +25,11 @@ optional-capabilities: [verification.run]
 Finds real defects in code. In a scan it outputs a prioritized hit list with
 file:line references; in a proof-driven round it selects the one candidate it
 can prove, and hands it to the proof, fix, and verification discipline.
+
+## Selection card
+- Task: Run the WrongStack bug-hunt and cascade workflow. / TR: WrongStack bug hunt ve cascade akışını yürüt.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Rules
 
@@ -111,134 +119,20 @@ reader's trust in every other line.
 
 ---
 
-## Bug patterns to find
+## Patterns and report
 
-Regex column = **where to start grepping**. Confirm column = what must be true
-in the actual code before it becomes a finding.
-
-| Pattern | Regex hint | Confirm by reading | Severity |
-|---------|------------|--------------------|----------|
-| Uncaught promise | `\.then\(` without `.catch` | No `.catch` on the chain and no enclosing try/catch on an awaited call | high |
-| Missing await | async call as a bare statement | The call has side effects whose ordering or failure matters | high |
-| Listener / timer leak | `\.on\(`, `addEventListener`, `setInterval`, `setTimeout`, `subscribe` | No matching removal or clear in teardown, on abort, or on the error path, and the owner outlives the handler | high |
-| Abort not honoured | `AbortSignal`, `signal` parameters | Signal accepted but not passed down, not checked between steps, or its listener is never removed after completion | high |
-| Stateful regex | `/g` or `/y` flag on a shared or module-level regex | Reused with `.test()`/`.exec()` across calls, so `lastIndex` makes alternate calls miss | high |
-| Ignored option | option or config field in a type or signature | Accepted but never read on some path, or overwritten by a default | medium |
-| Unsafe fallback | `\|\|` or `??` defaults, `catch` returning a default | A valid falsy value (`0`, `''`, `false`) is replaced, or a failure is turned into a plausible success | medium |
-| Stale state | caches, memos, module-level maps, `let` captured by closures | The key omits an input that changes the result, or nothing invalidates it | high |
-| Race / check-then-act | an `await` between a check and the act it guards | Another caller can change the checked state in between; a second call can start before the first finishes | high |
-| Path / name normalization | `path.join`, `split('/')`, `endsWith('.`, `toLowerCase` | Separators, drive-letter case, trailing slashes, or extension case differ between producer and consumer | medium |
-| Boundary / off-by-one | `<=`, `length - 1`, `slice(`, pagination, limits | Empty, single-element, exact-limit, or last-page input breaks the contract | medium |
-| Unreachable branch | conditions over narrowed types, duplicate `case` | The branch can never run, so the handling it promises never happens | medium |
-| Swallowed error | `catch {}`, `catch (e) {}`, `.catch(() => {})` | The failure it hides is meaningful rather than genuinely ignorable | medium |
-| Unbounded resource | `while (true)`, recursion, unpaginated fetch-all, unbounded arrays or maps | No break condition, timeout, eviction, or limit on a path that can grow | high |
-| Hardcoded secret | `sk-`, `AKIA`, `-----BEGIN`, `api[_-]?key\s*=` | It's a live credential, not a hash, digest, or test fixture | critical |
-| Injection | `exec(` or `execSync(` with `${`; SQL built with `+` or `${`; `innerHTML =` | The interpolated value can carry caller-controlled input and is not escaped or parameterized | critical |
-| Unsafe any | `:\s*any\b` or `as any` | Sits at a trust boundary (parsed JSON, network, DB, user input) rather than internal glue | medium |
-
-Extend this table when a hunt turns up a pattern worth watching for — but only
-with rows that pass the same test: a grep that narrows the search plus a
-condition that decides it.
-
----
-
-## Output format (scan modes)
-
-```
-## Bug Hunt Report — <scope>
-
-### Critical (must fix)
-1. [SHELL-INJ] `tools/shell.ts:42` — template literal in exec()
-   `exec(\`echo ${userInput}\`)` → use execFile with args array
-
-### High
-2. [LEAK] `tools/pool.ts:89` — listener never removed on abort
-
-### Summary
-| Severity | Count |
-|----------|-------|
-| Critical | 1 |
-| High     | 1 |
-
-Total: 2 findings in 2 files
-
-<nextsteps>
-1. Fix the shell injection in tools/shell.ts:42
-2. Fix the listener leak in tools/pool.ts:89
-</nextsteps>
-```
-
-When more than 30% of hits were noise, add one line under Summary:
-`False positive rate: ~N% — <one-line cause>`. If a scan turns up nothing, say
-so plainly with the scope and file count.
-
----
+For scanning patterns, severity-ranked report examples and output shape, [Read the detailed workflow](references/patterns-and-report.md).
 
 ## Running modes
 
-### 1. Standalone scan (default)
+- Standalone scan: report confirmed source findings; no production edits.
+- Fan-out worker: honor its assigned scope and return evidence to the coordinator.
+- Cascade: revalidate the supplied finding before applying its authorized fix.
+- Proof-driven /bughunt: one proven root cause, no fan-out, deterministic proof,
+  narrow fix and regression verification; follow the round's output contract.
 
-As documented above. Report only; suggest fixes, don't apply them, unless the
-user asked for fixes.
-
-### 2. Fan-out worker
-
-Dispatched by a leader across a chunk of files (typically 5–10 per worker).
-
-- Stay inside the assigned paths. Scope creep breaks the leader's coverage math.
-- Return the **same result shape** every sibling worker returns — severity,
-  `file:line`, one-line fix — so findings deduplicate cleanly.
-- If the chunk is too large to finish, report what you confirmed and name the
-  files you did not reach. Silent partial coverage is the failure that matters.
-
-### 3. Cascade agent (behind a chimera review)
-
-When verified chimera findings meet the `cascadeOn` threshold
-(`high` or `critical`; default `high`), the runtime spawns bug-hunter for
-findings at or above that severity. You receive the review report and the changed files; you investigate
-each finding and **apply fixes**. Results go directly to the session
-transcript. **NEVER send mailbox messages** to the leader. You take part in the
-re-review loop, up to `maxCascadeDepth` cycles.
-
-- **Minimal diff.** Fix the flagged defect and nothing else.
-- **Verify the line first.** If the cited line doesn't say what the report
-  claims, report the discrepancy instead of editing something adjacent.
-- **Don't fix what you can't check.** If the fix needs a design decision or
-  would change a public contract, leave it and say why.
-- **List what you didn't fix** and the reason.
-
-### 4. Proof-driven round (Proof-Driven Bug Hunter, /bughunt)
-
-One round = at most one proven, fixed, verified root cause. The round's own
-instructions are the protocol; this mode governs how the candidate is chosen.
-It overrides the out-of-scope list below: in this mode you **do** fix the bug
-and **do** write its regression test, and you **never** fan out, however large
-the target.
-
-1. **Read prior round reports first.** Collect their root-cause fingerprints
-   (affected path + trigger + violated contract) and skip any candidate with the
-   same root cause, even if it surfaces through a different symptom.
-2. **Survey, then shortlist.** Walk the target layer by layer with the pattern
-   table, lifecycle and async paths first. Keep two or three confirmed
-   candidates, not one guess.
-3. **Rank by provability × impact.** Prefer a reachable defect you can
-   reproduce deterministically through the production path over a scarier one
-   you can only argue for. A candidate whose proof would need mocking the very
-   code under suspicion is not provable; drop it.
-4. **Commit to one.** Write down its trigger, expected behaviour and its basis,
-   observed behaviour, and impact. Then prove it with `debugging` and `testing`
-   before touching production code.
-5. **If the proof won't go red,** the candidate is unproven, not fixed. Move to
-   the next shortlisted candidate within the round's budget, or end the round
-   with no proven bug. Never edit production code to "see if it helps".
-6. **Keep a coverage note:** surfaces inspected, candidates rejected and why,
-   and unresolved leads. An unsuccessful reproduction does not make a surface
-   bug-free, and the report must not imply it does.
-
-Finish with `verify-before-done`: the same proof green, the regression test in
-the normal suite, related checks, and an honest outcome label.
-
----
+Before operating in a worker, cascade or proof-driven mode, read
+[the complete mode protocol](references/running-modes.md).
 
 ## Anti-patterns
 
@@ -262,6 +156,14 @@ the normal suite, related checks, and an honest outcome label.
   bug; test authoring is `testing`'s lane outside proof-driven rounds.
 - **Don't start a `multi-agent` fan-out on your own.** For a target larger than
   roughly 10–15 files, report its size and let the leader dispatch.
+
+## Candidate status and coverage
+
+Keep observed failures, supported source concerns and disproven candidates
+distinct. Name the inspected paths and uncovered runtime branches; no findings
+in a subset is not a release certificate. When the user requests continued rounds
+or independent scope selection, honor that authorization and choose the next
+narrow scope without repeatedly asking for the same decision.
 
 ## Skills in scope
 

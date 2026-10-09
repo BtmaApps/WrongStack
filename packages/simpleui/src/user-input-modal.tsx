@@ -1,5 +1,6 @@
 import { Check, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusTrap } from './hooks/use-focus-trap.js';
 import type { UserInputQuestion, UserInputRequest } from './types.js';
 
 type DraftAnswer = {
@@ -62,6 +63,45 @@ export function UserInputModal({
     }, SUBMIT_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [submitting]);
+  const cancel = () => {
+    if (!pending) return;
+    // 'cancelled' is a first-class UserInputResponse.status (core
+    // types/user-input.ts): the server-side awaiter settles on any matching
+    // requestId and the resulting user.input_resolved frame removes this
+    // entry from the client queue. If this send is also dropped, the local
+    // state reset below still unlocks the form — it stays usable so the
+    // answer can be retried (or cancelled again) once the connection
+    // returns.
+    send('user.input_submit', {
+      sessionId: pending.sessionId,
+      response: { requestId: pending.request.id, status: 'cancelled', answers: [] },
+    });
+    setSubmitting(false);
+    setValidationMessage(
+      'Cancel requested — it may not have reached the agent while the connection is down.',
+    );
+  };
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, pending !== null);
+  // Escape cancels the pending request. House pattern: defaultPrevented gate
+  // so only one surface closes per press. Both this effect and `cancel` live
+  // above the early return — hooks must be unconditional, and the keydown
+  // closure captures this render's `pending`.
+  useEffect(() => {
+    if (!pending) return;
+    window.requestAnimationFrame(() => dialogRef.current?.focus());
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // `send` is a prop that may be recreated per render — include it so the
+    // listener never holds a stale sender (chimera review, 2026-10-09).
+  }, [pending, send]);
   if (!pending) return null;
   const active = pending.request.tabs[tab] ?? pending.request.tabs[0]!;
   const missing = questions.filter((q) => q.required && !hasAnswer(draft[q.id]));
@@ -107,24 +147,6 @@ export function UserInputModal({
       },
     });
   };
-  const cancel = () => {
-    if (!pending) return;
-    // 'cancelled' is a first-class UserInputResponse.status (core
-    // types/user-input.ts): the server-side awaiter settles on any matching
-    // requestId and the resulting user.input_resolved frame removes this
-    // entry from the client queue. If this send is also dropped, the local
-    // state reset below still unlocks the form — it stays usable so the
-    // answer can be retried (or cancelled again) once the connection
-    // returns.
-    send('user.input_submit', {
-      sessionId: pending.sessionId,
-      response: { requestId: pending.request.id, status: 'cancelled', answers: [] },
-    });
-    setSubmitting(false);
-    setValidationMessage(
-      'Cancel requested — it may not have reached the agent while the connection is down.',
-    );
-  };
   const applyRecommendations = (scope: 'tab' | 'all') => {
     const targets = scope === 'all' ? questions : active.questions;
     setDraft((current) => {
@@ -162,6 +184,8 @@ export function UserInputModal({
   };
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="fallback-modal-overlay user-input-overlay"
       role="dialog"
       aria-modal="true"

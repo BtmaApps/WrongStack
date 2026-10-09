@@ -3,12 +3,20 @@ name: docker-deploy
 description: |
   Use this skill when writing or reviewing a Dockerfile, docker-compose setup, or container image build for a project, or when debugging a container that won't build, start, or stay healthy.
   Triggers: user says "docker", "Dockerfile", "container", "image", "docker compose", "containerize", "multi-stage", "distroless", "registry", "healthcheck", "image size".
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [filesystem.read, filesystem.write, execution.shell]
 required-tools: []
+trigger: "Use this skill when writing or reviewing a Dockerfile, docker-compose setup, or container image build for a project, or when debugging a container that won't build, start, or stay healthy."
+metadata:
+  routing-group: operations
 ---
 
 # Docker Deploy
+
+## Selection card
+- Task: Build and deploy a reproducible container image. / TR: Tekrarlanabilir container imajı kur ve deploy et.
+- Start: Identify the authorized target, current health and rollback boundary.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -20,9 +28,14 @@ command, the start command, the port, and what the process needs at runtime
 
 ## Rules
 
-1. Multi-stage builds: build with the toolchain and dev dependencies, ship a
+1. **Pre-flight: Inspect repo manifests & live base image registries first.** Inspect `package.json`,
+   lockfiles, and existing `Dockerfile` / `compose.yaml`. Query Docker Hub or live container registries
+   to find current stable base image tags (e.g. `node:26.11.1-bookworm-slim`, `postgres:18.6-alpine`)
+   before configuring builds. Latest stable PostgreSQL is 18.6 (19 is beta),
+   checked 2026-10-09 against https://www.postgresql.org/support/versioning/.
+2. Multi-stage builds: build with the toolchain and dev dependencies, ship a
    runtime stage with only production artifacts.
-2. Pin the base image to a specific version tag (optionally a digest); never
+3. Pin the base image to a specific version tag (optionally a digest); never
    `latest`.
 3. Order layers for caching: copy dependency manifests and the lockfile,
    install, then copy the source.
@@ -44,15 +57,15 @@ Node.js service with pnpm:
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-FROM node:22-bookworm-slim AS build
+FROM node:26.11.1-bookworm-slim AS build
 WORKDIR /app
-RUN corepack enable
+RUN npm install --global pnpm@12.10.1
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build && pnpm prune --prod
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:26.11.1-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
@@ -87,10 +100,10 @@ services:
       db:
         condition: service_healthy
   db:
-    image: postgres:17
+    image: postgres:18.6
     environment:
       POSTGRES_PASSWORD: dev-only
-    volumes: [db-data:/var/lib/postgresql/data]
+    volumes: [db-data:/var/lib/postgresql]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -126,6 +139,18 @@ volumes:
 - [ ] Non-root user; no secrets in layers; `.dockerignore` present
 - [ ] Exec-form start command; healthcheck for services
 - [ ] Image built and the container started successfully, if the environment allows
+
+## Reproducibility and deployment proof
+
+For new Node targets, current stable is 26.11.1 as checked 2026-10-09; verify
+the official release schedule, available image tags and adapter support before
+choosing a base. Corepack availability varies by Node release: provision the
+declared package manager explicitly and pin its version. The example uses the checked stable target; verify tag availability
+and pin the selected image digest before a production release.
+For monorepos, include workspace manifests/config and required runtime assets;
+single-package prune examples may break symlinks or workspace dependencies.
+Build and run the final stage, check binding/readiness and stop behavior.
+Record image digest; local startup and live redeployment are separate proofs.
 
 ## Skills in scope
 

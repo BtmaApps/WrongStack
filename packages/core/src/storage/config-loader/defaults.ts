@@ -104,7 +104,7 @@ export const CONFIG_BEHAVIOR_DEFAULTS: Omit<Config, 'provider' | 'model'> = {
       enabled: false,
     },
   },
-  skills: { readClaudeSkills: true, mode: 'progressive' },
+  skills: { readClaudeSkills: true, mode: 'progressive', localSuggest: true },
   mcpServers: {},
   fallbackAuto: true,
   maxConcurrent: 10,

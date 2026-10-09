@@ -236,5 +236,6 @@ it('registers explicit skill mentions independently of automatic suggestions', a
     pipelines: { request: { use } },
   };
   await prepareRuntimeDispatch(input as never);
+  expect(use).toHaveBeenCalledWith(expect.objectContaining({ name: 'skills.suggest.local' }));
   expect(use).toHaveBeenCalledWith(expect.objectContaining({ name: 'skills.mentions' }));
 });

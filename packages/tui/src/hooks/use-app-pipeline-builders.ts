@@ -72,6 +72,7 @@ export function buildAppPipelineArgs(params: {
   pasteClipboardText: K['pasteClipboardText'];
   pasteClipboardImage: K['pasteClipboardImage'];
   onHistoryCopy: K['onHistoryCopy'];
+  closeMailboxPanel: K['closeMailboxPanel'];
   tryPickerKey: K['tryPickerKey'];
   pasteAccumRef: K['pasteAccumRef'];
   pasteFlushTimerRef: K['pasteFlushTimerRef'];
@@ -176,6 +177,7 @@ export function buildAppPipelineArgs(params: {
     pasteClipboardText,
     pasteClipboardImage,
     onHistoryCopy,
+    closeMailboxPanel,
     tryPickerKey,
     pasteAccumRef,
     pasteFlushTimerRef,
@@ -280,6 +282,7 @@ export function buildAppPipelineArgs(params: {
       slashRegistry: props.slashRegistry,
       agent: props.agent,
       onHistoryCopy,
+      closeMailboxPanel,
     },
     runBlocksParams: {
       capabilities: {

@@ -114,6 +114,10 @@ export type SettingsPickerPatch = Partial<{
    * Default: true.
    */
   nextStepsRequired: boolean;
+  /** Launch with the last model, system prompt and mode/YOLO/autonomy instead of asking (`launch.rememberStartupChoices`). Default: true. */
+  rememberStartupChoices: boolean;
+  /** System prompt the NEXT session starts with (`systemPrompt.variant` in the profile config); the running session keeps its own. */
+  nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
   /**
    * WrongProxy / WrongTrace: master switch. When true AND the daemon at
    * `wrongProxyUrl` is reachable, every provider's base URL is rewritten

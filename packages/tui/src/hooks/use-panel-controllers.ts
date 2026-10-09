@@ -30,6 +30,7 @@ interface PanelControllersOptions {
   getMcpServers: AppProps['getMcpServers'];
   onMcpToggle: AppProps['onMcpToggle'];
   onMcpRestart: AppProps['onMcpRestart'];
+  onMcpManage?: AppProps['onMcpManage'];
   getToolsItems: AppProps['getToolsItems'];
   onToolToggle: AppProps['onToolToggle'];
   setLiveToolCount: Dispatch<SetStateAction<number | undefined>>;
@@ -59,6 +60,7 @@ export function usePanelControllers({
   getMcpServers,
   onMcpToggle,
   onMcpRestart,
+  onMcpManage,
   getToolsItems,
   onToolToggle,
   setLiveToolCount,
@@ -72,6 +74,7 @@ export function usePanelControllers({
   toggleSelectedPlugin: () => Promise<void>;
   toggleSelectedMcpServer: () => Promise<void>;
   restartSelectedMcpServer: () => Promise<void>;
+  saveMcpEditor: () => Promise<void>;
   toggleSelectedTool: () => Promise<void>;
 } {
   const authPanelController = { openAuthPanel };
@@ -235,6 +238,8 @@ export function usePanelControllers({
       sageMemoryInjectThreshold: s.sageMemoryInjectThreshold ?? 0.85,
       nextStepsTool: s.nextStepsTool ?? false,
       nextStepsRequired: s.nextStepsRequired ?? true,
+      rememberStartupChoices: s.rememberStartupChoices ?? true,
+      nextSystemPromptVariant: s.nextSystemPromptVariant ?? s.systemPromptVariant ?? 'pro',
       readSymbols: s.readSymbols ?? false,
       // WrongProxy / WrongTrace: hydrate from the picker state slice.
       // Same defaults as the WebUI LocalPrefs and the CLI adapter's
@@ -328,6 +333,47 @@ export function usePanelControllers({
     }
   }, [onMcpRestart]);
 
+  const mcpSaving = React.useRef(false);
+  const saveMcpEditor = React.useCallback(async () => {
+    const editor = stateRef.current.mcpPicker.editor;
+    if (!editor || mcpSaving.current) return;
+    if (!onMcpManage) {
+      dispatch({ type: 'mcpPickerHint', text: 'MCP editing is unavailable in this host.' });
+      return;
+    }
+    mcpSaving.current = true;
+    dispatch({ type: 'mcpPickerBusy', busy: true });
+    try {
+      const args: unknown = JSON.parse(editor.args || '[]');
+      if (!Array.isArray(args) || args.some((arg) => typeof arg !== 'string'))
+        throw new Error('Arguments must be a JSON array of strings.');
+      if (!editor.name.trim()) throw new Error('Server name is required.');
+      if (editor.mode === 'edit' && !editor.target.trim())
+        throw new Error('Command or URL is required.');
+      if (
+        editor.mode !== 'remove' &&
+        !['stdio', 'streamable-http', 'sse'].includes(editor.transport)
+      )
+        throw new Error('Choose stdio, streamable-http or sse transport.');
+      const result = await onMcpManage(editor.mode, {
+        name: editor.name.trim(),
+        transport: editor.transport,
+        ...(editor.transport === 'stdio'
+          ? { command: editor.target.trim(), args: args as string[] }
+          : { url: editor.target.trim() }),
+      });
+      dispatch({ type: 'mcpPickerSetItems', items: result.items });
+      if (stateRef.current.mcpPicker.editor !== editor) return;
+      if (!result.error) dispatch({ type: 'mcpPickerEditor' });
+      dispatch({ type: 'mcpPickerHint', text: result.error ?? result.message });
+    } catch (error) {
+      dispatch({ type: 'mcpPickerHint', text: toErrorMessage(error) });
+    } finally {
+      mcpSaving.current = false;
+      dispatch({ type: 'mcpPickerBusy', busy: false });
+    }
+  }, [onMcpManage]);
+
   // ── Tools picker ───────────────────────────────────────────────
   const refreshToolsPicker = React.useCallback(() => {
     if (!getToolsItems) return;
@@ -369,6 +415,7 @@ export function usePanelControllers({
     toggleSelectedPlugin,
     toggleSelectedMcpServer,
     restartSelectedMcpServer,
+    saveMcpEditor,
     toggleSelectedTool,
   };
 }

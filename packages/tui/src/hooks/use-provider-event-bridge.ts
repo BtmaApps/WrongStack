@@ -5,6 +5,7 @@ import { isFinalTurnStopReason } from '@wrongstack/tools/next-steps';
 import { type Dispatch, type MutableRefObject, type SetStateAction, useEffect } from 'react';
 import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
+import { networkAccessHint } from '../browser-access-hint.js';
 import { fmtRatioPct } from '../components/status-bar-format.js';
 import {
   applyMemoryContextSnapshot,
@@ -276,6 +277,8 @@ export function useProviderEventBridge({
       if (e.name !== 'delegate') {
         const sageStats = pendingSageStats.get(e.name);
         const addToolEntry = (output: string | undefined): void => {
+          const accessHint = networkAccessHint(e.name, e.ok, output);
+          if (accessHint) dispatch({ type: 'addEntry', entry: { kind: 'warn', text: accessHint } });
           dispatch({
             type: 'addEntry',
             entry: {

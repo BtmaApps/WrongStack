@@ -812,6 +812,7 @@ describe('TUI reducer', () => {
       configScope: 'global',
       restrictFsToRoot: false,
       showAgentSwarmPanel: 'bottom',
+      nextSystemPromptVariant: 'pro',
     } as never);
   }
 
@@ -821,6 +822,27 @@ describe('TUI reducer', () => {
     s = reducer(s, { type: 'settingsValueChange', delta: 1 } as never);
     expect(s.settingsPicker.featureMcp).toBe(false); // toggled
     expect(s.settingsPicker.hint).toBe('↻ Takes effect next session');
+  });
+
+  it('settingsValueChange toggles "Reuse startup choices" (field 65) with a next-launch hint', () => {
+    let s = openSettings(initial());
+    s = reducer(s, { type: 'settingsFieldSet', field: 65 } as never);
+    expect(s.settingsPicker.field).toBe(65);
+    const before = s.settingsPicker.rememberStartupChoices;
+    s = reducer(s, { type: 'settingsValueChange', delta: 1 } as never);
+    expect(s.settingsPicker.rememberStartupChoices).toBe(!before);
+    expect(s.settingsPicker.hint).toBe('↻ Takes effect next session');
+  });
+
+  it('settingsValueChange cycles the next-session system prompt (field 66) with a next-session hint', () => {
+    let s = openSettings(initial());
+    s = reducer(s, { type: 'settingsFieldSet', field: 66 } as never);
+    expect(s.settingsPicker.nextSystemPromptVariant).toBe('pro');
+    s = reducer(s, { type: 'settingsValueChange', delta: 1 } as never);
+    expect(s.settingsPicker.nextSystemPromptVariant).toBe('scout');
+    expect(s.settingsPicker.hint).toBe('↻ Takes effect next session');
+    s = reducer(s, { type: 'settingsValueChange', delta: 1 } as never);
+    expect(s.settingsPicker.nextSystemPromptVariant).toBe('lite');
   });
 
   it('settingsValueChange clears the hint for a live-applicable field (YOLO)', () => {

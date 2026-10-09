@@ -2,7 +2,11 @@
 import type { Agent, Context } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
-import { createSkillMentionMiddleware, createSkillSuggestionSetup } from '@wrongstack/core/skills';
+import {
+  createLocalSkillSuggestionSetup,
+  createSkillMentionMiddleware,
+  createSkillSuggestionSetup,
+} from '@wrongstack/core/skills';
 import type { Config, ConfigStore, MemoryPort, SkillLoader } from '@wrongstack/core/types';
 import { getToolDescriptionMode } from '@wrongstack/core/utils';
 import type { PluginPickerItem, ToolPickerItem } from '../execute-deps.js';
@@ -48,8 +52,22 @@ export async function prepareRuntimeDispatch(input: RuntimeDispatchStateInput) {
     skillLoader: input.skillLoader,
     logger: input.logger,
     getSessionId: () => input.agent.ctx.session.id,
+    getAvailableToolNames: () => {
+      const ctx = input.agent.ctx;
+      return (ctx.catalogTools.length > 0 ? ctx.catalogTools : ctx.tools).map((tool) => tool.name);
+    },
   });
   if (skillSuggestion) input.pipelines.request.use(skillSuggestion);
+  const localSkillSuggestion = createLocalSkillSuggestionSetup({
+    config: input.getConfig(),
+    skillLoader: input.skillLoader,
+    logger: input.logger,
+    getAvailableToolNames: () => {
+      const ctx = input.agent.ctx;
+      return (ctx.catalogTools.length > 0 ? ctx.catalogTools : ctx.tools).map((tool) => tool.name);
+    },
+  });
+  if (localSkillSuggestion) input.pipelines.request.use(localSkillSuggestion);
   if (input.skillLoader && input.getConfig().features?.skills !== false)
     input.pipelines.request.use(createSkillMentionMiddleware(input.skillLoader));
 

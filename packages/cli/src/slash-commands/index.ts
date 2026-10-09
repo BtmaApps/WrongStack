@@ -15,6 +15,7 @@ import { buildAgentImproveCommand } from './agent-improve.js';
 import { buildAuthCommand } from './auth.js';
 import { buildAutonomyCommand } from './autonomy.js';
 import { buildBrainCommand } from './brain.js';
+import { buildBrowserCommand } from './browser.js';
 import { buildBtwCommand } from './btw.js';
 import { buildClearCommand } from './clear.js';
 import { buildCodebaseMapCommand } from './codebase-map.js';
@@ -136,6 +137,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildPluginCommand(opts),
     buildPruneCommand(opts),
     buildMcpSlashCommand(opts),
+    buildBrowserCommand(),
     buildSuggestCommand(opts),
     buildAuthCommand(opts),
     buildJevCommand(opts),

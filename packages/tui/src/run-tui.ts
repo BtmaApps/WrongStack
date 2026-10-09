@@ -284,6 +284,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         getMcpServers: opts.getMcpServers,
         onMcpToggle: opts.onMcpToggle,
         onMcpRestart: opts.onMcpRestart,
+        onMcpManage: opts.onMcpManage,
         getToolsItems: opts.getToolsItems,
         onToolToggle: opts.onToolToggle,
         getBrainData: opts.getBrainData,

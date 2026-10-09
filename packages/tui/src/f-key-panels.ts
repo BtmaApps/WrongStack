@@ -89,7 +89,7 @@ export const F_KEY_PANEL_ENTRIES: readonly FKeyPanelEntry[] = [
     key: 4,
     label: 'Worktree monitor',
     action: 'toggleWorktreeMonitor',
-    helpKeys: 'F4 or /worktree',
+    helpKeys: 'F4, Ctrl+T or /worktree',
     helpDescription: 'worktree monitor (Ctrl+T may be reserved)',
     ctrlAlias: 't',
   },

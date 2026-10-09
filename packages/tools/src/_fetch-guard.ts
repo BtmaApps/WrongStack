@@ -45,6 +45,15 @@ export function guardedLookup(
   options: { all?: boolean | undefined; family?: number | undefined },
   callback: LookupCallback,
 ): void {
+  lookupPinned(hostname, options, callback, ALLOW_PRIVATE);
+}
+
+function lookupPinned(
+  hostname: string,
+  options: { all?: boolean | undefined; family?: number | undefined },
+  callback: LookupCallback,
+  allowPrivate: boolean,
+): void {
   dns
     .lookup(hostname, { all: true })
     .then((records) => {
@@ -52,7 +61,7 @@ export function guardedLookup(
       const byFamily =
         family === 4 || family === 6 ? records.filter((r) => r.family === family) : records;
       const list = byFamily.length > 0 ? byFamily : records;
-      if (!ALLOW_PRIVATE) {
+      if (!allowPrivate) {
         for (const r of list) {
           const bad = r.family === 4 ? isPrivateIPv4(r.address) : isPrivateIPv6(r.address);
           if (bad) {
@@ -116,8 +125,19 @@ async function ensureUndici(): Promise<typeof import('undici')> {
 }
 
 let pinnedAgent: Agent | undefined;
-async function getPinnedDispatcher(): Promise<Agent> {
+let approvedOriginAgent: Agent | undefined;
+async function getPinnedDispatcher(allowPrivateOrigin = false): Promise<Agent> {
   const undici = await ensureUndici();
+  if (allowPrivateOrigin) {
+    approvedOriginAgent ??= new undici.Agent({
+      allowH2: false,
+      connect: {
+        lookup: ((host: string, opts: { all?: boolean; family?: number }, cb: LookupCallback) =>
+          lookupPinned(host, opts, cb, true)) as never,
+      },
+    });
+    return approvedOriginAgent;
+  }
   if (!pinnedAgent) {
     // Undici 8 enables HTTP/2 negotiation by default. Its H2 stream can emit a
     // late, unhandled `error` after fetch already rejected when the peer closes
@@ -154,6 +174,8 @@ if (!_beforeExitRegistered) {
   process.on('beforeExit', () => {
     pinnedAgent?.destroy();
     pinnedAgent = undefined;
+    approvedOriginAgent?.destroy();
+    approvedOriginAgent = undefined;
   });
 }
 
@@ -173,6 +195,7 @@ export async function guardedFetch(
     'user-agent': 'WrongStack/1.0 (+https://wrongstack.com)',
     accept: 'text/html,application/json;q=0.9,text/plain;q=0.8,*/*;q=0.1',
   },
+  options: { allowedPrivateOrigins?: readonly string[] | undefined } = {},
 ): Promise<Response> {
   let redirectCount = 0;
   let currentUrl = url;
@@ -180,6 +203,7 @@ export async function guardedFetch(
     // Re-validate every hop. A public host can 302 to 169.254.169.254 (cloud metadata),
     // or DNS can rebind between hops; checking only the initial URL is insufficient.
     const parsed = new URL(currentUrl);
+    const approvedOrigin = options.allowedPrivateOrigins?.includes(parsed.origin) === true;
     // Hop 0 is the caller's own URL; calling it a "redirect" sent callers such
     // as read_url_content looking for a redirect that never happened.
     const target = redirectCount === 0 ? '' : 'redirect to ';
@@ -200,13 +224,22 @@ export async function guardedFetch(
         field: 'url',
       });
     }
-    if (parsed.protocol === 'http:' && !ALLOW_PRIVATE) {
+    if (parsed.protocol === 'http:' && !ALLOW_PRIVATE && !approvedOrigin) {
       throw new ToolValidationError({
-        message: `fetch: ${target}http:// blocked (HTTPS required by default)`,
+        message: `fetch: ${target}http:// blocked (HTTPS required by default). For a trusted development origin, run /network allow ${parsed.origin}`,
         field: 'url',
       });
     }
-    await assertNotPrivate(parsed.hostname);
+    if (!approvedOrigin) {
+      await assertNotPrivate(parsed.hostname).catch((error: unknown) => {
+        if (error instanceof Error)
+          throw new ToolValidationError({
+            message: `${error.message}. For a trusted development origin, run /network allow ${parsed.origin}`,
+            field: 'url',
+          });
+        throw error;
+      });
+    }
 
     // The dispatcher pins the connection to the IP guardedLookup validated —
     // no independent re-resolution, so DNS rebinding can't swap in a private
@@ -218,7 +251,7 @@ export async function guardedFetch(
       redirect: 'manual' as const,
       signal,
       headers,
-      dispatcher: await getPinnedDispatcher(),
+      dispatcher: await getPinnedDispatcher(approvedOrigin),
     };
     const res = await (await dispatcherFetch())(currentUrl, init as never as RequestInit);
     if (res.status < 300 || res.status > 399) {

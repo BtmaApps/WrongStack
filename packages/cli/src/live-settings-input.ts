@@ -116,6 +116,14 @@ export interface LiveSettingsInput {
   nextStepsTool?: boolean | undefined;
   /** Persisted as `autonomy.nextSteps` ('required' when true). Read live. */
   nextStepsRequired?: boolean | undefined;
+  /** Persisted as `launch.rememberStartupChoices`. Read at boot, so it applies next launch. */
+  rememberStartupChoices?: boolean | undefined;
+  /**
+   * System prompt for the NEXT session. Written to the profile config's
+   * `systemPrompt.variant` only; the running session keeps the prompt and
+   * tool surface it was built with.
+   */
+  nextSystemPromptVariant?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
   /** Minimum relation strength for SAGE memory injection. Default: 0.85. */
   sageMemoryInjectThreshold?: number | undefined;
   /**

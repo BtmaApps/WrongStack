@@ -3,13 +3,21 @@ name: design-critique
 description: |
   Use this skill to audit an interface that already exists and say precisely why it looks generated, templated, or unfinished — a scored rubric across composition, typography, color, states, accessibility and copy, ending in a ranked fix list.
   Triggers: user says "review the design", "critique this UI", "why does this look bad", "looks generic", "looks AI-generated", "design review", "audit the UI", "make this look professional", "what's wrong with this page", "design feedback".
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [filesystem.read]
 required-tools: [design, skill, read, grep]
 optional-capabilities: [browser.interact, verification.run]
+trigger: "Use this skill to audit an interface that already exists and say precisely why it looks generated, templated, or unfinished \u2014 a scored rubric across composition, typography, color, states, accessibility and copy, ending in a ranked fix list."
+metadata:
+  routing-group: design
 ---
 
 # Design Critique — WrongStack
+
+## Selection card
+- Task: Critique an existing interface with visual evidence. / TR: Mevcut arayüzü görsel kanıtla değerlendir.
+- Start: Identify the target surface, reference, user task and existing tokens.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Overview
 
@@ -93,35 +101,8 @@ to investigate, not a verdict; confirm the visible problem before requesting a
 change. Check whether a logo swap leaves an unrelated but equally plausible
 product, and whether the interface uses the actual domain's content and workflow.
 
-**Classify the surface first.** Two axes are scored differently depending on it,
-and some are not scorable at all:
-
-| Surface | Examples | What changes |
-|---|---|---|
-| **Page** | landing, marketing, docs, article, onboarding | Nothing — every axis applies as written |
-| **App screen** | dashboard, console, table view, settings, editor chrome | *Structure*: "centered monotony" and "hero + three cards" do not apply; judge tile/lane rhythm and whether one element earns the focal point. *Typography*: the 60–75ch measure rule applies to prose blocks only, never to tables, labels or numeric cells |
-| **Kiosk / public terminal** | ticket machine, self-checkout, wayfinding panel, check-in screen | Every axis applies, **plus** the physical checks below — which no other surface needs and which outrank taste when they conflict |
-| **Component in isolation** | one primitive, one card | *Structure* and *Copy* are usually not scorable |
-
-**Kiosk is not a small page.** Its constraints are physical, and a rubric that
-only asks design questions will hand a kiosk a flattering score for the wrong
-reasons. Ask these as well, and treat a failure as blocking rather than craft:
-
-- **Readable at distance.** Can the primary state and the total/answer be read
-  from two metres, in glare? If the answer depends on leaning in, it fails.
-- **One cold finger.** Targets well above the 44px floor (64px+), spaced so a
-  mis-tap cannot select the neighbour. No hover, no drag, no long-press, no
-  dropdown.
-- **Recoverable.** Every destructive or committing step has a visible way back.
-  A stranded user cannot refresh, log in again, or email support.
-- **No session.** Nothing personal persists on screen, and the screen returns to
-  its start state on its own after inactivity.
-- **Standing, not sitting.** Content sits in the upper-middle band; nothing
-  essential lives at the very bottom of a tall panel.
-
-Score the six craft axes as usual, then report the physical checks as a separate
-pass/fail list. A kiosk that scores 4/5 on craft and fails "readable at distance"
-is a failing screen.
+Classify the surface before scoring. For page/app/component differences and
+kiosk-specific physical acceptance checks, read [surface context](references/surface-context.md).
 
 Never score an axis that does not apply to the surface. Write `n/a (app screen)`
 and move on — a fabricated 3/5 drags the overall score, which is the lowest
@@ -166,23 +147,9 @@ Mark each finding:
 
 ### 5 — Report
 
-```
-## Design critique — <surface>
-
-Surface: <page | app screen | component>
-Tokens: <kit id · adherence pct> | <project's own system — no kit pinned> | <none>
-Evidence: <route/artifact, viewport, theme, state; source-only gaps>
-Craft: structure 2/5 · type 3/5 · color unverified · surface 3/5 · states 1/5 · copy 2/5
-Verdict: <one sentence naming the single biggest reason it reads as generated>
-
-### Blocking
-1. `src/app/page.tsx:41` — no focus ring on the primary action …
-### Craft
-2. `src/app/page.tsx:12` — gradient-filled headline; hierarchy outsourced to a filter.
-   Replace with: display size 2.75rem / weight 600, body dropped to muted.
-### Nits
-…
-```
+Lead with the visible problem, then ranked findings with evidence and replacements.
+Include surface/state/viewport, verified axes and unverified checks. For the full
+report shape, read [report example](references/report-example.md).
 
 ## Rules
 
@@ -207,15 +174,20 @@ Verdict: <one sentence naming the single biggest reason it reads as generated>
     ring may be importing a primitive that lacks one — the finding belongs to
     the primitive. Check before you blame the surface you happen to be reading.
 
-## Anti-patterns in critiques
+For precise finding wording and rejected vague comments, read
+[critique examples](references/critique-examples.md).
 
-| Don't | Do |
-|---|---|
-| "Feels a bit generic" | "Three identical centered sections; no spine — evidence: lines 20, 48, 76" |
-| "Add more whitespace" | "Section padding is uniform `p-6`; the kit's density scale gives 12/8/6 by role" |
-| "Improve the colors" | "Secondary badges compete with the primary action in the inspected viewport; reduce their emphasis while preserving status meaning" |
-| Scoring every axis 3/5 | Scores that differ, each with a citation |
-| Mixing observations and intended fixes | Record the observed issue, implement authorized fixes, then report rechecked behavior |
+## Evidence quality and score limits
+
+Use the current rendered state and actual content when scoring. Keep unsupported
+axes unverified and avoid averaging them into a precise overall score.
+Compare proposed fixes against the primary task, existing design decisions and
+the user's accessibility needs. Contrast, focus and input behavior require
+specific checks; a visually quiet screenshot cannot prove them.
+
+## Acceptance checks
+
+- Tie findings to a visible surface/state, source evidence and user consequence.
 
 ## Skills in scope
 

@@ -1,19 +1,49 @@
 # Git Workflow (Compact)
 
-Commit, branch, resolve, and recover without damaging the repository, following its own conventions.
+<!-- source-version: 2.1.1 -->
+
+## Selection card
+- Task: Manage scoped commits, branches and pull requests. / TR: Kapsamlı commit, branch ve pull request yönet.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
+## Overview
+
+Agents damage repositories in a few repeatable ways: committing files that
+belong to someone else, rewriting shared history, destroying uncommitted work,
+and bypassing hooks. This skill is the discipline that prevents those, applied
+on top of the repository's own conventions.
 
 ## Rules
 
-1. Commit, push, or open a PR only when the user asked.
-2. Check status and the staged diff before committing; stage explicit paths, never `git add -A` in a shared worktree.
-3. Match the repository's message and branch conventions from recent history.
-4. Never bypass hooks or signing; fix what the hook reports.
-5. Inspect before destructive commands (reset --hard, clean, branch -D, force push) and prefer the recoverable path.
-6. Don't rewrite shared history; use `--force-with-lease` only on your own branch.
-7. One concern per commit; the message explains why.
+1. Commit, push, or open a pull request only when the user asked for it. Never
+   push on your own initiative.
+2. Look before you write: check status and both the unstaged and staged diff
+   before every commit. Stage explicit paths — never `git add -A` or `git add .`
+   in a worktree that may hold someone else's in-progress changes.
+3. Follow the repository's conventions. Read recent history and any
+   CONTRIBUTING, commitlint, or PR template before choosing a message format or
+   branch name.
+4. Never bypass hooks or signing (`--no-verify`, `-n`, `--no-gpg-sign`). When a
+   hook fails, fix the cause or report it.
+5. Inspect before anything destructive — `reset --hard`, `checkout -- <path>`,
+   `clean -fd`, `branch -D`, force pushes, rebasing pushed commits. Know what
+   would be lost, prefer the non-destructive alternative, and ask when work
+   could be lost.
+6. Don't rewrite shared history. On a branch others use, add commits or revert.
+   On your own pushed branch, `--force-with-lease`, never `--force`.
+7. One concern per commit. The message says why; the diff already shows what.
 
-## Recovery
+## Detailed workflow
 
-- Lost commit: `git reflog` then `git branch rescue <sha>`.
-- Undo a pushed commit: `git revert <sha>`.
-- Broke something: `git bisect run <test command>`.
+Load the full git-flow skill before relying on its specialized modes,
+references or output contracts. Its current SKILL.md is the source of truth;
+this compact body does not expand task scope or authorization.
+
+## Before returning
+
+- [ ] Commit, push, or PR happened only because the user asked
+- [ ] Staged list reviewed; only this task's files are in it
+- [ ] Message matches the repository's convention and explains why
+- [ ] No hook bypass; no force push to shared history
+- [ ] Anything destructive was inspected first and is recoverable

@@ -596,14 +596,41 @@ describe('resetSettingsFieldValue', () => {
     if (!r.ok) expect(r.error).toContain('99');
   });
 
-  it('SETTINGS_DEFAULTS has all 53 keys including Tool Coach and required next steps', () => {
-    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(53);
+  it('SETTINGS_DEFAULTS has all 54 keys including Tool Coach, required next steps and startup reuse', () => {
+    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(55);
     expect(SETTINGS_DEFAULTS.featureToolCoach).toBe(true);
     expect(SETTINGS_DEFAULTS.nextStepsRequired).toBe(true);
+    expect(SETTINGS_DEFAULTS.rememberStartupChoices).toBe(true);
   });
 
   it('field 64 toggles and resets required next steps', () => {
     expect(resetSettingsFieldValue(64).ok).toBe(true);
+  });
+
+  it('field 66 resets the next-session system prompt to Pro and accepts "standard"', () => {
+    expect(resetSettingsFieldValue(66)).toMatchObject({
+      ok: true,
+      patch: { nextSystemPromptVariant: 'pro' },
+      label: 'System prompt',
+      displayValue: 'Pro',
+    });
+    expect(resolveSettingsFieldValue(66, 'standard')).toMatchObject({
+      ok: true,
+      patch: { nextSystemPromptVariant: 'default' },
+      displayValue: 'Standard',
+    });
+    expect(resolveSettingsFieldValue(66, 'scout')).toMatchObject({ ok: true });
+    expect(resolveSettingsFieldValue(66, 'huge').ok).toBe(false);
+  });
+
+  it('field 65 resets "Reuse startup choices" to on', () => {
+    const r = resetSettingsFieldValue(65);
+    expect(r).toMatchObject({
+      ok: true,
+      patch: { rememberStartupChoices: true },
+      label: 'Reuse startup choices',
+      displayValue: 'on',
+    });
   });
 
   it('every field 0-57 can be reset', () => {

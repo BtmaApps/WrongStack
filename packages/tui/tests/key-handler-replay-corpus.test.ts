@@ -225,6 +225,15 @@ describe('Escape ownership', () => {
     expect(fixture.refs.lastEscAtRef.current).toBe(0);
   });
 
+  it('closes the /mailbox panel (hook-owned state) instead of interrupting the run', async () => {
+    const closeMailboxPanel = vi.fn();
+    const fixture = makeHandler(createRunningState(), undefined, { closeMailboxPanel });
+    await fixture.handler('', key({ escape: true }));
+    expect(closeMailboxPanel).toHaveBeenCalledOnce();
+    expect(fixture.runInterruptLadder).not.toHaveBeenCalled();
+    expect(fixture.refs.lastEscAtRef.current).toBe(0);
+  });
+
   it('does not interpret Esc, typing, Esc as a double press', async () => {
     const fixture = makeHandler(createTestState({ buffer: 'keep', cursor: 4 }), {
       buffer: 'keep',

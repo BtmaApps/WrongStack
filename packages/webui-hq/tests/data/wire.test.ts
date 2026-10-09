@@ -130,6 +130,28 @@ describe('armSnapshotRefresh', () => {
     unsubscribe();
   });
 
+  it('serves a reject that lands mid-flight with one follow-up fetch (flag is not left stuck)', async () => {
+    let settleFirst: (value: unknown) => void = () => undefined;
+    fetchJson.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settleFirst = resolve;
+      }),
+    );
+    fetchJson.mockResolvedValue(snapshot());
+    const unsubscribe = armSnapshotRefresh(useHqStore);
+
+    useHqStore.getState().setNeedsSnapshotRefresh(true);
+    useHqStore.getState().setNeedsSnapshotRefresh(true); // refused: first fetch still in flight
+    expect(fetchJson).toHaveBeenCalledTimes(1);
+
+    settleFirst(snapshot());
+    await vi.waitFor(() => expect(fetchJson).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchJson).toHaveBeenCalledTimes(2);
+    expect(useHqStore.getState().needsSnapshotRefresh).toBe(false);
+    unsubscribe();
+  });
+
   it('does not fetch when an ordinary snapshot arrives', async () => {
     // The server stamps a fresh `generatedAt` on every buildSnapshot(); a gate
     // keyed on that would re-arm from its own response and loop forever.

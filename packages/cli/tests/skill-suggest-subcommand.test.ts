@@ -235,26 +235,50 @@ describe('wstack skill-suggest', () => {
     });
 
     it('warns about gold labels the roster no longer has', async () => {
-      stubTypeSafe(widePass(0.05, { 'git-flow': 1 }));
+      const fetch = stubTypeSafe(widePass(0.05, { 'git-flow': 1 }));
       const file = await writeCases(['{"text": "do the thing", "gold": "renamed-away"}']);
       const { deps, output } = fakeDeps();
 
-      await invoke(['--eval', file], deps);
+      expect(await invoke(['--eval', file], deps)).toBe(1);
+      expect(fetch).not.toHaveBeenCalled();
 
       expect(output()).toContain('renamed-away');
       expect(output()).toContain('never be scored correct');
     });
 
     it('reports malformed lines instead of quietly shrinking the denominator', async () => {
-      stubTypeSafe(widePass(0.05, { 'git-flow': 1 }));
+      const fetch = stubTypeSafe(widePass(0.05, { 'git-flow': 1 }));
       const file = await writeCases([
         '{"text": "fine", "gold": "git-flow"}',
         '{ this is not json }',
       ]);
       const { deps, output } = fakeDeps();
 
-      await invoke(['--eval', file], deps);
+      expect(await invoke(['--eval', file], deps)).toBe(1);
+      expect(fetch).not.toHaveBeenCalled();
       expect(output()).toContain('line 2');
+    });
+
+    it('rejects duplicate requests before paying for judgments', async () => {
+      const fetch = stubTypeSafe(widePass(0.05, { 'git-flow': 1 }));
+      const file = await writeCases([
+        '{"text":"same request"}',
+        '{"text":"same request","gold":"git-flow"}',
+      ]);
+      const { deps, output } = fakeDeps();
+      expect(await invoke(['--eval', file], deps)).toBe(1);
+      expect(output()).toContain('duplicate request');
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not turn missing judgments into correctly silent cases or a sweep', async () => {
+      stubTypeSafe({ answers: {}, usage: { input_tokens: 10 } });
+      const file = await writeCases(['{"text":"explain a monad"}']);
+      const { deps, output } = fakeDeps();
+      expect(await invoke(['--eval', file, '--sweep'], deps)).toBe(1);
+      expect(output()).toContain('were not evaluated');
+      expect(output()).not.toContain('correct            ');
+      expect(output()).not.toContain('gate  fits  correct');
     });
 
     it('fails clearly when the file cannot be read', async () => {

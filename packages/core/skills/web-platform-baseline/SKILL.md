@@ -3,13 +3,21 @@ name: web-platform-baseline
 description: |
   Use this skill before asserting that a CSS, HTML or accessibility capability is available, unavailable, or the right tool — it carries dated, refreshable platform facts and refuses to let stale knowledge be stated as current.
   Triggers: user says "container query", "can I use", "browser support", "modern CSS", ":has", "subgrid", "view transition", "popover", "dialog", "anchor positioning", "scroll-driven animation", "baseline", "polyfill", "is it supported", "fallback needed".
-version: 1.0.0
+version: 1.1.1
 required-capabilities: [filesystem.read]
 required-tools: [skill, search, fetch]
 optional-capabilities: [web.research]
+trigger: "Use this skill before asserting that a CSS, HTML or accessibility capability is available, unavailable, or the right tool \u2014 it carries dated, refreshable platform facts and refuses to let stale knowledge be stated as current."
+metadata:
+  routing-group: frontend
 ---
 
 # Web Platform Baseline — WrongStack
+
+## Selection card
+- Task: Choose compatible HTML, CSS and browser APIs. / TR: Uyumlu HTML, CSS ve tarayıcı API seç.
+- Start: Locate the affected route/component and its runtime/lockfile.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Why this exists
 
@@ -117,6 +125,18 @@ The common wins, which the references cover in detail:
 
 Each of these makes the code both shorter and less generated-looking — the
 hand-rolled version of a platform feature is itself a tell.
+
+## Availability versus suitability
+
+Verify the actual browser/device matrix and feature semantics. Baseline describes
+interoperability, not the project's complete user population, accessibility
+behavior or performance. Browser support, framework integration and required
+fallback behavior are separate questions. Cite the specific feature/version
+data; do not refresh an entire reference file's date after checking only one row.
+
+## Acceptance checks
+
+- Verify browser support, semantics, accessible behavior and necessary fallbacks.
 
 ## Skills in scope
 

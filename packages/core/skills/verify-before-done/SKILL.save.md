@@ -1,13 +1,53 @@
 # Verify Before Done (Compact)
 
-"Done" is a claim the user acts on; back it with evidence before reporting.
+<!-- source-version: 1.2.1 -->
+
+## Selection card
+- Task: Prove a claimed fix or completion actually works. / TR: Düzeltme veya tamamlanma iddiasını çalıştırarak kanıtla.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
+## Overview
+
+"Done" is a claim the user acts on: they merge, deploy, or stop looking. This
+skill makes the claim evidence-based — the change does what was asked, nothing
+adjacent broke, and the report says precisely what was checked. It costs
+minutes; a false "done" costs the user's trust and often an incident.
 
 ## Rules
 
-1. Check the change against every part of the request, including docs, config, migrations.
-2. Review your own diff: no unrelated edits, debug leftovers, or secrets.
-3. Run applicable checks cheapest first with the project's own commands: lint, type check, targeted tests, touched suites, build.
-4. Exercise untested behaviour directly (run the command, call the endpoint, open the page).
-5. Read results: zero tests, skips, and cached runs are not passes.
-6. Fix failures you caused; prove pre-existing ones against the base; never weaken checks.
-7. Report what ran, what couldn't be verified, and known gaps; never "should work".
+1. Re-read the request and check the change against every part of it, including
+   the easy-to-forget parts: docs, config, migrations, other platforms.
+2. Review your own diff before reporting — unintended edits, leftover debug
+   code, commented-out code, new TODOs, secrets, files from unrelated work.
+3. Run the checks that apply, cheapest first: format and lint, type check,
+   targeted tests, the suites for touched packages, build. Use the project's own
+   commands from package scripts, Makefile, or CI config.
+4. Exercise the behaviour itself when no test covers it: run the command, call
+   the endpoint, open the page. A passing unrelated suite is not evidence.
+5. Read results instead of trusting exit codes. Zero tests run, skipped suites,
+   disabled checks, and cached results are not passes.
+6. Fix failures you caused. Show pre-existing failures are pre-existing (they
+   fail on the base too) and report them; never weaken a check to get green.
+7. Report faithfully: what ran and its outcome, what couldn't be verified and
+   why, and known gaps. Never write "should work" in place of checking, and
+   never claim a check that didn't run.
+8. Lead with an honest outcome. A change whose related checks failed, timed
+   out, or didn't run is "done, verification incomplete" — never "done". When
+   the task defines outcome labels, use them exactly.
+
+## Detailed workflow
+
+Load the full verify-before-done skill before relying on its specialized modes,
+references or output contracts. Its current SKILL.md is the source of truth;
+this compact body does not expand task scope or authorization.
+
+## Before returning
+
+- [ ] Outcome stated first, and "incomplete" wherever any check failed or didn't run
+- [ ] Every requested outcome maps to evidence
+- [ ] Own diff reviewed; nothing unrelated or left over; others' edits untouched
+- [ ] Temporary artifacts you created removed, or their path reported
+- [ ] Applicable checks run with the project's commands, results read
+- [ ] Behaviour exercised directly where tests don't cover it
+- [ ] Report separates verified, not verified, and pre-existing issues

@@ -57,6 +57,11 @@ export function helpSections(): HelpSection[] {
           keys: entry.helpKeys,
           desc: entry.helpDescription,
         })),
+        // Chord-only monitors (no F-key slot) — routeChordPanels /
+        // key-route-composer; listed here so they are discoverable.
+        { keys: 'Ctrl+B', desc: 'SDD board monitor' },
+        { keys: 'Ctrl+P', desc: 'goal phase monitor (runs /goal when no goal is active)' },
+        { keys: '/mailbox', desc: 'inter-agent mailbox panel' },
         { keys: 'Esc', desc: 'close the open monitor / overlay' },
       ],
     },
@@ -81,7 +86,7 @@ export function helpSections(): HelpSection[] {
         { keys: '/model', desc: 'switch the active model' },
         { keys: '/fleet', desc: 'multi-agent fleet controls' },
         { keys: '/goal', desc: 'set an autonomous goal' },
-        { keys: '/autonomy', desc: 'autonomy mode (eternal / off)' },
+        { keys: '/autonomy', desc: 'autonomy picker (off / suggest / auto / eternal / parallel)' },
         {
           keys: '/settings',
           desc: 'settings picker (also: /settings <chord> <value> · /settings reset <chord>)',
@@ -99,11 +104,11 @@ export function helpSections(): HelpSection[] {
       entries: [
         {
           keys: 'Multi-diff summary',
-          desc: 'min files before per-tool aggregate footer (Ctrl+M in picker, settings → tools, 0 = off, default 5)',
+          desc: 'min files before per-tool aggregate footer (Alt+M in picker, settings → tools, 0 = off, default 5)',
         },
         {
           keys: 'Index on session start',
-          desc: 'run incremental index at startup (Ctrl+I in picker)',
+          desc: 'run incremental index at startup (Alt+I in picker)',
         },
         {
           keys: 'Thinking word',
@@ -123,7 +128,7 @@ export function helpSections(): HelpSection[] {
         },
         {
           keys: 'Statusline',
-          desc: 'detailed / minimum density (Ctrl+D in picker)',
+          desc: 'minimum / detailed / no-color (Ctrl+D in picker)',
         },
         {
           keys: 'Default autonomy mode',
@@ -135,11 +140,11 @@ export function helpSections(): HelpSection[] {
         },
         {
           keys: 'Token-saving mode',
-          desc: 'off / minimal / light / medium / aggressive (Alt+T in picker)',
+          desc: 'auto / off / minimal / light / medium / aggressive (Alt+T in picker)',
         },
         {
           keys: 'Context mode',
-          desc: 'balanced / frugal / deep / archival (Alt+X in picker, settings → context)',
+          desc: 'balanced / frugal / deep (Alt+X in picker, settings → context)',
         },
         {
           keys: 'Confirm before exit',

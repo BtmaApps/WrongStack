@@ -127,6 +127,7 @@ export function useControllerInputWiring({
     handleShadowStop,
     subagentModelsCtl,
     bugHuntLoop,
+    mailbox,
   } = panelHooks;
   const {
     environment,
@@ -261,6 +262,9 @@ export function useControllerInputWiring({
     pasteClipboardText,
     pasteClipboardImage,
     onHistoryCopy,
+    closeMailboxPanel: mailbox.mailboxPanelOpen
+      ? () => mailbox.setMailboxPanelOpen(false)
+      : undefined,
     pasteAccumRef,
     pasteFlushTimerRef,
     commitPaste,

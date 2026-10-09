@@ -75,6 +75,53 @@ beforeEach(() => {
 // ── /skill ────────────────────────────────────────────────────────────────────
 
 describe('buildSkillCommand', () => {
+  it('explains prompt exclusions and both paths of a shadowed skill', async () => {
+    const loader = fakeLoader({
+      list: async () => [
+        { name: 'available', source: 'user', path: '/user/SKILL.md', description: 'd' },
+        {
+          name: 'browser',
+          source: 'bundled',
+          path: '/browser/SKILL.md',
+          description: 'd',
+          requiredTools: ['browser_navigate'],
+        },
+        {
+          name: 'crew',
+          source: 'bundled',
+          path: '/crew/SKILL.md',
+          description: 'd',
+          audience: 'roster',
+        },
+      ],
+      diagnostics: () => ({
+        skipped: [{ entry: 'broken', dir: '/broken', reason: 'missing-description' }],
+        shadowed: [
+          {
+            name: 'available',
+            source: 'bundled',
+            path: '/bundled/SKILL.md',
+            shadowedBy: 'user',
+            shadowedByPath: '/user/SKILL.md',
+          },
+        ],
+      }),
+    });
+    const result = await buildSkillCommand(loader).run('diagnostics', {
+      catalogTools: [{ name: 'read' }],
+      tools: [],
+    } as never);
+    expect(result?.message).toContain('available [user] — eligible');
+    expect(result?.message).toContain('missing tool: browser_navigate');
+    expect(result?.message).toContain('audience: roster');
+    expect(result?.message).toContain('/bundled/SKILL.md → /user/SKILL.md');
+    expect(result?.message).toContain('rejected: missing-description');
+    expect(result?.metadata?.skillDiscovery).toMatchObject({ runtimeChecked: true });
+    const withoutContext = await buildSkillCommand(loader).run('diagnostics');
+    expect(withoutContext?.message).toContain('eligibility is unchecked');
+    expect(withoutContext?.message).not.toContain('available [user] — eligible');
+  });
+
   it('reports missing loader gracefully', async () => {
     const res = await buildSkillCommand(undefined).run('');
     expect(res?.message).toContain('No skill loader');

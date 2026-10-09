@@ -161,6 +161,19 @@ export function isHomeDirectory(cwd: string, userHome: string): boolean {
 }
 
 /**
+ * `launch.rememberStartupChoices` (TUI Settings → "Reuse startup choices"):
+ * when on, the boot gates reuse the saved provider/model, system-prompt
+ * variant and mode/YOLO/autonomy without asking "Continue with these?".
+ * Unset means on; only an explicit `false` brings the questions back.
+ */
+export function shouldReuseStartupChoices(config: Pick<Config, 'launch'>): boolean {
+  return config.launch?.rememberStartupChoices !== false;
+}
+
+/** One dim line telling the user how to get the startup questions back. */
+export const REUSE_STARTUP_CHOICES_HINT = '(ask every launch: /settings reuse-startup-choices off)';
+
+/**
  * Determine whether the first-run YOLO disclosure notice should be printed
  * to stderr. Exported for testing.
  *

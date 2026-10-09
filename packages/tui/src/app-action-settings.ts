@@ -136,6 +136,8 @@ export type AppActionSettings =
       sageMemoryInjectThreshold: number;
       nextStepsTool: boolean;
       nextStepsRequired: boolean;
+      rememberStartupChoices: boolean;
+      nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
       /**
        * WrongProxy / WrongTrace: master switch + configurable URL
        * (default http://localhost:3444). Mirrors `Settings.wrongProxy*`

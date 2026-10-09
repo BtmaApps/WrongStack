@@ -1,19 +1,36 @@
 # Spec-Driven Development — WrongStack (Compact)
 
-Guides the SDD workflow: spec creation, task decomposition, and execution tracking.
+<!-- source-version: 2.2.1 -->
+
+## Selection card
+- Task: Define acceptance criteria and dependent tasks. / TR: Kabul kriteri ve bağımlı görevler tanımla.
+- Start: Identify the requested artifact, repository owner and acceptance criteria.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
+## Overview
+
+For an SDD task, start with a spec proportionate to its scope. The spec is the source of truth — it defines what to build, how to verify it, and what counts as done. SDD uses `/sdd` slash commands to create specs, generate task graphs, and track execution.
 
 ## Rules
 
-1. Always start with a spec — document acceptance criteria before writing code.
-2. Decompose specs into atomic, testable tasks with clear dependencies.
-3. Track progress via structured task graph, not ad-hoc checklists.
-4. Validate implementation against spec acceptance criteria before marking complete.
-5. Update the spec when discovery changes the design.
+1. Use SDD for requested specifications or tasks that benefit from explicit acceptance and dependency tracking.
+2. Spec must have acceptance criteria — without them, you can't know when it's done.
+3. Record real dependencies between tasks, and only real ones — unchained tasks are the ones that can run in parallel.
+4. Spec must be specific: "Users authenticate via OAuth2 with PKCE" not "improve auth".
+5. For urgent work, keep acceptance and recovery explicit without forcing unnecessary ceremony.
+6. When the spec reveals a refactor, apply the refactor-planner skill to sequence it.
 
-## Workflow
+## Detailed workflow
 
-1. **Spec**: Define acceptance criteria with given/when/then.
-2. **Decompose**: Break into tasks, identify dependencies.
-3. **Execute**: Implement one task at a time, validate against AC.
-4. **Review**: Verify the implementation satisfies the spec.
-5. **Close**: Mark task done, update spec if needed.
+Load the full sdd skill before relying on its specialized modes,
+references or output contracts. Its current SKILL.md is the source of truth;
+this compact body does not expand task scope or authorization.
+
+## Before returning
+
+- [ ] Spec has observable acceptance criteria with commands or user-journey checks
+- [ ] Every requirement is specific enough to be tested, not "improve X"
+- [ ] Real dependencies recorded; independent tasks left unchained so they can run in parallel
+- [ ] Spec template matches the work type (feature/bugfix/refactor/infra/integration/cli-command)
+- [ ] Multi-file refactors use refactor-planner sequencing while preserving task scope
+- [ ] Critical path called out; bottlenecks named; parallel groups identified

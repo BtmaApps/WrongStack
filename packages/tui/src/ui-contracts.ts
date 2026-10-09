@@ -110,9 +110,10 @@ export const PANEL_IDS = Object.freeze([
 export type PanelId = (typeof PANEL_IDS)[number];
 
 /** Total field count = legacy 46 + per-panel positions + WrongProxy switch/URL,
- *  showSidebar, the global tool-result view mode, Tool Coach, and the
- *  required-next-steps switch. */
-export const TOTAL_SETTINGS_FIELD_COUNT = PANEL_POSITION_FIELD_START + PANEL_IDS.length + 6;
+ *  showSidebar, the global tool-result view mode, Tool Coach, the
+ *  required-next-steps switch, the reuse-startup-choices switch, and the
+ *  next-session system prompt. */
+export const TOTAL_SETTINGS_FIELD_COUNT = PANEL_POSITION_FIELD_START + PANEL_IDS.length + 8;
 
 /** Map of every tracked panel → its current placement. */
 export type PanelPositionMap = Readonly<Record<PanelId, PanelPosition>>;
@@ -226,6 +227,18 @@ export interface McpPickerItem {
   description?: string | undefined;
   toolCount: number;
   lazy?: boolean | undefined;
+  command?: string | undefined;
+  url?: string | undefined;
+  args?: string[] | undefined;
+}
+
+export interface McpPickerEditor {
+  mode: 'add' | 'edit' | 'remove';
+  field: number;
+  name: string;
+  transport: string;
+  target: string;
+  args: string;
 }
 
 export interface PluginPickerItem {

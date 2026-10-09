@@ -4,6 +4,7 @@ import type { Browser, BrowserContext, CDPSession, Page } from '@playwright/test
 import { ulid } from '@wrongstack/core/utils';
 import { BrowserArtifactStore } from './artifacts.js';
 import { BrowserNetworkGuardProxy } from './network-guard-proxy.js';
+import { launchBrowserRuntime, loadPlaywrightRuntime } from './runtime.js';
 import { assertBrowserUrlAllowed, redactBrowserText, safeBrowserUrl } from './security.js';
 import type {
   BrowserArtifact,
@@ -56,7 +57,7 @@ export class BrowserSessionManager {
 
   constructor(
     options: BrowserManagerOptions,
-    private readonly launcher: BrowserLauncher = defaultLauncher,
+    private readonly launcher: BrowserLauncher = launchBrowserRuntime,
   ) {
     this.artifacts = new BrowserArtifactStore(options.artifactRoot);
     // Default closed: this flag short-circuits the navigation check, the subresource
@@ -141,11 +142,12 @@ export class BrowserSessionManager {
             navigation: false,
           });
           await route.continue();
-        } catch {
+        } catch (error) {
           this.pushNetwork(session, {
             method: route.request().method(),
             url: safeBrowserUrl(route.request().url()),
             failed: true,
+            error: redactBrowserText(error instanceof Error ? error.message : String(error)),
             at: new Date().toISOString(),
           });
           await route.abort('blockedbyclient');
@@ -198,10 +200,10 @@ export class BrowserSessionManager {
         allowedPrivateOrigins: this.allowedPrivateOrigins,
         navigation: true,
       });
-    } catch {
+    } catch (error) {
       await this.runPageOperation(session, signal, () => session.page.goto('about:blank'));
       throw new Error(
-        `browser: navigation was redirected to a blocked address (${safeBrowserUrl(landed)})`,
+        `browser: navigation was redirected to a blocked address (${safeBrowserUrl(landed)}). ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     return this.summary(session);
@@ -601,32 +603,21 @@ export class BrowserSessionManager {
   }
 }
 
-async function defaultLauncher(headless: boolean): Promise<Browser> {
-  try {
-    const { chromium } = await import('@playwright/test');
-    return await chromium.launch({ headless });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `browser: Playwright Chromium is unavailable (${detail}). Run "pnpm exec playwright install chromium".`,
-    );
-  }
-}
-
 export async function browserInstallationDiagnostics(): Promise<{
   available: boolean;
   executablePath?: string | undefined;
   message: string;
 }> {
   try {
-    const { chromium } = await import('@playwright/test');
+    const { chromium } = await loadPlaywrightRuntime(false);
     const executablePath = chromium.executablePath();
     await fs.access(executablePath);
     return { available: true, executablePath, message: 'Playwright Chromium is available.' };
   } catch {
     return {
       available: false,
-      message: 'Playwright Chromium is unavailable. Run "pnpm exec playwright install chromium".',
+      message:
+        'Chromium is missing; browser_open installs it automatically. Use /browser install to prepare it now.',
     };
   }
 }

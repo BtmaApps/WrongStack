@@ -5,6 +5,8 @@ export {
   browserInstallationDiagnostics,
 } from './manager.js';
 export { BrowserNetworkGuardProxy } from './network-guard-proxy.js';
+export { browserPrivateOrigins, setBrowserPrivateOrigin } from './policy.js';
+export { installBrowserRuntime } from './runtime.js';
 export {
   assertBrowserUrlAllowed,
   type BrowserDnsLookup,
@@ -15,6 +17,20 @@ export {
   safeBrowserUrl,
 } from './security.js';
 export {
+  BROWSER_TOOL_NAMES,
+  type BrowserCloseInput,
+  type BrowserDragInput,
+  type BrowserEvaluateInput,
+  type BrowserNavigateInput,
+  type BrowserOpenInput,
+  type BrowserPressInput,
+  type BrowserScreenshotInput,
+  type BrowserSelectInput,
+  type BrowserSelectorInput,
+  type BrowserSnapshotInput,
+  type BrowserTypeInput,
+  type BrowserUploadInput,
+  type BrowserWaitInput,
   browserClickTool,
   browserCloseTool,
   browserDragTool,
@@ -29,28 +45,14 @@ export {
   browserSnapshotTool,
   browserStatusTool,
   browserTools,
-  BROWSER_TOOL_NAMES,
-  enableBrowserSuite,
-  disableBrowserSuite,
-  isBrowserSuiteEnabled,
-  liveBrowser,
   browserTypeTool,
   browserUploadTool,
   browserWaitTool,
+  disableBrowserSuite,
+  enableBrowserSuite,
+  isBrowserSuiteEnabled,
+  liveBrowser,
   shutdownBrowserTools,
-  type BrowserCloseInput,
-  type BrowserDragInput,
-  type BrowserEvaluateInput,
-  type BrowserNavigateInput,
-  type BrowserOpenInput,
-  type BrowserPressInput,
-  type BrowserScreenshotInput,
-  type BrowserSelectInput,
-  type BrowserSelectorInput,
-  type BrowserSnapshotInput,
-  type BrowserTypeInput,
-  type BrowserUploadInput,
-  type BrowserWaitInput,
 } from './tools.js';
 export type {
   BrowserArtifact,

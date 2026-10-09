@@ -18,6 +18,9 @@
 <!--ws:if tool=codebase-skeleton tool=codebase-ast-replace-->
 - **Outline then surgical mutate:** use `codebase-skeleton` to find symbols and line ranges, then `codebase-ast-replace` to update implementations without string-matching errors
 <!--ws:end-->
+<!--ws:if tool=codebase-read-symbol tool=codebase-ast-replace-->
+- **Read symbol before surgical mutate:** prefer `codebase-read-symbol` over broad `read` when targeting a specific function or class, then update via `codebase-ast-replace`
+<!--ws:end-->
 <!--ws:if tool=codebase-impact-analysis tool=codebase-ast-replace-->
 - **Blast radius before refactor:** use `codebase-impact-analysis` to map all call sites and test suites before modifying a signature, then update callers systematically
 <!--ws:end-->

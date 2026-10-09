@@ -32,6 +32,7 @@ export interface SkillSuggestionSetupDeps {
   skillLoader: SkillLoader | undefined;
   logger?: Logger | undefined;
   getSessionId?: (() => string | undefined) | undefined;
+  getAvailableToolNames?: (() => readonly string[]) | undefined;
   /** Injected for tests; defaults to `process.env`. */
   env?: NodeJS.ProcessEnv | undefined;
   onSuggestion?: SkillSuggestionMiddlewareOptions['onSuggestion'] | undefined;
@@ -51,6 +52,7 @@ export function buildSuggesterFromConfig(deps: {
   skillLoader: SkillLoader | undefined;
   env?: NodeJS.ProcessEnv | undefined;
   logger?: Logger | undefined;
+  availableToolNames?: readonly string[] | undefined;
 }): { suggester: SkillSuggester } | { error: string } {
   const suggest = deps.config.skills?.suggest ?? {};
   if (!deps.skillLoader) {
@@ -72,6 +74,7 @@ export function buildSuggesterFromConfig(deps: {
     suggester: createSkillSuggester({
       client: account.client,
       loader: deps.skillLoader,
+      availableToolNames: deps.availableToolNames,
       shortlistSize: suggest.shortlistSize,
       excerptChars: suggest.excerptChars,
       gateThreshold: suggest.gateThreshold,
@@ -114,6 +117,7 @@ export function createSkillSuggestionSetup(
   return createSkillSuggestionMiddleware({
     suggester: built.suggester,
     getSessionId: deps.getSessionId,
+    getAvailableToolNames: deps.getAvailableToolNames,
     deadlineMs: suggest.deadlineMs,
     minRequestChars: suggest.minRequestChars,
     onSuggestion: (info) => {

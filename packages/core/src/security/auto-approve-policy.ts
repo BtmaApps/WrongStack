@@ -93,6 +93,11 @@ export interface AutoApprovePolicyOptions {
 const trustFileByProjectRoot = new Map<string, string>();
 
 export class AutoApprovePermissionPolicy implements PermissionPolicy {
+  /** Subagents inherit explicit YOLO+, never infer it from ordinary auto approval. */
+  yoloModeFor(): { yolo: boolean; yoloPlus: boolean } {
+    const plus = this.yoloPlus();
+    return { yolo: plus, yoloPlus: plus };
+  }
   private readonly allowedCapabilities: readonly string[];
   private readonly trustFile: string | undefined;
   private readonly yoloConfirmKinds: ReadonlySet<DestructiveKind>;

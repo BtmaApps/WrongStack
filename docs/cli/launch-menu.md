@@ -82,6 +82,28 @@ The persisted record only contains overrides — the port is dropped when
 it equals the surface default, so the source of truth stays in
 `SURFACE_DEFAULT_PORTS` and `DEFAULT_PORT`.
 
+## Reuse startup choices
+
+The later startup gates — provider/model, system prompt (Lite / Standard /
+Pro / Scout) and TUI-REPL · YOLO · Autonomy — follow
+`launch.rememberStartupChoices` (TUI **Settings → Startup → Reuse startup
+choices**, or `/settings reuse-startup-choices on|off`). The surface menu
+above is not covered: it keeps no saved choice yet.
+
+- **on** (default; unset = on): once a choice has been saved, boot reuses it
+  without asking `Continue with these?`. First run still asks, a saved
+  provider/model that is no longer usable still opens the picker, and a CLI
+  flag that differs from the saved value still opens the individual prompts.
+- **off**: every launch asks. After the questions, boot offers
+  `Stop asking these startup questions? [y/N]` (default N after 5 s); `y`
+  sets the switch back to on.
+
+The system prompt can also be changed from inside the TUI: **Settings →
+Startup → System prompt** (`/settings system-prompt lite|standard|pro|scout`).
+It writes `systemPrompt.variant` to the profile config and applies from the
+**next session**; the running session keeps the prompt and tool surface it
+was built with.
+
 ## How to bypass the menu
 
 | Use case | Solution |

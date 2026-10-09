@@ -100,6 +100,7 @@ export function useControllerCommands({
     getMcpServers: controllerProps.getMcpServers,
     onMcpToggle: controllerProps.onMcpToggle,
     onMcpRestart: controllerProps.onMcpRestart,
+    onMcpManage: controllerProps.onMcpManage,
     getToolsItems: controllerProps.getToolsItems,
     onToolToggle: controllerProps.onToolToggle,
     setLiveToolCount,

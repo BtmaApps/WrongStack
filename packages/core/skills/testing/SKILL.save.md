@@ -1,19 +1,50 @@
 # Testing (Compact)
 
-Write tests that fail and pass for the right reason, in the project's own runner, layout, and style.
+<!-- source-version: 2.2.1 -->
+
+## Selection card
+- Task: Write meaningful behavior and regression tests. / TR: Anlamlı davranış ve regresyon testleri yaz.
+- Start: Identify the scope and obtain an executable before-proof or review evidence.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
+
+## Overview
+
+Write tests that fail for the right reason and pass for the right reason, in the
+project's own runner, layout, and style. A test earns its place by catching a
+regression someone could plausibly introduce; everything else is maintenance
+cost.
 
 ## Rules
 
-1. Match the project first: runner, test layout, naming, and existing helpers.
-2. See a regression test fail without the fix before trusting it.
-3. Test behaviour through the public surface, not internal structure.
-4. Mock boundaries you don't own (network, clock, randomness, third-party SDKs).
-5. Isolate tests: no order dependence; restore mocks, timers, env in teardown.
-6. Bound waits that can hang; use fake timers for time-based logic.
-7. Report the exact command and pass/fail/skip counts; "no tests matched" is not a pass.
+1. **Pre-flight: Inspect repo runner & live version first.** Inspect `package.json` test scripts,
+   runner configs (`vitest.config.ts`, `playwright.config.ts`, `pytest.ini`, `Cargo.toml`),
+   and existing suites. Query `registry.npmjs.org/<runner>/latest` to confirm active flags
+   (e.g. Vitest 5 options, fake timers) and match the project's runner layout before writing tests.
+2. See it fail first. A regression test must fail without the fix — a test that
+   was never red proves nothing.
+3. Test behaviour through the public surface. Don't assert on private helpers or
+   internal structure a legitimate refactor would change.
+4. Mock the boundaries you don't own (network, clock, randomness, third-party
+   SDKs, slow I/O), not the collaborator next door.
+5. Keep every test isolated: no order dependence, no shared mutable state;
+   restore mocks, timers, and environment in teardown.
+6. Bound every wait that can hang (network, sockets, child processes, polling),
+   and drive time-based logic with fake timers instead of real sleeps.
+7. Report exactly what ran: the command, the files, pass/fail/skip counts. A run
+   that matched no tests is not a pass.
 
-## Key moves
+## Detailed workflow
 
-- Find covering tests with codebase-targeted-test when the index is available.
-- Flaky = bug: fix the cause (timers, leaked state, unawaited promise, shared ports), not with retries.
-- Never loosen assertions, skip tests, or lower thresholds to get green.
+Load the full testing skill before relying on its specialized modes,
+references or output contracts. Its current SKILL.md is the source of truth;
+this compact body does not expand task scope or authorization.
+
+## Before returning
+
+- [ ] Runner, layout, naming, and helpers match the project's existing tests
+- [ ] Every new regression test was seen failing before the fix, on its
+      assertion rather than on setup
+- [ ] The test file is inside the runner's include patterns and actually ran
+- [ ] Assertions target behaviour with specific matchers
+- [ ] Mocks, timers, and environment restored; no order dependence
+- [ ] Commands and results reported exactly, including skips and filters

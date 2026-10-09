@@ -5,10 +5,31 @@ import {
   SETTINGS_FIELD_LABELS,
   SETTINGS_PICKER_JUMP_CHORDS,
   settingsPickerJumpByName,
+  settingsPickerJumpField,
   settingsPickerJumpNames,
 } from '../src/components/settings-picker.js';
 
 describe('settingsPickerJumpByName', () => {
+  it('resolves the labels shown on screen, not a fuzzy neighbour', () => {
+    // "/settings memory off" used to hit field 43 (Show SAGE Memory Inject).
+    expect(settingsPickerJumpByName('memory')).toBe(10);
+    expect(settingsPickerJumpByName('mcp-servers')).toBe(8);
+    expect(settingsPickerJumpByName('Next-step prediction')).toBe(7);
+    expect(settingsPickerJumpByName('preserve-thinking')).toBe(25);
+    expect(settingsPickerJumpByName('auto-compact')).toBe(27);
+    // Canonical slugs keep working.
+    expect(settingsPickerJumpByName('memory-features')).toBe(10);
+    expect(settingsPickerJumpByName('show-sage-memory-inject')).toBe(43);
+  });
+
+  it('never binds a chord a terminal cannot deliver (Ctrl+I = Tab, Ctrl+M = Return)', () => {
+    for (const c of SETTINGS_PICKER_JUMP_CHORDS) {
+      if (c.mod === 'ctrl') expect(['i', 'm', 'j', 'h', '[']).not.toContain(c.letter);
+    }
+    expect(settingsPickerJumpField('alt', 'i')).toBe(20);
+    expect(settingsPickerJumpField('alt', 'm')).toBe(21);
+  });
+
   it('exact-slug match resolves to the right field', () => {
     // Build the full slug for one known row and confirm the round trip.
     for (const c of SETTINGS_PICKER_JUMP_CHORDS) {

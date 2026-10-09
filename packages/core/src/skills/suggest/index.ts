@@ -26,6 +26,12 @@ export {
   unknownGoldLabels,
 } from './evaluate.js';
 export {
+  createLocalSkillSuggestionSetup,
+  type LocalSkillRecommendation,
+  type LocalSkillSuggestionDeps,
+  recommendLocalSkills,
+} from './local.js';
+export {
   createSkillSuggestionMiddleware,
   renderSuggestionBlock,
   type SkillSuggestionMiddlewareOptions,

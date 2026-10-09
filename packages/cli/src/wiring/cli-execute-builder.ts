@@ -384,8 +384,11 @@ export async function runCliExecution(params: {
         getSessionId: () => sessionRef.current?.id ?? session.id,
       }),
       picker: createRuntimePickerDeps({
-        getConfig: () => config,
-        setConfig,
+        getConfig: () => configRef.current,
+        setConfig: (nextConfig) => {
+          setConfig(nextConfig);
+          configRef.current = nextConfig;
+        },
         profileConfigPath,
         mcpRegistry,
         // cli-main attaches toolRegistry onto the Context object dynamically

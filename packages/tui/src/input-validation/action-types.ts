@@ -177,6 +177,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'mcpPickerBusy',
   'mcpPickerClose',
   'mcpPickerHint',
+  'mcpPickerEditor',
   'mcpPickerMove',
   'mcpPickerOpen',
   'mcpPickerSetItems',
@@ -354,4 +355,3 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'worktreeTimelineEvent',
   'worktreeUpsert',
 ] as const);
-

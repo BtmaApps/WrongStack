@@ -24,6 +24,7 @@ import {
   type SkillSuggestionTrace,
   type SuggestionScore,
   scoreSuggestions,
+  skillPromptExclusionReasons,
   sweepThresholds,
   unknownGoldLabels,
 } from '@wrongstack/core/skills';
@@ -73,9 +74,11 @@ export const skillSuggestCmd: SubcommandHandler = async (args, deps) => {
     return 1;
   }
 
+  const availableToolNames = deps.toolRegistry?.list().map((tool) => tool.name);
   const built = buildSuggesterFromConfig({
     config: deps.config,
     skillLoader: deps.skillLoader,
+    availableToolNames,
   });
   if ('error' in built) {
     write(color.red(`skill-suggest: ${built.error}`));
@@ -88,7 +91,10 @@ export const skillSuggestCmd: SubcommandHandler = async (args, deps) => {
       file: path.resolve(deps.cwd, evalFile),
       sweep,
       suggester,
-      rosterNames: (await deps.skillLoader?.list())?.map((s) => s.name) ?? [],
+      rosterNames:
+        (await deps.skillLoader?.list())
+          ?.filter((skill) => skillPromptExclusionReasons(skill, availableToolNames).length === 0)
+          .map((skill) => skill.name) ?? [],
       write,
     });
   }
@@ -227,6 +233,7 @@ async function runEval(input: EvalInput): Promise<number> {
     // every rate below is computed over.
     write(color.yellow(`  line ${error.line}: ${error.reason}`));
   }
+  if (errors.length > 0) return 1;
   if (requests.length === 0) {
     write(color.red('skill-suggest: no usable cases in that file'));
     return 1;
@@ -240,6 +247,11 @@ async function runEval(input: EvalInput): Promise<number> {
     write(color.yellow(`  gold labels not in this roster: ${unknown.join(', ')}`));
     write(color.yellow('  those cases can never be scored correct — fix or remove them'));
     write('');
+    return 1;
+  }
+  if (new Set(requests.map((request) => request.text)).size !== requests.length) {
+    write(color.red('skill-suggest: duplicate request text — remove duplicates before evaluation'));
+    return 1;
   }
 
   const covered = requests.filter((r) => r.gold).length;
@@ -278,10 +290,16 @@ async function runEval(input: EvalInput): Promise<number> {
   }
   write('');
 
-  const failed = traces.filter((row) => row.trace.stop === 'error').length;
+  const failed = traces.filter(
+    (row) => !['suggested', 'gate', 'fits'].includes(row.trace.stop),
+  ).length;
   if (failed > 0) {
-    write(color.yellow(`  ${failed} case(s) failed outright and count as "suggested nothing"`));
-    write('');
+    write(
+      color.yellow(
+        `  ${failed} case(s) were not evaluated — no accuracy score or threshold sweep produced`,
+      ),
+    );
+    return 1;
   }
 
   const byText = new Map(traces.map((row) => [row.request.text, row.trace]));
@@ -386,4 +404,3 @@ function truncate(text: string, max: number): string {
   const flat = text.replace(/\s+/g, ' ').trim();
   return flat.length <= max ? flat : `${flat.slice(0, max - 1)}…`;
 }
-

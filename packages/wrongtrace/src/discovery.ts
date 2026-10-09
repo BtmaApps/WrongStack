@@ -52,7 +52,13 @@ export function defaultSocketPath(
 }
 
 export async function discover(opts: DiscoveryOptions = {}): Promise<DiscoveryResult> {
-  const baseUrl = opts.baseUrl ?? process.env['WRONGTRACE_URL'] ?? 'http://localhost:3444';
+  // Trailing slashes are stripped: callers append `/api/...`, and a `//api/...` path
+  // is answered with a cleaned-path redirect that turns a POST into a GET.
+  const baseUrl = (
+    opts.baseUrl ??
+    process.env['WRONGTRACE_URL'] ??
+    'http://localhost:3444'
+  ).replace(/\/+$/, '');
   const timeoutMs = opts.timeoutMs ?? 1000;
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
 

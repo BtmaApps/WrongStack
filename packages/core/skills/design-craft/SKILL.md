@@ -2,10 +2,13 @@
 name: design-craft
 description: |
   Design or substantially improve user-facing interfaces with a product-specific visual direction, content hierarchy, and rendered critique. Use for new screens, landing pages, redesigns, typography/layout work, or UI that feels generic or AI-generated. For small fixes, preserve the existing design without starting a new brief.
-version: 2.0.0
+version: 2.1.1
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: [design, skill]
 optional-capabilities: [web.research, browser.interact, verification.run]
+trigger: "Design or substantially improve user-facing interfaces with a product-specific visual direction, content hierarchy, and rendered critique. Use for new screens, landing pages, redesigns, typography/layout work, or UI that feels generic or AI-generated. For small fixes, preserve the existing design without starting a new brief."
+metadata:
+  routing-group: design
 ---
 
 # Design Craft — WrongStack
@@ -14,6 +17,11 @@ The outcome is an interface suited to this product, its content and its users.
 Token consistency helps, but cannot establish visual quality. A kit supplies
 reusable decisions, not a finished composition. Removing gradients or changing
 three cards to four does not make a design original.
+
+## Selection card
+- Task: Build or restyle a concrete product interface. / TR: Somut ürün arayüzü kur veya yeniden biçimlendir.
+- Start: Identify the target surface, reference, user task and existing tokens.
+- Finish: apply the acceptance checks below; report observed results and unresolved constraints.
 
 ## Establish the design boundary
 
@@ -136,3 +144,15 @@ checks with viewport/state or artifact evidence, and material unknowns. For
 substantial work, keep this concise record in `.design/review.md` so a later
 turn can distinguish inspected behavior from pending checks. Keep speculative
 improvements separate from defects; a prompt or scanner cannot guarantee originality.
+
+## Content and interaction fidelity
+
+Connect the visual direction to the actual domain workflow and content density.
+Check real long strings, localized copy, formatted numbers and supported reduced
+motion/forced colors. Verify controls from entry to completion, including recovery
+from failed or duplicate submission. Record artifact/route and rendered state
+before claiming fidelity to a reference; source tokens alone do not establish it.
+
+## Acceptance checks
+
+- Inspect actual rendered widths and states; exercise interactions, keyboard focus and recovery.
