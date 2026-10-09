@@ -73,6 +73,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * keep the suite quick. `until` is the emit count the caller expects — the wait
  * ends as soon as it is reached, and otherwise burns the full budget so a test
  * asserting that nothing fires still gives the plugin every chance to.
+ *
+ * A wait with a target gets the full `runGit` timeout: under the coverage run
+ * a cold `git status -uall` blew through 3s and the test saw nothing. Only the
+ * open-ended "nothing fires" wait stays short, since it always burns its budget.
  */
 async function settle(
   handlers: Record<string, (event?: unknown) => Promise<void> | void>,
@@ -80,7 +84,7 @@ async function settle(
   until = Number.POSITIVE_INFINITY,
 ): Promise<void> {
   await handlers['iteration.completed']?.({});
-  const deadline = Date.now() + 3_000;
+  const deadline = Date.now() + (Number.isFinite(until) ? 15_000 : 3_000);
   while (Date.now() < deadline) {
     if (needs(emitCustom).length >= until) return;
     await sleep(25);
@@ -98,7 +102,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
-  await fs.rm(tmp, { recursive: true, force: true });
+  // A scan's `git status` can outlive the test; on Windows its open handle on
+  // the repo makes the removal EBUSY until it exits.
+  await fs.rm(tmp, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 });
 });
 
 describe('specialist trigger plugin', () => {
