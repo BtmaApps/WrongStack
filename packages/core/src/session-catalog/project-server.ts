@@ -36,8 +36,13 @@ interface ClientState {
   socket: net.Socket;
   buffer: string;
   subscribed: boolean;
-  /** Wall clock at accept, so the silent-client sweep can age this socket. */
-  connectedAt: number;
+  /**
+   * Wall clock when `hello` went out, so the silent-client sweep can age this
+   * socket; +Infinity until then. `hello` waits for the metadata write (ACL
+   * restrict spawns icacls on Windows), and a client cannot be "silent" before
+   * it has been greeted — aging from accept reaped live clients under load.
+   */
+  greetedAt: number;
   /** Set on the first inbound byte. A socket that never speaks is reaped. */
   spoken: boolean;
   /**
@@ -121,6 +126,8 @@ const SHUTDOWN_DRAIN_GRACE_MS = 1_000;
  */
 const SESSION_CATALOG_FORCE_DESTROY_MS = 500;
 let stopping = false;
+/** The startup metadata write; `stop()` waits on it before removing the file. */
+let metadataWrite: Promise<void> | undefined;
 /** Drives the AbortSignal passed to in-flight dispatch handlers so stop() can cancel them. */
 const dispatchAbortController = new AbortController();
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -547,7 +554,10 @@ async function stop(_reason: string): Promise<void> {
   store = undefined;
   if (process.platform !== 'win32') await fsp.rm(endpoint, { force: true }).catch(() => undefined);
   // Metadata disappearance is the shutdown completion signal for clients.
-  // Remove it only after SQLite and the listening endpoint have closed.
+  // Remove it only after SQLite and the listening endpoint have closed. A
+  // startup write still in flight would land AFTER the removal and outlive
+  // this daemon, so let it settle first.
+  await metadataWrite?.catch(() => undefined);
   await removeOwnedMetadata();
 }
 
@@ -567,13 +577,15 @@ const server = net.createServer((socket) => {
     socket,
     buffer: '',
     subscribed: false,
-    connectedAt: Date.now(),
+    greetedAt: Number.POSITIVE_INFINITY,
     spoken: false,
     unsettled: new Set<number>(),
   };
   clients.add(state);
   void metadataReady.then(() => {
-    if (!socket.destroyed) send(state, { type: 'hello', ...serverInfo });
+    if (socket.destroyed) return;
+    state.greetedAt = Date.now();
+    send(state, { type: 'hello', ...serverInfo });
   });
   socket.on('data', (chunk: string) => onData(state, chunk));
   socket.on('error', () => {
@@ -595,7 +607,7 @@ const server = net.createServer((socket) => {
 silentClientSweep = setInterval(() => {
   const cutoff = Date.now() - silentClientMs;
   for (const state of clients) {
-    if (!state.spoken && state.connectedAt < cutoff) {
+    if (!state.spoken && state.greetedAt < cutoff) {
       state.socket.destroy(
         new Error('Session Catalog client connected without ever sending a request'),
       );
@@ -628,16 +640,25 @@ void (async () => {
   });
   try {
     store = new SessionCatalogStore(parsed.projectDir);
-    void writeMetadata()
-      .then(() => {
-        metadataGuard.enable();
-        metadataReadyResolve?.();
-      })
-      .catch(() => void stop('metadata write failed'));
   } catch {
     void stop('catalog open failed');
     return;
   }
+  // Idle is armed only once the metadata is on disk — see chronicle's
+  // project-server: arming at bind let the idle stop race the write and leave
+  // live-looking metadata behind for a daemon that was refusing connections.
+  if (stopping) return;
+  metadataWrite = writeMetadata();
+  try {
+    await metadataWrite;
+  } catch {
+    void stop('metadata write failed');
+    return;
+  }
+  // A stop that raced the write awaited it before removing the file.
+  if (stopping) return;
+  metadataGuard.enable();
+  metadataReadyResolve?.();
   scheduleIdleStop();
 })();
 process.once('SIGINT', () => void stop('SIGINT'));

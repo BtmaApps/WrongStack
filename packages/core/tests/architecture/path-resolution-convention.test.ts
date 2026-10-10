@@ -39,6 +39,10 @@ const ALLOWED_FILES: Record<string, string> = {
   // so opts.file arrives canonical and absolute.
   'tools/src/codebase-index/ast-symbol-mutator.ts':
     'Fallback resolve serves direct test callers only; the tool layer pre-validates via safeResolveProjectPath, so agent input never reaches this branch unchecked.',
+  // Same contract as the mutator: the only production caller
+  // (codebase-read-symbol-tool) routes through safeResolveProjectPath first.
+  'tools/src/codebase-index/ast-symbol-reader.ts':
+    'Fallback resolve serves direct test callers only; codebase-read-symbol-tool pre-validates via safeResolveProjectPath, so agent input never reaches this branch unchecked.',
   // detect.ts resolves options.cwd then feeds it to canonicalInside (its own
   // syntactic + realpath containment) before any filesystem use.
   'tools/src/languages/detect.ts':

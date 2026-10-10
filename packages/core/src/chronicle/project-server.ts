@@ -112,6 +112,8 @@ let activeRequests = 0;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 let silentClientSweep: ReturnType<typeof setInterval> | undefined;
 let stopping = false;
+/** The startup metadata write; `stop()` waits on it before removing the file. */
+let metadataWrite: Promise<void> | undefined;
 let watcher: ChronicleFileObserver | undefined;
 let watcherLastError: string | undefined;
 let queryGeneration = 0;
@@ -536,7 +538,10 @@ async function stop(_reason: string): Promise<void> {
   // WS-059: remove metadata BEFORE releasing the endpoint. The bind is the
   // ownership election, so while it is still held no successor daemon can
   // exist — and therefore none can have its metadata deleted by the
-  // read-then-delete pid compare in `removeOwnedMetadata`.
+  // read-then-delete pid compare in `removeOwnedMetadata`. A startup write
+  // still in flight would land AFTER the removal and outlive this daemon, so
+  // let it settle first.
+  await metadataWrite?.catch(() => {});
   await removeOwnedMetadata();
   // Answer in-flight requests BEFORE the transport goes away (unsettled →
   // clean rejection), then end() each socket: end() FLUSHES everything
@@ -596,14 +601,16 @@ const server = net.createServer((socket) => {
   const state: ClientState = {
     socket,
     buffer: '',
-    connectedAt: Date.now(),
+    greetedAt: Number.POSITIVE_INFINITY,
     spoken: false,
     unsettled: new Set<number>(),
   };
   clients.add(state);
   // Greet only once the token is readable on disk — see `metadataWritten`.
   void metadataWritten.then(() => {
-    if (!socket.destroyed) send(state, { type: 'hello', ...serverInfo });
+    if (socket.destroyed) return;
+    state.greetedAt = Date.now();
+    send(state, { type: 'hello', ...serverInfo });
   });
   socket.on('data', (chunk: string) => onData(state, chunk));
   socket.on('error', () => {
@@ -621,7 +628,7 @@ const server = net.createServer((socket) => {
 silentClientSweep = setInterval(() => {
   const cutoff = Date.now() - silentClientMs;
   for (const state of clients) {
-    if (!state.spoken && state.connectedAt < cutoff) {
+    if (!state.spoken && state.greetedAt < cutoff) {
       state.socket.destroy(new Error('Chronicle client connected without ever sending a request'));
     }
   }
@@ -650,10 +657,6 @@ void (async () => {
     process.stderr.write(`chronicle project server error: ${error.message}\n`);
     process.exitCode = 1;
   });
-  void writeMetadata().then(() => {
-    metadataGuard.enable();
-    markMetadataWritten?.();
-  });
   void startChronicleFileObserver({
     projectRoot: parsed.projectRoot,
     journal: watcherSink,
@@ -671,6 +674,25 @@ void (async () => {
     .catch((error) => {
       watcherLastError = error instanceof Error ? error.message : String(error);
     });
+  // Idle is armed only once the metadata is on disk. Arming it at bind let a
+  // short idle window (or a slow atomic write + ACL restrict under load) stop
+  // the daemon mid-write: `removeOwnedMetadata` found nothing, the write then
+  // landed anyway, and clients read live-looking metadata for a daemon that
+  // was already refusing connections.
+  if (stopping) return;
+  metadataWrite = writeMetadata();
+  try {
+    await metadataWrite;
+  } catch {
+    void stop('metadata-write-failed').finally(() => {
+      process.exitCode = 1;
+    });
+    return;
+  }
+  // A stop that raced the write awaited it before removing the file.
+  if (stopping) return;
+  metadataGuard.enable();
+  markMetadataWritten?.();
   scheduleIdleStop();
 })();
 

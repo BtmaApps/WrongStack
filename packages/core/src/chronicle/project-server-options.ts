@@ -48,8 +48,13 @@ export const DEFAULT_MAX_BYTES = 512 * 1024 * 1024;
 export interface ClientState {
   socket: net.Socket;
   buffer: string;
-  /** Wall clock at accept, so the silent-client sweep can age this socket. */
-  connectedAt: number;
+  /**
+   * Wall clock when `hello` went out, so the silent-client sweep can age this
+   * socket; +Infinity until then. `hello` waits for the metadata write (ACL
+   * restrict spawns icacls on Windows), and a client cannot be "silent" before
+   * it has been greeted — aging from accept reaped live clients under load.
+   */
+  greetedAt: number;
   /** Set on the first inbound byte. A socket that never speaks is reaped. */
   spoken: boolean;
   /**

@@ -1,10 +1,10 @@
-import type { Config } from '@wrongstack/core/types';
-import { builtinToolsPack, TIER1_TOOLS } from '@wrongstack/tools';
-import { selectBuiltinToolsForTier } from '@wrongstack/tools/tool-tier';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { Config } from '@wrongstack/core/types';
+import { builtinToolsPack, TIER1_TOOLS } from '@wrongstack/tools';
+import { selectBuiltinToolsForTier } from '@wrongstack/tools/tool-tier';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { getWrongTrace } from '../src/wiring/wrongtrace-gate.js';
 import { buildCliToolSurface } from './cli-tool-surface.js';
@@ -75,6 +75,23 @@ function fakeConfig(tier: string, overrides: Partial<Config> = {}): Config {
   } as Config;
 }
 
+/**
+ * Join the prompt blocks with the `git status` probe value pinned. The probe
+ * spawns git with a timeout, so under full-suite load one build can read
+ * `branch=master, 0 modified, 0 staged` while the next reads `git timeout` /
+ * `git error` — a 24-char swing that has nothing to do with the tier being
+ * measured and made the auto-vs-explicit equality assertion flake.
+ */
+function joinPrompt(blocks: ReadonlyArray<{ text: string }>): string {
+  return blocks
+    .map((b) => b.text)
+    .join('\n')
+    .replace(
+      /^(- Git(?: status)?: )(?:branch=[^|\n]*?|git timeout|git error|git unavailable)(?= \| Date:|$)/gm,
+      '$1<git>',
+    );
+}
+
 const RoughTokenEstimate = (text: string, charsPerToken = 3.5): number =>
   Math.max(1, Math.ceil(text.length / charsPerToken));
 
@@ -101,7 +118,7 @@ async function measureTier(tier: string): Promise<Measurement> {
     },
   });
   const blocks = await buildSystemPrompt();
-  const joined = blocks.map((b) => b.text).join('\n');
+  const joined = joinPrompt(blocks);
   const toolCount = toolRegistry.listForProvider().length;
   return {
     tier,
@@ -249,7 +266,7 @@ describe('token-saving measurement (empirical)', () => {
       const blocks = await buildSystemPrompt();
       return {
         tools: toolRegistry.listForProvider().length,
-        chars: blocks.map((b) => b.text).join('\n').length,
+        chars: joinPrompt(blocks).length,
       };
     };
     // 200k resolves to 'minimal', 16k to 'medium'.
