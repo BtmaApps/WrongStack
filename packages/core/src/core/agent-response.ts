@@ -10,7 +10,6 @@ import {
   isVolatileSystemBlock,
   type TextBlock,
 } from '../types/blocks.js';
-import type { NextStepsMode } from '../types/config/autonomy.js';
 import type { Message } from '../types/messages.js';
 import type { Provider, Request, Response } from '../types/provider.js';
 import { deriveCachePrefixKey } from '../utils/cache-key.js';
@@ -20,22 +19,29 @@ import {
   markAssistantReferencedEvidence,
 } from '../utils/context-evidence.js';
 import { toErrorMessage } from '../utils/error.js';
-import { formatMemoryEvidenceBlock } from '../utils/memory-evidence-fence.js';
+import { LIVE_CONTEXT_MARKER } from '../utils/live-context.js';
 import { hasMeaningfulContent, repairToolUseAdjacency } from '../utils/message-invariants.js';
-import { NEXT_STEPS_COMPLETE_MARKER } from '../utils/next-steps.js';
-import { formatTodoForModel, hasKanbanBoundTodos } from '../utils/todos-format.js';
 import type { AgentInternals } from './agent-internals.js';
 import { refreshAgentToolSurface } from './agent-tool-surface.js';
-import { type Context, type RunOptions, resolveEventSessionId } from './context.js';
+import { type RunOptions, resolveEventSessionId } from './context.js';
 import { bindRequestHistoryVersion, contextHistoryVersion } from './context-history-version.js';
 import { bindRequestPromptBasis, captureRequestPromptBasis } from './context-usage-anchor.js';
 import { type ContinueDirective, parseContinueDirective } from './continue-to-next-iteration.js';
+import { buildLiveNextStepsGateBlock, hasLeaderNextStepsPolicy } from './next-steps-gate.js';
 import { maybeRequireNextSteps, readNextStepsMode } from './next-steps-required.js';
 import { maybeAppendPendingNextSteps } from './next-steps-slot.js';
 import { RequestContextReplay } from './request-context-replay.js';
 import { bindRequestConversation } from './request-conversation-binding.js';
+import {
+  buildMemoryEvidenceBlocks,
+  captureRequestLayout,
+  liveTailEntriesOf,
+} from './request-layout-capture.js';
 import { bindRequestProvider } from './request-provider-binding.js';
+import { requestScopedEntries } from './request-scoped-context.js';
 import { SYSTEM_BLOCK_SOURCE } from './system-prompt-blocks.js';
+
+export { buildLiveNextStepsGateBlock } from './next-steps-gate.js';
 
 interface ProcessResponseResult {
   finalText: string;
@@ -53,142 +59,8 @@ export interface AgentResponseHandler {
   ): Promise<ProcessResponseResult>;
 }
 
-const MAX_TODO_SNAPSHOT_ITEMS = 10;
-const MAX_TODO_SNAPSHOT_CONTENT = 180;
 /** `ctx.meta` latch: the last model reroute surfaced for this context. */
 const MODEL_REROUTE_META_KEY = 'lastModelReroute';
-
-/**
- * Build the leader-only, per-request decision gate for `<nextsteps>`.
- *
- * The base system prompt is intentionally frozen for provider caching, while
- * todos change during tool execution. Keeping this block volatile makes the
- * final-response contract follow the live todo state on every iteration.
- */
-export function buildLiveNextStepsGateBlock(
-  ctx: Pick<Context, 'agentId' | 'todos'> & { tools?: readonly { name: string }[] | undefined },
-  mode: NextStepsMode = 'optional',
-): TextBlock | undefined {
-  if (ctx.agentId !== 'leader') return undefined;
-
-  const todos = Array.isArray(ctx.todos) ? ctx.todos : [];
-  const openTodos = todos.filter(
-    (todo) => todo.status === 'pending' || todo.status === 'in_progress',
-  );
-
-  if (openTodos.length === 0) {
-    // The opt-in `nextsteps` tool is a second way to satisfy branch 2. Mention
-    // it only when it is actually registered, so a request without the tool
-    // never carries a line pointing at something the model cannot call.
-    const toolRoute = ctx.tools?.some((t) => t.name === 'nextsteps')
-      ? [
-          'Calling the `nextsteps` tool with the same items is an equal way to deliver the <nextsteps> block; if you both call it and write the block, the block wins.',
-        ]
-      : [];
-    if (mode === 'required') return buildRequiredNextStepsGateBlock(toolRoute);
-    // Omission is listed first and named the default on purpose: a "MUST pick
-    // a branch" contract with the suggest branch first read as an obligation,
-    // and in auto autonomy every padded suggestion is executed unattended.
-    return {
-      type: 'text',
-      text: [
-        '[nextsteps_gate]',
-        'Authoritative live state for this request: open todos = 0.',
-        '<nextsteps> is optional. On the final response:',
-        "1. Default: if the user's request is complete, omit <nextsteps> and end the turn. This is the normal, correct ending. No special closing sentence is required; the outcome and relevant evidence are enough.",
-        '2. Only if a concrete follow-on action exists that the user would plausibly want next, include a balanced <nextsteps> block containing 1-4 exact prompt messages that can be submitted back to you through the current TUI or WebUI input.',
-        'Every item must ask the agent to perform work. Never put a human-only chore or an instruction addressed to the user inside <nextsteps>; natural-language agent-directed imperatives are valid and need not be shell commands.',
-        "The recipient is the LLM, not the user. Each item is the next user prompt, submitted verbatim: name its target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, and questions for the user.",
-        ...toolRoute,
-        'In auto autonomy a suggestion is executed without the user. Never emit <nextsteps> just to keep the run going; when the work is done, omit it and let the run end.',
-        'Do not invent filler suggestions or defer unfinished authorized work into a suggestion.',
-        '[/nextsteps_gate]',
-      ].join('\n'),
-    };
-  }
-
-  const todoSnapshot = openTodos.slice(0, MAX_TODO_SNAPSHOT_ITEMS).map((todo) => {
-    const normalized = todo.content.replace(/\s+/g, ' ').trim();
-    const content =
-      normalized.length > MAX_TODO_SNAPSHOT_CONTENT
-        ? `${normalized.slice(0, MAX_TODO_SNAPSHOT_CONTENT - 1)}…`
-        : normalized;
-    // Carry the Kanban binding: this snapshot is the model's live view of the
-    // list, and a row stripped of its ids cannot be echoed back intact.
-    return formatTodoForModel({ ...todo, content });
-  });
-  const omitted = openTodos.length - todoSnapshot.length;
-  if (omitted > 0) todoSnapshot.push(`- …and ${omitted} more open todo(s)`);
-  const todoReconciliation = ctx.tools?.some((tool) => tool.name === 'todo')
-    ? [
-        'Before ending the turn, you MUST call the `todo` tool with the complete current list to reconcile actual progress: finished items completed, exactly one actively worked item in_progress, and untouched items pending. A prose claim that work is done does not update the Todo/Kanban state.',
-        ...(hasKanbanBoundTodos(openTodos)
-          ? [
-              'Rows below carry a <kanban board/task> binding. Pass those exact ids back as `kanbanBoardId`/`kanbanTaskId` on every row you resend; a row that arrives without its binding is not applied to its card.',
-            ]
-          : []),
-      ]
-    : [];
-
-  return {
-    type: 'text',
-    text: [
-      '[nextsteps_gate]',
-      `Authoritative live state for this request: open todos = ${openTodos.length}.`,
-      'You MUST omit <nextsteps> entirely while these todos remain open. Continue or finish the tracked work; do not propose unrelated follow-on work.',
-      ...todoReconciliation,
-      'Open todo snapshot:',
-      ...todoSnapshot,
-      '[/nextsteps_gate]',
-    ].join('\n'),
-  };
-}
-
-/**
- * `autonomy.nextSteps: 'required'` with no open todos: every finished turn
- * ends with suggestions or the completion marker. A turn that ends with
- * neither is asked once more by `maybeRequireNextSteps`.
- */
-function buildRequiredNextStepsGateBlock(toolRoute: readonly string[]): TextBlock {
-  return {
-    type: 'text',
-    text: [
-      '[nextsteps_gate]',
-      'Authoritative live state for this request: open todos = 0. Next-steps mode = required (set by the user).',
-      'Every final response MUST end with exactly one of:',
-      "1. A balanced <nextsteps> block containing 1-4 exact prompt messages for the most useful remaining work toward the user's goal. Each item is submitted back to you verbatim through the current TUI or WebUI input, and in auto autonomy it runs without the user.",
-      'Every item must ask the agent to perform work. Never put a human-only chore or an instruction addressed to the user inside <nextsteps>; natural-language agent-directed imperatives are valid and need not be shell commands.',
-      "The recipient is the LLM, not the user. Each item is the next user prompt, submitted verbatim: name its target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, and questions for the user.",
-      ...toolRoute,
-      `2. The marker ${NEXT_STEPS_COMPLETE_MARKER} on its own line, only when the user's goal is fully achieved and verified and no meaningful work remains.`,
-      'Prefer continuing real, verifiable work over declaring completion early, but never invent filler work to avoid the marker: when the goal is achieved, the marker is the correct ending.',
-      '[/nextsteps_gate]',
-    ].join('\n'),
-  };
-}
-
-/**
- * Render memory retrieval as volatile provider evidence, not conversation
- * history. Keeping it after the stable base prompt preserves cache reuse while
- * making the provenance boundary explicit to the model.
- *
- * Every retrieved entry goes in whole. Which memories are relevant is the
- * retrieval layer's decision (its own relevance floor); a fixed character cut
- * here silently dropped memories it had already chosen.
- */
-function buildMemoryEvidenceBlocks(ctx: Pick<Context, 'memoryEvidence'>): TextBlock[] {
-  const blocks: TextBlock[] = [];
-  for (const entry of ctx.memoryEvidence) {
-    const text = entry.text.trim();
-    if (!text) continue;
-    // `formatMemoryEvidenceBlock` owns the fence and neutralizes the delimiter
-    // inside the body — memory text is attacker-influenceable, and a literal
-    // `[/memory_evidence]` in it would otherwise close the block early and
-    // leave the rest as unfenced live-context text.
-    blocks.push({ type: 'text', text: formatMemoryEvidenceBlock(entry.source, text) });
-  }
-  return blocks;
-}
 
 /**
  * Provenance tags whose content legitimately changes between system-prompt
@@ -210,6 +82,8 @@ interface PromptEpochPartition {
   stable: TextBlock[];
   /** Marker-free copies of the epoch-volatile blocks, re-homed to the tail. */
   tail: TextBlock[];
+  /** Provenance of each `tail` block, index-aligned (the copies carry no tag). */
+  tailSources: string[];
   /** Stable interpretation for automatic-cache providers retaining old live snapshots. */
   automatic: TextBlock[];
 }
@@ -228,6 +102,7 @@ function partitionPromptEpoch(prompt: readonly TextBlock[]): PromptEpochPartitio
   if (cached) return cached;
   const stable: TextBlock[] = [];
   const tail: TextBlock[] = [];
+  const tailSources: string[] = [];
   for (const block of prompt) {
     const source = SYSTEM_BLOCK_SOURCE.get(block);
     if (source && EPOCH_VOLATILE_SOURCES.has(source)) {
@@ -235,6 +110,7 @@ function partitionPromptEpoch(prompt: readonly TextBlock[]): PromptEpochPartitio
       // block would become the request's deepest breakpoint and re-create
       // exactly the per-request cache-write churn this split removes.
       tail.push({ type: 'text', text: block.text });
+      tailSources.push(source);
     } else {
       stable.push(block);
     }
@@ -242,7 +118,8 @@ function partitionPromptEpoch(prompt: readonly TextBlock[]): PromptEpochPartitio
   // The interpretation rules never change; send them in the cached prefix
   // once, keeping only the marker and live values at the per-request tail.
   stable.push(LIVE_CONTEXT_INSTRUCTIONS);
-  const partition = { stable, tail, automatic: [...stable, LIVE_CONTEXT_REPLAY_RULE] };
+  const automatic = [...stable, LIVE_CONTEXT_REPLAY_RULE];
+  const partition = { stable, tail, tailSources, automatic };
   promptEpochPartitions.set(prompt, partition);
   return partition;
 }
@@ -253,7 +130,7 @@ function partitionPromptEpoch(prompt: readonly TextBlock[]): PromptEpochPartitio
  */
 const LIVE_CONTEXT_HEADER: TextBlock = {
   type: 'text',
-  text: '[live_context]',
+  text: LIVE_CONTEXT_MARKER,
 };
 const LIVE_CONTEXT_INSTRUCTIONS: TextBlock = {
   type: 'text',
@@ -534,26 +411,36 @@ export function createAgentResponseHandler(
     const epochTail = partition.tail;
     const volatileLedger = buildCompletedWorkLedgerBlock(a.ctx);
     const continuity = buildConversationContinuityBlock(a.ctx);
-    const liveNextStepsGate = buildLiveNextStepsGateBlock(a.ctx, readNextStepsMode(a));
-    const memoryEvidence = buildMemoryEvidenceBlocks(a.ctx);
-    const liveContextTail = [
-      ...epochTail,
-      volatileLedger,
+    const liveNextStepsGate = buildLiveNextStepsGateBlock(
+      a.ctx,
+      readNextStepsMode(a),
+      hasLeaderNextStepsPolicy(a.ctx.systemPrompt),
+    );
+    const liveTailEntries = liveTailEntriesOf({
+      epochTail,
+      epochSources: partition.tailSources,
+      ledger: volatileLedger,
       continuity,
-      liveNextStepsGate,
-      ...memoryEvidence,
-    ].filter((block): block is TextBlock => block !== undefined);
+      nextsteps: liveNextStepsGate,
+      memoryEvidence: buildMemoryEvidenceBlocks(a.ctx),
+    });
+    const liveContextTail = liveTailEntries.map((entry) => entry.block);
+    // Request-scoped blocks (raw mail) ride behind every cache boundary and are
+    // never replayed: sent once, then gone without rewriting anything.
+    const scopedEntries = requestScopedEntries(a.ctx);
+    const scopedBlocks = scopedEntries.map((entry) => entry.block);
+    const explicitTail = [...liveContextTail, ...scopedBlocks];
     const requestHistory = stripDeliveredNextSteps(a.ctx.messages);
     const composed = appendOnlyContext
       ? { messages: requestHistory.slice(), boundary: undefined }
-      : composeRequestMessages(requestHistory, liveContextTail, previousBoundary);
+      : composeRequestMessages(requestHistory, explicitTail, previousBoundary);
     if (composed) previousBoundary = composed.boundary;
     const composedMessages = composed?.messages ?? null;
     // No history to attach to → legacy placement (tail appended to system).
     const system = composedMessages
       ? stableSystem
-      : liveContextTail.length > 0
-        ? [...stableSystem, ...liveContextTail]
+      : explicitTail.length > 0
+        ? [...stableSystem, ...explicitTail]
         : stableSystem;
     const conversationThreadId = a.ctx.activeRunSessionId ?? a.ctx.session?.id;
     const owningSessionId = a.ctx.meta?.['sessionId'];
@@ -619,23 +506,28 @@ export function createAgentResponseHandler(
         messages: appendLiveContextTail(request.messages, volatile),
       };
     }
+    let replayed: Message[] | undefined;
     if (appendOnlyContext) {
       // Include middleware's volatile system blocks in the same replay. They
       // arrive after base request composition, so adapter-only relocation
       // would still remove the previous request's final cache endpoint.
+      replayed = contextReplay.compose(
+        request.messages,
+        [...liveContextTail, ...volatile],
+        provider,
+        JSON.stringify([
+          request.cache?.sessionId ?? conversationSessionId,
+          request.cache?.threadId ?? conversationThreadId,
+          request.model,
+        ]),
+      );
       request = {
         ...request,
         system: request.system?.filter((block) => !isVolatileSystemBlock(block)),
-        messages: contextReplay.compose(
-          request.messages,
-          [...liveContextTail, ...volatile],
-          provider,
-          JSON.stringify([
-            request.cache?.sessionId ?? conversationSessionId,
-            request.cache?.threadId ?? conversationThreadId,
-            request.model,
-          ]),
-        ),
+        // Appended after the replay, never into it: the next request's prefix
+        // still matches up to here and the raw mail is not kept.
+        messages:
+          scopedBlocks.length > 0 ? appendLiveContextTail(replayed, scopedBlocks) : replayed,
       };
     }
     bindRequestConversation(request, {
@@ -645,6 +537,11 @@ export function createAgentResponseHandler(
     bindRequestProvider(request, provider);
     bindRequestHistoryVersion(request, historyVersion);
     bindRequestPromptBasis(request, promptBasis);
+    captureRequestLayout(request, provider, liveTailEntries, volatile, requestHistory, {
+      durableMessages: a.ctx.messages,
+      ephemeral: scopedEntries,
+      replayed,
+    });
     return { request, provider };
   }
 

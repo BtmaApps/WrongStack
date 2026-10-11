@@ -1,9 +1,12 @@
-import { buildLiveNextStepsGateBlock } from '../core/agent-response.js';
+import { buildLiveNextStepsGateBlock, hasLeaderNextStepsPolicy } from '../core/next-steps-gate.js';
 import { SYSTEM_BLOCK_SOURCE, type SystemBlockSource } from '../core/system-prompt-builder.js';
 import type { TextBlock } from '../types/blocks.js';
 import type { AgentContext } from '../types/context.js';
 import type { Tool } from '../types/tool.js';
-import { buildCompletedWorkLedgerBlock } from './context-evidence.js';
+import {
+  buildCompletedWorkLedgerBlock,
+  buildConversationContinuityBlock,
+} from './context-evidence.js';
 import {
   computeMessageTokens,
   estimateTextTokens,
@@ -54,6 +57,10 @@ export interface ContextBreakdown {
     ledger: number;
     /** Next-steps gate, appended to `system` at request time. */
     nextsteps: number;
+    /** Conversation-continuity block of the live-context tail. */
+    continuity?: number | undefined;
+    /** Retrieved memory evidence of the live-context tail. */
+    memoryEvidence?: number | undefined;
     total: number;
   };
   /** system.total + tools.total + history.total + volatile.total. */
@@ -244,13 +251,20 @@ export function getContextBreakdown(ctx: AgentContext): ContextBreakdown {
     warnings.push(msg);
   };
   const ledgerBlock = safeBuild(() => buildCompletedWorkLedgerBlock(ctx), warn);
-  const nextstepsBlock = safeBuild(() => buildLiveNextStepsGateBlock(ctx), warn);
+  const nextstepsBlock = safeBuild(
+    () => buildLiveNextStepsGateBlock(ctx, 'optional', hasLeaderNextStepsPolicy(ctx.systemPrompt)),
+    warn,
+  );
   const ledger = ledgerBlock ? estimateTextTokens(ledgerBlock.text) : 0;
   const nextsteps = nextstepsBlock ? estimateTextTokens(nextstepsBlock.text) : 0;
+  const continuityBlock = safeBuild(() => buildConversationContinuityBlock(ctx), warn);
+  const continuity = continuityBlock ? estimateTextTokens(continuityBlock.text) : 0;
+  let memoryEvidence = 0;
+  for (const entry of ctx.memoryEvidence ?? []) memoryEvidence += estimateTextTokens(entry.text);
 
   const toolsTotal = toolsBuiltin + toolsMcp;
   const historyTotal = histText + histToolInputs + histToolResults + histThinking + histOther;
-  const volatileTotal = ledger + nextsteps;
+  const volatileTotal = ledger + nextsteps + continuity + memoryEvidence;
   const total = systemTotal + toolsTotal + historyTotal + volatileTotal;
   const effectiveMaxContext = resolveEffectiveMaxContext(ctx);
 
@@ -272,7 +286,7 @@ export function getContextBreakdown(ctx: AgentContext): ContextBreakdown {
       other: histOther,
       messageCount: ctx.messages.length,
     },
-    volatile: { ledger, nextsteps, total: volatileTotal },
+    volatile: { ledger, nextsteps, continuity, memoryEvidence, total: volatileTotal },
     total,
     effectiveMaxContext,
     usedPct: effectiveMaxContext > 0 ? total / effectiveMaxContext : 0,

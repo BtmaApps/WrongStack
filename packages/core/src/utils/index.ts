@@ -68,6 +68,11 @@ export {
   takeHeapSample,
 } from './heap-watchdog.js';
 export {
+  getHistoryRetention,
+  type HistoryRetention,
+  type RetentionClass,
+} from './history-retention.js';
+export {
   ALLOWED_IMAGE_MEDIA_TYPES,
   base64DecodedBytes,
   buildUserContentBlocks,
@@ -106,6 +111,7 @@ export {
   readLeaderEffortOverride,
   restoreLeaderEffortOverride,
 } from './leader-effort-override.js';
+export { authoredBlocks, authoredText, LIVE_CONTEXT_MARKER } from './live-context.js';
 export {
   formatMemoryEvidenceBlock,
   MEMORY_EVIDENCE_TAG,
@@ -179,6 +185,26 @@ export {
   compileUserRegex,
   MAX_SUBJECT_LEN,
 } from './regex-guard.js';
+export {
+  type CacheBreaker,
+  type CacheBreakerKind,
+  type CacheLane,
+  type CacheMechanism,
+  type CacheVerdict,
+  commitRequestLayout,
+  DEFAULT_CACHE_TTL_MS,
+  forgetRequestLayout,
+  getRequestResidency,
+  liveBlockSource,
+  type RequestLayoutInput,
+  type RequestLayoutTailEntry,
+  type RequestResidency,
+  type ResidencySegment,
+  type ResidencySegmentKind,
+  recordRequestLayout,
+  recordRequestLayoutUsage,
+} from './request-layout.js';
+export * from './residency-labels.js';
 export * from './safe-json.js';
 export {
   capSageLines,

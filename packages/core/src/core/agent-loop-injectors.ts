@@ -36,10 +36,19 @@ export interface IterationLimitExit {
 export function createAgentLoopInjectors(a: AgentLoopInjectorHost) {
   function foldBlockIntoConversation(block: TextBlock): void {
     if (!a.ctx.state.appendBlockToLastUserMessage(block)) {
-      a.ctx.state.appendMessage({ role: 'user', content: [block], origin: 'runtime' });
+      a.ctx.state.appendMessage({
+        role: 'user',
+        content: [block],
+        origin: 'runtime',
+        authoredLength: 0,
+      });
     }
   }
 
+  /**
+   * `onMailboxBlock` takes delivery of the request-scoped mailbox notes (they
+   * ride the live-context tail); without it they fold into the conversation.
+   */
   function injectPendingBtwNotes(onMailboxBlock?: (block: TextBlock) => void): void {
     const notes = consumeBtwNotes(a.ctx);
     if (notes.length === 0) return;
@@ -50,8 +59,8 @@ export function createAgentLoopInjectors(a: AgentLoopInjectorHost) {
     }
     if (mailboxNotes.length > 0) {
       const block: TextBlock = { type: 'text', text: buildBtwBlock(mailboxNotes) };
-      foldBlockIntoConversation(block);
-      onMailboxBlock?.(block);
+      if (onMailboxBlock) onMailboxBlock(block);
+      else foldBlockIntoConversation(block);
     }
   }
 

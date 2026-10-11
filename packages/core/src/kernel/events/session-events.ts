@@ -89,6 +89,43 @@ export interface SessionEventMap {
     /** True when the positive limit decreased and UI should surface a warning. */
     decreased?: boolean | undefined;
   };
+  /**
+   * One per answered provider request: how the request sat on the wire and
+   * what the prompt cache did with it (`getRequestResidency`). Chronicle keeps
+   * `context.*`, so the WebUI session story can chart the window over time.
+   * Numbers and short kinds only — Chronicle hashes free-text fields.
+   */
+  'context.residency': {
+    sessionId?: string | undefined;
+    agentId?: string | undefined;
+    seq: number;
+    provider: string;
+    model: string;
+    mechanism: 'explicit' | 'automatic' | 'none';
+    /** Effective context window (0 = unknown). */
+    maxContext: number;
+    /** Estimated request tokens and their cache lanes. */
+    total: number;
+    cached: number;
+    written: number;
+    uncached: number;
+    /** Provider-reported prompt usage of the request. */
+    usageInput: number;
+    usageCacheRead: number;
+    usageCacheWrite: number;
+    verdict: 'pending' | 'cold' | 'hit' | 'partial' | 'miss' | 'unsupported';
+    breakers: Array<'route' | 'tools' | 'system' | 'history' | 'idle' | 'provider'>;
+    segments: Array<{
+      kind: string;
+      tokens: number;
+      lane: 'cached' | 'written' | 'uncached';
+      count: number;
+    }>;
+    /** Live-context blocks by provenance. */
+    live: Array<{ source: string; tokens: number }>;
+    /** Durable history messages carried by the request. */
+    historyMessages: number;
+  };
   'context.repaired': {
     sessionId?: string | undefined;
     ctx: AgentContext;

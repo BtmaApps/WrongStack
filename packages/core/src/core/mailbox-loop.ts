@@ -23,8 +23,6 @@
  */
 
 import type { Mailbox, MailboxMessage, MailboxMessageType } from '../coordination/mailbox-types.js';
-import type { TextBlock } from '../types/blocks.js';
-import type { Message } from '../types/messages.js';
 import { toErrorMessage } from '../utils/error.js';
 
 export interface MailboxLoopOptions {
@@ -332,58 +330,6 @@ export function buildMailboxBlock(messages: MailboxMessage[]): { type: 'text'; t
 
   parts.push('[END MAILBOX]');
   return { type: 'text', text: parts.join('\n') };
-}
-
-/**
- * Remove request-scoped mailbox blocks after the provider has evaluated them.
- *
- * Mail is folded into a user message before request construction so normal
- * context-window accounting and provider role alternation still work. Keeping
- * the raw block after that request, however, makes every later request pay for
- * and reconsider the same mail. This helper removes only the exact text blocks
- * injected by the current run. Any assistant response, tool call/result, todo,
- * or other durable consequence remains in the conversation.
- */
-export function removeInjectedMailboxBlocks(
-  messages: readonly Message[],
-  injectedBlocks: readonly TextBlock[],
-): { messages: Message[]; changed: boolean } {
-  if (injectedBlocks.length === 0) {
-    return { messages: messages as Message[], changed: false };
-  }
-
-  const blockRefs = new Set<TextBlock>(injectedBlocks);
-  const blockTexts = new Set(injectedBlocks.map((block) => block.text));
-  const next: Message[] = [];
-  let changed = false;
-
-  for (const message of messages) {
-    if (!Array.isArray(message.content)) {
-      next.push(message);
-      continue;
-    }
-
-    const content = message.content.filter((block) => {
-      if (block.type !== 'text') return true;
-      const isInjected = blockRefs.has(block) || blockTexts.has(block.text);
-      if (isInjected) changed = true;
-      return !isInjected;
-    });
-
-    if (content.length === message.content.length) {
-      next.push(message);
-      continue;
-    }
-    if (content.length === 0) continue;
-
-    // The cached estimate belongs to the pre-removal content.
-    const { _estTokens: _staleEstimate, ...rest } = message;
-    next.push({ ...rest, content });
-  }
-
-  return changed
-    ? { messages: next, changed: true }
-    : { messages: messages as Message[], changed: false };
 }
 
 // ── Integration hooks ────────────────────────────────────────────────────

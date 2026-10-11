@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:49:12.586Z",
+  "generatedAt": "2026-10-11T20:50:19.703Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4921,
-    "testFiles": 4294,
-    "sourceLines": 1092515,
+    "sourceFiles": 4928,
+    "testFiles": 4299,
+    "sourceLines": 1093642,
     "workspaceEdges": 133,
-    "moduleEdges": 16205,
+    "moduleEdges": 16242,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -243,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1113,
-      "testFiles": 960,
+      "sourceFiles": 1120,
+      "testFiles": 965,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 960
+          "testFiles": 965
         }
       ]
     },
@@ -7344,6 +7344,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/agent-mailbox-live-tail.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/agent-malformed-retry.test.ts",
         "projects": [
           "root-node"
@@ -7620,6 +7626,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/next-steps-gate-compact.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/next-steps-required.test.ts",
         "projects": [
           "root-node"
@@ -7681,6 +7693,12 @@
       },
       {
         "file": "packages/core/tests/core/request-context-replay.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/request-layout-recording.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11112,6 +11130,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/utils/history-retention.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/utils/incoming-images.test.ts",
         "projects": [
           "root-node"
@@ -11233,6 +11257,12 @@
       },
       {
         "file": "packages/core/tests/utils/regex-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/utils/request-layout.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27063,11 +27093,6 @@
       "relativeImports": 3
     },
     {
-      "file": "packages/core/src/core/agent-response.ts",
-      "lines": 792,
-      "relativeImports": 23
-    },
-    {
       "file": "packages/core/src/utils/tool-output-renderers.ts",
       "lines": 779,
       "relativeImports": 1
@@ -27238,6 +27263,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/core/src/utils/context-evidence.ts",
+      "lines": 750,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/providers/src/openai-codex.ts",
       "lines": 749,
       "relativeImports": 25
@@ -27288,11 +27318,6 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/core/src/utils/context-evidence.ts",
-      "lines": 742,
-      "relativeImports": 5
-    },
-    {
       "file": "packages/tui/src/components/agents-monitor.tsx",
       "lines": 742,
       "relativeImports": 14
@@ -27306,6 +27331,11 @@
       "file": "packages/tui/src/hooks/use-picker-keys-tools-settings.ts",
       "lines": 740,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
+      "lines": 740,
+      "relativeImports": 0
     }
   ],
   "testOnlyExports": [

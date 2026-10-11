@@ -72,6 +72,10 @@
       "types": "./dist/utils/expect-defined.d.ts",
       "import": "./dist/utils/expect-defined.js"
     },
+    "./utils/residency-labels": {
+      "types": "./dist/utils/residency-labels.d.ts",
+      "import": "./dist/utils/residency-labels.js"
+    },
     "./utils/next-steps": {
       "types": "./dist/utils/next-steps.d.ts",
       "import": "./dist/utils/next-steps.js"

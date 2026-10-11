@@ -331,9 +331,10 @@ describe('openai-codex prompt prefix stability', () => {
     for (const body of bodies) {
       expect(String(body['instructions'])).toContain(rule);
       const input = JSON.stringify(body['input']);
-      expect(input).toContain('[live_context]');
-      expect(input).toContain('[conversation_continuity]');
       expect(input).not.toContain(rule);
+      // The human turns are all still in the history, so nothing is repeated
+      // as continuity evidence — it would only add replayed token weight.
+      expect(input).not.toContain('[conversation_continuity]');
     }
     expect(new Set(bodies.map((body) => body['instructions'])).size).toBe(1);
   });

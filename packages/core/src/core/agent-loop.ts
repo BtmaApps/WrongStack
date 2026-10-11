@@ -11,6 +11,7 @@ import type { Request, Response } from '../types/provider.js';
 import { effectiveInputTokens } from '../types/provider.js';
 import { isRuntimeContextInput, recordUserIntentEvidence } from '../utils/context-evidence.js';
 import { toErrorMessage } from '../utils/error.js';
+import { commitRequestLayout, recordRequestLayoutUsage } from '../utils/request-layout.js';
 import { formatTodosForModel, hasKanbanBoundTodos, hasOpenTodos } from '../utils/todos-format.js';
 import { getCalibrationState, recordActualUsage } from '../utils/token-estimate.js';
 import type { AgentInternals } from './agent-internals.js';
@@ -31,10 +32,12 @@ import { type RunOptions, resolveEventSessionId } from './context.js';
 import { contextHistoryVersion, requestHistoryVersion } from './context-history-version.js';
 import { recordContextUsageAnchor, requestPromptStillCurrent } from './context-usage-anchor.js';
 import { consumeAutonomousContinue } from './continue-to-next-iteration.js';
-import { injectPendingMailboxMessages, removeInjectedMailboxBlocks } from './mailbox-loop.js';
+import { injectPendingMailboxMessages } from './mailbox-loop.js';
 import { clearPendingNextSteps } from './next-steps-slot.js';
 import { runProviderWithRetry } from './provider-runner.js';
+import { publishRequestResidency } from './request-layout-capture.js';
 import { providerBoundToRequest } from './request-provider-binding.js';
+import { addRequestScopedBlock, clearRequestScopedBlocks } from './request-scoped-context.js';
 import { isSealedAgent } from './sealed-agent.js';
 import { createToolCoach, isToolCoachEnabled } from './tool-coach.js';
 import { createTurnToolGuidance } from './turn-tool-guidance.js';
@@ -111,6 +114,7 @@ export function createAgentLoopHandler(
       role: 'user',
       content: inputPayload.content,
       origin: inputOrigin,
+      authoredLength: typeof inputPayload.content === 'string' ? 1 : inputPayload.content.length,
     });
     // Every host's user turn passes here, so this one call arms the gate for
     // the CLI, TUI and WebUI alike. Runtime-injected context never arms it.
@@ -135,19 +139,11 @@ export function createAgentLoopHandler(
     let recoveryRetries = 0;
     /** Auto-grants spent on this run; capped by `a.maxAutoExtensions`. */
     let limitExtensionsUsed = 0;
-    const pendingMailboxBlocks: TextBlock[] = [];
-
-    function clearEvaluatedMailboxBlocks(): void {
-      if (pendingMailboxBlocks.length === 0) return;
-      const cleaned = removeInjectedMailboxBlocks(a.ctx.messages, pendingMailboxBlocks);
-      pendingMailboxBlocks.length = 0;
-      if (cleaned.changed) {
-        a.ctx.state.replaceMessages(cleaned.messages);
-        a.ctx.lastRealInputTokens = undefined;
-        delete a.ctx.meta['realAnchorMsgCount'];
-        loopContext.refreshContextRequestTokenStash({ force: true });
-      }
-    }
+    // Raw mail is request-scoped: it rides the live-context tail of the next
+    // request and is dropped once a response evaluated it — the conversation
+    // itself is never rewritten (see request-scoped-context.ts).
+    const clearEvaluatedMailboxBlocks = () => clearRequestScopedBlocks(a.ctx);
+    const deliverMailboxBlock = (block: TextBlock) => addRequestScopedBlock(a.ctx, block);
 
     const loopDetector = new AgentLoopDetector(a);
     const toolCoach = createToolCoach(
@@ -284,7 +280,7 @@ export function createAgentLoopHandler(
         });
 
         if (!sealed) {
-          injectPendingBtwNotes((block) => pendingMailboxBlocks.push(block));
+          injectPendingBtwNotes(deliverMailboxBlock);
           injectPendingSessionNotes();
           await injectPendingDeliveries();
           injectQueueAwareness();
@@ -310,10 +306,7 @@ export function createAgentLoopHandler(
 
         const mailboxResult = await injectPendingMailboxMessages(
           checkMailbox,
-          (block) => {
-            foldBlockIntoConversation(block);
-            pendingMailboxBlocks.push(block);
-          },
+          deliverMailboxBlock,
           {
             events: {
               emit: (type, payload) => {
@@ -350,7 +343,10 @@ export function createAgentLoopHandler(
         try {
           const historyVersion = requestHistoryVersion(req) ?? contextHistoryVersion(a.ctx);
           stepRequestId = randomUUID();
+          commitRequestLayout(a.ctx, req);
           res = await customRunner(a.ctx, req);
+          recordRequestLayoutUsage(req, res.usage);
+          publishRequestResidency(a.events, a.ctx, resolveEventSessionId(a.ctx));
           // Usage belongs to the route captured for this request, even if the
           // user switched providers while its response was in flight.
           const key = `${requestProvider.id}/${req.model}`;

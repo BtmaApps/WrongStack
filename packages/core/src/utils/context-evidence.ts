@@ -78,22 +78,30 @@ export function isRuntimeContextInput(text: string): boolean {
 }
 
 /**
- * Keep the real conversation thread visible near the stable system prompt.
+ * Re-surface recent human instructions that are no longer in the history.
  *
- * Tool-heavy runs can place hundreds of protocol messages after one human
- * instruction. Re-sending a small, replaceable tail of actual user inputs is
- * cheaper and more reliable than retaining every intervening tool exchange.
- * It is volatile provider evidence, so it never grows the durable chat log or
- * invalidates the cached base prompt.
+ * Compaction can digest the turns that carried the user's instructions; this
+ * volatile evidence puts the lost ones back near the end of the request. A
+ * turn still present verbatim in the history is NOT repeated: the model
+ * already reads it, and every repeat costs uncached tokens per request on
+ * breakpoint wires and a permanent replayed copy on automatic-prefix wires
+ * (the block changed on every user turn, so each turn appended up to six
+ * instructions again). With nothing lost the block is omitted.
  */
 export function buildConversationContinuityBlock(
   ctx: Pick<AgentContext, 'contextEvidence' | 'messages'>,
 ): TextBlock | undefined {
   const recorded = ctx.contextEvidence.recentUserTurns ?? [];
-  const sourceTurns =
-    recorded.length > 0
-      ? recorded.map((turn) => turn.text)
-      : ctx.messages.filter(isHumanUserMessage).map(messageText);
+  if (recorded.length === 0) return undefined;
+  const inHistory = (ctx.messages ?? [])
+    .filter(isHumanUserMessage)
+    .map((message) => normalizeWhitespace(messageText(message)));
+  const sourceTurns = recorded
+    .map((turn) => turn.text)
+    .filter((text) => {
+      const normalized = normalizeWhitespace(text);
+      return normalized.length > 0 && !inHistory.some((present) => present.includes(normalized));
+    });
   if (sourceTurns.length === 0) return undefined;
 
   const selected: string[] = [];

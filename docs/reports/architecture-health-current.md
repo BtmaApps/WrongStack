@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-11T20:49:12.586Z
+**Generated:** 2026-10-11T20:50:19.703Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4921 |
-| Production source lines | 1092515 |
-| Test files | 4294 |
+| Production source files | 4928 |
+| Production source lines | 1093642 |
+| Test files | 4299 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 16205 |
+| Relative module edges | 16242 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 619 | 614 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1113 | 960 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1120 | 965 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 46 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 105 | 82 | @wrongstack/persistence, @wrongstack/primitives |
@@ -84,7 +84,6 @@ None.
 | Lines | File |
 |---:|---|
 | 796 | `packages/webui/src/components/ProviderTestView.tsx` |
-| 792 | `packages/core/src/core/agent-response.ts` |
 | 779 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 774 | `packages/core/src/session-catalog/session-registry.ts` |
 | 768 | `packages/webui-server/src/server/session-handlers.ts` |
@@ -119,6 +118,7 @@ None.
 | 752 | `packages/tui/src/components/context-panel-sections.tsx` |
 | 751 | `packages/tui/src/components/sidebar-content.tsx` |
 | 751 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
+| 750 | `packages/core/src/utils/context-evidence.ts` |
 | 749 | `packages/providers/src/openai-codex.ts` |
 | 748 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 748 | `packages/core/src/types/config/skills-fleet-brain.ts` |
@@ -129,10 +129,10 @@ None.
 | 746 | `packages/core/src/core/fallback-profile-manager.ts` |
 | 746 | `packages/webui-server/src/server/backend-services.ts` |
 | 744 | `packages/tools/src/grep.ts` |
-| 742 | `packages/core/src/utils/context-evidence.ts` |
 | 742 | `packages/tui/src/components/agents-monitor.tsx` |
 | 741 | `packages/webui/src/components/TaskActivityTimeline.tsx` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
+| 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 
 ## Exports only tests reference
 

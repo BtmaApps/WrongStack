@@ -5,7 +5,6 @@ import {
   type MailboxMessage,
   type MailboxQuery,
 } from '../../src/coordination/mailbox-types.js';
-import { removeInjectedMailboxBlocks } from '../../src/core/mailbox-loop.js';
 import {
   buildMailboxBlock,
   buildMailboxBtwAwarenessBlock,
@@ -339,53 +338,6 @@ describe('buildMailboxBlock', () => {
     const lastNoteIdx = text.indexOf('last-note');
     expect(firstNoteIdx).toBeLessThan(btwIdx);
     expect(btwIdx).toBeLessThan(lastNoteIdx);
-  });
-});
-
-describe('removeInjectedMailboxBlocks', () => {
-  it('removes only the injected raw mail while preserving the original user content', () => {
-    const mailboxBlock = buildMailboxBlock([msg({ type: 'result', body: 'raw report' })]);
-    const messages = [
-      {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'original request' }, mailboxBlock],
-        _estTokens: 999,
-      },
-    ];
-
-    const cleaned = removeInjectedMailboxBlocks(messages, [mailboxBlock]);
-
-    expect(cleaned.changed).toBe(true);
-    expect(cleaned.messages).toEqual([
-      { role: 'user', content: [{ type: 'text', text: 'original request' }] },
-    ]);
-  });
-
-  it('drops a synthetic user message that contained only raw mail', () => {
-    const mailboxBlock = buildMailboxBlock([msg({ type: 'note', body: 'read and move on' })]);
-    const messages = [
-      { role: 'assistant' as const, content: [{ type: 'text' as const, text: 'working' }] },
-      { role: 'user' as const, content: [mailboxBlock] },
-    ];
-
-    const cleaned = removeInjectedMailboxBlocks(messages, [mailboxBlock]);
-
-    expect(cleaned.messages).toEqual([messages[0]]);
-  });
-
-  it('leaves assistant conclusions and tool history untouched', () => {
-    const mailboxBlock = buildMailboxBlock([msg({ type: 'steer', body: 'use plan B' })]);
-    const messages = [
-      { role: 'user' as const, content: [mailboxBlock] },
-      {
-        role: 'assistant' as const,
-        content: [{ type: 'text' as const, text: 'Durable conclusion: use plan B.' }],
-      },
-    ];
-
-    const cleaned = removeInjectedMailboxBlocks(messages, [mailboxBlock]);
-
-    expect(cleaned.messages).toEqual([messages[1]]);
   });
 });
 

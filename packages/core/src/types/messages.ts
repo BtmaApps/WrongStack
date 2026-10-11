@@ -14,6 +14,15 @@ export interface Message {
    */
   origin?: 'user_input' | 'runtime' | undefined;
   /**
+   * How many leading content blocks the message's author wrote. The host later
+   * folds its own notes (tool coach, loop steers, session notes) into the same
+   * user message as extra blocks; code that classifies "what the user asked"
+   * reads only this prefix (`authoredText`). Like `origin`, adapters ignore it.
+   * Undefined on messages from older journals — readers fall back to the
+   * live-context marker.
+   */
+  authoredLength?: number | undefined;
+  /**
    * ISO-8601 timestamp from the originating SessionEvent.
    * Populated by SessionStore.replay() during session load/resume
    * so consumers (WebUI, TUI, exports) can reconstruct the original

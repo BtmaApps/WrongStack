@@ -2,8 +2,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import {
-  buildConversationContinuityBlock,
   buildContextEvidenceDigest,
+  buildConversationContinuityBlock,
   createContextEvidenceState,
   markAssistantReferencedEvidence,
   recordToolOutputEvidence,
@@ -107,7 +107,7 @@ describe('buildConversationContinuityBlock', () => {
     expect(block?.text.length).toBeLessThan(4_000);
   });
 
-  it('rebuilds continuity from journaled user_input provenance on resume', () => {
+  it('does not repeat instructions that are still verbatim in the history', () => {
     const ctx = {
       contextEvidence: createContextEvidenceState(),
       messages: [
@@ -120,11 +120,26 @@ describe('buildConversationContinuityBlock', () => {
         { role: 'user', content: '[loop-detector] retry', origin: 'runtime' },
       ],
     } as never as Context;
+    recordUserIntentEvidence(ctx, 'real instruction');
+
+    // The model already reads the turn; repeating it is pure token weight.
+    expect(buildConversationContinuityBlock(ctx)).toBeUndefined();
+  });
+
+  it('re-surfaces only the instructions compaction removed from the history', () => {
+    const ctx = {
+      contextEvidence: createContextEvidenceState(),
+      messages: [
+        { role: 'system', content: '[context_state] digest of earlier work' },
+        { role: 'user', content: 'Now add the regression test', origin: 'user_input' },
+      ],
+    } as never as Context;
+    recordUserIntentEvidence(ctx, 'Fix the cancellation bug in the runner');
+    recordUserIntentEvidence(ctx, 'Now add the regression test');
 
     const block = buildConversationContinuityBlock(ctx);
-    expect(block?.text).toContain('real instruction');
-    expect(block?.text).not.toContain('large output');
-    expect(block?.text).not.toContain('loop-detector');
+    expect(block?.text).toContain('Fix the cancellation bug in the runner');
+    expect(block?.text).not.toContain('Now add the regression test');
   });
 });
 

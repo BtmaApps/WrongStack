@@ -1,6 +1,7 @@
 import type { TextBlock } from '../types/blocks.js';
 import type { Message } from '../types/messages.js';
 import type { Provider } from '../types/provider.js';
+import { LIVE_CONTEXT_MARKER } from '../utils/live-context.js';
 
 /** Request-only live state must retain its original position in an automatic-cache prefix. */
 export class RequestContextReplay {
@@ -39,7 +40,7 @@ export class RequestContextReplay {
         message: {
           role: 'user',
           content: [
-            { type: 'text', text: '[live_context]' },
+            { type: 'text', text: LIVE_CONTEXT_MARKER },
             ...context.map((block): TextBlock => ({ type: 'text', text: block.text })),
           ],
         },
