@@ -438,7 +438,10 @@ jobs:
       # runtime on a plain `bun install`. Resolving that tension is an owner
       # decision, recorded in security-report/.
       - name: Install opt-in vector backend
-        run: bun run --filter @wrongstack/vector-memory add @huggingface/transformers@4.2.0 --lockfile=false --ignore-scripts
+        # `bun add --filter`, not `bun run --filter … add`: the latter looks for a
+        # package script named `add`. --no-save keeps package.json and bun.lock
+        # untouched, as pnpm's --lockfile=false did.
+        run: bun add --filter @wrongstack/vector-memory @huggingface/transformers@4.2.0 --no-save --ignore-scripts
 
       - name: Test (vector-memory ONNX integration)
         run: bun x --bun vitest run packages/vector-memory/tests/integration.test.ts
