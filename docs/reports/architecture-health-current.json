@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:44:20.006Z",
+  "generatedAt": "2026-10-11T20:44:52.713Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4921,
     "testFiles": 4282,
-    "sourceLines": 1092103,
+    "sourceLines": 1092138,
     "workspaceEdges": 133,
     "moduleEdges": 16204,
     "nonCommandSlashImports": 0,
@@ -26996,6 +26996,11 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/core/src/utils/tool-output-renderers.ts",
+      "lines": 779,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/core/src/session-catalog/session-registry.ts",
       "lines": 774,
       "relativeImports": 4
@@ -27204,11 +27209,6 @@
       "file": "packages/webui-server/src/server/backend-services.ts",
       "lines": 746,
       "relativeImports": 16
-    },
-    {
-      "file": "packages/core/src/utils/tool-output-renderers.ts",
-      "lines": 744,
-      "relativeImports": 1
     },
     {
       "file": "packages/tools/src/grep.ts",

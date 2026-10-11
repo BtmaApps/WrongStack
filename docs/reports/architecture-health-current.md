@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-11T20:44:20.006Z
+**Generated:** 2026-10-11T20:44:52.713Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4921 |
-| Production source lines | 1092103 |
+| Production source lines | 1092138 |
 | Test files | 4282 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 16204 |
@@ -85,6 +85,7 @@ None.
 |---:|---|
 | 796 | `packages/webui/src/components/ProviderTestView.tsx` |
 | 792 | `packages/core/src/core/agent-response.ts` |
+| 779 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 774 | `packages/core/src/session-catalog/session-registry.ts` |
 | 768 | `packages/webui-server/src/server/session-handlers.ts` |
 | 767 | `packages/plugin-sdk/src/runtime/index.ts` |
@@ -127,7 +128,6 @@ None.
 | 747 | `packages/webui/src/components/SddWizard.tsx` |
 | 746 | `packages/core/src/core/fallback-profile-manager.ts` |
 | 746 | `packages/webui-server/src/server/backend-services.ts` |
-| 744 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 744 | `packages/tools/src/grep.ts` |
 | 742 | `packages/core/src/utils/context-evidence.ts` |
 | 742 | `packages/tui/src/components/agents-monitor.tsx` |

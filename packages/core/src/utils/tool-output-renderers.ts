@@ -471,20 +471,55 @@ export function parseGrepContextLine(
   return undefined;
 }
 
+/**
+ * Distinct FILES in a unified diff.
+ *
+ * A file boundary is a `diff --git a/<path> b/<path>` line, or a `--- `/`+++ `
+ * pair OUTSIDE a hunk body. Two rules the previous per-line regex broke:
+ *
+ * 1. `git diff` names each file twice — `diff --git a/x b/x` yields `x`, and the
+ *    `--- a/x` line yields `a/x`. Both were collected, so every ordinary
+ *    single-file diff counted as 2 and every N-file diff as 2N.
+ * 2. A hunk-body line that merely starts with `--- ` (a removed SQL/Lua
+ *    `-- comment`) is content, not a header.
+ *
+ * Mirrors the pair-based rule `countUnifiedDiffLines` already applies, so the
+ * two counters in the same header cannot disagree about where a file starts.
+ * `a/`/`b/` prefixes are stripped so both spellings of one file collapse.
+ */
+function countDiffFiles(lines: string[]): number {
+  // Both spellings of one file must collapse to the same key: `diff --git`
+  // yields the bare path (`src/only.ts`) while the `--- ` header yields the
+  // prefixed one (`a/src/only.ts`). Strip the prefix rather than emit two keys.
+  const key = (path: string): string => path.replace(/^[ab]\//, '');
+  const files = new Set<string>();
+  let inHunk = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? '';
+    if (line.startsWith('@@')) {
+      inHunk = true;
+      continue;
+    }
+    if (line.startsWith('diff --git ')) {
+      inHunk = false;
+      const match = /^diff --git\s+a\/(.+?)\s+b\/(.+)$/.exec(line);
+      if (match) files.add(key(match[1]!));
+      continue;
+    }
+    // Only a pair OUTSIDE a hunk is a header; inside one it is content.
+    if (!inHunk && line.startsWith('--- ') && lines[i + 1]?.startsWith('+++ ')) {
+      files.add(key(line.slice(4)));
+      i += 1;
+    }
+  }
+  return files.size;
+}
+
 export function compactDiff(diff: string): string {
   const lines = diff.split(/\r?\n/);
   if (lines.length <= DIFF_INLINE_LINE_LIMIT) return diff;
 
-  const fileCount = Math.max(
-    new Set(
-      lines
-        .map(
-          (line) => /^diff --git\s+a\/(.+?)\s+b\//.exec(line)?.[1] ?? /^---\s+(.+)/.exec(line)?.[1],
-        )
-        .filter(Boolean),
-    ).size,
-    0,
-  );
+  const fileCount = countDiffFiles(lines);
   const hunks = lines.filter((line) => line.startsWith('@@')).length;
   const { added, removed } = countUnifiedDiffLines(diff);
 
