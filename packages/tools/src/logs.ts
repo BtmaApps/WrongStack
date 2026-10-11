@@ -141,7 +141,7 @@ export const logsTool: Tool<LogsInput, LogsOutput> = {
           context: { reason: 'not-a-regular-file' },
         });
       }
-      return await fileLogs(resolved, lines, filterRe);
+      return await fileLogs(resolved, lines, filterRe, signal);
     }
 
     throw new ToolValidationError({
@@ -284,7 +284,13 @@ const DOCKER_LOGS_TIMEOUT_MS = 3_000;
 // callers that need more should narrow with `filter`.
 const MAX_TAIL_LINES = 100_000;
 
-async function fileLogs(path: string, lines: number, filterRe: RegExp | null): Promise<LogsOutput> {
+async function fileLogs(
+  path: string,
+  lines: number,
+  filterRe: RegExp | null,
+  signal: AbortSignal,
+): Promise<LogsOutput> {
+  signal.throwIfAborted();
   const { createInterface } = await import('node:readline');
   const { createReadStream } = await import('node:fs');
   const entries: LogEntry[] = [];
@@ -299,16 +305,33 @@ async function fileLogs(path: string, lines: number, filterRe: RegExp | null): P
   let writeIdx = 0;
   let totalLines = 0;
 
+  signal.throwIfAborted();
+  const input = createReadStream(path);
   const rl = createInterface({
-    input: createReadStream(path),
+    input,
     crlfDelay: Number.POSITIVE_INFINITY,
   });
-
-  for await (const line of rl) {
-    if (filterRe && !filterRe.test(line)) continue;
-    window[writeIdx] = line;
-    writeIdx = (writeIdx + 1) % effLines;
-    totalLines++;
+  // Closing the owned reader wakes an idle iterator; the signal checks retain
+  // the caller's abort reason instead of reporting a successful partial tail.
+  const abortRead = () => {
+    input.destroy();
+    rl.close();
+  };
+  signal.addEventListener('abort', abortRead, { once: true });
+  try {
+    signal.throwIfAborted();
+    for await (const line of rl) {
+      signal.throwIfAborted();
+      if (filterRe && !filterRe.test(line)) continue;
+      window[writeIdx] = line;
+      writeIdx = (writeIdx + 1) % effLines;
+      totalLines++;
+    }
+    signal.throwIfAborted();
+  } finally {
+    signal.removeEventListener('abort', abortRead);
+    rl.close();
+    input.destroy();
   }
 
   // Read the window back in arrival order.
@@ -365,7 +388,7 @@ function parseLine(line: string): LogEntry | null {
   }
 
   // A level word elsewhere labels the line; the message stays whole.
-  const levelMatch = /(ERROR|WARN|INFO|DEBUG|TRACE)\s+/i.exec(rest);
+  const levelMatch = /\b(ERROR|WARN|INFO|DEBUG|TRACE)\s+/i.exec(rest);
   return {
     timestamp,
     level: levelMatch?.[1]?.toLowerCase() ?? 'info',

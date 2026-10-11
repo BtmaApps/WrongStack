@@ -95,6 +95,15 @@ export function jmespathSearch(data: unknown, query: string): unknown {
       // A `null` element (valid JSON) has no fields: JMESPath reads it as null
       // instead of failing the whole query.
       const itemVal = (item as Record<string, unknown> | null | undefined)?.[field];
+      // Ordering is number-only in JMESPath; coercion would select nulls,
+      // booleans, numeric strings and arrays as if they were numeric fields.
+      if (
+        op !== '==' &&
+        op !== '!=' &&
+        (typeof itemVal !== 'number' || typeof cmpVal !== 'number')
+      ) {
+        return false;
+      }
       switch (op) {
         case '==':
           return itemVal === cmpVal;

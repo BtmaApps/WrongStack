@@ -133,7 +133,7 @@ export function validateJsonSchema(
       }
     }
 
-    if (typeof value === 'string' && s['format'] === 'uri' && value) {
+    if (typeof value === 'string' && s['format'] === 'uri') {
       try {
         new URL(value);
       } catch {
@@ -163,18 +163,17 @@ export function validateJsonSchema(
 
     if (
       typeof value === 'string' &&
-      s['minLength'] !== undefined &&
-      value.length < (s['minLength'] as number)
+      (s['minLength'] !== undefined || s['maxLength'] !== undefined)
     ) {
-      errors.push(`${path}: string too short (min ${s['minLength']})`);
-    }
-
-    if (
-      typeof value === 'string' &&
-      s['maxLength'] !== undefined &&
-      value.length > (s['maxLength'] as number)
-    ) {
-      errors.push(`${path}: string too long (max ${s['maxLength']})`);
+      // JSON Schema counts Unicode code points, not UTF-16 code units or graphemes.
+      let length = 0;
+      for (const _character of value) length++;
+      if (s['minLength'] !== undefined && length < (s['minLength'] as number)) {
+        errors.push(`${path}: string too short (min ${s['minLength']})`);
+      }
+      if (s['maxLength'] !== undefined && length > (s['maxLength'] as number)) {
+        errors.push(`${path}: string too long (max ${s['maxLength']})`);
+      }
     }
 
     if (

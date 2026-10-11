@@ -129,7 +129,6 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
       });
 
     const results: { rel: string; mtime: number }[] = [];
-    const visitedRealDirs = new Set<string>();
     let truncated = false;
     // `results` is kept as a binary MIN-heap keyed by mtime. Once it holds
     // `limit` entries, each further match compares against the root in O(1)
@@ -193,7 +192,11 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
         // skip stat error
       }
     };
-    const walk = async (dir: string, relPrefix: string): Promise<void> => {
+    const walk = async (
+      dir: string,
+      relPrefix: string,
+      ancestors: ReadonlySet<string> = new Set(),
+    ): Promise<void> => {
       // Abort check per directory: a huge tree walk must stop promptly on
       // Ctrl+C instead of running to completion with a discarded result.
       if (signal?.aborted) {
@@ -201,8 +204,11 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
         return;
       }
       const realDir = await fs.realpath(dir).catch(() => dir);
-      if (visitedRealDirs.has(realDir)) return;
-      visitedRealDirs.add(realDir);
+      // Only an ancestor denotes a cycle. Sibling aliases are distinct paths
+      // that may match different globs, even when they share a real directory.
+      if (ancestors.has(realDir)) return;
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(realDir);
       let entries: import('node:fs').Dirent[];
       try {
         entries = await fs.readdir(dir, { withFileTypes: true });
@@ -252,7 +258,9 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
         if (signal?.aborted) return;
       }
       await mapWithConcurrency(matchedFiles, WALK_CONCURRENCY, pushResult);
-      await mapWithConcurrency(subdirs, WALK_CONCURRENCY, ({ full, rel }) => walk(full, rel));
+      await mapWithConcurrency(subdirs, WALK_CONCURRENCY, ({ full, rel }) =>
+        walk(full, rel, nextAncestors),
+      );
     };
     await walk(base, '');
     results.sort((a, b) => b.mtime - a.mtime);

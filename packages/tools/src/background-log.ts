@@ -12,6 +12,7 @@
  * running.
  */
 
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
@@ -66,8 +67,9 @@ export function openBackgroundLog(
     fs.mkdirSync(dir, { recursive: true });
     prune(dir, new Set(inUse));
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const file = path.join(dir, `${stamp}-${toolName}-${process.pid}.log`);
-    return { path: file, fd: fs.openSync(file, 'a', 0o600) };
+    // A timestamp/PID pair can repeat between launches in the same clock tick.
+    const file = path.join(dir, `${stamp}-${randomUUID()}-${toolName}-${process.pid}.log`);
+    return { path: file, fd: fs.openSync(file, 'ax', 0o600) };
   } catch {
     return undefined;
   }

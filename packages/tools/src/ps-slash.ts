@@ -75,7 +75,7 @@ export interface GlobalProcessStatus {
  * Options for filtering instance listings.
  */
 export interface InstanceListOptions {
-  /** Include stale instances in the list */
+  /** Include stale instances; defaults to true for explicit stale/all status filters. */
   includeStale?: boolean;
   /** Filter by hostname pattern (supports glob patterns) */
   hostname?: string;
@@ -143,7 +143,7 @@ function matchGlob(pattern: string, value: string): boolean {
  * Get list of all known instances (from persistent registry).
  */
 export async function listInstances(options: InstanceListOptions = {}): Promise<InstanceInfo[]> {
-  const { includeStale = false, hostname, status } = options;
+  const { status, includeStale = status === 'stale' || status === 'all', hostname } = options;
   const timestamp = now();
 
   const registry = getPersistentProcessRegistry();

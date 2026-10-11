@@ -71,7 +71,13 @@ export function resolveSessionShell(
   if (override) return override;
 
   // 2-4. Probe for PowerShell, prefer the modern edition.
-  const hasBinary = deps.hasBinary ?? ((bin: string) => resolveWin32Command(bin) !== bin);
+  const hasBinary =
+    deps.hasBinary ??
+    ((bin: string) => {
+      // Extension-qualified commands bypass PATH lookup in the resolver.
+      const command = bin.replace(/\.exe$/i, '');
+      return resolveWin32Command(command) !== command;
+    });
   if (hasBinary('pwsh.exe')) return 'pwsh';
   if (hasBinary('powershell.exe')) return 'powershell';
   return 'cmd';
