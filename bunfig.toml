@@ -2,6 +2,10 @@
 bun = true
 
 [install]
+# Never resolve a missing package from Bun's global cache. With "auto", an
+# import from a directory with no node_modules above it silently loads the
+# cached copy, so "is this package installed?" probes answer yes everywhere.
+auto = "disable"
 linker = "isolated"
 minimumReleaseAge = 86400
 minimumReleaseAgeExcludes = ["@agentclientprotocol/sdk@1.4.0","@datadog/pprof@5.18.1","dompurify@3.4.16"]
