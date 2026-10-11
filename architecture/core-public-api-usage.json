@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 773,
+      "files": 774,
       "typeOnly": 69,
-      "runtimeOrMixed": 732
+      "runtimeOrMixed": 733
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -26087,6 +26087,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/tests/todo-persistence-regression.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/tool-search.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

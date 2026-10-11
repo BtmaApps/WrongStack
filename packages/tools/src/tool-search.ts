@@ -47,7 +47,7 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     '- `query` searches names and descriptions.\n' +
     '- You can filter by `tags` (category, capability, or name terms), `permission`, or `mutating`.\n' +
     '- The catalog searched here is the full registry, not just the tools listed in this request.\n' +
-    '- The first 5 results include `inputSchema`; for another result, search its exact name to get the schema.\n' +
+    '- The first 3 results include `inputSchema`; for another result, search its exact name to get the schema.\n' +
     '- Once you find the right tool name, invoke it with `tool_use`.\n' +
     'Call this before concluding a capability is unavailable.',
   permission: 'auto',
@@ -188,6 +188,7 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
       _available: totalAvailable,
     };
   },
+  serialize: (output, input) => renderToolSearch(output, input ?? {}),
 };
 
 /** Words that carry no signal about which tool is meant. */
@@ -224,7 +225,46 @@ const QUERY_STOP_WORDS = new Set([
 ]);
 
 /** Results that carry their full input schema and usage hint. */
-const SCHEMA_RESULTS = 5;
+const SCHEMA_RESULTS = 3;
+
+/** A usage hint beside a full schema; the exact-name search shows all of it. */
+const USAGE_HINT_CHARS = 500;
+
+/**
+ * What the model reads. The generic object renderer clipped every result line
+ * at 1,000 chars, so the "exact input schema" arrived cut mid-JSON and the
+ * model guessed tool_use arguments. Leading schemas are sent whole here; usage
+ * hints are bounded (the exact-name search returns one in full); the rest is
+ * one line per tool.
+ */
+function renderToolSearch(output: ToolSearchOutput, input: ToolSearchInput): string {
+  const exactName =
+    output.tools.length > 0 && input.query?.trim().toLowerCase() === output.tools[0]?.name;
+  const header = [
+    `tool_search: ${output.total} match(es)`,
+    input.query ? ` for "${input.query}"` : '',
+    output.truncated ? `, showing ${output.tools.length}` : '',
+    typeof output._available === 'number' ? ` (${output._available} tools in catalog)` : '',
+  ].join('');
+  const lines = output.tools.map((tool, index) => {
+    const flags = `${tool.permission}${tool.mutating ? ', mutating' : ''}`;
+    if (tool.schemaOmitted) return `${index + 1}. ${tool.name} [${flags}] — ${tool.description}`;
+    // The exact-name lookup is the "give me everything" call: usage verbatim.
+    // Beside a ranked list, one bounded line.
+    const usage = exactName ? tool.usageHint?.trim() : tool.usageHint?.replace(/\s+/g, ' ').trim();
+    const shownUsage =
+      usage && !exactName && usage.length > USAGE_HINT_CHARS
+        ? `${usage.slice(0, USAGE_HINT_CHARS - 1)}…`
+        : usage;
+    return [
+      `${index + 1}. ${tool.name} [${flags}${tool.category ? `, ${tool.category}` : ''}]`,
+      `   ${tool.description}`,
+      `   inputSchema: ${JSON.stringify(tool.inputSchema ?? {})}`,
+      ...(shownUsage ? [exactName ? `   usage:\n${shownUsage}` : `   usage: ${shownUsage}`] : []),
+    ].join('\n');
+  });
+  return [header, ...lines, ...(output.hint ? [`hint: ${output.hint}`] : [])].join('\n');
+}
 
 /** First sentence of a description, capped — enough to tell tools apart. */
 function shortDescription(description: string): string {

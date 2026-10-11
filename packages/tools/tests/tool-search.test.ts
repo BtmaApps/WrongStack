@@ -1,3 +1,4 @@
+import { createToolOutputSerializer } from '@wrongstack/core/utils';
 import { describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
 import { toolSearchTool } from '../src/tool-search.js';
@@ -346,11 +347,11 @@ describe('toolSearchTool vocabulary', () => {
     const result = await executeToolSearch({ query: 'file' }, makeCtx(tools));
 
     expect(result.tools).toHaveLength(8);
-    for (const tool of result.tools.slice(0, 5)) {
+    for (const tool of result.tools.slice(0, 3)) {
       expect(tool.inputSchema).toBeDefined();
       expect(tool.schemaOmitted).toBeUndefined();
     }
-    for (const tool of result.tools.slice(5)) {
+    for (const tool of result.tools.slice(3)) {
       expect(tool.inputSchema).toBeUndefined();
       expect(tool.usageHint).toBeUndefined();
       expect(tool.schemaOmitted).toBe(true);
@@ -361,5 +362,50 @@ describe('toolSearchTool vocabulary', () => {
     const exact = await executeToolSearch({ query: 'file_tool_7' }, makeCtx(tools));
     expect(exact.tools[0]).toMatchObject({ name: 'file_tool_7', usageHint: 'hint 7' });
     expect(exact.tools[0]?.inputSchema).toBeDefined();
+  });
+});
+
+describe('toolSearchTool model-facing output', () => {
+  // The leading results promise "the exact input schema needed by tool_use".
+  // Through the generic object renderer every result line was clipped at 1,000
+  // chars, so any real schema arrived cut mid-JSON and the model guessed the
+  // arguments (live: two tool_use validation errors, ~1.7k chars each).
+  const bigSchema = {
+    type: 'object',
+    properties: Object.fromEntries(
+      Array.from({ length: 12 }, (_, i) => [
+        `option_${i}`,
+        { type: 'string', description: `Option ${i} controls one specific aspect of the run.` },
+      ]),
+    ),
+    required: ['option_0'],
+  };
+  const tools = Array.from({ length: 8 }, (_, i) => ({
+    name: `file_tool_${i}`,
+    description: `Handles a file. Second sentence ${i}.`,
+    usageHint: `USAGE ${i}: ${'detail '.repeat(150)}`,
+    permission: 'auto',
+    mutating: false,
+    inputSchema: bigSchema,
+  }));
+
+  it('carries the leading schemas whole and keeps the rest to one line', async () => {
+    const result = await executeToolSearch({ query: 'file' }, makeCtx(tools));
+    const text = createToolOutputSerializer().serialize(result, {
+      toolName: 'tool_search',
+      tool: toolSearchTool as never,
+    });
+    const schemaJson = JSON.stringify(bigSchema);
+    expect(text.split(schemaJson).length - 1).toBe(3);
+    expect(text).not.toContain('chars)');
+    // Trailing results: name and first sentence, no schema, no usage text.
+    expect(text).toContain('file_tool_7');
+    expect(text).not.toContain('USAGE 7');
+    // Usage hints are bounded; the exact-name search returns one in full.
+    expect(text.length).toBeLessThan(9_000);
+    const exact = await executeToolSearch({ query: 'file_tool_7' }, makeCtx(tools));
+    const exactText = toolSearchTool.serialize!(exact, { query: 'file_tool_7' });
+    expect(exactText).toContain(tools[7]!.usageHint.trim());
+    expect(exactText).toContain(schemaJson);
   });
 });
