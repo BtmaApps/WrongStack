@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:50:43.960Z",
+  "generatedAt": "2026-10-11T20:51:22.181Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4928,
-    "testFiles": 4300,
-    "sourceLines": 1093617,
+    "sourceFiles": 4929,
+    "testFiles": 4301,
+    "sourceLines": 1093765,
     "workspaceEdges": 133,
-    "moduleEdges": 16244,
+    "moduleEdges": 16245,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 619,
-      "testFiles": 614,
+      "sourceFiles": 620,
+      "testFiles": 615,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 614
+          "testFiles": 615
         }
       ]
     },
@@ -4465,6 +4465,12 @@
       },
       {
         "file": "packages/cli/tests/slash-compact.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-context-residency.test.ts",
         "projects": [
           "root-node"
         ]

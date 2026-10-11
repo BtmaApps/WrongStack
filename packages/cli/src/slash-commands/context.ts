@@ -16,6 +16,7 @@ import {
 import { activeProfileConfigPath } from '../profile-config-path.js';
 import { persistConfigSetting } from '../settings-menu.js';
 import type { SlashCommandContext } from './command-context.js';
+import { renderResidencyReport, renderResidencySummary } from './context-residency.js';
 import { countToolResults, countToolUses, countTurnPairs, estimateTokens } from './helpers.js';
 
 export function buildContextCommand(opts: SlashCommandContext): SlashCommand {
@@ -40,6 +41,8 @@ export function buildContextCommand(opts: SlashCommandContext): SlashCommand {
       '  /context mode      List context-window modes.',
       '  /context mode <id> Switch context-window mode for this session.',
       '  /context cache     Prompt-cache report: hit ratio, $ saved, per-provider, and each provider’s cache mechanism.',
+      '  /context residency What the last request held, which part was cached / written / never cached,',
+      '                     what broke the cache, and what the next compaction keeps.',
     ].join('\n'),
     async run(args, ctx) {
       if (!ctx) {
@@ -176,6 +179,12 @@ export function buildContextCommand(opts: SlashCommandContext): SlashCommand {
         return { message: msg };
       }
 
+      if (trimmed === 'residency') {
+        const msg = renderResidencyReport(ctx);
+        opts.renderer.write(`${msg}\n`);
+        return { message: msg };
+      }
+
       if (trimmed === 'cache') {
         const msg = renderCacheReport(ctx);
         opts.renderer.write(`${msg}\n`);
@@ -218,19 +227,19 @@ export function buildContextCommand(opts: SlashCommandContext): SlashCommand {
       const cache = ctx.tokenCounter?.cacheStats();
       if (cache && (cache.readTokens > 0 || cache.writeTokens > 0)) {
         const saved = cache.savedUsd > 0 ? `  ·  saved ~$${cache.savedUsd.toFixed(2)}` : '';
-        lines.push(
-          `  cache-hit: ${(cache.hitRatio * 100).toFixed(1)}%  ·  read ${cache.readTokens.toLocaleString('en-US')}, write ${cache.writeTokens.toLocaleString('en-US')}${saved} (session cumulative)`,
-        );
-        // The cumulative figure above permanently carries the first turn, which
-        // can never hit — so it reads low early and climbs for a long time.
-        // The last turn answers the question people are actually asking.
-        const perProvider = readProviderCacheLedger(ctx);
-        const active = perProvider.find((p) => p.lastHitRatio !== undefined);
-        if (active?.lastHitRatio !== undefined) {
+        // The last request answers "is the cache working right now". The
+        // cumulative figure permanently carries the cold first request, so it
+        // reads low early and lags every change — it is the secondary line.
+        if (cache.last) {
+          const prompt = cache.last.input + cache.last.cacheRead + cache.last.cacheWrite;
           lines.push(
-            `  last turn: ${(active.lastHitRatio * 100).toFixed(1)}%  ·  ${(active.lastPromptTokens ?? 0).toLocaleString('en-US')} prompt tokens`,
+            `  cache-hit: ${(cache.last.hitRatio * 100).toFixed(1)}% last request  ·  ${prompt.toLocaleString('en-US')} prompt tokens`,
           );
         }
+        lines.push(
+          `  ${cache.last ? 'session:  ' : 'cache-hit:'} ${(cache.hitRatio * 100).toFixed(1)}%  ·  read ${cache.readTokens.toLocaleString('en-US')}, write ${cache.writeTokens.toLocaleString('en-US')}${saved} (session cumulative)`,
+        );
+        const perProvider = readProviderCacheLedger(ctx);
         // Per-provider split — only meaningful once the session spanned >1 provider.
         if (perProvider.length > 1) {
           for (const p of perProvider) {
@@ -242,6 +251,7 @@ export function buildContextCommand(opts: SlashCommandContext): SlashCommand {
           }
         }
       }
+      lines.push(...renderResidencySummary(ctx));
       if (detailed) {
         lines.push(
           `  thresholds:  warn ${pct(policy?.thresholds.warn ?? 0.6)}, soft ${pct(policy?.thresholds.soft ?? 0.75)}, hard ${pct(policy?.thresholds.hard ?? 0.9)}`,
@@ -308,8 +318,11 @@ function renderCacheReport(ctx: Context): string {
   const lines: string[] = [`${color.bold('Prompt Cache Report')}`];
   const cache = ctx.tokenCounter?.cacheStats();
   if (cache && (cache.readTokens > 0 || cache.writeTokens > 0)) {
+    if (cache.last) {
+      lines.push(`  last req:  ${(cache.last.hitRatio * 100).toFixed(1)}% hit`);
+    }
     lines.push(
-      `  hit ratio: ${(cache.hitRatio * 100).toFixed(1)}%`,
+      `  session:   ${(cache.hitRatio * 100).toFixed(1)}% hit ${color.dim('(cumulative)')}`,
       `  tokens:    read ${K(cache.readTokens)}, write ${K(cache.writeTokens)}`,
     );
     if (cache.savedUsd > 0) {
@@ -350,6 +363,10 @@ function renderCacheReport(ctx: Context): string {
         `    ${p.provider.padEnd(16)} ${(p.hitRatio * 100).toFixed(1)}% hit${last}  ·  read ${K(p.cacheRead)}, write ${K(p.cacheWrite)}`,
       );
     }
+  }
+  const residency = renderResidencySummary(ctx);
+  if (residency.length > 0) {
+    lines.push(...residency, `  ${color.dim('/context residency for the per-segment map')}`);
   }
   return lines.join('\n');
 }
@@ -442,7 +459,7 @@ function renderBreakdown(bd: ContextBreakdown, detailed: boolean): string[] {
     `  system:   ${K(bd.system.total)} (${PCT(bd.system.total, limit)})`,
     `  tools:    ${K(bd.tools.total)} (${PCT(bd.tools.total, limit)})  ·  builtin ${K(bd.tools.builtin)}, mcp ${K(bd.tools.mcp)} across ${bd.tools.count} defs`,
     `  history:  ${K(bd.history.total)} (${PCT(bd.history.total, limit)})  ·  text ${K(bd.history.text)}, tool inputs ${K(bd.history.toolInputs ?? 0)}, results ${K(bd.history.toolResults)}, thinking ${K(bd.history.thinking ?? 0)}`,
-    `  volatile: ${K(bd.volatile.total)} (${PCT(bd.volatile.total, limit)})  ·  ledger ${K(bd.volatile.ledger)}, nextsteps ${K(bd.volatile.nextsteps)}`,
+    `  volatile: ${K(bd.volatile.total)} (${PCT(bd.volatile.total, limit)})  ·  ledger ${K(bd.volatile.ledger)}, nextsteps ${K(bd.volatile.nextsteps)}, continuity ${K(bd.volatile.continuity ?? 0)}, memory ${K(bd.volatile.memoryEvidence ?? 0)}`,
     `  ${color.bold('total')}:    ${K(bd.total)}${overBy > 0 ? '' : ` (${PCT(bd.total, limit)})`}`,
   ];
   if (overBy > 0) {

@@ -71,6 +71,26 @@ describe('buildContextCommand', () => {
     expect(res?.message).toContain('saved ~$0.34');
   });
 
+  it('leads with the last request and keeps the cumulative as the session line', async () => {
+    const renderer = fakeRenderer();
+    const cmd = buildContextCommand({ renderer } as never);
+    const cacheStats = () => ({
+      readTokens: 19_700,
+      writeTokens: 10_000,
+      hitRatio: 0.4925,
+      savedUsd: 0,
+      last: { input: 200, cacheRead: 9_800, cacheWrite: 0, hitRatio: 0.98 },
+    });
+    const ctx = fakeCtx({ tokenCounter: { cacheStats } });
+    const summary = (await cmd.run('', ctx))?.message ?? '';
+    expect(summary).toContain('cache-hit: 98.0% last request');
+    expect(summary).toContain('10,000 prompt tokens');
+    expect(summary).toContain('session:   49.3%');
+    const report = (await cmd.run('cache', ctx))?.message ?? '';
+    expect(report).toContain('last req:  98.0% hit');
+    expect(report).toContain('session:   49.3% hit');
+  });
+
   it('omits the cache-hit line when nothing has been cached', async () => {
     const renderer = fakeRenderer();
     const cmd = buildContextCommand({ renderer } as never);
@@ -120,7 +140,7 @@ describe('buildContextCommand', () => {
     });
     const res = await cmd.run('cache', ctx);
     expect(res?.message).toContain('Prompt Cache Report');
-    expect(res?.message).toContain('hit ratio: 50.0%');
+    expect(res?.message).toContain('session:   50.0% hit');
     expect(res?.message).toContain('saved:     ~$0.42');
     expect(res?.message).toContain('prompt_cache_key routing');
     expect(res?.message).toContain('openai');
@@ -154,7 +174,7 @@ describe('buildContextCommand', () => {
     const res = await cmd.run('cache', ctx);
     // The cumulative 47% is the number that reads as "broken"; the trend beside
     // it is the one that says the cache is working.
-    expect(res?.message).toContain('hit ratio: 47.0%');
+    expect(res?.message).toContain('session:   47.0% hit');
     expect(res?.message).toContain('0% → 62% → 81% → 90% → 93%');
     expect(res?.message).toContain('healthy');
   });

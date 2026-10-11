@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 384,
-      "typeOnly": 301,
+      "files": 386,
+      "typeOnly": 303,
       "runtimeOrMixed": 104
     },
     "@wrongstack/core/agent-catalog": {
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1387,
-      "typeOnly": 1218,
+      "files": 1388,
+      "typeOnly": 1219,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 774,
+      "files": 776,
       "typeOnly": 69,
-      "runtimeOrMixed": 733
+      "runtimeOrMixed": 735
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -557,6 +557,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/slash-commands/command-context.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/slash-commands/context-residency.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -1007,6 +1013,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/tests/slash-compact.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/tests/slash-context-residency.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16336,6 +16348,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/slash-context-residency.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/slash-diag-memory-todos.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -23386,6 +23404,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/slash-commands/context-residency.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/context.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24623,6 +24647,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/settings-reset-command.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/slash-context-residency.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
