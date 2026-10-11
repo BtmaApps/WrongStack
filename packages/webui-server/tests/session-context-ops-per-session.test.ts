@@ -1,5 +1,6 @@
 import type { Context } from '@wrongstack/core/agent';
 import { createStrategyCompactor } from '@wrongstack/core/execution';
+import { commitRequestLayout, recordRequestLayout } from '@wrongstack/core/utils';
 import { describe, expect, it, vi } from 'vitest';
 import type WebSocket from 'ws';
 import { createSessionHandlers } from '../src/server/session-handlers.js';
@@ -171,6 +172,45 @@ describe('context operations act on the requesting tab', () => {
     // stayed empty.
     expect(reply?.sessionId).toBe('sess_bg');
     expect(reply?.mode).toBe('lean');
+  });
+
+  it('carries the named session’s cache residency and history retention', async () => {
+    const h = harness();
+    const target = h.contexts.sess_bg;
+    const request = {};
+    recordRequestLayout(request, {
+      providerId: 'anthropic',
+      model: 'm',
+      cacheControl: 'native',
+      tools: [],
+      system: target.systemPrompt as never,
+      history: target.messages as never,
+      messages: target.messages as never,
+      tail: [],
+      durableMessages: target.messages as never,
+    });
+    commitRequestLayout(target, request, 1_000);
+
+    await h.handlers.debugContext(ws, {
+      type: 'context.debug',
+      payload: { sessionId: 'sess_bg' },
+    });
+
+    const reply = h.sent.find((m) => m.type === 'context.debug')?.payload as {
+      residency?: { seq: number; segments: Array<{ kind: string; count: number }> };
+      retention?: { total: number; classes: { protected: { messages: number } } };
+    };
+    expect(reply.residency?.segments.find((s) => s.kind === 'history-new')?.count).toBe(7);
+    expect(reply.retention?.classes.protected.messages).toBe(6);
+    // The foreground tab never sent this request: it has no residency.
+    await h.handlers.debugContext(ws, {
+      type: 'context.debug',
+      payload: { sessionId: 'sess_front' },
+    });
+    const front = h.sent.filter((m) => m.type === 'context.debug').at(-1)?.payload as {
+      residency?: unknown;
+    };
+    expect(front.residency).toBeUndefined();
   });
 
   it('resolves context.debug through the non-creating peek, not getAgent', async () => {

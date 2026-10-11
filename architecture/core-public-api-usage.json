@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 778,
+      "files": 779,
       "typeOnly": 70,
-      "runtimeOrMixed": 738
+      "runtimeOrMixed": 739
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -27149,6 +27149,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/tests/service-actions.gaps.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/tests/session-context-ops-per-session.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

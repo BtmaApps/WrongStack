@@ -8,7 +8,13 @@ import {
 } from '@wrongstack/core/coordination';
 import { compactionReportStillCurrent } from '@wrongstack/core/execution';
 import { DEFAULT_CONTEXT_WINDOW_MODE_ID } from '@wrongstack/core/types';
-import { repairToolUseAdjacency } from '@wrongstack/core/utils';
+import {
+  getHistoryRetention,
+  getRequestResidency,
+  type HistoryRetention,
+  type RequestResidency,
+  repairToolUseAdjacency,
+} from '@wrongstack/core/utils';
 import {
   applyContextEditorProposal,
   buildContextEditorSnapshot,
@@ -19,6 +25,15 @@ import { isRecordPayload } from './session-handler-helpers.js';
 import type { SessionRouteHandlers } from './session-routes.js';
 import { estimateContextBreakdown } from './token-estimator.js';
 import { errMessage, withRequestId } from './ws-utils.js';
+
+/** A display-only snapshot must never fail the debug response it rides on. */
+function safeSnapshot<T>(fn: () => T): T | undefined {
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
 
 export function createSessionContextHandlers(
   shared: SessionHandlerShared,
@@ -137,6 +152,11 @@ export function createSessionContextHandlers(
           ...breakdown,
           mode: target.meta['contextWindowMode'] ?? DEFAULT_CONTEXT_WINDOW_MODE_ID,
           policy: target.meta['contextWindowPolicy'],
+          // What the last request sent was cached / written / never cached,
+          // and what the next compaction keeps — the same core snapshots the
+          // CLI `/context residency` and the TUI Residency tab render.
+          residency: safeSnapshot<RequestResidency | undefined>(() => getRequestResidency(target)),
+          retention: safeSnapshot<HistoryRetention | undefined>(() => getHistoryRetention(target)),
           sessionId: actingSessionId(msg),
         }),
       });
