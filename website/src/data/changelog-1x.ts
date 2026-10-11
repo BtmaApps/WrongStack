@@ -1,18 +1,32 @@
-// Changelog — 1.0.x era (1.0.37 → 1.0.0).
-// Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
-// written from committed runtime/source evidence (git history and packages),
-// not the root CHANGELOG, which had not yet been extended when it landed.
+// Changelog — 1.0.x era (1.0.38 → 1.0.0).
+// Historical entries mirror CHANGELOG.md release notes. The 1.0.38 and 1.0.37
+// entries were written from committed runtime/source evidence (git history and
+// packages), not the root CHANGELOG, which had not been extended when they landed.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.0.38',
+    date: '2026-10-11',
+    tagline: 'Context residency, last-request cache readouts and leaner tool-error context',
+    latest: true,
+    highlights: [
+      'Each answered request records its residency — which segments were cached, written or uncached, the cache verdict and its breakers — and what the next compaction keeps',
+      '/context residency, a TUI Residency tab, the WebUI dashboard and the session story timeline show how the last request sat on the wire',
+      'Cache readouts lead with the last provider-reported request instead of a session-cumulative ratio that carried the cold first request forever',
+      'Mailbox mail and host notes ride a request-scoped live-context tail instead of rewriting history; skill routing and SAGE term mining read only authored text',
+      'A repeat failed tool call points back to its input contract instead of pasting it again, and schemas over 4k characters are trimmed to the required and failing fields',
+      'CVSS v2 base scores follow the FIRST equation, hashed MCP manifest cache names get their own namespace, and glob, json, logs, ps and background-log edge cases are fixed',
+      'Compacted diffs and patch deltas count files and blank context lines correctly, and fleet supervisor interventions decided after stop are skipped',
+    ],
+  },
+  {
     version: '1.0.37',
     date: '2026-10-10',
     tagline:
       'Bun-first development, the Skill Companion, sealed subagents and a broader skill catalog',
-    latest: true,
     highlights: [
       'Workspace scripts, tests, CI and the SQLite adapters support Bun, and contributor commands run on the pinned Bun toolchain',
       'A resident Skill Companion watches the leader’s active work and recommends missed skills; its sealed, tool-less judge accepts only host-owned tasks, never fleet work',

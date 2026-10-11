@@ -1,6 +1,6 @@
 /* =========================================================================
    Changelog — historical entries mirror CHANGELOG.md release notes; the
-   1.0.37 entry was written from committed runtime/source evidence (git
+   1.0.38 and 1.0.37 entries were written from committed runtime/source evidence (git
    history and packages). Each entry has version, date, tagline, and key
    highlights. Historical entries are split across part modules to keep
    every hand-maintained file small; this module restores the single
