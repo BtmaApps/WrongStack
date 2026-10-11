@@ -206,6 +206,8 @@ export function useControllerKeyPipeline({
   };
   statusbar: {
     contextBreakdown: import('@wrongstack/core/utils').ContextBreakdown | undefined;
+    contextResidency: import('@wrongstack/core/utils').RequestResidency | undefined;
+    historyRetention: import('@wrongstack/core/utils').HistoryRetention | undefined;
     currentContextTokens: number;
     contextWindow: { used: number; max: number } | undefined;
     cacheStats: import('@wrongstack/core/types').CacheStats;

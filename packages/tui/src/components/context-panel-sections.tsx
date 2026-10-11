@@ -520,8 +520,9 @@ export function MetricsSection({ data }: { data: ContextPanelData }): React.Reac
 
 /**
  * Cache coverage section — answers "exactly how far does the prompt cache
- * extend into the live request?" Renders the cumulative cache hit ratio
- * plus a per-request coverage meter that visibly marks where the cached
+ * extend into the live request?" Renders the last request's hit ratio (the
+ * session-cumulative one next to it lags: it carries the cold first request
+ * forever) plus a per-request coverage meter that visibly marks where the cached
  * prefix ends. Hidden when nothing has been cached yet so the panel does
  * not advertise a 0% figure as if it were meaningful.
  */
@@ -544,10 +545,16 @@ export function CacheSection({ data }: { data: ContextPanelData }): React.ReactE
       <SectionLabel>PROMPT CACHE</SectionLabel>
 
       <Box>
-        <Text color={theme.textMuted}>Hit ratio </Text>
+        <Text color={theme.textMuted}>{cs.last ? 'Last request ' : 'Hit ratio '}</Text>
         <Text color={hasCache ? theme.success : theme.textMuted} bold>
-          {fmtRatioPct(cs.hitRatio)}
+          {fmtRatioPct(cs.last?.hitRatio ?? cs.hitRatio)}
         </Text>
+        {cs.last ? (
+          <>
+            <Text color={theme.textMuted}> · session </Text>
+            <Text color={theme.textSecondary}>{fmtRatioPct(cs.hitRatio)}</Text>
+          </>
+        ) : null}
         <Text color={theme.textMuted}> · read </Text>
         <Text color={theme.textPrimary}>{cs.readTokens.toLocaleString('en-US')}</Text>
         <Text color={theme.textMuted}> · write </Text>

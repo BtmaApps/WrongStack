@@ -132,6 +132,8 @@ export function AppStatusRegion({
   } = environment;
   const {
     contextBreakdown,
+    contextResidency,
+    historyRetention,
     currentContextTokens,
     contextWindow,
     cacheStats,
@@ -422,6 +424,8 @@ export function AppStatusRegion({
                 leaderToolCalls: state.leader.toolCalls,
                 leaderStatus: state.status,
                 breakdown: contextBreakdown,
+                residency: contextResidency,
+                retention: historyRetention,
                 memoryContext: memoryContextMonitor,
               }}
               onClose={() => dispatch({ type: 'toggleContextPanel' })}

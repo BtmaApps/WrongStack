@@ -1,6 +1,13 @@
 import * as fs from 'node:fs/promises';
 import type { CacheStats } from '@wrongstack/core/types';
-import { type ContextBreakdown, getContextBreakdown } from '@wrongstack/core/utils';
+import {
+  type ContextBreakdown,
+  getContextBreakdown,
+  getHistoryRetention,
+  getRequestResidency,
+  type HistoryRetention,
+  type RequestResidency,
+} from '@wrongstack/core/utils';
 import { useEffect, useMemo, useState } from 'react';
 import type { AppProps } from '../app-props.js';
 import type { FleetEntry, State } from '../app-state.js';
@@ -90,6 +97,10 @@ export function useStatusbarViewModel({
   tokenRefresh,
 }: StatusbarViewModelOptions): {
   contextBreakdown: ContextBreakdown | undefined;
+  /** Last request's cache residency — computed only while the context panel is open. */
+  contextResidency: RequestResidency | undefined;
+  /** What the next compaction keeps — computed only while the context panel is open. */
+  historyRetention: HistoryRetention | undefined;
   currentContextTokens: number;
   contextWindow: { used: number; max: number } | undefined;
   cacheStats: CacheStats;
@@ -207,6 +218,37 @@ export function useStatusbarViewModel({
     conversationRevision,
     messageCount,
     toolDefCount,
+  ]);
+
+  // Residency/retention walk the last request and the history; only the
+  // context panel shows them. Re-derived per iteration (a new request was
+  // sent) and per token refresh (its usage landed) as well as on history
+  // changes.
+  const leaderIterations = state.leader.iterations;
+  const usageVersion = tokenRefresh?.currentRequest;
+  const residencyView = useMemo<{
+    residency: RequestResidency | undefined;
+    retention: HistoryRetention | undefined;
+  }>(() => {
+    if (resuming || !panelWantsBreakdown) return { residency: undefined, retention: undefined };
+    let residency: RequestResidency | undefined;
+    let retention: HistoryRetention | undefined;
+    try {
+      residency = getRequestResidency(agent.ctx);
+    } catch {}
+    try {
+      retention = getHistoryRetention(agent.ctx);
+    } catch {}
+    return { residency, retention };
+  }, [
+    agent.ctx,
+    resuming,
+    panelWantsBreakdown,
+    state.contextChipVersion,
+    conversationRevision,
+    messageCount,
+    leaderIterations,
+    usageVersion,
   ]);
 
   // Bar reading: loop-reported tokens, then the per-request provider snapshot,
@@ -446,6 +488,8 @@ export function useStatusbarViewModel({
 
   return {
     contextBreakdown,
+    contextResidency: residencyView.residency,
+    historyRetention: residencyView.retention,
     currentContextTokens,
     contextWindow,
     cacheStats,

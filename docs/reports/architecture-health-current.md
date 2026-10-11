@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-11T20:51:22.181Z
+**Generated:** 2026-10-11T20:51:46.600Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4929 |
-| Production source lines | 1093765 |
-| Test files | 4301 |
+| Production source files | 4930 |
+| Production source lines | 1094075 |
+| Test files | 4302 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 16245 |
+| Relative module edges | 16248 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -56,7 +56,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/techstack | 53 | 52 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 321 | 321 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 479 | 421 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 480 | 422 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 718 | 479 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 124 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -98,9 +98,11 @@ None.
 | 761 | `packages/cli/src/plugin-management.ts` |
 | 761 | `packages/cli/src/slash-commands/project.ts` |
 | 761 | `packages/techstack/src/policy/rulebook.ts` |
+| 761 | `packages/tui/src/components/sidebar-content.tsx` |
 | 761 | `packages/tui/src/input-validation.ts` |
 | 761 | `packages/tui/src/submit-controller.ts` |
 | 759 | `packages/core/src/coordination/sqlite-mailbox.ts` |
+| 759 | `packages/tui/src/components/context-panel-sections.tsx` |
 | 758 | `packages/core/src/registry/tool-registry.ts` |
 | 758 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 757 | `packages/techstack/src/adapters/npm.ts` |
@@ -115,8 +117,6 @@ None.
 | 753 | `packages/webui/src/components/DebugDashboard.tsx` |
 | 752 | `packages/cli/src/config-doctor.ts` |
 | 752 | `packages/kanban/src/storage.ts` |
-| 752 | `packages/tui/src/components/context-panel-sections.tsx` |
-| 751 | `packages/tui/src/components/sidebar-content.tsx` |
 | 751 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 750 | `packages/core/src/utils/context-evidence.ts` |
 | 749 | `packages/providers/src/openai-codex.ts` |

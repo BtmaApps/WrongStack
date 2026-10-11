@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 776,
-      "typeOnly": 69,
-      "runtimeOrMixed": 735
+      "files": 778,
+      "typeOnly": 70,
+      "runtimeOrMixed": 738
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -26152,6 +26152,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/components/context-panel-residency.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/components/context-panel-sections.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -26418,7 +26424,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/use-controller-key-pipeline.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 3
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -26437,6 +26443,12 @@
       "file": "packages/tui/tests/connections-health.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/tests/context-panel-residency.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",

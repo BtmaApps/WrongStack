@@ -170,14 +170,15 @@ export function SidebarContent({
   // `…` instead of completing naturally to 100%.
   const modelIdentity = provider && model ? `${provider}/${model}` : (model ?? provider);
 
-  // Cache summary — `hitRatio` is the cumulative session figure
-  // (`cacheRead / (cacheRead + input)`), zero when no caching has
-  // happened yet. The cache card stays visible with a "no cache yet"
-  // hint so users learn about the metric instead of wondering where it
-  // went.
+  // Cache summary — the badge and meter show the LAST request (`cs.last`);
+  // `hitRatio` is the cumulative session figure, which carries the cold first
+  // request forever and lags every change, so it is only the secondary
+  // "session" line. The card stays visible with a "no cache yet" hint so
+  // users learn about the metric instead of wondering where it went.
   const cs = cacheStats ?? { readTokens: 0, writeTokens: 0, hitRatio: 0, savedUsd: 0 };
   const hasCacheActivity = cs.readTokens > 0 || cs.writeTokens > 0;
-  const cacheHitPct = fmtRatioPct(cs.hitRatio);
+  const lastHitRatio = cs.last?.hitRatio ?? cs.hitRatio;
+  const cacheHitPct = fmtRatioPct(lastHitRatio);
 
   // Fleet entries: show leader first, then running subagents.
   // Cap at 12 agents total (leader + up to 11 subagents), each rendered
@@ -353,7 +354,7 @@ export function SidebarContent({
       <Card innerWidth={innerWidth} accent={hasCacheActivity ? theme.success : undefined}>
         {(bodyWidth) => {
           const meterInner = Math.max(1, bodyWidth - 2);
-          const dynamicMeter = renderMeter(cs.hitRatio, meterInner);
+          const dynamicMeter = renderMeter(lastHitRatio, meterInner);
           return (
             <>
               <SidebarSectionHeader
@@ -371,6 +372,15 @@ export function SidebarContent({
                   <Box width={bodyWidth} flexDirection="row">
                     <Text color={theme.success}>{dynamicMeter}</Text>
                   </Box>
+                  {cs.last ? (
+                    <Text color={theme.textSecondary} wrap="truncate">
+                      last{' '}
+                      <Text color={theme.textPrimary} bold>
+                        {cacheHitPct}
+                      </Text>
+                      {' · '}avg {fmtRatioPct(cs.hitRatio)}
+                    </Text>
+                  ) : null}
                   {bodyWidth >= 28 ? (
                     <Box flexDirection="row" width={bodyWidth} justifyContent="space-between">
                       <Text color={theme.textSecondary} wrap="truncate">

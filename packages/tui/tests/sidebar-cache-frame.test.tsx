@@ -148,6 +148,42 @@ describe('sidebar cache card frame integrity (real TTY)', () => {
     view.unmount();
   });
 
+  it('leads the cache card with the last request, not the lagging session ratio', async () => {
+    const columns = 120;
+    const sidebarWidth = computeSidebarWidth(columns);
+    const contentWidth = computeSidebarContentWidth(sidebarWidth);
+    const view = renderRealTty(
+      <Box width={columns} height={34} justifyContent="flex-end" overflowX="hidden">
+        <RightSidebar width={sidebarWidth} maxHeight={34}>
+          <SidebarContent
+            contextWindow={{ used: 48_000, max: 200_000 }}
+            cacheStats={{
+              readTokens: 19_700,
+              writeTokens: 10_000,
+              hitRatio: 0.49,
+              savedUsd: 0,
+              last: { input: 200, cacheRead: 9_800, cacheWrite: 0, hitRatio: 0.98 },
+            }}
+            entries={ENTRIES}
+            fleetCounts={{ running: 1, idle: 1, pending: 0, completed: 0 }}
+            provider="minimax"
+            model="minimax-m3"
+            width={contentWidth}
+            todos={TODOS}
+            showSwarmSection
+            processMemory={undefined}
+          />
+        </RightSidebar>
+      </Box>,
+      { columns, rows: 34 },
+    );
+    await settle();
+    const frame = view.lines().join('\n');
+    // Narrow rail: the badge may truncate, the readout line must not.
+    expect(frame).toContain('last 98% · avg 49%');
+    view.unmount();
+  });
+
   for (const columns of COLUMNS) {
     it(`right side bar aligns at ${columns} columns`, { timeout: 5_000 }, async () => {
       const sidebarWidth = computeSidebarWidth(columns);

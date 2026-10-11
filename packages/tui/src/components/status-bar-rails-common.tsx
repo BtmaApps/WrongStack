@@ -33,6 +33,7 @@ export interface StatusBarRailBuildParams {
         readTokens: number;
         writeTokens: number;
         savedUsd: number;
+        last?: { hitRatio: number } | undefined;
       }
     | undefined;
   queueCount?: number | undefined;

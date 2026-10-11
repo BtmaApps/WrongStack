@@ -1,4 +1,4 @@
-import type { ContextBreakdown } from '@wrongstack/core/utils';
+import type { ContextBreakdown, HistoryRetention, RequestResidency } from '@wrongstack/core/utils';
 import type { MemoryContextMonitorState } from '../memory-context-monitor.js';
 // The bracket-style `[000o····]` meter is the statusline's context bar; reuse
 // it here so the panel's fill bars mirror the statusline instead of using a
@@ -35,6 +35,8 @@ export interface ContextPanelData {
         cacheWrite1h?: number | undefined;
         hitRatio: number;
         savedUsd: number;
+        /** Last provider-reported request on its own; `hitRatio` is cumulative. */
+        last?: { hitRatio: number } | undefined;
       }
     | undefined;
   /**
@@ -62,6 +64,14 @@ export interface ContextPanelData {
    * percentages.
    */
   breakdown: ContextBreakdown | undefined;
+  /**
+   * Cache residency of the last request — which segments were served from the
+   * prompt cache, written, or never cached, and what broke the cache. Absent
+   * before the first request.
+   */
+  residency?: RequestResidency | undefined;
+  /** Which history survives the next compaction (preserve window, elision). */
+  retention?: HistoryRetention | undefined;
   fleetEntries: Array<{
     name: string;
     status: string;

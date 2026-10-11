@@ -193,7 +193,11 @@ export function buildVitalsChipEntries(p: StatusBarRailBuildParams): RailSpanEnt
   const ratio = context ? Math.min(context.used / context.max, 1) : 0;
   const barColor = isNoColor ? undefined : contextBarColor(ratio);
   const hasCost = cost != null && cost.total > 0;
-  const hasCache = cache != null && cache.hitRatio > 0;
+  // The chip leads with the LAST request: the session ratio carries the cold
+  // first request forever and lags every change. A miss must show as 0%, so
+  // visibility keys off "the session has used the cache at all".
+  const hasCache = cache != null && (cache.readTokens > 0 || cache.hitRatio > 0);
+  const lastHit = cache?.last?.hitRatio ?? cache?.hitRatio ?? 0;
 
   return compact([
     stateStatusChip ? entry('state', 'state', p, [stateStatusChip]) : null,
@@ -246,19 +250,20 @@ export function buildVitalsChipEntries(p: StatusBarRailBuildParams): RailSpanEnt
           // tokens of the tokens chip. Saved USD only when cache reads
           // actually saved money (0 = no priced cache reads yet).
           <Text dimColor={!isNoColor}>
-            {STATUSLINE_ICONS.cache} {fmtRatioPct(cache.hitRatio)}
+            {STATUSLINE_ICONS.cache} {fmtRatioPct(lastHit)}
+            {cache.last ? <Text> avg {fmtRatioPct(cache.hitRatio, 0)}</Text> : null}
             <Text> r{fmtTok(cache.readTokens)}</Text>
             <Text> w{fmtTok(cache.writeTokens)}</Text>
             {cache.savedUsd > 0 ? <Text> ~${cache.savedUsd.toFixed(2)}</Text> : null}
           </Text>,
           <Text dimColor={!isNoColor}>
             {STATUSLINE_ICONS.cache}
-            {fmtRatioPct(cache.hitRatio, 0)}
+            {fmtRatioPct(lastHit, 0)}
             {cache.savedUsd > 0 ? <Text> ~${cache.savedUsd.toFixed(2)}</Text> : null}
           </Text>,
           <Text dimColor={!isNoColor}>
             {STATUSLINE_ICONS.cache}
-            {fmtRatioPct(cache.hitRatio, 0)}
+            {fmtRatioPct(lastHit, 0)}
           </Text>,
         ])
       : null,

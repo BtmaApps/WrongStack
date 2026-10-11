@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:51:22.181Z",
+  "generatedAt": "2026-10-11T20:51:46.600Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4929,
-    "testFiles": 4301,
-    "sourceLines": 1093765,
+    "sourceFiles": 4930,
+    "testFiles": 4302,
+    "sourceLines": 1094075,
     "workspaceEdges": 133,
-    "moduleEdges": 16245,
+    "moduleEdges": 16248,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -789,8 +789,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 479,
-      "testFiles": 421,
+      "sourceFiles": 480,
+      "testFiles": 422,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -813,7 +813,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 421
+          "testFiles": 422
         }
       ]
     },
@@ -19500,6 +19500,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/context-panel-residency.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/context-panel.test.tsx",
         "projects": [
           "root-node"
@@ -27175,6 +27181,11 @@
       "relativeImports": 0
     },
     {
+      "file": "packages/tui/src/components/sidebar-content.tsx",
+      "lines": 761,
+      "relativeImports": 17
+    },
+    {
       "file": "packages/tui/src/input-validation.ts",
       "lines": 761,
       "relativeImports": 12
@@ -27188,6 +27199,11 @@
       "file": "packages/core/src/coordination/sqlite-mailbox.ts",
       "lines": 759,
       "relativeImports": 14
+    },
+    {
+      "file": "packages/tui/src/components/context-panel-sections.tsx",
+      "lines": 759,
+      "relativeImports": 5
     },
     {
       "file": "packages/core/src/registry/tool-registry.ts",
@@ -27258,16 +27274,6 @@
       "file": "packages/kanban/src/storage.ts",
       "lines": 752,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/tui/src/components/context-panel-sections.tsx",
-      "lines": 752,
-      "relativeImports": 5
-    },
-    {
-      "file": "packages/tui/src/components/sidebar-content.tsx",
-      "lines": 751,
-      "relativeImports": 17
     },
     {
       "file": "packages/webui/src/components/ChatView/CouncilDecisionCard.tsx",

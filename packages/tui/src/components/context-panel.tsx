@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
+import { ResidencySection } from './context-panel-residency.js';
 // The bracket-style `[000o····]` meter is the statusline's context bar; reuse
 // it here so the panel's fill bars mirror the statusline instead of using a
 // second (block `█░`) visual language.
@@ -36,7 +37,7 @@ interface ContextPanelProps {
   onClose: () => void;
 }
 
-type TabId = 'overview' | 'composition' | 'thresholds' | 'agents' | 'memory';
+type TabId = 'overview' | 'composition' | 'thresholds' | 'agents' | 'memory' | 'residency';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -44,6 +45,7 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'thresholds', label: 'Thresholds' },
   { id: 'agents', label: 'Agents' },
   { id: 'memory', label: 'Memory' },
+  { id: 'residency', label: 'Residency' },
 ];
 
 // ── Tab bar ───────────────────────────────────────────────────────────────────
@@ -81,7 +83,7 @@ export function ContextPanel({ data, onClose }: ContextPanelProps): React.ReactE
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
-    if (key.meta || (key.ctrl && !/^[1-5]$/.test(input))) return;
+    if (key.meta || (key.ctrl && !/^[1-6]$/.test(input))) return;
     // Esc is owned by the central ESC_CLOSE_PANELS table (esc-close-panels.ts);
     // handling it here too would double-fire the toggle and re-open the panel.
     // With a draft in the composer, every key here (letters, digits, Tab,
@@ -214,6 +216,13 @@ export function ContextPanel({ data, onClose }: ContextPanelProps): React.ReactE
           <AgentFootprintSection data={data} contentWidth={contentWidth} />
         ) : null}
         {tab === 'memory' ? <MemoryContextSection data={data} /> : null}
+        {tab === 'residency' ? (
+          <ResidencySection
+            residency={data.residency}
+            retention={data.retention}
+            contentWidth={contentWidth}
+          />
+        ) : null}
 
         {/* Bottom spacer */}
         <Box height={1} />
