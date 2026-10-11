@@ -46,6 +46,12 @@ jobs:
       - name: Rebuild reviewed native dependencies
         run: bun run setup:native
 
+      # scripts/bun-typecheck.mjs loads packages/tools/src/_bun-typechecker.ts,
+      # which imports @wrongstack/core/utils from dist. Build core and its
+      # workspace dependencies (not the whole workspace) before the checker runs.
+      - name: Build typechecker dependencies
+        run: bun scripts/build.mjs --target @wrongstack/core
+
       - name: TypeCheck (website tests)
         run: bun run --filter wrongstack-website typecheck:tests
 
@@ -78,6 +84,11 @@ jobs:
       - name: Audit website dependencies
         working-directory: website
         run: bun ../scripts/audit-dependencies.mjs --audit-level=moderate
+
+      # The website build script runs scripts/bun-typecheck.mjs first, which
+      # needs @wrongstack/core built (see website-checks).
+      - name: Build typechecker dependencies
+        run: bun scripts/build.mjs --target @wrongstack/core
 
       - name: Build
         working-directory: website
