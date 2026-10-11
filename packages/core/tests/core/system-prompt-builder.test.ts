@@ -2,7 +2,6 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { RUNTIME_CAPABILITY_MANIFEST } from '../../src/coordination/agents/capability-manifest.js';
 import type { MemoryStore, SkillLoader, Tool } from '../../src/index.js';
 import {
   DefaultSystemPromptBuilder,
@@ -100,44 +99,6 @@ describe('DefaultSystemPromptBuilder', () => {
     expect(prompt).toContain('using the returned `inputSchema`');
     expect(prompt).toContain('Prefer that local built-in');
     expect(prompt).not.toContain('No task-tracking tool is registered in this request');
-  });
-
-  it('keeps the fully assembled prompt free of unregistered canonical tool references', async () => {
-    const canonical = new Set(RUNTIME_CAPABILITY_MANIFEST.flatMap((entry) => entry.tools));
-    const mentions = (text: string, name: string): boolean => {
-      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const token = new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`);
-      return text.split('\n').some((line) => {
-        if (
-          line.split('`').some((segment, index) => {
-            if (index % 2 !== 1) return false;
-            if (segment.includes(`<${name}`) || segment.includes(`</${name}`)) return false;
-            return token.test(segment);
-          })
-        ) {
-          return true;
-        }
-        return line
-          .split('**')
-          .some((segment, index) => index % 2 === 1 && segment.trim() === name);
-      });
-    };
-    const leaks: string[] = [];
-    for (const only of canonical) {
-      const tools = [mkTool(only)];
-      const builder = new DefaultSystemPromptBuilder({ todayIso: '2026-05-13' });
-      const blocks = await builder.build({
-        cwd: tmp,
-        projectRoot: tmp,
-        tools,
-        catalogTools: tools,
-      });
-      const prompt = blocks.map((block) => block.text).join('\n');
-      for (const hidden of canonical) {
-        if (hidden !== only && mentions(prompt, hidden)) leaks.push(`${only} exposed ${hidden}`);
-      }
-    }
-    expect(leaks, 'assembled singleton prompts leaked unregistered canonical tools').toEqual([]);
   });
 
   it('loads system instructions from override files with project taking precedence', async () => {
