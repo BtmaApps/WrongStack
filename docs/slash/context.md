@@ -20,7 +20,8 @@ Shows a live snapshot of the current context window. In TUI, bare `/context` ope
 | `/context thresholds <warn> <soft> <hard> --persist` | Set thresholds and persist them to config |
 | `/context mode` | List available context-window modes |
 | `/context mode <id>` | Switch to a named mode: `balanced`, `frugal`, `deep`, or `archival` |
-| `/context cache` | Prompt-cache report: session hit ratio, tokens read/written, USD saved, per-provider split, and the active provider's cache mechanism |
+| `/context cache` | Prompt-cache report: last-request and session hit ratio, tokens read/written, USD saved, per-provider split, and the active provider's cache mechanism |
+| `/context residency` | What the last request held on the wire: each segment's cached / written / uncached lanes, the provider-reported read/write split, the cache verdict and what broke it, and what the next compaction keeps |
 
 ## What "repair" does
 
@@ -63,6 +64,7 @@ The token breakdown is computed by `getContextBreakdown(ctx)` (`packages/core/sr
 ## Code reference
 
 - `packages/cli/src/slash-commands/context.ts`
+- `packages/cli/src/slash-commands/context-residency.ts` — `/context residency` report (`getRequestResidency()` / `getHistoryRetention()` from core)
 - `packages/core/src/utils/context-breakdown.ts` — `getContextBreakdown()`
 - `packages/tui/src/context-slash.ts` — panel-only TUI command bridge
 - `packages/tui/src/components/context-panel.tsx` — interactive TUI monitor

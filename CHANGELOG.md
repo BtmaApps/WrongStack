@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-10-12
+
+A context-visibility release. Every answered request now records how it sat on
+the wire, cache readouts lead with the last request, and failed tool calls cost
+far fewer tokens. 1.1.0 absorbs the 1.0.38 version bump, which was never
+published.
+
+### Added
+
+- **Request residency.** Each answered request records which segments were cached, written or uncached, the cache verdict and its breakers, and what the next compaction keeps.
+- **Residency views.** `/context residency`, a TUI Residency tab, the WebUI dashboard and the session story timeline show how the last request sat on the wire; WebUI session context snapshots include residency and retention.
+- **Last-request cache ratio.** Core reports the last request's prompt-cache hit ratio, and the TUI, WebUI and SimpleUI lead their cache readouts with it instead of a session-cumulative ratio that carried the cold first request forever.
+
+### Changed
+
+- **Host context stays out of the conversation.** Mailbox mail and host notes ride a request-scoped live-context tail instead of rewriting history; skill routing and SAGE term mining read only authored text.
+- **Leaner tool errors.** A repeat failed tool call points back to its input contract instead of pasting it again; schemas are sent as compact JSON, and a schema over 4k characters is trimmed to the required and failing fields.
+- **Whole `tool_search` schemas.** The top results carry full input schemas instead of JSON clipped at 1,000 characters.
+
+### Fixed
+
+- **Tools.** Glob, JSON, logs, `ps` and background-log edge cases; tool coach suggestions rank by whole words.
+- **Context accounting.** Compacted diffs count distinct files, patch deltas count blank context lines, and fleet supervisor interventions decided after stop are skipped.
+- **Security and MCP.** CVSS v2 base scores follow the FIRST equation and Adjacent weight; hashed MCP manifest cache names keep their own namespace.
+- **Packaging and CI.** Desktop packaging ships pre-converted `.icns`/`.ico` icons so electron-builder never runs its icon tool under Bun; CI installs the opt-in vector backend with `bun add --filter`.
+
 ## [1.0.37] — 2026-10-11
 
 A Bun-first tooling and skills release. Browser setup, focused symbol reading

@@ -1,15 +1,16 @@
-// Changelog — 1.0.x era (1.0.38 → 1.0.0).
-// Historical entries mirror CHANGELOG.md release notes. The 1.0.38 and 1.0.37
-// entries were written from committed runtime/source evidence (git history and
-// packages), not the root CHANGELOG, which had not been extended when they landed.
+// Changelog — 1.x era (1.1.0 → 1.0.0).
+// Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
+// written from committed runtime/source evidence (git history and packages), not
+// the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
+// the 1.0.38 bump, which was never published.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
-    version: '1.0.38',
-    date: '2026-10-11',
+    version: '1.1.0',
+    date: '2026-10-12',
     tagline: 'Context residency, last-request cache readouts and leaner tool-error context',
     latest: true,
     highlights: [
@@ -20,6 +21,7 @@ export const changelog1x: ChangelogEntry[] = [
       'A repeat failed tool call points back to its input contract instead of pasting it again, and schemas over 4k characters are trimmed to the required and failing fields',
       'CVSS v2 base scores follow the FIRST equation, hashed MCP manifest cache names get their own namespace, and glob, json, logs, ps and background-log edge cases are fixed',
       'Compacted diffs and patch deltas count files and blank context lines correctly, and fleet supervisor interventions decided after stop are skipped',
+      'tool_search renders schemas whole instead of clipping them, tool coach suggestions rank by whole words, and Desktop packaging ships pre-converted icons',
     ],
   },
   {

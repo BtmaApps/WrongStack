@@ -55,41 +55,38 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.37
+### What's new in 1.1.0
+
+- **Request residency:** every answered request records which segments were
+  cached, written or uncached, the cache verdict and its breakers, and what the
+  next compaction keeps. See it with `/context residency`, the TUI Residency
+  tab, the WebUI dashboard or the session story timeline.
+- **Honest cache readouts:** the TUI, WebUI and SimpleUI lead with the last
+  request's prompt-cache hit ratio instead of a session-cumulative figure.
+- **Host context off the record:** mailbox mail and host notes ride a
+  request-scoped live-context tail instead of rewriting history; skill routing
+  and SAGE term mining read only authored text.
+- **Cheaper tool errors:** a repeat failed call points back to its input
+  contract instead of pasting it again, and wide schemas are trimmed to the
+  required and failing fields. `tool_search` returns whole schemas.
+
+Highlights from **1.0.37**, the previous release:
 
 - **Browser setup:** [`/browser`](docs/slash/browser.md) reports Chromium
   readiness, installs its runtime and manages exact project origin allowances.
 - **Focused code reading:** `codebase-read-symbol` reads a named declaration
   directly from a file using AST parsing, with exact source-line bounds.
 - **Skill guidance:** local intent rules suggest playbooks without an API call;
-  the CLI Skill Companion watches active work and recommends missed skills.
-  Its sealed, tool-less judge accepts only host-owned tasks, not fleet work.
-- **Broader skills:** document, media and workflow playbooks join the bundled
-  catalog. See [skills](docs/skills.md) and [suggestions](docs/skills-suggestion.md).
+  the CLI Skill Companion watches active work and recommends missed skills. See
+  [skills](docs/skills.md) and [suggestions](docs/skills-suggestion.md).
 - **Bun-first development:** workspace scripts, tests, CI and SQLite adapters
   support Bun; contributor commands use the pinned Bun toolchain.
 
-Highlights from **1.0.36**, the previous release:
-
-- **Effort that follows the work:** the leader raises or lowers its own
-  reasoning effort per phase with `leader_effort_set`, and gives each delegated
-  worker an `effort` for its task; unset workers inherit the leader's effort.
-  An effort you set always wins.
-- **MCP ping and completion:** MCP clients send the spec liveness probe and
-  `completion/complete`, validating the results.
-- **Hardening from an evidence-led audit:** child processes no longer inherit
-  credential variables, every config reader accepts UTF-8 BOMs, and unreadable
-  config files fail loudly instead of being overwritten. Path bounds, subprocess
-  tree cleanup, watcher storms and tool-output parsing are also fixed.
-- **WebUI polish:** unified semantic colors and chips, modal keyboard
-  ownership, recoverable panel states and complete translations.
-- **Pinned Bun typechecking** for contributors: `bun run setup:bun` provisions the
-  checker, and there is no `tsc` fallback.
-
-1.0.35 hardened command guards, secret redaction and dependency audits; 1.0.34
-added [project goals](docs/architecture/project-goals.md), [explicit
-continuation](docs/slash/nextsteps.md), [YOLO+](docs/slash/yolo.md) and the
-[dead-code workflow](docs/tools/dead-code.md).
+1.0.36 added phase-aware leader effort, per-worker effort routing and
+audit-driven hardening; 1.0.35 hardened command guards, secret redaction and
+dependency audits; 1.0.34 added [project goals](docs/architecture/project-goals.md),
+[explicit continuation](docs/slash/nextsteps.md), [YOLO+](docs/slash/yolo.md)
+and the [dead-code workflow](docs/tools/dead-code.md).
 
 See the [release history](CHANGELOG.md) for earlier releases.
 
@@ -755,7 +752,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.37** — current repository version; semver from 1.0.0 onward
+- **v1.1.0** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`
