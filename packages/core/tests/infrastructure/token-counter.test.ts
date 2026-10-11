@@ -384,6 +384,25 @@ describe('DefaultTokenCounter', () => {
     ]);
   });
 
+  it('reports the last request separately from the session-cumulative ratio', () => {
+    const tc = new DefaultTokenCounter();
+    expect(tc.cacheStats().last).toBeUndefined();
+    // Cold first request, then two warm ones: cumulative lags, last does not.
+    tc.account({ input: 10_000, output: 10, cacheWrite: 10_000 });
+    tc.account({ input: 100, output: 10, cacheRead: 9_900 });
+    tc.account({ input: 200, output: 10, cacheRead: 9_800 });
+    const stats = tc.cacheStats();
+    expect(stats.hitRatio).toBeCloseTo(19_700 / 40_000, 5);
+    expect(stats.last).toEqual({ input: 200, cacheRead: 9_800, cacheWrite: 0, hitRatio: 0.98 });
+
+    // `/compact` overrides the context-bar estimate; it is not a request.
+    tc.setCurrentRequestTokens(4_000);
+    expect(tc.cacheStats().last?.hitRatio).toBe(0.98);
+
+    tc.reset();
+    expect(tc.cacheStats().last).toBeUndefined();
+  });
+
   it('clears provider cache telemetry on reset', () => {
     const tc = new DefaultTokenCounter();
     tc.account({ input: 10, output: 1, cacheRead: 90 }, 'opus', 'anthropic');

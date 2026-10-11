@@ -55,6 +55,13 @@ export class DefaultTokenCounter implements TokenCounter {
   private lastInput = 0;
   private lastCacheRead = 0;
   private lastCacheWrite = 0;
+  /**
+   * The last request the PROVIDER reported, for `cacheStats().last`. Kept apart
+   * from `last*` above: `/compact` overwrites those with an estimate for the
+   * context bar, and a hit ratio derived from that estimate (cacheRead 0) would
+   * report a miss that never happened.
+   */
+  private lastReported: Usage | undefined;
 
   /**
    * Provider usage crosses an untrusted response boundary, and `typeof x ===
@@ -130,6 +137,12 @@ export class DefaultTokenCounter implements TokenCounter {
     this.lastInput = usage.input;
     this.lastCacheRead = usage.cacheRead ?? 0;
     this.lastCacheWrite = cacheWriteTotal;
+    this.lastReported = {
+      input: usage.input,
+      output: usage.output,
+      cacheRead: usage.cacheRead ?? 0,
+      cacheWrite: cacheWriteTotal,
+    };
 
     const priceKey = providerId && model ? `${providerId}\0${model}` : undefined;
     const price = priceKey ? this.priceCache.get(priceKey) : undefined;
@@ -204,6 +217,12 @@ export class DefaultTokenCounter implements TokenCounter {
     this.lastInput = usage.input;
     this.lastCacheRead = usage.cacheRead ?? 0;
     this.lastCacheWrite = cacheWriteTotal;
+    this.lastReported = {
+      input: usage.input,
+      output: usage.output,
+      cacheRead: usage.cacheRead ?? 0,
+      cacheWrite: cacheWriteTotal,
+    };
     const price = priceFromModel(resolved);
     if (this.priceCache.size >= PRICE_CACHE_MAX_SIZE) {
       const keys = [...this.priceCache.keys()];
@@ -268,6 +287,16 @@ export class DefaultTokenCounter implements TokenCounter {
         cacheWrite: this.cacheWrite,
       }),
       savedUsd: round4(this.cacheSaved),
+      ...(this.lastReported
+        ? {
+            last: {
+              input: this.lastReported.input,
+              cacheRead: this.lastReported.cacheRead ?? 0,
+              cacheWrite: this.lastReported.cacheWrite ?? 0,
+              hitRatio: promptCacheHitRatio(this.lastReported),
+            },
+          }
+        : {}),
       providers: [...this.cacheByProvider.entries()]
         .map(([provider, usage]) => ({
           provider,
@@ -341,6 +370,7 @@ export class DefaultTokenCounter implements TokenCounter {
     this.lastInput = 0;
     this.lastCacheRead = 0;
     this.lastCacheWrite = 0;
+    this.lastReported = undefined;
     this.emitAccounted(undefined, undefined, undefined, {
       input: 0,
       output: 0,

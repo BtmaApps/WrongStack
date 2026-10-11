@@ -205,8 +205,9 @@ export class SessionStats {
     const cache = this.tokenCounter.cacheStats();
     if (cache.readTokens > 0 || cache.writeTokens > 0) {
       const pct = (cache.hitRatio * 100).toFixed(1);
+      const last = cache.last ? ` · last request ${(cache.last.hitRatio * 100).toFixed(1)}%` : '';
       lines.push(
-        `  Prompt cache:  ${pct}% hit  ${color.dim(`(${fmtTok(cache.readTokens)} read / ${fmtTok(cache.writeTokens)} write)`)}`,
+        `  Prompt cache:  ${pct}% hit (session)${last}  ${color.dim(`(${fmtTok(cache.readTokens)} read / ${fmtTok(cache.writeTokens)} write)`)}`,
       );
     }
     if (cost.total > 0) {

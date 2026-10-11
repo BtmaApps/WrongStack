@@ -18,6 +18,15 @@ export interface ProviderCacheStats {
   cacheWrite1h?: number | undefined;
 }
 
+export interface LastRequestCacheStats {
+  /** Uncached prompt tokens of that request. */
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  /** cacheRead / that request's complete prompt. Clamped to [0, 1]. */
+  hitRatio: number;
+}
+
 export interface CacheStats {
   /** Tokens served from cache (cheaper). */
   readTokens: number;
@@ -33,8 +42,18 @@ export interface CacheStats {
    * (Anthropic family). Undefined when the provider only emits an aggregate.
    */
   cacheWrite1h?: number | undefined;
-  /** Hit ratio: cacheRead / total prompt context. Clamped to [0, 1]. */
+  /**
+   * SESSION-CUMULATIVE hit ratio: cacheRead / total prompt context, summed over
+   * every request. It carries the unavoidable cold first request forever, so it
+   * reads low early and lags any change — use `last` for "is the cache working
+   * right now". Clamped to [0, 1].
+   */
   hitRatio: number;
+  /**
+   * The most recent provider-reported request on its own. Undefined until the
+   * first response. `/compact`'s token estimate never lands here.
+   */
+  last?: LastRequestCacheStats | undefined;
   /**
    * USD saved by cache reads: cacheRead tokens billed at the cache-read rate
    * instead of the full input rate, summed across the session. 0 when pricing
