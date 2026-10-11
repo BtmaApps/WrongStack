@@ -96,6 +96,80 @@ describe('file tool numeric evidence', () => {
       }),
     ).toMatchObject({ addedLines: 0, removedLines: 1, patchFiles: [{ path: 'gone.ts' }] });
   });
+  it('keeps per-file attribution when a blank context line loses its space', () => {
+    // A blank source line's context marker is a single space, but a trailing-
+    // whitespace stripper delivers it as "". It is still a context line, so it
+    // must consume one line from BOTH sides. Skipping it left the hunk's
+    // declared line counts unmet, the hunk never closed, and the SECOND
+    // file's `--- `/`+++ ` header pair was then counted as content of the
+    // FIRST file — inflating its totals and dropping b.ts from patchFiles.
+    const output = JSON.stringify({ applied: 2, rejected: 0, files: ['a.ts', 'b.ts'] });
+    const twoFilePatch = (blank: string) =>
+      [
+        '--- a/src/a.ts',
+        '+++ b/src/a.ts',
+        '@@ -1,4 +1,4 @@',
+        ' ctx one',
+        blank,
+        '-const a = 1;',
+        '+const a = 2;',
+        ' ctx two',
+        '--- a/src/b.ts',
+        '+++ b/src/b.ts',
+        '@@ -1,3 +1,3 @@',
+        ' ctx one',
+        '-const b = 1;',
+        '+const b = 2;',
+        ' ctx two',
+      ].join('\n');
+    const expected = {
+      addedLines: 2,
+      removedLines: 2,
+      partial: false,
+      patchFiles: [
+        { path: 'src/a.ts', addedLines: 1, removedLines: 1 },
+        { path: 'src/b.ts', addedLines: 1, removedLines: 1 },
+      ],
+    };
+    // The defect: blank context line arrives as "".
+    expect(fileToolStats('patch', output, { patch: twoFilePatch('') })).toEqual(expected);
+    // Control: the same diff with a properly-spaced blank context line.
+    expect(fileToolStats('patch', output, { patch: twoFilePatch(' ') })).toEqual(expected);
+
+    // A single file with a bare empty line has no following header to
+    // misattribute, so its own totals stay correct.
+    expect(
+      fileToolStats('patch', JSON.stringify({ applied: 1, rejected: 0, files: ['a.ts'] }), {
+        patch: [
+          '--- a/src/a.ts',
+          '+++ b/src/a.ts',
+          '@@ -1,4 +1,4 @@',
+          ' ctx one',
+          '',
+          '-const a = 1;',
+          '+const a = 2;',
+          ' ctx two',
+        ].join('\n'),
+      }),
+    ).toMatchObject({ addedLines: 1, removedLines: 1 });
+    // A blank line OUTSIDE any hunk invents no file entry.
+    expect(
+      fileToolStats('patch', JSON.stringify({ applied: 1, rejected: 0, files: ['a.ts'] }), {
+        patch: [
+          '--- a/src/a.ts',
+          '+++ b/src/a.ts',
+          '@@ -1,2 +1,2 @@',
+          '-const a = 1;',
+          '+const a = 2;',
+          '',
+        ].join('\n'),
+      }),
+    ).toMatchObject({
+      addedLines: 1,
+      removedLines: 1,
+      patchFiles: [{ path: 'src/a.ts', addedLines: 1, removedLines: 1 }],
+    });
+  });
   it('reports no patch evidence for dry runs, empty applies, or a missing input', () => {
     const patch = ['--- a/a.ts', '+++ b/a.ts', '@@ -1,1 +1,2 @@', ' keep', '+new'].join('\n');
     // A dry run wrote nothing; counting it would invent file activity.

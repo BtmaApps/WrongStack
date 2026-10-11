@@ -1571,7 +1571,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 50,
-      "sourceLines": 12623
+      "sourceLines": 12630
     },
     {
       "directory": "coordination",

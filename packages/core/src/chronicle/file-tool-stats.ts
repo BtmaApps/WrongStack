@@ -236,7 +236,14 @@ function patchFileDeltas(
     } else if (line.startsWith('-')) {
       current.removedLines++;
       oldLeft--;
-    } else if (line.startsWith(' ')) {
+    } else if (line.startsWith(' ') || line === '') {
+      // A blank source line's context marker is a single space, which some
+      // producers (and any trailing-whitespace stripper) deliver as an empty
+      // string. It is still a context line, so it must consume one line from
+      // BOTH sides. Skipping it left `oldLeft`/`newLeft` short, the hunk never
+      // closed, and every following file's header pair was then counted as
+      // content of THIS file — inflating its totals and dropping those files
+      // from `patchFiles` entirely.
       oldLeft--;
       newLeft--;
     }
