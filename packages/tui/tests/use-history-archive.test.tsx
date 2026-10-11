@@ -117,12 +117,16 @@ describe('useHistoryArchive', () => {
     dispatch.mockClear();
     await act(async () => {
       request();
-      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    const loaded = dispatch.mock.calls
-      .map(([action]) => action as { type: string; entries?: HistoryEntry[] })
-      .find((action) => action.type === 'archiveLoaded');
+    // The page is read from disk asynchronously; a fixed sleep lost the race
+    // on slower coverage runs, so wait for the dispatch itself.
+    const findLoaded = () =>
+      dispatch.mock.calls
+        .map(([action]) => action as { type: string; entries?: HistoryEntry[] })
+        .find((action) => action.type === 'archiveLoaded');
+    await vi.waitFor(() => expect(findLoaded()).toBeDefined());
+    const loaded = findLoaded();
     expect(loaded?.entries?.length).toBe(50);
     expect(loaded?.entries?.[0]?.id).toBe(1);
     expect(loaded?.entries?.at(-1)?.id).toBe(50);
@@ -156,12 +160,11 @@ describe('useHistoryArchive', () => {
     dispatch.mockClear();
     await act(async () => {
       request();
-      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    const types = dispatch.mock.calls.map(([action]) => (action as { type: string }).type);
-    expect(types).toContain('startArchiveLoad');
-    expect(types).toContain('archiveLoaded');
+    const types = () => dispatch.mock.calls.map(([action]) => (action as { type: string }).type);
+    await vi.waitFor(() => expect(types()).toContain('archiveLoaded'));
+    expect(types()).toContain('startArchiveLoad');
 
     act(() => view.unmount());
   });
