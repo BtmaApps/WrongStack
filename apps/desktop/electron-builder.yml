@@ -55,11 +55,18 @@ files:
   - '!node_modules/**/{.github,.vscode,.idea}/**'
   - '!node_modules/**/*.{tsbuildinfo,flow}'
 
-# `icon` is a single 1024x1024 PNG; electron-builder derives .icns and .ico from
-# it. See apps/desktop/assets/icon.svg for the editable source — Electron's
-# nativeImage cannot decode SVG, which is why the raster is the shipped asset.
+# assets/icon.png is the 1024x1024 master (editable source: assets/icon.svg —
+# Electron's nativeImage cannot decode SVG, which is why the raster ships).
+# mac/win point at pre-converted icon.icns / icon.ico on purpose: given a PNG,
+# electron-builder converts it by running its wasm icon tool under
+# process.execPath, and under Bun that tool never exits — the Windows and macOS
+# package jobs hung until the 60-minute timeout (v1.0.37). An .icns/.ico input
+# is passed through unconverted. After changing icon.png, regenerate both with
+# Node from electron-builder's icons toolset:
+#   node <cache>/icons@1.1.0/icons-bundle-*/icon-tool.js --input=assets/icon.png --format=ico --out=assets
+#   node <cache>/icons@1.1.0/icons-bundle-*/icon-tool.js --input=assets/icon.png --format=icns --out=assets
 mac:
-  icon: assets/icon.png
+  icon: assets/icon.icns
   category: public.app-category.developer-tools
   # Applies build/entitlements.mac.plist. Both keys are required: the inherit
   # file covers the helper processes, which crash on launch without it.
@@ -80,7 +87,7 @@ mac:
     - target: zip
 
 win:
-  icon: assets/icon.png
+  icon: assets/icon.ico
   target:
     - target: nsis
       arch: [x64]

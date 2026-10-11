@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-11T10:23:55.945Z
+**Generated:** 2026-10-11T11:34:20.506Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4921 |
-| Production source lines | 1092096 |
-| Test files | 4282 |
+| Production source lines | 1092137 |
+| Test files | 4284 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 16204 |
 | Non-command slash imports | 0 |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 127 | 93 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 53 | 52 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 321 | 311 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 321 | 313 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 479 | 421 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 718 | 479 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -85,6 +85,7 @@ None.
 |---:|---|
 | 796 | `packages/webui/src/components/ProviderTestView.tsx` |
 | 792 | `packages/core/src/core/agent-response.ts` |
+| 779 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 774 | `packages/core/src/session-catalog/session-registry.ts` |
 | 768 | `packages/webui-server/src/server/session-handlers.ts` |
 | 767 | `packages/plugin-sdk/src/runtime/index.ts` |
@@ -127,7 +128,6 @@ None.
 | 747 | `packages/webui/src/components/SddWizard.tsx` |
 | 746 | `packages/core/src/core/fallback-profile-manager.ts` |
 | 746 | `packages/webui-server/src/server/backend-services.ts` |
-| 744 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 744 | `packages/tools/src/grep.ts` |
 | 742 | `packages/core/src/utils/context-evidence.ts` |
 | 742 | `packages/tui/src/components/agents-monitor.tsx` |
