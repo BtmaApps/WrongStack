@@ -33,6 +33,24 @@ import type { BuildContext } from '../../src/types/system-prompt.js';
 import type { Tool } from '../../src/types/tool.js';
 import { MockProvider, StreamingMockProvider } from '../helpers/mock-provider.js';
 
+// Every session writer holds a JSONL FileHandle. Tests that never close their
+// session leave it for GC, which Node now reports as an uncaught
+// ERR_INVALID_STATE attributed to whichever test happens to be running.
+const openSessions = new Set<{ close(): Promise<void> }>();
+
+async function closeOpenSessions(): Promise<void> {
+  const sessions = [...openSessions];
+  openSessions.clear();
+  await Promise.allSettled(sessions.map((s) => s.close()));
+}
+
+async function cleanupTestDirs(dirs: readonly string[]): Promise<void> {
+  await closeOpenSessions();
+  for (const d of dirs) {
+    await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+}
+
 async function buildAgent(
   provider: MockProvider,
   extraTools: Tool[] = [],
@@ -69,6 +87,12 @@ async function buildAgent(
   const pipelines = createDefaultPipelines();
 
   const sessionStore = new DefaultSessionStore({ dir: sessionDir });
+  const create = sessionStore.create.bind(sessionStore);
+  sessionStore.create = async (...args) => {
+    const created = await create(...args);
+    openSessions.add(created);
+    return created;
+  };
   const session = await sessionStore.create({ id: '', model: 'test', provider: 'mock' });
 
   const ctx = new Context({
@@ -114,9 +138,7 @@ describe('Agent', () => {
     cleanupDirs = [];
   });
   afterEach(async () => {
-    for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    }
+    await cleanupTestDirs(cleanupDirs);
   });
 
   it('legacy contract: returns done on plain end_turn response', async () => {
@@ -1010,9 +1032,7 @@ describe('Agent', () => {
 describe('Agent — sizeSignals coverage', () => {
   const cleanupDirs: string[] = [];
   afterEach(async () => {
-    for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    }
+    await cleanupTestDirs(cleanupDirs);
   });
 
   it('sizeSignals counts newlines for bash tool without trailing newline', async () => {
@@ -1116,9 +1136,7 @@ describe('Agent — sizeSignals coverage', () => {
 describe('Agent — streaming provider tool_use events', () => {
   const cleanupDirs: string[] = [];
   afterEach(async () => {
-    for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    }
+    await cleanupTestDirs(cleanupDirs);
   });
 
   it('streaming provider emits tool_use_start and tool_use_stop', async () => {
@@ -1148,9 +1166,7 @@ describe('Agent — streaming provider tool_use events', () => {
 describe('Agent — iteration limit extension denial', () => {
   const cleanupDirs: string[] = [];
   afterEach(async () => {
-    for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    }
+    await cleanupTestDirs(cleanupDirs);
   });
 
   it('honors iteration limit extension denial and stops at max', async () => {
@@ -1184,9 +1200,7 @@ describe('Agent — additional coverage', () => {
     cleanupDirs = [];
   });
   afterEach(async () => {
-    for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    }
+    await cleanupTestDirs(cleanupDirs);
   });
 
   it('accepts ContentBlock[] input including image blocks', async () => {
