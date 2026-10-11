@@ -44,7 +44,7 @@ export async function validateToolInputAndHooks(
     return {
       ok: false,
       use,
-      errorResult: malformedInputResult(use, tool, extractMalformedRaw(use.input)),
+      errorResult: malformedInputResult(use, tool, extractMalformedRaw(use.input), ctx.messages),
       settlement: 'invalid_input',
     };
   }
@@ -73,7 +73,11 @@ export async function validateToolInputAndHooks(
           `Invalid arguments for tool "${tool.name}".\n\n` +
           `Validation errors:\n${errorDetails}\n\n` +
           `Fix the arguments using the registered contract below.` +
-          toolInputCorrection(tool),
+          toolInputCorrection(
+            tool,
+            ctx.messages,
+            revalidation.errors.map((e) => e.path),
+          ),
         is_error: true,
       };
       return { ok: false, use, errorResult, settlement: 'invalid_input' };
@@ -114,7 +118,11 @@ export async function validateToolInputAndHooks(
             content:
               `A PreToolUse hook rewrote the arguments for "${tool.name}" into an invalid shape.\n\n` +
               `Validation errors:\n${errorDetails}` +
-              toolInputCorrection(tool),
+              toolInputCorrection(
+                tool,
+                ctx.messages,
+                reval.errors.map((e) => e.path),
+              ),
             is_error: true,
           };
           return { ok: false, use, errorResult, settlement: 'blocked_by_hook', preToolUseRan };
@@ -134,7 +142,7 @@ export async function validateToolInputAndHooks(
         content:
           `Invalid arguments for tool "${tool.name}".\n\n` +
           `Validation errors:\n${errorDetails}` +
-          toolInputCorrection(tool),
+          toolInputCorrection(tool, ctx.messages),
         is_error: true,
       };
       return { ok: false, use, errorResult, settlement: 'invalid_input', preToolUseRan };

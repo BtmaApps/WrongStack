@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:47:37.758Z",
+  "generatedAt": "2026-10-11T20:48:12.157Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4921,
-    "testFiles": 4292,
-    "sourceLines": 1092298,
+    "testFiles": 4293,
+    "sourceLines": 1092372,
     "workspaceEdges": 133,
-    "moduleEdges": 16204,
+    "moduleEdges": 16205,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1113,
-      "testFiles": 958,
+      "testFiles": 959,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 958
+          "testFiles": 959
         }
       ]
     },
@@ -8371,6 +8371,12 @@
       },
       {
         "file": "packages/core/tests/execution/tool-executor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/tool-input-correction.test.ts",
         "projects": [
           "root-node"
         ]

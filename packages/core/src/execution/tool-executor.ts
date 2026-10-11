@@ -287,7 +287,7 @@ export class ToolExecutor extends ToolExecutorCore {
         const result = toolErrorResult(use, err, {
           scrubber: (s) => this.opts.secretScrubber.scrub(s),
         });
-        if (category === 'validation') result.content += toolInputCorrection(tool);
+        if (category === 'validation') result.content += toolInputCorrection(tool, ctx.messages);
         // Error results are iteration output too: cap them with the same byte
         // budget the success path enforces, or a single failing tool whose
         // Error message is huge can defeat perIterationOutputCapBytes
@@ -331,7 +331,7 @@ export class ToolExecutor extends ToolExecutorCore {
           result.content = scrubbed;
         }
         if (tool && classifyToolError(err).category === 'validation') {
-          result.content += toolInputCorrection(tool);
+          result.content += toolInputCorrection(tool, ctx.messages);
         }
         // Same cap discipline as the plain-Error catch above — structured
         // describe() payloads are just as unbounded as Error messages.

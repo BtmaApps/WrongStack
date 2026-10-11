@@ -263,12 +263,13 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     expect(errorTexts[0]).toContain('not a valid JSON object');
     expect(errorTexts[0]).toContain('{"pa'); // raw payload echoed back
     expect(errorTexts[1]).toContain('path: required property missing (expected string)');
-    for (const feedback of errorTexts) {
-      expect(feedback).toContain('Usage: read({ path, limit? })');
-      expect(feedback).toContain('Input schema:');
-      expect(feedback).toContain('"required": [');
-      expect(feedback).toContain('"path"');
-    }
+    // The first failure carries the registered contract; the second, with that
+    // copy still in view, points back to it instead of repeating it.
+    expect(errorTexts[0]).toContain('Usage: read({ path, limit? })');
+    expect(errorTexts[0]).toContain('Input schema:');
+    expect(errorTexts[0]).toContain('"required":["path"]');
+    expect(errorTexts[1]).not.toContain('Input schema:');
+    expect(errorTexts[1]).toContain('earlier failed call');
 
     // And exactly one successful tool_result followed.
     expect(toolResults.filter((r) => !r.is_error)).toHaveLength(1);

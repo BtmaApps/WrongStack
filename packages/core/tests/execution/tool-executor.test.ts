@@ -117,7 +117,7 @@ describe('ToolExecutor — executeBatch', () => {
     expect(content).toContain('Do not use this tool when: the task needs a directory listing');
     expect(content).toContain('Use instead: glob');
     expect(content).toContain('Do not repeat the same arguments unchanged');
-    expect(content).toContain(JSON.stringify(tool.inputSchema, null, 2));
+    expect(content).toContain(JSON.stringify(tool.inputSchema));
   });
 
   it('returns the registered schema for validation errors raised by a tool', async () => {
@@ -143,7 +143,7 @@ describe('ToolExecutor — executeBatch', () => {
     expect(result?.type).toBe('tool_result');
     if (result?.type !== 'tool_result') throw new Error('Expected tool_result');
     expect(result.content).toContain('path is not usable');
-    expect(result.content).toContain(JSON.stringify(tool.inputSchema, null, 2));
+    expect(result.content).toContain(JSON.stringify(tool.inputSchema));
   });
 
   it('blocks every subagent-spawn capability when the session policy is off', async () => {
