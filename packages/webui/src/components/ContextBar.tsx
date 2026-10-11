@@ -34,6 +34,8 @@ interface ContextBarProps {
     writeTokens: number;
     hitRatio: number;
     coverageTokens: number;
+    /** Last request on its own; `hitRatio` is session-cumulative. */
+    last?: { hitRatio: number } | undefined;
   } | null;
   /** Number of visual segments (default 10, matches TUI). */
   segments?: number | undefined;
@@ -138,6 +140,22 @@ function iridescentHue(positionPct: number): number {
 /** Build a CSS `hsl()` color string for an iridescent position. */
 function iridescentColor(positionPct: number, lightness = 55, saturation = 75): string {
   return `hsl(${iridescentHue(positionPct)}, ${saturation}%, ${lightness}%)`;
+}
+
+type CacheReadout = { hitRatio: number; last?: { hitRatio: number } | undefined };
+
+/** The bar leads with the last request: the session ratio lags every change. */
+function cacheHitText(cache: CacheReadout): string {
+  return cache.last
+    ? `last ${(cache.last.hitRatio * 100).toFixed(1)}% hit`
+    : `${(cache.hitRatio * 100).toFixed(1)}% hit`;
+}
+
+function cacheTitle(cache: CacheReadout): string {
+  const session = `${(cache.hitRatio * 100).toFixed(1)}% session (cumulative)`;
+  return cache.last
+    ? `Prompt cache: ${(cache.last.hitRatio * 100).toFixed(1)}% last request · ${session}`
+    : `Prompt cache: ${session}`;
 }
 
 function clampPct(pct: number): number {
@@ -254,10 +272,10 @@ export function ContextBar({
           title={
             cache.coverageTokens > 0 && maxTokens !== undefined && maxTokens > 0
               ? `Cache covers ${cache.coverageTokens.toLocaleString()} of ${maxTokens.toLocaleString()} tokens`
-              : `Prompt cache: ${(cache.hitRatio * 100).toFixed(1)}% hit`
+              : cacheTitle(cache)
           }
         >
-          · {(cache.hitRatio * 100).toFixed(1)}% hit
+          · {cacheHitText(cache)}
           {cache.coverageTokens > 0 && maxTokens !== undefined && maxTokens > 0
             ? ` · covers ${fmtTok(cache.coverageTokens)}`
             : ''}
@@ -375,10 +393,10 @@ export function ContextFillBar({
           title={
             cache.coverageTokens > 0 && maxTokens !== undefined && maxTokens > 0
               ? `Cache covers ${cache.coverageTokens.toLocaleString()} of ${maxTokens.toLocaleString()} tokens`
-              : `Prompt cache: ${(cache.hitRatio * 100).toFixed(1)}% hit`
+              : cacheTitle(cache)
           }
         >
-          · {(cache.hitRatio * 100).toFixed(1)}% hit
+          · {cacheHitText(cache)}
           {cache.coverageTokens > 0 && maxTokens !== undefined && maxTokens > 0
             ? ` · covers ${fmtTok(cache.coverageTokens)}`
             : ''}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:52:32.171Z",
+  "generatedAt": "2026-10-11T20:52:57.521Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4930,
-    "testFiles": 4302,
-    "sourceLines": 1094110,
+    "sourceFiles": 4933,
+    "testFiles": 4305,
+    "sourceLines": 1095144,
     "workspaceEdges": 133,
-    "moduleEdges": 16248,
+    "moduleEdges": 16251,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -843,8 +843,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 718,
-      "testFiles": 479,
+      "sourceFiles": 721,
+      "testFiles": 482,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 479
+          "testFiles": 482
         }
       ]
     },
@@ -24342,6 +24342,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/context-dashboard-residency.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/context-memory-monitor.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -25099,6 +25105,12 @@
       },
       {
         "file": "packages/webui/tests/components/session-sections.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/session-story-context-timeline.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -26197,6 +26209,12 @@
       },
       {
         "file": "packages/webui/tests/lib/sdd-theme.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/session-context-timeline.test.ts",
         "projects": [
           "webui-jsdom"
         ]

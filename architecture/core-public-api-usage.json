@@ -268,6 +268,11 @@
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
+    "@wrongstack/core/utils/residency-labels": {
+      "files": 4,
+      "typeOnly": 4,
+      "runtimeOrMixed": 1
+    },
     "@wrongstack/core/utils/sage-output-block": {
       "files": 3,
       "typeOnly": 0,
@@ -27415,6 +27420,30 @@
       "file": "packages/tools/src/next-steps.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/residency-labels",
+      "file": "packages/webui/src/components/context-dashboard-residency.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/residency-labels",
+      "file": "packages/webui/src/components/context-dashboard-sections.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils/residency-labels",
+      "file": "packages/webui/src/types/runtime.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils/residency-labels",
+      "file": "packages/webui/tests/components/context-dashboard-residency.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils/sage-output-block",

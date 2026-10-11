@@ -150,6 +150,19 @@ describe('updateUsage', () => {
     expect(useSessionStore.getState().lastInputTokens).toBe(prev);
   });
 
+  it('keeps the last response hit ratio apart from the cumulative one', () => {
+    const { updateUsage } = useSessionStore.getState();
+    updateUsage({ input: 10_000, output: 5, cacheRead: 0, cacheWrite: 10_000 });
+    updateUsage({ input: 200, output: 5, cacheRead: 9_800, cacheWrite: 0 });
+    let cache = useSessionStore.getState().cacheStats;
+    expect(cache?.hitRatio).toBeCloseTo(9_800 / 30_000, 6);
+    expect(cache?.last).toEqual({ hitRatio: 0.98, promptTokens: 10_000 });
+    // An output-only usage is not a new prompt; the last request stands.
+    updateUsage({ input: 0, output: 50, cacheRead: 0, cacheWrite: 0 });
+    cache = useSessionStore.getState().cacheStats;
+    expect(cache?.last?.hitRatio).toBe(0.98);
+  });
+
   it('updates aggregate and per-provider cache hit ratios live', () => {
     useSessionStore
       .getState()

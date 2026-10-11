@@ -35,6 +35,11 @@ export type CacheStats = {
     hitRatio: number;
   }>;
   coverageTokens: number;
+  /**
+   * The most recent provider response on its own. `hitRatio` above is the
+   * session-cumulative figure, which carries the cold first request forever.
+   */
+  last?: { hitRatio: number; promptTokens: number } | undefined;
 };
 
 export type ContextLimitWarning = {
@@ -484,6 +489,13 @@ export function sessionLane(sessionId: string): SessionLaneActions {
             hitRatio: totalPrompt > 0 ? Math.min(1, Math.max(0, nextCacheRead / totalPrompt)) : 0,
             coverageTokens: cacheReadDelta,
             providers,
+            last:
+              inputDelta > 0
+                ? {
+                    hitRatio: Math.min(1, Math.max(0, cacheReadDelta / inputDelta)),
+                    promptTokens: inputDelta,
+                  }
+                : lane.cacheStats?.last,
           },
         };
       }),

@@ -115,6 +115,7 @@ export function ChatHeader({
     writeTokens: number;
     hitRatio: number;
     coverageTokens: number;
+    last?: { hitRatio: number } | undefined;
   } | null;
   setBreakdownOpen: (val: boolean) => void;
   contextLimitWarning: { previousMaxContext: number; maxContext: number } | null;

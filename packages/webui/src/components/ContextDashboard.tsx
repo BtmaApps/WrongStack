@@ -27,6 +27,7 @@ import {
   useUIStore,
 } from '@/stores';
 import { ContextMemoryMonitor } from './ContextMemoryMonitor';
+import { ResidencySection } from './context-dashboard-residency.js';
 import type { ContextDebugPayload } from './context-dashboard-sections.js';
 import {
   AgentFootprintSection,
@@ -244,6 +245,11 @@ export function ContextDashboard() {
           <CompositionSection data={debugData} loading={loading} />
           <ThresholdSection pct={pct} />
           <CompactionSection pct={pct} maxTokens={maxContext} />
+        </div>
+
+        {/* What of the context is cached, written or live, and what compaction keeps */}
+        <div style={staggerDelay(3)}>
+          <ResidencySection residency={debugData?.residency} retention={debugData?.retention} />
         </div>
 
         {/* Fleet footprint */}

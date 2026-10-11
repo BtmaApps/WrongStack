@@ -43,6 +43,11 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../core/src/utils/expect-defined.ts'),
       },
       {
+        // Residency display vocabulary — dependency-free (type-only imports).
+        find: /^@wrongstack\/core\/utils\/residency-labels$/,
+        replacement: path.resolve(__dirname, '../core/src/utils/residency-labels.ts'),
+      },
+      {
         find: /^@wrongstack\/core\/execution\/prompt-enhancer$/,
         replacement: path.resolve(__dirname, '../core/src/execution/prompt-enhancer.ts'),
       },

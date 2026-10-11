@@ -23,6 +23,7 @@ import { useFleetStore } from '@/stores/fleet-store';
 import { useMailboxStore } from '@/stores/mailbox-store';
 import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
 import { useUIStore } from '@/stores/ui-store';
+import { ContextTimeline } from './session-story/ContextTimeline';
 import { ModelDashboard } from './session-story/ModelDashboard';
 import { ActivityPulse, StoryChart, storyTime } from './session-story/StoryChart';
 import { StoryInsights } from './session-story/StoryInsights';
@@ -73,9 +74,9 @@ export function SessionStoryView() {
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [limit, setLimit] = useState(50);
-  const [tab, setTab] = useState<'overview' | 'timeline' | 'models' | 'tools' | 'files' | 'team'>(
-    'overview',
-  );
+  const [tab, setTab] = useState<
+    'overview' | 'timeline' | 'context' | 'models' | 'tools' | 'files' | 'team'
+  >('overview');
   const [motion, setMotion] = useState(true);
   const stats = useMemo(() => storyStats(story, projectRoot), [story, projectRoot]);
   const models = useMemo(() => sessionModelStats(story), [story]);
@@ -236,7 +237,7 @@ export function SessionStoryView() {
           aria-label={t('activity:story.tablistLabel')}
           className="sticky top-0 z-10 flex gap-1 overflow-x-auto rounded-2xl border bg-background/95 p-1.5 backdrop-blur"
         >
-          {(['overview', 'timeline', 'models', 'tools', 'files', 'team'] as const).map(
+          {(['overview', 'timeline', 'context', 'models', 'tools', 'files', 'team'] as const).map(
             (value, index, values) => (
               <button
                 key={value}
@@ -274,6 +275,7 @@ export function SessionStoryView() {
                     {
                       overview: 'activity:story.tabOverview',
                       timeline: 'activity:story.tabTimeline',
+                      context: 'activity:story.tabContext',
                       models: 'activity:story.tabModels',
                       tools: 'activity:story.tabTools',
                       files: 'activity:story.tabFiles',
@@ -322,6 +324,7 @@ export function SessionStoryView() {
               )}
             </div>
           )}
+          {tab === 'context' && <ContextTimeline events={history.events} />}
           {story.actors.length > 0 && tab === 'overview' && (
             <>
               <StoryInsights

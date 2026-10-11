@@ -247,6 +247,7 @@ export function handleStatsGet(msg: WSServerMessage) {
         cacheWrite: number;
         hitRatio: number;
       }>;
+      last?: { input: number; cacheRead: number; cacheWrite: number; hitRatio: number };
     } | null;
     currentRequest?: { input: number; cacheRead: number; cacheWrite: number } | undefined;
     cost: number;
@@ -281,6 +282,12 @@ export function handleStatsGet(msg: WSServerMessage) {
           hitRatio: p.cache.hitRatio,
           providers: p.cache.providers ?? [],
           coverageTokens: Math.max(0, Math.min(lastInputTokens, currentRequestCacheRead)),
+          last: p.cache.last
+            ? {
+                hitRatio: p.cache.last.hitRatio,
+                promptTokens: p.cache.last.input + p.cache.last.cacheRead + p.cache.last.cacheWrite,
+              }
+            : replyMeta(msg).data.cacheStats?.last,
         }
       : null,
   );
@@ -297,7 +304,7 @@ export function handleStatsGet(msg: WSServerMessage) {
       `**Usage:** ${p.usage.input.toLocaleString()} in · ${p.usage.output.toLocaleString()} out`,
       ...(p.cache && p.cache.readTokens > 0
         ? [
-            `**Cache:** ${p.cache.readTokens.toLocaleString()} read · ${p.cache.writeTokens.toLocaleString()} write · hit ratio ${(p.cache.hitRatio * 100).toFixed(1)}%`,
+            `**Cache:** ${p.cache.readTokens.toLocaleString()} read · ${p.cache.writeTokens.toLocaleString()} write · hit ratio ${(p.cache.hitRatio * 100).toFixed(1)}% session${p.cache.last ? `, ${(p.cache.last.hitRatio * 100).toFixed(1)}% last request` : ''}`,
           ]
         : []),
       `**Cost:** ${p.cost.toFixed(4)}`,

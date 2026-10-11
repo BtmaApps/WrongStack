@@ -1,4 +1,5 @@
 import type { UserInputRequest, UserInputResponse } from '@wrongstack/core/types';
+import type { HistoryRetention, RequestResidency } from '@wrongstack/core/utils/residency-labels';
 import type { SessionScopedPayload } from './protocol-core.js';
 
 /** Moved to webui-protocol (conversation-core.ts), the single source the SDK shares. */
@@ -275,6 +276,10 @@ export interface WSContextDebug {
       count: number;
       breakdown: Array<{ index: number; role: string; tokens: number; preview: string }>;
     };
+    /** Cache residency of the last request sent (absent before the first). */
+    residency?: RequestResidency | undefined;
+    /** What the next compaction keeps. */
+    retention?: HistoryRetention | undefined;
   };
 }
 

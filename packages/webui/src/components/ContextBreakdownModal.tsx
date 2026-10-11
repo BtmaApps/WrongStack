@@ -247,15 +247,19 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                 label={t('activity:ctxBreakdown.cacheHit')}
                 value={
                   cacheStats && cacheStats.readTokens + cacheStats.writeTokens > 0
-                    ? `${(cacheStats.hitRatio * 100).toFixed(1)}%`
+                    ? `${((cacheStats.last?.hitRatio ?? cacheStats.hitRatio) * 100).toFixed(1)}%`
                     : '—'
                 }
                 sub={
-                  cacheStats && cacheStats.coverageTokens > 0 && maxContext > 0
-                    ? t('activity:ctxBreakdown.cacheHitCovers', {
-                        covered: fmtTok(cacheStats.coverageTokens),
+                  cacheStats?.last
+                    ? t('activity:ctxBreakdown.cacheHitLastSession', {
+                        pct: (cacheStats.hitRatio * 100).toFixed(1),
                       })
-                    : t('activity:ctxBreakdown.promptCache')
+                    : cacheStats && cacheStats.coverageTokens > 0 && maxContext > 0
+                      ? t('activity:ctxBreakdown.cacheHitCovers', {
+                          covered: fmtTok(cacheStats.coverageTokens),
+                        })
+                      : t('activity:ctxBreakdown.promptCache')
                 }
                 accent={
                   cacheStats && cacheStats.readTokens + cacheStats.writeTokens > 0

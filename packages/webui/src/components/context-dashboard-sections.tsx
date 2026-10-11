@@ -1,3 +1,4 @@
+import type { HistoryRetention, RequestResidency } from '@wrongstack/core/utils/residency-labels';
 import {
   AlertTriangle,
   BarChart3,
@@ -11,7 +12,6 @@ import {
   Users,
   Wrench,
 } from 'lucide-react';
-
 import { ContextBar, ContextFillBar } from '@/components/ContextBar';
 import { fmtTok } from '@/components/dashboard-primitives';
 import { useAppTranslation } from '@/i18n';
@@ -45,6 +45,8 @@ export interface ContextDebugPayload {
     count: number;
     breakdown: Array<{ index: number; role: string; tokens: number; preview: string }>;
   };
+  residency?: RequestResidency | undefined;
+  retention?: HistoryRetention | undefined;
 }
 
 // ── Section components ────────────────────────────────────────────────
