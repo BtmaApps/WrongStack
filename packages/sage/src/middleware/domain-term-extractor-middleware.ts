@@ -39,7 +39,7 @@
 
 import type { Middleware } from '@wrongstack/core/kernel';
 import type { MemoryPort, Request } from '@wrongstack/core/types';
-import { writeErr } from '@wrongstack/core/utils';
+import { LIVE_CONTEXT_MARKER, writeErr } from '@wrongstack/core/utils';
 import { SageDomainTermExtractor } from '../domain-term-extractor.js';
 
 /**
@@ -235,14 +235,26 @@ function extractSnapshot(
 }
 
 function messageText(message: unknown): string {
-  const m = message as { content?: unknown };
+  const m = message as { content?: unknown; authoredLength?: unknown };
   const content = m.content;
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
+    // Host-written text shares user messages with the author's: notes folded
+    // in after the input (past `authoredLength`; in a tool-result carrier every
+    // text block) and the `[live_context]` tail (glossary, plan, memory
+    // evidence). Mining it re-persists the host's own injection — the glossary
+    // is built from these terms — as if the user had said it.
+    const blocks =
+      typeof m.authoredLength === 'number' ? content.slice(0, m.authoredLength) : content;
+    const toolCarrier =
+      typeof m.authoredLength !== 'number' &&
+      blocks.some((block) => (block as { type?: unknown } | null)?.type === 'tool_result');
     let acc = '';
-    for (const block of content) {
+    for (const block of blocks) {
       if (!block || typeof block !== 'object') continue;
       const b = block as { type?: unknown; text?: unknown; content?: unknown };
+      if (b.type === 'text' && b.text === LIVE_CONTEXT_MARKER) break;
+      if (b.type === 'text' && toolCarrier) continue;
       const piece =
         b.type === 'text' && typeof b.text === 'string'
           ? b.text

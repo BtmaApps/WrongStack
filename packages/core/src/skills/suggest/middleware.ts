@@ -32,6 +32,7 @@ import type { Middleware } from '../../kernel/pipeline.js';
 import { markVolatileSystemBlock } from '../../types/blocks.js';
 import type { Message } from '../../types/messages.js';
 import type { Request } from '../../types/provider.js';
+import { authoredText } from '../../utils/live-context.js';
 import type { SkillSuggester, SkillSuggestion } from './skill-suggester.js';
 
 export interface SkillSuggestionMiddlewareOptions {
@@ -187,16 +188,8 @@ function lastUserText(messages: Message[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
     if (message?.role !== 'user') continue;
-    const text =
-      typeof message.content === 'string'
-        ? message.content.trim()
-        : Array.isArray(message.content)
-          ? message.content
-              .filter((block) => block.type === 'text')
-              .map((block) => block.text)
-              .join(' ')
-              .trim()
-          : '';
+    // Authored text only: the `[live_context]` tail is the host's, not a query.
+    const text = authoredText(message, ' ').trim();
     if (text) return text;
   }
   return '';

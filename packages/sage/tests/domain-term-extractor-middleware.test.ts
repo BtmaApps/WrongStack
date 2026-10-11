@@ -115,6 +115,74 @@ describe('createSageDomainTermExtractorMiddleware', () => {
     );
   });
 
+  it('mines only authored text, never the host live-context tail', async () => {
+    // The tail carries the glossary built FROM these terms (plus plan, memory
+    // evidence, gates): mining it re-persists the host's own injection as if
+    // the user had said it, every request.
+    const fake = makeFakeExtractor();
+    const mw = buildMiddleware(fake.instance, { memory: {} as never, projectRoot: '/tmp/proj' });
+    const request: Request = {
+      model: 'test-model',
+      messages: [
+        { role: 'user', content: 'Wire the Kestrel adapter.' },
+        { role: 'assistant', content: 'Reading it.' },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', tool_use_id: 't1', content: 'adapter source' },
+            { type: 'text', text: '[live_context]' },
+            { type: 'text', text: '[glossary]\nKestrel: legacy adapter\n[/glossary]' },
+          ],
+        },
+      ],
+    };
+    await mw.handler(request, async (value: Request) => value as never);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const extractArgs = fake.spies.extractFromConversation.mock.calls[0]?.[0] as {
+      messages: ReadonlyArray<{ role: 'user' | 'agent'; text: string }>;
+    };
+    expect(JSON.stringify(extractArgs.messages)).not.toContain('[glossary]');
+    expect(JSON.stringify(extractArgs.messages)).not.toContain('[live_context]');
+    expect(extractArgs.messages[0]).toEqual({ role: 'user', text: 'Wire the Kestrel adapter.' });
+  });
+
+  it('does not mine host notes folded into the user message', async () => {
+    const fake = makeFakeExtractor();
+    const mw = buildMiddleware(fake.instance, { memory: {} as never, projectRoot: '/tmp/proj' });
+    const request: Request = {
+      model: 'test-model',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Wire the Kestrel adapter.' },
+            { type: 'text', text: '[TOOL COACH]\n- kanban: "Manage project Kanban boards"' },
+          ],
+          authoredLength: 1,
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', tool_use_id: 't1', content: 'adapter source' },
+            { type: 'text', text: '[TOOL COACH — edit failed]' },
+          ],
+        },
+      ],
+    };
+    await mw.handler(request, async (value: Request) => value as never);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const extractArgs = fake.spies.extractFromConversation.mock.calls[0]?.[0] as {
+      messages: ReadonlyArray<{ role: 'user' | 'agent'; text: string }>;
+    };
+    expect(JSON.stringify(extractArgs.messages)).not.toContain('TOOL COACH');
+    expect(extractArgs.messages).toEqual([
+      { role: 'user', text: 'Wire the Kestrel adapter.' },
+      { role: 'user', text: 'adapter source' },
+    ]);
+  });
+
   it('skips persist and mirror when no candidates are produced', async () => {
     const fake = makeFakeExtractor();
     fake.spies.extractFromConversation.mockReturnValue([]);

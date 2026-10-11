@@ -2,6 +2,7 @@ import type { Middleware } from '../kernel/pipeline.js';
 import { markVolatileSystemBlock } from '../types/blocks.js';
 import type { Request } from '../types/provider.js';
 import type { SkillLoader } from '../types/skill.js';
+import { authoredText } from '../utils/live-context.js';
 import { extractSkillMentions } from './mentions.js';
 
 /** Explicit selections are local and independent of the optional skill recommender. */
@@ -11,13 +12,9 @@ export function createSkillMentionMiddleware(loader: SkillLoader): Middleware<Re
     owner: 'skills',
     async handler(request, next) {
       const latest = request.messages.findLast((message) => message.role === 'user');
-      const content =
-        typeof latest?.content === 'string'
-          ? latest.content
-          : (latest?.content
-              .filter((block) => block.type === 'text')
-              .map((block) => block.text)
-              .join('\n') ?? '');
+      // A `$skill` quoted by the live-context tail (continuity, memory
+      // evidence) is not a selection made in this message.
+      const content = latest ? authoredText(latest) : '';
       const names = extractSkillMentions(content);
       if (!names.length) return next(request);
       loader.invalidateCache();

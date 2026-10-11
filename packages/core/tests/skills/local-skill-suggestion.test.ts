@@ -146,45 +146,41 @@ async function capture(h: ReturnType<typeof harness>) {
 }
 
 describe('automatic local skill prompt injection', () => {
-  it('preloads actual instructions without search, a TypeSafe account or a network call', async () => {
-    const h = harness(
-      '---\nname: nextjs-modern\n---\n# Local instructions\nVerify cache isolation.',
-    );
+  it('advises without search, a TypeSafe account or a network call', async () => {
+    const h = harness();
     const network = vi
       .spyOn(globalThis, 'fetch')
       .mockRejectedValue(new Error('unexpected network'));
     const seen = await capture(h);
     expect(seen.system?.[0]).toBe(h.request.system?.[0]);
-    expect(seen.system?.[1]?.text).toContain('Primary instructions (nextjs-modern)');
-    expect(seen.system?.[1]?.text).toContain('Verify cache isolation.');
-    expect(seen.system?.[1]?.text).not.toContain('name: nextjs-modern');
+    expect(seen.system?.[1]?.text).toContain('Bundled guidance for this task: nextjs-modern');
+    expect(seen.system?.[1]?.text).toContain('If nextjs-modern fits');
     expect(isVolatileSystemBlock(seen.system![1]!)).toBe(true);
     expect(network).not.toHaveBeenCalled();
     network.mockRestore();
   });
 
-  it('does not represent oversized or unreadable bodies as fully loaded', async () => {
-    const h = harness('SECRET_TAIL'.repeat(2000));
-    expect((await capture(h)).system?.[1]?.text).toContain('not included in full');
-    expect((await capture(h)).system?.[1]?.text).not.toContain('SECRET_TAIL');
-    h.readBody.mockRejectedValueOnce(new Error('unreadable'));
-    expect((await capture(h)).system?.[1]?.text).toContain('load nextjs-modern');
+  it('never inlines the skill body into the per-request volatile block', async () => {
+    // The block rides the uncached tail of every request in the turn (or the
+    // replayed prefix for the rest of the session); the body belongs in the
+    // durable history via the skill tool, where it is cached.
+    const h = harness('# Instructions\nSKILL_BODY_MARKER '.repeat(400));
+    const text = (await capture(h)).system?.[1]?.text ?? '';
+    expect(text).not.toContain('SKILL_BODY_MARKER');
+    expect(h.readBody).not.toHaveBeenCalled();
+    expect(text.length).toBeLessThan(700);
   });
 
-  it.each(['version', 'source', 'tools', 'message'])(
-    'rejects a %s change while reading the body',
-    async (kind) => {
-      const h = harness();
-      h.readBody.mockImplementationOnce(async () => {
-        if (kind === 'version') h.entries[0]!.version = '2.0.0';
-        if (kind === 'source') h.entries[0]!.source = 'project';
-        if (kind === 'tools') h.setTools([]);
-        if (kind === 'message') h.request.messages[0]!.content = 'Actually, explain a monad';
-        return '# Stale instructions';
-      });
-      expect(await capture(h)).toBe(h.request);
-    },
-  );
+  it.each(['tools', 'message'])('rejects a %s change while listing the catalog', async (kind) => {
+    const h = harness();
+    const list = h.deps.skillLoader.list;
+    h.deps.skillLoader.list = async () => {
+      if (kind === 'tools') h.setTools([]);
+      if (kind === 'message') h.request.messages[0]!.content = 'Actually, explain a monad';
+      return list();
+    };
+    expect(await capture(h)).toBe(h.request);
+  });
 
   it('respects feature switches, explicit selections and completed remote advice', async () => {
     const h = harness();
@@ -235,7 +231,7 @@ describe('automatic local skill prompt injection', () => {
     } as never);
     const afterTool = await capture(h);
     expect(afterTool.system).toHaveLength(2);
-    expect(afterTool.system?.[1]?.text).toContain('Primary instructions (nextjs-modern)');
+    expect(afterTool.system?.[1]?.text).toContain('load it with the skill tool');
   });
 
   it('propagates a downstream/provider error exactly once', async () => {

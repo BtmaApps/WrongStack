@@ -1,6 +1,6 @@
 import type { Middleware } from '@wrongstack/core/kernel';
 import type { ContentBlock, Request, TextBlock } from '@wrongstack/core/types';
-import { formatMemoryEvidenceBlock } from '@wrongstack/core/utils';
+import { formatMemoryEvidenceBlock, LIVE_CONTEXT_MARKER } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import { checkInjectionValidity } from '../retrieval/validity-checks.js';
 import { isSageVisibleForSearch } from '../retrieval/visibility.js';
@@ -105,7 +105,7 @@ export function createSageEvidenceRefreshMiddleware(opts: {
       const last = messages.at(-1);
       if (last?.role === 'user' && Array.isArray(last.content)) {
         const liveStart = last.content.findIndex(
-          (block) => block.type === 'text' && block.text === '[live_context]',
+          (block) => block.type === 'text' && block.text === LIVE_CONTEXT_MARKER,
         );
         if (liveStart >= 0) {
           messages[messages.length - 1] = {
