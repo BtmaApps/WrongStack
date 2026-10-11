@@ -106,7 +106,9 @@ function manifestFile(cacheDir: string, name: string): string {
     return path.join(cacheDir, 'mcp-tools', `${safe}.json`);
   }
   const identity = createHash('sha256').update(name).digest('hex');
-  return path.join(cacheDir, 'mcp-tools', `${safe}-${identity}.json`);
+  // A separate namespace prevents a literal lowercase server name from
+  // claiming the filename generated for an unsafe or case-sensitive name.
+  return path.join(cacheDir, 'mcp-tools', 'identities', `${identity}.json`);
 }
 
 /**

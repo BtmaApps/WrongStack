@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -211,6 +212,36 @@ describe('readManifest / writeManifest', () => {
     await writeManifest(tmp, 'we/ird:name', hash, tools);
     // Stored under a sanitized file name; read finds it by the same name.
     expect(await readManifest(tmp, 'we/ird:name', hash)).toEqual(tools);
+  });
+
+  it.each(['team/api', 'Team'])(
+    'isolates %s from a literal hashed-filename server name',
+    async (name) => {
+      const literalName =
+        `${name.replace(/[^a-zA-Z0-9._-]/g, '_')}-${createHash('sha256').update(name).digest('hex')}`.toLowerCase();
+      const otherTools: MCPTool[] = [{ name: 'other', inputSchema: { type: 'object' } }];
+      await writeManifest(tmp, name, 'hash', tools);
+      expect(await readManifest(tmp, name, 'hash')).toEqual(tools);
+      await writeManifest(tmp, literalName, 'hash', otherTools);
+      expect(await readManifest(tmp, literalName, 'hash')).toEqual(otherTools);
+      expect(await readManifest(tmp, name, 'hash')).toEqual(tools);
+      // Refresh in the opposite direction must preserve the other identity too.
+      await writeManifest(tmp, name, 'new-hash', tools);
+      expect(await readManifest(tmp, literalName, 'hash')).toEqual(otherTools);
+      expect(await readManifest(tmp, name, 'hash')).toBeNull();
+      expect(await readManifest(tmp, name, 'new-hash')).toEqual(tools);
+    },
+  );
+
+  it('keeps lossy sanitized names independent and preserves lowercase legacy paths', async () => {
+    const otherTools: MCPTool[] = [{ name: 'other', inputSchema: { type: 'object' } }];
+    await writeManifest(tmp, 'team/api', 'hash', tools);
+    await writeManifest(tmp, 'team_api', 'hash', otherTools);
+    expect(await readManifest(tmp, 'team/api', 'hash')).toEqual(tools);
+    expect(await readManifest(tmp, 'team_api', 'hash')).toEqual(otherTools);
+    expect(
+      JSON.parse(await fs.readFile(path.join(tmp, 'mcp-tools', 'team_api.json'), 'utf8')).tools,
+    ).toEqual(otherTools);
   });
 
   it('cleans up its temporary file when the atomic rename fails', async () => {
