@@ -518,6 +518,9 @@ export class FleetSupervisor {
       set engaging(value) {
         self.engaging = value;
       },
+      get stopped() {
+        return self.stopped;
+      },
       emitSignal: (...args) => this.emitSignal(...args),
       decide: (...args) => this.decide(...args),
       record: (...args) => this.record(...args),

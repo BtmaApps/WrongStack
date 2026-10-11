@@ -47,6 +47,16 @@ export async function engageLooping(
       options,
       'medium',
     );
+    if (host.stopped) {
+      host.record({
+        kind: 'looping_agent',
+        subagentId: s.id,
+        proposedAction: 'steer|terminate',
+        outcome: 'skipped',
+        detail: 'supervisor stopped while the decision was in flight',
+      });
+      return;
+    }
     if (choice === 'terminate' && host.cfg.allowTerminate) {
       host.recordIntervention(s.id);
       await host.opts.actions.terminate(s.id);
@@ -134,6 +144,16 @@ export async function engageStuck(
       ],
       'medium',
     );
+    if (host.stopped) {
+      host.record({
+        kind: 'stuck_agent',
+        subagentId: s.id,
+        proposedAction: 'steer',
+        outcome: 'skipped',
+        detail: 'supervisor stopped while the decision was in flight',
+      });
+      return;
+    }
     if (choice !== 'steer') {
       host.record({
         kind: 'stuck_agent',
@@ -208,6 +228,16 @@ export async function engageFailureStreak(
       options,
       'high',
     );
+    if (host.stopped) {
+      host.record({
+        kind: 'failure_streak',
+        subagentId,
+        proposedAction: host.cfg.allowTerminate ? 'steer|terminate' : 'steer',
+        outcome: 'skipped',
+        detail: 'supervisor stopped while the decision was in flight',
+      });
+      return;
+    }
     if (choice === 'terminate' && host.cfg.allowTerminate) {
       host.recordIntervention(subagentId);
       await host.opts.actions.terminate(subagentId);

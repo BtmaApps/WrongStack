@@ -11,6 +11,16 @@ export interface FleetSupervisorRebalanceHost {
   cooldownOk: (kind: string, subject: string) => boolean;
   interventionBudgetOk: (subagentId: string) => boolean;
   engaging: boolean;
+  /**
+   * True once `stop()` has been called.
+   *
+   * An engagement is suspended across `await host.decide(...)`, and that brain
+   * call can take seconds. `stop()` cannot cancel it, so every engagement MUST
+   * re-check this after the await before mutating the fleet — otherwise
+   * `/supervisor off` ("no further automatic interventions this session")
+   * still lands a retarget/steer/spawn from the decision already in flight.
+   */
+  stopped: boolean;
   emitSignal: (kind: string, detail: string, subagentId?: string, taskId?: string) => void;
   decide: (
     question: string,
@@ -63,6 +73,16 @@ export async function engageRebalance(
       ],
       'low',
     );
+    if (host.stopped) {
+      host.record({
+        kind,
+        subagentId: fromWorkerId,
+        proposedAction: 'retarget',
+        outcome: 'skipped',
+        detail: 'supervisor stopped while the decision was in flight',
+      });
+      return;
+    }
     if (choice !== 'rebalance') {
       host.record({
         kind,
@@ -145,6 +165,15 @@ export async function engageBacklog(
       ],
       'medium',
     );
+    if (host.stopped) {
+      host.record({
+        kind: 'backlog',
+        proposedAction: 'spawn_helper',
+        outcome: 'skipped',
+        detail: 'supervisor stopped while the decision was in flight',
+      });
+      return;
+    }
     if (choice !== 'spawn') {
       host.record({
         kind: 'backlog',

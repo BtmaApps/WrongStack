@@ -151,6 +151,64 @@ describe('FleetSupervisor', () => {
     expect(last).toMatchObject({ kind: 'pinned_starvation', outcome: 'approved' });
   });
 
+  it('does not mutate the fleet when stopped while a decision is in flight', async () => {
+    // An engagement suspends across `await host.decide(...)`, and stop() cannot
+    // cancel that. Without a post-await re-check the decision already in flight
+    // still lands a retarget/steer/notify AFTER `/supervisor off` promised
+    // "no further automatic interventions this session".
+    const events = new EventBus();
+    const clock = { now: 1_000_000 };
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let brainCalls = 0;
+    const deferredBrain = {
+      async decide(req: { options?: Array<{ recommended?: boolean; id: string; label: string }> }) {
+        brainCalls++;
+        await gate;
+        const recommended = req.options?.find((o) => o.recommended);
+        return { type: 'answer' as const, optionId: recommended?.id, text: 'ok' };
+      },
+    };
+    const actions = {
+      retargetPendingTask: vi.fn(() => true),
+      spawnHelper: vi.fn(async () => ({ subagentId: 'helper-1' })),
+      steerAgent: vi.fn(async () => {}),
+      notifyLeader: vi.fn(async () => {}),
+      terminate: vi.fn(async () => {}),
+    };
+    const supervisor = new FleetSupervisor({
+      events,
+      fleet: new FleetBus(),
+      brain: deferredBrain as never,
+      source: {
+        subagents: () => [sub('busy', 'running', 'big task'), sub('idle', 'idle')],
+        listPendingTasks: () => [task('t-starved', 'busy')],
+        isWorkComplete: () => false,
+      },
+      actions: actions as never as FleetSupervisorActions,
+      now: () => clock.now,
+      // pinnedWaitMs 0 so the first pass already qualifies; cooldown 0 so the
+      // only gate is `stopped`.
+      config: { pinnedWaitMs: 0, cooldownMs: 0, intervalMs: 1000 } as never,
+    });
+
+    const run = supervisor.evaluate();
+    await new Promise((r) => setImmediate(r)); // suspended inside decide()
+    supervisor.stop(); // owner stopped while suspended
+    release(); // continuation resumes
+    await run;
+
+    expect(brainCalls).toBe(1); // the decision really was in flight
+    expect(actions.retargetPendingTask).not.toHaveBeenCalled();
+    expect(actions.steerAgent).not.toHaveBeenCalled();
+    expect(actions.notifyLeader).not.toHaveBeenCalled();
+    // Recorded as skipped rather than silently dropped, so `/supervisor log`
+    // explains why the engagement did nothing.
+    expect(supervisor.history().at(-1)).toMatchObject({ outcome: 'skipped' });
+  });
+
   it('overloaded worker: moves the queue tail immediately, keeps the head pinned', async () => {
     const h = makeHarness(approveBrain(), { overloadPinnedThreshold: 2 });
     h.state.subagents = [sub('busy', 'running'), sub('idle', 'idle')];
