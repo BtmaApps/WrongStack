@@ -272,6 +272,16 @@ describe('QueueStore', () => {
     );
   });
 
+  it('read() reports no queue when a parent path component is a file (ENOTDIR)', async () => {
+    // POSIX reports ENOTDIR where Windows reports ENOENT; the file cannot exist
+    // either way, so this is "no queue", not an unreadable one.
+    const store = new QueueStore({ dir });
+    statMock.mockRejectedValueOnce(
+      Object.assign(new Error('ENOTDIR: not a directory'), { code: 'ENOTDIR' }),
+    );
+    expect(await store.read()).toEqual([]);
+  });
+
   it('read() retries a transient sharing violation instead of reporting no queue', async () => {
     const store = new QueueStore({ dir });
     await store.write([{ displayText: 'kept', blocks: [{ type: 'text', text: 'kept' }] }]);

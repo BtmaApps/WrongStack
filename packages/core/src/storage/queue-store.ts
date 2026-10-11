@@ -201,7 +201,9 @@ export class QueueStore {
       raw = await readQueueFile(this.file);
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      if (code === 'ENOENT') {
+      // ENOTDIR (POSIX) is ENOENT (Windows) for a parent path component that
+      // is a file: the queue file cannot exist, so there is no queue to lose.
+      if (code === 'ENOENT' || code === 'ENOTDIR') {
         this.events?.emit('storage.read', {
           sessionId: this.traceId ?? '~boot~',
           store: 'queue',
@@ -300,7 +302,7 @@ export class QueueStore {
       });
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      if (code === 'ENOENT') return;
+      if (code === 'ENOENT' || code === 'ENOTDIR') return;
       this.events?.emit('storage.error', {
         sessionId: this.traceId ?? '~boot~',
         store: 'queue',
