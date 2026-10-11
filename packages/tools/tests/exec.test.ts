@@ -424,7 +424,9 @@ describe('exec abort and ENOENT hardening (#99)', () => {
       // `mkdir` is in the allowlist. Rename it temporarily via PATH
       // stripping so spawn() reports ENOENT. We restore PATH after.
       const originalPath = process.env.PATH;
-      process.env.PATH = '';
+      // Not '': with an empty PATH Bun falls back to a default search path and
+      // still finds mkdir. A directory that does not exist hides it in both runtimes.
+      process.env.PATH = path.join(sb.ctx.cwd, 'no-bin');
       try {
         // ENOENT (caught async via the 'error' event OR a synchronous spawn
         // throw caught by try/catch) now REJECTS the call — the command never

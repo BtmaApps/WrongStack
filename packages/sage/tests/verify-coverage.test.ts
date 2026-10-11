@@ -117,7 +117,9 @@ describe('anchor verification completion coverage', () => {
 
   it('returns unknown when git cannot be executed', async () => {
     await fs.writeFile(path.join(directory, 'source.ts'), 'content');
-    process.env['PATH'] = '';
+    // Not '': with an empty PATH Bun falls back to a default search path and
+    // still finds git. A directory that does not exist hides it in both runtimes.
+    process.env['PATH'] = path.join(directory, 'no-bin');
     await expect(
       coverage.verifyAnchor(directory, { type: 'git', path: 'source.ts' }),
     ).resolves.toEqual(

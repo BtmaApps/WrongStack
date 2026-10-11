@@ -1,8 +1,19 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DefaultPathResolver } from '../../src/infrastructure/path-resolver.js';
+
+// Bun's os.homedir() on POSIX ignores HOME changes made at runtime; Node
+// re-reads the variable on every call. Re-read it here so the home-guard
+// tests below steer the guard the same way under both runtimes.
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  const homedir = () =>
+    (process.platform === 'win32' ? process.env['USERPROFILE'] : process.env['HOME']) ||
+    actual.homedir();
+  return { ...actual, default: { ...actual, homedir }, homedir };
+});
 
 describe('DefaultPathResolver', () => {
   let tmp: string;
