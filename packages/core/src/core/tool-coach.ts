@@ -20,6 +20,48 @@ const STOP_WORDS = new Set([
   'tools',
   'use',
   'with',
+  // Filler that matched inside every long description ("one" in "done").
+  'about',
+  'after',
+  'again',
+  'all',
+  'also',
+  'any',
+  'before',
+  'but',
+  'can',
+  'each',
+  'every',
+  'finally',
+  'first',
+  'have',
+  'into',
+  'its',
+  'just',
+  'last',
+  'not',
+  'one',
+  'only',
+  'own',
+  'please',
+  'short',
+  'should',
+  'some',
+  'that',
+  'then',
+  'them',
+  'there',
+  'these',
+  'they',
+  'those',
+  'under',
+  'what',
+  'when',
+  'where',
+  'which',
+  'will',
+  'you',
+  'your',
   'bir',
   'bu',
   'icin',
@@ -60,13 +102,16 @@ const ACTION_WORDS = new Set([
   'write',
 ]);
 
-function terms(text: string): string[] {
-  const normalized = text
+function normalize(text: string): string {
+  return text
     .toLocaleLowerCase('en-US')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/ı/g, 'i');
-  const words = normalized.match(/[a-z0-9_-]{3,}/g) ?? [];
+}
+
+function terms(text: string): string[] {
+  const words = normalize(text).match(/[a-z0-9_-]{3,}/g) ?? [];
   return [
     ...new Set(
       words.flatMap((word) => [
@@ -81,17 +126,52 @@ function terms(text: string): string[] {
     .slice(0, 24);
 }
 
+/** `function`~`functions`, `export`~`exported`; short words must match exactly. */
+function sameWord(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  return short.length >= 5 && long.startsWith(short.slice(0, Math.max(5, short.length - 2)));
+}
+
+/**
+ * Word-level relevance. Substring matching ranked the longest descriptions
+ * first ("one" in "done", "list" in anything) and filled a durable, per-turn
+ * note with unrelated tools. A tool qualifies on its exact name, or on at
+ * least two distinct task words found in its name parts or description.
+ */
 function scoreTool(tool: Tool, queryTerms: readonly string[]): number {
   const name = tool.name.toLowerCase();
-  const details =
-    `${tool.description} ${tool.usageHint ?? ''} ${tool.category ?? ''}`.toLowerCase();
+  const nameParts = name.split(/[-_]/).filter((part) => part.length >= 3);
+  const details = [
+    ...new Set(
+      normalize(`${tool.description} ${tool.usageHint ?? ''} ${tool.category ?? ''}`).match(
+        /[a-z0-9]{3,}/g,
+      ) ?? [],
+    ),
+  ];
   let score = 0;
+  let matched = 0;
+  let exact = false;
   for (const term of queryTerms) {
-    if (name === term) score += 8;
-    else if (name.includes(term)) score += 5;
-    else if (details.includes(term)) score += 1;
+    if (name === term) {
+      score += 8;
+      exact = true;
+    } else if (nameParts.some((part) => sameWord(part, term))) score += 3;
+    else if (details.some((word) => sameWord(word, term))) score += 1;
+    else continue;
+    matched++;
   }
-  return score;
+  return exact || matched >= 2 ? score : 0;
+}
+
+const PROSE_EXTENSIONS = /\.(?:md|mdx|markdown|txt|text|rst|adoc|log|csv)$/i;
+
+/** True only when the call names a target path and that path is prose/plain text. */
+function isProseOnlyChange(input: unknown): boolean {
+  if (!input || typeof input !== 'object') return false;
+  const record = input as Record<string, unknown>;
+  const target = record['path'] ?? record['file_path'] ?? record['file'];
+  return typeof target === 'string' && PROSE_EXTENSIONS.test(target.trim());
 }
 
 function brief(tool: Tool): string {
@@ -215,6 +295,9 @@ export function createToolCoach(catalog: readonly Tool[]): ToolCoach {
         ) {
           continue;
         }
+        // Tests and typecheck say nothing about a notes or docs file; the note
+        // would only cost the model a paragraph explaining why it skipped them.
+        if (isProseOnlyChange(uses.find((use) => use.id === result.tool_use_id)?.input)) continue;
         const verification = ['codebase-targeted-test', 'test', 'typecheck', 'lint']
           .filter((candidate) => byName.has(candidate))
           .slice(0, 3);

@@ -163,6 +163,56 @@ describe('Tool Coach', () => {
     expect(note).not.toContain('inspect before changing');
   });
 
+  it('does not ask for tests after a notes/docs edit, and still advises on the next code edit', () => {
+    // Live run (2026-10-11): editing notes.txt drew "choose test/typecheck",
+    // and the model spent its answer explaining why it skipped them.
+    const coach = createToolCoach([
+      tool('edit', 'Edit a file.', { mutating: true }),
+      tool('test', 'Run tests.'),
+    ]);
+    const edit = (id: string, path: string): ToolUseBlock => ({
+      type: 'tool_use',
+      id,
+      name: 'edit',
+      input: { path },
+    });
+    expect(coach.afterTools([edit('e1', 'notes.txt')], [result('e1')])).toBeNull();
+    expect(coach.afterTools([edit('e2', 'docs/README.md')], [result('e2')])).toBeNull();
+    expect(coach.afterTools([edit('e3', 'src/app.ts')], [result('e3')])).toContain(
+      'verification phase',
+    );
+  });
+
+  it('does not rank long descriptions on filler-word substrings', () => {
+    // Live run (2026-10-11): this task drew tool_script/delegate/session_note —
+    // "one" matched inside "done", "you"/"its"/"own"/"each" inside anything —
+    // as a durable note in the user's turn.
+    const coach = createToolCoach([
+      tool(
+        'tool_script',
+        'WrongStack ToolFlow: run a short JavaScript program that calls tools as async functions and returns only its result.',
+      ),
+      tool(
+        'session_note',
+        'Send an ephemeral note to the leader or another agent in THIS session. Delivered at their next iteration. Use it for same-session talk (findings, a short ask, a steer).',
+      ),
+      tool(
+        'pin_add',
+        'Pin a short durable fact into the system prompt so it survives context compaction.',
+      ),
+      tool('codebase-search', 'Find exported functions, classes and symbols in the codebase.'),
+      tool('edit', 'Make a precise, guarded text edit by replacing an expected block.'),
+    ]);
+    const note =
+      coach.initialNote(
+        'Find every exported function under src, add a short JSDoc comment above each one, then add a subtract(a, b) function to src/math.ts with its own JSDoc. Finally list what you changed in one short paragraph.',
+      ) ?? '';
+    expect(note).toContain('codebase-search');
+    expect(note).not.toContain('tool_script');
+    expect(note).not.toContain('session_note');
+    expect(note).not.toContain('pin_add');
+  });
+
   it('does not claim a tool when the catalog has no match and no discovery tool', () => {
     expect(
       createToolCoach([tool('read', 'Read files.')]).initialNote('Launch a rocket'),
