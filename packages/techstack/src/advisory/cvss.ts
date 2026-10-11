@@ -16,7 +16,10 @@ const UI3: Readonly<Record<string, number>> = { N: 0.85, R: 0.62 };
 const CIA3: Readonly<Record<string, number>> = { H: 0.56, L: 0.22, N: 0 };
 
 /** CVSS v2 weight tables (spec §2). */
-const AV2: Readonly<Record<string, number>> = { N: 1, A: 0.647, L: 0.395 };
+// FIRST §3.2 AccessVector: local 0.395, adjacent network 0.646, network 1.0.
+// The Adjacent weight was 0.647, which pushed every AV:A base score one 0.1
+// step high (e.g. the spec 7.1 reported as 7.2).
+const AV2: Readonly<Record<string, number>> = { N: 1, A: 0.646, L: 0.395 };
 const AC2: Readonly<Record<string, number>> = { L: 0.71, M: 0.61, H: 0.35 };
 const AU2: Readonly<Record<string, number>> = { N: 0.704, S: 0.56, M: 0.45 };
 const CIA2: Readonly<Record<string, number>> = { C: 0.66, P: 0.275, N: 0 };
@@ -101,9 +104,15 @@ function cvss20(vector: string): number | undefined {
   }
   const impact = 10.41 * (1 - (1 - c) * (1 - i) * (1 - a));
   const exploitability = 20 * av * ac * au;
+  // FIRST §3.1 base equation:
+  //   BaseScore = round_to_1_decimal(((0.6*Impact)+(0.4*Exploitability)-1.5)*f(Impact))
+  // 1.5 is the equation's additive constant; 1.176 is the SEPARATE f(Impact)
+  // multiplier (0 when Impact is 0). Reading 1.176 as both inflated every
+  // non-zero-impact score by ~0.4 — e.g. the published 7.5 (High) vector came
+  // out 7.9, and a 6.9 (Medium) one crossed into High.
   const fImpact = impact === 0 ? 0 : 1.176;
   // The reference calculators clamp the base score to the 0..10 range.
-  const score = ((0.6 * impact + 0.4 * exploitability - 1.176) * fImpact * 10) / 10;
+  const score = ((0.6 * impact + 0.4 * exploitability - 1.5) * fImpact * 10) / 10;
   return Math.min(10, Math.max(0, Math.round(score * 10) / 10));
 }
 
