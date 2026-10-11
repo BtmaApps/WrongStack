@@ -16,8 +16,8 @@ import { hermeticEnv, hermeticPosixArgv } from '../src/bash-hermetic.js';
 import { execTool } from '../src/exec.js';
 import { pwshTool } from '../src/pwsh.js';
 import { mkSandbox, newSignal } from './fixtures.js';
+import { runtimeFixtureCommand } from './shell-fixture-command.js';
 
-const isWin = os.platform() === 'win32';
 // A command that outlives a short executor ceiling but finishes on its own.
 // A script file, not `node -e`: cmd.exe mangles quoted `=>` / `>`.
 async function slowCommand(dir: string, ms = 1200): Promise<string> {
@@ -32,7 +32,7 @@ async function slowCommand(dir: string, ms = 1200): Promise<string> {
 // hermetic env does not.
 const PROBE = 'NPM_CONFIG_WS_HERMETIC_PROBE';
 afterEach(() => {
-  delete process.env[PROBE];
+  vi.unstubAllEnvs();
 });
 
 describe('bash timeout_ms: 0', () => {
@@ -159,16 +159,21 @@ describe('shell tools own their timeout', () => {
 
 describe('bash hermetic', () => {
   it('drops variables outside the fixed set but keeps PATH', async () => {
-    process.env[PROBE] = 'leaked';
+    vi.stubEnv(PROBE, 'leaked');
     const sb = await mkSandbox();
     try {
-      const cmd = isWin ? `echo [%${PROBE}%]` : `echo "[$${PROBE}]"`;
+      const script = path.join(sb.dir, 'environment-probe.js');
+      await fs.writeFile(script, `console.log('[' + (process.env.${PROBE} ?? '') + ']');\n`);
+      const cmd = runtimeFixtureCommand(script);
       const open = await bashTool.execute({ command: cmd }, sb.ctx, { signal: newSignal() });
+      expect(open.exit_code).toBe(0);
       expect(open.output).toContain('[leaked]');
       const sealed = await bashTool.execute({ command: cmd, hermetic: true }, sb.ctx, {
         signal: newSignal(),
       });
+      expect(sealed.exit_code).toBe(0);
       expect(sealed.output).not.toContain('leaked');
+      expect(sealed.output.trim()).toBe('[]');
       // PATH survives: a PATH-resolved program still runs.
       const node = await bashTool.execute({ command: 'node -p 6*7', hermetic: true }, sb.ctx, {
         signal: newSignal(),

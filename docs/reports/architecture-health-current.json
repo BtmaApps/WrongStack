@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T20:46:56.377Z",
+  "generatedAt": "2026-10-11T20:47:17.352Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4921,
-    "testFiles": 4291,
+    "testFiles": 4292,
     "sourceLines": 1092258,
     "workspaceEdges": 133,
     "moduleEdges": 16204,
@@ -766,7 +766,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 321,
-      "testFiles": 320,
+      "testFiles": 321,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +782,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 320
+          "testFiles": 321
         }
       ]
     },
@@ -18883,6 +18883,12 @@
       },
       {
         "file": "packages/tools/tests/session-shell-default-probe.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/shell-fixture-command.test.ts",
         "projects": [
           "root-node"
         ]

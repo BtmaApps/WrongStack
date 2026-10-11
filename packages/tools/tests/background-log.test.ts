@@ -12,6 +12,7 @@ import { bashTool } from '../src/bash.js';
 import { getProcessRegistry } from '../src/process-registry.js';
 import { pwshTool } from '../src/pwsh.js';
 import { mkSandbox, newSignal } from './fixtures.js';
+import { runtimeFixtureCommand } from './shell-fixture-command.js';
 
 async function waitGone(pid: number): Promise<void> {
   const end = Date.now() + 15_000;
@@ -24,8 +25,10 @@ describe('background shell output', () => {
   it('lands in the log_file the result names, stdout and stderr both', async () => {
     const sb = await mkSandbox();
     try {
+      const script = path.join(sb.dir, 'background-output.js');
+      fs.writeFileSync(script, "console.log('bg-out-line'); console.error('bg-err-line');\n");
       const out = await bashTool.execute(
-        { command: 'echo bg-out-line && echo bg-err-line 1>&2', background: true },
+        { command: runtimeFixtureCommand(script), background: true },
         sb.ctx,
         { signal: newSignal() },
       );

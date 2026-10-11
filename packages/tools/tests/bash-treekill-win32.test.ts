@@ -1,22 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
+import { describe, expect, it, vi } from 'vitest';
 import { bashTool } from '../src/bash.js';
+import { mkSandbox, newSignal } from './fixtures.js';
+import { runtimeFixtureCommand } from './shell-fixture-command.js';
 
 const isWin = process.platform === 'win32';
-
-function mkCtx() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wstack-treekill-'));
-  return {
-    cwd: dir,
-    projectRoot: dir,
-    workingDir: dir,
-    session: undefined,
-  };
-}
 
 function findRuntimeProcessesWithMarker(marker: string): string[] {
   const ps = spawnSync(
@@ -26,8 +16,10 @@ function findRuntimeProcessesWithMarker(marker: string): string[] {
       '-Command',
       `Get-CimInstance Win32_Process -Filter "name='node.exe' OR name='bun.exe'" | Select-Object -ExpandProperty CommandLine`,
     ],
-    { encoding: 'utf8', windowsHide: true },
+    { encoding: 'utf8', windowsHide: true, timeout: 5000 },
   );
+  expect(ps.error, ps.stderr).toBeUndefined();
+  expect(ps.status, ps.stderr).toBe(0);
   return (ps.stdout ?? '').split('\n').filter((l) => l.includes(marker));
 }
 
@@ -39,7 +31,7 @@ function killMarkedProcesses(marker: string): void {
       '-Command',
       `Get-CimInstance Win32_Process -Filter "name='node.exe' OR name='bun.exe'" | Where-Object { $_.CommandLine -like '*${marker}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`,
     ],
-    { encoding: 'utf8', windowsHide: true },
+    { encoding: 'utf8', windowsHide: true, timeout: 5000 },
   );
 }
 
@@ -56,29 +48,32 @@ function killMarkedProcesses(marker: string): void {
 describe.runIf(isWin)('bash win32 tree kill', () => {
   it('kills the grandchild Bun process when a command times out', async () => {
     const marker = `wstack_orphan_${process.pid}_${Date.now()}`;
-    const ctx = mkCtx();
-    const script = path.join(ctx.projectRoot, 'spin.js');
-    fs.writeFileSync(script, `setInterval(() => console.log('tick'), 200);\n`);
+    const sb = await mkSandbox();
+    const script = path.join(sb.dir, 'spin.js');
+    fs.writeFileSync(
+      script,
+      "require('node:fs').writeFileSync('spin-ready', 'ready'); setInterval(() => console.log('tick'), 200);\n",
+    );
     try {
       const out = await bashTool.execute(
-        { command: `"${process.execPath}" "${script}" ${marker}`, timeout_ms: 1500 },
-        ctx as never,
-        { signal: new AbortController().signal },
+        {
+          command: runtimeFixtureCommand(script, [marker]),
+          timeout_ms: 1500,
+        },
+        sb.ctx,
+        { signal: newSignal() },
       );
       expect(out.timed_out).toBe(true);
 
-      // Give taskkill a moment to finish reaping the tree.
-      await new Promise((r) => setTimeout(r, 2500));
-
-      const orphans = findRuntimeProcessesWithMarker(marker);
-      if (orphans.length > 0) {
-        // Clean up so a failed assertion doesn't leave the orphan running.
-        killMarkedProcesses(marker);
-      }
-      expect(orphans).toEqual([]);
+      // A timed-out parse error is not evidence that a real child was reaped.
+      expect(fs.readFileSync(path.join(sb.dir, 'spin-ready'), 'utf8')).toBe('ready');
+      await vi.waitFor(() => expect(findRuntimeProcessesWithMarker(marker)).toEqual([]), {
+        timeout: 5000,
+        interval: 100,
+      });
     } finally {
       killMarkedProcesses(marker);
-      await removeProjectFixtureDirectory(ctx.projectRoot);
+      await sb.cleanup();
     }
   }, 20_000);
 });

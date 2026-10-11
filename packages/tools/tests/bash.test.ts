@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { bashTool } from '../src/bash.js';
 import { getProcessRegistry } from '../src/process-registry.js';
 import { mkSandbox, newSignal } from './fixtures.js';
+import { runtimeFixtureCommand } from './shell-fixture-command.js';
 
 const isWin = os.platform() === 'win32';
 const echoCmd = isWin ? 'echo hello' : 'echo hello';
@@ -431,10 +432,14 @@ describe('bashTool session and env', () => {
   it('uses projectRoot as cwd', async () => {
     const sb = await mkSandbox();
     try {
-      const cmd = isWin ? 'cd' : 'pwd';
+      const script = path.join(sb.dir, 'print-cwd.js');
+      await fs.writeFile(script, 'console.log(process.cwd());\n');
+      const cmd = runtimeFixtureCommand(script);
       const out = await bashTool.execute({ command: cmd }, sb.ctx, { signal: newSignal() });
       // Should use projectRoot (sb.dir)
+      expect(out.exit_code).toBe(0);
       expect(out.output).toContain(sb.dir);
+      expect(path.normalize(out.output.trim())).toBe(path.normalize(sb.dir));
     } finally {
       await sb.cleanup();
     }
@@ -446,9 +451,13 @@ describe('bashTool session and env', () => {
       const sub = path.join(sb.dir, 'wd-sub');
       await fs.mkdir(sub, { recursive: true });
       (sb.ctx as { workingDir?: string }).workingDir = sub;
-      const cmd = isWin ? 'cd' : 'pwd';
+      const script = path.join(sb.dir, 'print-cwd.js');
+      await fs.writeFile(script, 'console.log(process.cwd());\n');
+      const cmd = runtimeFixtureCommand(script);
       const out = await bashTool.execute({ command: cmd }, sb.ctx, { signal: newSignal() });
+      expect(out.exit_code).toBe(0);
       expect(out.output).toContain('wd-sub');
+      expect(path.normalize(out.output.trim())).toBe(path.normalize(sub));
     } finally {
       await sb.cleanup();
     }
