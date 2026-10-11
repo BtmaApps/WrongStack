@@ -198,7 +198,9 @@ export function SessionTopbar(props: SessionTopbarProps) {
           </small>
           {cache && cache.readTokens + cache.writeTokens > 0 ? (
             <small className="context-cache">
-              cache-hit {(cache.hitRatio * 100).toFixed(1)}%
+              {cache.lastHitRatio !== undefined
+                ? `cache-hit ${(cache.lastHitRatio * 100).toFixed(1)}% last · ${(cache.hitRatio * 100).toFixed(0)}% session`
+                : `cache-hit ${(cache.hitRatio * 100).toFixed(1)}%`}
               {cache.coverageTokens > 0 ? ` · covers ${compactTokens(cache.coverageTokens)}` : ''}
             </small>
           ) : null}

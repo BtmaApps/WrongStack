@@ -39,6 +39,13 @@ export function handleContextMessage(message: ServerMessage, deps: ContextMessag
         const hitRatioRaw = c['hitRatio'];
         const hitRatio =
           typeof hitRatioRaw === 'number' && Number.isFinite(hitRatioRaw) ? hitRatioRaw : 0;
+        const last = c['last'];
+        const lastRaw =
+          last && typeof last === 'object'
+            ? (last as Record<string, unknown>)['hitRatio']
+            : undefined;
+        const lastHitRatio =
+          typeof lastRaw === 'number' && Number.isFinite(lastRaw) ? lastRaw : undefined;
         setContext((current) => ({
           ...current,
           // Coverage is the per-request snapshot, capped at the live
@@ -50,6 +57,7 @@ export function handleContextMessage(message: ServerMessage, deps: ContextMessag
             readTokens,
             writeTokens,
             hitRatio,
+            ...(lastHitRatio !== undefined ? { lastHitRatio } : {}),
             coverageTokens: Math.max(0, Math.min(current.tokens, currentRequestCacheRead)),
           },
         }));

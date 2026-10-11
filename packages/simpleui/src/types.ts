@@ -90,7 +90,10 @@ export interface ContextInfo {
   cache: {
     readTokens: number;
     writeTokens: number;
+    /** Session-cumulative; carries the cold first request forever. */
     hitRatio: number;
+    /** The most recent request on its own — what the topbar leads with. */
+    lastHitRatio?: number | undefined;
     /** Tokens billed at the cache-read rate on the most recent prompt. */
     coverageTokens: number;
   } | null;

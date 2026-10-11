@@ -325,13 +325,15 @@ export function ContextBreakdownModal({
                   <span>CACHE</span>
                   <strong>
                     {context.cache && context.cache.readTokens + context.cache.writeTokens > 0
-                      ? `${(context.cache.hitRatio * 100).toFixed(1)}%`
+                      ? `${((context.cache.lastHitRatio ?? context.cache.hitRatio) * 100).toFixed(1)}%`
                       : '—'}
                   </strong>
                   <em>
-                    {context.cache && context.cache.coverageTokens > 0
-                      ? `covers ${compactTokens(context.cache.coverageTokens)} of ${compactTokens(context.maxContext)}`
-                      : 'prompt-cache hit'}
+                    {context.cache?.lastHitRatio !== undefined
+                      ? `last request · ${(context.cache.hitRatio * 100).toFixed(1)}% session`
+                      : context.cache && context.cache.coverageTokens > 0
+                        ? `covers ${compactTokens(context.cache.coverageTokens)} of ${compactTokens(context.maxContext)}`
+                        : 'prompt-cache hit'}
                   </em>
                 </div>
               </div>
