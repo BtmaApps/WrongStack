@@ -163,7 +163,7 @@ export function expandIPv6(addr: string): number[] | null {
     if (s === '') return [];
     const out: number[] = [];
     for (const g of s.split(':')) {
-      if (g.length === 0 || g.length > 4) return null;
+      if (!/^[0-9a-f]{1,4}$/i.test(g)) return null;
       const n = Number.parseInt(g, 16);
       if (Number.isNaN(n) || n < 0 || n > 0xffff) return null;
       out.push(n);

@@ -62,6 +62,27 @@ describe('expandIPv6', () => {
     expect(expandIPv6('::')).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
+  it.each([
+    '2001:db8::1g',
+    '2001:db8::+1',
+    '2001:db8:: 1',
+    '2001:db8::0x1',
+    '2001:db8::1\n',
+    '2001:db8::1\r',
+    '2001:db8:0:0:0:0:0:1g',
+    '2001:db8g::1',
+  ])('rejects a group that only starts with valid hex: %s', (address) => {
+    expect(expandIPv6(address)).toBeNull();
+    expect(isPrivateIPv6(address)).toBe(true);
+  });
+
+  it('accepts complete uppercase and zero-padded hex groups', () => {
+    const groups = [0x2001, 0xdb8, 0, 0, 0, 0, 0, 0xabcd];
+    expect(expandIPv6('2001:0DB8::ABCD')).toEqual(groups);
+    expect(expandIPv6('2001:0DB8:0000:0000:0000:0000:0000:ABCD')).toEqual(groups);
+    expect(isPrivateIPv6('2001:0DB8::ABCD')).toBe(false);
+  });
+
   it('returns null on malformed input', () => {
     expect(expandIPv6('::a::b')).toBeNull(); // two '::'
     expect(expandIPv6('12345::')).toBeNull(); // group too long
