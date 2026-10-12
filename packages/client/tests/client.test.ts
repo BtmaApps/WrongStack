@@ -2,17 +2,17 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  type WebSocket as ServerSocket,
-  WebSocketServer,
-  WebSocket as WsWebSocket,
-} from './ws-runtime.js';
-import {
   type ConnectOptions,
   createHttpClient,
   type RunEvent,
   WrongStackClient,
   WrongStackError,
 } from '../src/index.js';
+import {
+  type WebSocket as ServerSocket,
+  WebSocketServer,
+  WebSocket as WsWebSocket,
+} from './ws-runtime.js';
 
 type Frame = { type: string; payload?: Record<string, unknown>; seq?: number };
 
@@ -607,6 +607,69 @@ describe('WrongStackClient', () => {
     } finally {
       process.off('unhandledRejection', onUnhandled);
     }
+  });
+
+  it.each(['session.new', 'session.resume'] as const)(
+    'reports a received %s refusal as a server error, not a timeout',
+    async (operation) => {
+      const { server, client } = await connected();
+      const pending =
+        operation === 'session.new' ? client.newSession() : client.resumeSession('sess_0');
+      const rejected = expect(pending).rejects.toMatchObject({
+        kind: 'server',
+        code: 'session_not_ready',
+        detail: 'Session is not live in this runtime.',
+        retryable: true,
+      });
+      await server.frame(operation);
+      server.emit({
+        type: 'error',
+        payload: {
+          phase: operation,
+          code: 'session_not_ready',
+          message: 'Session is not live in this runtime.',
+          sessionId: 'sess_1',
+        },
+      });
+      await rejected;
+      expect(client.sessionId).toBe('sess_1');
+    },
+  );
+
+  it('keeps waiting after foreign-session and unrelated-phase errors', async () => {
+    const { server, client } = await connected();
+    const pending = client.newSession();
+    await server.frame('session.new');
+    server.emit({
+      type: 'error',
+      payload: { phase: 'session.new', message: 'foreign refusal', sessionId: 'sess_other' },
+    });
+    server.emit({
+      type: 'error',
+      payload: { phase: 'agent.run', message: 'unrelated refusal', sessionId: 'sess_1' },
+    });
+    server.emit({
+      type: 'session.start',
+      payload: { sessionId: 'sess_2', provider: 'p', model: 'm' },
+    });
+    await expect(pending).resolves.toMatchObject({ sessionId: 'sess_2' });
+    expect(client.sessionId).toBe('sess_2');
+  });
+
+  it('uses the operation as the error code for an unscoped refusal without a code', async () => {
+    const { server, client } = await connected();
+    const pending = client.newSession();
+    const rejected = expect(pending).rejects.toMatchObject({
+      kind: 'server',
+      code: 'session.new',
+      detail: 'Session unavailable',
+    });
+    await server.frame('session.new');
+    server.emit({
+      type: 'error',
+      payload: { phase: 'session.new', message: 'Session unavailable' },
+    });
+    await rejected;
   });
 
   it('times out a request the server never answers', async () => {

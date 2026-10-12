@@ -255,7 +255,8 @@ export class WrongStackClient {
   async newSession(): Promise<SessionInfo> {
     const before = new Set(this.sessions.keys());
     this.post({ type: 'session.new', payload: { sessionId: this.current.sessionId } });
-    const answer = this.next(
+    const answer = this.nextSession(
+      'session.new',
       (frame) =>
         frame.type === 'session.start' &&
         !before.has((frame.payload as SessionInfo | undefined)?.sessionId ?? ''),
@@ -266,7 +267,8 @@ export class WrongStackClient {
   /** Open an earlier session, with its transcript, and make it current. */
   async resumeSession(id: string): Promise<SessionInfo> {
     this.post({ type: 'session.resume', payload: { id, sessionId: this.current.sessionId } });
-    const answer = this.next(
+    const answer = this.nextSession(
+      'session.resume',
       (frame) =>
         frame.type === 'session.start' &&
         (frame.payload as SessionInfo | undefined)?.sessionId === id,
@@ -429,6 +431,42 @@ export class WrongStackClient {
       this.subscribed = previous;
       throw error;
     }
+  }
+
+  /** A matching session refusal is an answer, not an unanswered request. */
+  private async nextSession(
+    operation: 'session.new' | 'session.resume',
+    match: (frame: Frame) => boolean,
+  ): Promise<Frame> {
+    const sessionId = this.current.sessionId;
+    let refusal: WrongStackError | undefined;
+    const answer = await this.next((frame) => {
+      if (match(frame)) return true;
+      const payload = frame.payload;
+      if (
+        frame.type !== 'error' ||
+        typeof payload !== 'object' ||
+        payload === null ||
+        !('phase' in payload) ||
+        payload.phase !== operation ||
+        !('message' in payload) ||
+        typeof payload.message !== 'string' ||
+        ('sessionId' in payload &&
+          payload.sessionId !== undefined &&
+          payload.sessionId !== sessionId)
+      )
+        return false;
+      const code = 'code' in payload && typeof payload.code === 'string' ? payload.code : operation;
+      refusal = new WrongStackError({
+        kind: 'server',
+        code,
+        detail: payload.message,
+        retryable: code === 'session_not_ready',
+      });
+      return true;
+    });
+    if (refusal) throw refusal;
+    return answer;
   }
 
   /** The next frame that matches, or a timeout. */

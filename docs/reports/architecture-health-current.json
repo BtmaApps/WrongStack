@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-12T18:14:37.695Z",
+  "generatedAt": "2026-10-12T18:16:47.608Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4936,
-    "testFiles": 4317,
-    "sourceLines": 1095910,
+    "testFiles": 4319,
+    "sourceLines": 1096020,
     "workspaceEdges": 133,
     "moduleEdges": 16270,
     "nonCommandSlashImports": 0,
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1120,
-      "testFiles": 966,
+      "testFiles": 967,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 966
+          "testFiles": 967
         }
       ]
     },
@@ -489,7 +489,7 @@
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
       "sourceFiles": 11,
-      "testFiles": 12,
+      "testFiles": 13,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -500,7 +500,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 12
+          "testFiles": 13
         }
       ]
     },
@@ -7746,6 +7746,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/streaming-json-repair-content.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/streaming-response-builder.test.ts",
         "projects": [
           "root-node"
@@ -13909,6 +13915,12 @@
       },
       {
         "file": "packages/primitives/tests/redaction-header-and-json-secrets.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/primitives/tests/redaction-password-argv.test.ts",
         "projects": [
           "root-node"
         ]
