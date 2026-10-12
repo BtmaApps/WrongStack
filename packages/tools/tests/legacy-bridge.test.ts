@@ -5,12 +5,27 @@
  * Each test creates a temporary workspace with an ecosystem marker file,
  * mocks spawnStream, calls the legacy tool, and verifies delegation.
  */
+import type * as childProcess from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const spawnMocks = vi.hoisted(() => ({ spawnStream: vi.fn() }));
+const spawnMocks = vi.hoisted(() => ({
+  spawnStream: vi.fn(),
+  childSpawn: vi.fn(),
+  realSpawn: undefined as typeof childProcess.spawn | undefined,
+}));
+// `outdated` falls back to its own child_process.spawn, not spawnStream. Left
+// real, npm walks up from the bare temp workspace to the nearest ancestor
+// package.json (the user's home) and reports that project's packages.
+vi.mock('node:child_process', async (original) => {
+  const actual = (await original()) as typeof childProcess;
+  spawnMocks.realSpawn = actual.spawn;
+  spawnMocks.childSpawn.mockImplementation(actual.spawn);
+  return { ...actual, spawn: spawnMocks.childSpawn };
+});
 vi.mock('../src/_bun-typechecker.js', () => ({
   bunTypecheckInvocation: async (cwd: string, args: string[]) => ({
     cmd: 'bun',
@@ -318,17 +333,37 @@ describe('auditTool — non-JS delegation', () => {
 
 // ─── OUTDATED ──────────────────────────────────────────────────────────────
 describe('outdatedTool — non-JS delegation', () => {
+  beforeEach(() => {
+    spawnMocks.childSpawn.mockImplementation(() => {
+      const child = Object.assign(new EventEmitter(), {
+        stdout: new EventEmitter(),
+        stderr: new EventEmitter(),
+        kill: vi.fn(),
+      });
+      setImmediate(() => {
+        child.stdout.emit('data', Buffer.from('{}'));
+        child.emit('close', 0);
+      });
+      return child;
+    });
+  });
+  afterEach(() => {
+    spawnMocks.childSpawn.mockImplementation(spawnMocks.realSpawn!);
+  });
+
   it('falls through to npm for Go', async () => {
     spawnMocks.spawnStream.mockImplementation(fakeSpawn(JSON.stringify({})));
     await go();
     const r = await outdatedTool.execute({}, ctx(), opts);
     expect(r.total).toBe(0);
+    expect(spawnMocks.childSpawn.mock.calls.at(-1)?.join(' ')).toContain('outdated');
   });
   it('falls through for Rust', async () => {
     spawnMocks.spawnStream.mockImplementation(fakeSpawn(JSON.stringify({})));
     await rust();
     const r = await outdatedTool.execute({}, ctx(), opts);
     expect(r.total).toBe(0);
+    expect(spawnMocks.childSpawn.mock.calls.at(-1)?.join(' ')).toContain('outdated');
   });
   it('falls through for PHP', async () => {
     spawnMocks.spawnStream.mockImplementation(fakeSpawn(JSON.stringify({})));
