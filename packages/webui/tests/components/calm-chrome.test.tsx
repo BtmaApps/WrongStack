@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The pickers and chips in the header row talk to stores/WS on their own;
@@ -13,6 +13,7 @@ import { ChatDisplayToggles } from '../../src/components/ChatView/ChatDisplayTog
 import { ChatHeader } from '../../src/components/ChatView/ChatHeader';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 import { DEFAULTS } from '../../src/stores/local-prefs-defaults';
+import { useUIStore } from '../../src/stores/ui-store';
 
 function renderHeader() {
   const noop = vi.fn();
@@ -77,6 +78,7 @@ describe('chrome level', () => {
   afterEach(() => {
     cleanup();
     useLocalPrefs.setState({ chromeLevel: 'calm' });
+    useUIStore.setState({ currentView: 'chat', storyContextRequested: false });
   });
 
   it('defaults to calm chrome', () => {
@@ -85,6 +87,17 @@ describe('chrome level', () => {
 
   describe('ChatHeader', () => {
     beforeEach(() => useLocalPrefs.setState({ chromeLevel: 'calm' }));
+
+    it.each(['calm', 'full'] as const)(
+      '%s: opens Story context from the context information row',
+      (chromeLevel) => {
+        useLocalPrefs.setState({ chromeLevel });
+        renderHeader();
+        fireEvent.click(screen.getByRole('button', { name: 'Context window over time' }));
+        expect(useUIStore.getState().currentView).toBe('session-story');
+        expect(useUIStore.getState().storyContextRequested).toBe(true);
+      },
+    );
 
     it('calm: tool stats, processes and checkpoints sit behind one menu', () => {
       renderHeader();

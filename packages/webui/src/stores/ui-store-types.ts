@@ -254,6 +254,8 @@ export interface UIState {
    *  mapping the id to a VList row index and calling scrollToIndex. The nonce
    *  lets the same id be re-requested (e.g. Enter on the same hit). */
   scrollTarget: { id: string; nonce: number } | null;
+  /** One-shot chat shortcut, consumed by Story after its Context panel mounts. */
+  storyContextRequested: boolean;
   promptHistory: string[];
   sidebarWidth: number;
   pinnedIds: string[];

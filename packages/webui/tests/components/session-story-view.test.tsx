@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionStoryView } from '../../src/components/SessionStoryView';
+import { useUIStore } from '../../src/stores/ui-store';
 import type { ChronicleEventView } from '../../src/types';
 
 const harness = vi.hoisted(() => ({
@@ -58,9 +59,38 @@ afterEach(() => {
   harness.send.mockClear();
   harness.handlers.clear();
   harness.sessionId = 'tab-a';
+  useUIStore.setState({ storyContextRequested: false });
 });
 
 describe('Session Story', () => {
+  it('opens the Context timeline on a shortcut request and consumes it once', () => {
+    useUIStore.setState({ storyContextRequested: true });
+    const view = render(<SessionStoryView />);
+    expect(screen.getByRole('tab', { name: 'Context' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('Context window over time')).toBeTruthy();
+    expect(document.activeElement?.id).toBe('story-context-timeline');
+    expect(useUIStore.getState().storyContextRequested).toBe(false);
+    fireEvent.click(screen.getByRole('tab', { name: 'tools' }));
+    view.unmount();
+    render(<SessionStoryView />);
+    expect(screen.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
+
+  it('handles another shortcut while Story is already mounted', () => {
+    render(<SessionStoryView />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Context' }));
+    const target = document.getElementById('story-context-timeline');
+    expect(target).not.toBeNull();
+    const scroll = vi.fn();
+    if (target) target.scrollIntoView = scroll;
+    act(() => useUIStore.setState({ storyContextRequested: true }));
+    expect(scroll).toHaveBeenCalledWith({ block: 'start' });
+    expect(document.activeElement).toBe(target);
+    expect(useUIStore.getState().storyContextRequested).toBe(false);
+  });
+
   it('compares models and opens the diagnostic event evidence', () => {
     render(<SessionStoryView />);
     reply([

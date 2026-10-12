@@ -49,6 +49,7 @@ export const useUIStore = create<UIState>()(
       searchQuery: '',
       searchActiveMessageId: null,
       scrollTarget: null,
+      storyContextRequested: false,
       promptHistory: [],
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
       pinnedIds: [],

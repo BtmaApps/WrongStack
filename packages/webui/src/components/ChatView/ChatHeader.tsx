@@ -442,6 +442,19 @@ export function ChatHeader({
                 onClick={() => setBreakdownOpen(true)}
               />
             )}
+            <button
+              type="button"
+              onClick={() => {
+                useUIStore.setState({ storyContextRequested: true });
+                useUIStore.getState().setCurrentView('session-story');
+              }}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+              title={t('activity:story.contextTitle')}
+              aria-label={t('activity:story.contextTitle')}
+            >
+              <Activity className="h-3 w-3" aria-hidden="true" />
+              <span>{t('activity:story.tabContext')}</span>
+            </button>
             {contextLimitWarning && (
               <span
                 role="status"

@@ -12,7 +12,7 @@ import {
   Terminal,
   TriangleAlert,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { sessionModelStats } from '@/lib/session-model-stats';
 import { buildSessionStory, type StoryEvent, type StoryKind } from '@/lib/session-story';
@@ -78,6 +78,8 @@ export function SessionStoryView() {
     'overview' | 'timeline' | 'context' | 'models' | 'tools' | 'files' | 'team'
   >('overview');
   const [motion, setMotion] = useState(true);
+  const contextTarget = useRef<HTMLElement>(null);
+  const contextRequested = useUIStore((state) => state.storyContextRequested);
   const stats = useMemo(() => storyStats(story, projectRoot), [story, projectRoot]);
   const models = useMemo(() => sessionModelStats(story), [story]);
   useEffect(() => {
@@ -91,6 +93,17 @@ export function SessionStoryView() {
     setFollow(true);
     setTab('overview');
   }, [sessionId]);
+  useEffect(() => {
+    if (!contextRequested) return;
+    useUIStore.setState({ storyContextRequested: false });
+    setTab('context');
+    setPlaying(false);
+  }, [contextRequested]);
+  useEffect(() => {
+    if (tab !== 'context') return;
+    contextTarget.current?.scrollIntoView?.({ block: 'start' });
+    contextTarget.current?.focus({ preventScroll: true });
+  }, [tab, contextRequested]);
   useEffect(() => {
     if (!live) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -324,7 +337,17 @@ export function SessionStoryView() {
               )}
             </div>
           )}
-          {tab === 'context' && <ContextTimeline events={history.events} />}
+          {tab === 'context' && (
+            <section
+              id="story-context-timeline"
+              ref={contextTarget}
+              tabIndex={-1}
+              className="scroll-mt-20"
+              aria-label={t('activity:story.contextTitle')}
+            >
+              <ContextTimeline events={history.events} />
+            </section>
+          )}
           {story.actors.length > 0 && tab === 'overview' && (
             <>
               <StoryInsights
