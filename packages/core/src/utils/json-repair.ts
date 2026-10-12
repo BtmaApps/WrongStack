@@ -135,9 +135,15 @@ function repairTruncated(s: string): string {
   // Last resort: an empty value sitting before an existing close (`{"k":}`)
   // or a dangling comma (`{"k": 1, }`) leaves invalid JSON — patch them.
   if (!tryParse(result).ok) {
+    // Consume complete string tokens verbatim before matching structural
+    // punctuation, or repairing another field can corrupt tool string content.
     const patched = result
-      .replace(/:(\s*)([}\]])/g, ':null$2')
-      .replace(/,(\s*[}\]])/g, '$1')
+      .replace(/"(?:[^"\\]|\\.)*"|:\s*([}\]])/g, (match, close: string | undefined) =>
+        close === undefined ? match : `:null${close}`,
+      )
+      .replace(/"(?:[^"\\]|\\.)*"|,(\s*[}\]])/g, (match, close: string | undefined) =>
+        close === undefined ? match : close,
+      )
       .replace(/({|,)(\s*)("[^"\\]*(?:\\.[^"\\]*)*")(\s*})/g, '$1$2$3:null$4');
     if (tryParse(patched).ok) result = patched;
   }

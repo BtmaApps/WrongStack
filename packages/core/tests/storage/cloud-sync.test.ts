@@ -880,4 +880,35 @@ describe('CloudSync', () => {
       });
     });
   });
+
+  describe('history push', () => {
+    it('drops prompt-history lines that carry a recognisable credential', async () => {
+      // The history file is pushed verbatim to the sync repo; a pasted key in
+      // it (written before the REPL filtered its own file) used to leave the
+      // machine.
+      await withTempDir(async (dir) => {
+        const historyFile = path.join(dir, 'history');
+        await fs.writeFile(
+          historyFile,
+          [
+            'fix the token refresh bug',
+            'export OPENAI_API_KEY=sk-live-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c',
+            'add an API key field to settings',
+          ].join('\n'),
+        );
+        const sync = new CloudSync(
+          { ...mockPaths, globalRoot: dir, configDir: dir, historyFile },
+          () => null,
+          vi.fn(),
+        ) as unknown as {
+          buildLocalTree(
+            categories: SyncCategory[],
+          ): Promise<{ treeEntries: Array<{ path: string; content: string }> }>;
+        };
+        const { treeEntries } = await sync.buildLocalTree(['history']);
+        const pushed = treeEntries.find((entry) => entry.path === 'data/history')?.content;
+        expect(pushed).toBe('fix the token refresh bug\nadd an API key field to settings');
+      });
+    });
+  });
 });

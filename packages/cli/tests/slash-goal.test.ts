@@ -176,3 +176,53 @@ describe('/goal slash command', () => {
     expect((await loadGoal(goalCtx.paths!.projectGoal))?.goalState).toBe('paused');
   });
 });
+
+describe('/goal refine and concurrent engine writes', () => {
+  it('keeps journal entries the engine wrote while the refiner was running', async () => {
+    // The refine awaited an LLM and then saved the goal loaded before it,
+    // dropping every journal entry the eternal loop recorded in between.
+    const { appendJournal, emptyGoal, saveGoal } = await import('@wrongstack/core/goal');
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-goal-refine-'));
+    const goalPath = path.join(dir, 'goal.json');
+    try {
+      await saveGoal(goalPath, emptyGoal('Ship the release'));
+      let calledResolve!: () => void;
+      const called = new Promise<void>((r) => {
+        calledResolve = r;
+      });
+      let release!: () => void;
+      const released = new Promise<void>((r) => {
+        release = r;
+      });
+      const provider = {
+        id: 'stub',
+        async complete() {
+          calledResolve();
+          await released;
+          throw new Error('stub provider unavailable');
+        },
+      };
+      const cmd = buildGoalCommand({
+        paths: { projectGoal: goalPath, projectAutophase: path.join(dir, 'autophase') },
+        llmProvider: provider,
+        llmModel: 'stub-model',
+        renderer: new FakeRenderer(),
+      } as never as SlashCommandContext);
+      const run = cmd.run('refine', {} as never as Context);
+      await called;
+      const current = await loadGoal(goalPath);
+      await saveGoal(
+        goalPath,
+        appendJournal(current!, { source: 'todo', task: 'engine iteration', status: 'success' }),
+      );
+      release();
+      await run;
+
+      const final = await loadGoal(goalPath);
+      expect(final?.journal.map((entry) => entry.task)).toEqual(['engine iteration']);
+      expect(final?.refinedGoal).toBeTruthy();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});

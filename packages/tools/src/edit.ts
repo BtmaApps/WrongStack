@@ -20,6 +20,7 @@ import {
 import { checkSyntax } from './_syntax-check.js';
 import {
   isBinaryBuffer,
+  isValidUtf8,
   safeResolveReal,
   sha256hex,
   truncateDiffPayload,
@@ -187,6 +188,18 @@ export const editTool: Tool<EditInput, EditOutput> = {
             '`read` with `pages` to inspect a PDF.',
           field: 'path',
           context: { reason: pdfTarget ? 'pdf' : 'binary' },
+        });
+      }
+      // No NUL, so not "binary" — but a legacy single-byte encoding (Latin-1,
+      // Windows-1254) would still come back with every non-ASCII byte as U+FFFD.
+      if (!isValidUtf8(buf)) {
+        throw new ToolValidationError({
+          message:
+            `edit: "${input.path}" is not UTF-8 text (a legacy single-byte encoding?). ` +
+            'Rewriting it from a UTF-8 decode would corrupt every non-ASCII byte — convert it ' +
+            'to UTF-8 first, or edit it with a tool that preserves its encoding.',
+          field: 'path',
+          context: { reason: 'not_utf8' },
         });
       }
       const original = buf.toString('utf8');

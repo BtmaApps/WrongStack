@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { type AddressInfo, isIP } from 'node:net';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { MCPServer, MCPServerLogger } from './server-dispatch.js';
 import { HTTP_BODY_CAP } from './server-stdio.js';
@@ -180,7 +180,10 @@ export async function handleHttpRequest(
 /** Hostnames that always denote this machine, regardless of the bind address. */
 export function isLoopbackHostname(hostname: string): boolean {
   const bare = hostname.toLowerCase().replace(/^\[(.*)\]$/, '$1');
-  return bare === 'localhost' || bare === '::1' || bare === '127.0.0.1' || bare.startsWith('127.');
+  // Only an IPv4 LITERAL in 127/8 is loopback. A bare `startsWith('127.')`
+  // also admitted names such as `127.attacker.example`, which an attacker can
+  // rebind to 127.0.0.1 — the exact DNS-rebinding case this guard exists for.
+  return bare === 'localhost' || bare === '::1' || (isIP(bare) === 4 && bare.startsWith('127.'));
 }
 
 /**

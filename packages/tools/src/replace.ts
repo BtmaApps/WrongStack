@@ -15,7 +15,13 @@ import {
 } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
 import { compileUserRegex } from './_regex.js';
-import { isBinaryBuffer, sha256hex, truncateDiffPayload, withPathLock } from './_util.js';
+import {
+  isBinaryBuffer,
+  isValidUtf8,
+  sha256hex,
+  truncateDiffPayload,
+  withPathLock,
+} from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
 
 import { assertUsableGlobFilter, resolveFiles } from './replace-file-resolution.js';
@@ -179,7 +185,9 @@ export const replaceTool: Tool<ReplaceInput, ReplaceOutput> = {
         let content: string;
         try {
           const buf = await fs.readFile(realPath);
-          if (isBinaryBuffer(buf)) return null;
+          // Not UTF-8 text: rewriting it from a utf8 decode would corrupt every
+          // non-ASCII byte, so it is skipped like a binary file.
+          if (isBinaryBuffer(buf) || !isValidUtf8(buf)) return null;
           content = buf.toString('utf8');
         } catch {
           /* v8 ignore next -- readFile failing after a successful stat is a TOCTOU race; defensive. */

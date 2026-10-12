@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type * as TS from '@typescript/typescript6';
 import { atomicWrite } from '@wrongstack/core/utils';
+import { isBinaryBuffer, isValidUtf8 } from '../_util.js';
 import { type InvariantViolation, polyglotInvariantEngine } from './ast-invariant-engine.js';
 import { enqueueReindex } from './background-indexer.js';
 import { detectLang } from './languages.js';
@@ -485,7 +486,16 @@ export async function replaceSymbolInFile(
   // callers (tests) that pass relative paths.
   const resolved = path.isAbsolute(opts.file) ? opts.file : path.resolve(projectRoot, opts.file);
 
-  const content = await fs.readFile(resolved, 'utf8');
+  // The mutation rewrites the WHOLE file from a UTF-8 decode, so a legacy
+  // single-byte file (ISO-8859-x, Windows-125x) would come back with every
+  // non-ASCII byte outside the symbol replaced by U+FFFD. Refuse instead.
+  const raw = await fs.readFile(resolved);
+  if (isBinaryBuffer(raw) || !isValidUtf8(raw)) {
+    throw new Error(
+      `${path.relative(projectRoot, resolved)} is not UTF-8 text (a legacy single-byte encoding?); rewriting it would corrupt every non-ASCII byte. Convert the file to UTF-8 first.`,
+    );
+  }
+  const content = raw.toString('utf8');
   const lang = detectLang(resolved) ?? 'other';
 
   let result: MutateSymbolResult | null = null;

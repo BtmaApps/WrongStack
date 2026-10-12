@@ -86,4 +86,17 @@ describe('LargeAnswerStore', () => {
     cyclic['self'] = cyclic;
     expect(() => s.storeAnswer(cyclic)).not.toThrow();
   });
+
+  it('keeps answers whose tails collided under the old 32-bit key hash apart', () => {
+    // A key hit is trusted as "same answer"; djb2 mapped these two to one key
+    // and the second key retrieved the first answer.
+    const s = new LargeAnswerStore();
+    const a = `${'x'.repeat(2500)}aaB`;
+    const b = `${'x'.repeat(2500)}aba`;
+    const ka = s.storeAnswer(a).key as string;
+    const kb = s.storeAnswer(b).key as string;
+    expect(ka).not.toBe(kb);
+    expect(s.retrieveAnswer(ka)).toBe(a);
+    expect(s.retrieveAnswer(kb)).toBe(b);
+  });
 });

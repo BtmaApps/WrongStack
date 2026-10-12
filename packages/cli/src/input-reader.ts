@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
+import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import type { InputReader, PromptOption, ReadKeyOptions } from '@wrongstack/core/types';
 import {
   resolveWstackPaths,
@@ -13,6 +14,8 @@ interface ReadlineInputReaderOptions {
   historyFile?: string | undefined;
   prompt?: string | undefined;
 }
+
+const historyScrubber = new DefaultSecretScrubber();
 
 export class ReadlineInputReader implements InputReader {
   private rl?: readline.Interface | undefined;
@@ -38,7 +41,13 @@ export class ReadlineInputReader implements InputReader {
   private async saveHistory(): Promise<void> {
     try {
       await fs.mkdir(path.dirname(this.historyFile), { recursive: true });
-      await fs.writeFile(this.historyFile, this.history.slice(-1000).join('\n'));
+      // A key pasted at the prompt must not reach disk (or CloudSync's
+      // `history` push): keep only lines the secret scrubber leaves unchanged,
+      // the same policy as the TUI's InputHistoryStore.
+      const persisted = this.history
+        .slice(-1000)
+        .filter((line) => historyScrubber.scrub(line) === line);
+      await fs.writeFile(this.historyFile, persisted.join('\n'));
     } catch {
       // ignore
     }

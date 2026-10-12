@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { DefaultSecretScrubber } from '../security/secret-scrubber.js';
 import type { SyncCategory, SyncConfig } from '../types/config.js';
 import { ERROR_CODES, FsError, WrongStackError } from '../types/errors.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
@@ -19,6 +20,20 @@ export const ALL_SYNC_CATEGORIES: SyncCategory[] = [
   'memory',
   'history',
 ];
+
+const historyScrubber = new DefaultSecretScrubber();
+
+/**
+ * Prompt history leaves the machine on push; a line carrying a credential the
+ * scrubber recognises (a pasted key, an `export X_API_KEY=…`) is dropped, so a
+ * history written before the REPL filtered its own file cannot leak either.
+ */
+function withoutSecretLines(content: string): string {
+  return content
+    .split('\n')
+    .filter((line) => historyScrubber.scrub(line) === line)
+    .join('\n');
+}
 
 function projectPortableSettings(config: Record<string, unknown>): Record<string, unknown> {
   let portable: Record<string, unknown> = {};
@@ -520,7 +535,9 @@ export class CloudSync {
                   null,
                   2,
                 )}\n`
-              : rawContent;
+              : cat === 'history'
+                ? withoutSecretLines(rawContent)
+                : rawContent;
           entries.push({ path: `data/${cat}`, content, mode: '100644' });
           hashes.push(`${cat}\0${content}`);
         }

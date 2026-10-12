@@ -211,6 +211,33 @@ describe('codebase-ast-replace — body semantics', () => {
       },
     );
   });
+
+  it('refuses a legacy-encoded file instead of rewriting its non-ASCII bytes as U+FFFD', async () => {
+    await withFile('f.js', '', async (filePath, dir) => {
+      // "// Güncel" in ISO-8859-9: ü is the lone byte 0xFC, invalid as UTF-8.
+      const legacy = Buffer.concat([
+        Buffer.from([0x2f, 0x2f, 0x20, 0x47, 0xfc]),
+        Buffer.from('ncel\nexport function greet() {\n  return 1;\n}\n'),
+      ]);
+      await fs.writeFile(filePath, legacy);
+      await expect(
+        replaceSymbolInFile({ file: filePath, symbol: 'greet', newBody: 'return 2;' }, dir),
+      ).rejects.toThrow(/not UTF-8 text/);
+      expect(await fs.readFile(filePath)).toEqual(legacy);
+
+      await fs.writeFile(
+        filePath,
+        '// Güncel\nexport function greet() {\n  return 1;\n}\n',
+        'utf8',
+      );
+      const res = await replaceSymbolInFile(
+        { file: filePath, symbol: 'greet', newBody: 'return 2;' },
+        dir,
+      );
+      expect(res.updatedContent).toContain('// Güncel\n');
+      expect(res.updatedContent).toContain('return 2;');
+    });
+  });
 });
 
 describe('codebase-repo-map — focusFiles containment', () => {

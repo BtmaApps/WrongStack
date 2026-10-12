@@ -198,6 +198,12 @@ export async function startMetricsServer(opts: MetricsServerOptions): Promise<Me
     );
   }
 
+  // The Host/Origin pin below assumes a loopback listener. A non-loopback bind
+  // is the operator's explicit, token-gated opt-in (above): pinning Host to
+  // loopback there answered 421 to every real remote scraper, valid token or
+  // not, so that mode could never be used. The token is its gate instead.
+  const pinLoopback = isLoopbackBindHost(host);
+
   type RequestListener = (
     req: import('node:http').IncomingMessage,
     res: import('node:http').ServerResponse,
@@ -220,14 +226,14 @@ export async function startMetricsServer(opts: MetricsServerOptions): Promise<Me
     // we set it directly. The Origin check rejects cross-origin
     // navigations that nevertheless speak our Host.
     const host = req.headers.host;
-    if (typeof host !== 'string' || !LOOPBACK_HOST_RE.test(host)) {
+    if (pinLoopback && (typeof host !== 'string' || !LOOPBACK_HOST_RE.test(host))) {
       res.statusCode = 421;
       res.setHeader('content-type', 'text/plain; charset=utf-8');
       res.end('Misdirected Request: metrics endpoint serves loopback only');
       return;
     }
     const origin = req.headers.origin;
-    if (typeof origin === 'string' && !LOOPBACK_ORIGIN_RE.test(origin)) {
+    if (pinLoopback && typeof origin === 'string' && !LOOPBACK_ORIGIN_RE.test(origin)) {
       res.statusCode = 403;
       res.setHeader('content-type', 'text/plain; charset=utf-8');
       res.end('Cross-origin requests to the metrics endpoint are not allowed');

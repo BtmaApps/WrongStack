@@ -1,4 +1,6 @@
 import * as fs from 'node:fs/promises';
+import type { Context } from '@wrongstack/core/agent';
+import type { Tool } from '@wrongstack/core/types';
 import { FsError, ToolValidationError } from '@wrongstack/core/types';
 import {
   atomicWrite,
@@ -7,10 +9,14 @@ import {
   toStyle,
   unifiedDiff,
 } from '@wrongstack/core/utils';
-import type { Context } from '@wrongstack/core/agent';
-import type { Tool } from '@wrongstack/core/types';
 import { checkSyntax } from './_syntax-check.js';
-import { safeResolveReal, sha256hex, truncateDiffPayload } from './_util.js';
+import {
+  isBinaryBuffer,
+  isValidUtf8,
+  safeResolveReal,
+  sha256hex,
+  truncateDiffPayload,
+} from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
 
 /** Byte budget for the returned unified diff — matches `maxOutputBytes`. */
@@ -148,7 +154,22 @@ async function prepareWrite(input: WriteInput, ctx: Context): Promise<PreparedWr
     }
     existed = stat.isFile();
     if (existed) {
-      prev = await fs.readFile(absPath, 'utf8');
+      const buf = await fs.readFile(absPath);
+      // The overwritten content is the session-rewind `before` snapshot (a
+      // string). A binary or legacy single-byte file cannot round-trip through
+      // a UTF-8 decode, so a later rewind would "restore" U+FFFD-mangled bytes
+      // and report success. Refuse rather than make the write un-undoable.
+      if (isBinaryBuffer(buf) || !isValidUtf8(buf)) {
+        throw new ToolValidationError({
+          message:
+            `write: "${input.path}" exists and is not UTF-8 text (binary, or a legacy ` +
+            'single-byte encoding). Overwriting it could not be undone by a session rewind — ' +
+            'remove or rename the file first if replacing it is intended.',
+          field: 'path',
+          context: { reason: 'not_utf8' },
+        });
+      }
+      prev = buf.toString('utf8');
       if (ctx.hasRead ? !ctx.hasRead(absPath) : true) {
         // User approved this write (confirm → yes/always) but ctx has no
         // read record. The model may call write without a prior explicit

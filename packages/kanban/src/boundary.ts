@@ -190,9 +190,22 @@ export function describeKanbanBoundary(policy: KanbanBoundaryPolicy | undefined)
   return `${policy.enforcement} · ${allowed} allow · ${denied} deny · shell ${policy.shellAccess}`;
 }
 
-function selectorMatches(selector: KanbanBoundarySelector, resourcePath: string): boolean {
-  const selectorPath = normalizeBoundaryPath(selector.path);
-  if (!selectorPath) return false;
+/**
+ * ASCII case fold on Windows, where `secrets` and `Secrets` name one directory.
+ * Tool paths arrive canonicalized to the on-disk casing (realpath), so a
+ * case-sensitive compare let a `deny secrets` selector miss `Secrets/`.
+ * `toLowerCase` follows the locale (`I` → `ı` under Turkish); ASCII only.
+ */
+function foldBoundaryPath(value: string): string {
+  if (process.platform !== 'win32') return value;
+  return value.replace(/[A-Z]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 32));
+}
+
+function selectorMatches(selector: KanbanBoundarySelector, rawResourcePath: string): boolean {
+  const normalizedSelector = normalizeBoundaryPath(selector.path);
+  if (!normalizedSelector) return false;
+  const selectorPath = foldBoundaryPath(normalizedSelector);
+  const resourcePath = foldBoundaryPath(rawResourcePath);
   if (selector.kind === 'file') return resourcePath === selectorPath;
   if (selector.kind === 'directory' || selector.kind === 'package') {
     if (selectorPath === '.') return true;

@@ -54,7 +54,7 @@ import {
   clonePolicy,
   deny,
   isToolInList,
-  matchTargetRule,
+  matchTargetRules,
   resolveGlobSelectors,
   resolveTargetPaths,
 } from './directory-permission-matching.js';
@@ -111,10 +111,9 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
     }
     const globSelectors = resolveGlobSelectors(input, ctx);
 
-    for (const targetPath of targetPaths) {
-      const rule = matchTargetRule(this.policy, targetPath, globSelectors);
-      if (!rule) continue;
-
+    for (const rule of targetPaths.flatMap((targetPath) =>
+      matchTargetRules(this.policy, targetPath, globSelectors),
+    )) {
       // Provider ban — checked against ctx.provider.id. Independent of
       // the tool name; a model under a denied provider is banned for
       // any tool call targeting this directory.
@@ -404,9 +403,17 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
     }
     const globSelectors = resolveGlobSelectors(input, ctx);
 
-    for (const targetPath of targetPaths) {
+    const targetRules = targetPaths.flatMap((targetPath) => {
+      const rules: Array<DirectoryRule | undefined> = matchTargetRules(
+        this.policy,
+        targetPath,
+        globSelectors,
+      );
+      if (rules.length === 0) rules.push(undefined);
+      return rules.map((rule) => ({ targetPath, rule }));
+    });
+    for (const { targetPath, rule } of targetRules) {
       add('target path', false, 'auto', 'default', `resolved "${targetPath}"`);
-      const rule = matchTargetRule(this.policy, targetPath, globSelectors);
       if (!rule) {
         add('directory rule match', false, 'auto', 'default', `no rule matched "${targetPath}"`);
         continue;

@@ -6,6 +6,8 @@ import type { DocumentTracker } from '../document-tracker.js';
 import { editsByPath } from '../formatters/workspace-edit.js';
 import { LSPError, LSPErrorCode } from '../types.js';
 
+const strictUtf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+
 interface ApplyWorkspaceEditResult {
   files: string[];
   edits: number;
@@ -43,7 +45,19 @@ export async function applyWorkspaceEdit(
 
   const ops: Array<{ path: string; original: string; next: string; edits: number }> = [];
   for (const [file, edits] of targets) {
-    const original = await fs.readFile(file, 'utf8');
+    // Every file is rewritten whole from its decode: a legacy single-byte file
+    // (ISO-8859-x, Windows-125x) would come back with U+FFFD for every
+    // non-ASCII byte. Refuse the edit before any file is written.
+    let original: string;
+    try {
+      original = strictUtf8.decode(await fs.readFile(file));
+    } catch (err) {
+      if (!(err instanceof TypeError)) throw err;
+      throw new LSPError(
+        LSPErrorCode.ApplyEditFailed,
+        `Refusing to apply workspace edit: ${file} is not UTF-8 text (a legacy single-byte encoding?)`,
+      );
+    }
     ops.push({ path: file, original, next: applyTextEdits(original, edits), edits: edits.length });
   }
 

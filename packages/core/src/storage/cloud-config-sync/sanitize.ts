@@ -24,6 +24,8 @@
  * outbound tree minus `INBOUND_DENIED_PATHS`.
  */
 
+import { DefaultSecretScrubber } from '../../security/secret-scrubber.js';
+
 /** `true` = the whole value is contract-owned; an object = recurse per key; `'*'` = record wildcard. */
 export type ContractNode = true | { [key: string]: ContractNode };
 
@@ -518,11 +520,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 export function stripSecretMaterial(value: unknown): unknown {
   if (typeof value === 'string') {
-    return ENCRYPTED_VALUE.test(value) ? undefined : value;
+    return ENCRYPTED_VALUE.test(value) ? undefined : scrubSecretValue(value);
   }
   if (Array.isArray(value)) {
     const cleaned = value.map((entry) => stripSecretMaterial(entry));
-    return cleaned.filter((entry) => entry !== undefined);
+    return redactSecretFlagValues(cleaned.filter((entry) => entry !== undefined));
   }
   if (isPlainObject(value)) {
     const out: Record<string, unknown> = {};
@@ -534,6 +536,70 @@ export function stripSecretMaterial(value: unknown): unknown {
     return out;
   }
   return value;
+}
+
+// Contract fields such as `mcpServers.*.args` / `.url` and `providers.*.baseUrl`
+// carry VALUES, so a credential can sit inside them under an innocent key:
+// `["--token", "ghp_…"]`, `--api-key=…`, `https://user:pass@host/?api_key=…`.
+// Key-name stripping never sees those, and a plaintext secret is not an
+// encrypted blob either — so they were pushed verbatim.
+const valueScrubber = new DefaultSecretScrubber();
+const REDACTED = '[REDACTED]';
+/** A command-line flag (`--token`, `-k`, `--api-key`), optionally `=value`. */
+const FLAG = /^(--?[a-z0-9][a-z0-9_.-]*)(?:=([\s\S]*))?$/i;
+
+/** Query names that carry a credential without saying so (`?key=` API keys, signed URLs). */
+const SECRET_QUERY_PARAM = /^(?:key|sig|signature|x-amz-signature|x-amz-credential)$/i;
+
+function isSecretFlag(flag: string): boolean {
+  return SECRET_KEY.test(flag.replace(/^-+/, ''));
+}
+
+function scrubUrlCredentials(value: string): string {
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return value;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return value;
+  }
+  let changed = false;
+  if (url.username || url.password) {
+    url.username = '';
+    url.password = '';
+    changed = true;
+  }
+  for (const key of [...url.searchParams.keys()]) {
+    if (SECRET_KEY.test(key) || SECRET_QUERY_PARAM.test(key)) {
+      url.searchParams.set(key, REDACTED);
+      changed = true;
+    }
+  }
+  return changed ? url.toString() : value;
+}
+
+function scrubSecretValue(value: string): string {
+  const flag = FLAG.exec(value);
+  if (flag?.[2] !== undefined && isSecretFlag(flag[1]!) && !/^\d+$/.test(flag[2])) {
+    return `${flag[1]}=${REDACTED}`;
+  }
+  return scrubUrlCredentials(valueScrubber.scrub(value));
+}
+
+/** `["--token", "<secret>"]`: the value follows a secret-named flag. */
+function redactSecretFlagValues(entries: unknown[]): unknown[] {
+  return entries.map((entry, index) => {
+    const previous = entries[index - 1];
+    if (
+      typeof entry !== 'string' ||
+      typeof previous !== 'string' ||
+      FLAG.test(entry) ||
+      /^\d+$/.test(entry)
+    )
+      return entry;
+    const flag = FLAG.exec(previous);
+    return flag && flag[2] === undefined && isSecretFlag(flag[1]!) ? REDACTED : entry;
+  });
 }
 
 /** Projects `value` onto `tree`: only contract-owned fields survive. */

@@ -19,6 +19,8 @@
  * summary is in context.
  */
 
+import { createHash } from 'node:crypto';
+
 interface AnswerEntry {
   key: string;
   value: unknown;
@@ -77,8 +79,10 @@ export class LargeAnswerStore {
     }
 
     // Stable key derived from content hash — same value always gets same key
-    // within this store's lifetime.
-    const key = `a-${hashStr(serialized)}`;
+    // within this store's lifetime. A hit is trusted as "same answer", so the
+    // hash must be collision-resistant: the 32-bit djb2 it replaced collided on
+    // three-character tails and handed the earlier answer back for the later key.
+    const key = `a-${createHash('sha256').update(serialized).digest('hex').slice(0, 24)}`;
 
     const existing = this.store.get(key);
     if (existing) {
@@ -161,13 +165,4 @@ export class LargeAnswerStore {
     this.store.clear();
     this.storedBytes = 0;
   }
-}
-
-/** Fast string hash for stable key derivation. Not cryptographic. */
-function hashStr(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) {
-    h = (h * 33) ^ s.charCodeAt(i);
-  }
-  return (h >>> 0).toString(36);
 }

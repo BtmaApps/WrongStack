@@ -3,6 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { unifiedDiff } from '@wrongstack/core/utils';
+import { isBinaryBuffer, isValidUtf8 } from '../_util.js';
 import { analyzeDeadCode } from './analyze.js';
 import {
   cascadeCleanup,
@@ -14,6 +15,24 @@ import {
 import type { DeadCodePlan, InternalChange, InternalPlan } from './fix-types.js';
 import { loadTypescript } from './parse.js';
 import type { DeadCodeFinding, DeadCodeScanOptions } from './types.js';
+
+const NOT_UTF8 =
+  'Not UTF-8 text (a legacy single-byte encoding?) — rewriting or backing it up would corrupt every non-ASCII byte. Convert the file to UTF-8 first.';
+
+/**
+ * The fixer rewrites, deletes and backs up files from a UTF-8 decode; a file
+ * that does not decode losslessly would come back (and undo) with U+FFFD in
+ * place of every non-ASCII byte. Null = absent/unreadable, false = not UTF-8.
+ */
+function utf8Source(abs: string): string | false | null {
+  let raw: Buffer;
+  try {
+    raw = fs.readFileSync(abs);
+  } catch {
+    return null;
+  }
+  return isBinaryBuffer(raw) || !isValidUtf8(raw) ? false : raw.toString('utf8');
+}
 
 export async function planDeadCodeFixesInternal(
   projectRoot: string,
@@ -34,6 +53,10 @@ export async function planDeadCodeFixesInternal(
     }
     if (!f.fix) {
       skipped.push({ id, reason: f.manualReason ?? 'No mechanical fix for this finding.' });
+      continue;
+    }
+    if (utf8Source(path.join(projectRoot, f.file)) === false) {
+      skipped.push({ id, reason: NOT_UTF8 });
       continue;
     }
     selected.push(f);
@@ -185,10 +208,13 @@ export async function planDeadCodeFixesInternal(
   }
   for (const [file, fileOps] of ops) {
     const abs = path.join(projectRoot, file);
-    let before: string;
-    try {
-      before = fs.readFileSync(abs, 'utf8');
-    } catch {
+    const before = utf8Source(abs);
+    if (before === null) continue;
+    if (before === false) {
+      for (const id of owners.get(file) ?? []) {
+        planned.delete(id);
+        skipped.push({ id, reason: NOT_UTF8 });
+      }
       continue;
     }
     const edited = computeFileEdit(ts, file, before, fileOps);

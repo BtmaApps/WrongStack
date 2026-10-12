@@ -79,6 +79,39 @@ describe('plan-store', () => {
     }
   });
 
+  it('mutatePlan reads a BOM plan and never saves over an unparseable one', async () => {
+    // A file that failed to parse loaded as "no plan"; the mutation was saved
+    // over it and every unfinished item was dropped.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-plan-'));
+    try {
+      let plan = emptyPlan('sess');
+      ({ plan } = addPlanItem(plan, 'Existing step'));
+
+      const bomFile = path.join(dir, 'bom.plan.json');
+      await fs.writeFile(bomFile, `﻿${JSON.stringify(plan)}`);
+      const updated = await mutatePlan(
+        bomFile,
+        'sess',
+        (current) => addPlanItem(current, 'New step').plan,
+      );
+      expect(updated.items.map((item) => item.title)).toEqual(['Existing step', 'New step']);
+
+      for (const content of [
+        JSON.stringify({ ...plan, version: 2 }),
+        JSON.stringify(plan).slice(0, 30),
+      ]) {
+        const file = path.join(dir, 'unparseable.plan.json');
+        await fs.writeFile(file, content);
+        await expect(
+          mutatePlan(file, 'sess', (current) => addPlanItem(current, 'New step').plan),
+        ).rejects.toMatchObject({ code: 'SESSION_WRITE_FAILED' });
+        expect(await fs.readFile(file, 'utf8')).toBe(content);
+      }
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('mutatePlan rejects omission of unfinished plan coverage', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-plan-'));
     const file = path.join(dir, 'coverage.plan.json');

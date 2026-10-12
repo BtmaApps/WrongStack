@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-12T18:17:08.781Z",
+  "generatedAt": "2026-10-12T20:12:49.285Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4936,
-    "testFiles": 4319,
-    "sourceLines": 1096020,
+    "testFiles": 4325,
+    "sourceLines": 1096368,
     "workspaceEdges": 133,
-    "moduleEdges": 16270,
+    "moduleEdges": 16274,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -109,7 +109,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 48,
-      "testFiles": 54,
+      "testFiles": 56,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -123,7 +123,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 54
+          "testFiles": 56
         }
       ]
     },
@@ -421,7 +421,7 @@
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
       "sourceFiles": 52,
-      "testFiles": 52,
+      "testFiles": 53,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -435,7 +435,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 52
+          "testFiles": 53
         }
       ]
     },
@@ -766,7 +766,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 322,
-      "testFiles": 322,
+      "testFiles": 325,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +782,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 322
+          "testFiles": 325
         }
       ]
     },
@@ -1410,6 +1410,12 @@
         ]
       },
       {
+        "file": "packages/acp/tests/fs-write-content-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/acp/tests/http-body-utf8-chunks.test.ts",
         "projects": [
           "root-node"
@@ -1507,6 +1513,12 @@
       },
       {
         "file": "packages/acp/tests/stdio-transport.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/terminal-create-env-disclosure.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13080,6 +13092,12 @@
         ]
       },
       {
+        "file": "packages/plug-lsp/tests/unit/workspace-edit-encoding.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plug-lsp/tests/unit/workspace-edit-nonfile-uri.test.ts",
         "projects": [
           "root-node"
@@ -17364,6 +17382,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/acquire-lock-midwrite.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/acquire-lock-release-regression.test.ts",
         "projects": [
           "root-node"
@@ -18114,6 +18138,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/dead-code-fix-non-utf8.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/dead-code-side-effect-initializer.test.ts",
         "projects": [
           "root-node"
@@ -18229,6 +18259,12 @@
       },
       {
         "file": "packages/tools/tests/fetch-lookup.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/fetch-loopback-allowance-resolution.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27343,6 +27379,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/tools/src/process-registry-persistent.ts",
+      "lines": 756,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/kanban/src/verification/verification-context.ts",
       "lines": 755,
       "relativeImports": 5
@@ -27401,11 +27442,6 @@
       "file": "packages/core/src/types/config/skills-fleet-brain.ts",
       "lines": 748,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/tools/src/process-registry-persistent.ts",
-      "lines": 748,
-      "relativeImports": 1
     },
     {
       "file": "packages/core/src/core/fallback-model.ts",

@@ -146,7 +146,8 @@ export async function loadGoal(
     throw err; // permission errors etc. should surface
   }
   try {
-    const parsed = JSON.parse(raw) as GoalFile;
+    // A Windows editor saves goal.json with a UTF-8 BOM, which JSON.parse rejects.
+    const parsed = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as GoalFile;
     if (
       parsed?.version !== 1 ||
       typeof parsed.goal !== 'string' ||
@@ -243,6 +244,32 @@ export async function saveGoal(filePath: string, goal: GoalFile, events?: EventB
 }
 
 /**
+ * loadGoal() returns null both for an absent file and for one it cannot read
+ * (a newer schema version, a broken hand edit). Handing the latter to an
+ * update callback as "no goal" let it overwrite or unlink the user's mission;
+ * move it aside instead so its bytes survive. Fails closed: a rename error
+ * other than ENOENT aborts the update.
+ */
+async function setAsideUnreadable(filePath: string): Promise<void> {
+  const aside = `${filePath}.unreadable-${Date.now()}`;
+  try {
+    await fsp.rename(filePath, aside);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw err;
+  }
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      event: 'goal_store.unreadable_set_aside',
+      path: filePath,
+      message: `unreadable goal file moved to ${aside}`,
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
+/**
  * Atomically load, modify, and save a goal file under a file lock.
  * Prevents lost-update races when the autonomy engine and CLI /goal commands
  * write concurrently (both eternal and parallel engines may run simultaneously).
@@ -258,6 +285,7 @@ export async function updateGoal(
   const t0 = Date.now();
   await withFileLock(filePath, async () => {
     const current = await loadGoal(filePath, events);
+    if (current === null) await setAsideUnreadable(filePath);
     const next = fn(current);
     if (next) {
       await saveGoal(filePath, next, events);

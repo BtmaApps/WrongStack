@@ -94,6 +94,12 @@ export async function handleAcpFsRequest(
     return;
   }
   if (msg.method === 'fs/write_text_file') {
+    // A missing/null content is a malformed request, not "write an empty
+    // file": defaulting it to '' truncated the target once authorized.
+    if (typeof params.content !== 'string') {
+      await sender.sendErrorResponse(id, -32602, 'content must be a string');
+      return;
+    }
     const authorization = await authorizeAcpCallback(
       permissionPolicy,
       {
@@ -129,7 +135,7 @@ export async function handleAcpFsRequest(
       await fileServer.writeTextFile({
         sessionId: params.sessionId ?? '',
         path: params.path,
-        content: params.content ?? '',
+        content: params.content as string,
       });
       await sender.sendResult(id, {});
     }
@@ -153,18 +159,33 @@ export async function handleAcpTerminalRequest(
   try {
     switch (msg.method) {
       case 'terminal/create': {
+        // The env changes what an approved command does (GIT_CONFIG_* hooks,
+        // npm_config_script_shell, BASH_ENV, …), so the permission request
+        // names exactly the entries the process will receive.
+        const env = Array.isArray(params.env)
+          ? (params.env as unknown[]).filter(
+              (entry): entry is { name: string; value: string } =>
+                !!entry &&
+                typeof (entry as { name?: unknown }).name === 'string' &&
+                typeof (entry as { value?: unknown }).value === 'string',
+            )
+          : [];
+        const envSuffix =
+          env.length > 0 ? ` (env: ${env.map((e) => `${e.name}=${e.value}`).join(' ')})` : '';
         const authorization = await authorizeAcpCallback(
           permissionPolicy,
           {
             toolCallId: `acp-terminal-create-${id}`,
             title:
-              `Run command: ${String(params.command ?? '')} ${(Array.isArray(params.args) ? params.args : []).join(' ')}`.trim(),
+              `Run command: ${String(params.command ?? '')} ${(Array.isArray(params.args) ? params.args : []).join(' ')}`.trim() +
+              envSuffix,
             kind: 'execute',
             rawInput: {
               command: params.command,
               args: params.args,
               cwd: params.cwd,
               sessionId: params.sessionId,
+              ...(env.length > 0 ? { env } : {}),
             },
           },
           callbackOptions,
@@ -185,9 +206,7 @@ export async function handleAcpTerminalRequest(
           command: String(params.command ?? ''),
           args: Array.isArray(params.args) ? (params.args as string[]) : [],
         };
-        if (Array.isArray(params.env)) {
-          createOpts.env = params.env as { name: string; value: string }[];
-        }
+        if (env.length > 0) createOpts.env = env;
         if (typeof params.cwd === 'string') {
           createOpts.cwd = params.cwd;
         }

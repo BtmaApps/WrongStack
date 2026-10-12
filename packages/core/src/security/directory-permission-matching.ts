@@ -130,19 +130,43 @@ function selectorMayOverlapRule(selector: string, rulePattern: string): boolean 
   );
 }
 
-export function matchTargetRule(
+/** True when every path under `selectorPrefix` lies in the plain subtree `pattern` names. */
+function subtreeContainsSelector(pattern: string, selectorPrefix: string): boolean {
+  const dir = pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern;
+  if (!dir || /[*?[\]]/.test(dir)) return false;
+  return selectorPrefix === dir || selectorPrefix.startsWith(`${dir}/`);
+}
+
+/**
+ * Every rule that governs a target. A literal path has at most one: its most
+ * specific match. A glob selector reaches many files, each governed by its own
+ * most specific rule, so collapsing it to the single most specific OVERLAPPING
+ * rule let a nested `src/generated/**` rule mask an `infra/**` deny for files
+ * `**\/*.ts` also reaches. Every overlapping rule applies, except one shadowed
+ * by a more specific plain-subtree rule containing the whole selector — that
+ * rule wins on every file the selector can reach.
+ */
+export function matchTargetRules(
   policy: DirectoryPolicy,
   targetPath: string,
   globSelectors: ReadonlySet<string>,
-): DirectoryRule | undefined {
-  if (!globSelectors.has(targetPath)) return matchRule(policy, targetPath);
-  const overlappingPolicy: DirectoryPolicy = {
-    schemaVersion: policy.schemaVersion,
-    rules: policy.rules.filter((rule) => selectorMayOverlapRule(targetPath, rule.directory)),
-  };
-  if (overlappingPolicy.rules.length === 0) return undefined;
-  return overlappingPolicy.rules.reduce((best, rule) =>
-    patternSpecificity(rule.directory) > patternSpecificity(best.directory) ? rule : best,
+): DirectoryRule[] {
+  if (!globSelectors.has(targetPath)) {
+    const rule = matchRule(policy, targetPath);
+    return rule ? [rule] : [];
+  }
+  const overlapping = policy.rules.filter((rule) =>
+    selectorMayOverlapRule(targetPath, rule.directory),
+  );
+  const selectorPrefix = literalGlobPrefix(targetPath);
+  const containers = overlapping.filter((rule) =>
+    subtreeContainsSelector(rule.directory, selectorPrefix),
+  );
+  return overlapping.filter(
+    (rule) =>
+      !containers.some(
+        (container) => patternSpecificity(container.directory) > patternSpecificity(rule.directory),
+      ),
   );
 }
 

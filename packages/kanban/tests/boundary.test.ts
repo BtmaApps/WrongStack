@@ -81,6 +81,44 @@ describe('Kanban boundaries', () => {
     });
   });
 
+  it.runIf(process.platform === 'win32')(
+    'matches selectors case-insensitively on Windows (ASCII fold)',
+    () => {
+      // Tool paths arrive in on-disk casing (realpath); a `deny secrets`
+      // selector missed the real `Secrets/` directory.
+      const layers = resolveKanbanBoundaryLayers({
+        boundary: {
+          enabled: true,
+          enforcement: 'block',
+          shellAccess: 'allow',
+          allow: [],
+          deny: [
+            { kind: 'directory', path: 'secrets', access: 'write' },
+            { kind: 'file', path: 'config/App.json', access: 'write' },
+            { kind: 'glob', path: '**/*.PEM', access: 'write' },
+          ],
+        },
+      });
+      for (const target of ['Secrets/key.pem', 'CONFIG/app.JSON', 'a/key.pem']) {
+        expect(evaluateKanbanBoundaryPath(layers, target, 'write').decision, target).toBe('block');
+      }
+      expect(evaluateKanbanBoundaryPath(layers, 'SecretsX/key.txt', 'write').decision).toBe(
+        'allow',
+      );
+      // ASCII only: a non-ASCII spelling is left to the filesystem.
+      const unicode = resolveKanbanBoundaryLayers({
+        boundary: {
+          enabled: true,
+          enforcement: 'block',
+          shellAccess: 'allow',
+          allow: [],
+          deny: [{ kind: 'directory', path: 'Ünicode', access: 'write' }],
+        },
+      });
+      expect(evaluateKanbanBoundaryPath(unicode, 'ünicode/a', 'write').decision).toBe('allow');
+    },
+  );
+
   it('matches a terminal globstar against both its root directory and descendants', () => {
     const layers = resolveKanbanBoundaryLayers({
       boundary: {

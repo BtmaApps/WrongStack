@@ -340,6 +340,23 @@ export function isBinaryBuffer(buf: Buffer): boolean {
   return false;
 }
 
+const strictUtf8 = new TextDecoder('utf-8', { fatal: true });
+
+/**
+ * True when the whole buffer is well-formed UTF-8. A legacy single-byte text
+ * file (Latin-1, Windows-1254) has no NUL, so `isBinaryBuffer` passes it — but
+ * a tool that rewrites it from a utf8 decode turns every non-ASCII byte into
+ * U+FFFD, far outside the requested change.
+ */
+export function isValidUtf8(buf: Buffer): boolean {
+  try {
+    strictUtf8.decode(buf);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Command-output normalization (token-saving) ────────────────────────────
 //
 // Raw process output is full of tokens the model gains nothing from: ANSI

@@ -1,9 +1,9 @@
 import * as fsp from 'node:fs/promises';
-import type { EventBus } from './event-bus-port.js';
 import { SessionError } from '../types/errors.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { TaskItem } from '../utils/task-format.js';
+import type { EventBus } from './event-bus-port.js';
 
 const TRANSIENT_READ_CODES = new Set(['EBUSY', 'EPERM', 'EACCES']);
 
@@ -126,32 +126,16 @@ export async function loadTasks(
     if (options?.strict && (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return null;
   }
+  // An editor's UTF-8 BOM is not corruption. Under `strict`, an unparseable or
+  // unknown-schema file is not "no file" either: the caller would save a fresh
+  // file over it and drop every unfinished task.
+  const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+  // A blank file holds nothing to lose; refusing it would lock the store out.
+  if (text.trim() === '') return null;
+  let parsed: TaskFile;
   try {
-    const parsed = JSON.parse(raw) as TaskFile;
-    if (parsed?.version !== 1 || !Array.isArray(parsed.tasks)) {
-      events?.emit('storage.read', {
-        sessionId: traceId ?? '~boot~',
-        store: 'tasks',
-        filePath,
-        operation: 'load',
-        outcome: 'failure',
-        durationMs: Date.now() - t0,
-        error: 'invalid_schema',
-        ...(traceId !== undefined && { traceId }),
-      });
-      return null;
-    }
-    events?.emit('storage.read', {
-      sessionId: traceId ?? '~boot~',
-      store: 'tasks',
-      filePath,
-      operation: 'load',
-      outcome: 'success',
-      durationMs: Date.now() - t0,
-      ...(traceId !== undefined && { traceId }),
-    });
-    return parsed;
-  } catch {
+    parsed = JSON.parse(text) as TaskFile;
+  } catch (err) {
     events?.emit('storage.read', {
       sessionId: traceId ?? '~boot~',
       store: 'tasks',
@@ -162,8 +146,33 @@ export async function loadTasks(
       error: 'parse_failed',
       ...(traceId !== undefined && { traceId }),
     });
+    if (options?.strict) throw err;
     return null;
   }
+  if (parsed?.version !== 1 || !Array.isArray(parsed.tasks)) {
+    events?.emit('storage.read', {
+      sessionId: traceId ?? '~boot~',
+      store: 'tasks',
+      filePath,
+      operation: 'load',
+      outcome: 'failure',
+      durationMs: Date.now() - t0,
+      error: 'invalid_schema',
+      ...(traceId !== undefined && { traceId }),
+    });
+    if (options?.strict) throw new Error(`unsupported task file schema in ${filePath}`);
+    return null;
+  }
+  events?.emit('storage.read', {
+    sessionId: traceId ?? '~boot~',
+    store: 'tasks',
+    filePath,
+    operation: 'load',
+    outcome: 'success',
+    durationMs: Date.now() - t0,
+    ...(traceId !== undefined && { traceId }),
+  });
+  return parsed;
 }
 
 /**

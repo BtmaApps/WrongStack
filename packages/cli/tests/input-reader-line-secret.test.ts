@@ -124,6 +124,27 @@ describe('ReadlineInputReader.readLine', () => {
     const raw = await fs.readFile(historyFile, 'utf8').catch(() => '');
     expect(raw).not.toContain('superSecretToken');
   });
+
+  it('does not persist a line carrying a recognisable credential, keeps the rest', async () => {
+    // The history file is pushed by CloudSync's `history` category; a pasted
+    // key used to be written (and pushed) verbatim.
+    const historyFile = await tempHistoryFile();
+    const reader = new ReadlineInputReader({ historyFile });
+    for (const line of [
+      'fix the token refresh bug',
+      'export OPENAI_API_KEY=sk-live-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c',
+    ]) {
+      const promise = reader.readLine('> ');
+      const iface = await activeInterface();
+      iface.__cb!(line);
+      await promise;
+    }
+    await vi.waitFor(async () => {
+      const raw = await fs.readFile(historyFile, 'utf8');
+      expect(raw).toContain('fix the token refresh bug');
+    });
+    expect(await fs.readFile(historyFile, 'utf8')).not.toContain('sk-live-4f9a8b7c');
+  });
 });
 
 // ── readSecret ───────────────────────────────────────────────────────────────

@@ -213,6 +213,46 @@ describe('patchTool — bookkeeping on every outcome', () => {
     expect(path.resolve(deletion!.path)).toBe(path.resolve(file));
   });
 
+  // An existing file over the 5 MB tracking cap has no `before` snapshot. It
+  // was recorded as 'created' once the patch shrank it under the cap, so a
+  // rewind deleted the user's file.
+  it('records an untrackable existing file as modified, never created', async () => {
+    const file = path.join(tmpDir, 'big.txt');
+    const longLine = 'x'.repeat(300_000);
+    await fs.writeFile(file, `${longLine}\nkeep\n${'y'.repeat(5_000_000)}`);
+    const { ctx, changes } = makeTrackingCtx();
+
+    await patchTool.execute(
+      {
+        patch: `--- a/big.txt\n+++ b/big.txt\n@@ -1,2 +1,2 @@\n-${longLine}\n+short\n keep\n`,
+      },
+      ctx,
+      makeOpts(),
+    );
+
+    expect(changes.map((c) => c.action)).toEqual(['modified']);
+    expect(changes[0]?.before).toBeNull();
+  });
+
+  // A Latin-1 file snapshotted as U+FFFD; a rewind wrote that over the file.
+  it('does not record a lossy snapshot for a legacy-encoded file', async () => {
+    const file = path.join(tmpDir, 'latin.txt');
+    await fs.writeFile(
+      file,
+      Buffer.concat([Buffer.from('alpha\nkeep\n'), Buffer.from('caf\xe9\n', 'latin1')]),
+    );
+    const { ctx, changes } = makeTrackingCtx();
+
+    await patchTool.execute(
+      { patch: '--- a/latin.txt\n+++ b/latin.txt\n@@ -1,2 +1,2 @@\n-alpha\n+beta\n keep\n' },
+      ctx,
+      makeOpts(),
+    );
+
+    expect((await fs.readFile(file)).includes(0xe9)).toBe(true);
+    expect(changes.some((c) => typeof c.before === 'string' && c.before.includes('�'))).toBe(false);
+  });
+
   // `--merge` writes conflict markers INTO the file and exits non-zero. The
   // early return used to sit ABOVE the bookkeeping block, so the file was
   // corrupted on disk with no rewind record and the model was told `applied: 0`.

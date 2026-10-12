@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   appendJournal,
   emptyGoal,
@@ -11,6 +11,7 @@ import {
   MAX_JOURNAL_ENTRIES,
   saveGoal,
   summarizeUsage,
+  updateGoal,
 } from '../../src/storage/goal-store.js';
 import { resolveWstackPaths } from '../../src/utils/wstack-paths.js';
 
@@ -53,6 +54,36 @@ describe('goal-store', () => {
       const loaded = await loadGoal(file);
       expect(loaded).toBeNull();
     } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads a goal file saved with a UTF-8 BOM', async () => {
+    const dir = await tmpDir();
+    const file = path.join(dir, 'goal.json');
+    try {
+      await fs.writeFile(file, `﻿${JSON.stringify(emptyGoal('Ship the v1'))}`);
+      expect((await loadGoal(file, undefined, () => {}))?.goal).toBe('Ship the v1');
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('updateGoal moves an unreadable goal file aside instead of deleting it', async () => {
+    const dir = await tmpDir();
+    const file = path.join(dir, 'goal.json');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // A newer build's schema: loadGoal reads it as "no goal".
+      const newer = JSON.stringify({ ...emptyGoal('Keep me'), version: 2 });
+      await fs.writeFile(file, newer);
+      // The WebUI pause handler's shape: no goal → null → unlink.
+      await updateGoal(file, (current) => (current ? { ...current, goalState: 'paused' } : null));
+      const aside = (await fs.readdir(dir)).filter((n) => n.startsWith('goal.json.unreadable-'));
+      expect(aside).toHaveLength(1);
+      expect(await fs.readFile(path.join(dir, aside[0]!), 'utf8')).toBe(newer);
+    } finally {
+      warn.mockRestore();
       await fs.rm(dir, { recursive: true, force: true });
     }
   });

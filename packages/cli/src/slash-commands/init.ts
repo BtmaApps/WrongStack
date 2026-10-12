@@ -1,3 +1,4 @@
+import { constants as fsConstants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { SlashCommand } from '@wrongstack/core/types';
@@ -27,14 +28,18 @@ export function buildInitCommand(opts: SlashCommandContext): SlashCommand {
       const body = renderAgentsTemplate(detected);
       await fs.mkdir(dir, { recursive: true });
       // Back up any existing AGENTS.md before overwriting so hand-written
-      // project context isn't silently lost on a re-init.
-      let backedUp = false;
+      // project context isn't silently lost on a re-init. One fixed `.bak`
+      // overwritten on every run lost it on the SECOND /init (the backup became
+      // the first run's template), and a failed backup used to be ignored.
+      let backedUp: string | undefined;
       if (!isFirstInit) {
         try {
-          await fs.copyFile(file, `${file}.bak`);
-          backedUp = true;
-        } catch {
-          // Best-effort backup — proceed with the write regardless.
+          const current = await fs.readFile(file, 'utf8');
+          backedUp = current === body ? undefined : await backupWithoutClobbering(file, current);
+        } catch (err) {
+          const msg = `Did not rewrite ${file}: could not back it up first (${err instanceof Error ? err.message : String(err)}).`;
+          opts.renderer.writeWarning(msg);
+          return { message: msg };
         }
       }
       await fs.writeFile(file, body, 'utf8');
@@ -53,7 +58,7 @@ export function buildInitCommand(opts: SlashCommandContext): SlashCommand {
       lines.push(wroteMsg);
       opts.renderer.writeInfo(wroteMsg);
       if (backedUp) {
-        const backupLine = `Backed up the previous AGENTS.md to ${file}.bak`;
+        const backupLine = `Backed up the previous AGENTS.md to ${backedUp}`;
         opts.renderer.writeInfo(backupLine);
         lines.push(backupLine);
       }
@@ -83,6 +88,25 @@ export function buildInitCommand(opts: SlashCommandContext): SlashCommand {
       return { message: lines.join('\n') };
     },
   };
+}
+
+/**
+ * Copy `file` to a backup path that never replaces a different earlier backup:
+ * `<file>.bak` when free (or already holding this exact content), otherwise a
+ * timestamped sibling. Returns the backup path; throws when nothing was saved.
+ */
+async function backupWithoutClobbering(file: string, current: string): Promise<string> {
+  const primary = `${file}.bak`;
+  try {
+    await fs.copyFile(file, primary, fsConstants.COPYFILE_EXCL);
+    return primary;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+  }
+  if ((await fs.readFile(primary, 'utf8')) === current) return primary;
+  const stamped = `${file}.${new Date().toISOString().replace(/[:.]/g, '-')}.bak`;
+  await fs.copyFile(file, stamped, fsConstants.COPYFILE_EXCL);
+  return stamped;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {

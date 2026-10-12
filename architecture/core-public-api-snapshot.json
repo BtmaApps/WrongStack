@@ -1602,7 +1602,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 237,
-      "sourceLines": 61415
+      "sourceLines": 61410
     },
     {
       "directory": "core",
@@ -1686,7 +1686,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "preferred Runtime pilot",
       "sourceFiles": 14,
-      "sourceLines": 2202
+      "sourceLines": 2208
     },
     {
       "directory": "performance",
@@ -1749,7 +1749,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 38,
-      "sourceLines": 10850
+      "sourceLines": 10881
     },
     {
       "directory": "session-catalog",
@@ -1777,7 +1777,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 116,
-      "sourceLines": 25935
+      "sourceLines": 26065
     },
     {
       "directory": "tasking",
@@ -1812,7 +1812,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 88,
-      "sourceLines": 15158
+      "sourceLines": 15164
     },
     {
       "directory": "vcs",

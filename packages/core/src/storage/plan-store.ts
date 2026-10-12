@@ -103,30 +103,16 @@ export async function loadPlan(
     if (options?.strict && (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return null;
   }
+  // An editor's UTF-8 BOM is not corruption. Under `strict`, an unparseable or
+  // unknown-schema file is not "no file" either: the caller would save a fresh
+  // plan over it and drop every unfinished item.
+  const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+  // A blank file holds nothing to lose; refusing it would lock the store out.
+  if (text.trim() === '') return null;
+  let parsed: PlanFile;
   try {
-    const parsed = JSON.parse(raw) as PlanFile;
-    if (parsed?.version !== 1 || !Array.isArray(parsed.items)) {
-      events?.emit('storage.read', {
-        sessionId: '~boot~',
-        store: 'plan',
-        filePath,
-        operation: 'load',
-        outcome: 'failure',
-        durationMs: Date.now() - t0,
-        error: 'invalid_schema',
-      });
-      return null;
-    }
-    events?.emit('storage.read', {
-      sessionId: '~boot~',
-      store: 'plan',
-      filePath,
-      operation: 'load',
-      outcome: 'success',
-      durationMs: Date.now() - t0,
-    });
-    return parsed;
-  } catch {
+    parsed = JSON.parse(text) as PlanFile;
+  } catch (err) {
     events?.emit('storage.read', {
       sessionId: '~boot~',
       store: 'plan',
@@ -136,8 +122,31 @@ export async function loadPlan(
       durationMs: Date.now() - t0,
       error: 'parse_failed',
     });
+    if (options?.strict) throw err;
     return null;
   }
+  if (parsed?.version !== 1 || !Array.isArray(parsed.items)) {
+    events?.emit('storage.read', {
+      sessionId: '~boot~',
+      store: 'plan',
+      filePath,
+      operation: 'load',
+      outcome: 'failure',
+      durationMs: Date.now() - t0,
+      error: 'invalid_schema',
+    });
+    if (options?.strict) throw new Error(`unsupported plan file schema in ${filePath}`);
+    return null;
+  }
+  events?.emit('storage.read', {
+    sessionId: '~boot~',
+    store: 'plan',
+    filePath,
+    operation: 'load',
+    outcome: 'success',
+    durationMs: Date.now() - t0,
+  });
+  return parsed;
 }
 
 /**

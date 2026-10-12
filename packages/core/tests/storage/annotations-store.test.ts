@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -137,6 +138,29 @@ describe('AnnotationsStore', () => {
     await fs.mkdir(path.join(dir, '2026-06-11'), { recursive: true });
     await fs.writeFile(path.join(dir, '2026-06-11', 's1.annotations.json'), '{not json');
     expect(await store.list('2026-06-11/s1')).toEqual([]);
+  });
+
+  it('add() reads a BOM file and never writes over one it cannot parse', async () => {
+    // A file that failed to parse read as empty, and add() wrote the single new
+    // annotation over every existing one.
+    const sessionId = '2026-06-11/s2';
+    const fp = path.join(dir, '2026-06-11', 's2.annotations.json');
+    await store.add({ sessionId, atEventIndex: 1, authorId: 'u', text: 'existing' });
+    // Unmocked sync fs: the mocked readFile serves its in-memory copy forever
+    // once the mocked writeFile touched a path, hiding atomicWrite's result.
+    const clean = readFileSync(fp, 'utf8');
+
+    writeFileSync(fp, `﻿${clean}`);
+    await store.add({ sessionId, atEventIndex: 2, authorId: 'u', text: 'new' });
+    expect((await store.list(sessionId)).map((a) => a.text)).toEqual(['existing', 'new']);
+
+    for (const content of [clean.replace('"version": 1', '"version": 2'), '{not json']) {
+      writeFileSync(fp, content);
+      await expect(
+        store.add({ sessionId, atEventIndex: 3, authorId: 'u', text: 'lost?' }),
+      ).rejects.toThrow();
+      expect(readFileSync(fp, 'utf8')).toBe(content);
+    }
   });
 
   // #249: 20000 ms default timeout was insufficient on Windows CI runners

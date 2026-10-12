@@ -276,6 +276,21 @@ describe('replaceTool', () => {
     );
     expect(result.files_modified).toBe(0);
   });
+
+  it('skips a legacy single-byte text file instead of corrupting its non-ASCII bytes', async () => {
+    // ISO-8859-9 has no NUL, so it passed the binary check and every
+    // non-ASCII byte came back as U+FFFD after the utf8 round-trip.
+    const filePath = path.join(tmpDir, 'legacy.txt');
+    const buf = Buffer.from([...Buffer.from('// G'), 0xfc, ...Buffer.from('ncel: foo\n')]);
+    await fs.writeFile(filePath, buf);
+    const result = await replaceTool.execute(
+      { pattern: 'foo', replacement: 'bar', files: filePath, dry_run: false },
+      makeCtx(),
+      makeOpts(),
+    );
+    expect(result.files_modified).toBe(0);
+    expect((await fs.readFile(filePath)).equals(buf)).toBe(true);
+  });
 });
 
 describe('globNative walk exception paths', () => {

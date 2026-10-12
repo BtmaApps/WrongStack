@@ -379,6 +379,39 @@ describe('task-store', () => {
     }
   });
 
+  it('mutateTasks reads a BOM task file and never saves over an unparseable one', async () => {
+    // A file that failed to parse loaded as "no tasks"; the mutation was saved
+    // over it and every unfinished task was dropped.
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-tasks-'));
+    try {
+      const file = { ...emptyTaskFile('sess'), tasks: [makeTask()] };
+      const bomFile = path.join(dir, 'bom.tasks.json');
+      await fsp.writeFile(bomFile, `﻿${JSON.stringify(file)}`);
+      const updated = await mutateTasks(bomFile, 'sess', (current) => {
+        current.tasks.push(makeTask({ id: 't2' }));
+        return current;
+      });
+      expect(updated.tasks.map((task) => task.id)).toEqual(['t1', 't2']);
+
+      for (const content of [
+        JSON.stringify({ ...file, version: 2 }),
+        JSON.stringify(file).slice(0, 30),
+      ]) {
+        const fp = path.join(dir, 'unparseable.tasks.json');
+        await fsp.writeFile(fp, content);
+        await expect(
+          mutateTasks(fp, 'sess', (current) => {
+            current.tasks.push(makeTask({ id: 't2' }));
+            return current;
+          }),
+        ).rejects.toMatchObject({ code: 'SESSION_WRITE_FAILED' });
+        expect(await fsp.readFile(fp, 'utf8')).toBe(content);
+      }
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('emits storage.write with outcome success when saveTasks succeeds', async () => {
     const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-tasks-'));
     const fp = path.join(dir, 'sess.tasks.json');

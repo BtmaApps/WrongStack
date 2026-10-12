@@ -6,7 +6,7 @@ import { StringDecoder } from 'node:string_decoder';
 import type { Tool } from '@wrongstack/core/types';
 import { PartialWriteError, ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv, toErrorMessage } from '@wrongstack/core/utils';
-import { resolveRealInsideRoot, safeResolveReal, sha256hex } from './_util.js';
+import { isValidUtf8, resolveRealInsideRoot, safeResolveReal, sha256hex } from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
 
 export interface PatchInput {
@@ -253,7 +253,11 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
           ctx.recordRead?.(abs, stat.mtimeMs, 'write', sha256hex(after));
           ctx.session?.recordFileChange?.({
             path: abs,
-            action: before === null ? 'created' : 'modified',
+            // Existence, not snapshot content, decides: an existing file that
+            // was untrackable before (> 5 MB, binary, not UTF-8) is a
+            // modification with an unknown `before`, and must never be
+            // rewound as a creation — that deletes the user's file.
+            action: beforeExisted.has(abs) ? 'modified' : 'created',
             before,
             after,
           });
@@ -346,6 +350,9 @@ async function readTextForTracking(absPath: string): Promise<string | null> {
     if (!stat.isFile() || stat.size > MAX_TRACKING_BYTES) return null;
     const buf = await fs.readFile(absPath);
     if (buf.includes(0)) return null; // binary
+    // A legacy single-byte file would snapshot as U+FFFD, and a rewind would
+    // write that lossy text back over the whole file.
+    if (!isValidUtf8(buf)) return null;
     return buf.toString('utf8');
   } catch {
     return null;

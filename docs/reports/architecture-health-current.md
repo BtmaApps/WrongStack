@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-12T18:17:08.781Z
+**Generated:** 2026-10-12T20:12:49.285Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4936 |
-| Production source lines | 1096020 |
-| Test files | 4319 |
+| Production source lines | 1096368 |
+| Test files | 4325 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 16270 |
+| Relative module edges | 16274 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -27,7 +27,7 @@ PASS — no blocking architecture-health errors.
 
 | Package | Sources | Tests | Workspace dependencies |
 |---|---:|---:|---|
-| @wrongstack/acp | 48 | 54 | @wrongstack/core, @wrongstack/primitives |
+| @wrongstack/acp | 48 | 56 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
 | @wrongstack/cli | 620 | 615 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
@@ -40,7 +40,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/mailbox-mcp | 6 | 8 | @wrongstack/core, @wrongstack/mcp |
 | @wrongstack/mcp | 63 | 72 | @wrongstack/core |
 | @wrongstack/persistence | 9 | 20 | — |
-| @wrongstack/plug-lsp | 52 | 52 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/plug-lsp | 52 | 53 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 10 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 149 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 11 | 13 | — |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 127 | 93 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 53 | 61 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 322 | 322 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 322 | 325 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 480 | 422 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 721 | 483 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -110,6 +110,7 @@ None.
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
 | 757 | `packages/webui/src/components/ChimeraReviewsView.tsx` |
 | 756 | `packages/tools/src/codebase-index/skeleton-extractor.ts` |
+| 756 | `packages/tools/src/process-registry-persistent.ts` |
 | 755 | `packages/kanban/src/verification/verification-context.ts` |
 | 755 | `packages/webui-hq/src/domain/fleet-topology.ts` |
 | 754 | `packages/cli/src/execution.ts` |
@@ -122,7 +123,6 @@ None.
 | 750 | `packages/core/src/utils/context-evidence.ts` |
 | 748 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 748 | `packages/core/src/types/config/skills-fleet-brain.ts` |
-| 748 | `packages/tools/src/process-registry-persistent.ts` |
 | 747 | `packages/core/src/core/fallback-model.ts` |
 | 747 | `packages/tools/src/bash-stream.ts` |
 | 747 | `packages/webui/src/components/SddWizard.tsx` |

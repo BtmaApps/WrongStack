@@ -66,7 +66,7 @@
     "@wrongstack/core/goal": {
       "files": 48,
       "typeOnly": 21,
-      "runtimeOrMixed": 40
+      "runtimeOrMixed": 41
     },
     "@wrongstack/core/hooks": {
       "files": 14,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 196,
+      "files": 197,
       "typeOnly": 29,
-      "runtimeOrMixed": 169
+      "runtimeOrMixed": 170
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -5303,7 +5303,7 @@
       "specifier": "@wrongstack/core/goal",
       "file": "packages/cli/tests/slash-goal.test.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/goal",
@@ -11194,6 +11194,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/hq-server/utils.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/input-reader.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

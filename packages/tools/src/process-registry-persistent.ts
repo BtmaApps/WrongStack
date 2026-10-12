@@ -157,8 +157,16 @@ export async function acquireLock(
           const lockPid = parseInt(parts[0] ?? '0', 10);
           // Content is `pid:host:timestamp`; the last field is the
           // acquisition time (host is never empty, so index is safe).
-          const lockTs = Number(parts[parts.length - 1]);
-          const staleByAge = Number.isFinite(lockTs) && Date.now() - lockTs > LOCK_STALE_MS;
+          // A lock with no readable timestamp is a holder between writeFile's
+          // exclusive create and its write (`Number('')` is 0, which read as
+          // decades old and was stolen on sight) or one that crashed there.
+          // Age it by the file's mtime instead, so only the crashed one goes.
+          const tokenTs = Number(parts[parts.length - 1]);
+          const lockTs =
+            Number.isFinite(tokenTs) && tokenTs > 0
+              ? tokenTs
+              : (await fs.stat(lockfilePath)).mtimeMs;
+          const staleByAge = Date.now() - lockTs > LOCK_STALE_MS;
 
           let holderDead = false;
           if (process.platform !== 'win32' && Number.isFinite(lockPid) && lockPid > 0) {

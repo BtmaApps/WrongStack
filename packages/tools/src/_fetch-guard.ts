@@ -3,7 +3,11 @@ import * as net from 'node:net';
 import { FetchError, ToolValidationError } from '@wrongstack/core/types';
 import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
 import type { Agent } from 'undici';
-import { isPrivateOriginApproved, networkAllowHint } from './browser/security.js';
+import {
+  isLoopbackHostname,
+  isPrivateOriginApproved,
+  networkAllowHint,
+} from './browser/security.js';
 
 /**
  * SSRF guard machinery shared by the `fetch` and `search` tools. Split out of
@@ -49,11 +53,17 @@ export function guardedLookup(
   lookupPinned(hostname, options, callback, ALLOW_PRIVATE);
 }
 
+/**
+ * `true` admits any resolved address (an exact approved origin, or
+ * WRONGSTACK_FETCH_ALLOW_PRIVATE); `'loopback'` admits only loopback answers.
+ * The loopback allowance approves `*.localhost` by NAME, so without that check
+ * a resolver answering with a LAN, link-local or metadata address was fetched.
+ */
 function lookupPinned(
   hostname: string,
   options: { all?: boolean | undefined; family?: number | undefined },
   callback: LookupCallback,
-  allowPrivate: boolean,
+  allowPrivate: boolean | 'loopback',
 ): void {
   dns
     .lookup(hostname, { all: true })
@@ -62,7 +72,20 @@ function lookupPinned(
       const byFamily =
         family === 4 || family === 6 ? records.filter((r) => r.family === family) : records;
       const list = byFamily.length > 0 ? byFamily : records;
-      if (!allowPrivate) {
+      if (allowPrivate === 'loopback') {
+        const outside = list.find((r) => !isLoopbackHostname(r.address));
+        if (outside) {
+          callback(
+            Object.assign(
+              new Error(
+                `fetch: "${hostname}" resolved to non-loopback address ${outside.address}, which the loopback allowance does not cover`,
+              ),
+              { code: 'EAI_FAIL' },
+            ),
+          );
+          return;
+        }
+      } else if (!allowPrivate) {
         for (const r of list) {
           const bad = r.family === 4 ? isPrivateIPv4(r.address) : isPrivateIPv6(r.address);
           if (bad) {
@@ -128,8 +151,21 @@ async function ensureUndici(): Promise<typeof import('undici')> {
 
 let pinnedAgent: Agent | undefined;
 let approvedOriginAgent: Agent | undefined;
-async function getPinnedDispatcher(allowPrivateOrigin = false): Promise<Agent> {
+let loopbackOriginAgent: Agent | undefined;
+async function getPinnedDispatcher(
+  allowPrivateOrigin: boolean | 'loopback' = false,
+): Promise<Agent> {
   const undici = await ensureUndici();
+  if (allowPrivateOrigin === 'loopback') {
+    loopbackOriginAgent ??= new undici.Agent({
+      allowH2: false,
+      connect: {
+        lookup: ((host: string, opts: { all?: boolean; family?: number }, cb: LookupCallback) =>
+          lookupPinned(host, opts, cb, 'loopback')) as never,
+      },
+    });
+    return loopbackOriginAgent;
+  }
   if (allowPrivateOrigin) {
     approvedOriginAgent ??= new undici.Agent({
       allowH2: false,
@@ -178,6 +214,8 @@ if (!_beforeExitRegistered) {
     pinnedAgent = undefined;
     approvedOriginAgent?.destroy();
     approvedOriginAgent = undefined;
+    loopbackOriginAgent?.destroy();
+    loopbackOriginAgent = undefined;
   });
 }
 
@@ -253,7 +291,13 @@ export async function guardedFetch(
       redirect: 'manual' as const,
       signal,
       headers,
-      dispatcher: await getPinnedDispatcher(approvedOrigin),
+      // An exact approved origin admits whatever its name resolves to; the
+      // loopback allowance admits only loopback answers.
+      dispatcher: await getPinnedDispatcher(
+        approvedOrigin && !options.allowedPrivateOrigins?.includes(parsed.origin)
+          ? 'loopback'
+          : approvedOrigin,
+      ),
     };
     const res = await (await dispatcherFetch())(currentUrl, init as never as RequestInit);
     if (res.status < 300 || res.status > 399) {

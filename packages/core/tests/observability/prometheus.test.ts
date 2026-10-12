@@ -1,3 +1,4 @@
+import * as http from 'node:http';
 import { describe, expect, it } from 'vitest';
 import { InMemoryMetricsSink } from '../../src/observability/metrics.js';
 import {
@@ -212,6 +213,44 @@ describe('/healthz endpoint (V2-C)', () => {
           headers: { authorization: 'Bearer scrape-secret' },
         });
         expect(res.status).toBe(200);
+      } finally {
+        await handle.close();
+      }
+    });
+
+    it('serves a remote scraper that addresses the machine by its network name', async () => {
+      // The DNS-rebinding Host pin assumed a loopback listener and answered 421
+      // to every real remote scrape (Host = the machine's LAN address), so the
+      // token-gated network mode could never be used.
+      const handle = await startMetricsServer({
+        port: 0,
+        host: '0.0.0.0',
+        token: 'scrape-secret',
+        sink: new InMemoryMetricsSink(),
+      });
+      const scrape = (auth?: string) =>
+        new Promise<number>((resolve, reject) => {
+          const req = http.request(
+            {
+              host: '127.0.0.1',
+              port: handle.port,
+              path: '/metrics',
+              headers: {
+                Host: `192.168.1.10:${handle.port}`,
+                ...(auth ? { Authorization: auth } : {}),
+              },
+            },
+            (res) => {
+              res.resume();
+              res.on('end', () => resolve(res.statusCode ?? 0));
+            },
+          );
+          req.on('error', reject);
+          req.end();
+        });
+      try {
+        expect(await scrape('Bearer scrape-secret')).toBe(200);
+        expect(await scrape()).toBe(401);
       } finally {
         await handle.close();
       }

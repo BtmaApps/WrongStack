@@ -192,4 +192,26 @@ describe('write tool', () => {
     expect(out.created).toBe(false);
     expect(await fs.readFile(path.join(sb.dir, 'existing.txt'), 'utf8')).toBe('new');
   });
+
+  // The overwritten content becomes the session-rewind `before` string; a
+  // Latin-1 or binary file came back from a rewind as U+FFFD-mangled bytes.
+  it.each([
+    ['legacy single-byte text', Buffer.from('caf\xe9\n', 'latin1')],
+    ['binary', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff])],
+  ])('refuses to overwrite a %s file it could not restore on rewind', async (_, original) => {
+    const file = path.join(sb.dir, 'legacy.txt');
+    await fs.writeFile(file, original);
+    const changes: unknown[] = [];
+    (sb.ctx as { session?: unknown }).session = {
+      recordFileChange: (input: unknown) => changes.push(input),
+    };
+
+    await expect(
+      writeTool.execute({ path: 'legacy.txt', content: 'new\n' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/not UTF-8 text/);
+    expect(await fs.readFile(file)).toEqual(original);
+    expect(changes).toEqual([]);
+  });
 });

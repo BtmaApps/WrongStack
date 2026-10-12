@@ -76,6 +76,34 @@ describe('/init slash command', () => {
     expect(written).not.toBe('EXISTING');
   });
 
+  it('keeps hand-written AGENTS.md content across repeated /init runs', async () => {
+    // One fixed AGENTS.md.bak was overwritten on every run, so the second /init
+    // replaced the backup with the first run's template and the text was gone.
+    const dir = path.join(tmp, '.wrongstack');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'AGENTS.md'), 'HAND-WRITTEN');
+    const reg = makeRegistry(new FakeRenderer());
+    await reg.dispatch('/init', mkCtx());
+    await reg.dispatch('/init', mkCtx());
+    await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ scripts: { test: 'x' } }));
+    await reg.dispatch('/init', mkCtx());
+
+    const names = await fs.readdir(dir);
+    const contents = await Promise.all(names.map((n) => fs.readFile(path.join(dir, n), 'utf8')));
+    expect(contents).toContain('HAND-WRITTEN');
+    expect(names.filter((n) => n.endsWith('.bak'))).toHaveLength(2);
+  });
+
+  it('does not rewrite AGENTS.md when it cannot be backed up', async () => {
+    const dir = path.join(tmp, '.wrongstack');
+    await fs.mkdir(path.join(dir, 'AGENTS.md.bak'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'AGENTS.md'), 'HAND-WRITTEN');
+    const r = new FakeRenderer();
+    await makeRegistry(r).dispatch('/init', mkCtx());
+    expect(await fs.readFile(path.join(dir, 'AGENTS.md'), 'utf8')).toBe('HAND-WRITTEN');
+    expect(r.buf).toContain('could not back it up first');
+  });
+
   it('detects package.json scripts and pre-fills build/test/lint/run', async () => {
     await fs.writeFile(
       path.join(tmp, 'package.json'),

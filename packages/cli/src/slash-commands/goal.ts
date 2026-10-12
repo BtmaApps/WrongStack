@@ -120,12 +120,25 @@ async function runMissionCommand(
       refinerModel: refinerTarget?.model,
       onUsage: (usage, source) => journalGoalRefineUsage(opts, usage, source),
     });
-    const updated: GoalFile = {
-      ...current,
-      refinedGoal: refined.refinedGoal,
-      deliverables: refined.deliverables,
-    };
-    await saveGoal(goalPath, updated, opts.events);
+    // Apply onto the file as it is NOW, under its lock: the refine awaited an
+    // LLM, and saving the snapshot loaded before it dropped every journal
+    // entry, attempt count and engine state the eternal loop wrote meanwhile.
+    let updated: GoalFile | undefined;
+    await updateGoal(
+      goalPath,
+      (latest) => {
+        if (!latest || latest.goal !== current.goal) return latest;
+        updated = {
+          ...latest,
+          refinedGoal: refined.refinedGoal,
+          deliverables: refined.deliverables,
+        };
+        return updated;
+      },
+      opts.events,
+    );
+    if (!updated)
+      return { message: 'The mission changed while it was being refined; nothing was applied.' };
     return { message: `✓ Mission refined.\n\n${formatGoal(updated)}` };
   }
 

@@ -565,6 +565,43 @@ describe('CloudConfigSync engine', () => {
   });
 });
 
+describe('outbound credential values inside contract fields', () => {
+  it('redacts tokens carried in MCP args and URLs and in provider base URLs', () => {
+    // `mcpServers.*.args`/`.url` and `providers.*.baseUrl` are contract-owned
+    // VALUES; the sweep only dropped secret-named keys and encrypted blobs, so
+    // plaintext credentials inside them were pushed to the portal.
+    const secrets = [
+      'ghp_1234567890abcdefghijklmnopqrstuvwxyzAB',
+      'plainApiKeyValue42',
+      'hunter2',
+      'qs-secret-987',
+      'google-key-123',
+    ];
+    const payload = JSON.stringify(
+      buildNamespacePayloads({
+        mcpServers: {
+          gh: { command: 'npx', args: ['-y', 'srv', '--token', secrets[0]] },
+          s: { command: 'x', args: [`--api-key=${secrets[1]}`] },
+          r: {
+            transport: 'sse',
+            url: `https://alice:${secrets[2]}@mcp.example.com/sse?api_key=${secrets[3]}&region=eu`,
+          },
+          fs: {
+            command: 'npx',
+            args: ['-y', 'server-filesystem', '/srv/data', '--max-tokens', '4096'],
+          },
+        },
+        providers: {
+          p: { type: 'openai', baseUrl: `https://api.example.com/v1?key=${secrets[4]}` },
+        },
+      }),
+    );
+    for (const secret of secrets) expect(payload).not.toContain(secret);
+    expect(payload).toContain('"/srv/data","--max-tokens","4096"');
+    expect(payload).toContain('region=eu');
+  });
+});
+
 vi.mock('node:fs/promises', async (importOriginal) => ({
   ...(await importOriginal<typeof import('node:fs/promises')>()),
 }));

@@ -827,13 +827,13 @@ describe('acp-session-callbacks — fs & terminal handlers', () => {
       });
       expect(sender.sendResult).toHaveBeenCalledWith(3, {});
 
-      // write with default content and sessionId
+      // write with an explicit empty content and the default sessionId
       await handleAcpFsRequest(
         {
           jsonrpc: '2.0',
           method: 'fs/write_text_file',
           id: 31,
-          params: { path: '/tmp/default.txt' },
+          params: { path: '/tmp/default.txt', content: '' },
         } as never,
         fileServer as never,
         permissionPolicy,
@@ -845,6 +845,22 @@ describe('acp-session-callbacks — fs & terminal handlers', () => {
         content: '',
       });
       expect(sender.sendResult).toHaveBeenCalledWith(31, {});
+
+      // a missing content is malformed, not "write an empty file"
+      fileServer.writeTextFile.mockClear();
+      await handleAcpFsRequest(
+        {
+          jsonrpc: '2.0',
+          method: 'fs/write_text_file',
+          id: 32,
+          params: { path: '/tmp/missing.txt' },
+        } as never,
+        fileServer as never,
+        permissionPolicy,
+        sender,
+      );
+      expect(fileServer.writeTextFile).not.toHaveBeenCalled();
+      expect(sender.sendErrorResponse).toHaveBeenCalledWith(32, -32602, 'content must be a string');
     });
 
     it('rejects write when permission denied', async () => {

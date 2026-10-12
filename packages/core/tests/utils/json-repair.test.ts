@@ -148,6 +148,37 @@ describe('completePartialObject', () => {
     expect(() => JSON.parse(expected)).not.toThrow();
   });
 
+  it.each([
+    [',"optional":}', null],
+    [',"optional":1,}', 1],
+    [',"optional"}', null],
+  ])('preserves complete string tokens during fallback repair: %s', (suffix, optional) => {
+    const original = {
+      old_string: 'keep ,} :} ,] :] and "quoted" text with \\slashes',
+      new_string: 'replacement',
+    };
+    const input = JSON.stringify(original).slice(0, -1) + suffix;
+    expect(JSON.parse(completePartialObject(input))).toEqual({ ...original, optional });
+  });
+
+  it('preserves complete object keys containing repair-shaped punctuation', () => {
+    const original = { 'key,}:}': 'unchanged' };
+    const input = `${JSON.stringify(original).slice(0, -1)},"optional":}`;
+    expect(JSON.parse(completePartialObject(input))).toEqual({ ...original, optional: null });
+  });
+
+  it('repairs nested missing values without changing earlier string content', () => {
+    const input = '{"outer":{"body":"keep ,} and :}","optional":}}';
+    expect(JSON.parse(completePartialObject(input))).toEqual({
+      outer: { body: 'keep ,} and :}', optional: null },
+    });
+  });
+
+  it('leaves valid JSON with repair-shaped string content byte-for-byte unchanged', () => {
+    const input = JSON.stringify({ body: 'keep ,} :} ,] :] and "quotes" \\slashes' });
+    expect(completePartialObject(input)).toBe(input);
+  });
+
   it('drops a key cut mid-name instead of letting it overwrite an earlier field', () => {
     // `"n` is the start of the next key `"no"`; completed as `"n":null` the
     // duplicate would win in JSON.parse and erase the complete `n`.

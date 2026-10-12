@@ -289,6 +289,20 @@ describe('MCP HTTP transport guards (WS-024)', () => {
     expect(received).toHaveLength(0);
   });
 
+  it('refuses a rebinding name that merely starts with "127."', async () => {
+    // isLoopbackHostname used `startsWith('127.')`, so an attacker-owned
+    // `127.attacker.example` rebound to 127.0.0.1 passed Host and Origin and
+    // reached tool execution on the token-less loopback server.
+    const h = await start();
+    for (const name of ['127.attacker.example', '127.0.0.1.attacker.example']) {
+      const status = await rawPost(h, `${name}:${h.port}`, callBody(VALID));
+      expect(status, name).toBe(403);
+    }
+    expect(received).toHaveLength(0);
+    // Real 127/8 literals stay loopback.
+    expect(await rawPost(h, `127.0.0.2:${h.port}`, callBody(VALID))).toBe(200);
+  });
+
   it('accepts a loopback Host header', async () => {
     const h = await start();
     const status = await rawPost(h, `127.0.0.1:${h.port}`, callBody(VALID));

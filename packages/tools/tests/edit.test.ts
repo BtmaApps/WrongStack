@@ -602,6 +602,20 @@ describe('edit tool', () => {
       expect((await fs.readFile(file)).equals(bytes)).toBe(true);
     });
 
+    it('refuses a legacy single-byte text file instead of corrupting its non-ASCII bytes', async () => {
+      // ISO-8859-9 "Güncel" has no NUL, so it passed the binary check, and the
+      // utf8 round-trip rewrote every non-ASCII byte as U+FFFD.
+      const file = path.join(sb.dir, 'legacy.txt');
+      const bytes = Buffer.from([...Buffer.from('// G'), 0xfc, ...Buffer.from('ncel: TARGET\n')]);
+      await fs.writeFile(file, bytes);
+      await expect(
+        editTool.execute({ path: 'legacy.txt', old_string: 'TARGET', new_string: 'DONE' }, sb.ctx, {
+          signal: newSignal(),
+        }),
+      ).rejects.toThrow(/not UTF-8 text/);
+      expect((await fs.readFile(file)).equals(bytes)).toBe(true);
+    });
+
     it('refuses a NUL-bearing file (the binary heuristic boundary)', async () => {
       // Documented behavior: a NUL byte anywhere in the first 8 KiB already
       // marks a file binary for `read`/`replace`, so `edit` follows them rather

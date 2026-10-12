@@ -531,6 +531,37 @@ describe('DirectoryPermissionPolicy', () => {
     expect(allowed.permission).toBe('auto');
   });
 
+  it('does not let a more specific nested rule mask a deny a glob selector also reaches', async () => {
+    const wrapper = new DirectoryPermissionPolicy(allowInner(), {
+      policy: policy([
+        { directory: 'infra/**', denyTools: ['write'] },
+        { directory: 'src/generated/**', denyTools: ['bash'] },
+      ]),
+    });
+    const ctx = makeCtx(projectRoot);
+
+    for (const files of ['**/*.ts', '*/**/*.ts']) {
+      const result = await wrapper.evaluate(writeTool, { files }, ctx);
+      const trace = await wrapper.explain(writeTool, { files }, ctx);
+      expect(result.permission).toBe('deny');
+      expect(trace.decision).toEqual(result);
+    }
+    // A selector wholly inside the nested subtree is governed by that rule alone.
+    const inside = await wrapper.evaluate(writeTool, { files: 'src/generated/*.ts' }, ctx);
+    expect(inside.permission).toBe('auto');
+
+    const relaxing = new DirectoryPermissionPolicy(allowInner(), {
+      policy: policy([
+        { directory: '**', allowOnlyTools: ['read'] },
+        { directory: 'docs/**', allowOnlyTools: ['read', 'write'] },
+      ]),
+    });
+    expect((await relaxing.evaluate(writeTool, { files: 'docs/*.md' }, ctx)).permission).toBe(
+      'auto',
+    );
+    expect((await relaxing.evaluate(writeTool, { files: '**/*.md' }, ctx)).permission).toBe('deny');
+  });
+
   it('enforces secondary scalar source and destination paths', async () => {
     const wrapper = new DirectoryPermissionPolicy(allowInner(), {
       policy: policy([{ directory: 'infra/**', denyTools: ['write'] }]),
