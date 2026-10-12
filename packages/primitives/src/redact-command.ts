@@ -291,7 +291,7 @@ export function redactSecrets(text: string): string {
 // ["--token-file", "/path"] stays visible.
 const BARE_SENSITIVE_LONG_FLAG = new RegExp(`^--(?:[\\w-]+-)?(?:${KEYWORDS})$`, 'i');
 // Short flags that carry a secret when bare (e.g. ["-p", "s3cr3t"]).
-const BARE_SENSITIVE_SHORT_FLAG = /^-(?:p|t|a)$/i;
+const BARE_SENSITIVE_SHORT_FLAG = /^-(?:password|p|t|a)$/i;
 // curl-style user flags: the next arg is a secret only as `user:pass`.
 const BARE_USER_CREDENTIAL_FLAG = /^(?:-u|--(?:[\w-]+-)?user)$/;
 
@@ -314,6 +314,9 @@ export function redactCommandArgs(
   }
   const redactedCommand = redactCommand(command);
   const redactedArgs = args.map((a) => {
+    // Preserve bare flags for the pair scan: text redaction can mistake
+    // -password for a glued -p value and erase the flag's identity.
+    if (typeof a === 'string' && BARE_SENSITIVE_SHORT_FLAG.test(a)) return a;
     const equals = typeof a === 'string' ? a.indexOf('=') : -1;
     // An argv value can contain unquoted whitespace; it is already one token.
     if (equals > 0 && BARE_SENSITIVE_LONG_FLAG.test(a.slice(0, equals))) {
