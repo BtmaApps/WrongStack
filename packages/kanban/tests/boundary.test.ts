@@ -81,12 +81,14 @@ describe('Kanban boundaries', () => {
     });
   });
 
-  it.runIf(process.platform === 'win32')(
-    'matches selectors case-insensitively on Windows (ASCII fold)',
-    () => {
-      // Tool paths arrive in on-disk casing (realpath); a `deny secrets`
-      // selector missed the real `Secrets/` directory.
-      const layers = resolveKanbanBoundaryLayers({
+  describe('selector case folding', () => {
+    const originalPlatform = process.platform;
+    const setPlatform = (value: NodeJS.Platform) =>
+      Object.defineProperty(process, 'platform', { value, configurable: true });
+    afterEach(() => setPlatform(originalPlatform));
+
+    const caseDeny = () =>
+      resolveKanbanBoundaryLayers({
         boundary: {
           enabled: true,
           enforcement: 'block',
@@ -99,6 +101,12 @@ describe('Kanban boundaries', () => {
           ],
         },
       });
+
+    it('matches selectors case-insensitively on Windows (ASCII fold)', () => {
+      setPlatform('win32');
+      // Tool paths arrive in on-disk casing (realpath); a `deny secrets`
+      // selector missed the real `Secrets/` directory.
+      const layers = caseDeny();
       for (const target of ['Secrets/key.pem', 'CONFIG/app.JSON', 'a/key.pem']) {
         expect(evaluateKanbanBoundaryPath(layers, target, 'write').decision, target).toBe('block');
       }
@@ -116,8 +124,17 @@ describe('Kanban boundaries', () => {
         },
       });
       expect(evaluateKanbanBoundaryPath(unicode, 'ünicode/a', 'write').decision).toBe('allow');
-    },
-  );
+    });
+
+    it('keeps selectors case-sensitive on a case-sensitive platform', () => {
+      setPlatform('linux');
+      const layers = caseDeny();
+      expect(evaluateKanbanBoundaryPath(layers, 'secrets/key.pem', 'write').decision).toBe('block');
+      for (const target of ['Secrets/key.txt', 'CONFIG/app.JSON']) {
+        expect(evaluateKanbanBoundaryPath(layers, target, 'write').decision, target).toBe('allow');
+      }
+    });
+  });
 
   it('matches a terminal globstar against both its root directory and descendants', () => {
     const layers = resolveKanbanBoundaryLayers({
