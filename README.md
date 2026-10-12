@@ -55,7 +55,20 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.0
+### What's new in 1.1.1
+
+- **Local dev servers in one step:** [`/browser allow loopback`](docs/slash/browser.md)
+  approves every localhost port for the project. `/browser` and `/network` also
+  work in the WebUI composer, and `localhost` connects on Windows when the dev
+  server listens only on `127.0.0.1`.
+- **ChatGPT quota:** `openai-chatgpt` accounts show plan and app quota in
+  [`/openai-quota`](docs/slash/openai-quota.md) and the WebUI quota panel.
+- **Longer bug hunts:** the WebUI allows up to ten [bug-hunt](docs/proof-driven-bug-hunter.md)
+  rounds, and Skill Companion stays out of the hunt.
+- **Techstack fixes:** stable-version detection, aborted registry lookups,
+  Ruby manifests and multi-instance snapshot diffs are corrected.
+
+Highlights from **1.1.0**, the previous release:
 
 - **Request residency:** every answered request records which segments were
   cached, written or uncached, the cache verdict and its breakers, and what the
@@ -70,21 +83,10 @@ home to.
   contract instead of pasting it again, and wide schemas are trimmed to the
   required and failing fields. `tool_search` returns whole schemas.
 
-Highlights from **1.0.37**, the previous release:
-
-- **Browser setup:** [`/browser`](docs/slash/browser.md) reports Chromium
-  readiness, installs its runtime and manages exact project origin allowances.
-- **Focused code reading:** `codebase-read-symbol` reads a named declaration
-  directly from a file using AST parsing, with exact source-line bounds.
-- **Skill guidance:** local intent rules suggest playbooks without an API call;
-  the CLI Skill Companion watches active work and recommends missed skills. See
-  [skills](docs/skills.md) and [suggestions](docs/skills-suggestion.md).
-- **Bun-first development:** workspace scripts, tests, CI and SQLite adapters
-  support Bun; contributor commands use the pinned Bun toolchain.
-
-1.0.36 added phase-aware leader effort, per-worker effort routing and
-audit-driven hardening; 1.0.35 hardened command guards, secret redaction and
-dependency audits; 1.0.34 added [project goals](docs/architecture/project-goals.md),
+1.0.37 added Bun-first development, browser setup, `codebase-read-symbol` and the
+[Skill Companion](docs/skills-suggestion.md); 1.0.36 added phase-aware leader
+effort, per-worker effort routing and audit-driven hardening; 1.0.35 hardened
+command guards, secret redaction and dependency audits; 1.0.34 added [project goals](docs/architecture/project-goals.md),
 [explicit continuation](docs/slash/nextsteps.md), [YOLO+](docs/slash/yolo.md)
 and the [dead-code workflow](docs/tools/dead-code.md).
 
@@ -752,7 +754,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.0** — current repository version; semver from 1.0.0 onward
+- **v1.1.1** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

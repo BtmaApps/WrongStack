@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.0 → 1.0.0).
+// Changelog — 1.x era (1.1.1 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -9,10 +9,24 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.1',
+    date: '2026-10-12',
+    tagline: 'One-step loopback allowance, ChatGPT quota, longer bug hunts and techstack fixes',
+    latest: true,
+    highlights: [
+      '/browser allow loopback approves every localhost, *.localhost, 127.0.0.0/8 and ::1 port for the project at once; a public name resolving to loopback stays blocked',
+      '/browser and /network typed in the WebUI composer run on the host against the project policy file instead of going to the model',
+      'The browser network guard dials the first validated address that accepts, so localhost works on Windows when a dev server listens only on 127.0.0.1, and allowances saved by another process apply without a restart',
+      'openai-chatgpt accounts show plan and app quota in /openai-quota and the WebUI quota panel, read through an openai-codex sign-in on the same account and matched by OAuth client ID',
+      'Skill Companion stays out of /bughunt turns and their continuation rounds, and the WebUI bug-hunt budget grows from three to ten rounds',
+      'A Context button in the WebUI chat header opens the session story on its context timeline',
+      'Techstack ignores latest tags that point at previews, releases aborted registry lookups, resolves Ruby manifests from the workspace root and pairs multi-instance snapshot diffs by ID',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-10-12',
     tagline: 'Context residency, last-request cache readouts and leaner tool-error context',
-    latest: true,
     highlights: [
       'Each answered request records its residency — which segments were cached, written or uncached, the cache verdict and its breakers — and what the next compaction keeps',
       '/context residency, a TUI Residency tab, the WebUI dashboard and the session story timeline show how the last request sat on the wire',

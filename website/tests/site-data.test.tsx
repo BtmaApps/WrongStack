@@ -45,8 +45,8 @@ describe('site data — changelog invariants', () => {
     expect(latest[0]?.version).toBe(META.version);
   });
 
-  it('leads with the 1.1.0 release dated 2026-10-12', () => {
-    expect(changelog[0]?.version).toBe('1.1.0');
+  it('leads with the 1.1.1 release dated 2026-10-12', () => {
+    expect(changelog[0]?.version).toBe('1.1.1');
     expect(changelog[0]?.date).toBe('2026-10-12');
     expect(changelog[0]?.highlights.length).toBeGreaterThan(0);
   });
@@ -77,7 +77,7 @@ describe('site data — skills catalog', () => {
 describe('site data — public export surface of @/lib/utils', () => {
   it('still exports every consumer-facing value after the split', () => {
     expect(typeof cn).toBe('function');
-    expect(META.version).toBe('1.1.0');
+    expect(META.version).toBe('1.1.1');
     expect(Array.isArray(changelog)).toBe(true);
     expect(changelog.length).toBeGreaterThan(90);
     expect(Array.isArray(toolGroups)).toBe(true);

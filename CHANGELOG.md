@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] — 2026-10-12
+
+A follow-up release. Local dev servers can be allowed in one step and from the
+WebUI, `openai-chatgpt` accounts get plan and app quota readings, bug hunts run
+longer without the Skill Companion, and techstack registry and inventory edge
+cases are fixed.
+
+### Added
+
+- **Loopback allowance.** `/browser allow loopback` approves every `localhost`, `*.localhost`, `127.0.0.0/8` and `::1` port for the project at once. A public name that resolves to loopback stays blocked.
+- **`/browser` in the WebUI.** `/browser` and `/network` typed in the WebUI composer run on the host against the project policy file, instead of going to the model, which cannot grant itself an allowance.
+- **ChatGPT quota.** `openai-chatgpt` accounts and their aliases show up in `/openai-quota` and the WebUI quota panel. The read borrows an `openai-codex` sign-in on the same ChatGPT account and workspace and requires an exact match on the account's OAuth client ID. App and plan windows are separate meters. See [`/openai-quota`](docs/slash/openai-quota.md).
+- **Story context shortcut.** A Context button in the WebUI chat header opens Session Story on its context timeline.
+
+### Changed
+
+- **Bug hunts.** Skill Companion is suspended for `/bughunt` turns and their continuation rounds, since the pipeline already names its required skills. The WebUI round budget goes from 1–3 to 1–10.
+- **Website toolchain.** The website workspace uses the repository's Bun typecheck and Biome format/lint scripts.
+
+### Fixed
+
+- **Browser networking.** The network guard proxy dials the first validated address that accepts, so `localhost` works on Windows when the resolver answers `::1` first and the dev server listens only on `127.0.0.1`. The policy file is re-read when another process saves an allowance.
+- **Techstack.** A `latest` tag that points at a preview no longer counts as the latest stable npm version. Composer stability checks ignore case and build metadata. Aborted registry lookups release their queue slot. Ruby manifests resolve against the workspace root. An installed version counts when no lockfile version exists. Snapshot diffs pair sibling instances by ID. A package stays vulnerable while any instance is.
+- **Tests.** The `outdated` legacy-bridge cases no longer run a real `npm outdated` against an ancestor `package.json`.
+
 ## [1.1.0] — 2026-10-12
 
 A context-visibility release. Every answered request now records how it sat on

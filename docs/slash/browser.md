@@ -4,13 +4,15 @@
 `/network` is an alias. Origin allowances also apply to `fetch` and
 `read_url_content`, so one project allowance serves all three paths.
 You can omit `http://` for loopback addresses with a port:
-`/network allow localhost:3000`.
+`/network allow localhost:3000`. In the WebUI, both commands run on the host
+against the same project policy file.
 
 | Command | Effect |
 |---|---|
 | `/browser install` | Install this runtime's Chromium revision immediately |
 | `/browser allow http://localhost:3000` | Save an exact project origin allowance and apply it to active browsers |
 | `/browser remove http://localhost:3000` | Revoke that saved allowance immediately |
+| `/browser allow loopback` | Allow every `localhost`, `*.localhost`, `127.0.0.0/8` and `::1` port in this project; `remove loopback` revokes it |
 
 `browser_open` automatically downloads missing Chromium before launching it.
 If Playwright itself is absent (including a standalone executable), it is installed
