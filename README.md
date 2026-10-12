@@ -55,7 +55,18 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.1
+### What's new in 1.1.2
+
+- **Lossless edits:** file-editing tools and LSP workspace edits refuse
+  non-UTF-8 files instead of corrupting their non-ASCII bytes.
+- **No silent overwrites:** plan, task, annotation and goal stores leave a file
+  they cannot parse in place instead of writing over it.
+- **Secrets stay local:** credential-bearing lines are dropped from REPL and
+  synced history, and cloud config sync redacts MCP and provider URLs.
+- **Terminal safety refusals:** OpenAI safety-classifier refusals are not
+  retried or rerouted and do not count against provider health.
+
+Highlights from **1.1.1**, the previous release:
 
 - **Local dev servers in one step:** [`/browser allow loopback`](docs/slash/browser.md)
   approves every localhost port for the project. `/browser` and `/network` also
@@ -68,22 +79,8 @@ home to.
 - **Techstack fixes:** stable-version detection, aborted registry lookups,
   Ruby manifests and multi-instance snapshot diffs are corrected.
 
-Highlights from **1.1.0**, the previous release:
-
-- **Request residency:** every answered request records which segments were
-  cached, written or uncached, the cache verdict and its breakers, and what the
-  next compaction keeps. See it with `/context residency`, the TUI Residency
-  tab, the WebUI dashboard or the session story timeline.
-- **Honest cache readouts:** the TUI, WebUI and SimpleUI lead with the last
-  request's prompt-cache hit ratio instead of a session-cumulative figure.
-- **Host context off the record:** mailbox mail and host notes ride a
-  request-scoped live-context tail instead of rewriting history; skill routing
-  and SAGE term mining read only authored text.
-- **Cheaper tool errors:** a repeat failed call points back to its input
-  contract instead of pasting it again, and wide schemas are trimmed to the
-  required and failing fields. `tool_search` returns whole schemas.
-
-1.0.37 added Bun-first development, browser setup, `codebase-read-symbol` and the
+1.1.0 added [request residency](docs/slash/context.md), last-request cache
+readouts and leaner tool-error context; 1.0.37 added Bun-first development, browser setup, `codebase-read-symbol` and the
 [Skill Companion](docs/skills-suggestion.md); 1.0.36 added phase-aware leader
 effort, per-worker effort routing and audit-driven hardening; 1.0.35 hardened
 command guards, secret redaction and dependency audits; 1.0.34 added [project goals](docs/architecture/project-goals.md),
@@ -754,7 +751,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.1** — current repository version; semver from 1.0.0 onward
+- **v1.1.2** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

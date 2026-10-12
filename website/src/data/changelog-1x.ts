@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.1 → 1.0.0).
+// Changelog — 1.x era (1.1.2 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -9,10 +9,24 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.2',
+    date: '2026-10-13',
+    tagline:
+      'Lossless edits, no silent overwrites, secrets kept off sync and terminal safety refusals',
+    latest: true,
+    highlights: [
+      'edit, replace, write, patch, the AST symbol mutator, the dead-code fixer and LSP workspace edits refuse non-UTF-8 files instead of rewriting their non-ASCII bytes as U+FFFD',
+      'Plan, task, annotation and goal stores never write over an unparseable or unknown-schema file and accept a UTF-8 BOM; an unreadable goal file is moved aside',
+      'REPL and CloudSync history drop credential-bearing lines, and cloud config sync redacts secrets inside MCP args, MCP URLs and provider base URLs',
+      'OpenAI cyber_policy, bio_policy and invalid_prompt refusals are terminal: never retried or rerouted, kept out of the waiting room and not counted against provider health',
+      'Directory permission rules apply every rule a glob reaches, Kanban boundaries fold case on Windows, and loopback checks for *.localhost, MCP HTTP and IPv6 are stricter',
+      '@wrongstack/client newSession and resumeSession reject on a matching server refusal instead of hanging',
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-10-12',
     tagline: 'One-step loopback allowance, ChatGPT quota, longer bug hunts and techstack fixes',
-    latest: true,
     highlights: [
       '/browser allow loopback approves every localhost, *.localhost, 127.0.0.0/8 and ::1 port for the project at once; a public name resolving to loopback stays blocked',
       '/browser and /network typed in the WebUI composer run on the host against the project policy file instead of going to the model',

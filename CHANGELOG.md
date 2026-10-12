@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] — 2026-10-13
+
+A hardening release. File-editing tools refuse to rewrite files they cannot
+round-trip, stores never overwrite a file they could not parse, secrets stay
+out of history and cloud sync, and safety-classifier refusals are no longer
+retried.
+
+### Fixed
+
+- **Lossless edits.** `edit`, `replace`, `write`, `patch`, the AST symbol mutator, the dead-code fixer and LSP workspace edits refuse non-UTF-8 (legacy single-byte) files instead of replacing every non-ASCII byte with U+FFFD. `patch` records an existing untracked file as modified, never created, so a rewind cannot delete it.
+- **Stores keep unreadable files.** Plan, task and annotation stores and goal updates never write over an unparseable or unknown-schema file, and they accept a UTF-8 BOM. An unreadable goal file is moved aside instead of being lost. `/goal refine` applies onto the latest goal file under its lock. `/init` backs up `AGENTS.md` without clobbering an earlier backup and does not rewrite it when the backup fails.
+- **Secrets.** REPL history and CloudSync history drop lines that carry a recognisable credential. Cloud config sync redacts secrets inside MCP args and URLs and provider base URLs. Command redaction hides the value after a bare `-password` argument.
+- **Safety refusals.** OpenAI `cyber_policy`, `bio_policy` and `invalid_prompt` refusals are terminal: they are not retried, not rerouted, kept out of the provider waiting room and not counted against provider health.
+- **Guards.** Directory permission rules apply every rule a glob selector reaches, so a nested rule cannot mask a broader deny. Kanban boundary selectors fold case on Windows. The `*.localhost` browser allowance admits only loopback DNS answers. The MCP HTTP loopback check accepts only `127.0.0.0/8` IPv4 literals, and IPv6 groups that are not hex digits are rejected. A token-gated, non-loopback Prometheus bind no longer pins `Host` to loopback. ACP file writes require string content, and the ACP terminal permission request shows the environment it will apply.
+- **Client.** `newSession` and `resumeSession` in `@wrongstack/client` reject on a matching server refusal instead of waiting for an answer that never comes.
+- **Smaller fixes.** Unified-diff line counts use hunk lengths to tell a file header from `---`/`+++` content. The process-registry lock is not stolen from a holder that has created it but not yet written its token. `LargeAnswerStore` keys use SHA-256 instead of a colliding 32-bit hash. JSON repair leaves complete string tokens untouched.
+
 ## [1.1.1] — 2026-10-12
 
 A follow-up release. Local dev servers can be allowed in one step and from the
