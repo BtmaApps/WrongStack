@@ -645,7 +645,7 @@ export function EnsemblePage() {
                 '/acp parallel <csv> <task> (multi-agent)',
                 '/ensemble <csv> <task> (TUI/REPL)',
                 'makeACPServerAgentTurn (real Agent→server)',
-                'End-to-end smoke test (pnpm smoke)',
+                'End-to-end smoke test (bun run --filter @wrongstack/acp smoke)',
               ],
             },
             {
