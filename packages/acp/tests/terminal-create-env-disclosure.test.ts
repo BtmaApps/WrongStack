@@ -11,7 +11,7 @@ import { TerminalServer } from '../src/client/terminal-server.js';
 
 it('names the env it will apply in the terminal/create permission request', async () => {
   const server = new TerminalServer({ projectRoot: os.tmpdir() });
-  const seen: Array<{ title?: string; rawInput?: unknown }> = [];
+  const seen: Array<{ title: string | undefined; rawInput: unknown }> = [];
   const results: unknown[] = [];
   try {
     await handleAcpTerminalRequest(
