@@ -93,6 +93,31 @@ beforeEach(() => {
 });
 
 describe('ProviderQuotaPanel (side panel)', () => {
+  it('renders real ChatGPT app and plan percentages as separate meters', () => {
+    useModel('openai-chatgpt', 'gpt-6.1-sol');
+    render(<ProviderQuotaPanel />);
+    savedProviders([{ id: 'openai-chatgpt', type: 'openai-chatgpt', family: 'openai' }]);
+    act(() =>
+      useProviderQuotaStore.getState().apply([
+        { ...reading('openai-chatgpt', 16), meterId: 'chatgpt-plan', meterLabel: 'Plan limits' },
+        { ...reading('openai-chatgpt', 14), meterId: 'chatgpt-app', meterLabel: 'App limit' },
+      ]),
+    );
+    expect(screen.getByText('Plan limits')).toBeTruthy();
+    expect(screen.getByText('App limit')).toBeTruthy();
+    expect(screen.getByText('16%')).toBeTruthy();
+    expect(screen.getByText('14%')).toBeTruthy();
+    expect(screen.queryByText(/sign in to OpenAI Codex with the same/)).toBeNull();
+  });
+  it('shows ChatGPT Usage instead of an endless reading state for direct ChatGPT', () => {
+    useModel('openai-chatgpt', 'gpt-6.1-sol');
+    render(<ProviderQuotaPanel />);
+    savedProviders([{ id: 'openai-chatgpt', type: 'openai-chatgpt', family: 'openai' }]);
+    expect(screen.getByText(/sign in to OpenAI Codex with the same ChatGPT account/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open ChatGPT Usage' }).getAttribute('href')).toBe(
+      'https://chatgpt.com/settings/usage',
+    );
+  });
   it('asks for the saved providers, replays readings and refreshes account quota on open', () => {
     render(<ProviderQuotaPanel />);
     expect(sent('providers.saved')).toHaveLength(1);

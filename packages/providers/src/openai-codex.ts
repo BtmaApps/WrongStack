@@ -29,6 +29,7 @@ import {
   type Request,
   type StreamEvent,
 } from '@wrongstack/core/types';
+import { readChatGPTQuota } from './chatgpt-account-quota.js';
 import type { CodexAccountCatalogHost } from './codex-account-catalog.js';
 import {
   fetchContextLimits as fetchContextLimitsFromHost,
@@ -538,6 +539,14 @@ export class OpenAICodexProvider extends WireAdapter {
    */
   async readAccountQuota(opts: { signal?: AbortSignal | undefined; timeoutMs?: number } = {}) {
     return readAccountQuotaFromHost.call(this.codexAccountCatalogHost(), opts);
+  }
+
+  async readChatGPTAccountQuota(
+    providerId: string,
+    clientId: string,
+    opts: { signal?: AbortSignal | undefined } = {},
+  ) {
+    return readChatGPTQuota.call(this.codexAccountCatalogHost(), providerId, clientId, opts);
   }
 
   private async ensureFreshToken(signal: AbortSignal): Promise<void> {

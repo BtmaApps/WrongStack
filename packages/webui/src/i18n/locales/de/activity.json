@@ -4411,6 +4411,8 @@
     "advisory": "Unverbindliche Modellbewertung; vor der Anwendung die Belege prüfen."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "Melden Sie sich mit demselben ChatGPT-Konto und Arbeitsbereich bei OpenAI Codex an und aktualisieren Sie die Plan- und App-Kontingente. Ihr Modell verwendet weiterhin ChatGPT.",
+    "chatgptUsage": "ChatGPT-Nutzung öffnen",
     "title": "Plan-Kontingent",
     "refresh": "Kontingent aktualisieren",
     "refreshTitle": "Planquote aller gespeicherten Anbieter jetzt lesen — Kontoabfragen, die nichts vom Plan verbrauchen.",

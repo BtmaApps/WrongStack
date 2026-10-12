@@ -4,6 +4,7 @@ import {
   createSubscriptionRefreshTransaction,
   matchesActiveProviderCredential,
   setAccountQuotaReporting,
+  setChatGPTQuotaProviders,
   setOAuthTokenPersister,
   setProviderModelPersister,
   setSubscriptionRefreshTransaction,
@@ -11,6 +12,7 @@ import {
 
 /** Standalone hosts must persist rotations as well as interactive login outcomes. */
 export function installWebuiProviderPersisters(args: {
+  load?: () => Promise<Record<string, ProviderConfig>>;
   mutate: (
     mutator: (providers: Record<string, ProviderConfig>) => void | Promise<void>,
   ) => Promise<void>;
@@ -18,6 +20,7 @@ export function installWebuiProviderPersisters(args: {
 }): void {
   // Post-turn plan-quota reads (Kimi Code, OpenCode Go, OpenRouter); host-only.
   setAccountQuotaReporting(true);
+  setChatGPTQuotaProviders(args.load);
   setSubscriptionRefreshTransaction(createSubscriptionRefreshTransaction(args.mutate));
   setOAuthTokenPersister((id, creds, source) => {
     void args

@@ -7,7 +7,7 @@ import {
   type PrefHelperDeps,
   updateGlobalConfig as updateGlobalConfigImpl,
 } from './pref-helpers.js';
-import { mutateSavedProviders } from './provider-config-io.js';
+import { loadSavedProviders, mutateSavedProviders } from './provider-config-io.js';
 import { installWebuiProviderPersisters } from './provider-token-persisters.js';
 import { bootstrapWrongProxyFromConfig } from './proxy-runtime.js';
 import type { WebUIOptions } from './types.js';
@@ -91,6 +91,7 @@ export async function prepareWebuiConfig(opts: WebUIOptions): Promise<PreparedWe
   // value, and every later renewal fails with invalid_grant.
   if (!opts.services || !hasSubscriptionRefreshTransaction()) {
     installWebuiProviderPersisters({
+      load: () => loadSavedProviders(profileConfigPath, vault),
       mutate: (mutator) => mutateSavedProviders(profileConfigPath, vault, mutator),
       warn: (message) => logger.warn(message),
     });

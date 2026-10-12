@@ -4411,6 +4411,8 @@
     "advisory": "Evaluación orientativa del modelo; revisa las pruebas antes de aplicarla."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "Para leer las cuotas del plan y de la aplicación, inicia sesión en OpenAI Codex con la misma cuenta y espacio de trabajo de ChatGPT y actualiza. Tu modelo sigue usando ChatGPT.",
+    "chatgptUsage": "Abrir Uso de ChatGPT",
     "title": "Cuota del plan",
     "refresh": "Actualizar cuota",
     "refreshTitle": "Leer ahora la cuota del plan de cada proveedor guardado: lecturas de cuenta que no consumen el plan.",

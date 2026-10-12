@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { recordProviderQuota } from '@wrongstack/core/quota';
 import type {
   Capabilities,
   ImageGenerationRequest,
@@ -14,6 +15,7 @@ import { capabilitiesForFamily } from './family-capabilities.js';
 import { openAIImagesBody, openAIImagesUrl, parseOpenAIImages } from './image-generation.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
 import { parseOpenAIResponsesStream } from './openai-codex.js';
+import { parseCodexRateLimitHeaders } from './openai-codex-rate-limits.js';
 import {
   appendVolatileSystem,
   codexCacheSessionId,
@@ -276,11 +278,23 @@ export class OpenAIResponsesProvider extends WireAdapter {
     );
   }
 
+  protected override onResponseHeaders(headers: HeadersLike | undefined): void {
+    if (!this.responseOptions.chatGPTPlan || !headers) return;
+    // Only publish windows actually reported by the plan route. Ordinary API
+    // RPM/TPM headers cannot describe a ChatGPT subscription allowance.
+    const snapshots = parseCodexRateLimitHeaders(headers).map((snapshot) => ({
+      ...snapshot,
+      providerId: this.id,
+    }));
+    if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
+  }
+
   protected override translateError(
     status: number,
     text: string,
     headers?: HeadersLike,
   ): ProviderError {
+    this.onResponseHeaders(headers);
     return parseProviderHttpError(this.id, status, text, headers);
   }
 }

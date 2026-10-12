@@ -5,12 +5,13 @@ import {
   createSubscriptionRefreshTransaction,
   matchesActiveProviderCredential,
   setAccountQuotaReporting,
+  setChatGPTQuotaProviders,
   setOAuthTokenPersister,
   setProviderModelPersister,
   setSubscriptionRefreshTransaction,
 } from '@wrongstack/providers';
 import { activeProfileConfigPath } from '../profile-config-path.js';
-import { mutateConfigProviders } from '../provider-config-utils.js';
+import { loadConfigProviders, mutateConfigProviders } from '../provider-config-utils.js';
 
 export { applyProviderOAuthRefresh } from '@wrongstack/providers';
 
@@ -40,6 +41,7 @@ export function installProviderPersisters(args: {
   // own (Kimi Code, OpenCode Go, OpenRouter). Host-only: a library consumer
   // never makes an account call it did not ask for.
   setAccountQuotaReporting(true);
+  setChatGPTQuotaProviders(() => loadConfigProviders(profileConfigPath, args.vault));
   setSubscriptionRefreshTransaction(
     createSubscriptionRefreshTransaction((mutator) =>
       mutateConfigProviders(profileConfigPath, args.vault, mutator),

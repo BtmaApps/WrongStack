@@ -2,8 +2,7 @@ import { getAllProviderQuota, withQuotaPace } from '@wrongstack/core/quota';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import {
   type AccountQuotaVendor,
-  makeProviderFromConfig,
-  readProviderAccountQuota,
+  readConfiguredProviderAccountQuota,
   refreshProviderAccountQuota,
 } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
@@ -40,15 +39,11 @@ async function readAccountQuota(
   providerId: string,
   cfg: ProviderConfig,
   apiKey: string,
+  providers: Readonly<Record<string, ProviderConfig>>,
 ): Promise<{ vendor: AccountQuotaVendor; ok: boolean } | undefined> {
-  if (isCodexConfig(providerId, cfg)) {
+  if (isCodexConfig(providerId, cfg) || (cfg.type ?? providerId) === 'openai-chatgpt') {
     try {
-      const provider = makeProviderFromConfig(providerId, {
-        ...cfg,
-        type: cfg.type ?? providerId,
-        family: cfg.family ?? 'openai-codex',
-      });
-      return (await readProviderAccountQuota(provider)) ?? { vendor: 'codex', ok: false };
+      return await readConfiguredProviderAccountQuota(providerId, cfg, providers);
     } catch {
       return { vendor: 'codex', ok: false };
     }
@@ -81,7 +76,12 @@ async function readAccountQuota(
 export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
   const lastRead = new Map<string, { at: number; vendor: AccountQuotaVendor; ok: boolean }>();
 
-  async function readOne(providerId: string, cfg: ProviderConfig, now: number) {
+  async function readOne(
+    providerId: string,
+    cfg: ProviderConfig,
+    now: number,
+    providers: Readonly<Record<string, ProviderConfig>>,
+  ) {
     const keys = normalizeKeys(cfg);
     const apiKey = (keys.find((k) => k.label === cfg.activeKey) ?? keys[0])?.apiKey ?? '';
     // A keyless gateway (OmniRoute) is still read with its management token.
@@ -90,7 +90,7 @@ export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
     if (last && now - last.at < MIN_REFRESH_INTERVAL_MS) {
       return { providerId, vendor: last.vendor, ok: last.ok, throttled: true };
     }
-    const result = await readAccountQuota(providerId, cfg, apiKey);
+    const result = await readAccountQuota(providerId, cfg, apiKey, providers);
     if (result === undefined) return undefined;
     lastRead.set(providerId, { at: now, vendor: result.vendor, ok: result.ok });
     return { providerId, vendor: result.vendor, ok: result.ok };
@@ -102,7 +102,7 @@ export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
       const providers = await ctx.loadConfigProviders();
       const now = Date.now();
       const outcomes = await Promise.all(
-        Object.entries(providers).map(([id, cfg]) => readOne(id, cfg, now)),
+        Object.entries(providers).map(([id, cfg]) => readOne(id, cfg, now, providers)),
       );
       refreshed = outcomes.filter((o): o is QuotaRefreshOutcome => o !== undefined);
     } catch {

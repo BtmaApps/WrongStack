@@ -4411,6 +4411,8 @@
     "advisory": "Valutazione indicativa del modello; esamina le prove prima di applicarla."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "Per leggere le quote del piano e dell’app, accedi a OpenAI Codex con lo stesso account e spazio di lavoro ChatGPT, poi aggiorna. Il modello continua a usare ChatGPT.",
+    "chatgptUsage": "Apri Utilizzo di ChatGPT",
     "title": "Quota del piano",
     "refresh": "Aggiorna quota",
     "refreshTitle": "Leggi ora la quota del piano di ogni provider salvato: letture dell'account che non consumano il piano.",

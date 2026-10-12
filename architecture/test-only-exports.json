@@ -970,6 +970,9 @@
     "packages/providers/src/ai-gateway.ts": [
       "resolveGatewayWireBaseUrl"
     ],
+    "packages/providers/src/chatgpt-account-quota.ts": [
+      "parseChatGPTAppQuota"
+    ],
     "packages/providers/src/error-parse.ts": [
       "retryAfterMsFromBody"
     ],

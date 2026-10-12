@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-12T08:46:44.108Z",
+  "generatedAt": "2026-10-12T08:48:51.869Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4934,
-    "testFiles": 4306,
-    "sourceLines": 1095372,
+    "sourceFiles": 4936,
+    "testFiles": 4307,
+    "sourceLines": 1095685,
     "workspaceEdges": 133,
-    "moduleEdges": 16257,
+    "moduleEdges": 16269,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 961
+    "testOnlyExports": 962
   },
   "errors": [],
   "packageCycles": [],
@@ -507,8 +507,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 130,
-      "testFiles": 113,
+      "sourceFiles": 132,
+      "testFiles": 114,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -521,7 +521,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 113
+          "testFiles": 114
         }
       ]
     },
@@ -14070,6 +14070,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/chatgpt-quota.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/cloudflare-ai-gateway.test.ts",
         "projects": [
           "root-node"
@@ -27235,6 +27241,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/providers/src/openai-codex.ts",
+      "lines": 758,
+      "relativeImports": 26
+    },
+    {
       "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
       "lines": 758,
       "relativeImports": 10
@@ -27308,11 +27319,6 @@
       "file": "packages/core/src/utils/context-evidence.ts",
       "lines": 750,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/providers/src/openai-codex.ts",
-      "lines": 749,
-      "relativeImports": 25
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
@@ -29272,6 +29278,10 @@
     {
       "file": "packages/providers/src/ai-gateway.ts",
       "name": "resolveGatewayWireBaseUrl"
+    },
+    {
+      "file": "packages/providers/src/chatgpt-account-quota.ts",
+      "name": "parseChatGPTAppQuota"
     },
     {
       "file": "packages/providers/src/error-parse.ts",

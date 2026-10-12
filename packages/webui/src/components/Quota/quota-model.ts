@@ -11,6 +11,7 @@ import type { QuotaRefreshOutcome, QuotaSnapshot, QuotaWindow } from '@/stores';
 
 export type QuotaVendor =
   | 'codex'
+  | 'chatgpt'
   | 'minimax'
   | 'zai'
   | 'kimi'
@@ -24,6 +25,7 @@ export type QuotaVendor =
 
 export const VENDOR_ORDER: readonly QuotaVendor[] = [
   'codex',
+  'chatgpt',
   'minimax',
   'zai',
   'kimi',
@@ -42,6 +44,7 @@ export const VENDOR_ORDER: readonly QuotaVendor[] = [
  */
 export const VENDOR_NAME: Record<QuotaVendor, string> = {
   codex: 'ChatGPT / Codex',
+  chatgpt: 'ChatGPT',
   minimax: 'MiniMax',
   zai: 'Z.AI',
   kimi: 'Kimi Code',
@@ -64,6 +67,7 @@ export function isQuotaVendor(value: unknown): value is QuotaVendor {
  */
 export const CATALOG_IDS = new Set([
   'openai-codex',
+  'openai-chatgpt',
   'minimax',
   'minimax-coding-plan',
   'minimax-cn',
@@ -139,6 +143,7 @@ export function quotaVendorOf(p: SavedProviderLite): QuotaVendor | undefined {
   const kind = `${p.type ?? ''} ${p.family ?? ''} ${p.id}`.toLowerCase();
   const { host, path } = upstreamOf(p.baseUrl);
   if (kind.includes('openai-codex')) return 'codex';
+  if (kind.includes('openai-chatgpt')) return 'chatgpt';
   if (/(^|\s)minimax/.test(kind) || /(^|\.)minimaxi?\.(io|cn|com|chat)$/.test(host)) {
     return 'minimax';
   }

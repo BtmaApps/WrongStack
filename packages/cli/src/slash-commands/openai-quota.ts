@@ -27,7 +27,6 @@ import {
   formatQuotaPercent,
   formatQuotaResetIn,
   getAllProviderQuota,
-  getProviderQuota,
   groupQuotaSnapshots,
   type ProviderQuotaSnapshot,
   type ProviderQuotaWindow,
@@ -37,7 +36,7 @@ import {
 import type { Provider, ProviderConfig, SlashCommand } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
 import {
-  makeProviderFromConfig,
+  readConfiguredProviderAccountQuota,
   readProviderAccountQuota,
   refreshProviderAccountQuota,
 } from '@wrongstack/providers';
@@ -68,23 +67,24 @@ async function readAccountQuotas(
   active: Provider | undefined,
   deps: QuotaCommandDeps,
 ): Promise<void> {
+  let alreadyRead: string | undefined;
   try {
-    if (active && (await readProviderAccountQuota(active)) !== undefined) return;
+    if (active) {
+      const result = await readProviderAccountQuota(active);
+      if (result?.ok) alreadyRead = active.id;
+    }
   } catch {
     // Fall through to the saved sign-ins.
   }
-  const saved = Object.entries(deps.providers?.() ?? {}).filter(([id, cfg]) =>
-    isCodexConfig(id, cfg),
+  const providers = deps.providers?.() ?? {};
+  const saved = Object.entries(providers).filter(
+    ([id, cfg]) =>
+      id !== alreadyRead && (isCodexConfig(id, cfg) || (cfg.type ?? id) === 'openai-chatgpt'),
   );
   await Promise.all(
     saved.map(async ([id, cfg]) => {
       try {
-        const provider = makeProviderFromConfig(id, {
-          ...cfg,
-          type: cfg.type ?? id,
-          family: cfg.family ?? 'openai-codex',
-        });
-        await readProviderAccountQuota(provider);
+        await readConfiguredProviderAccountQuota(id, cfg, providers);
       } catch {
         // A sign-in that cannot be built or read keeps its standing reading.
       }
@@ -227,13 +227,37 @@ export function buildOpenAIQuotaCommand(deps: QuotaCommandDeps = {}): SlashComma
     ].join('\n'),
     async run(_args, ctx): Promise<{ message: string }> {
       await readAccountQuotas(ctx?.provider, deps);
-      const snapshots = getProviderQuota(PROVIDER_ID);
+      const saved = deps.providers?.() ?? {};
+      const directIds = new Set([
+        'openai-chatgpt',
+        ...Object.entries(saved)
+          .filter(([id, cfg]) => (cfg.type ?? id) === 'openai-chatgpt')
+          .map(([id]) => id),
+      ]);
+      const ids = new Set([
+        PROVIDER_ID,
+        ...directIds,
+        ...Object.entries(saved)
+          .filter(([id, cfg]) => isCodexConfig(id, cfg))
+          .map(([id]) => id),
+      ]);
+      const snapshots = getAllProviderQuota().filter((snapshot) => ids.has(snapshot.providerId));
       const lines: string[] = [
         `${color.bold('WrongStack')} ${color.dim('— ChatGPT / Codex quota')}`,
         '',
       ];
       for (const snapshot of snapshots) lines.push(...renderQuotaSnapshot(snapshot), '');
-      if (snapshots.length === 0) {
+      const directConfigured =
+        Object.keys(saved).some((id) => directIds.has(id)) ||
+        (ctx?.provider !== undefined && directIds.has(ctx.provider.id));
+      if (directConfigured && !snapshots.some((snapshot) => directIds.has(snapshot.providerId))) {
+        lines.push(
+          `  ${color.dim('To read ChatGPT plan and app quotas, sign in to openai-codex with the same ChatGPT account/workspace.')}`,
+          `  https://chatgpt.com/settings/usage`,
+          '',
+        );
+      }
+      if (snapshots.length === 0 && !directConfigured) {
         lines.push(
           `  ${color.dim('No quota reading yet.')}`,
           '',
@@ -292,6 +316,18 @@ export function buildProviderQuotaCommand(deps: QuotaCommandDeps = {}): SlashCom
         '',
       ];
       lines.push(...renderQuotaSnapshots(snapshots));
+      const directMissing = Object.entries(deps.providers?.() ?? {}).some(
+        ([id, cfg]) =>
+          (cfg.type ?? id) === 'openai-chatgpt' &&
+          !snapshots.some((snapshot) => snapshot.providerId === id),
+      );
+      if (directMissing) {
+        lines.push(
+          '  To read ChatGPT plan and app quotas, sign in to openai-codex with the same ChatGPT account/workspace.',
+          '  https://chatgpt.com/settings/usage',
+          '',
+        );
+      }
       if (snapshots.length === 0) {
         lines.push(
           `  ${color.dim('No quota reading yet.')}`,

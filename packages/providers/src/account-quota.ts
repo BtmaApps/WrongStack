@@ -35,6 +35,7 @@ import { OpenAICodexProvider } from './openai-codex.js';
 import { reportOpenCodeQuota } from './opencode-quota.js';
 import { reportOpenRouterQuota } from './openrouter-quota.js';
 import { upstreamUrl } from './proxy-upstream.js';
+import { SubscriptionOAuthProvider } from './subscription-oauth.js';
 import { isZaiCodingPlanEndpoint, reportZaiQuota, zaiRegionOf } from './zai-account.js';
 
 /** Vendors whose plan quota can be read on demand. */
@@ -42,6 +43,7 @@ export type AccountQuotaVendor =
   | 'minimax'
   | 'zai'
   | 'codex'
+  | 'chatgpt'
   | 'kimi'
   | 'opencode'
   | 'openrouter'
@@ -190,7 +192,7 @@ export async function refreshProviderAccountQuota(
   if (vendor === undefined || !credentialOf(vendor, input)) return undefined;
   const url = resolveBaseUrl(input);
   try {
-    if (vendor !== 'minimax' && vendor !== 'zai' && vendor !== 'codex') {
+    if (vendor !== 'minimax' && vendor !== 'zai' && vendor !== 'codex' && vendor !== 'chatgpt') {
       const recorded = await readPostTurnVendor(vendor, input.providerId, url, input);
       return { vendor, ok: recorded > 0 };
     }
@@ -225,15 +227,27 @@ export async function refreshProviderAccountQuota(
  */
 export async function readProviderAccountQuota(
   provider: Provider,
-  opts: { signal?: AbortSignal | undefined } = {},
+  opts: { signal?: AbortSignal | undefined; companions?: readonly Provider[] } = {},
 ): Promise<AccountQuotaRefreshResult | undefined> {
+  if (provider instanceof SubscriptionOAuthProvider && provider.chatGPTQuotaClientId) {
+    for (const companion of opts.companions ?? []) {
+      if (!(companion instanceof OpenAICodexProvider)) continue;
+      const snapshots = await companion.readChatGPTAccountQuota(
+        provider.id,
+        provider.chatGPTQuotaClientId,
+        opts,
+      );
+      if (snapshots.length) return { vendor: 'chatgpt', ok: true };
+    }
+    return { vendor: 'chatgpt', ok: false };
+  }
   if (!(provider instanceof OpenAICodexProvider)) return undefined;
   const snapshots = await provider.readAccountQuota({ signal: opts.signal });
   return { vendor: 'codex', ok: snapshots.length > 0 };
 }
 
 async function readPostTurnVendor(
-  vendor: Exclude<AccountQuotaVendor, 'minimax' | 'zai' | 'codex'>,
+  vendor: Exclude<AccountQuotaVendor, 'minimax' | 'zai' | 'codex' | 'chatgpt'>,
   providerId: string,
   url: string | undefined,
   input: AccountQuotaRefreshInput,
@@ -277,6 +291,13 @@ async function readPostTurnVendor(
 const POST_TURN_MIN_INTERVAL_MS = 60_000;
 
 let postTurnReportingEnabled = false;
+let chatGPTQuotaReporter: ((provider: Provider) => Promise<unknown>) | undefined;
+
+export function setChatGPTQuotaReporter(
+  reporter: ((provider: Provider) => Promise<unknown>) | undefined,
+): void {
+  chatGPTQuotaReporter = reporter;
+}
 
 /**
  * Turn on post-turn account reads for providers built from now on. Off by
@@ -308,9 +329,10 @@ export function attachAccountQuotaReporting<P extends Provider>(
   input: AccountQuotaRefreshInput,
 ): P {
   if (!postTurnReportingEnabled) return provider;
+  const direct = provider instanceof SubscriptionOAuthProvider && !!provider.chatGPTQuotaClientId;
   const vendor = accountQuotaVendorOf(input);
-  if (vendor === undefined || !POST_TURN_VENDORS.has(vendor)) return provider;
-  if (!credentialOf(vendor, input)) return provider;
+  if (!direct && (vendor === undefined || !POST_TURN_VENDORS.has(vendor))) return provider;
+  if (!direct && vendor !== undefined && !credentialOf(vendor, input)) return provider;
 
   let lastReadAt = Number.NEGATIVE_INFINITY;
   let inFlight: Promise<unknown> | undefined;
@@ -318,9 +340,15 @@ export function attachAccountQuotaReporting<P extends Provider>(
     const now = Date.now();
     if (inFlight || now - lastReadAt < POST_TURN_MIN_INTERVAL_MS) return;
     lastReadAt = now;
-    inFlight = refreshProviderAccountQuota(input).finally(() => {
-      inFlight = undefined;
-    });
+    inFlight = (
+      direct
+        ? (chatGPTQuotaReporter?.(provider) ?? Promise.resolve())
+        : refreshProviderAccountQuota(input)
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        inFlight = undefined;
+      });
   };
 
   const stream = provider.stream.bind(provider);

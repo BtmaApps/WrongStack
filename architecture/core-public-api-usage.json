@@ -129,9 +129,9 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 50,
+      "files": 53,
       "typeOnly": 1,
-      "runtimeOrMixed": 49
+      "runtimeOrMixed": 52
     },
     "@wrongstack/core/registry": {
       "files": 155,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1388,
-      "typeOnly": 1219,
+      "files": 1390,
+      "typeOnly": 1221,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -9711,6 +9711,12 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/chatgpt-account-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/codex-account-catalog.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9789,6 +9795,12 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/openai-responses.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/opencode-quota.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9838,6 +9850,12 @@
     {
       "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/tests/anthropic-rate-limits.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/chatgpt-quota.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17673,6 +17691,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/configured-account-quota.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/custom-quota.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -18160,6 +18184,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/chatgpt-direct-auth.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/chatgpt-quota.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

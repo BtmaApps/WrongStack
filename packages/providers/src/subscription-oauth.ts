@@ -211,6 +211,12 @@ export class SubscriptionOAuthProvider implements Provider {
     return this.credential.apiKey;
   }
 
+  get chatGPTQuotaClientId(): string | undefined {
+    return this.credential.oauthStrategyId === 'chatgpt-api'
+      ? this.credential.oauthClientId
+      : undefined;
+  }
+
   /** Catalog probes use the same renewal and durable host transaction as inference. */
   async refreshAccountCredential(opts: { signal: AbortSignal }): Promise<ProviderApiKey> {
     await this.coordinator.ensureFreshToken(opts.signal);

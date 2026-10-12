@@ -59,6 +59,10 @@ export {
   defaultCodexWebSocketFactory,
 } from './codex-websocket.js';
 export {
+  readConfiguredProviderAccountQuota,
+  setChatGPTQuotaProviders,
+} from './configured-account-quota.js';
+export {
   isEffortRejected,
   isEffortRejection,
   rememberEffortRejected,

@@ -4411,6 +4411,8 @@
     "advisory": "Avis du modèle ; examinez les preuves avant de l’appliquer."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "Pour lire les quotas du forfait et de l’application, connectez-vous à OpenAI Codex avec le même compte et espace de travail ChatGPT, puis actualisez. Votre modèle continue d’utiliser ChatGPT.",
+    "chatgptUsage": "Ouvrir Utilisation de ChatGPT",
     "title": "Quota du forfait",
     "refresh": "Actualiser le quota",
     "refreshTitle": "Lire maintenant le quota du forfait de chaque fournisseur enregistré — des lectures de compte qui ne consomment rien du forfait.",

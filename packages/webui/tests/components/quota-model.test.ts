@@ -37,6 +37,23 @@ function card(providerId: string, vendor: QuotaCard['vendor'], meters: QuotaSnap
 }
 
 describe('routed model → pool account', () => {
+  it('includes direct ChatGPT accounts separately from Codex before any reading', () => {
+    const cards = buildQuotaCards(
+      {},
+      [
+        { id: 'openai-chatgpt', type: 'openai-chatgpt', family: 'openai' },
+        { id: 'work', type: 'openai-chatgpt', family: 'openai' },
+        { id: 'openai-codex', type: 'openai-codex' },
+        { id: 'openai', type: 'openai' },
+      ],
+      {},
+    );
+    expect(cards.map((c) => [c.providerId, c.vendor])).toEqual([
+      ['openai-codex', 'codex'],
+      ['openai-chatgpt', 'chatgpt'],
+      ['work', 'chatgpt'],
+    ]);
+  });
   const PROVIDERS = [
     'claude',
     'codex',

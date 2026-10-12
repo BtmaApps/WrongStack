@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-12T08:46:44.108Z
+**Generated:** 2026-10-12T08:48:51.869Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4934 |
-| Production source lines | 1095372 |
-| Test files | 4306 |
+| Production source files | 4936 |
+| Production source lines | 1095685 |
+| Test files | 4307 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 16257 |
+| Relative module edges | 16269 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -44,7 +44,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plugin-sdk | 11 | 10 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 149 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 11 | 12 | — |
-| @wrongstack/providers | 130 | 113 | @wrongstack/core |
+| @wrongstack/providers | 132 | 114 | @wrongstack/core |
 | @wrongstack/requirement-intake | 17 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 24 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
@@ -104,6 +104,7 @@ None.
 | 759 | `packages/core/src/coordination/sqlite-mailbox.ts` |
 | 759 | `packages/tui/src/components/context-panel-sections.tsx` |
 | 758 | `packages/core/src/registry/tool-registry.ts` |
+| 758 | `packages/providers/src/openai-codex.ts` |
 | 758 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 757 | `packages/techstack/src/adapters/npm.ts` |
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
@@ -119,7 +120,6 @@ None.
 | 752 | `packages/kanban/src/storage.ts` |
 | 751 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 750 | `packages/core/src/utils/context-evidence.ts` |
-| 749 | `packages/providers/src/openai-codex.ts` |
 | 748 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 748 | `packages/core/src/types/config/skills-fleet-brain.ts` |
 | 748 | `packages/tools/src/process-registry-persistent.ts` |
@@ -136,7 +136,7 @@ None.
 
 ## Exports only tests reference
 
-- 961 runtime exports are referenced by tests and by no other production file.
+- 962 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

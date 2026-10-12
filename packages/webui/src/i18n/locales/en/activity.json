@@ -4411,6 +4411,8 @@
     "advisory": "Advisory model judgment; review the evidence before applying it."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "To read plan and app quotas, sign in to OpenAI Codex with the same ChatGPT account and workspace, then refresh. Your model continues using ChatGPT.",
+    "chatgptUsage": "Open ChatGPT Usage",
     "title": "Plan quota",
     "refresh": "Refresh quota",
     "refreshTitle": "Read the plan quota of every saved provider now — account reads that spend none of the plan.",

@@ -4411,6 +4411,8 @@
     "advisory": "Avaliação consultiva do modelo; examine as evidências antes de aplicá-la."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "Para ler as cotas do plano e do aplicativo, entre no OpenAI Codex com a mesma conta e espaço de trabalho do ChatGPT e atualize. Seu modelo continua usando o ChatGPT.",
+    "chatgptUsage": "Abrir Uso do ChatGPT",
     "title": "Cota do plano",
     "refresh": "Atualizar cota",
     "refreshTitle": "Ler agora a cota do plano de cada provedor salvo — leituras da conta que não gastam o plano.",

@@ -126,6 +126,55 @@ describe('provider.quota.refresh', () => {
     expect(snapshots.map((s) => s.providerId)).toContain('openai-codex');
   });
 
+  it('reads direct ChatGPT app windows under an alias using the companion Codex account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async (url: string) =>
+          new Response(
+            JSON.stringify(
+              url.endsWith('/chatpass/apps')
+                ? {
+                    items: [
+                      {
+                        id: 'oaiapp_work',
+                        windows: [{ used_percent: 14, limit_window_seconds: 604800 }],
+                      },
+                    ],
+                  }
+                : {},
+            ),
+          ),
+      ),
+    );
+    const { ctx, sent } = context({
+      work: {
+        type: 'openai-chatgpt',
+        family: 'openai',
+        apiKeys: [
+          {
+            label: 'personal',
+            apiKey: 'direct',
+            createdAt: '',
+            authMethod: 'oauth',
+            oauthStrategyId: 'chatgpt-api',
+            oauthClientId: 'oaiapp_work',
+            scope: 'chatgpt.tokens.use.direct',
+          },
+        ],
+      },
+      backend: { type: 'openai-codex', family: 'openai-codex', apiKey: 'backend' },
+    });
+    await createQuotaRefreshHandlers(ctx).handleProviderQuotaRefresh(ws);
+    const refreshed = sent.at(-1)?.payload['refreshed'] as Array<Record<string, unknown>>;
+    expect(refreshed).toContainEqual({ providerId: 'work', vendor: 'chatgpt', ok: true });
+    const snapshots = sent.at(-1)?.payload['snapshots'] as Array<{
+      providerId: string;
+      windows: Array<{ usedPercent: number }>;
+    }>;
+    expect(snapshots.find((s) => s.providerId === 'work')?.windows[0]?.usedPercent).toBe(14);
+  });
+
   it('reads a ChatGPT sign-in saved under any key and reports a failed read', async () => {
     const { ctx, sent } = context({
       'my-chatgpt': {

@@ -4411,6 +4411,8 @@
     "advisory": "Model değerlendirmesidir; uygulamadan önce kanıtları inceleyin."
   },
   "quotaPanel": {
+    "chatgptUnavailable": "Plan ve uygulama kotasını okumak için aynı ChatGPT hesabı ve çalışma alanıyla OpenAI Codex girişini yapıp yenileyin. Modeliniz ChatGPT kullanmaya devam eder.",
+    "chatgptUsage": "ChatGPT Kullanım sayfasını aç",
     "title": "Plan kotası",
     "refresh": "Kotayı yenile",
     "refreshTitle": "Kayıtlı tüm sağlayıcıların plan kotasını şimdi oku — plandan hiçbir şey harcamayan hesap okumaları.",

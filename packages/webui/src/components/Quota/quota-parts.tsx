@@ -195,7 +195,11 @@ export function QuotaCardView({
   const windowedMeters = meters.filter((m) => m.windows.length > 0).length;
   const labelled = !title && ((meters.length > 1 && windowedMeters > 1) || pooled);
   const empty =
-    refresh && !refresh.ok ? t('activity:quotaPanel.readFailed') : t('activity:quotaPanel.reading');
+    card.vendor === 'chatgpt'
+      ? t('activity:quotaPanel.chatgptUnavailable')
+      : refresh && !refresh.ok
+        ? t('activity:quotaPanel.readFailed')
+        : t('activity:quotaPanel.reading');
   const roomy = variant === 'roomy';
   const sub = subtitle ?? cardSubtitle(card);
 
@@ -254,6 +258,16 @@ export function QuotaCardView({
           }
         />
       ))}
+      {card.vendor === 'chatgpt' && (
+        <a
+          href="https://chatgpt.com/settings/usage"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-[11px] text-info hover:underline"
+        >
+          {t('activity:quotaPanel.chatgptUsage')}
+        </a>
+      )}
       {card.hiddenPoolAccounts ? (
         <div className="text-[10px] text-muted-foreground/80">
           {t(

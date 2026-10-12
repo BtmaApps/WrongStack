@@ -1,5 +1,28 @@
 # /openai-quota — ChatGPT (Codex) Subscription Quota
 
+`openai-chatgpt` accounts and their configured aliases also appear in this
+command and the WebUI quota panel. Sign in to `openai-codex` once with the same
+ChatGPT account/workspace; keep `openai-chatgpt` as the active model provider.
+The Codex credential is used only for quota reads because the direct OAuth token
+cannot access ChatGPT's usage endpoints.
+
+WrongStack reads `/backend-api/wham/usage/chatpass/apps` and requires exactly one
+entry matching the direct account's issued OAuth client ID. Only after that
+match does it read `/backend-api/wham/usage` for account-wide plan limits.
+The app's own windows and the plan's windows are separate meters; the app's
+configured allowance is not treated as remaining usage. Other applications
+and Codex model buckets are never copied. Missing or ambiguous registrations
+produce no reading. Tokens use normal renewal and host persistence.
+
+The WebUI reads on panel open and refresh; both hosts also refresh after turns,
+without delaying inference, at most once per minute per provider instance.
+These undocumented account endpoints were verified live on 2026-10-12.
+Without a matching Codex sign-in, use [ChatGPT Usage](https://chatgpt.com/settings/usage).
+
+OpenAI's [recovery guidance](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery)
+also warns that a usage-limit error may represent an app-specific limit;
+it does not establish that the whole plan is exhausted or supply a reset time.
+
 No aliases. The name is provider-scoped deliberately: this reads one provider's
 subscription meter, not a cross-provider cost view.
 
