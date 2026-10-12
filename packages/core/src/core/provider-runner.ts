@@ -8,7 +8,7 @@ import { toWrongStackError } from '../types/errors.js';
 import type { Logger } from '../types/logger.js';
 import type { Tracer } from '../types/observability.js';
 import type { Provider, Request, Response } from '../types/provider.js';
-import { ProviderError } from '../types/provider.js';
+import { isSafetyPolicyRefusal, ProviderError } from '../types/provider.js';
 import {
   parseProviderReportedMaxOutput,
   recordProviderReportedMaxOutput,
@@ -84,6 +84,15 @@ export function isProviderFailureTracked(err: unknown): boolean {
     typeof err === 'object' &&
     (err as Record<symbol, unknown>)[PROVIDER_FAILURE_TRACKED] === true
   );
+}
+
+/**
+ * True when this failure belongs in the waiting room: not recorded yet, and
+ * not a safety-classifier refusal. A refusal judges the content, not the
+ * provider — counting it degraded a healthy model for every session.
+ */
+export function shouldRecordProviderFailure(err: unknown): boolean {
+  return !isProviderFailureTracked(err) && !isSafetyPolicyRefusal(err);
 }
 
 function markProviderFailureTracked(err: unknown): void {
@@ -336,7 +345,7 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
         // guard on purpose: the error was constructed against the
         // `@wrongstack/core/types` bundle and `instanceof` does not survive
         // that boundary.
-        if (statusTracker && isProviderErr && !isProviderFailureTracked(err)) {
+        if (statusTracker && isProviderErr && shouldRecordProviderFailure(err)) {
           const perr = err as ProviderError;
           markProviderFailureTracked(err);
           statusTracker.recordFailure(

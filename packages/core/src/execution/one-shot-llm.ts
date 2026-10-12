@@ -1,6 +1,6 @@
 import type { FallbackChain } from '../core/fallback-profile-manager.js';
 import { evaluateModelCalendar } from '../core/model-availability-calendar.js';
-import { isProviderFailureTracked } from '../core/provider-runner.js';
+import { shouldRecordProviderFailure } from '../core/provider-runner.js';
 import { isTextBlock } from '../types/blocks.js';
 import type { Config } from '../types/config.js';
 import type { Message } from '../types/messages.js';
@@ -419,7 +419,7 @@ export class OneShotOrchestrator {
       // "unknown error" branch, so `auth` / `context_overflow` rotated the
       // whole chain while a real capacity failure could refuse to.
       const providerErr = ProviderError.isProviderError(err) ? (err as ProviderError) : undefined;
-      if (providerErr && providerId && model && !isProviderFailureTracked(err)) {
+      if (providerErr && providerId && model && shouldRecordProviderFailure(err)) {
         this.opts.statusTracker?.recordFailure(
           providerId,
           model,

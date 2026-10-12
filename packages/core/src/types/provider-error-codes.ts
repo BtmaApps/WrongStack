@@ -33,3 +33,19 @@ export function kindFromErrorCode(code: string | undefined): CodeKind | undefine
     ? KIND_BY_ERROR_CODE[code]
     : undefined;
 }
+
+/**
+ * OpenAI safety-classifier refusal codes. The request was understood and the
+ * provider is healthy; a classifier judged the content. Such a refusal is
+ * never retried (OpenAI may restrict an account that keeps tripping the
+ * check) and is not a provider-health failure.
+ */
+const SAFETY_POLICY_CODES: ReadonlySet<string> = new Set([
+  'cyber_policy',
+  'bio_policy',
+  'invalid_prompt',
+]);
+
+export function isSafetyPolicyCode(code: string | undefined): boolean {
+  return code !== undefined && SAFETY_POLICY_CODES.has(code);
+}

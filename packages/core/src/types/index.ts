@@ -448,7 +448,7 @@ export type {
   StreamEvent,
   Usage,
 } from './provider.js';
-// ── provider (24 symbols) ──
+// ── provider (27 symbols) ──
 export {
   classifyProviderError,
   effectiveInputTokens,
@@ -457,9 +457,12 @@ export {
   isFallbackWorthy,
   isReasoningEffort,
   isRetryableKind,
+  isSafetyPolicyCode,
+  isSafetyPolicyRefusal,
   ProviderError,
   promptCacheHitRatio,
   REASONING_EFFORT_LEVELS,
+  SAFETY_POLICY_GUIDANCE,
   StreamHangError,
   totalUsageTokens,
 } from './provider.js';

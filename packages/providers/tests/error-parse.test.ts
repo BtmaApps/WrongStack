@@ -1,5 +1,5 @@
 import type { ProviderErrorBody } from '@wrongstack/core/types';
-import { ProviderError } from '@wrongstack/core/types';
+import { ProviderError, SAFETY_POLICY_GUIDANCE } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   type HeadersLike,
@@ -528,6 +528,22 @@ describe('MiniMax base_resp envelope', () => {
       expect(err.status, `type "${type}" status`).toBe(500);
       expect(err.kind, `type "${type}" kind`).toBe('server');
       expect(err.retryable, `type "${type}" retryable`).toBe(true);
+    }
+  });
+
+  // An OpenAI-compatible stream that carries a classifier refusal has no
+  // status; the "bare invalid_request → retryable 500" rule turned it into a
+  // server fault and resent the flagged context.
+  it('keeps a safety-policy refusal terminal instead of a retryable 500', () => {
+    for (const code of ['cyber_policy', 'bio_policy', 'invalid_prompt']) {
+      const err = providerErrorFromStreamPayload('openai', {
+        error: { type: 'invalid_request', code, message: 'This content was flagged.' },
+      });
+      expect(err.status, code).toBe(400);
+      expect(err.kind, code).toBe('invalid_request');
+      expect(err.retryable, code).toBe(false);
+      expect(err.message, code).toContain('This content was flagged.');
+      expect(err.message, code).toContain(SAFETY_POLICY_GUIDANCE);
     }
   });
 

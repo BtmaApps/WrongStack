@@ -43,7 +43,7 @@ import {
 import { resolveEventSessionId } from './context.js';
 import type { FallbackProfileManager } from './fallback-profile-manager.js';
 import { evaluateModelCalendar, logicalCalendarTarget } from './model-availability-calendar.js';
-import { isProviderFailureTracked } from './provider-runner.js';
+import { shouldRecordProviderFailure } from './provider-runner.js';
 import { bindRequestProvider } from './request-provider-binding.js';
 
 // Compatibility: the canonical leaf implementation lives in model-ref.ts.
@@ -425,14 +425,14 @@ export function createFallbackModelExtension(deps: FallbackModelDeps): AgentExte
         // Record the failure in the tracker (real ProviderError, not our synthetic skip)
         const firstErrIsProvider =
           firstErr_ instanceof ProviderError || ProviderError.isProviderError(firstErr_);
-        // `isProviderFailureTracked` — the provider runner is the single wire
+        // `shouldRecordProviderFailure` — the provider runner is the single wire
         // funnel and already wrote this failure to the waiting room. Counting
         // it again here would halve every consecutive-failure threshold.
         if (
           !alreadyTracked &&
           firstErrIsProvider &&
           tracker &&
-          !isProviderFailureTracked(firstErr_)
+          shouldRecordProviderFailure(firstErr_)
         ) {
           tracker.recordFailure(
             ctx_.provider.id,
@@ -720,7 +720,7 @@ export function createFallbackModelExtension(deps: FallbackModelDeps): AgentExte
             if (
               (err instanceof ProviderError || ProviderError.isProviderError(err)) &&
               tracker &&
-              !isProviderFailureTracked(err)
+              shouldRecordProviderFailure(err)
             ) {
               tracker.recordFailure(
                 nextProvider.id,

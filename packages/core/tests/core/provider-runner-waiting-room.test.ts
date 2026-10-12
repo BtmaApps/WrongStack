@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { runProviderWithRetry } from '../../src/core/provider-runner.js';
 import { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
-import { EventBus } from '../../src/kernel/events.js';
+import { runProviderWithRetry } from '../../src/core/provider-runner.js';
 import { DefaultRetryPolicy } from '../../src/execution/retry-policy.js';
-import { classifyProviderError } from '../../src/types/provider.js';
+import { EventBus } from '../../src/kernel/events.js';
 import type { AgentContext } from '../../src/types/context.js';
+import { WrongStackError } from '../../src/types/errors.js';
 import type { Logger } from '../../src/types/logger.js';
 import type { Provider, Request, Response } from '../../src/types/provider.js';
-import { WrongStackError } from '../../src/types/errors.js';
+import { classifyProviderError, ProviderError } from '../../src/types/provider.js';
 
 /**
  * Kimi answers an exhausted billing cycle with HTTP 403 plus a prose message.
@@ -141,6 +141,39 @@ describe('provider-runner waiting-room middleware', () => {
     // …and it answers with a fallback-worthy error so an outer chain rotates.
     expect((gateErr as { kind?: string }).kind).toBe('rate_limit');
     expect((gateErr as Error).message).toContain('provider waiting room');
+  });
+
+  // A ChatGPT session tripped OpenAI's cyber classifier twice and the pair went
+  // `degraded` (consecutive_failures_2) for every session sharing it. The
+  // refusal judged the content; the provider was healthy.
+  it('does not count a safety-classifier refusal against the pair', async () => {
+    const tracker = new ProviderModelStatusTracker();
+    const refusing = (code: string | undefined): Provider =>
+      ({
+        id: 'openai-chatgpt',
+        capabilities: { streaming: false, tools: true, vision: false },
+        async complete(): Promise<Response> {
+          throw new ProviderError('flagged', 400, false, 'openai-chatgpt', {
+            kind: 'invalid_request',
+            body: { type: 'invalid_request', message: 'flagged', ...(code ? { code } : {}) },
+          });
+        },
+      }) as unknown as Provider;
+
+    for (let i = 0; i < 3; i++) {
+      await runProviderWithRetry({
+        provider: refusing('cyber_policy'),
+        ...baseOpts(tracker),
+      }).catch(() => undefined);
+    }
+    expect(tracker.getStatus('openai-chatgpt', 'k3')?.consecutiveFailures ?? 0).toBe(0);
+    expect(tracker.isAvailable('openai-chatgpt', 'k3')).toBe(true);
+
+    // Control: an ordinary invalid request is still recorded.
+    await runProviderWithRetry({ provider: refusing(undefined), ...baseOpts(tracker) }).catch(
+      () => undefined,
+    );
+    expect(tracker.getStatus('openai-chatgpt', 'k3')?.consecutiveFailures).toBe(1);
   });
 
   it('records successes so a healthy pair keeps its streak', async () => {

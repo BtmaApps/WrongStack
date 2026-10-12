@@ -457,6 +457,7 @@
       "NEXT_STEPS_REQUIRED_PROMPT"
     ],
     "packages/core/src/core/provider-runner.ts": [
+      "isProviderFailureTracked",
       "PROVIDER_FAILURE_TRACKED"
     ],
     "packages/core/src/core/streaming-response-builder.ts": [

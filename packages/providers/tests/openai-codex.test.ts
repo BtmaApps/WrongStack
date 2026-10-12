@@ -1,8 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import {
+  isSafetyPolicyRefusal,
   markVolatileSystemBlock,
   ProviderError,
   type Request,
+  SAFETY_POLICY_GUIDANCE,
   type StreamEvent,
   type TextBlock,
 } from '@wrongstack/core/types';
@@ -1208,6 +1210,49 @@ describe('OpenAICodexProvider stream parsing', () => {
       ).rejects.toMatchObject({ status, kind, retryable });
     },
   );
+
+  // The envelope a ChatGPT-plan session received mid-stream (sequence 20, no
+  // HTTP status). The refusal must stay a single terminal 400 — every resend
+  // is another flag on the account — and its message must say what to do.
+  it('keeps a mid-stream cyber_policy refusal terminal and explains it', async () => {
+    const providerText =
+      'This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.';
+    const sse = [
+      `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: 'Looking at' })}`,
+      '',
+      `data: ${JSON.stringify({
+        type: 'error',
+        error: {
+          type: 'invalid_request',
+          code: 'cyber_policy',
+          message: providerText,
+          param: null,
+        },
+        sequence_number: 20,
+      })}`,
+      '',
+    ].join('\n');
+    let calls = 0;
+    const p = new OpenAICodexProvider({
+      credentials: { accessToken: fakeJwt('a'), expiresAt: Date.now() + 3_600_000 },
+      fetchImpl: (async () => {
+        calls += 1;
+        return new Response(sseBody(sse), { status: 200 });
+      }) as never as typeof fetch,
+    });
+
+    const caught = await p
+      .complete(baseReq, { signal: new AbortController().signal })
+      .catch((err: unknown) => err);
+
+    expect(caught).toMatchObject({ status: 400, kind: 'invalid_request', retryable: false });
+    const providerError = caught as ProviderError;
+    expect(providerError.body?.code).toBe('cyber_policy');
+    expect(providerError.message).toContain(providerText);
+    expect(providerError.message).toContain(SAFETY_POLICY_GUIDANCE);
+    expect(isSafetyPolicyRefusal(providerError)).toBe(true);
+    expect(calls).toBe(1);
+  });
 
   it.each(['Maximum tokens exceeded', 'The request is too long', 'Input too large'])(
     'classifies terse SSE overflow message %j without retrying as a server failure',

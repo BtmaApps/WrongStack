@@ -173,6 +173,8 @@ describe('classifyProviderError', () => {
           message: 'This request has been flagged for possible cybersecurity risk.',
         }),
       ).toBe('invalid_request');
+      // A mid-stream envelope has no status; a derived 5xx must not make it retryable.
+      expect(classifyProviderError(500, { type: 'invalid_request', code })).toBe('invalid_request');
     }
   });
 

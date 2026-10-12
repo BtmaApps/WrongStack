@@ -1,6 +1,12 @@
 import { scrubErrorText } from '@wrongstack/core/security';
 import type { ProviderErrorBody } from '@wrongstack/core/types';
-import { classifyProviderError, isRetryableKind, ProviderError } from '@wrongstack/core/types';
+import {
+  classifyProviderError,
+  isRetryableKind,
+  isSafetyPolicyCode,
+  ProviderError,
+  SAFETY_POLICY_GUIDANCE,
+} from '@wrongstack/core/types';
 import { isPlainObject } from './object-utils.js';
 
 /**
@@ -32,7 +38,7 @@ export function parseProviderHttpError(
     if (bodyHint !== undefined) body.retryAfterMs = bodyHint;
   }
   const kind = classifyProviderError(status, body);
-  const message = `${providerId} HTTP ${status}`;
+  const message = safetyRefusalMessage(body) ?? `${providerId} HTTP ${status}`;
   // WS-060: scrub LAST, so classification and Retry-After extraction above
   // still see the provider's original text. The body is not an internal log
   // line — `describe()` renders it to the terminal, the session writer puts it
@@ -92,6 +98,10 @@ export function providerErrorFromStreamPayload(
     // instead of a retryable 500. Same convention as `kindFromErrorCode`
     // (core/types/provider-error-codes.ts) for the same untrusted key.
     status = STREAM_ERROR_TYPE_STATUS[body.type] as number;
+  } else if (isSafetyPolicyCode(body.code)) {
+    // A classifier refusal is the provider's verdict on the content, not an
+    // upstream fault: the derived 500 below would retry it into more flags.
+    status = 400;
   } else {
     status = classifyProviderError(400, body) === 'invalid_request' ? 500 : 400;
   }
@@ -101,12 +111,24 @@ export function providerErrorFromStreamPayload(
   }
   const kind = classifyProviderError(status, body);
   return new ProviderError(
-    `${providerId} stream error${body.message ? `: ${scrubErrorText(body.message)}` : ''}`,
+    safetyRefusalMessage(body) ??
+      `${providerId} stream error${body.message ? `: ${scrubErrorText(body.message)}` : ''}`,
     status,
     isRetryableKind(kind),
     providerId,
     { body: scrubProviderErrorBody(body), kind },
   );
+}
+
+/**
+ * The message for a safety-classifier refusal (`cyber_policy`, …): the
+ * provider's own text plus {@link SAFETY_POLICY_GUIDANCE}. Undefined for any
+ * other failure.
+ */
+export function safetyRefusalMessage(body: ProviderErrorBody): string | undefined {
+  if (!isSafetyPolicyCode(body.code)) return undefined;
+  const own = body.message?.trim();
+  return own ? `${scrubErrorText(own)}\n\n${SAFETY_POLICY_GUIDANCE}` : SAFETY_POLICY_GUIDANCE;
 }
 
 /**

@@ -3,15 +3,18 @@ import type { ImageGenerationRequest, ImageGenerationResult } from './image-gene
 import type { Message } from './messages.js';
 import type { Tool } from './tool.js';
 
+export { isSafetyPolicyCode } from './provider-error-codes.js';
 export type { ProviderErrorBody, ProviderErrorKind } from './provider-errors.js';
 export {
   classifyProviderError,
   isContextOverflowShaped,
   isFallbackWorthy,
   isRetryableKind,
+  isSafetyPolicyRefusal,
   MAX_RESET_HINT_MS,
   ProviderError,
   parseResetHintMs,
+  SAFETY_POLICY_GUIDANCE,
   StreamHangError,
 } from './provider-errors.js';
 

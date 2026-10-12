@@ -1,7 +1,7 @@
 import { truncate } from '../utils/string.js';
 import type { ErrorCode } from './errors.js';
 import { ERROR_CODES, WrongStackError } from './errors.js';
-import { kindFromErrorCode } from './provider-error-codes.js';
+import { isSafetyPolicyCode, kindFromErrorCode } from './provider-error-codes.js';
 import { QUOTA_EXHAUSTED_RE } from './quota-regex.js';
 
 /**
@@ -91,6 +91,9 @@ export function classifyProviderError(
   // An explicit machine code outranks status and prose (see provider-error-codes).
   const codeKind = kindFromErrorCode(body?.code) ?? kindFromErrorCode(type);
   if (codeKind) return codeKind;
+  // A safety refusal stays terminal whatever status the wire paired it with:
+  // a mid-stream envelope has no status, and a derived 5xx would retry it.
+  if (isSafetyPolicyCode(body?.code)) return 'invalid_request';
   // Belt-and-suspenders quota check FIRST. Many providers (Kimi, Z.AI,
   // Moonshot) answer a hard billing-cycle limit with HTTP 403 and a prose
   // message like "You've reached your usage limit for this billing cycle" or
@@ -427,6 +430,23 @@ export function isContextOverflowShaped(err: unknown): boolean {
     .join('\n');
   return CONTEXT_OVERFLOW_RE.test(text);
 }
+
+/** True for a provider safety-classifier refusal (`cyber_policy`, …); see `isSafetyPolicyCode`. */
+export function isSafetyPolicyRefusal(err: unknown): boolean {
+  if (!(err instanceof ProviderError) && !ProviderError.isProviderError(err)) return false;
+  return isSafetyPolicyCode((err as ProviderError).body?.code);
+}
+
+/**
+ * Appended to a safety refusal's message. The provider's own text only says
+ * "try rephrasing"; it does not say that resending the same context — which a
+ * bare "continue" does — usually trips the same check, and that repeated
+ * flags can get the account's access restricted.
+ */
+export const SAFETY_POLICY_GUIDANCE =
+  'The provider’s safety classifier stopped this response; it is not a WrongStack or network failure. ' +
+  'Saying "continue" resends the same context and usually trips the same check, and repeated flags can get ' +
+  'the account’s access restricted. Rephrase or narrow the request, or switch to a model from another provider.';
 
 export function describeStatus(status: number, type?: string): string {
   if (status === 0) return 'network error';

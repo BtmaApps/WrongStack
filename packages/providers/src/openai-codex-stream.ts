@@ -11,7 +11,11 @@ import {
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from './_tool-input.js';
 import type { CodexResponseMetadata } from './codex-websocket.js';
-import { parseProviderErrorBody, scrubProviderErrorBody } from './error-parse.js';
+import {
+  parseProviderErrorBody,
+  safetyRefusalMessage,
+  scrubProviderErrorBody,
+} from './error-parse.js';
 import { parseCodexRateLimitEvent } from './openai-codex-rate-limits.js';
 import { responsesReasoningSummary } from './responses-reasoning-summary.js';
 
@@ -432,7 +436,7 @@ export async function* parseOpenAIResponsesStream(
           const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
           const kind = classifyProviderError(status, errorBody, rawMessage);
           throw new ProviderError(
-            scrubErrorText(rawMessage),
+            safetyRefusalMessage(errorBody) ?? scrubErrorText(rawMessage),
             status,
             isRetryableKind(kind),
             providerId,
@@ -499,7 +503,7 @@ export async function* parseOpenAIResponsesStream(
         const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
         const kind = classifyProviderError(status, errorBody, rawMessage);
         const body = scrubProviderErrorBody(errorBody);
-        const message = scrubErrorText(rawMessage);
+        const message = safetyRefusalMessage(errorBody) ?? scrubErrorText(rawMessage);
         throw new ProviderError(message, status, isRetryableKind(kind), providerId, { body, kind });
       }
 
