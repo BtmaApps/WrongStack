@@ -46,6 +46,43 @@ describe('countUnifiedDiffLines', () => {
     expect(countUnifiedDiffLines(diff)).toEqual({ added: 2, removed: 4 });
   });
 
+  it.each(['\n', '\r\n'])('counts adjacent header-shaped content inside a hunk (%j)', (newline) => {
+    const patch = [
+      '--- a/comments.txt',
+      '+++ b/comments.txt',
+      '@@ -1 +1 @@',
+      '--- old comment',
+      '+++ new comment',
+    ].join(newline);
+    expect(countUnifiedDiffLines(patch)).toEqual({ added: 1, removed: 1 });
+    expect(completedToolReceipt({ name: 'patch', input: { patch } })).toMatchObject({
+      addedLines: 1,
+      removedLines: 1,
+    });
+    const big = `${patch}${newline}${Array.from({ length: 300 }, (_, i) => ` ctx ${i}`).join(newline)}`;
+    expect(compactDiff(big)).toContain('added=1 removed=1');
+  });
+
+  it('skips the next file headers after consuming a hunk without git metadata', () => {
+    const patch = [
+      '--- a/first.txt',
+      '+++ b/first.txt',
+      '@@ -1,2 +1,2 @@',
+      ' unchanged',
+      '--- old comment',
+      '+++ new comment',
+      '--- a/second.txt',
+      '+++ b/second.txt',
+      '@@ -0,0 +1 @@',
+      '+created',
+      '--- a/third.txt',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-deleted',
+    ].join('\n');
+    expect(countUnifiedDiffLines(patch)).toEqual({ added: 2, removed: 2 });
+  });
+
   it('ignores a format-patch preamble before the first hunk', () => {
     const patch = [
       'Subject: [PATCH] fix',
