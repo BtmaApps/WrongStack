@@ -92,7 +92,8 @@ function setCache(key: string, data: RegistryEntry, etag?: string, ttlMs = DEFAU
 
 // ── Concurrency limiter ────────────────────────────────────────────────────
 
-function acquireHostSlot(host: string): Promise<void> {
+function acquireHostSlot(host: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   let concurrency = hostConcurrency.get(host);
   if (!concurrency) {
     concurrency = { active: 0, queue: [] };
@@ -104,8 +105,19 @@ function acquireHostSlot(host: string): Promise<void> {
     return Promise.resolve();
   }
 
-  return new Promise<void>((resolve) => {
-    concurrency!.queue.push(resolve);
+  const queue = concurrency.queue;
+  return new Promise<void>((resolve, reject) => {
+    const grant = () => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    };
+    const onAbort = () => {
+      const index = queue.indexOf(grant);
+      if (index >= 0) queue.splice(index, 1);
+      reject(signal?.reason);
+    };
+    queue.push(grant);
+    signal?.addEventListener('abort', onAbort, { once: true });
   });
 }
 
@@ -176,6 +188,22 @@ function goProxyEscape(module: string): string {
  */
 export function parseNpmPackument(json: Record<string, unknown>, name: string): RegistryEntry {
   const latestVersion = (json['dist-tags'] as Record<string, string> | undefined)?.['latest'];
+  const stableVersion = /^\d+\.\d+\.\d+(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+  let latestStable =
+    typeof latestVersion === 'string' && stableVersion.test(latestVersion)
+      ? latestVersion
+      : undefined;
+  // Publishers can point `latest` at a preview; it is not proof of stability.
+  if (!latestStable && json.versions && typeof json.versions === 'object') {
+    for (const version of Object.keys(json.versions)) {
+      if (
+        stableVersion.test(version) &&
+        (!latestStable || compareRegistryVersions(version, latestStable) > 0)
+      ) {
+        latestStable = version;
+      }
+    }
+  }
 
   // A package counts as deprecated only when its *latest* version is marked so
   // — that's what `npm deprecate` leaves behind for a dead package, and it's
@@ -193,7 +221,7 @@ export function parseNpmPackument(json: Record<string, unknown>, name: string): 
 
   // npm has no standard "yanked" field in registry metadata.
   return {
-    latestStable: latestVersion,
+    latestStable,
     license: (json.license as string) ?? undefined,
     deprecated: deprecated ?? undefined,
     yanked: undefined,
@@ -319,14 +347,8 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
       let latestStable: string | undefined;
       for (const ver of versions) {
         const version = ver.version as string;
-        if (
-          version &&
-          !version.includes('dev') &&
-          !version.includes('alpha') &&
-          !version.includes('beta') &&
-          !version.includes('RC') &&
-          !version.includes('rc')
-        ) {
+        // Composer stability is case-insensitive and ignores build metadata.
+        if (version && !/dev|alpha|beta|rc/.test(version.replace(/\+.*$/, '').toLowerCase())) {
           if (!latestStable || compareRegistryVersions(version, latestStable) > 0) {
             latestStable = version;
           }
@@ -446,8 +468,10 @@ export async function lookupRegistry(
   }
 
   // Acquire concurrency slot
-  await acquireHostSlot(fetcher.host);
+  await acquireHostSlot(fetcher.host, options.signal);
   try {
+    // Cancellation can arrive after a slot is granted but before this continuation.
+    options.signal?.throwIfAborted();
     // Get cached ETag
     const existingEntry = registryCache.get(cacheKey);
     const etag = existingEntry?.etag;
@@ -558,7 +582,7 @@ export function supportedRegistryEcosystems(): string[] {
  */
 export function clearRegistryCache(): void {
   registryCache.clear();
-  hostConcurrency.clear();
+  // Active requests still own their slots and must release queued lookups.
 }
 
 /** Invalidate one ecosystem batch without evicting unrelated registry data. */

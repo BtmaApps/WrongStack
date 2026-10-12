@@ -74,6 +74,7 @@ export class TrendStore {
     for (const snapshot of snapshots) {
       const at = Date.parse(snapshot.createdAt);
       const active = new Set<string>();
+      const vulnerableKeys = new Set<string>();
       for (const dependency of snapshot.dependencies) {
         const packageKey = `${dependency.ecosystem}:${dependency.name}`;
         const key =
@@ -91,6 +92,11 @@ export class TrendStore {
           ecosystem: dependency.ecosystem,
         });
         versionHistory.set(key, history);
+        if (vulnerable) vulnerableKeys.add(key);
+      }
+      // A healthy sibling cannot resolve a package while another instance is vulnerable.
+      for (const key of active) {
+        const vulnerable = vulnerableKeys.has(key);
         if (vulnerable && !openVulnerabilities.has(key)) openVulnerabilities.set(key, at);
         if (!vulnerable && openVulnerabilities.has(key)) {
           const openedAt = openVulnerabilities.get(key);

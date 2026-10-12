@@ -148,6 +148,8 @@ export async function requestWithRetry(options: HttpRequestOptions): Promise<Htt
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const response = await requestOnce(options);
+      // Cancellation can win the handoff even after the response stream ends.
+      options.signal?.throwIfAborted();
       const retryable = response.statusCode === 429 || response.statusCode >= 500;
       if (!retryable || attempt === maxAttempts - 1) return response;
       const serverDelay = retryAfterMs(response.headers);

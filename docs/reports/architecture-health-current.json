@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-12T08:48:51.869Z",
+  "generatedAt": "2026-10-12T08:50:27.361Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4936,
-    "testFiles": 4307,
-    "sourceLines": 1095685,
+    "testFiles": 4316,
+    "sourceLines": 1095744,
     "workspaceEdges": 133,
     "moduleEdges": 16269,
     "nonCommandSlashImports": 0,
@@ -721,7 +721,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 53,
-      "testFiles": 52,
+      "testFiles": 61,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -736,7 +736,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 52
+          "testFiles": 61
         }
       ]
     },
@@ -16758,6 +16758,12 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/adapters/ruby-project-root.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/adapters/rust-adapter.test.ts",
         "projects": [
           "root-node"
@@ -16830,6 +16836,12 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/http-fetch-response-abort.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/http-fetch-response-error.test.ts",
         "projects": [
           "root-node"
@@ -16878,7 +16890,31 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/registry-cache-concurrency.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/registry-client-http.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/registry-composer-stability.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/registry-npm-stable.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/registry-queued-abort.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16974,7 +17010,19 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/snapshot-diff-instance-order.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/snapshot-diff-sbom.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/status-installed-version.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16999,6 +17047,12 @@
       },
       {
         "file": "packages/techstack/tests/techstack-100-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/trend-vulnerable-siblings.test.ts",
         "projects": [
           "root-node"
         ]

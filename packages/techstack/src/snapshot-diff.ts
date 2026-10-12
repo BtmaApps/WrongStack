@@ -109,9 +109,9 @@ export function diffSnapshots(oldSnapshot: Snapshot, newSnapshot: Snapshot): Sna
       recordFieldChanges(oldDeps[0]!, newDeps[0]!);
       continue;
     }
-    // Multi-instance: the resolved version IS the instance identity, so pair on
-    // it. Paired instances are diffed field-by-field; the unpaired ones are a
-    // genuine add or remove rather than something to silently drop.
+    // Multi-instance: pair by resolved version, using stable IDs to disambiguate
+    // siblings sharing that version. Paired rows are diffed field-by-field;
+    // unpaired rows are a genuine add or remove rather than silently dropped.
     const oldByVersion = new Map<string, DependencyObservation[]>();
     for (const dep of oldDeps) {
       const version = instanceVersion(dep);
@@ -119,8 +119,29 @@ export function diffSnapshots(oldSnapshot: Snapshot, newSnapshot: Snapshot): Sna
       if (bucket) bucket.push(dep);
       else oldByVersion.set(version, [dep]);
     }
+    // Reserve surviving IDs so an unmatched row cannot consume a later sibling's match.
+    const newIdsByVersion = new Map<string, Set<string>>();
     for (const dep of newDeps) {
-      const previous = oldByVersion.get(instanceVersion(dep))?.shift();
+      const version = instanceVersion(dep);
+      let ids = newIdsByVersion.get(version);
+      if (!ids) {
+        ids = new Set();
+        newIdsByVersion.set(version, ids);
+      }
+      ids.add(dep.id);
+    }
+    for (const dep of newDeps) {
+      const version = instanceVersion(dep);
+      const candidates = oldByVersion.get(version);
+      let previous: DependencyObservation | undefined;
+      if (candidates) {
+        let index = candidates.findIndex((candidate) => candidate.id === dep.id);
+        if (index < 0) {
+          const reservedIds = newIdsByVersion.get(version);
+          index = candidates.findIndex((candidate) => !reservedIds?.has(candidate.id));
+        }
+        if (index >= 0) previous = candidates.splice(index, 1)[0];
+      }
       if (previous) recordFieldChanges(previous, dep);
       else added.push(dep);
     }

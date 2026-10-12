@@ -18,7 +18,7 @@ import type {
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
 import { stripInlineComment } from './parse-utils.js';
-import { lockfileEvidence, manifestEvidence } from './paths.js';
+import { lockfileEvidence, manifestEvidence, resolveIn, workspaceRoot } from './paths.js';
 
 /**
  * Parse Gemfile for direct `gem 'name'` and `gem 'name', 'version'` calls.
@@ -173,20 +173,22 @@ export class RubyAdapter implements EcosystemAdapter {
 
   async inventory(
     workspace: Workspace,
-    _options: InventoryOptions,
+    options: InventoryOptions,
   ): Promise<readonly DependencyObservation[]> {
     const observations: DependencyObservation[] = [];
     const gemfilePath = workspace.manifests.find((m) => m.includes('Gemfile'));
     if (!gemfilePath) return [];
+    const root = workspaceRoot(workspace, options);
+    const resolvedGemfilePath = resolveIn(root, gemfilePath);
 
     let content: string;
     try {
-      content = readFileSync(gemfilePath, 'utf-8');
+      content = readFileSync(resolvedGemfilePath, 'utf-8');
     } catch {
       return [];
     }
 
-    const manifestEv = manifestEvidence(gemfilePath);
+    const manifestEv = manifestEvidence(resolvedGemfilePath);
     const gems = parseGemfile(content);
     const seen = new Set<string>();
 
@@ -195,10 +197,11 @@ export class RubyAdapter implements EcosystemAdapter {
     let lockVersions = new Map<string, string>();
     let lockEv: Evidence | undefined;
     if (lockfilePath) {
+      const resolvedLockfilePath = resolveIn(root, lockfilePath);
       try {
-        const lockContent = readFileSync(lockfilePath, 'utf-8');
+        const lockContent = readFileSync(resolvedLockfilePath, 'utf-8');
         lockVersions = parseGemfileLock(lockContent);
-        lockEv = lockfileEvidence(lockfilePath);
+        lockEv = lockfileEvidence(resolvedLockfilePath);
       } catch {
         // No lockfile
       }

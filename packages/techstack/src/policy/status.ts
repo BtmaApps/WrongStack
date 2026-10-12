@@ -386,7 +386,10 @@ function crossesCompatibilityAxis(locked: string, latestStable: string): boolean
  * @returns The classified DependencyStatus.
  */
 export function classifyStatus(
-  dep: Pick<DependencyObservation, 'name' | 'sourceType' | 'status' | 'locked' | 'requested'> & {
+  dep: Pick<
+    DependencyObservation,
+    'name' | 'sourceType' | 'status' | 'locked' | 'installed' | 'requested'
+  > & {
     // Partial `<=` bounds read differently per ecosystem; optional so callers
     // without it keep the literal (PEP 440-style) reading.
     readonly ecosystem?: EcosystemId | undefined;
@@ -436,7 +439,7 @@ export function classifyStatus(
 
   // ── Version comparison ─────────────────────────────────────────────────
 
-  const locked = dep.locked;
+  const locked = dep.locked ?? dep.installed;
   const latestStable = registryData?.latestStable;
 
   if (locked && latestStable) {
