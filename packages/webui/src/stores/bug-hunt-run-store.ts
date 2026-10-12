@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { BugHuntLimit } from '@/lib/bug-hunt-message';
 
 const PENDING_REQUEST_ID = '__bug_hunt_continuation_pending__';
 
 export interface BugHuntRun {
   scope: string;
-  totalRounds: 1 | 2 | 3;
+  totalRounds: BugHuntLimit;
   /** The round currently running, or most recently completed when inactive. */
   currentRound: number;
   /** `null` after recovery; the next completion then claims the resumed run. */

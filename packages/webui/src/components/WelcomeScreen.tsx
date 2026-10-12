@@ -11,7 +11,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
-import { buildBugHuntMessage } from '@/lib/bug-hunt-message';
+import { BUG_HUNT_LIMITS, type BugHuntLimit, buildBugHuntMessage } from '@/lib/bug-hunt-message';
 import { launchBuiltinRound } from '@/lib/launch-builtin-round';
 import {
   buildPerfRunMessage,
@@ -116,7 +116,7 @@ export function WelcomeScreen() {
   const [savedCount, setSavedCount] = useState<number | undefined>(undefined);
   const [bugHuntState, setBugHuntState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [bugHuntScope, setBugHuntScope] = useState('');
-  const [bugHuntMaxBugs, setBugHuntMaxBugs] = useState<1 | 2 | 3>(1);
+  const [bugHuntMaxBugs, setBugHuntMaxBugs] = useState<BugHuntLimit>(1);
   const [perfState, setPerfState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [perfScope, setPerfScope] = useState('');
   const [perfMode, setPerfMode] = useState<PerfRunMode>('ratchet');
@@ -419,12 +419,12 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
                       aria-label={t('setup:welcome.bugHunterMaxBugs')}
                       value={bugHuntMaxBugs}
                       onChange={(event) =>
-                        setBugHuntMaxBugs(Number(event.target.value) as 1 | 2 | 3)
+                        setBugHuntMaxBugs(Number(event.target.value) as BugHuntLimit)
                       }
                       disabled={!wsConnected || bugHuntState === 'loading'}
                       className="min-w-0 bg-transparent font-semibold outline-none"
                     >
-                      {[1, 2, 3].map((count) => (
+                      {BUG_HUNT_LIMITS.map((count) => (
                         <option key={count} value={count}>
                           {count}
                         </option>

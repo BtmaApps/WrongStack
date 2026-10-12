@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-12T08:50:27.361Z",
+  "generatedAt": "2026-10-12T08:51:39.881Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4936,
-    "testFiles": 4316,
-    "sourceLines": 1095744,
+    "testFiles": 4317,
+    "sourceLines": 1095770,
     "workspaceEdges": 133,
     "moduleEdges": 16269,
     "nonCommandSlashImports": 0,
@@ -844,7 +844,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 721,
-      "testFiles": 482,
+      "testFiles": 483,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -867,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 482
+          "testFiles": 483
         }
       ]
     },
@@ -26005,6 +26005,12 @@
       },
       {
         "file": "packages/webui/tests/lib/browser-import-boundaries.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/bug-hunt-message.test.ts",
         "projects": [
           "webui-jsdom"
         ]

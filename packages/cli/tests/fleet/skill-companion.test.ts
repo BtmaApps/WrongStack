@@ -33,6 +33,7 @@ const CATALOG = [
 const instances: HostSkillCompanion[] = [];
 afterEach(() => {
   for (const instance of instances.splice(0)) instance.stop();
+  vi.useRealTimers();
 });
 
 function leaderCtx(sessionId = 'S1') {
@@ -122,6 +123,54 @@ const PICK = {
 };
 
 describe('Skill Companion', () => {
+  it.each([
+    '/bughunt --rounds 10 packages/webui',
+    '# ROLE: Autonomous Proof-Driven Bug Hunter & Fixer\n\nHunt one proven bug.',
+    '<!-- wrongstack-bug-hunt scope="packages/webui" max-bugs="10" round="2" -->\nThis is round 2/10.',
+    "This is round 2/10; we're continuing the bug hunt. Stay within the original scope: packages/webui.",
+  ])('skips the skill judge for a proof-driven bughunt request: %s', async (request) => {
+    vi.useFakeTimers();
+    const h = harness();
+    h.run(request);
+    h.events.emit('tool.executed', {
+      sessionId: 'S1',
+      name: 'edit',
+      ok: true,
+      input: { path: 'test.ts' },
+    } as never);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.spawn).not.toHaveBeenCalled();
+    expect(h.assignInternal).not.toHaveBeenCalled();
+    h.run('Redesign the settings page after the hunt');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.assignInternal).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears a previous skill recommendation when the proof-driven hunt starts', async () => {
+    const h = harness();
+    h.run('Redesign the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.finish(PICK);
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+    expect(readSkillCompanionState(h.ctx)?.recommended).toHaveLength(1);
+    h.run('/bughunt packages/webui');
+    expect(readSkillCompanionState(h.ctx)).toBeUndefined();
+    expect(h.terminate).toHaveBeenCalledWith('worker');
+  });
+
+  it('retires an in-flight picker when bughunt starts and discards its late result', async () => {
+    const h = harness();
+    h.run('Redesign the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.run('/bughunt packages/webui');
+    h.finish(PICK);
+    await vi.waitFor(() => expect(h.terminate).toHaveBeenCalledWith('worker'));
+    expect(h.note).not.toHaveBeenCalled();
+    expect(readSkillCompanionState(h.ctx)).toBeUndefined();
+    h.run('Redesign the settings page after the hunt');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
+  });
+
   it('judges a new turn with a tool-less resident and arms a one-time hold', async () => {
     const h = harness();
     h.run('Redesign the settings page with secret-fixture tokens');

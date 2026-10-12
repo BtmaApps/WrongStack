@@ -6,6 +6,17 @@ import type { SkillManifest, SubagentConfig, Tool } from '@wrongstack/core/types
 export const SKILL_COMPANION_ROLE = 'skill-companion';
 export const SKILL_COMPANION_ID_PREFIX = 'skill-companion-';
 
+/** Builtin hunt entry points and their generated continuation turns. */
+export function isProofDrivenBugHuntRequest(text: string): boolean {
+  const request = text.trimStart();
+  return (
+    /^\/bughunt(?:\s|$)/.test(request) ||
+    /^# ROLE: Autonomous Proof-Driven Bug Hunter & Fixer(?:\r?\n|$)/.test(request) ||
+    /^<!-- wrongstack-bug-hunt\s/.test(request) ||
+    /^This is round \d+(?:\/\d+)?; we're continuing the bug hunt\./.test(request)
+  );
+}
+
 export const SKILL_COMPANION_PROMPT = `You are Skill Companion, a read-only skill picker behind the leader agent.
 The leader is working on the request below and has not loaded the CANDIDATE skills. Pick the skills whose playbook the leader should load before it changes code, only when a candidate clearly covers the work at hand.
 Picking nothing is the right answer when nothing clearly fits. A wrong pick costs the leader a refused edit; a missed pick costs nothing extra.

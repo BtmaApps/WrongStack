@@ -116,7 +116,7 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
       target: { value: 'packages/webui' },
     });
     fireEvent.change(screen.getByLabelText('setup:welcome.bugHunterMaxBugs'), {
-      target: { value: '3' },
+      target: { value: '10' },
     });
     fireEvent.click(screen.getByRole('button', { name: /setup:welcome\.bugHunterStart/ }));
 
@@ -129,7 +129,7 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
 
     expect(sendMessage).toHaveBeenCalledWith(
       expect.stringContaining(
-        'This is round 1/3. Investigate at most one proven bug in this round',
+        'This is round 1/10. Investigate at most one proven bug in this round',
       ),
     );
     expect(sendMessage).toHaveBeenCalledWith(
@@ -137,7 +137,7 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
     );
     expect(useChatStore.getState().messages.at(-1)).toEqual(
       expect.objectContaining({
-        bugHunt: { scope: 'packages/webui', maxBugs: 3, currentRound: 1 },
+        bugHunt: { scope: 'packages/webui', maxBugs: 10, currentRound: 1 },
       }),
     );
   });

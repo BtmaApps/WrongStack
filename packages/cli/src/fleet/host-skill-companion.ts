@@ -36,6 +36,7 @@ import {
   recommendLocalSkills,
   recommendSkills,
   SKILL_BUMP_TOOLS,
+  SKILL_COMPANION_META_KEY,
   type SkillRecommendation,
 } from '@wrongstack/core/skills';
 import type {
@@ -47,6 +48,7 @@ import type {
 } from '@wrongstack/core/types';
 import {
   constrainSkillCompanion,
+  isProofDrivenBugHuntRequest,
   parseSkillCompanionPick,
   SKILL_COMPANION_ID_PREFIX,
   SKILL_COMPANION_PROMPT,
@@ -156,6 +158,13 @@ export class HostSkillCompanion {
         const sessionId = event.sessionId;
         // Workers carry agentRole metadata and never get their own picker.
         if (!sessionId || event.ctx.meta?.['agentRole']) return;
+        // Proof-driven hunts already load their four-skill pipeline. Retire
+        // this session's picker before any turn, todo or edit can re-probe it.
+        if (isProofDrivenBugHuntRequest(event.inputText ?? '')) {
+          this.release(sessionId);
+          if (event.ctx.meta) delete event.ctx.meta[SKILL_COMPANION_META_KEY];
+          return;
+        }
         // This listener can run before the host's own run.started handler, so
         // a conversation's first run opens its slot here.
         if (this.stopped || !this.input.enabled(sessionId)) return;
@@ -234,6 +243,7 @@ export class HostSkillCompanion {
     this.sessions.delete(sessionId);
     for (const [key, probe] of this.pending)
       if (probe.sessionId === sessionId) this.pending.delete(key);
+    if (session?.resident && this.active?.agentId === session.resident) this.active.settle();
     if (session?.resident) void this.input.director.terminate(session.resident).catch(() => {});
   }
 

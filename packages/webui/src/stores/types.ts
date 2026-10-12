@@ -1,4 +1,5 @@
 import type { Usage } from '@wrongstack/core/types';
+import type { BugHuntLimit } from '@/lib/bug-hunt-message';
 import type { PerfRunMetric, PerfRunMode } from '@/lib/perf-run-message';
 
 // ============================================
@@ -65,7 +66,7 @@ export interface ChatMessage {
   bugHunt?:
     | {
         scope: string;
-        maxBugs: 1 | 2 | 3;
+        maxBugs: BugHuntLimit;
         currentRound: number;
       }
     | undefined;

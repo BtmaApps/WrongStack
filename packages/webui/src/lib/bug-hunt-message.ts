@@ -1,6 +1,9 @@
+export const BUG_HUNT_LIMITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+export type BugHuntLimit = (typeof BUG_HUNT_LIMITS)[number];
+
 export interface BugHuntSummary {
   scope: string;
-  maxBugs: 1 | 2 | 3;
+  maxBugs: BugHuntLimit;
   currentRound: number;
 }
 
@@ -12,7 +15,7 @@ export function buildBugHuntContinuation(summary: BugHuntSummary): string {
 
 const BUG_HUNT_PREFIX = '<!-- wrongstack-bug-hunt';
 const BUG_HUNT_PATTERN =
-  /^<!-- wrongstack-bug-hunt scope="([^"]*)" max-bugs="([123])"(?: round="(\d+)")? -->\n/;
+  /^<!-- wrongstack-bug-hunt scope="([^"]*)" max-bugs="(10|[1-9])"(?: round="(\d+)")? -->\n/;
 
 /** Adds durable display metadata without changing the instruction sent to the agent. */
 export function buildBugHuntMessage(instruction: string, summary: BugHuntSummary): string {
@@ -28,7 +31,7 @@ export function parseBugHuntMessage(content: string): BugHuntSummary | undefined
     if (!Number.isInteger(currentRound) || currentRound < 1) return undefined;
     return {
       scope: decodeURIComponent(match[1] ?? ''),
-      maxBugs: Number(match[2]) as 1 | 2 | 3,
+      maxBugs: Number(match[2]) as BugHuntLimit,
       currentRound,
     };
   } catch {

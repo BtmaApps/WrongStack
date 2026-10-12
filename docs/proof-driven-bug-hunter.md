@@ -2,7 +2,7 @@
 
 `/bughunt [scope]` investigates one round in a Solo session. Use
 `/bughunt --rounds 3 packages/tui` to authorize three sequential rounds. WebUI
-offers a scope selector and a one-to-three-round budget. Each round may fix one
+offers a scope selector and a one-to-ten-round budget. Each round may fix one
 proven root cause; the budget does not guarantee that many bugs exist.
 
 ## Required skills
@@ -14,6 +14,12 @@ and root cause), `testing` (the proof and the durable regression test), and
 `$bug-hunter`, `$debugging`, `$testing`, and `$verify-before-done`. The
 skill-mention middleware, installed on both the CLI and WebUI hosts, turns
 those into an instruction to load each skill with the `skill` tool.
+
+Skill Companion is suspended for built-in bughunt turns and their continuation
+rounds because this pipeline already specifies its required skills. An active
+picker for that session is retired and its outstanding recommendations are
+cleared. Memory and Explore companions keep their existing policy; ordinary
+tasks can use Skill Companion again after the hunt.
 
 The host also enforces it. The prompt carries a marker:
 
