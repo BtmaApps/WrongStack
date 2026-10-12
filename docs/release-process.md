@@ -1,90 +1,50 @@
 # Release Process
 
-WrongStack's root manifest provides a full release command, a dry-run command,
-and a narrow plugin invariant suite. The intended publication path is
-`.github/workflows/release.yml` — tag-triggered, environment-gated, publishing
-with npm trusted publishing (OIDC). Local `pnpm release` remains available as a
-fallback.
+WrongStack ships in two halves. npm is published from the maintainer's
+machine with `bun run release`; pushing a `vX.Y.Z` tag then makes
+`.github/workflows/release.yml` build the GitHub Release (standalone binaries,
+installers, checksums and Desktop packages). The workflow never publishes to
+npm.
 
-## Publishing from CI (the intended path) — WS-040
+## npm (local)
 
-Push a tag matching the root manifest version:
+```bash
+bun run release          # release:check, then scripts/publish-workspace.mjs
+bun run release:verify   # every working-tree version is live on npm?
+```
+
+`publish-workspace.mjs` publishes in dependency layers and resumes from the
+registry, so a run that stops partway is finished by re-running the same
+command, never by a version bump. It refuses to publish from anything but a
+clean `main` checkout.
+
+**Why not CI.** `release.yml` used to carry an OIDC trusted-publishing job. It
+never worked: no trusted publisher was registered for the packages, so every
+attempt ended in `ENEEDAUTH`, and a run that looked green had only skipped
+versions already published locally. It was removed. The workflow keeps a
+read-only `npm-verify` job that runs `publish-workspace.mjs --verify-only`
+against the tagged commit and reports whether that version is live. It holds no
+credential and nothing waits on it; a red result means the local publish was
+skipped or incomplete.
+
+### Package manifest consistency
+
+`bun run release:packages` must list every publishable package without
+manifest warnings. Public manifests declare `publishConfig.access: public`
+consistently and do not set `publishConfig.provenance`, which would make a
+local publish fail outside CI.
+
+## The tag (GitHub Release)
+
+Push a tag matching the root manifest version, after the npm publish:
 
 ```bash
 git tag v<version> && git push origin v<version>
 ```
 
-That does **not** publish. It requests a publish: the workflow's `publish` job
-targets the `npm-publish` GitHub Environment, so a required reviewer must
-approve before anything reaches the registry. Before that, a `verify` job
-proves the tag matches `package.json` and that it is an ancestor of
-`origin/main`. Standalone and Desktop packaging branch from that verified SHA.
-The npm pack/publish branch separately waits for the full `release:check` gate
-and the environment approval.
-
-**Why this replaced a laptop publish.** The old path used a long-lived npm
-automation token in a maintainer's environment — a credential that publishes
-any package in the org, sitting on a machine that also runs every dependency's
-postinstall script. CI uses a short-lived OIDC token minted per run and scoped
-to this repository and this workflow file. npm also attaches a provenance
-attestation automatically, so a consumer can verify which commit and workflow
-produced a tarball. The `--provenance` flag is not needed here — under trusted
-publishing the attestation comes from the OIDC exchange itself. (pnpm does
-support `--provenance`, but passing it would be redundant in this setup.)
-
-### One-time setup (the workflow fails until this is done)
-
-1. **Per package on npmjs.com.** Trust is bound per package, not per org:
-   register the trusted publisher (repository, workflow `release.yml`,
-   environment `npm-publish`) on each one. Enumerate every public
-   workspace member (all non-private `packages/*` plus the two `apps/*`
-   binaries `wrongstack` and `@wrongstack/desktop`; `website` is private):
-
-   ```bash
-   pnpm release:packages
-   ```
-
-   A package without a registered publisher fails with a bare `404` from the
-   registry. That is npm rejecting an unknown publisher, not a bug in the
-   workflow.
-
-2. **GitHub → Settings → Environments → `npm-publish`**, with required
-   reviewers. This is the control that keeps a tag push from shipping on its
-   own; removing it silently converts tag-push into publish.
-
-### Package manifest consistency
-
-`pnpm release:packages` must list every publishable package without manifest
-warnings. Public manifests declare `publishConfig.access: public` consistently.
-They do not set `publishConfig.provenance`: npm trusted publishing emits
-provenance from the CI OIDC exchange, while a manifest-level provenance flag
-would make the documented emergency laptop fallback fail outside CI.
-
-### `--no-git-checks`
-
-Removed from `pnpm release` (local), retained in `pnpm release:ci`.
-
-This is not an oversight. On a laptop the flag is the dangerous one: it removes
-pnpm's refusal to publish from a dirty tree or the wrong branch, so the
-published tarball need not correspond to any commit. In CI a tag checkout is a
-**detached HEAD**, so pnpm's "are you on the publish branch" check cannot pass
-by construction — leaving it enabled would fail every release rather than
-protect one. What it guarded is replaced more strictly by the `verify` job
-(tag matches the manifest, tag is an ancestor of `main`) and by the fresh
-checkout, which makes tree cleanliness a property rather than an assertion.
-
-### pnpm version floor
-
-OIDC publishing is broken in pnpm 11.0.8 ([pnpm#11513](https://github.com/pnpm/pnpm/issues/11513),
-fixed by [pnpm#11526](https://github.com/pnpm/pnpm/pull/11526)) and works from
-**11.1.3**. The workflow checks the `packageManager` pin against that floor and
-fails loudly, because the failure mode otherwise is a confusing 404 rather than
-an obvious version error.
-
-The workflow also deliberately omits `registry-url` from `actions/setup-node`:
-that option writes an `.npmrc` containing `_authToken=${NODE_AUTH_TOKEN}`
-unconditionally, and with no token in the environment pnpm sends the literal
-unexpanded placeholder as a bearer token, so the OIDC exchange never happens.
+A `verify` job proves the tag matches `package.json` and is an ancestor of
+`origin/main`, and pins that SHA. Every later job checks out the pinned SHA, so
+a moved tag cannot change what is built.
 
 ## Standalone binaries (the primary distribution)
 
@@ -93,9 +53,8 @@ runtime, CLI, every project daemon, all surfaces and the package assets in a
 single file — and publishes them as GitHub release assets. This path does not
 touch npm: the `github-release` job depends on the tag checks (`verify`) and the
 binary jobs only. The full `release:check` runs as the separate `gate` job,
-which only the npm `pack`/`publish` path waits on — a registry problem or an
-unrelated red suite cannot hold a binary release back, while every shipped
-binary still has to pass the cross-platform smoke.
+which nothing waits on — an unrelated red suite cannot hold a binary release
+back, while every shipped binary still has to pass the cross-platform smoke.
 
 | Job | What it does |
 | --- | --- |
@@ -104,6 +63,8 @@ binary still has to pass the cross-platform smoke.
 | `github-release` | verifies manifest coverage and digests, then uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
 | `desktop` | packages and smokes Windows, Linux, macOS arm64, and macOS x64 through the reusable Desktop workflow |
 | `publish-desktop` | merges and verifies package-owned checksum manifests, then attaches Desktop assets to the GitHub Release |
+| `gate` | runs the full `release:check` as an independent signal; nothing waits on it |
+| `npm-verify` | read-only: reports whether every publishable package is live on npm at the tagged version |
 
 Asset upload jobs resolve the release ID through `gh release view`, which
 supports both drafts and published releases. A pre-existing draft stays a

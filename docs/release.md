@@ -57,12 +57,11 @@ git commit -am 'release: <version>'
 
 ## Publish and verify
 
-The intended publication path is the tag-triggered workflow
-`.github/workflows/release.yml` (WS-040; see
-[release-process.md](release-process.md)). Tag and push the reviewed release
-commit; do not publish from a laptop first:
+npm is published locally; the tag then builds the GitHub Release (see
+[release-process.md](release-process.md)). From a clean, up-to-date `main`:
 
 ```bash
+bun run release            # release:check, then layered npm publish
 git tag v<version>
 git push origin v<version>
 ```
@@ -70,9 +69,9 @@ git push origin v<version>
 The workflow verifies that the tag version matches `package.json` and that the
 tagged commit belongs to `main`. It then builds and smokes standalone binaries
 on Linux, Windows, and macOS, creates the GitHub Release, and attaches the
-verified binaries, installers, checksum manifest, and Desktop packages. npm
-publication is a separate path gated by the `npm-publish` environment; a
-required reviewer must approve it before the OIDC credential is minted.
+verified binaries, installers, checksum manifest, and Desktop packages. It does
+not publish to npm; its read-only `npm-verify` job reports whether the tagged
+version is live there.
 
 - [ ] The tag points at the exact reviewed release commit
 - [ ] `verify`, `binaries`, `binaries-smoke`, and `github-release` succeeded
@@ -81,13 +80,11 @@ required reviewer must approve it before the OIDC credential is minted.
 - [ ] `SHA256SUMS` verifies every uploaded standalone binary
 - [ ] The four Desktop matrix jobs passed package smoke; Desktop assets and
       `DESKTOP-SHA256SUMS` were attached
-- [ ] If npm publication is intended, approve `npm-publish` and verify every
-      intended public package after the workflow finishes
+- [ ] `npm-verify` succeeded (or `bun run release:verify` passes locally)
 
-`bun run release` remains an emergency local npm fallback. It reruns
-`release:check` and enforces a clean main checkout, so use it only from a clean,
-up-to-date `main` checkout with the intended registry and authentication
-verified. It does not replace the GitHub binary/Desktop release path.
+`bun run release` enforces a clean main checkout and resumes from the registry:
+if it stops partway, re-run it; never bump the version to recover. It does not
+replace the GitHub binary/Desktop release path.
 
 ## Post-release
 
@@ -107,8 +104,7 @@ irm https://wrongstack.com/install.ps1 | iex
   `scripts/install/` by the website build.
 
 - [ ] Run `wstack version` from the installed standalone binary
-- [ ] If npm publication was requested, verify packages such as
-      `npm info @wrongstack/core`
+- [ ] Verify npm with `bun run release:verify` or `npm info wrongstack version`
 - [ ] Update README.md "What's new" section if major release
 
 ## Hotfix process
@@ -136,8 +132,8 @@ git push origin v0.5.1
 ## Automation status
 
 - `.github/workflows/release.yml` handles tag/SHA verification, standalone
-  binaries, GitHub Release creation, Desktop packages, and environment-gated
-  npm trusted publishing.
+  binaries, GitHub Release creation, Desktop packages, and a read-only npm
+  version check. It never publishes to npm.
 - `.github/workflows/binaries.yml` is reusable and can prove the standalone
   build and cross-platform smoke without cutting a release.
 - `.github/workflows/desktop.yml` is reusable and packages/smokes each Desktop

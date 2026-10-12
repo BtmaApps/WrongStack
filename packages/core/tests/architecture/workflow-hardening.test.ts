@@ -110,21 +110,23 @@ describe('release workflow (WS-040)', () => {
     expect(text).not.toMatch(/^\s*branches:\s*\[main\]/m);
   });
 
-  it('gates the publish job behind an environment with required reviewers', () => {
-    // The environment is what makes a tag push a *request* to publish. Without
-    // it, anyone who can push a tag can ship to npm.
-    expect(release()).toMatch(/environment:\s*npm-publish/);
-  });
+  it('does not publish to npm; it only reads whether the version is live', () => {
+    // npm is published locally (`bun run release`) before the tag is pushed.
+    // The CI OIDC path never worked, and a tag push must not be able to ship
+    // to the registry, so no job here may publish or hold a publish credential.
+    const text = withoutComments(release());
+    expect(text).not.toMatch(/^ {2}(?:pack|publish):$/m);
+    expect(text).not.toContain('npm-publish');
+    expect(text).not.toContain('--tarballs-dir');
+    expect(text).not.toMatch(/\b(?:npm|bun|pnpm) publish\b/);
 
-  it('gives the npm publish job OIDC and no repository write access', () => {
-    const text = release();
-    const publishStart = text.indexOf('  publish:');
-    const nextJobIndex = text.indexOf('  github-release:');
-    const publishJob = text.slice(publishStart, nextJobIndex !== -1 ? nextJobIndex : undefined);
-    expect(publishJob).toMatch(/id-token:\s*write/);
-    // npm trusted publishing needs OIDC only. Repository write access belongs
-    // exclusively to the separate job that creates the GitHub release.
-    expect(publishJob).not.toMatch(/contents:\s*write/);
+    const verifyStart = text.indexOf('  npm-verify:');
+    const verifyEnd = text.indexOf('  github-release:', verifyStart);
+    expect(verifyStart).toBeGreaterThan(-1);
+    const verifyJob = text.slice(verifyStart, verifyEnd !== -1 ? verifyEnd : undefined);
+    expect(verifyJob).toContain('bun scripts/publish-workspace.mjs --verify-only');
+    expect(verifyJob).toContain('needs.verify.outputs.sha');
+    expect(verifyJob).not.toMatch(/(?:contents|id-token):\s*write/);
   });
 
   it('does NOT set registry-url on setup-node', () => {
@@ -229,11 +231,8 @@ describe('release scripts (WS-040)', () => {
     expect(scripts()['release']).not.toContain('--no-git-checks');
   });
 
-  it('allows it only on the CI path, where a tag checkout is a detached HEAD', () => {
-    // Here the check cannot pass by construction, and what it guarded is
-    // replaced more strictly by the workflow's verify job.
+  it('keeps --no-git-checks out of the tarball publish path too', () => {
     expect(scripts()['release:ci']).not.toContain('--no-git-checks');
-    expect(read('release.yml')).toContain('--tarballs-dir release-tarballs');
   });
 
   it('runs the full gate before a local publish', () => {

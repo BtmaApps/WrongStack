@@ -346,6 +346,9 @@ Added by the **August 2026** `security-check` audit:
     versions (verified 2026-08-04), so a `build` job can emit tarballs for a minimal `publish` job
     that never runs third-party code. Deferred rather than done because a release pipeline cannot be
     dry-run, and a mistake here breaks shipping rather than security.
+  - **Superseded 2026-10-13:** `release.yml` no longer publishes to npm or mints an npm OIDC token.
+    npm is published locally (`bun run release`); the workflow only runs a read-only
+    `publish-workspace.mjs --verify-only` check.
 
 - **Loopback is authenticated, not trusted — but the token is readable by same-user processes** (H3):
   - The WebUI/SimpleUI HTTP API now requires a token on every bind (previously loopback required

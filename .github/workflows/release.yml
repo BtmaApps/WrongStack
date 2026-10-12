@@ -1,73 +1,33 @@
 name: Release
 
-# WS-040 — publish from CI on a tag, using npm trusted publishing (OIDC),
-# instead of `bun run release` from a maintainer's laptop with a long-lived
-# automation token.
+# Builds the GitHub release for a `vX.Y.Z` tag: standalone binaries,
+# installers, checksums and Desktop packages. It does NOT publish to npm.
 #
-# What this changes about the threat model
-# ────────────────────────────────────────
-# The previous path was: a maintainer runs `bun run publish -r --no-git-checks`
-# locally with an npm token in their environment. That token is long-lived,
-# publishes any package in the org, and lives on a developer machine alongside
-# every dependency's postinstall script. `--no-git-checks` additionally removed
-# pnpm's own refusal to publish from a dirty tree or the wrong branch, so the
-# published artifact did not have to correspond to any commit.
-#
-# Here, the credential is a short-lived OIDC token minted per run, scoped to
-# this repository and this workflow file, and unusable anywhere else. npm binds
-# the published artifact to the workflow + commit that produced it via a
-# provenance attestation, so a consumer can verify where a tarball came from.
-#
-# REQUIRED ONE-TIME SETUP — this workflow FAILS until both are done
-# ─────────────────────────────────────────────────────────────────
-#  1. npmjs.com → each published package → Settings → Trusted Publisher:
-#     organization `<owner>`, repository `<repo>`, workflow `release.yml`,
-#     environment `npm-publish`. This must be repeated for EVERY public
-#     workspace package — npm binds trust per package, not per org. Run
-#     `bun scripts/list-publishable-packages.mjs` for the current list.
-#  2. GitHub → Settings → Environments → create `npm-publish` with required
-#     reviewers. The environment is what makes a tag push a *request* to
-#     publish rather than a publish: pushing a tag cannot ship on its own.
-#
-# Until (1) is done for a given package, its publish step fails with
-#
-#   npm error need auth This command requires you to be logged in to
-#   https://registry.npmjs.org/
-#
-# and NOT the 404 this comment used to predict (observed on v1.0.23, npm
-# 11.19.1): with no trusted publisher registered, npm never attempts the OIDC
-# exchange at all and falls back to token auth, where there is no token. That
-# message is npm reporting a missing credential, not a bug here — nothing in
-# this workflow supplies one by design.
-#
-# bun run version floor
-# ──────────────────
-# OIDC publishing is broken in pnpm 11.0.8 (pnpm#11513, fixed by pnpm#11526)
-# and works from 11.1.3. `packageManager` in the root manifest pins the version
-# actually used; the guard below fails loudly rather than falling back to token
-# auth if that pin is ever moved below the floor.
+# npm is published from the maintainer's machine (`bun run release`, which
+# runs release:check and then scripts/publish-workspace.mjs) BEFORE the tag is
+# pushed. The CI OIDC publish path never worked: no trusted publisher is
+# registered for the packages, so every attempt ended in ENEEDAUTH, and a run
+# that looked green had only skipped versions already published locally. The
+# `npm-verify` job below only READS the registry, to report whether the tagged
+# version is live; it holds no credential and blocks nothing.
 
 on:
   push:
     tags: ['v*.*.*']
-  # Manual re-run for a tag whose publish failed partway (npm publishes are
-  # per-package, so a mid-run failure can leave some packages published).
-  # Re-running is safe: npm rejects a re-publish of an existing version, so
-  # already-published packages are skipped rather than overwritten.
+  # Manual re-run for an existing tag (for example after a failed binary build).
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to publish (e.g. v0.298.0)'
+        description: 'Existing tag to release (e.g. v1.1.2)'
         required: true
         type: string
 
-# Read-only by default. The publish job opts into `id-token: write` for OIDC;
-# nothing here needs write access to repository contents.
+# Read-only by default. Only the jobs that attest the binaries or upload
+# release assets opt into more.
 permissions:
   contents: read
 
-# Never cancel a run that may be mid-publish — a cancelled publish leaves the
-# workspace half-shipped. Queue instead.
+# Never cancel a run that may be mid-upload — queue instead.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -79,10 +39,9 @@ jobs:
     timeout-minutes: 45
     outputs:
       version: ${{ steps.tag.outputs.version }}
-      # The commit this job actually validated. `publish` checks THIS out rather
-      # than re-resolving the tag, so a movable tag cannot be repointed at a
-      # different tree between the ancestor check here and the reviewer approval
-      # on the npm-publish environment (WS-089).
+      # The commit this job actually validated. Every later job checks THIS out
+      # rather than re-resolving the tag, so a movable tag cannot be repointed at
+      # a different tree after the ancestor check here (WS-089).
       sha: ${{ steps.tag.outputs.sha }}
     steps:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -129,16 +88,17 @@ jobs:
             exit 1
           fi
 
-          # Pin the exact commit that passed the checks above so `publish`
-          # cannot resolve the tag to something else later.
+          # Pin the exact commit that passed the checks above so later jobs
+          # cannot resolve the tag to something else.
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Check the Bun pin
         run: bun -e "if(require('./package.json').packageManager !== 'bun@1.4.3') process.exit(1)"
 
-  # The full release gate (release:check). Only the npm path waits on it: the
-  # standalone binaries are validated by their own cross-platform smoke in
-  # binaries.yml, so an unrelated red suite does not hold back a GitHub release.
+  # The full release gate (release:check), as an independent signal. Nothing
+  # waits on it: the standalone binaries are validated by their own
+  # cross-platform smoke in binaries.yml, so an unrelated red suite does not
+  # hold back a GitHub release.
   gate:
     name: Release gate
     needs: verify
@@ -152,7 +112,7 @@ jobs:
           bun-version: 1.4.3
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
         with:
-          # The SHA `verify` validated — same anti-movable-tag rule as publish.
+          # The SHA `verify` validated — the same anti-movable-tag rule.
           ref: ${{ needs.verify.outputs.sha }}
           # Regression proofs read historical revisions with `git show <sha>:…`
           # (english-leak-boundaries needle proof); a shallow clone fails them.
@@ -160,13 +120,8 @@ jobs:
           persist-credentials: false
 
       - name: Install dependencies
-        # I1 (SC-SUPPLY-001): nine of ten `bun install` invocations across
-        # all workflows pass `--ignore-scripts`; this one (the only
-        # release-pipeline install) did not, and `needs: verify` upstream
-        # of `pack` means a compromised transitive postinstall could
-        # tamper with the bun run store cache that `pack` restores and ships
-        # under the repo's provenance attestation. Mirror the rest of
-        # the repo and refuse to run lifecycle scripts.
+        # I1 (SC-SUPPLY-001): every `bun install` across the workflows passes
+        # `--ignore-scripts`, so dependency lifecycle code never runs in CI.
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Install Playwright browser for live plugin journeys
@@ -176,54 +131,6 @@ jobs:
 
       - name: Release gate
         run: bun run release:check
-
-  pack:
-    name: Pack npm tarballs
-    needs: [verify, gate]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
-        with:
-          # The SHA `verify` validated — same anti-movable-tag rule as publish.
-          ref: ${{ needs.verify.outputs.sha }}
-          persist-credentials: false
-
-      - name: Install dependencies
-        # Same VF-31 hardening as CI: this job's OUTPUT is what gets
-        # published, so dependency lifecycle code must not run here either —
-        # a tampered tarball poisons the release exactly like a tampered
-        # publish would. Native build deps come from the explicit rebuild.
-        run: bun install --frozen-lockfile --ignore-scripts
-
-      - name: Rebuild reviewed native dependencies
-        # Kept in sync with pnpm-workspace.yaml allowBuilds — pinned by
-        # packages/core/tests/architecture/build-allowlist-freshness.test.ts.
-        run: bun run setup:native
-
-      - name: Build
-        run: bun run build
-
-      # M13 / VF-19 (security report Phase 4): all build-time and pack-time
-      # dependency code — postinstall, prepare, prepack — executes HERE, in a
-      # job whose only credential is the read-only checkout. The privileged
-      # `publish` job below consumes this job's OUTPUT as tarballs and runs no
-      # dependency code at all.
-      - name: Pack publishable tarballs
-        run: bun scripts/publish-workspace.mjs --pack --pack-destination artifacts/npm-packs
-
-      - name: Upload packed tarballs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (Node 24 runtime, pinned 2026-09-06)
-        with:
-          name: npm-tarballs-${{ needs.verify.outputs.version }}
-          path: artifacts/npm-packs/
-          if-no-files-found: error
-          retention-days: 1
 
   binaries:
     name: Standalone binaries
@@ -254,7 +161,7 @@ jobs:
 
   publish-desktop:
     name: Attach Desktop to GitHub release
-    # Desktop cannot block the CLI release, and npm cannot block Desktop.
+    # Desktop cannot block the CLI release.
     needs: [verify, desktop, github-release]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -301,67 +208,35 @@ jobs:
               wrongstack-desktop-* DESKTOP-SHA256SUMS
           fi
 
-  publish:
-    name: Publish to npm
-    needs: [verify, pack]
+  npm-verify:
+    name: Check npm has this version
+    # Read-only: asks the public registry whether every publishable package is
+    # live at the tagged version. npm is published locally before the tag is
+    # pushed, so a red result here means the local publish was skipped or is
+    # incomplete — re-run `bun run release` (it resumes; no version bump).
+    needs: verify
     runs-on: ubuntu-latest
-    # Raised from 30: the publish step now waits on registry propagation
-    # between dependency layers (11 layers x 120s worst case) on top of
-    # install and build.
-    timeout-minutes: 60
-    # Required reviewers on this environment are what stop a tag push from
-    # shipping on its own. Do not remove without replacing the control.
-    environment: npm-publish
+    timeout-minutes: 15
     permissions:
       contents: read
-      # Mints the short-lived OIDC token npm exchanges for publish rights.
-      id-token: write
     steps:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.3
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
         with:
-          # The SHA `verify` validated, not the tag. Re-resolving the ref here
-          # meant a tag could be moved after the ancestor check and after the
-          # environment reviewer approved, and this job would build and publish
-          # the new tree (WS-089).
           ref: ${{ needs.verify.outputs.sha }}
           persist-credentials: false
 
-      # Only packed artifacts and the pinned npm OIDC compatibility client run
-      # in this privileged job. No workspace install or build runs here.
-      - name: Download packed tarballs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1 (Node 24 runtime, pinned 2026-09-06)
-        with:
-          name: npm-tarballs-${{ needs.verify.outputs.version }}
-          path: release-tarballs
-
-      - name: Check the OIDC compatibility client under Bun
-        run: bun x --bun npm@12.2.0 --version
-
-      - name: Publish
-        # The verified SHA and prepacked tarballs preserve the tag gate.
-        # npm OIDC is provided by the pinned client running under Bun.
-        run: bun scripts/publish-workspace.mjs --tarballs-dir release-tarballs --gate-layers --verify-timeout 120
-
-      - name: Summary
-        if: always()
-        env:
-          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
-        run: |
-          {
-            echo "### Release $RELEASE_VERSION"
-            echo ""
-            echo "Published via npm trusted publishing (OIDC) from \`release.yml\`."
-            echo "Provenance attestations are attached automatically — no \`--provenance\` flag is needed."
-          } >> "$GITHUB_STEP_SUMMARY"
+      # No install: publish-workspace.mjs --verify-only uses only Node
+      # built-ins and the workspace manifests.
+      - name: Verify the release is live on npm
+        run: bun scripts/publish-workspace.mjs --verify-only
 
   github-release:
     name: Create GitHub release
-    # Depends on the binaries, NOT on npm: the standalone executables are the
-    # primary distribution, and an npm registry failure must not hold back a
-    # release (the npm jobs above still run and report on their own).
+    # Depends on the binaries only: the standalone executables are the primary
+    # distribution, and neither the release gate nor npm-verify holds them back.
     needs: [verify, binaries]
     runs-on: ubuntu-latest
     timeout-minutes: 15

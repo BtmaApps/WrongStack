@@ -79,8 +79,8 @@ All remaining scripts are **Wired** — see the tables below.
 | Script | Status | What it does | Used by |
 | --- | --- | --- | --- |
 | `bump-version.mjs` | Wired | Sets one shared version across the root and every workspace `package.json` (`patch`/`minor`/`major`/`set`). | `version:*` |
-| `publish-workspace.mjs` | Wired | Publishes to npm in dependency layers and proves each layer resolves on the registry before the next (`--plan`, `--dry-run`, `--verify-only`, `--tarballs-dir`). | `release*`, `release.yml` |
-| `list-publishable-packages.mjs` | Wired | Prints the packages that would be published and flags `publishConfig` drift. | `release:packages`, `release.yml` |
+| `publish-workspace.mjs` | Wired | Publishes to npm in dependency layers and proves each layer resolves on the registry before the next (`--plan`, `--dry-run`, `--verify-only`, `--tarballs-dir`). | `release*`, `release.yml` (`--verify-only`) |
+| `list-publishable-packages.mjs` | Wired | Prints the packages that would be published and flags `publishConfig` drift. | `release:packages` |
 | `lib/publishable-packages.mjs` | Wired (lib) | Publish inventory and dependency layering shared by the publish scripts and package-contract checks. | `publish-workspace.mjs`, `list-…`, `check-package-contracts.mjs` |
 | `release-check-matrix.mjs` | Wired | Runs *every* release gate and reports one pass/fail matrix (profiles `release`, `release-fast`, `local`). | `release:check`, `release:fast`, `ci:local` |
 | `check-package-contracts.mjs` | Wired | Verifies each publishable package's `main`/`types`/`bin`/`exports` targets exist after a build. | `ci.yml`, release matrix |

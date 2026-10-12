@@ -209,8 +209,7 @@ describe('build-script allowlists stay in sync with the tree (WS-072)', () => {
  *
  *   1. `pnpm-workspace.yaml` `allowBuilds` — the LOCAL-DEV source of truth
  *   2. `.github/workflows/ci.yml` — every job's `pnpm rebuild <list>` step
- *   3. `.github/workflows/release.yml` — the `pack` job's rebuild step
- *   4. `.github/workflows/pages.yml` — the `website-checks` job's rebuild step
+ *   3. `.github/workflows/pages.yml` — the `website-checks` job's rebuild step
  *
  * Adding to the workspace file without the workflows means CI silently lacks
  * the native binary; adding to a workflow without the workspace file means
@@ -257,13 +256,12 @@ describe('build-allowlist freshness across workflows (VF-31)', () => {
   const lists = [
     ...workflowRebuildLists('.github/workflows/ci.yml'),
     ...workflowRebuildLists('.github/workflows/pages.yml'),
-    ...workflowRebuildLists('.github/workflows/release.yml'),
     ...workflowRebuildLists('dev.sh'),
     ...workflowRebuildLists('dev.ps1'),
   ];
 
   it('the workflow files actually contain rebuild lists to compare', () => {
-    // 10 CI install jobs + the release pack job. Guards the parser: an
+    // The CI install jobs, pages and the dev scripts. Guards the parser: an
     // empty result would make the suite below vacuously green.
     expect(lists.length).toBeGreaterThanOrEqual(13);
   });

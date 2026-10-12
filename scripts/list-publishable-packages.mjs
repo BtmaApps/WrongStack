@@ -49,9 +49,4 @@ if (skipped.length > 0) {
   console.log(`\nNot published:\n${skipped.map((s) => `  ${s}`).join('\n')}`);
 }
 
-console.log(
-  '\nRegister a trusted publisher for EACH package above at' +
-    '\n  https://www.npmjs.com/package/<name>/access' +
-    '\nwith workflow `release.yml` and environment `npm-publish`.' +
-    '\n\nPublish order: `bun scripts/publish-workspace.mjs --plan`',
-);
+console.log('\nPublish order: `bun scripts/publish-workspace.mjs --plan`');
