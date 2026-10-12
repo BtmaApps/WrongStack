@@ -16,12 +16,16 @@ function signalFor(ctx: Context, opts?: { signal?: AbortSignal }): AbortSignal {
 
 function managerFor(ctx: Context): BrowserSessionManager {
   const root = path.resolve(ctx.projectRoot ?? ctx.cwd ?? process.cwd());
+  // Called on every tool call, not only at manager creation: it re-reads the
+  // policy file when another process changed it, in place in the live array
+  // the manager and its proxy already hold.
+  const allowedPrivateOrigins = browserPrivateOrigins(root);
   let manager = managers.get(root);
   if (!manager) {
     const wpaths = resolveWstackPaths({ projectRoot: root });
     manager = new BrowserSessionManager({
       artifactRoot: path.join(wpaths.projectDir, 'browser-artifacts'),
-      allowedPrivateOrigins: browserPrivateOrigins(root),
+      allowedPrivateOrigins,
     });
     managers.set(root, manager);
   }

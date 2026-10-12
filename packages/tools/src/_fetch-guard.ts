@@ -3,6 +3,7 @@ import * as net from 'node:net';
 import { FetchError, ToolValidationError } from '@wrongstack/core/types';
 import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
 import type { Agent } from 'undici';
+import { isPrivateOriginApproved, networkAllowHint } from './browser/security.js';
 
 /**
  * SSRF guard machinery shared by the `fetch` and `search` tools. Split out of
@@ -204,7 +205,7 @@ export async function guardedFetch(
     // Re-validate every hop. A public host can 302 to 169.254.169.254 (cloud metadata),
     // or DNS can rebind between hops; checking only the initial URL is insufficient.
     const parsed = new URL(currentUrl);
-    const approvedOrigin = options.allowedPrivateOrigins?.includes(parsed.origin) === true;
+    const approvedOrigin = isPrivateOriginApproved(parsed, options.allowedPrivateOrigins);
     // Hop 0 is the caller's own URL; calling it a "redirect" sent callers such
     // as read_url_content looking for a redirect that never happened.
     const target = redirectCount === 0 ? '' : 'redirect to ';
@@ -227,7 +228,7 @@ export async function guardedFetch(
     }
     if (parsed.protocol === 'http:' && !ALLOW_PRIVATE && !approvedOrigin) {
       throw new ToolValidationError({
-        message: `fetch: ${target}http:// blocked (HTTPS required by default). For a trusted development origin, run /network allow ${parsed.origin}`,
+        message: `fetch: ${target}http:// blocked (HTTPS required by default). ${networkAllowHint(parsed)}`,
         field: 'url',
       });
     }
@@ -235,7 +236,7 @@ export async function guardedFetch(
       await assertNotPrivate(parsed.hostname).catch((error: unknown) => {
         if (error instanceof Error)
           throw new ToolValidationError({
-            message: `${error.message}. For a trusted development origin, run /network allow ${parsed.origin}`,
+            message: `${error.message}. ${networkAllowHint(parsed)}`,
             field: 'url',
           });
         throw error;

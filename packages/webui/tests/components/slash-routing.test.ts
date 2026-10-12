@@ -4,8 +4,8 @@ import {
   runChatSlashCommand,
 } from '../../src/components/ChatInput/slash-routing.js';
 import { streamCoalescer } from '../../src/lib/stream-coalescer.js';
-import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
 import { useGoalCatalogStore } from '../../src/stores/goal-catalog-store.js';
+import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
 
 beforeEach(() => useGoalCatalogStore.setState({ selectedGoalId: null, goals: [] }));
 
@@ -477,6 +477,20 @@ describe('runChatSlashCommand — agent/autonomy commands', () => {
       type: 'config.doctor',
       payload: { apply },
     });
+  });
+
+  it.each([
+    ['/browser allow loopback', 'allow loopback'],
+    ['/network allow localhost:5173', 'allow localhost:5173'],
+    ['/browser', ''],
+  ] as const)('%s runs on the host instead of reaching the model', (raw, args) => {
+    const opts = makeOptions({ raw });
+    expect(runChatSlashCommand(opts)).toBe(true);
+    expect(opts.client?.send).toHaveBeenCalledWith({
+      type: 'browser.policy',
+      payload: { args, sessionId: 'sess-fg' },
+    });
+    expect(opts.sendMsg).not.toHaveBeenCalled();
   });
 
   it('/doctor rejects unsupported arguments', () => {

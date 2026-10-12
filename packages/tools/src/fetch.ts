@@ -11,6 +11,7 @@ import { ALLOW_PRIVATE, assertNotPrivate, guardedFetch } from './_fetch-guard.js
 import { getTurndown } from './_turndown.js';
 import { capBytesWithNotice } from './_util.js';
 import { browserPrivateOrigins } from './browser/policy.js';
+import { isPrivateOriginApproved, networkAllowHint } from './browser/security.js';
 
 export type FetchFormat = 'markdown' | 'text' | 'raw';
 
@@ -180,10 +181,10 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
         field: 'url',
       });
     }
-    const approvedOrigin = allowedPrivateOrigins.includes(u.origin);
+    const approvedOrigin = isPrivateOriginApproved(u, allowedPrivateOrigins);
     if (u.protocol === 'http:' && !ALLOW_PRIVATE && !approvedOrigin) {
       throw new ToolValidationError({
-        message: `fetch: http:// blocked (HTTPS required by default). For a trusted development origin, run /network allow ${u.origin}`,
+        message: `fetch: http:// blocked (HTTPS required by default). ${networkAllowHint(u)}`,
         field: 'url',
       });
     }
@@ -191,7 +192,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
       await assertNotPrivate(u.hostname).catch((error: unknown) => {
         if (error instanceof Error)
           throw new ToolValidationError({
-            message: `${error.message}. For a trusted development origin, run /network allow ${u.origin}`,
+            message: `${error.message}. ${networkAllowHint(u)}`,
             field: 'url',
           });
         throw error;

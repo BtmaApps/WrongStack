@@ -127,4 +127,33 @@ describe('canonical introspection handler family', () => {
       payload: { message: 'tool.disable requires a name' },
     });
   });
+
+  it('runs /browser against the project policy and answers the asking tab', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { browserPrivateOrigins } = await import('@wrongstack/tools');
+    const root = await mkdtemp(join(tmpdir(), 'webui-browser-policy-'));
+    vi.stubEnv('WRONGSTACK_HOME', join(root, 'home'));
+    vi.stubEnv('WRONGSTACK_BROWSER_PRIVATE_ORIGINS', '');
+    try {
+      const { context, sent } = harness();
+      const ctx = { ...context, getProjectRoot: () => root };
+      expect(
+        await handleIntrospectionRoute(ctx, {} as WebSocket, {
+          type: 'browser.policy',
+          payload: { args: 'allow loopback', sessionId: 'tab-2' },
+        }),
+      ).toBe(true);
+      expect(sent[0]).toMatchObject({
+        type: 'browser.policy.result',
+        payload: { ok: true, sessionId: 'tab-2' },
+      });
+      expect((sent[0]?.payload as { message?: string } | undefined)?.message).toContain('loopback');
+      expect(browserPrivateOrigins(root)).toEqual(['loopback']);
+    } finally {
+      vi.unstubAllEnvs();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

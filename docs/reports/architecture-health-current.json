@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-11T21:34:24.977Z",
+  "generatedAt": "2026-10-12T08:46:44.108Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4933,
-    "testFiles": 4305,
-    "sourceLines": 1095144,
+    "sourceFiles": 4934,
+    "testFiles": 4306,
+    "sourceLines": 1095372,
     "workspaceEdges": 133,
-    "moduleEdges": 16251,
+    "moduleEdges": 16257,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -765,8 +765,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 321,
-      "testFiles": 321,
+      "sourceFiles": 322,
+      "testFiles": 322,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +782,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 321
+          "testFiles": 322
         }
       ]
     },
@@ -17448,6 +17448,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/browser-loopback-allowance.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/browser-manager-guard-regressions.test.ts",
         "projects": [
           "root-node"
@@ -27369,9 +27375,9 @@
       "relativeImports": 6
     },
     {
-      "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
+      "file": "packages/webui/src/hooks/ws-handlers.ts",
       "lines": 740,
-      "relativeImports": 0
+      "relativeImports": 12
     }
   ],
   "testOnlyExports": [

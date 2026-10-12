@@ -44,6 +44,7 @@ export const CLIENT_EXTENSION_MESSAGE_TYPES = [
   'auth.oauth.code',
   'auth.oauth.list',
   'auth.oauth.start',
+  'browser.policy',
   'chimera.finding.transition',
   'chimera.report.add_note',
   'chimera.report.get',

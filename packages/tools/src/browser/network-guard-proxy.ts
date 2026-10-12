@@ -1,7 +1,7 @@
 import * as http from 'node:http';
 import * as net from 'node:net';
 import type { Duplex } from 'node:stream';
-import type { BrowserDnsLookup } from './security.js';
+import type { BrowserDnsLookup, BrowserResolvedTarget } from './security.js';
 import { resolvePinnedBrowserTarget } from './security.js';
 
 interface BrowserNetworkGuardProxyOptions {
@@ -11,10 +11,17 @@ interface BrowserNetworkGuardProxyOptions {
   connectTimeoutMs?: number | undefined;
 }
 
+/** How long a probed choice between several validated addresses is reused. */
+const REACHABLE_ADDRESS_TTL_MS = 30_000;
+
 /** Local HTTP proxy that pins every browser socket to its validated DNS answer. */
 export class BrowserNetworkGuardProxy {
   private readonly server: http.Server;
   private readonly sockets = new Set<net.Socket>();
+  private readonly reachable = new Map<
+    string,
+    { address: string; family: 4 | 6; expiresAt: number }
+  >();
   private startPromise?: Promise<string> | undefined;
   private url?: string | undefined;
 
@@ -74,6 +81,7 @@ export class BrowserNetworkGuardProxy {
 
   async close(): Promise<void> {
     this.url = undefined;
+    this.reachable.clear();
     for (const socket of this.sockets) socket.destroy();
     this.sockets.clear();
     if (!this.server.listening) return;
@@ -209,12 +217,60 @@ export class BrowserNetworkGuardProxy {
     }
   }
 
-  private resolve(rawUrl: string) {
-    return resolvePinnedBrowserTarget(rawUrl, {
+  private async resolve(rawUrl: string): Promise<BrowserResolvedTarget> {
+    const target = await resolvePinnedBrowserTarget(rawUrl, {
       allowPrivateHosts: this.options.allowPrivateHosts,
       allowedPrivateOrigins: this.options.allowedPrivateOrigins,
       lookup: this.options.lookup,
     });
+    if (target.candidates.length < 2) return target;
+    const chosen = await this.reachableCandidate(target);
+    return { ...target, address: chosen.address, family: chosen.family };
+  }
+
+  /**
+   * Pick the first validated address that accepts a TCP connection. Dialling
+   * only the first answer left `localhost` dead on Windows whenever the dev
+   * server listened on 127.0.0.1 but the resolver answered ::1 first. All
+   * candidates are probed at once (a refused loopback port can take ~2 s on
+   * Windows) and the winner is cached briefly per host and port. When none
+   * answers, the first one is used and the real request reports the failure.
+   */
+  private async reachableCandidate(
+    target: BrowserResolvedTarget,
+  ): Promise<{ address: string; family: 4 | 6 }> {
+    const port = Number(target.url.port || (target.url.protocol === 'https:' ? 443 : 80));
+    const key = `${target.url.hostname}|${port}|${target.candidates.map((c) => c.address).join(',')}`;
+    const cached = this.reachable.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached;
+    const first = target.candidates[0]!;
+    const timeoutMs = this.options.connectTimeoutMs ?? 30_000;
+    const winner = await new Promise<{ address: string; family: 4 | 6 } | undefined>((resolve) => {
+      let pending = target.candidates.length;
+      const probes: net.Socket[] = [];
+      const settle = (value: { address: string; family: 4 | 6 } | undefined) => {
+        for (const probe of probes) probe.destroy();
+        resolve(value);
+      };
+      for (const candidate of target.candidates) {
+        const probe = net.connect({ host: candidate.address, family: candidate.family, port });
+        probes.push(probe);
+        probe.setTimeout(timeoutMs, () => probe.destroy(new Error('probe timeout')));
+        probe.once('connect', () => settle(candidate));
+        // `on`, not `once`: a second error on a probe must never go unhandled
+        // and take the host process down with it.
+        let failed = false;
+        probe.on('error', () => {
+          if (failed) return;
+          failed = true;
+          pending -= 1;
+          if (pending === 0) settle(undefined);
+        });
+      }
+    });
+    if (!winner) return first;
+    this.reachable.set(key, { ...winner, expiresAt: Date.now() + REACHABLE_ADDRESS_TTL_MS });
+    return winner;
   }
 }
 

@@ -1,5 +1,9 @@
 export type WSMcpServerMessage =
   | {
+      type: 'browser.policy.result';
+      payload: { message: string; ok: boolean; sessionId?: string; requestId?: string };
+    }
+  | {
       type: 'config.doctor.result';
       payload: {
         success: boolean;

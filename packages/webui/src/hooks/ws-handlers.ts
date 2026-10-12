@@ -100,6 +100,15 @@ export function handleToolsList(msg: WSServerMessage) {
   });
 }
 
+export function handleBrowserPolicyResult(msg: WSServerMessage) {
+  const p = msg.payload as { message?: string; ok?: boolean };
+  replyLane(msg).addMessage({
+    role: 'assistant',
+    content: ['```', p.message ?? '', '```'].join('\n'),
+    ...(p.ok === false ? { isError: true } : {}),
+  });
+}
+
 export function handleConfigDoctorResult(msg: WSServerMessage) {
   const p = msg.payload as {
     success: boolean;
@@ -420,6 +429,7 @@ export const WS_HANDLERS: Partial<Record<WSServerMessage['type'], (msg: WSServer
     'mcp.server.connected': handleMcpServerUp,
     'mcp.server.reconnected': handleMcpServerUp,
     'config.doctor.result': handleConfigDoctorResult,
+    'browser.policy.result': handleBrowserPolicyResult,
     'session.start': (msg: WSServerMessage) => {
       handleSessionStart(msg);
       queryMailbox();

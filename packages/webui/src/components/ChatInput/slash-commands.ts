@@ -192,6 +192,13 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
     description: 'Open the provider setup screen to add or change API keys',
   },
   {
+    name: '/browser',
+    category: 'Config',
+    aliases: ['/network'],
+    description:
+      'Allow private/localhost origins for browser & fetch: /browser allow <origin> · /browser allow loopback',
+  },
+  {
     name: '/doctor',
     category: 'Config',
     description: 'Check config defaults; use /doctor fix to repair and back up',

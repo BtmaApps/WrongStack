@@ -6,11 +6,15 @@ export {
 } from './manager.js';
 export { BrowserNetworkGuardProxy } from './network-guard-proxy.js';
 export { browserPrivateOrigins, setBrowserPrivateOrigin } from './policy.js';
+export { BROWSER_POLICY_HELP, runBrowserPolicyCommand } from './policy-command.js';
 export { installBrowserRuntime } from './runtime.js';
 export {
   assertBrowserUrlAllowed,
   type BrowserDnsLookup,
   type BrowserResolvedTarget,
+  isLoopbackHostname,
+  isPrivateOriginApproved,
+  LOOPBACK_ALLOWANCE,
   parsePrivateOriginAllowlist,
   redactBrowserText,
   resolvePinnedBrowserTarget,

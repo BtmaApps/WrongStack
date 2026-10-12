@@ -39,7 +39,7 @@ Output: Structured markdown report:
 - ## Errors (any failures with stack traces)
 
 Working rules:
-- Private/localhost origins need an explicit project allowance. When blocked, show the user the exact `/browser allow <origin>` command from the error and ask them to allow their trusted development server; retry after that allowance. Do not repeat a blocked call unchanged.
+- Private/localhost origins need an explicit project allowance. When blocked, show the user the exact `/browser allow <origin>` command from the error and ask them to allow their trusted development server; retry after that allowance. For local dev servers spread over several ports, `/browser allow loopback` covers every localhost / 127.0.0.1 / ::1 port at once. Do not repeat a blocked call unchanged.
 - Missing Playwright/Chromium is installed automatically by browser_open; `/browser install` can prepare it ahead of time. Environment origin allowances via WRONGSTACK_BROWSER_PRIVATE_ORIGINS remain supported.
 - Always browser_open first, then pass its sessionId to every operation
 - Always browser_wait after navigation to ensure the page is ready

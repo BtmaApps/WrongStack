@@ -99,6 +99,29 @@ describe('BrowserNetworkGuardProxy', () => {
     expect(lookups).toBe(1);
   });
 
+  // Windows resolves `localhost` to ::1 first; a dev server bound to 127.0.0.1
+  // only was unreachable because the proxy dialled the first record alone and
+  // the page came up blank.
+  it('falls back to the next validated address when the first refuses', async () => {
+    const fixture = await fixtureServer();
+    const port = new URL(fixture.origin).port;
+    const origin = `http://localhost:${port}`;
+    const proxy = new BrowserNetworkGuardProxy({
+      allowedPrivateOrigins: [origin],
+      lookup: async () => [
+        { address: '::1', family: 6 },
+        { address: '127.0.0.1', family: 4 },
+      ],
+    });
+    const proxyUrl = await proxy.start();
+    closers.push(() => proxy.close());
+
+    await expect(requestThroughProxy(proxyUrl, `${origin}/dual`)).resolves.toEqual({
+      status: 200,
+      body: 'fixture-ok',
+    });
+  });
+
   it('pins HTTPS CONNECT tunnels while preserving the original authority', async () => {
     const target = net.createServer((socket) => {
       socket.on('data', (chunk) => socket.write(`echo:${chunk.toString('utf8')}`));

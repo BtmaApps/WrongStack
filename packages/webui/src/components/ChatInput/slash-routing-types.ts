@@ -40,6 +40,7 @@ export type SlashRoutingClientMessage = Extract<
   | { type: 'goal.stop' }
   | { type: 'goal.status' }
   | { type: 'config.doctor' }
+  | { type: 'browser.policy' }
   | { type: 'prefs.update' }
 >;
 

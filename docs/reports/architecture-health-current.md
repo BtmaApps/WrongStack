@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-11T21:34:24.977Z
+**Generated:** 2026-10-12T08:46:44.108Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4933 |
-| Production source lines | 1095144 |
-| Test files | 4305 |
+| Production source files | 4934 |
+| Production source lines | 1095372 |
+| Test files | 4306 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 16251 |
+| Relative module edges | 16257 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 127 | 93 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 53 | 52 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 321 | 321 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 322 | 322 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 480 | 422 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 721 | 482 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -132,7 +132,7 @@ None.
 | 742 | `packages/tui/src/components/agents-monitor.tsx` |
 | 741 | `packages/webui/src/components/TaskActivityTimeline.tsx` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
-| 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
+| 740 | `packages/webui/src/hooks/ws-handlers.ts` |
 
 ## Exports only tests reference
 

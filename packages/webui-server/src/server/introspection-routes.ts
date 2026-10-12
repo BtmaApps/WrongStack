@@ -1,5 +1,6 @@
 import type { Agent } from '@wrongstack/core/agent';
 import type { Config, ConfigStore, ModelsRegistry } from '@wrongstack/core/types';
+import { runBrowserPolicyCommand } from '@wrongstack/tools';
 import type { WebSocket } from 'ws';
 import { resolveProviderModelMetadata } from './model-catalog.js';
 import type { WSClientMessage, WSServerMessage } from './types.js';
@@ -233,6 +234,28 @@ export async function handleIntrospectionRoute(
         };
       });
       ctx.send(ws, { type: 'tools.list', payload: withRequestId(message.payload, { tools }) });
+      return true;
+    }
+    case 'browser.policy': {
+      // `/browser` and `/network` typed in the WebUI composer. Without this the
+      // command went to the model as a prompt, and the model cannot grant
+      // itself a network allowance — the WebUI had no way to allow a dev
+      // server at all.
+      const raw = (message.payload as { args?: unknown } | undefined)?.args;
+      const text = await runBrowserPolicyCommand(
+        ctx.getProjectRoot(),
+        typeof raw === 'string' ? raw : '',
+      );
+      const sessionId = messageSessionId(message);
+      ctx.send(ws, {
+        type: 'browser.policy.result',
+        // Stamped with the asking tab so the reply lands in its transcript.
+        payload: withRequestId(message.payload, {
+          message: text,
+          ok: !text.startsWith('Browser setup failed'),
+          ...(sessionId ? { sessionId } : {}),
+        }),
+      });
       return true;
     }
     case 'tool.disable':

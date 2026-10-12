@@ -235,6 +235,15 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
     }
     case '/mcp':
       return runMcpSlashCommand(args, client, addMessage);
+    case '/browser':
+    case '/network':
+      // Runs on the host against the project policy file: sent as a prompt,
+      // the model could only repeat the instruction back.
+      client?.send?.({
+        type: 'browser.policy',
+        payload: client.withSession?.({ args }) ?? { args },
+      });
+      return true;
     case '/doctor': {
       const subcommand = args.trim().toLowerCase();
       if (subcommand && subcommand !== 'fix') {

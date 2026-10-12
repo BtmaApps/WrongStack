@@ -38,6 +38,7 @@ export const SERVER_KNOWLEDGE_MESSAGE_TYPES = [
 ] as const;
 
 export const SERVER_EXTENSION_MESSAGE_TYPES = [
+  'browser.policy.result',
   'chimera.finding.updated',
   'chimera.report.detail',
   'chimera.report.note_added',

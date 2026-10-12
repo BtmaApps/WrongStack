@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 779,
+      "files": 780,
       "typeOnly": 70,
-      "runtimeOrMixed": 739
+      "runtimeOrMixed": 740
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -26068,6 +26068,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/tests/background-log.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/browser-loopback-allowance.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

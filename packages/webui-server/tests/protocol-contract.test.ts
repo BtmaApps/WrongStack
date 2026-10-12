@@ -38,10 +38,12 @@ describe('surface protocol contract', () => {
   });
 
   it('keeps every exact registry entry executable through its directional decoder', () => {
-    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(290);
+    // +1: browser.policy (/browser and /network typed in the WebUI composer).
+    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(291);
     // +2: worktree.timeline / worktree.timeline_event (worktree timeline log).
     // +1: leader.effort_changed (the leader's own effort, shown in the composer).
-    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(302);
+    // +1: browser.policy.result (its reply).
+    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(303);
     for (const type of CLIENT_MESSAGE_TYPES) {
       expect(decodeProtocolMessage({ type }, 'client')).toEqual({
         ok: true,

@@ -98,6 +98,7 @@ export type ClientMessageSettings =
       };
     }
   | { type: 'config.doctor'; payload?: { apply?: boolean } | undefined }
+  | { type: 'browser.policy'; payload: { args: string; sessionId?: string | undefined } }
   | {
       type: 'model.fallback_choice';
       payload: {
