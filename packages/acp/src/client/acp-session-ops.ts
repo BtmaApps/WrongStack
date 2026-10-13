@@ -289,6 +289,13 @@ export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<Se
   const offered =
     Array.isArray(modes?.availableModes) &&
     modes.availableModes.some((m) => (m as { id?: unknown } | null)?.id === want);
+  if (want && !offered && ctx.opts.requireInitialMode) {
+    throw new ACPSessionError(
+      'session_create_failed',
+      `the agent does not offer the "${want}" session mode this host requires`,
+      result,
+    );
+  }
   if (want && offered && modes?.currentModeId !== want) {
     // A failed switch must not start the turn in a mode the host did not ask for.
     await executeSetMode(ctx, sessionId as SessionId, want);

@@ -79,7 +79,10 @@ export function buildAcpSubagentRunner(
     ...cmd,
     ...(projectRoot ? { cwd: projectRoot, projectRoot } : {}),
     permissionPolicy: defaultPermissionPolicy,
+    // Claude asks before edits and commands only in `default`; left in the
+    // user's own mode (often `auto`) it would never consult the policy.
     ...(permissions ? { initialModeId: 'default' } : {}),
+    ...(permissions && subagentId === 'claude-code' ? { requireInitialMode: true } : {}),
     ...(options?.publishLive ? { publishLive: options.publishLive } : {}),
     ...(sessionSetup ? { sessionSetup } : {}),
     // The leader's `session_note` to a running worker joins its turn.

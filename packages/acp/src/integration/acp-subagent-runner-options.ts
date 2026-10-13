@@ -59,6 +59,8 @@ export interface ACPSubagentRunnerOptions {
   permissionPolicy?: PermissionPolicy | undefined;
   /** Session mode to switch to after `session/new` (see ACPSessionOptions.initialModeId). */
   initialModeId?: string | undefined;
+  /** Fail the session when the agent does not offer `initialModeId`. */
+  requireInitialMode?: boolean | undefined;
   /**
    * MCP servers to expose to the external agent (passed through
    * `session/new` / `session/load`). Stdio servers are always sent;

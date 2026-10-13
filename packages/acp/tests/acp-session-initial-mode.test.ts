@@ -6,14 +6,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { type ACPSessionOpContext, executeCreateSession } from '../src/client/acp-session-ops.js';
 
-function ctx(newSessionResult: unknown, initialModeId?: string) {
+function ctx(newSessionResult: unknown, initialModeId?: string, requireInitialMode = false) {
   const calls: Array<{ method: string; params: unknown }> = [];
   let id = 0;
   const c = {
     closed: false,
     sessionId: null,
     agentCapabilities: {},
-    opts: { command: 'agent', projectRoot: '/p', ...(initialModeId ? { initialModeId } : {}) },
+    opts: {
+      command: 'agent',
+      projectRoot: '/p',
+      ...(initialModeId ? { initialModeId } : {}),
+      ...(requireInitialMode ? { requireInitialMode } : {}),
+    },
     allocId: () => ++id,
     sendRequest: vi.fn(async (_id: number, method: string, params: unknown) => {
       calls.push({ method, params });
@@ -62,5 +67,17 @@ describe('executeCreateSession initialModeId', () => {
         method === 'session/set_mode' ? { code: -32603, message: 'mode refused' } : modes('auto'),
     );
     await expect(executeCreateSession(c)).rejects.toThrow('session/set_mode failed: mode refused');
+  });
+
+  it('refuses an agent without the mode when the host requires it', async () => {
+    for (const result of [modes('auto'), { sessionId: 's1' }]) {
+      const { c, calls } = ctx(result, 'plan-only', true);
+      await expect(executeCreateSession(c)).rejects.toThrow(
+        'the agent does not offer the "plan-only" session mode this host requires',
+      );
+      expect(calls.map((x) => x.method)).toEqual(['session/new']);
+    }
+    const { c } = ctx(modes('auto'), 'default', true);
+    await expect(executeCreateSession(c)).resolves.toBe('s1');
   });
 });

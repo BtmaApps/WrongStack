@@ -169,6 +169,13 @@ describe('small non-WebUI CLI modules', () => {
     // Without WrongStack deciding, the agent keeps its own mode.
     buildAcpSubagentRunner('x', { projectRoot: '/proj' });
     expect(mocks.makeACPSubagentRunner.mock.calls[1]![0]).not.toHaveProperty('initialModeId');
+    // Only for Claude is the mode required: elsewhere it never asks at all.
+    expect(opts).not.toHaveProperty('requireInitialMode');
+    buildAcpSubagentRunner('claude-code', { projectRoot: '/proj', permissions });
+    expect(mocks.makeACPSubagentRunner.mock.calls[2]![0]).toMatchObject({
+      initialModeId: 'default',
+      requireInitialMode: true,
+    });
     mocks.resolveAcpAgentCommand.mockReset();
     mocks.makeACPSubagentRunner.mockReset();
   });

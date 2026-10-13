@@ -162,9 +162,10 @@ crashes, its last lines are printed and its last line names the cause.
 
 A worker the session delegates to runs in the session's project and answers to the same rules as
 WrongStack's own subagents, so delegation is never a way around them. It starts in its `default`
-mode (Claude asks before edits, commands and fetches, whatever mode you use Claude in yourself),
-and each request is translated into the matching WrongStack call (`bash`, `write`, `edit`,
-`fetch`, `read`) and decided by the subagent policy:
+mode (Claude asks before edits, commands, fetches and MCP tools, whatever mode you use Claude in
+yourself; a Claude adapter that cannot switch to it is not started), and each request is translated
+into the matching WrongStack call (`bash`, `write`, `edit`, `fetch`, `read`, or the MCP tool under
+its own `mcp__server__tool` name) and decided by the subagent policy:
 
 - your deny rules (trust file, `/permissions deny`) refuse it;
 - history-rewriting git commands, credential reads and writes to WrongStack's own state are
@@ -172,9 +173,11 @@ and each request is translated into the matching WrongStack call (`bash`, `write
 - YOLO+ lifts those refusals, but never your deny rules.
 
 The worker sees a refusal as a denied permission and is told not to retry or work around it, and
-to name it in its final reply. Requests with no WrongStack counterpart (its own MCP tools, task
-lists) are left to the worker. `wstack acp spawn` and inline `/acp` are runs you start yourself
-and keep the agent's own permission mode.
+to name it in its final reply. A request the policy cannot check is refused, not waved through:
+an unknown kind, a command or edit that names no target, or a tool this run does not have (under
+`--restricted`, shell, network and MCP requests are all refused). Thinking, searching the project
+and switching back to ask-first mode need no check. `wstack acp spawn` and inline `/acp` are runs
+you start yourself and keep the agent's own permission mode.
 
 ## Related
 

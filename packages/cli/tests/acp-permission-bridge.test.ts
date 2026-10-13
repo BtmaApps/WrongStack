@@ -68,9 +68,30 @@ describe('request translation', () => {
     });
   });
 
-  it("leaves the worker's own tools (MCP, todo lists) to the worker", async () => {
-    expect(await wrongstackCallFor(request('other', { query: 'x' }))).toBeUndefined();
-    expect(await wrongstackCallFor(request('execute', {}))).toBeUndefined();
+  it('checks MCP tools, web searches and sandbox network requests as what they are', async () => {
+    expect(
+      await wrongstackCallFor(
+        request('other', { query: 'x' }, { title: 'mcp__wrongstack-index__codebase_search' }),
+      ),
+    ).toEqual({ tool: 'mcp__wrongstack-index__codebase_search', input: { query: 'x' } });
+    // Claude names the tool in `_meta` when the title is a display name.
+    expect(
+      await wrongstackCallFor(
+        request(
+          'other',
+          { a: 1 },
+          { title: 'Search docs', _meta: { claudeCode: { toolName: 'mcp__docs__search' } } },
+        ),
+      ),
+    ).toEqual({ tool: 'mcp__docs__search', input: { a: 1 } });
+    expect(await wrongstackCallFor(request('fetch', { query: 'ACP spec' }))).toEqual({
+      tool: 'fetch',
+      input: { query: 'ACP spec' },
+    });
+    expect(await wrongstackCallFor(request('fetch', { host: 'registry.npmjs.org' }))).toEqual({
+      tool: 'fetch',
+      input: { url: 'https://registry.npmjs.org' },
+    });
   });
 });
 
@@ -144,20 +165,89 @@ describe('wrongstackAcpPermissionPolicy', () => {
     ).resolves.toEqual({ outcome: 'cancelled' });
   });
 
-  it('allows calls with no WrongStack counterpart without asking the policy', async () => {
+  it('refuses what it cannot check: unknown kinds, calls naming no target, missing tools', async () => {
+    const evaluate = decide('auto');
+    const refused = vi.fn();
+    const policy = wrongstackAcpPermissionPolicy({
+      evaluate,
+      getTool: (n) => tools[n],
+      projectRoot: ROOT,
+      onRefused: refused,
+    });
+    const rejected = { outcome: 'selected', optionId: 'reject' };
+    await expect(policy(request('other', { server: 'x' }, { title: 'Mystery' }))).resolves.toEqual(
+      rejected,
+    );
+    await expect(policy(request('execute', {}))).resolves.toEqual(rejected);
+    await expect(policy(request('edit', { content: 'x' }))).resolves.toEqual(rejected);
+    await expect(policy(request('fetch', {}))).resolves.toEqual(rejected);
+    // `write` is not in this registry: a run that lost a tool (`--restricted`,
+    // a launch allowlist) must not get it back through a worker.
+    await expect(
+      policy(request('edit', { file_path: `${ROOT}/a.ts`, content: '' })),
+    ).resolves.toEqual(rejected);
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(refused).toHaveBeenCalledWith(
+      { tool: 'write', input: { path: `${ROOT}/a.ts`, content: '' } },
+      'write is not available in this run',
+    );
+    expect(refused).toHaveBeenCalledWith(
+      { tool: 'Mystery', input: { server: 'x' } },
+      'no WrongStack counterpart to check it against',
+    );
+  });
+
+  it("puts MCP tools under the user's rules, and refuses them all when MCP is off", async () => {
+    const evaluate = vi.fn(
+      async (tool: Tool): Promise<PermissionDecision> =>
+        tool.name.startsWith('mcp__github__')
+          ? { permission: 'deny', source: 'trust', reason: 'denied by rule mcp__github__*' }
+          : { permission: 'auto', source: 'default' },
+    );
+    const mcp = (title: string) => request('other', {}, { title });
+    const policy = wrongstackAcpPermissionPolicy({
+      evaluate,
+      getTool: (n) => tools[n],
+      projectRoot: ROOT,
+    });
+    await expect(policy(mcp('mcp__wrongstack-sage__sage_search'))).resolves.toEqual({
+      outcome: 'selected',
+      optionId: 'allow-once',
+    });
+    await expect(policy(mcp('mcp__github__delete_repo'))).resolves.toEqual({
+      outcome: 'selected',
+      optionId: 'reject',
+    });
+    expect(evaluate.mock.calls[0]?.[0]).toMatchObject({
+      name: 'mcp__wrongstack-sage__sage_search',
+      capabilities: ['mcp.proxy'],
+    });
+
+    const restricted = wrongstackAcpPermissionPolicy({
+      evaluate,
+      getTool: (n) => tools[n],
+      projectRoot: ROOT,
+      allowMcp: false,
+    });
+    await expect(restricted(mcp('mcp__wrongstack-sage__sage_search'))).resolves.toEqual({
+      outcome: 'selected',
+      optionId: 'reject',
+    });
+  });
+
+  it('lets thinking, path-less searches and mode switches through without asking', async () => {
     const evaluate = decide('deny');
     const policy = wrongstackAcpPermissionPolicy({
       evaluate,
       getTool: (n) => tools[n],
       projectRoot: ROOT,
     });
-    await expect(policy(request('other', { server: 'wrongstack-index' }))).resolves.toEqual({
-      outcome: 'selected',
-      optionId: 'allow-once',
-    });
-    await expect(
-      policy(request('edit', { file_path: `${ROOT}/a.ts`, content: '' })),
-    ).resolves.toEqual({ outcome: 'selected', optionId: 'allow-once' });
+    for (const kind of ['think', 'search', 'switch_mode']) {
+      await expect(policy(request(kind, { pattern: 'x' }))).resolves.toEqual({
+        outcome: 'selected',
+        optionId: 'allow-once',
+      });
+    }
     expect(evaluate).not.toHaveBeenCalled();
   });
 });

@@ -169,6 +169,7 @@ export async function makeACPSubagentRunnerWithStop(
       ...(mcpServers !== undefined ? { mcpServers } : {}),
       ...(setup?.meta ? { sessionMeta: setup.meta } : {}),
       ...(options.initialModeId ? { initialModeId: options.initialModeId } : {}),
+      ...(options.requireInitialMode ? { requireInitialMode: true } : {}),
     });
   };
 

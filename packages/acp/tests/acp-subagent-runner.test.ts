@@ -28,6 +28,7 @@ const hoisted = vi.hoisted(() => ({
     sessionMeta?: Record<string, unknown>;
     permissionPolicy?: unknown;
     initialModeId?: string;
+    requireInitialMode?: boolean;
   }>,
   session: undefined as MockSession | undefined,
   errorKind: undefined as undefined | string,
@@ -88,6 +89,7 @@ vi.mock('../src/client/acp-session.js', () => {
         sessionMeta?: Record<string, unknown>;
         permissionPolicy?: unknown;
         initialModeId?: string;
+        requireInitialMode?: boolean;
       }) => {
         hoisted.startCalls.push({
           command: opts.command,
@@ -102,6 +104,9 @@ vi.mock('../src/client/acp-session.js', () => {
             ? { permissionPolicy: opts.permissionPolicy }
             : {}),
           ...(opts.initialModeId !== undefined ? { initialModeId: opts.initialModeId } : {}),
+          ...(opts.requireInitialMode !== undefined
+            ? { requireInitialMode: opts.requireInitialMode }
+            : {}),
         });
         if (hoisted.errorKind) {
           throw new ACPSessionError(hoisted.errorKind, hoisted.errorMessage ?? 'mock error');
@@ -537,14 +542,17 @@ describe('makeACPSubagentRunnerWithStop', () => {
       command: 'agent',
       permissionPolicy: runnerPolicy as never,
       initialModeId: 'default',
+      requireInitialMode: true,
       sessionSetup: (task) =>
         task.id === 't2' ? { permissionPolicy: sessionPolicy as never } : {},
     });
     await runner(TASK, makeCtx().ctx);
     await runner({ ...TASK, id: 't2' }, makeCtx().ctx);
-    expect(hoisted.startCalls.map((c) => [c.permissionPolicy, c.initialModeId])).toEqual([
-      [runnerPolicy, 'default'],
-      [sessionPolicy, 'default'],
+    expect(
+      hoisted.startCalls.map((c) => [c.permissionPolicy, c.initialModeId, c.requireInitialMode]),
+    ).toEqual([
+      [runnerPolicy, 'default', true],
+      [sessionPolicy, 'default', true],
     ]);
   });
 

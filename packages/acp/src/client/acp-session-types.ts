@@ -45,6 +45,11 @@ export interface ACPSessionOptions {
    * commands instead of following the user's own Claude permission mode).
    */
   initialModeId?: string | undefined;
+  /**
+   * Refuse the session when the agent does not offer `initialModeId`: the
+   * host depends on that mode (an agent left in its own mode may never ask).
+   */
+  requireInitialMode?: boolean | undefined;
 }
 
 export interface ACPCapturedDiff {

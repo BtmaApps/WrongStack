@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 198,
+      "files": 199,
       "typeOnly": 29,
-      "runtimeOrMixed": 171
+      "runtimeOrMixed": 172
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 780,
+      "files": 781,
       "typeOnly": 70,
-      "runtimeOrMixed": 740
+      "runtimeOrMixed": 741
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -11152,6 +11152,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/execution.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/fleet/acp-permission-bridge.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -23104,6 +23110,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/fleet-statusline.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/acp-permission-bridge.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

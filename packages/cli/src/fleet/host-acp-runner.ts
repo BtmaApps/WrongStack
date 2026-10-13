@@ -6,6 +6,7 @@ import {
   ToolCapabilities,
 } from '@wrongstack/core/security';
 import type { Config } from '@wrongstack/core/types';
+import { isRestrictedMode } from '../boot/restricted-mode.js';
 import { publishAcpLiveProgress } from './acp-live-progress.js';
 import { wrongstackAcpPermissionPolicy } from './acp-permission-bridge.js';
 import { recordAcpRateLimit } from './acp-quota-reading.js';
@@ -51,6 +52,7 @@ export function acpCommandOpts(this: HostAcpRunnerHost): BuildAcpSubagentRunnerO
         evaluate: (tool, input, scope) => policy.evaluate(tool, input, scope),
         getTool: (name) => this.deps.toolRegistry.get(name),
         projectRoot: this.deps.projectRoot,
+        allowMcp: !isRestrictedMode({}),
         onRefused: (call, reason) =>
           this.deps.container
             .safeResolve(TOKENS.Logger)
