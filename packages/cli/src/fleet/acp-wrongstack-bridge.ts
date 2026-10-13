@@ -14,7 +14,9 @@
  * Mailbox identity is per worker (`--actor` = subagent id) and `@session`
  * resolves to the WrongStack session that delegated the task.
  */
-import { type AcpSessionSetup, REGISTRY_ID_ALIASES } from '@wrongstack/acp';
+import { statSync } from 'node:fs';
+import { join } from 'node:path';
+import { type AcpSessionSetup, findAgentDescriptor, REGISTRY_ID_ALIASES } from '@wrongstack/acp';
 import type { Config, SubagentRunContext, TaskSpec } from '@wrongstack/core/types';
 import { cliSpawnArgs, isStandaloneBinary } from '@wrongstack/core/utils';
 
@@ -124,6 +126,13 @@ export function bridgeNote(
     `You are working as a delegated worker inside a WrongStack project (task ${taskId}).`,
     'WrongStack is the orchestrator the user runs: it sent you this task and receives your',
     'final reply, so end with a clear summary of what you did and what is left.',
+    ...(delegated
+      ? [
+          'While you work, the WrongStack session can steer you: such a message arrives as a',
+          'user message starting with "[WrongStack <kind> from <agent>]". Treat it as coming',
+          'from the user who delegated the task, and answer what it asks.',
+        ]
+      : []),
     '',
     "WrongStack's project services are available as MCP servers:",
     ...servers.map((s) => SERVER_NOTES[s](actor, delegated)),
@@ -131,6 +140,50 @@ export function bridgeNote(
     'Use your own tools for code and files; these servers are for coordination. If one is',
     'unavailable, carry on without it.',
   ].join('\n');
+}
+
+/** True when `command` resolves to a file on PATH (PATHEXT-aware on Windows). */
+export function onPath(
+  command: string,
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  const pathVar = env.PATH ?? env.Path ?? '';
+  const exts =
+    platform === 'win32' ? ['', ...(env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';')] : [''];
+  const sep = platform === 'win32' ? ';' : ':';
+  for (const dir of pathVar.split(sep)) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      try {
+        if (statSync(join(dir, command + ext)).isFile()) return true;
+      } catch {
+        // not here
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Bridged agents the leader can hand a task to on this machine: listed in
+ * `acp.bridge.agents` (by catalog or registry id) and either configured by
+ * the user in `acp.agents` or with their CLI on PATH. Catalog ids, in order.
+ */
+export function installedBridgeAgents(
+  acp: Config['acp'] | undefined,
+  isOnPath: (command: string) => boolean = (c) => onPath(c),
+): string[] {
+  if ((acp?.bridge?.servers ?? DEFAULT_BRIDGE_SERVERS).length === 0) return [];
+  const toCatalogId = new Map(Object.entries(REGISTRY_ID_ALIASES).map(([c, r]) => [r, c]));
+  const out: string[] = [];
+  for (const listed of acp?.bridge?.agents ?? DEFAULT_BRIDGE_AGENTS) {
+    const id = findAgentDescriptor(listed) ? listed : (toCatalogId.get(listed) ?? listed);
+    if (out.includes(id)) continue;
+    const probe = findAgentDescriptor(id)?.probe.command;
+    if (acp?.agents?.[id] || acp?.agents?.[listed] || (probe && isOnPath(probe))) out.push(id);
+  }
+  return out;
 }
 
 /**

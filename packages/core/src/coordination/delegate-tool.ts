@@ -78,6 +78,22 @@ export interface CreateDelegateToolOptions {
   defaultWait?: boolean | (() => boolean | undefined) | undefined;
   /** See {@link DelegationRuntimeOptions.suggestTier}. */
   suggestTier?: DelegationRuntimeOptions['suggestTier'];
+  /**
+   * External ACP agents installed on this machine that the leader may hand a
+   * task to with `provider: "acp"` and `name: <id>` (e.g. `claude-code`).
+   * Named in the `provider` description so the leader knows they exist.
+   */
+  externalAgents?: readonly string[] | undefined;
+}
+
+function externalAgentsNote(agents: readonly string[] | undefined): string {
+  if (!agents?.length) return '';
+  return (
+    ` "acp" with \`name\` set to an installed external coding agent (${agents.join(', ')})` +
+    ' hands it the task: it works with its own model, tools and sign-in, reaches this' +
+    " project's memory, mailbox, board and code index, and its final reply comes back to" +
+    ' you. Leave `model`/`tier` unset for it.'
+  );
 }
 
 const BACKGROUND_NOTE =
@@ -149,7 +165,9 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
       },
       provider: {
         type: 'string',
-        description: 'Provider id (e.g. "anthropic", "openai"). Defaults to host provider.',
+        description:
+          'Provider id (e.g. "anthropic", "openai"). Defaults to host provider.' +
+          externalAgentsNote(opts.externalAgents),
       },
       model: {
         type: 'string',

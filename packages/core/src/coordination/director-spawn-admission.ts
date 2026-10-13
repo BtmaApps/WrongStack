@@ -1,7 +1,7 @@
 import { setSandboxAgentOverride } from '../sandbox/agent-overrides.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
 import { FleetSpawnBudgetError } from './director/director-errors.js';
-import { isHumanPinnedSpawn } from './director-spawn-model.js';
+import { isExternalAgentSpawn, isHumanPinnedSpawn } from './director-spawn-model.js';
 import { type DirectorFleetHost, spawn as fleetSpawn } from './fleet-spawn.js';
 import { claimSubagentSlot, type SubagentSlotClaim } from './session-subagent-models.js';
 import { lockSessionSubagentPolicyForSession } from './session-subagent-policy.js';
@@ -43,16 +43,18 @@ export async function admitDirectorSpawn(
   // target participates in it, and hand the lane to the spawned subagent so
   // `remove()` can give it back. A spawn that never happens (budget caps,
   // coordinator refusal) must not strand the lane as permanently busy.
-  const slotClaim = isHumanPinnedSpawn(config)
-    ? undefined
-    : claimSubagentSlot(policySessionId, {
-        role: config.role,
-        // `/setmodel` routing keeps its spawns: a role (or phase) the user
-        // deliberately routed is not a "plain" spawn, so lanes and the
-        // follow-session switch step aside for it. A session role override
-        // still wins — that one names this role AND this session.
-        routed: host.hasExplicitMatrixRoute(config.role),
-      });
+  // An external ACP agent runs its own model, so it never holds a model lane.
+  const slotClaim =
+    isHumanPinnedSpawn(config) || isExternalAgentSpawn(config)
+      ? undefined
+      : claimSubagentSlot(policySessionId, {
+          role: config.role,
+          // `/setmodel` routing keeps its spawns: a role (or phase) the user
+          // deliberately routed is not a "plain" spawn, so lanes and the
+          // follow-session switch step aside for it. A session role override
+          // still wins — that one names this role AND this session.
+          routed: host.hasExplicitMatrixRoute(config.role),
+        });
   host.resolveSpawnModel(config, slotClaim);
   let subagentId: string;
   try {

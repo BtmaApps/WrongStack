@@ -142,6 +142,22 @@ config):
 `"agents": []` or `"servers": []` turns it off. Agents that do not read the `_meta` extension still
 get the MCP servers.
 
+### Delegating from a session
+
+When a bridged agent is installed (its CLI is on PATH, or `acp.agents` configures it), the
+`delegate` tool names it to the session's model, which hands it work with
+`delegate({ name: "claude-code", provider: "acp", … })`. Model lanes, `/setmodel` routes and tiers
+never reroute such a task to a WrongStack model.
+
+While the worker's turn runs, a `session_note` to it (by its subagent id or `claude-code`) is
+injected into that turn through the agent's `_session/steering` extension, so the leader can
+redirect it mid-task. Peers' `@session` broadcasts are not injected (a steer interrupts the
+worker's generation); the leader's are. The worker reads such a message as a user message that
+starts with `[WrongStack <kind> from <agent>]`.
+
+The agent's own stderr stays off the screen (`WRONGSTACK_DEBUG=1` echoes it live); when the agent
+crashes, its last lines are printed and its last line names the cause.
+
 ## Related
 
 - `/ensemble <csv> <task>` — the original parallel fan-out (same engine as

@@ -38,6 +38,7 @@ export {
   imageContent,
   textContent,
 } from './client/acp-session.js';
+export type { AcpSteerOutcome } from './client/acp-session-ops.js';
 export type {
   FileServerOptions,
   FsErrorCode,

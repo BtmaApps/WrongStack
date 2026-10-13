@@ -8,6 +8,7 @@ import {
 } from '@wrongstack/acp';
 import type { Config, SubagentRunContext, SubagentRunner, TaskSpec } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { registerAcpSteerInbox } from './acp-live-steer.js';
 import { wrongstackBridgeSetup } from './acp-wrongstack-bridge.js';
 
 export type AcpLivePublisher = (
@@ -55,5 +56,7 @@ export function buildAcpSubagentRunner(
     permissionPolicy: defaultPermissionPolicy,
     ...(options?.publishLive ? { publishLive: options.publishLive } : {}),
     ...(sessionSetup ? { sessionSetup } : {}),
+    // The leader's `session_note` to a running worker joins its turn.
+    onTurnLive: (ctx, task, steer) => registerAcpSteerInbox(ctx, task, steer),
   });
 }

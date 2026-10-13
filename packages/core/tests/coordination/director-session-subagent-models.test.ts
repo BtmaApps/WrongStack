@@ -130,6 +130,24 @@ describe('Director session subagent model plan', () => {
     expect(spawned[0]).toEqual({ provider: 'anthropic', model: 'opus' });
   });
 
+  it('keeps a leader-delegated external ACP agent on ACP and off the lanes', async () => {
+    // `delegate({ name: 'claude-code', provider: 'acp' })`: `acp` picks the
+    // runner, not a model. Rewriting it ran a WrongStack agent called
+    // "claude-code" on the lane model instead of Claude.
+    installPlan([{ provider: 'anthropic', model: 'opus' }]);
+    const d = makeDirector({
+      matrix: { '*': { provider: 'zai', model: 'glm-5' } } as never,
+      session: { provider: 'openai', model: 'gpt-5' },
+    });
+    director = d;
+    const spawned = captureSpawned(d);
+
+    await d.spawn({ name: 'claude-code', provider: 'acp', modelChosenByLeader: true });
+    await d.spawn({ name: 'plain' });
+
+    expect(spawned).toEqual([{ provider: 'acp' }, { provider: 'anthropic', model: 'opus' }]);
+  });
+
   it('leaves a HUMAN pin alone even while locked', async () => {
     // `/spawn --model=…`, an ACP flag, a Kanban route someone authored: a
     // one-off the person typed is more specific than a standing lane, so the

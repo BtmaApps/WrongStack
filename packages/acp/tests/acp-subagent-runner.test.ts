@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface MockSession {
   prompt: ReturnType<typeof vi.fn>;
+  steer: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   getAgentInfo: ReturnType<typeof vi.fn>;
 }
@@ -46,6 +47,7 @@ const hoisted = vi.hoisted(() => ({
       }
     | undefined,
   promptError: undefined as unknown,
+  canSteer: false,
 }));
 
 vi.mock('../src/client/acp-session.js', () => {
@@ -69,6 +71,8 @@ vi.mock('../src/client/acp-session.js', () => {
       if (hoisted.closeError !== undefined) throw hoisted.closeError;
     });
     getAgentInfo = vi.fn(() => hoisted.agentInfo);
+    canSteer = vi.fn(() => hoisted.canSteer);
+    steer = vi.fn(async (_text: string) => 'injected');
     static start = vi.fn(
       async (opts: {
         command: string;
@@ -150,6 +154,7 @@ beforeEach(() => {
   hoisted.agentInfo = undefined;
   hoisted.progressEvent = undefined;
   hoisted.promptError = undefined;
+  hoisted.canSteer = false;
   hoisted.promptResult = {
     text: 'ok',
     stopReason: 'end_turn',
@@ -198,6 +203,35 @@ describe('ACP_AGENT_COMMANDS', () => {
 });
 
 describe('makeACPSubagentRunner', () => {
+  it('opens a live steering window for the turn only when the agent can steer', async () => {
+    const events: string[] = [];
+    const onTurnLive = vi.fn((_ctx, _task, steer: (t: string) => Promise<string>) => {
+      events.push('live');
+      void steer('focus on the tests');
+      return () => events.push('ended');
+    });
+    const runner = await makeACPSubagentRunner({ command: 'agent', onTurnLive } as never);
+    await runner(TASK, makeCtx().ctx);
+    expect(onTurnLive).not.toHaveBeenCalled();
+
+    hoisted.canSteer = true;
+    await runner(TASK, makeCtx().ctx);
+    expect(events).toEqual(['live', 'ended']);
+    expect(hoisted.session?.steer).toHaveBeenCalledWith('focus on the tests');
+  });
+
+  it('closes the steering window when the turn fails', async () => {
+    hoisted.canSteer = true;
+    hoisted.promptError = new Error('boom');
+    const ended = vi.fn();
+    const runner = await makeACPSubagentRunner({
+      command: 'agent',
+      onTurnLive: () => ended,
+    } as never);
+    await expect(runner(TASK, makeCtx().ctx)).rejects.toBeDefined();
+    expect(ended).toHaveBeenCalledTimes(1);
+  });
+
   it('forwards only the defined options to ACPSession.start', async () => {
     const runner = await makeACPSubagentRunner({ command: 'gemini' });
     await runner(TASK, makeCtx(5000).ctx);

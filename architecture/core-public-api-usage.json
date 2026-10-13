@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 270,
+      "files": 272,
       "typeOnly": 105,
-      "runtimeOrMixed": 231
+      "runtimeOrMixed": 233
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1389,
-      "typeOnly": 1222,
+      "files": 1392,
+      "typeOnly": 1225,
       "runtimeOrMixed": 421
     },
     "@wrongstack/core/types/limits": {
@@ -3045,6 +3045,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/fleet/acp-live-steer.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/fleet/budget-source.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -3544,6 +3550,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/wiring/slash-commands.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/acp-live-steer.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13767,6 +13779,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/acp/src/integration/acp-subagent-runner-options.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/acp/src/integration/acp-subagent-runner.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14190,6 +14208,12 @@
       "file": "packages/cli/src/execution.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/acp-live-steer.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15708,6 +15732,12 @@
       "file": "packages/cli/src/wiring/wrongtrace-prompt-contributor.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-live-steer.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",

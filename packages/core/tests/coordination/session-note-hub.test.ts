@@ -39,6 +39,27 @@ function makeCtx(id: string, sessionId = 'sess-1'): Context {
   });
 }
 
+describe('SessionNoteHub ignorePeerBroadcasts', () => {
+  it("keeps peers' @session chatter off the inbox but lets direct notes and the leader through", () => {
+    const hub = new SessionNoteHub();
+    const got: string[] = [];
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'acp-worker-1',
+      aliases: ['claude-code'],
+      ignorePeerBroadcasts: true,
+      deliver: (n) => got.push(`${n.from}:${n.body}`),
+    });
+    const post = (from: string, to: string, body: string) =>
+      hub.post({ sessionId: 'sess-1', from, to, kind: 'note', body }).delivered;
+
+    expect(post('explorer-2', '@session', 'found it')).toBe(0);
+    expect(post('explorer-2', 'claude-code', 'look at util.ts')).toBe(1);
+    expect(post('leader@abc', '@session', 'stop, plan changed')).toBe(1);
+    expect(got).toEqual(['explorer-2:look at util.ts', 'leader@abc:stop, plan changed']);
+  });
+});
+
 describe('SessionNoteHub', () => {
   it('delivers to the leader alias in the same session only', () => {
     const hub = new SessionNoteHub();

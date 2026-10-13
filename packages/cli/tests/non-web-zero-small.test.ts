@@ -123,6 +123,7 @@ describe('small non-WebUI CLI modules', () => {
       args: ['--acp'],
       role: 'gemini-cli',
       permissionPolicy: mocks.defaultPermissionPolicy,
+      onTurnLive: expect.any(Function),
     });
 
     const discoveredRunner = { run: vi.fn() };
@@ -141,6 +142,7 @@ describe('small non-WebUI CLI modules', () => {
       role: 'custom',
       env: { TOKEN: 'test' },
       permissionPolicy: mocks.defaultPermissionPolicy,
+      onTurnLive: expect.any(Function),
     });
   });
 
@@ -190,6 +192,7 @@ describe('small non-WebUI CLI modules', () => {
       args: [],
       role: 'minimal',
       permissionPolicy: mocks.defaultPermissionPolicy,
+      onTurnLive: expect.any(Function),
     });
 
     mocks.resolveAcpAgentCommand.mockReturnValueOnce(null);

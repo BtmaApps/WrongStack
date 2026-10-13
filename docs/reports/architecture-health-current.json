@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T09:36:12.911Z",
+  "generatedAt": "2026-10-13T09:36:58.091Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4940,
-    "testFiles": 4326,
-    "sourceLines": 1096176,
+    "sourceFiles": 4942,
+    "testFiles": 4327,
+    "sourceLines": 1096408,
     "workspaceEdges": 137,
-    "moduleEdges": 16277,
+    "moduleEdges": 16284,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -108,7 +108,7 @@
     {
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
-      "sourceFiles": 48,
+      "sourceFiles": 49,
       "testFiles": 56,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 621,
-      "testFiles": 616,
+      "sourceFiles": 622,
+      "testFiles": 617,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 616
+          "testFiles": 617
         }
       ]
     },
@@ -1979,6 +1979,12 @@
       },
       {
         "file": "packages/cli/tests/acp-live-progress.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-live-steer.test.ts",
         "projects": [
           "root-node"
         ]

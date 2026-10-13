@@ -36,6 +36,7 @@ import {
 } from '@wrongstack/core/types';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { subscribeBrainDecisionLog } from '../boot/brain-decision-log.js';
+import { installedBridgeAgents } from '../fleet/acp-wrongstack-bridge.js';
 import { createSubagentWrongTraceHookRunner } from '../fleet/subagent-hook-runner.js';
 import { MultiAgentHost } from '../multi-agent.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
@@ -560,6 +561,7 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
             logger: container.safeResolve(TOKENS.Logger),
           }),
       }),
+      externalAgents: installedBridgeAgents(config.acp),
     }),
   );
   toolRegistry.exposeToProvider('delegate');

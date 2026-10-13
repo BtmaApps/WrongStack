@@ -11,7 +11,7 @@
 
 import type { SessionNote, SessionNoteKind } from '../core/session-notes.js';
 import type { EventBus } from '../kernel/events.js';
-import { mailboxIdentityBase } from './mailbox-types.js';
+import { isMailboxLeader, mailboxIdentityBase } from './mailbox-types.js';
 
 export interface SessionNotePost {
   sessionId: string;
@@ -30,6 +30,12 @@ export interface SessionNoteInbox {
   agentId: string;
   aliases?: readonly string[] | undefined;
   deliver: (note: SessionNote) => void;
+  /**
+   * Skip `@session` broadcasts from peers; notes addressed to this agent and
+   * the leader's broadcasts still arrive. For inboxes where delivery
+   * interrupts the recipient (a steered ACP turn).
+   */
+  ignorePeerBroadcasts?: boolean | undefined;
   /** First bus registered for a session is used to emit `session.note`. */
   events?: EventBus | undefined;
 }
@@ -89,6 +95,7 @@ export class SessionNoteHub {
     let delivered = 0;
     let bus = input.events;
     const fromKey = from.toLowerCase();
+    const fromLeader = isMailboxLeader(from);
     for (const inbox of this.inboxes) {
       const inboxSid = resolveInboxSessionId(inbox)?.trim().replace(/\\/g, '/');
       if (inboxSid !== sessionId) continue;
@@ -97,7 +104,7 @@ export class SessionNoteHub {
       bus ??= inbox.events;
       const keys = identityKeys(inbox);
       if (keys.has(fromKey)) continue;
-      if (!broadcast && !keys.has(to)) continue;
+      if (broadcast ? inbox.ignorePeerBroadcasts && !fromLeader : !keys.has(to)) continue;
       try {
         inbox.deliver(note);
         delivered += 1;

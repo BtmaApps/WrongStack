@@ -1,7 +1,12 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { SubagentRunContext, TaskSpec } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import {
   bridgeNote,
+  installedBridgeAgents,
+  onPath,
   wrongstackBridgeSetup,
   wstackLaunch,
 } from '../src/fleet/acp-wrongstack-bridge.js';
@@ -98,6 +103,11 @@ describe('wrongstackBridgeSetup', () => {
     expect(Object.keys((setup.meta as { systemPrompt: object }).systemPrompt)).toEqual(['append']);
   });
 
+  it('tells a delegated worker how WrongStack steers it, and only then', () => {
+    expect(bridgeNote(['mailbox'], 'w', 't')).toContain('"[WrongStack <kind> from <agent>]"');
+    expect(bridgeNote(['mailbox'], 'w', 't', false)).not.toContain('[WrongStack');
+  });
+
   it('sends mail to "all" when no WrongStack session delegated the task', () => {
     const { sessionId: _drop, ...rest } = ctx as unknown as Record<string, unknown>;
     const setup = wrongstackBridgeSetup('claude-code', ROOT, undefined)!(
@@ -122,6 +132,43 @@ describe('wrongstackBridgeSetup', () => {
       'wrongstack-index',
     ]);
     expect(bridgeNote(['codebase-index'], 'w', 't')).toContain('wrongstack-index');
+  });
+});
+
+describe('installedBridgeAgents', () => {
+  const claudeOnPath = (c: string) => c === 'claude';
+
+  it('lists the default worker when its CLI is on PATH, and nothing otherwise', () => {
+    expect(installedBridgeAgents(undefined, claudeOnPath)).toEqual(['claude-code']);
+    expect(installedBridgeAgents(undefined, () => false)).toEqual([]);
+  });
+
+  it('accepts registry ids, user-configured commands, and honours an off switch', () => {
+    expect(installedBridgeAgents({ bridge: { agents: ['claude-acp'] } }, claudeOnPath)).toEqual([
+      'claude-code',
+    ]);
+    expect(
+      installedBridgeAgents(
+        { agents: { 'codex-cli': { command: 'my-codex' } }, bridge: { agents: ['codex-cli'] } },
+        () => false,
+      ),
+    ).toEqual(['codex-cli']);
+    expect(installedBridgeAgents({ bridge: { servers: [] } }, claudeOnPath)).toEqual([]);
+    expect(installedBridgeAgents({ bridge: { agents: [] } }, claudeOnPath)).toEqual([]);
+  });
+});
+
+describe('onPath', () => {
+  it('finds a command through PATH and PATHEXT', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ws-onpath-'));
+    try {
+      writeFileSync(join(dir, 'fakeagent.CMD'), '');
+      expect(onPath('fakeagent', { PATH: dir, PATHEXT: '.EXE;.CMD' }, 'win32')).toBe(true);
+      expect(onPath('fakeagent', { PATH: dir }, 'linux')).toBe(false);
+      expect(onPath('missing', { PATH: dir, PATHEXT: '.CMD' }, 'win32')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

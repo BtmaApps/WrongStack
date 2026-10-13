@@ -140,6 +140,23 @@ describe('createDelegateTool', () => {
   //     subject fell through to `input.name` — the worker nickname
   //     the model picked.
   // The fix: `permission:'confirm'` and `subjectKey:'name'`.
+  it('names installed external agents under provider only when there are some', () => {
+    const providerText = (tool: Tool) =>
+      String(
+        (tool.inputSchema as { properties: { provider: { description: string } } }).properties
+          .provider.description,
+      );
+    const plain = createDelegateTool({ host: buildHost(null) });
+    expect(providerText(plain)).not.toContain('acp');
+    const withClaude = createDelegateTool({
+      host: buildHost(null),
+      externalAgents: ['claude-code'],
+    });
+    expect(providerText(withClaude)).toContain('"acp" with `name` set to');
+    expect(providerText(withClaude)).toContain('(claude-code)');
+    expect(providerText(withClaude).length).toBeLessThanOrEqual(768);
+  });
+
   it('prompts on every call (part a) and exposes the name as subject (part b)', () => {
     const tool = createDelegateTool({ host: buildHost(null) });
     expect(tool.permission).toBe('confirm');

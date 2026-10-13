@@ -65,6 +65,10 @@ export function resolveDirectorSpawnModel(
   // producing a subagent with no valid credentials.
   if (config.provider?.trim() === '') config.provider = undefined;
   if (config.model?.trim() === '') config.model = undefined;
+  // An external ACP agent brings its own model; `provider: 'acp'` picks the
+  // runner, not a model. A lane, matrix route or tier rewriting it would run
+  // a WrongStack agent named after the external one instead.
+  if (isExternalAgentSpawn(config)) return;
 
   // Session-scoped plan. Runs FIRST because, unlike every other layer here, it
   // is the user speaking about this session rather than the leader speaking
@@ -300,6 +304,11 @@ export function resolveDirectorSpawnModel(
  * exists in neither place. The layers below — matrix, tier, session — fill the
  * gap the same way they did before the plan existed.
  */
+/** True when the spawn runs an external ACP agent (Claude Code, Codex CLI, …). */
+export function isExternalAgentSpawn(config: SubagentConfig): boolean {
+  return config.provider === 'acp';
+}
+
 export function isHumanPinnedSpawn(config: SubagentConfig): boolean {
   if (config.modelChosenByLeader === true) return false;
   return Boolean(config.provider || config.model);

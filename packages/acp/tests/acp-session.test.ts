@@ -860,6 +860,58 @@ describe('ACPSession', () => {
     await session.close();
   });
 
+  it('steers the running turn only when the agent advertises steering', async () => {
+    const reply = async <T>(
+      t: FakeTransport,
+      method: string,
+      action: Promise<T>,
+      result: unknown,
+    ) => {
+      await new Promise((resolve) => setImmediate(resolve));
+      const request = t.sent.findLast((message) => message.method === method);
+      expect(request, method).toBeDefined();
+      t.respond(request!.id!, method, result);
+      return action;
+    };
+
+    const plain = await startSession();
+    expect(plain.canSteer()).toBe(false);
+    await reply(lastTransport(), 'session/load', plain.loadSession('s0'), {});
+    await expect(plain.steer('hi')).resolves.toBe('unsupported');
+    expect(lastTransport().sent.some((m) => m.method === '_session/steering')).toBe(false);
+    await plain.close();
+
+    const session = await startSession({
+      protocolVersion: 1,
+      agentCapabilities: { loadSession: true },
+      _meta: { steering: { supported: true } },
+    });
+    const t = lastTransport();
+    expect(session.canSteer()).toBe(true);
+    // No session yet: nothing to steer.
+    await expect(session.steer('early')).resolves.toBe('unsupported');
+    await reply(t, 'session/load', session.loadSession('s1'), {});
+
+    await expect(
+      reply(t, '_session/steering', session.steer('use the index'), { outcome: 'injected' }),
+    ).resolves.toBe('injected');
+    expect(t.sent.findLast((m) => m.method === '_session/steering')?.params).toEqual({
+      sessionId: 's1',
+      prompt: [{ type: 'text', text: 'use the index' }],
+      _meta: { steering: { idleBehavior: 'promptRequired' } },
+    });
+    await expect(
+      reply(t, '_session/steering', session.steer('late'), { outcome: 'promptRequired' }),
+    ).resolves.toBe('promptRequired');
+
+    const failing = session.steer('bad');
+    await new Promise((resolve) => setImmediate(resolve));
+    const req = t.sent.findLast((m) => m.method === '_session/steering')!;
+    t.respondError(req.id!, '_session/steering', { code: -32602, message: 'invalid' });
+    await expect(failing).rejects.toThrow('invalid');
+    await session.close();
+  });
+
   it('covers the advertised lifecycle and provider APIs', async () => {
     const session = await startSession({
       protocolVersion: 1,

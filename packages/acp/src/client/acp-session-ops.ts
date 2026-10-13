@@ -286,3 +286,42 @@ export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<Se
   }
   return sessionId as SessionId;
 }
+
+/** What a steer did: joined the running turn, found none, or cannot steer. */
+export type AcpSteerOutcome = 'injected' | 'promptRequired' | 'startedNewTurn' | 'unsupported';
+
+/**
+ * Inject `text` into the turn the agent is running, through the
+ * `_session/steering` extension (Claude's ACP adapter advertises it as
+ * `InitializeResponse._meta.steering.supported`). With no turn running the
+ * agent hands the text back (`promptRequired`) instead of starting a turn
+ * nobody awaits.
+ */
+export async function executeSteer(
+  ctx: ACPSessionOpContext,
+  supported: boolean,
+  text: string,
+): Promise<AcpSteerOutcome> {
+  if (ctx.closed || !ctx.sessionId || !supported) return 'unsupported';
+  const result = await ctx.sendRequest(
+    ctx.allocId(),
+    '_session/steering',
+    {
+      sessionId: ctx.sessionId,
+      prompt: [{ type: 'text', text }],
+      _meta: { steering: { idleBehavior: 'promptRequired' } },
+    },
+    10_000,
+  );
+  if (isJsonRpcError(result)) {
+    throw new ACPSessionError(
+      'prompt_failed',
+      `_session/steering failed: ${result.message}`,
+      result,
+    );
+  }
+  const outcome = (result as { outcome?: unknown } | null)?.outcome;
+  return outcome === 'injected' || outcome === 'promptRequired' || outcome === 'startedNewTurn'
+    ? outcome
+    : 'unsupported';
+}

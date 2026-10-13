@@ -40,6 +40,7 @@ import {
 } from './acp-session-messages.js';
 import {
   type ACPSessionOpContext,
+  type AcpSteerOutcome,
   executeDeleteSession,
   executeDisableProvider,
   executeForkSession,
@@ -51,6 +52,7 @@ import {
   executeSetConfigOption,
   executeSetMode,
   executeSetProvider,
+  executeSteer,
 } from './acp-session-ops.js';
 import { type AcpSessionPromptHost, prompt as promptFromHost } from './acp-session-prompt.js';
 import type {
@@ -104,6 +106,8 @@ export class ACPSession {
   private agentCapabilities: AgentCapabilities = {};
   private agentInfo: { name: string; title?: string | undefined; version: string } | null = null;
   private authMethods: AuthMethod[] = [];
+  /** The agent accepts `_session/steering` (see executeSteer). */
+  private steeringSupported = false;
   /** Protocol version negotiated with the agent during initialize. */
   private negotiatedVersion: number = ACP_PROTOCOL_VERSION;
 
@@ -306,6 +310,8 @@ export class ACPSession {
     }
     this.negotiatedVersion = r.protocolVersion;
     this.agentCapabilities = r.agentCapabilities ?? {};
+    const meta = (result as { _meta?: { steering?: { supported?: unknown } } })._meta;
+    this.steeringSupported = meta?.steering?.supported === true;
     this.agentInfo = r.agentInfo ?? null;
     this.authMethods = r.authMethods ?? [];
     this.state = 'ready';
@@ -406,6 +412,16 @@ export class ACPSession {
 
   async disableProvider(): Promise<void> {
     return executeDisableProvider(this.opContext());
+  }
+
+  /** Whether {@link steer} can reach the agent. */
+  canSteer(): boolean {
+    return this.steeringSupported;
+  }
+
+  /** Inject a message into the agent's running turn. */
+  async steer(text: string): Promise<AcpSteerOutcome> {
+    return executeSteer(this.opContext(), this.steeringSupported, text);
   }
 
   // ──────────────────────────────────────────────────────────────────────
