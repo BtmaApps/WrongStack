@@ -18,6 +18,8 @@ const acp = vi.hoisted(() => ({
 
 vi.mock('@wrongstack/acp', () => ({
   textContent: (text: string) => ({ type: 'text', text }),
+  findAgentDescriptor: (id: string) =>
+    id === 'claude-code' ? { id, contextWindow: 1_000_000 } : undefined,
   resolveAcpAgentCommand: (id: string) =>
     id === 'claude-code' ? { command: 'npx', args: ['adapter'], role: id } : null,
   classifyAgentFailure: (rpc: { message: string }, agent: string) =>
@@ -151,6 +153,22 @@ describe('which requests reach the agent', () => {
       kind: 'invalid_request',
       message: expect.stringContaining('sideModel'),
     });
+  });
+});
+
+describe('the leader context window', () => {
+  it("is the leading agent's declared window, and unknown for an agent without one", () => {
+    const config = { ...CONFIG, model: 'claude-code' } as Config;
+    const host = { getConfig: () => config };
+    bindAcpLeaderHost(host as never);
+    const provider = new AcpLeaderProvider({ bootConfig: config, buildProvider: () => undefined });
+    expect(provider.capabilities.maxContext).toBe(1_000_000);
+    // A host's in-place refinement holds while the same agent leads.
+    provider.capabilities.maxContext = 900_000;
+    expect(provider.capabilities.maxContext).toBe(900_000);
+
+    host.getConfig = () => ({ ...config, model: 'gemini-cli' }) as Config;
+    expect(provider.capabilities.maxContext).toBe(0);
   });
 });
 

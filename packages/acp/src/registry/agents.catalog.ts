@@ -61,6 +61,7 @@ export const AGENTS_CATALOG: readonly ACPAgentDescriptor[] = [
       fs: true,
     },
     integration: 'adapter',
+    contextWindow: 1_000_000,
     docs: 'https://docs.anthropic.com/en/docs/claude-code',
   },
 

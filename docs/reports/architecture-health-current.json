@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T19:44:02.525Z",
+  "generatedAt": "2026-10-13T19:50:47.179Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4951,
-    "testFiles": 4341,
-    "sourceLines": 1098609,
+    "testFiles": 4340,
+    "sourceLines": 1098537,
     "workspaceEdges": 137,
     "moduleEdges": 16314,
     "nonCommandSlashImports": 0,
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1120,
-      "testFiles": 969,
+      "testFiles": 968,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 969
+          "testFiles": 968
         }
       ]
     },
@@ -6353,12 +6353,6 @@
       },
       {
         "file": "packages/core/tests/cloud-provider.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/acp-budget-policy.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27384,11 +27378,6 @@
       "relativeImports": 12
     },
     {
-      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
-      "lines": 764,
-      "relativeImports": 10
-    },
-    {
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "lines": 763,
       "relativeImports": 1
@@ -27457,6 +27446,11 @@
       "file": "packages/providers/src/openai-codex.ts",
       "lines": 758,
       "relativeImports": 26
+    },
+    {
+      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "lines": 758,
+      "relativeImports": 10
     },
     {
       "file": "packages/techstack/src/adapters/npm.ts",

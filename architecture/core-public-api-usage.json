@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 362,
+      "files": 363,
       "typeOnly": 159,
-      "runtimeOrMixed": 224
+      "runtimeOrMixed": 225
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -7456,6 +7456,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/acp-leader-provider.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/acp-leader-tool-cards.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -16,7 +16,7 @@
  *
  * `@wrongstack/acp` is loaded on first use: it must stay off the boot graph.
  */
-import type { ACPProgressEvent, ACPSession } from '@wrongstack/acp';
+import { type ACPProgressEvent, type ACPSession, findAgentDescriptor } from '@wrongstack/acp';
 import type {
   Capabilities,
   Config,
@@ -62,7 +62,8 @@ const CAPABILITIES: Capabilities = {
   systemPrompt: true,
   jsonMode: false,
   reasoning: false,
-  maxContext: 200_000,
+  // Per agent: the catalog's declared window, 0 (unknown) otherwise.
+  maxContext: 0,
   maxOutput: 32_000,
   cacheControl: 'none',
   topK: false,
@@ -115,7 +116,7 @@ export interface AcpLeaderProviderOptions {
 
 export class AcpLeaderProvider implements Provider {
   readonly id: string;
-  readonly capabilities = CAPABILITIES;
+  private caps: { agentId: string; value: Capabilities } | undefined;
   private acp: AcpModule | undefined;
   private readonly sessions = new Map<string, Promise<LeaderSession>>();
   private readonly sideProviders = new Map<string, Provider>();
@@ -129,6 +130,19 @@ export class AcpLeaderProvider implements Provider {
 
   private config(): Config {
     return acpLeaderHost()?.getConfig() ?? this.opts.bootConfig;
+  }
+
+  /**
+   * The leading agent's capabilities. One object per agent, so a host that
+   * refines a field in place keeps it until the user picks another agent.
+   */
+  get capabilities(): Capabilities {
+    const agentId = this.config().model;
+    if (this.caps?.agentId !== agentId) {
+      const maxContext = findAgentDescriptor(agentId)?.contextWindow ?? CAPABILITIES.maxContext;
+      this.caps = { agentId, value: { ...CAPABILITIES, maxContext } };
+    }
+    return this.caps.value;
   }
 
   /** The WrongStack provider and request for anything that is not a leader turn. */

@@ -50,6 +50,12 @@ export interface ACPAgentDescriptor {
     fs: boolean;
   };
   integration: ACPIntegration;
+  /**
+   * The agent's context window in tokens, when the vendor publishes one.
+   * Shown as the session's context limit when the agent leads the session;
+   * absent means unknown.
+   */
+  contextWindow?: number;
   /** Documentation URL — shown in `wstack acp list` and the ensemble UI. */
   docs: string;
 }
