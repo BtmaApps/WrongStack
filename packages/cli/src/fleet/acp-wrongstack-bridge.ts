@@ -67,7 +67,7 @@ const SERVER_NOTES: Record<BridgeServer, (actor: string, delegated: boolean) => 
   kanban: () =>
     "- wrongstack-kanban: the project's board. If the task names a card, keep its status " +
     'current. Lists return only the most recently updated (pass limit for more); use the ' +
-    'workbench action for an overview.',
+    'stats action for totals and workbench for what is in flight.',
   'codebase-index': () =>
     "- wrongstack-index: the project's code index: codebase_search for definitions, " +
     'codebase_incoming_calls / codebase_outgoing_calls for callers and callees.',

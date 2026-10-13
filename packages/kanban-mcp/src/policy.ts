@@ -9,6 +9,7 @@ export const KANBAN_READ_ACTIONS = [
   'ready_tasks',
   'snapshot',
   'workbench',
+  'stats',
   'get_task',
   'get_chain',
   'events',

@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
-  boards: [] as Array<{ id: string; kind?: string; updatedAt: string }>,
-  matches: [] as Array<{ board: { id: string }; task: { id: string; updatedAt: string } }>,
+  boards: [] as Array<{
+    id: string;
+    title?: string;
+    kind?: string;
+    updatedAt: string;
+    columnCount?: number;
+  }>,
+  matches: [] as Array<{
+    board: { id: string };
+    task: { id: string; updatedAt: string; status?: string };
+  }>,
 }));
 
 vi.mock('@wrongstack/kanban', async (importOriginal) => ({
@@ -18,6 +27,7 @@ const ctx = { projectRoot: 'C:/p', cwd: 'C:/p' } as never;
 async function run(input: Record<string, unknown>) {
   return (await handleKanbanBoardAction('C:/p', input as never, ctx)) as {
     message: string;
+    stats?: Record<string, unknown>;
     boards?: { id: string }[];
     tasks?: { task: { id: string } }[];
   };
@@ -68,5 +78,43 @@ describe('kanban list reads: limit and archived boards', () => {
       const out = await run({ action: 'search_tasks', limit });
       expect(out.tasks).toHaveLength(3);
     }
+  });
+});
+
+describe('kanban stats', () => {
+  it('returns project totals in one small payload', async () => {
+    hoisted.boards = [
+      { id: 'p', title: 'Project', kind: 'project', updatedAt: '2026-10-01', columnCount: 5 },
+      {
+        id: 's',
+        title: 'Session',
+        kind: 'session_mirror',
+        updatedAt: '2026-10-09',
+        columnCount: 5,
+      },
+      { id: 'x', title: 'Legacy', updatedAt: '2026-01-01', columnCount: 3 },
+    ];
+    hoisted.matches = [
+      { board: { id: 'p' }, task: { id: 'a', updatedAt: '1', status: 'done' } },
+      { board: { id: 'p' }, task: { id: 'b', updatedAt: '2', status: 'pending' } },
+      { board: { id: 's' }, task: { id: 'c', updatedAt: '3', status: 'done' } },
+    ];
+    const out = await run({ action: 'stats' });
+    expect(out.message).toBe('3 board(s), 13 column(s), 3 card(s).');
+    expect(out.stats).toEqual({
+      boards: 3,
+      boardsByKind: { project: 2, session_mirror: 1 },
+      columns: 13,
+      cards: 3,
+      cardsByStatus: { done: 2, pending: 1 },
+      mostRecentlyUpdatedBoard: { id: 's', title: 'Session', updatedAt: '2026-10-09' },
+    });
+    expect(JSON.stringify(out).length).toBeLessThan(600);
+  });
+
+  it('narrows to one board and rejects an unknown one', async () => {
+    const one = await run({ action: 'stats', boardId: 'old' });
+    expect(one.stats).toMatchObject({ boards: 1, boardsByKind: { project: 1 } });
+    await expect(run({ action: 'stats', boardId: 'nope' })).rejects.toThrow('Board not found');
   });
 });

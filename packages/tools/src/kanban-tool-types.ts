@@ -48,6 +48,7 @@ export type KanbanAction =
   | 'ready_tasks'
   | 'snapshot'
   | 'workbench'
+  | 'stats'
   | 'add_task'
   | 'split_task'
   | 'merge_tasks'
@@ -108,6 +109,7 @@ export const KANBAN_READ_ONLY_ACTIONS = [
   'ready_tasks',
   'snapshot',
   'workbench',
+  'stats',
   'get_task',
   'get_chain',
   'events',
@@ -289,6 +291,16 @@ export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
   activityDetails?: string | undefined;
 }
 
+/** stats: whole-project (or one-board) totals in one small payload. */
+export interface KanbanStats {
+  boards: number;
+  boardsByKind: Record<string, number>;
+  columns: number;
+  cards: number;
+  cardsByStatus: Record<string, number>;
+  mostRecentlyUpdatedBoard?: { id: string; title: string; updatedAt: string } | undefined;
+}
+
 export interface KanbanToolOutput {
   /** Always `true` on a returned result — failures throw instead. Kept for shape stability. */
   ok: boolean;
@@ -310,6 +322,7 @@ export interface KanbanToolOutput {
   message: string;
   board?: KanbanBoard | undefined;
   boards?: KanbanBoardSummary[] | undefined;
+  stats?: KanbanStats | undefined;
   task?: KanbanTask | undefined;
   tasks?: KanbanSearchResult[] | undefined;
   recoveredTasks?: KanbanTask[] | undefined;

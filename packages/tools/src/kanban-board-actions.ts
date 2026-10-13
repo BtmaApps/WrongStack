@@ -308,6 +308,41 @@ export async function handleKanbanBoardAction(
         board,
       };
     }
+    case 'stats': {
+      const all = await listBoards(projectRoot);
+      const boards = input.boardId ? all.filter((board) => board.id === input.boardId) : all;
+      if (input.boardId && boards.length === 0) throw notFound('Board not found.');
+      const matches = await searchKanban(projectRoot, {
+        ...(input.boardId ? { boardId: input.boardId } : {}),
+      });
+      const tally = (keys: string[]): Record<string, number> => {
+        const out: Record<string, number> = {};
+        for (const key of keys) out[key] = (out[key] ?? 0) + 1;
+        return out;
+      };
+      const newest = newestFirst(boards, (board) => board.updatedAt, 1).items[0];
+      const stats = {
+        boards: boards.length,
+        boardsByKind: tally(boards.map((board) => board.kind ?? 'project')),
+        columns: boards.reduce((sum, board) => sum + board.columnCount, 0),
+        cards: matches.length,
+        cardsByStatus: tally(matches.map((match) => match.task.status)),
+        ...(newest
+          ? {
+              mostRecentlyUpdatedBoard: {
+                id: newest.id,
+                title: newest.title,
+                updatedAt: newest.updatedAt,
+              },
+            }
+          : {}),
+      };
+      return {
+        ok: true,
+        message: `${stats.boards} board(s), ${stats.columns} column(s), ${stats.cards} card(s).`,
+        stats,
+      };
+    }
     case 'search_tasks': {
       const tasks = await searchKanban(projectRoot, {
         query: input.query,

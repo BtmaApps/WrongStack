@@ -30,6 +30,7 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
         'ready_tasks',
         'snapshot',
         'workbench',
+        'stats',
         'add_task',
         'split_task',
         'merge_tasks',
