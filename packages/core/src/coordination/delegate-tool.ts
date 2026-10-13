@@ -92,7 +92,9 @@ function externalAgentsNote(agents: readonly string[] | undefined): string {
     ` "acp" with \`name\` set to an installed external coding agent (${agents.join(', ')})` +
     ' hands it the task: it works with its own model, tools and sign-in, reaches this' +
     " project's memory, mailbox, board and code index, and its final reply comes back to" +
-    ' you. Leave `model`/`tier` unset for it.'
+    ' you. Leave `model`/`tier` unset for it. ACP workers have a separate budget:' +
+    ' no default wall-clock, iteration, tool-call, token or cost cap; they stop after' +
+    ' 10 minutes without activity. Set task limits explicitly only when needed.'
   );
 }
 
@@ -186,7 +188,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
       timeoutMs: {
         type: 'number',
         minimum: 1,
-        description: `Wall-clock budget in ms (default ${Math.round(defaultTimeoutMs / 1000 / 60)} min). No hard cap — set as high as the task needs.`,
+        description: `Wall-clock budget in ms (internal worker default ${Math.round(defaultTimeoutMs / 1000 / 60)} min; ACP default none). An explicit ACP deadline is honored exactly. No hard cap — set as high as the task needs.`,
       },
       maxIterations: {
         type: 'number',

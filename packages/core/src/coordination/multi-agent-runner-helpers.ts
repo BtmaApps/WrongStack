@@ -30,7 +30,10 @@ export interface CreateSubagentBudgetParams {
 }
 
 export function createSubagentTaskBudget(params: CreateSubagentBudgetParams): SubagentBudget {
-  const { subagentConfig, defaultBudget, subagentId, sessionOf, applyRosterBudget } = params;
+  const { subagentConfig, subagentId, sessionOf, applyRosterBudget } = params;
+  // The coordinator's defaults are for its own workers. ACP workers run an
+  // external loop; keep their explicit limits and ACP inactivity default.
+  const defaultBudget = subagentConfig.provider === 'acp' ? undefined : params.defaultBudget;
   const rawMaxIterations = subagentConfig.maxIterations;
   const rawMaxToolCalls = subagentConfig.maxToolCalls;
   const rawMaxTokens = subagentConfig.maxTokens;

@@ -309,6 +309,11 @@ const GENERIC_SUBAGENT_BUDGET: FleetRosterBudget = {
 };
 
 export function applyRosterBudget(cfg: SubagentConfig): SubagentConfig {
+  // External agents own their model/tool loop and usage policy. Internal role
+  // ceilings do not describe an ACP turn; only inherit an inactivity guard.
+  if (cfg.provider === 'acp') {
+    return { ...cfg, idleTimeoutMs: cfg.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS };
+  }
   // First try role-specific budget; fall back to generic for name-only delegates.
   const roleBudget = cfg.role ? FLEET_ROSTER_BUDGETS[cfg.role] : undefined;
   const defaultBudget = roleBudget ?? (cfg.name ? GENERIC_SUBAGENT_BUDGET : undefined);

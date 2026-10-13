@@ -196,7 +196,12 @@ export async function prepareDelegation(
         field: 'role',
       });
     }
-    cfg = instantiateRosterConfig(i.role, base, i.timeoutMs, defaultTimeoutMs);
+    cfg = instantiateRosterConfig(
+      i.role,
+      i.provider ? { ...base, provider: i.provider } : base,
+      i.timeoutMs,
+      defaultTimeoutMs,
+    );
     // NOTE: do NOT write `i.systemPromptOverride` into `cfg.systemPromptOverride`
     // here — the roster override must survive until `startDelegationAttempt`
     // layers roster + caller overrides in precedence order.
@@ -258,7 +263,12 @@ export async function prepareDelegation(
   // generous roster/generic budget DOWN to the host's await window. The host
   // await is heartbeat-based, so the subagent's own (auto-extending) budget is
   // the real ceiling.
-  if (!cfg.timeoutMs) {
+  if (cfg.provider === 'acp') {
+    // Waiting for a delegation is distinct from limiting the external turn.
+    // Do not convert the host wait window into a 30s child cap. A supplied
+    // task deadline is honored exactly, without the internal worker buffer.
+    cfg.timeoutMs = i.timeoutMs ?? cfg.timeoutMs;
+  } else if (!cfg.timeoutMs) {
     cfg.timeoutMs = Math.max(30_000, timeoutMs - bufferMs);
   }
 
@@ -294,10 +304,15 @@ export function instantiateRosterConfig(
   const rosterTimeoutMs = FLEET_ROSTER_BUDGETS[role]?.timeoutMs;
   return {
     ...withBudget,
-    // Without an explicit host wait, apply the role's tuned multi-hour
-    // wall-clock budget. With an explicit wait, leave this unset so the buffer
-    // logic derives a slightly shorter child budget.
-    timeoutMs: requestedTimeoutMs === undefined ? (rosterTimeoutMs ?? defaultTimeoutMs) : undefined,
+    // ACP only uses a supplied deadline. Internal workers without an explicit
+    // host wait use the role's tuned budget; with one, the buffer logic below
+    // derives a slightly shorter child budget.
+    timeoutMs:
+      base.provider === 'acp'
+        ? (requestedTimeoutMs ?? base.timeoutMs)
+        : requestedTimeoutMs === undefined
+          ? (rosterTimeoutMs ?? defaultTimeoutMs)
+          : undefined,
     // Fresh id per spawn so parallel or repeated delegates can share a role.
     id: `${role}-${randomUUID().slice(0, 8)}`,
   };
