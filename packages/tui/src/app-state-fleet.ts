@@ -29,4 +29,8 @@ export interface FleetEntry {
   ctxMaxTokens?: number | undefined;
   ctxCost?: number | undefined;
   failureReason?: string | undefined;
+  /** What the agent was asked to do (the delegated task's description). */
+  task?: string | undefined;
+  /** When its last task ended; drives how long F3 keeps a finished agent listed. */
+  endedAt?: number | undefined;
 }

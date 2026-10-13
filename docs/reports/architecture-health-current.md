@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-13T17:18:38.267Z
+**Generated:** 2026-10-13T17:45:52.208Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4946 |
-| Production source lines | 1097404 |
-| Test files | 4334 |
+| Production source files | 4947 |
+| Production source lines | 1097503 |
+| Test files | 4335 |
 | Workspace dependency edges | 137 |
-| Relative module edges | 16291 |
+| Relative module edges | 16296 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -56,7 +56,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/techstack | 53 | 61 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 322 | 326 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 480 | 422 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 481 | 423 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 721 | 483 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 124 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -129,10 +129,10 @@ None.
 | 746 | `packages/core/src/core/fallback-profile-manager.ts` |
 | 746 | `packages/webui-server/src/server/backend-services.ts` |
 | 744 | `packages/tools/src/grep.ts` |
-| 742 | `packages/tui/src/components/agents-monitor.tsx` |
 | 741 | `packages/webui/src/components/TaskActivityTimeline.tsx` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
 | 740 | `packages/webui/src/hooks/ws-handlers.ts` |
+| 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 
 ## Exports only tests reference
 

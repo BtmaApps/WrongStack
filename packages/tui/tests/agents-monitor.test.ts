@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import type { FleetEntry } from '../src/app.js';
 import {
-  EMPTY_AGENTS_CLOSE_DELAY_MS,
-  IDLE_HIDE_MS,
+  fmtCost,
+  formatAgentModel,
+  rosterGlyph,
+} from '../src/components/agent-monitor-presentation.js';
+import {
   agentRisk,
+  EMPTY_AGENTS_CLOSE_DELAY_MS,
   fmtExactTokens,
   formatAgentDetailHeader,
   formatContextRunway,
   formatRecentToolChip,
   formatTranscriptLine,
+  IDLE_HIDE_MS,
   leaderTimelineFromEntries,
   nextEmptyAgentsCloseStartedAt,
   selectAgentDetail,
@@ -17,6 +22,7 @@ import {
   shouldCloseEmptyAgentsMonitor,
   transcriptRowsForTerminal,
 } from '../src/components/agents-monitor.js';
+import { FINISHED_KEEP_MS } from '../src/components/agents-monitor-constants.js';
 import { bucketActivity, sparkline } from '../src/components/fleet-monitor.js';
 
 function entry(over: Partial<FleetEntry> & Pick<FleetEntry, 'id' | 'status'>): FleetEntry {
@@ -39,6 +45,25 @@ function entry(over: Partial<FleetEntry> & Pick<FleetEntry, 'id' | 'status'>): F
 
 describe('selectLiveAgents', () => {
   const now = 1_000_000;
+
+  it('keeps finished agents listed for a while after running ones, newest first', () => {
+    const agents = [
+      entry({ id: 'leader', name: 'LEADER', status: 'idle' }),
+      entry({ id: 'old-fail', status: 'failed', endedAt: now - FINISHED_KEEP_MS - 1 }),
+      entry({ id: 'ok', status: 'success', endedAt: now - 60_000 }),
+      entry({ id: 'run', status: 'running' }),
+      entry({ id: 'bad', status: 'failed', endedAt: now - 5_000 }),
+      entry({ id: 'idle-worker', status: 'idle', lastEventAt: now }),
+    ];
+    expect(selectLiveAgents(agents, now).map((e) => e.id)).toEqual(['leader', 'run', 'bad', 'ok']);
+    // With nothing running, a fresh failure still keeps the panel (and LEADER) up.
+    expect(
+      selectLiveAgents(
+        agents.filter((e) => e.id !== 'run'),
+        now,
+      ).map((e) => e.id),
+    ).toEqual(['leader', 'bad', 'ok']);
+  });
 
   it('shows only running subagents while keeping leader as the detail fallback', () => {
     const agents = [
@@ -395,5 +420,29 @@ describe('transcriptRowsForTerminal', () => {
     // 40 rows: chrome=14, available=26. Inline caps at 24; fullscreen uses all 26.
     expect(transcriptRowsForTerminal(40, 3, true)).toBe(26);
     expect(transcriptRowsForTerminal(40, 3)).toBe(24);
+  });
+});
+
+describe('F3 row presentation', () => {
+  it('leads a running row with its pressure and a finished row with its outcome', () => {
+    expect(rosterGlyph(entry({ id: 'r', status: 'running', ctxPct: 0.95 })).icon).toBe('◆');
+    expect(rosterGlyph(entry({ id: 'r', status: 'running' })).icon).toBe('●');
+    expect(rosterGlyph(entry({ id: 'f', status: 'failed' })).icon).toBe('✗');
+    expect(rosterGlyph(entry({ id: 's', status: 'success' })).icon).toBe('✓');
+  });
+
+  it('names an external ACP worker instead of an unknown model', () => {
+    expect(formatAgentModel(entry({ id: 'c', status: 'running', provider: 'acp' }))).toBe(
+      'external agent (ACP)',
+    );
+    expect(
+      formatAgentModel(entry({ id: 'o', status: 'running', provider: 'openai', model: 'x/gpt-5' })),
+    ).toBe('openai:gpt-5');
+  });
+
+  it('prints cost in cents once there are any', () => {
+    expect(fmtCost(0.6912)).toBe('$0.69');
+    expect(fmtCost(0.0042)).toBe('$0.0042');
+    expect(fmtCost(0)).toBe('$0');
   });
 });

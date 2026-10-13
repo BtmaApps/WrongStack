@@ -3,7 +3,10 @@ import type { FleetChatVerbosity } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
 import { useCallback, useEffect, useRef } from 'react';
 import type { Action } from '../app-reducer.js';
-import { formatSubagentCompletionText } from './subagent-history-format.js';
+import {
+  formatSubagentCompletionText,
+  formatSubagentFailureReason,
+} from './subagent-history-format.js';
 import { useFleetGenerationGate } from './use-fleet-generation-gate.js';
 
 const STREAM_COLORS = ['cyan', 'magenta', 'yellow', 'green', 'blue'];
@@ -205,7 +208,7 @@ export function useSubagentEvents(
       if (!gate.isLive(e.subagentId)) return;
       seen.add(e.subagentId);
       const l = lbl(e.subagentId);
-      dispatch({ type: 'fleetStart', id: e.subagentId, taskId: e.taskId });
+      dispatch({ type: 'fleetStart', id: e.subagentId, taskId: e.taskId, task: e.description });
       if (mode() === 'full') {
         const desc = e.description ? ` — ${e.description.slice(0, 80)}` : '';
         dispatch({
@@ -233,7 +236,7 @@ export function useSubagentEvents(
         status: e.status,
         iterations: e.iterations,
         toolCalls: e.toolCalls,
-        failureReason: errKind,
+        failureReason: formatSubagentFailureReason(e.error),
       });
       const icon =
         e.status === 'success'

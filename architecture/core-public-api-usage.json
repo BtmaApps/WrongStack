@@ -24,8 +24,8 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 272,
-      "typeOnly": 105,
+      "files": 273,
+      "typeOnly": 106,
       "runtimeOrMixed": 233
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
@@ -4054,6 +4054,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/tui/src/components/agents-monitor-constants.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/src/components/agents-monitor-parts.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

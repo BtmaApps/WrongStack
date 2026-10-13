@@ -132,3 +132,13 @@ export function formatDelegateSuccessText(input: {
   }
   return `done · ${stats}`;
 }
+
+/**
+ * Why a subagent's task failed, for the F3 detail: the error's own message
+ * (it names the cause, e.g. a spent quota and when it resets), else its kind.
+ */
+export function formatSubagentFailureReason(
+  error: { kind?: string | undefined; message?: string | undefined } | undefined,
+): string | undefined {
+  return error?.message?.trim() || error?.kind || undefined;
+}

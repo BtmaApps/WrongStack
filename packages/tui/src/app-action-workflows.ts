@@ -27,7 +27,7 @@ export type AppActionWorkflows =
       model?: string | undefined;
       transcriptPath?: string | undefined;
     }
-  | { type: 'fleetStart'; id: string; taskId?: string | undefined }
+  | { type: 'fleetStart'; id: string; taskId?: string | undefined; task?: string | undefined }
   | { type: 'fleetDelta'; id: string; text: string }
   | { type: 'fleetMessage'; id: string; text: string }
   | {
@@ -57,6 +57,8 @@ export type AppActionWorkflows =
       toolCalls: number;
       /** Human-readable failure reason, e.g. "provider_auth", "rate_limit", "timeout". */
       failureReason?: string | undefined;
+      /** The task that ended, when the start event did not carry it. */
+      task?: string | undefined;
     }
   | { type: 'fleetRemove'; id: string }
   | {

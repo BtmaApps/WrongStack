@@ -42,6 +42,12 @@ export const STATUS: Record<FleetEntry['status'], { icon: string; color: string 
 };
 
 export const IDLE_HIDE_MS = 60_000;
+/**
+ * How long a finished agent stays listed in F3 after its task ends: long
+ * enough to read why it failed or what it returned, short enough that the
+ * roster does not fill with history.
+ */
+export const FINISHED_KEEP_MS = 3 * 60_000;
 export const EMPTY_AGENTS_CLOSE_DELAY_MS = 7_500;
 export const TRANSCRIPT_ROWS = 10;
 export const TRANSCRIPT_FETCH_LIMIT = 500;

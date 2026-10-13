@@ -166,6 +166,28 @@ describe('reduceFleetState', () => {
     expect(result!.fleet['a1']!.streamingText).toBe('');
   });
 
+  it('fleetStart: records the task, and a new task clears the last outcome', () => {
+    const state = stubState({
+      fleet: {
+        a1: makeEntry('a1', {
+          status: 'failed',
+          failureReason: 'quota spent',
+          endedAt: 500,
+          task: 'old task',
+        }) as never,
+      },
+    });
+    const result = reduceFleetState(state, { type: 'fleetStart', id: 'a1', task: ' fix the bug ' });
+    expect(result!.fleet['a1']).toMatchObject({ status: 'running', task: 'fix the bug' });
+    expect(result!.fleet['a1']!.failureReason).toBeUndefined();
+    expect(result!.fleet['a1']!.endedAt).toBeUndefined();
+    // Already running with nothing new: no re-render.
+    const again = stubState({ fleet: { a1: { ...result!.fleet['a1']! } } });
+    expect(reduceFleetState(again, { type: 'fleetStart', id: 'a1', task: 'fix the bug' })).toBe(
+      again,
+    );
+  });
+
   it('fleetStart: returns state unchanged for unknown id', () => {
     const state = stubState();
     expect(reduceFleetState(state, { type: 'fleetStart', id: 'unknown' })).toBe(state);
@@ -304,6 +326,22 @@ describe('reduceFleetState', () => {
       failureReason: 'timeout',
     });
     expect(result!.fleet['a1']!.failureReason).toBe('timeout');
+  });
+
+  it('fleetDone: stamps when the task ended and keeps the task it ran', () => {
+    const state = stubState({ fleet: { a1: makeEntry('a1', { status: 'running' }) as never } });
+    const before = Date.now();
+    const result = reduceFleetState(state, {
+      type: 'fleetDone',
+      id: 'a1',
+      status: 'success',
+      iterations: 1,
+      toolCalls: 2,
+      task: 'review the diff',
+    });
+    expect(result!.fleet['a1']!.endedAt).toBeGreaterThanOrEqual(before);
+    // The completion carries the task when the start event did not.
+    expect(result!.fleet['a1']!.task).toBe('review the diff');
   });
 
   // ── fleetRemove ───────────────────────────────────────────────────────

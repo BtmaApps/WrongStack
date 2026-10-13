@@ -5,6 +5,7 @@ import {
   formatHistoryDuration,
   formatModelRef,
   formatSubagentCompletionText,
+  formatSubagentFailureReason,
   formatSubagentFallbackText,
   formatSubagentModelFailedText,
   shortenTaskPreview,
@@ -137,5 +138,20 @@ describe('formatDelegateSuccessText', () => {
         durationMs: 12_000,
       }),
     ).toBe('done · 3 iter · 5 tools · 12s');
+  });
+});
+
+describe('formatSubagentFailureReason', () => {
+  it('says what the error says, else names its kind', () => {
+    expect(
+      formatSubagentFailureReason({
+        kind: 'provider_quota',
+        message: 'claude-code: usage quota spent — resets 3pm',
+      }),
+    ).toBe('claude-code: usage quota spent — resets 3pm');
+    expect(formatSubagentFailureReason({ kind: 'budget_timeout', message: '  ' })).toBe(
+      'budget_timeout',
+    );
+    expect(formatSubagentFailureReason(undefined)).toBeUndefined();
   });
 });

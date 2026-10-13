@@ -110,7 +110,13 @@ export function reduceFleetState(state: State, action: Action): State | null {
     case 'fleetStart': {
       const cur = state.fleet[action.id];
       if (!cur) return state;
-      if (cur.status === 'running' && cur.streamingText === '' && cur.budgetWarning === undefined) {
+      const task = action.task?.trim() || cur.task;
+      if (
+        cur.status === 'running' &&
+        cur.streamingText === '' &&
+        cur.budgetWarning === undefined &&
+        task === cur.task
+      ) {
         return state;
       }
       return {
@@ -123,6 +129,9 @@ export function reduceFleetState(state: State, action: Action): State | null {
             streamingText: '',
             budgetWarning: undefined,
             startedAt: Date.now(),
+            task,
+            endedAt: undefined,
+            failureReason: undefined,
           },
         },
       };
@@ -218,7 +227,9 @@ export function reduceFleetState(state: State, action: Action): State | null {
             currentTool: undefined,
             budgetWarning: undefined,
             lastEventAt: Date.now(),
+            endedAt: Date.now(),
             failureReason: action.failureReason,
+            task: cur.task ?? (action.task?.trim() || undefined),
           },
         },
       };

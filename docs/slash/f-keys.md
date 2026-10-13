@@ -31,6 +31,18 @@ overridden by that TUI picker and should not be confused with `/f3`.
 | F11 | coordinator monitor |
 | F12 | Kanban board panel |
 
+## F3 — agents live monitor
+
+The roster lists LEADER, every running subagent, and — under a `finished`
+heading — subagents whose task ended in the last 3 minutes, so a failure stays
+readable after the fact. A running row leads with its pressure (`○` calm, `●`
+busy, `▲` hot, `◆` critical), a finished row with its outcome (`✓ ✗ ⏱ ⊘`).
+The selected agent (`›`, ↑↓ to move) shows its model (or `external agent
+(ACP)` for a delegated worker such as Claude Code), the task it was given,
+iterations, tool calls, context, cost and time, its current action or why it
+failed, its recent tools, and its transcript (PgUp/PgDn). The panel closes on
+its own once nothing is left to show.
+
 ## Notes
 
 - Panels are a TUI feature. In the plain REPL (or headless mode) the command

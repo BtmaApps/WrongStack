@@ -1,15 +1,16 @@
 import type { Director, FleetEvent } from '@wrongstack/core/coordination';
 import type { FleetChatVerbosity } from '@wrongstack/core/types';
+import { stripNextStepsBlock } from '@wrongstack/tools/next-steps';
 import { useEffect, useRef } from 'react';
 import type { Action, State } from '../app-reducer.js';
-import { stripNextStepsBlock } from '@wrongstack/tools/next-steps';
+import { MAX_ASSISTANT_STREAM_RETAINED_CHARS, retainStreamTail } from '../reducers/helpers.js';
 import { formatToolSummary, type ToolAgg } from './fleet-chat-coalescer.js';
 import {
+  formatSubagentFailureReason,
   formatSubagentFallbackText,
   formatSubagentModelFailedText,
 } from './subagent-history-format.js';
 import { useFleetGenerationGate } from './use-fleet-generation-gate.js';
-import { MAX_ASSISTANT_STREAM_RETAINED_CHARS, retainStreamTail } from '../reducers/helpers.js';
 
 // Fleet streams can produce deltas from many workers at once. A 150 ms flush
 // made a 10-agent run schedule several full App/Ink renders per second. Keep
@@ -539,6 +540,8 @@ export function useDirectorFleetBridge({
         status: payload.result.status,
         iterations: payload.result.iterations,
         toolCalls: payload.result.toolCalls,
+        failureReason: formatSubagentFailureReason(payload.result.error),
+        task: payload.task.description,
       });
       dispatch(fleetCostAction());
       // Commit any unflushed assistant text / tool summary for this subagent

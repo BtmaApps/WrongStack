@@ -4,7 +4,8 @@ import type { FleetEntry } from '../app-state.js';
 import { theme } from '../theme.js';
 import {
   EMPTY_AGENTS_CLOSE_DELAY_MS,
-  IDLE_HIDE_MS,
+  FINISHED_KEEP_MS,
+  STATUS,
   TRANSCRIPT_GLYPHS,
   TRANSCRIPT_ROWS,
 } from './agents-monitor-constants.js';
@@ -15,27 +16,72 @@ export function isLeaderEntry(entry: FleetEntry): boolean {
   return entry.id === 'leader' || entry.name === 'LEADER';
 }
 
+export function isFinishedEntry(entry: FleetEntry): boolean {
+  return (
+    entry.status === 'success' ||
+    entry.status === 'failed' ||
+    entry.status === 'timeout' ||
+    entry.status === 'stopped'
+  );
+}
+
 /**
- * Select the agents the live monitor should render. Only actively-running
- * subagents are detail-worthy; idle workers are retained by the coordinator for
- * reuse but should not keep the TUI crowded after their task closes. LEADER
- * stays visible while a subagent is running (or while LEADER itself is running)
- * so F3 always has a detail card fallback.
+ * Select the agents the live monitor should render: LEADER, then running
+ * subagents in caller order, then subagents that finished within `keepMs`,
+ * newest first — so a failure stays readable after the fact. Idle workers are
+ * retained by the coordinator for reuse but are not shown. LEADER stays
+ * visible while anything else is (or while it runs itself) so F3 always has
+ * a detail card fallback.
  */
 export function selectLiveAgents(
   all: FleetEntry[],
-  _now: number,
-  _idleHideMs: number = IDLE_HIDE_MS,
+  now: number,
+  keepMs: number = FINISHED_KEEP_MS,
 ): FleetEntry[] {
   const leader = all.find(isLeaderEntry);
-  const activeSubagents = all.filter(
-    (entry) => !isLeaderEntry(entry) && entry.status === 'running',
-  );
+  const running = all.filter((entry) => !isLeaderEntry(entry) && entry.status === 'running');
+  const finished = all
+    .filter(
+      (entry) =>
+        !isLeaderEntry(entry) &&
+        isFinishedEntry(entry) &&
+        now - (entry.endedAt ?? entry.lastEventAt) <= keepMs,
+    )
+    .sort((a, b) => (b.endedAt ?? b.lastEventAt) - (a.endedAt ?? a.lastEventAt));
   const showLeader =
-    leader !== undefined && (leader.status !== 'idle' || activeSubagents.length > 0);
-  return all.filter((entry) =>
-    isLeaderEntry(entry) ? showLeader : activeSubagents.some((active) => active.id === entry.id),
-  );
+    leader !== undefined && (leader.status !== 'idle' || running.length > 0 || finished.length > 0);
+  return [...(showLeader ? [leader] : []), ...running, ...finished];
+}
+
+/**
+ * The one glyph a roster row leads with: a running agent's pressure (calm,
+ * busy, hot, critical), otherwise how its task ended.
+ */
+export function rosterGlyph(entry: FleetEntry): { icon: string; color: string } {
+  if (entry.status === 'running') {
+    const risk = riskMeta(agentRisk(entry));
+    return { icon: risk.icon, color: risk.color };
+  }
+  return STATUS[entry.status];
+}
+
+/** Where the agent runs: `provider:model`, or what an external ACP worker is. */
+export function formatAgentModel(entry: FleetEntry): string {
+  if (entry.provider === 'acp')
+    return entry.model ? `ACP · ${entry.model}` : 'external agent (ACP)';
+  if (!entry.model && !entry.provider) return '';
+  const model = entry.model
+    ? entry.model.includes('/')
+      ? entry.model.slice(entry.model.lastIndexOf('/') + 1)
+      : entry.model
+    : '?';
+  return entry.provider ? `${entry.provider}:${model}` : model;
+}
+
+/** Dollars at a precision that reads: cents once there are any, else four places. */
+export function fmtCost(usd: number): string {
+  if (!Number.isFinite(usd) || usd <= 0) return '$0';
+  return usd >= 0.01 ? `$${usd.toFixed(2)}` : `$${usd.toFixed(4)}`;
 }
 
 export function fmtTokens(n: number): string {
