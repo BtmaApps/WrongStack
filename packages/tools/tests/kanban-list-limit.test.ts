@@ -25,7 +25,7 @@ import { handleKanbanBoardAction } from '../src/kanban-board-actions.js';
 const ctx = { projectRoot: 'C:/p', cwd: 'C:/p' } as never;
 
 async function run(input: Record<string, unknown>) {
-  return (await handleKanbanBoardAction('C:/p', input as never, ctx)) as {
+  return (await handleKanbanBoardAction('C:/p', input as never, ctx)) as unknown as {
     message: string;
     stats?: Record<string, unknown>;
     boards?: { id: string }[];

@@ -927,7 +927,7 @@ describe('ACPSession', () => {
 
     const plain = await startSession();
     expect(plain.canSteer()).toBe(false);
-    await reply(lastTransport(), 'session/load', plain.loadSession('s0'), {});
+    await reply(lastTransport(), 'session/load', plain.loadSession('s0' as never), {});
     await expect(plain.steer('hi')).resolves.toBe('unsupported');
     expect(lastTransport().sent.some((m) => m.method === '_session/steering')).toBe(false);
     await plain.close();
@@ -941,7 +941,7 @@ describe('ACPSession', () => {
     expect(session.canSteer()).toBe(true);
     // No session yet: nothing to steer.
     await expect(session.steer('early')).resolves.toBe('unsupported');
-    await reply(t, 'session/load', session.loadSession('s1'), {});
+    await reply(t, 'session/load', session.loadSession('s1' as never), {});
 
     await expect(
       reply(t, '_session/steering', session.steer('use the index'), { outcome: 'injected' }),
