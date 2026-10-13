@@ -88,11 +88,18 @@ export class TextBlocks {
   }
 }
 
-const OUTPUT_PREVIEW_CHARS = 400;
+/**
+ * The card's output. No tool_result follows for these calls, so this is all a
+ * surface shows: longer than the usual ~400-char event preview.
+ */
+const OUTPUT_PREVIEW_CHARS = 4_000;
 
-function outputText(raw: Record<string, unknown> | undefined): string | undefined {
-  if (!raw) return undefined;
-  const text = typeof raw.output === 'string' ? raw.output : JSON.stringify(raw);
+function outputText(call: ACPCapturedToolCall): string | undefined {
+  const raw = call.rawOutput;
+  const text =
+    call.output ??
+    (raw ? (typeof raw.output === 'string' ? raw.output : JSON.stringify(raw)) : undefined);
+  if (text === undefined) return undefined;
   return text.length > OUTPUT_PREVIEW_CHARS ? `${text.slice(0, OUTPUT_PREVIEW_CHARS)}…` : text;
 }
 
@@ -128,7 +135,7 @@ export class ToolCardRelay {
     }
     if ((call.status === 'completed' || call.status === 'failed') && !this.settled.has(id)) {
       this.settled.add(id);
-      const output = outputText(call.rawOutput);
+      const output = outputText(call);
       this.events.emit('tool.executed', {
         sessionId: this.meta.sessionId,
         agentId: 'leader',
@@ -138,6 +145,7 @@ export class ToolCardRelay {
         ok: call.status === 'completed',
         settlement: call.status === 'completed' ? 'completed' : 'failed',
         input: call.rawInput,
+        outsideConversation: true,
         ...(output !== undefined ? { output, outputBytes: Buffer.byteLength(output) } : {}),
       });
     }

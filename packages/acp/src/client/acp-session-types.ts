@@ -73,6 +73,12 @@ export interface ACPCapturedToolCall {
   status: ToolCallStatus;
   rawOutput?: Record<string, unknown> | undefined;
   rawInput?: Record<string, unknown> | undefined;
+  /**
+   * What the call returned, as text: its `content` text blocks, else a
+   * string or text-block `rawOutput`. Claude's adapter sends the result in
+   * those shapes, which `rawOutput` (an object only) never held.
+   */
+  output?: string | undefined;
 }
 
 export interface ACPSessionRunResult {

@@ -360,6 +360,47 @@ describe('useProviderEventBridge', () => {
     unmount();
   });
 
+  it('renders a call run outside the conversation at once: no tool_result will follow', async () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    // Observable state, as in a real session: an ordinary call would wait on it.
+    const state = { messages: [], onChange: () => () => {} };
+    const agent = { ctx: { session: { id: 'session-1' }, todos: [], state } };
+    const { unmount } = renderHook(() => {
+      useProviderEventBridge({
+        events,
+        agent: agent as never,
+        dispatch,
+        streamingTextRef: useRef(''),
+        streamSegmentsRef: useRef<Array<{ kind: 'assistant' | 'thinking'; text: string }>>([]),
+        pendingDeltaRef: useRef(''),
+        flushTimerRef: useRef<ReturnType<typeof setTimeout> | null>(null),
+        sessionGenerationRef: useRef(1),
+        activeRunGenerationRef: useRef(1),
+        assistantCommittedThisRunRef: useRef(false),
+        setMemoryContextMonitor: vi.fn(),
+      });
+    });
+
+    await act(async () => {
+      events.emit('tool.executed', {
+        id: 'acp-tc1',
+        name: 'Read src/a.ts',
+        durationMs: 5,
+        ok: true,
+        output: 'line 1',
+        outsideConversation: true,
+      });
+      await Promise.resolve();
+    });
+
+    const toolAction = dispatch.mock.calls
+      .map(([action]) => action)
+      .find((action) => action.type === 'addEntry' && action.entry.kind === 'tool');
+    expect(toolAction?.entry).toMatchObject({ name: 'Read src/a.ts', ok: true, output: 'line 1' });
+    unmount();
+  });
+
   // ── Memory event session filtering ──────────────────────────────
   // Regression: memory lifecycle events from other sessions/agents
   // were appearing in the leader's chat history because four handlers

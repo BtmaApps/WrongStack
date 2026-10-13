@@ -538,7 +538,12 @@ describe('ACPSession', () => {
       rawOutput: [{ type: 'text', text: 'raw' }],
       content: [{ type: 'content', content: { type: 'text', text: 'line 1\nline 2' } }],
     });
-    update({ sessionUpdate: 'tool_call', toolCallId: 'b1', title: 'git status', status: 'pending' });
+    update({
+      sessionUpdate: 'tool_call',
+      toolCallId: 'b1',
+      title: 'git status',
+      status: 'pending',
+    });
     update({ sessionUpdate: 'tool_call_update', toolCallId: 'b1', rawOutput: 'clean' });
     update({ sessionUpdate: 'tool_call_update', toolCallId: 'b1', status: 'completed' });
     t.respond(promptMsg!.id!, 'session/prompt', { stopReason: 'end_turn' });

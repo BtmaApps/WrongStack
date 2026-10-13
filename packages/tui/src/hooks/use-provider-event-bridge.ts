@@ -306,8 +306,14 @@ export function useProviderEventBridge({
             name: e.name,
           });
         };
-        const canonicalOutput = fullToolResultFromState(agent, e.id);
-        if (canonicalOutput !== undefined) {
+        const canonicalOutput = e.outsideConversation
+          ? undefined
+          : fullToolResultFromState(agent, e.id);
+        if (e.outsideConversation) {
+          // No tool_result will reach the conversation (an ACP leader ran
+          // the call itself): waiting for one would never render the card.
+          addToolEntry(e.output);
+        } else if (canonicalOutput !== undefined) {
           addToolEntry(canonicalOutput);
         } else if (e.id !== undefined && typeof state?.onChange === 'function') {
           // Core persists the session-event batch before appendMessage(), so a

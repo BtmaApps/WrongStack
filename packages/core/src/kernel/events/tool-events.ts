@@ -301,6 +301,12 @@ export interface ToolEventMap {
     writeTargets?: string[] | undefined;
     output?: string | undefined;
     /**
+     * The call ran outside this conversation (an ACP agent leading the
+     * session runs its own tools): no tool_result will be appended, so
+     * `output` is all a surface gets and it renders the card at once.
+     */
+    outsideConversation?: boolean | undefined;
+    /**
      * Legacy inline `--- SAGE: … (Memory Injector) ---` content split off
      * `output` before the preview cap. Current retrievals travel through
      * `memory.injector_run` and provider memory-evidence blocks instead.

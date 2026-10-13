@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-13T19:50:47.179Z
+**Generated:** 2026-10-13T19:52:01.037Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4951 |
-| Production source lines | 1098537 |
+| Production source lines | 1098584 |
 | Test files | 4340 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16314 |
@@ -91,6 +91,7 @@ None.
 | 766 | `packages/tools/src/todo.ts` |
 | 766 | `packages/webui/src/components/MessageBubble/index.tsx` |
 | 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
+| 764 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 763 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
 | 762 | `packages/core/src/coordination/fleet-manager.ts` |
 | 762 | `packages/core/src/plugin/api.ts` |
@@ -105,7 +106,6 @@ None.
 | 759 | `packages/tui/src/components/context-panel-sections.tsx` |
 | 758 | `packages/core/src/registry/tool-registry.ts` |
 | 758 | `packages/providers/src/openai-codex.ts` |
-| 758 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 757 | `packages/techstack/src/adapters/npm.ts` |
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
 | 757 | `packages/webui/src/components/ChimeraReviewsView.tsx` |

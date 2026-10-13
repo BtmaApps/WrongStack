@@ -116,6 +116,26 @@ export function handleAcpSessionUpdate(
   }
 }
 
+/** A tool call update's result text: its `content` text blocks, else a text `rawOutput`. */
+function toolOutputText(u: { [k: string]: unknown }): string | undefined {
+  const joined = (blocks: unknown[]): string =>
+    blocks
+      .map(extractText)
+      .filter((text) => text.length > 0)
+      .join('\n');
+  if (Array.isArray(u.content)) {
+    const text = joined(
+      (u.content as ToolCallContent[]).map((c) =>
+        c && typeof c === 'object' && c.type === 'content' ? c.content : undefined,
+      ),
+    );
+    if (text) return text;
+  }
+  if (typeof u.rawOutput === 'string') return u.rawOutput || undefined;
+  if (Array.isArray(u.rawOutput)) return joined(u.rawOutput) || undefined;
+  return undefined;
+}
+
 function captureToolCall(
   u: { [k: string]: unknown },
   isNew: boolean,
@@ -135,6 +155,7 @@ function captureToolCall(
         : (prev?.status ?? (isNew ? 'pending' : 'in_progress')),
     rawInput: isRecord(u.rawInput) ? u.rawInput : prev?.rawInput,
     rawOutput: isRecord(u.rawOutput) ? u.rawOutput : prev?.rawOutput,
+    output: toolOutputText(u) ?? prev?.output,
   };
   scratch.toolCalls.set(toolCallId, record);
   if (scratch.text) scratch.messageBreak = true;

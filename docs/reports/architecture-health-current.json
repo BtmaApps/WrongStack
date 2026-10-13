@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T19:50:47.179Z",
+  "generatedAt": "2026-10-13T19:52:01.037Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4951,
     "testFiles": 4340,
-    "sourceLines": 1098537,
+    "sourceLines": 1098584,
     "workspaceEdges": 137,
     "moduleEdges": 16314,
     "nonCommandSlashImports": 0,
@@ -27378,6 +27378,11 @@
       "relativeImports": 12
     },
     {
+      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "lines": 764,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "lines": 763,
       "relativeImports": 1
@@ -27446,11 +27451,6 @@
       "file": "packages/providers/src/openai-codex.ts",
       "lines": 758,
       "relativeImports": 26
-    },
-    {
-      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
-      "lines": 758,
-      "relativeImports": 10
     },
     {
       "file": "packages/techstack/src/adapters/npm.ts",
