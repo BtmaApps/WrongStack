@@ -285,4 +285,27 @@ describe('auditTool', () => {
     const result = await auditTool.execute({}, makeCtx());
     expect(result.summary).toBe('No vulnerabilities found');
   });
+
+  it('parses Yarn classic NDJSON auditAdvisory lines', async () => {
+    const ndjson = [
+      JSON.stringify({
+        type: 'auditAdvisory',
+        data: {
+          advisory: {
+            id: 42,
+            severity: 'high',
+            module_name: 'yarn-pkg',
+            title: 'Yarn Prototype Pollution',
+            url: 'https://example.com/42',
+          },
+        },
+      }),
+      JSON.stringify({ type: 'auditSummary', data: { vulnerabilities: { high: 1 } } }),
+    ].join('\n');
+    spawnStreamMocks.spawnStream.mockImplementation(fakeSpawnStream(ndjson, 1));
+    const result = await auditTool.execute({}, makeCtx(), makeOpts());
+    expect(result.total).toBe(1);
+    expect(result.vulnerabilities[0]?.package).toBe('yarn-pkg');
+    expect(result.vulnerabilities[0]?.severity).toBe('high');
+  });
 });

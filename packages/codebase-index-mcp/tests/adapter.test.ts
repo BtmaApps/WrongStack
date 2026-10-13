@@ -1,3 +1,4 @@
+import { codebaseSearchTool } from '@wrongstack/tools/codebase-index';
 import { describe, expect, it, vi } from 'vitest';
 import { createCodebaseIndexMcpServer, createCodebaseIndexMcpToolHost } from '../src/adapter.js';
 
@@ -202,6 +203,94 @@ describe('createCodebaseIndexMcpToolHost', () => {
       content: 'daemon failed',
       isError: true,
     });
+  });
+
+  it('validates symbol graph file, codebase_index force/langs, builtin.validate, trimmed graph filters, post-await aborts, and non-Error throws', async () => {
+    const fileGraph = vi.fn().mockResolvedValue({ ok: true });
+    const symbolGraph = vi.fn().mockResolvedValue({ ok: true });
+    const executeTool = vi.fn().mockRejectedValue('raw string failure');
+    const host = createCodebaseIndexMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: {
+        executeTool,
+        fileGraph,
+        symbolGraph,
+      },
+    });
+
+    // S13-M1: codebase_symbol_graph missing/blank file
+    await expect(host.callTool('codebase_symbol_graph', { file: '   ' })).resolves.toEqual({
+      content: 'codebase_symbol_graph requires a non-empty string "file"',
+      isError: true,
+    });
+
+    // S13-M2 & S13-M3: codebase_index force & langs validation
+    await expect(host.callTool('codebase_index', { force: 'yes' })).resolves.toEqual({
+      content: 'codebase_index "force" must be a boolean',
+      isError: true,
+    });
+    await expect(host.callTool('codebase_index', { langs: [123] })).resolves.toEqual({
+      content: 'codebase_index "langs" must be an array of language strings',
+      isError: true,
+    });
+
+    // S13-M4: builtin.validate(args) failure stops before executeTool is called
+    const prevValidate = codebaseSearchTool.validate;
+    (codebaseSearchTool as { validate?: unknown }).validate = () => ['limit must be >= 1'];
+    try {
+      const invalidRes = await host.callTool('codebase_search', { query: 'foo', limit: -5 });
+      expect(invalidRes).toEqual({
+        content: 'limit must be >= 1',
+        isError: true,
+      });
+      expect(executeTool).not.toHaveBeenCalled();
+    } finally {
+      (codebaseSearchTool as { validate?: unknown }).validate = prevValidate;
+    }
+
+    // S13-M5 & S13-M6: .trim() on packageFilter and fileFilter
+    await host.callTool('codebase_file_graph', { package: '  @wrongstack/core  ' });
+    expect(fileGraph).toHaveBeenCalledWith(
+      { projectRoot: 'C:/project', packageFilter: '@wrongstack/core' },
+      expect.any(AbortSignal),
+    );
+    await host.callTool('codebase_symbol_graph', { file: '  src/index.ts  ' });
+    expect(symbolGraph).toHaveBeenCalledWith(
+      { projectRoot: 'C:/project', fileFilter: 'src/index.ts' },
+      expect.any(AbortSignal),
+    );
+
+    // S13-M10: non-Error thrown value formatted via String(error)
+    await expect(host.callTool('codebase_stats', {})).resolves.toEqual({
+      content: 'raw string failure',
+      isError: true,
+    });
+
+    // S13-M7, S13-M8, S13-M9: post-await signal.throwIfAborted() on package/file/symbol graphs
+    for (const [toolName, toolArgs] of [
+      ['codebase_package_graph', {}],
+      ['codebase_file_graph', { package: 'pkg' }],
+      ['codebase_symbol_graph', { file: 'f.ts' }],
+    ] as const) {
+      const ctrl = new AbortController();
+      const abortAfterResolve = vi.fn(async () => {
+        ctrl.abort(new Error(`aborted:${toolName}`));
+        return { graph: true };
+      });
+      const graphHost = createCodebaseIndexMcpToolHost('C:/project', {
+        dependencies: {
+          packageGraph: abortAfterResolve,
+          fileGraph: abortAfterResolve,
+          symbolGraph: abortAfterResolve,
+        },
+      });
+      await expect(
+        graphHost.callTool(toolName, toolArgs, { signal: ctrl.signal }),
+      ).resolves.toEqual({
+        content: `aborted:${toolName}`,
+        isError: true,
+      });
+    }
   });
 });
 

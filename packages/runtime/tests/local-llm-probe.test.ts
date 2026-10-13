@@ -269,4 +269,58 @@ describe('probeLocalLlm', () => {
 
     expect(result.detail).toBe('parse failed');
   });
+
+  it('returns no_base_url when baseUrl is empty or whitespace-only', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const result = await probeLocalLlm({
+      baseUrl: '   ',
+      apiKey: undefined,
+      noAuth: true,
+      scrubber,
+      fetchImpl,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      status: 'no_base_url',
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('falls back to 5000ms timeout when timeoutMs <= 0, preserves ?query/#hash on baseUrl, classifies TimeoutError as timeout, and extracts bare string model IDs', async () => {
+    const fetchOk = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        data: ['bare-model-1', '  bare-model-2  ', ''],
+      }),
+    );
+
+    const okRes = await probeLocalLlm({
+      baseUrl: 'http://localhost:11434/v1/?api-version=2026#section',
+      apiKey: undefined,
+      noAuth: true,
+      scrubber,
+      fetchImpl: fetchOk,
+      timeoutMs: 0,
+    });
+    expect(fetchOk.mock.calls[0]?.[0]).toBe(
+      'http://localhost:11434/v1/models?api-version=2026#section',
+    );
+    expect(okRes.modelIds).toEqual(['bare-model-1', 'bare-model-2']);
+
+    const fetchTimeout = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(new DOMException('timed out', 'TimeoutError'));
+    const timeoutRes = await probeLocalLlm({
+      baseUrl: 'http://localhost:11434/v1',
+      apiKey: undefined,
+      noAuth: true,
+      scrubber,
+      fetchImpl: fetchTimeout,
+      timeoutMs: -50,
+    });
+    expect(timeoutRes).toMatchObject({
+      ok: false,
+      status: 'timeout',
+      detail: '> 3000ms',
+    });
+  });
 });

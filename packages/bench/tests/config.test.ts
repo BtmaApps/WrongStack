@@ -18,17 +18,19 @@ describe('parseBenchConfig', () => {
     expect(cfg.timeoutMs).toBe(600_000);
   });
 
-  it('honors explicit labels and limits', () => {
+  it('honors explicit labels, repeats, and floors fractional positive limits', () => {
     const cfg = parseBenchConfig({
-      maxIterations: 20,
+      maxIterations: 20.9,
       concurrency: 2,
       timeoutMs: 120_000,
+      repeats: 3,
       cells: [{ label: 'opus', provider: 'anthropic', model: 'claude-opus-4-8' }],
     });
     expect(cfg.cells[0]?.label).toBe('opus');
     expect(cfg.maxIterations).toBe(20);
     expect(cfg.concurrency).toBe(2);
     expect(cfg.timeoutMs).toBe(120_000);
+    expect(cfg.repeats).toBe(3);
   });
 
   it('rejects an empty cell list', () => {

@@ -129,12 +129,38 @@ describe('ACP TrustBoundary adapter', () => {
     expect(coverage.subjectFor(commandUnknown).attributes).toEqual({ toolKind: null });
 
     expect(
+      coverage.pickOption(
+        [
+          { optionId: 'always', name: 'Always', kind: 'allow_always' },
+          { optionId: 'once', name: 'Once', kind: 'allow_once' },
+        ],
+        true,
+      ),
+    ).toEqual({ outcome: 'selected', optionId: 'once' });
+    expect(
+      coverage.pickOption(
+        [
+          { optionId: 'never', name: 'Never', kind: 'reject_always' },
+          { optionId: 'reject-once', name: 'Reject Once', kind: 'reject_once' },
+        ],
+        false,
+      ),
+    ).toEqual({ outcome: 'selected', optionId: 'reject-once' });
+    expect(
       coverage.pickOption([{ optionId: 'always', name: 'Always', kind: 'allow_always' }], true),
     ).toEqual({ outcome: 'selected', optionId: 'always' });
     expect(
       coverage.pickOption([{ optionId: 'never', name: 'Never', kind: 'reject_always' }], false),
     ).toEqual({ outcome: 'selected', optionId: 'never' });
     expect(coverage.pickOption([], true)).toEqual({ outcome: 'cancelled' });
+
+    const searchReq = request({ path: '/x' });
+    searchReq.toolCall.kind = 'search';
+    expect(coverage.capabilityFor(searchReq)).toBe('filesystem.read');
+
+    const emptySession = toTrustBoundaryRequest(request({ sessionId: '' }, 'edit'), {});
+    expect(emptySession.actor.sessionId).toBeUndefined();
+    expect(emptySession.scope.sessionId).toBeUndefined();
   });
 
   it('uses actor session fallback, auth context, and detects cancellation after evaluation', async () => {

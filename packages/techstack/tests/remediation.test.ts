@@ -231,11 +231,24 @@ describe('generateUpgradePlan', () => {
     expect(plan.warning).toContain('explicitly approve');
   });
 
-  it('returns empty plan for clean snapshot', () => {
+  it('returns empty plan for clean snapshot and falls back to resolvable/wanted when latestStable is undefined', () => {
     const cleanSnapshot: Snapshot = { ...SNAPSHOT, findings: [] };
     const plan = generateUpgradePlan(cleanSnapshot);
     expect(plan.items).toHaveLength(0);
     expect(plan.summary.total).toBe(0);
+
+    const fallbackDep: DependencyObservation = {
+      ...DEPS[0]!,
+      id: 'dep-resolvable',
+      latestStable: undefined,
+      resolvable: '4.18.3',
+    };
+    const fallbackPlan = generateUpgradePlan({
+      ...SNAPSHOT,
+      dependencies: [fallbackDep],
+      findings: [{ ...FINDINGS[0]!, dependencyId: 'dep-resolvable' }],
+    });
+    expect(fallbackPlan.items[0]?.targetVersion).toBe('4.18.3');
   });
 });
 

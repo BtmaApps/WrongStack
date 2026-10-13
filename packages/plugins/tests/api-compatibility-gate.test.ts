@@ -317,6 +317,57 @@ describe('api-compatibility-gate plugin', () => {
       expect.any(Object),
     );
   });
+
+  it('supports ? glob wildcards, package.json same-dirname/stem entry matching, aliased exports, and default exports', async () => {
+    // 1) ? glob wildcard + aliased export (`export { internalFoo as publicBar }`) + `export default`
+    mockGitVersion('export { internalFoo as publicBar };\nexport default function main() {}\n');
+    vi.mocked(readFile).mockResolvedValue('export const other = 1;\n');
+
+    const api = makeApi({
+      extensions: {
+        'api-compatibility-gate': {
+          enabled: true,
+          entryPointPatterns: ['src/inde?.ts'],
+        },
+      },
+    });
+    plugin.setup(api as never);
+    const hook = getHook(api);
+    const res1 = await hook({
+      toolName: 'edit',
+      toolInput: { path: 'src/index.ts' },
+      toolResult: { content: '', isError: false },
+    });
+    expect(res1?.additionalContext).toContain('publicBar');
+    expect(res1?.additionalContext).toContain('default');
+    expect(res1?.additionalContext).not.toContain('internalFoo');
+
+    // 2) package.json heuristic: same parent directory basename + same stem (`src/entry.ts` matching `"main": "./src/entry.js"`)
+    vi.spyOn(process, 'cwd').mockReturnValue('fake-root');
+    vi.mocked(existsSync).mockImplementation((p: string) =>
+      normalizePath(String(p)).endsWith('/src/package.json'),
+    );
+    vi.mocked(readFileSync).mockImplementation(() => JSON.stringify({ main: './entry.js' }));
+    mockGitVersion('export const keepMe = 1;\n');
+    vi.mocked(readFile).mockResolvedValue('');
+
+    const api2 = makeApi({
+      extensions: {
+        'api-compatibility-gate': {
+          enabled: true,
+          entryPointPatterns: ['never-match.ts'],
+        },
+      },
+    });
+    plugin.setup(api2 as never);
+    const hook2 = getHook(api2);
+    const res2 = await hook2({
+      toolName: 'edit',
+      toolInput: { path: 'src/entry.ts' },
+      toolResult: { content: '', isError: false },
+    });
+    expect(res2?.additionalContext).toContain('keepMe');
+  });
 });
 
 function normalizePath(p: string): string {

@@ -500,4 +500,41 @@ describe('first-boot sage sync', () => {
     expect(result.reason).toBe('no-sage-surface');
     expect(fs.existsSync(markerFile())).toBe(false);
   });
+
+  it('returns partial-failure and leaves running marker when syncFromSage reports failed > 0', async () => {
+    const spy = vi.spyOn(store, 'syncFromSage').mockResolvedValueOnce({
+      scanned: 2,
+      indexed: 1,
+      skipped: 0,
+      failed: 1,
+      durationMs: 5,
+    });
+    try {
+      const result = await startFirstBootSageSync({
+        store,
+        memoryStore: fakeSagePort([{ id: 'sage-1', text: 'item 1' }]),
+      });
+      expect(result.synced).toBe(false);
+      expect(result.reason).toBe('partial-failure');
+      expect(result.marker?.phase).toBe('running');
+      expect(result.marker?.failed).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('treats future completedAt (negative completionAgeMs clock skew) as reconciliation-due', () => {
+    fs.writeFileSync(
+      markerFile(),
+      JSON.stringify({
+        phase: 'complete',
+        completedAt: '2026-06-01T12:00:00.000Z',
+      }),
+    );
+    const pastNow = new Date('2026-06-01T11:59:00.000Z');
+    expect(decideWhetherToSync(store, 600_000, pastNow)).toEqual({
+      run: true,
+      reason: 'reconciliation-due',
+    });
+  });
 });

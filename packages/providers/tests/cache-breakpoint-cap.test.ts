@@ -101,6 +101,29 @@ describe('capAnthropicCacheBreakpoints', () => {
     expect(a.system.map((x) => !!x.cache_control)).toEqual(b.system.map((x) => !!x.cache_control));
   });
 
+  it('weighs blocks with string content property by content.length when ranking prefix gaps', () => {
+    const contentBlock = (len: number) => ({
+      type: 'tool_result',
+      content: 'c'.repeat(len),
+      cache_control: { type: 'ephemeral' },
+    });
+    // 5 markers, limit 3: keep index 0 (prefix=10) and index 4 (prefix=1020).
+    // Midpoint is 515.
+    // Index 1 sits after 10 chars (prefix=20, dist=10).
+    // Index 2 sits after a 500-char content block (prefix=520, dist=495 -> best!).
+    // Index 3 sits after another 490-char content block (prefix=1010, dist=10).
+    // If `o['content']` string weight is disabled (0), all blocks weigh 0 and tie-break picks index 1 instead of index 2!
+    const system = [
+      contentBlock(10),
+      contentBlock(10),
+      contentBlock(500),
+      contentBlock(490),
+      contentBlock(10),
+    ];
+    capAnthropicCacheBreakpoints({ system }, 3);
+    expect(system.map((b) => !!b.cache_control)).toEqual([true, false, true, false, true]);
+  });
+
   describe('pinned marker overflow (B6)', () => {
     async function captureWarnings<T>(fn: () => T): Promise<{ message: string; name: string }[]> {
       const seen: { message: string; name: string }[] = [];

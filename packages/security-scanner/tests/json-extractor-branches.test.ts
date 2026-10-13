@@ -20,6 +20,7 @@ vi.mock('@wrongstack/core/utils', async (importOriginal) => {
 });
 
 import { extractJsonBlock } from '../src/json-extractor.js';
+import { runRedactionDiagnostic } from '../src/redaction-diagnostic.js';
 
 afterEach(() => {
   sanitizer.override = undefined;
@@ -62,5 +63,27 @@ describe('extractJsonBlock repair path', () => {
       .mockImplementationOnce(() => ({ not: 'an array' }))
       .mockImplementation(realParse);
     expect(extractJsonBlock('[1]', 'array')).toBe('[1]'); // first balanced
+  });
+
+  it('prefers non-empty objects, longer candidates on tie, fenced blocks, and rolls back unclosed prose quotes', () => {
+    expect(extractJsonBlock('empty {} vs populated {"a": 1}', 'object')).toBe('{"a": 1}');
+    expect(extractJsonBlock('He said "hello and then {"ok": true}', 'object')).toBe('{"ok": true}');
+    expect(extractJsonBlock('first {"a":1} second {"alpha":123}', 'object')).toBe('{"alpha":123}');
+    expect(extractJsonBlock(null as unknown as string, 'object')).toBeNull();
+    expect(extractJsonBlock('{"a":1}', 'invalid' as never)).toBeNull();
+    expect(
+      extractJsonBlock(
+        'prose {"outside": "much_longer_object_value"} ```json\n{"fenced": 1}\n```',
+        'object',
+      ),
+    ).toBe('{"fenced": 1}');
+  });
+
+  it('runs redaction diagnostics and separates redacted vs unchanged nested fields', () => {
+    const report = runRedactionDiagnostic();
+    expect(report).toEqual({
+      redactedFields: ['$.apiKey', '$.githubToken', '$.env.ANTHROPIC_API_KEY', '$.url'],
+      unchangedFields: ['$.normal'],
+    });
   });
 });

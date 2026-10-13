@@ -36,8 +36,9 @@ describe('applyTextEdits LSP position semantics', () => {
     expect(applyTextEdits('aaa\r\nb\r\n', [edit(0, 0, 0, 99, 'X')])).toBe('X\r\nb\r\n');
   });
 
-  it('treats a line past the end as the end of the document', () => {
+  it('treats a line past the end as the end of the document and clamps negative line numbers to 0', () => {
     expect(applyTextEdits('a\nb', [edit(2, 0, 2, 0, '\nc')])).toBe('a\nb\nc');
+    expect(applyTextEdits('abc\ndef', [edit(-2, 2, 0, 3, 'X')])).toBe('abX\ndef');
   });
 
   it('counts a lone CR as a line break, as LSP does', () => {

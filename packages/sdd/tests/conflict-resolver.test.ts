@@ -53,6 +53,12 @@ describe('resolveConflictText', () => {
   it('leaves clean text untouched', () => {
     expect(resolveConflictText('a\nb\nc', 'incoming')).toBe('a\nb\nc');
   });
+  it('leaves malformed conflict hunks missing the ======= separator untouched', () => {
+    const malformed = ['<<<<<<< HEAD', 'ours-only', '>>>>>>> branch'].join('\n');
+    expect(resolveConflictText(malformed, 'incoming')).toBe(malformed);
+    expect(resolveConflictText(malformed, 'base')).toBe(malformed);
+    expect(hasConflictMarkers(resolveConflictText(malformed, 'incoming'))).toBe(true);
+  });
 });
 
 describe('makePreferSideConflictResolver', () => {
@@ -164,6 +170,30 @@ describe('makeLlmConflictResolver', () => {
       writeFileSync(path.join(dir, 'a.txt'), big);
       const resolver = makeLlmConflictResolver({ run: async () => 'just one line' });
       expect(await resolver({ task, conflictFiles: ['a.txt'], cwd: dir })).toBe(false);
+    });
+  });
+
+  it('accepts an LLM resolution at the exact minRetainedFraction boundary excluding marker lines', async () => {
+    await withDir(async (dir) => {
+      // 4 non-marker lines + 3 marker lines = 7 total lines.
+      // At minRetainedFraction = 0.5:
+      //   Math.floor(4 * 0.5) = 2 (excluding markers) vs Math.floor(7 * 0.5) = 3 (if markers counted).
+      const fourNonMarkerLines = [
+        '<<<<<<< HEAD',
+        'ours-1',
+        'ours-2',
+        '=======',
+        'theirs-1',
+        'theirs-2',
+        '>>>>>>> branch',
+      ].join('\n');
+      writeFileSync(path.join(dir, 'boundary.txt'), fourNonMarkerLines);
+      const resolver = makeLlmConflictResolver({
+        minRetainedFraction: 0.5,
+        run: async () => 'merged-1\nmerged-2',
+      });
+      expect(await resolver({ task, conflictFiles: ['boundary.txt'], cwd: dir })).toBe(true);
+      expect(readFileSync(path.join(dir, 'boundary.txt'), 'utf8')).toBe('merged-1\nmerged-2');
     });
   });
 

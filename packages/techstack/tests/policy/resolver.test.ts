@@ -372,12 +372,31 @@ describe('resolveDependency', () => {
 // ── resolveDependencies ──────────────────────────────────────────────────
 
 describe('resolveDependencies', () => {
-  it('non-registry sources are always unconstrained', () => {
+  it('non-registry sources are always unconstrained and pinned falls back to installed when locked is undefined', () => {
     const pathDep = makeDep({ id: 'dep-path', sourceType: 'path', latestStable: undefined });
-    const result = resolveDependencies([pathDep], makeRulebook(), NOW);
-    expect(result).toHaveLength(1);
-    expect(result[0]?.reason).toBe('unconstrained');
-    expect(result[0]?.satisfies).toBe(true);
+    const gitDep = makeDep({ id: 'dep-git', sourceType: 'git', latestStable: undefined });
+    const sysDep = makeDep({ id: 'dep-sys', sourceType: 'system', latestStable: undefined });
+    const result = resolveDependencies(
+      [pathDep, gitDep, sysDep],
+      makeRulebook({
+        banned: [{ selector: { name: 'react' }, reason: 'migrate' }],
+      }),
+      NOW,
+    );
+    expect(result).toHaveLength(3);
+    expect(result.every((r) => r.reason === 'unconstrained' && r.satisfies)).toBe(true);
+
+    const pinnedInstalled = resolveDependency(
+      makeDep({ locked: undefined, installed: '19.2.7' }),
+      makeRulebook({
+        pinned: [
+          { selector: { name: 'react' }, max: asVersionRange('^19.0.0'), reason: 'stay on 19' },
+        ],
+      }),
+      NOW,
+    );
+    expect(pinnedInstalled.reason).toBe('pinned_within_max');
+    expect(pinnedInstalled.satisfies).toBe(true);
   });
 
   it('registry dependencies resolve normally', () => {

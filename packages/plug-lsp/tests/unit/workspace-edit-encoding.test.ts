@@ -64,5 +64,14 @@ describe('applyWorkspaceEdit source encoding', () => {
       root,
     );
     expect(await fs.readFile(file, 'utf8')).toBe('﻿// Güncel\nfunction newName() {}\n');
+
+    const missing = path.join(root, 'missing.ts');
+    await expect(
+      applyWorkspaceEdit(
+        { changes: { [pathToUri(missing)]: renameOnSecondLine } },
+        { fileWritten: vi.fn(async () => undefined) } as never,
+        root,
+      ),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

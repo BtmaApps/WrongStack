@@ -54,7 +54,11 @@ describe('cvssBaseScore', () => {
     expect(cvssBaseScore('CVSS_V2', vector)).toBe(expected);
   });
 
-  it('returns undefined for malformed vectors and unknown types', () => {
+  it('returns undefined for malformed vectors, duplicate metric keys, and unknown types, while supporting CVSS:3.0', () => {
+    expect(cvssBaseScore('CVSS_V3', 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H')).toBe(9.8);
+    expect(
+      cvssBaseScore('CVSS_V3', 'CVSS:3.1/AV:N/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H'),
+    ).toBeUndefined();
     expect(cvssBaseScore('CVSS_V3', 'not-a-vector')).toBeUndefined();
     expect(cvssBaseScore('CVSS_V3', 'CVSS:3.1/AV:N/AC:L')).toBeUndefined();
     expect(cvssBaseScore('CVSS_V4', 'CVSS:4.0/AV:N')).toBeUndefined();

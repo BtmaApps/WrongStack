@@ -195,15 +195,18 @@ describe('formatter columns use the tools’ 1-based byte convention', () => {
     });
   });
 
-  it('prints a diagnostic column the same way', () => {
-    const out = formatDiagnostics(new Map([[file, [diagnostic(0, 10, 1, 'boom')]]]), {
-      cwd,
-      severityFilter: ['error'],
-      maxPerFile: 5,
-      maxTotal: 5,
-      lineText: reader,
-    });
-    expect(out).toContain('L1:12 ERROR');
+  it('prints a diagnostic column the same way, preserves code 0, and collapses padded CRLF line breaks', () => {
+    const out = formatDiagnostics(
+      new Map([[file, [diagnostic(0, 10, 1, 'boom  \r\n  second line', 'ts', 0)]]]),
+      {
+        cwd,
+        severityFilter: ['error'],
+        maxPerFile: 5,
+        maxTotal: 5,
+        lineText: reader,
+      },
+    );
+    expect(out).toContain('L1:12 ERROR ts(0): boom | second line');
   });
 });
 

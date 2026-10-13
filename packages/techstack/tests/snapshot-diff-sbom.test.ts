@@ -196,6 +196,37 @@ describe('diffSnapshots', () => {
         to: 'vulnerable',
       },
     ]);
+
+    const installedOnlyDiff = diffSnapshots(
+      snapshotOf('old-inst', [
+        instance('minimatch', undefined as any, {
+          locked: undefined,
+          installed: '3.0.0',
+          id: 'm-a',
+        }),
+        instance('minimatch', undefined as any, {
+          locked: undefined,
+          installed: '5.0.0',
+          id: 'm-b',
+        }),
+      ]),
+      snapshotOf('new-inst', [
+        instance('minimatch', undefined as any, {
+          locked: undefined,
+          installed: '3.0.0',
+          id: 'm-x',
+          status: 'vulnerable',
+        }),
+        instance('minimatch', undefined as any, {
+          locked: undefined,
+          installed: '5.0.0',
+          id: 'm-y',
+        }),
+      ]),
+    );
+    expect(installedOnlyDiff.added).toHaveLength(0);
+    expect(installedOnlyDiff.removed).toHaveLength(0);
+    expect(installedOnlyDiff.changed).toHaveLength(1);
   });
 
   it('accounts for every instance across a multi-instance swap', () => {

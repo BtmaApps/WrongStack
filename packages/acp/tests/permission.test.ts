@@ -198,4 +198,14 @@ describe('makePermissionPolicy', () => {
     const outcome = await policy(makeReq({ signal: ac.signal }));
     expect(outcome).toEqual({ outcome: 'cancelled' });
   });
+
+  it('returns cancelled when signal aborts while decide() is awaiting', async () => {
+    const ac = new AbortController();
+    const policy = makePermissionPolicy(async () => {
+      ac.abort();
+      return true;
+    });
+    const outcome = await policy(makeReq({ signal: ac.signal }));
+    expect(outcome).toEqual({ outcome: 'cancelled' });
+  });
 });

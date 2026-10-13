@@ -347,6 +347,97 @@ describe('createMailboxMcpToolHost', () => {
     ).resolves.toEqual({ content: 'already cancelled', isError: true });
     expect(status).not.toHaveBeenCalled();
   });
+
+  it('enforces lower limit clamp, ttlMs/integer/retentionAge/enum/credentialOption bounds, watch timeout/filtering, and non-blank actor', async () => {
+    // S15-M10: blank actor id rejected
+    expect(() =>
+      createMailboxMcpToolHost(backend(), new MailboxEventEmitter(), { actor: '   ' }),
+    ).toThrow('Mailbox MCP requires a non-blank actor id');
+
+    const query = vi.fn().mockResolvedValue([]);
+    const emitter = new MailboxEventEmitter();
+    const host = createMailboxMcpToolHost(backend({ query }), emitter, {
+      actor: 'external-admin',
+      admin: true,
+    });
+
+    // S15-M1: boundedLimit lower bound clamps 0 to 1
+    await host.callTool('mailbox_read', { action: 'query', limit: 0 });
+    expect(query).toHaveBeenCalledWith(expect.objectContaining({ limit: 1 }));
+
+    // S15-M2: ttlMs < 1 rejected
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'send',
+        to: 'leader',
+        type: 'note',
+        subject: 'hi',
+        body: 'there',
+        ttlMs: 0,
+      }),
+    ).resolves.toEqual({ content: 'ttlMs must be at least 1', isError: true });
+
+    // S15-M3: optionalNonNegativeInteger rejects negative iterations on heartbeat_self
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'heartbeat_self',
+        iterations: -1,
+      }),
+    ).resolves.toMatchObject({ isError: true });
+
+    // S15-M4: optionalRetentionAge rejects negative age on purge_stale
+    await expect(
+      host.callTool('mailbox_admin', {
+        action: 'purge_stale',
+        completedMaxAgeMs: -5,
+      }),
+    ).resolves.toMatchObject({ isError: true });
+
+    // S15-M5: optionalEnum rejects invalid priority
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'send',
+        to: 'leader',
+        type: 'note',
+        subject: 'hi',
+        body: 'there',
+        priority: 'invalid-priority',
+      }),
+    ).resolves.toMatchObject({ isError: true });
+
+    // S15-M6: unknown credentialOptions property rejected
+    await expect(
+      host.callTool('mailbox_admin', {
+        action: 'credential_issue',
+        credentialOptions: {
+          principalId: 'agent-1',
+          projectId: 'proj-1',
+          kind: 'agent',
+          bogusKey: true,
+        },
+      }),
+    ).resolves.toEqual({
+      content: 'Unsupported credential option: bogusKey',
+      isError: true,
+    });
+
+    // S15-M7, S15-M8, S15-M9: watch timeoutMs clamped to 100ms, ignores non-matching eventType, and resolves timedOut: true
+    const watchPending = host.callTool('mailbox_watch', {
+      eventType: 'message.sent',
+      timeoutMs: 5,
+    });
+    await vi.waitFor(() => expect(emitter.subscriberCount).toBe(1));
+    emitter.emit({
+      type: 'message.acked',
+      messageId: 'other-1',
+      readerId: 'external-admin',
+      timestamp: new Date().toISOString(),
+    });
+    await expect(watchPending).resolves.toEqual({
+      content: { changed: false, timedOut: true, timeoutMs: 100 },
+      isError: false,
+    });
+  });
 });
 
 describe('createMailboxMcpServer', () => {

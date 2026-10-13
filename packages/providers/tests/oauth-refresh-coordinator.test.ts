@@ -350,4 +350,65 @@ describe('OAuthRefreshCoordinator — sibling instances on one account', () => {
     expect(refreshFn).toHaveBeenCalledOnce();
     expect(refreshFn.mock.calls[0]?.[0]).toBe('k2');
   });
+
+  it('tolerates transient refresh errors inside the skew window while the token has not yet expired', async () => {
+    const now = Date.now();
+    const { coordinator } = makeCoordinator({
+      initialRefresh: 'r1',
+      initialExpiresAt: now + 10_000, // unexpired, but inside 60_000ms skew window
+      skew: 60_000,
+      refreshFn: async () => {
+        throw new Error('503 temporary token outage');
+      },
+    });
+    await expect(
+      coordinator.ensureFreshToken(new AbortController().signal),
+    ).resolves.toBeUndefined();
+  });
+
+  it('prunes expired rotations in recordRotation before FIFO cap eviction so active rotations survive', async () => {
+    const now = Date.now();
+    // Record a long-lived rotation on k-keep first
+    const keeper = makeCoordinator({
+      initialRefresh: 'k-keep',
+      refreshFn: async () => ({
+        access: 'acc-keep',
+        refresh: 'k-keep-2',
+        expires: now + 3_600_000,
+      }),
+    });
+    await keeper.coordinator.doRefresh(new AbortController().signal);
+
+    // Record 64 short-lived rotations that expire immediately
+    for (let i = 0; i < 64; i++) {
+      const c = makeCoordinator({
+        initialRefresh: `k-exp-${i}`,
+        refreshFn: async () => ({
+          access: `acc-${i}`,
+          refresh: `k-exp-${i}-next`,
+          expires: now - 10, // already expired
+        }),
+      });
+      await c.coordinator.doRefresh(new AbortController().signal);
+    }
+
+    // Trigger one more rotation so recordRotation prunes expired entries instead of evicting k-keep
+    const trigger = makeCoordinator({
+      initialRefresh: 'k-trig',
+      refreshFn: async () => ({
+        access: 'acc-trig',
+        refresh: 'k-trig-2',
+        expires: now + 3_600_000,
+      }),
+    });
+    await trigger.coordinator.doRefresh(new AbortController().signal);
+
+    // Sibling still holding k-keep should adopt acc-keep without hitting network
+    const replay = vi.fn(async () => {
+      throw new Error('should not hit network');
+    });
+    const sibling = makeCoordinator({ initialRefresh: 'k-keep', refreshFn: replay });
+    await sibling.coordinator.doRefresh(new AbortController().signal);
+    expect(replay).not.toHaveBeenCalled();
+  });
 });

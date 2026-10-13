@@ -35,16 +35,34 @@ describe('document tracker byte and lifetime limits', () => {
     });
   }
 
-  it('keeps the total UTF-8 document budget under 32 MiB', async () => {
-    const tracker = fixture();
-    const text = 'ü'.repeat(1024 * 1024);
-    for (let index = 0; index < 18; index++) await tracker.open(`file-${index}.ts`, text);
-    expect(tracker.list()).toHaveLength(16);
-    expect(tracker.get('file-0.ts')).toBeNull();
-    expect(tracker.get('file-17.ts')).not.toBeNull();
+  it('keeps the total UTF-8 document budget under 32 MiB and respects LRU touch order and MAX_TRACKED_DOCS', async () => {
+    let now = 1000;
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => ++now);
+    try {
+      const tracker = fixture();
+      const text = 'ü'.repeat(1024 * 1024);
+      for (let index = 0; index < 16; index++) await tracker.open(`file-${index}.ts`, text);
+      // Re-touch file-0 so file-1 becomes the oldest LRU entry
+      await tracker.open('file-0.ts', text);
+      await tracker.open('file-16.ts', text);
+      expect(tracker.list()).toHaveLength(16);
+      expect(tracker.get('file-0.ts')).not.toBeNull();
+      expect(tracker.get('file-1.ts')).toBeNull();
+      expect(tracker.get('file-16.ts')).not.toBeNull();
+
+      const countTracker = fixture();
+      for (let i = 0; i < 202; i++) await countTracker.open(`small-${i}.ts`, 'x');
+      expect(countTracker.list()).toHaveLength(200);
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
-  it('rejects a file that grows beyond the cap between stat and read', async () => {
+  it('rejects a file whose stat.size exceeds MAX_DOCUMENT_BYTES without reading it, or that grows between stat and read', async () => {
+    files.stat.mockResolvedValueOnce({ isFile: () => true, size: 2 * 1024 * 1024 + 1 });
+    expect(await fixture().open('stat-too-big.ts')).toBe(false);
+    expect(files.readFile).not.toHaveBeenCalled();
+
     files.readFile.mockResolvedValue('x'.repeat(2 * 1024 * 1024 + 1));
     expect(await fixture().open('growing.ts')).toBe(false);
   });

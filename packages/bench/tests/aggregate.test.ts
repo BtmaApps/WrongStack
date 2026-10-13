@@ -182,4 +182,24 @@ describe('aggregateCell', () => {
       editApplicationGivenRecall: { eligible: 2, passed: 1, rate: 0.5 },
     });
   });
+
+  it('clamps editApplyRate to 0 when editErrors exceed editCalls, counts crashed runs in incompleteCount, tracks flakyTaskCount, and ignores negative integer tool counters', () => {
+    const agg = aggregateCell(cell, [
+      result({
+        taskId: 'flaky-task',
+        passed: false,
+        run: { status: 'crashed' } as any,
+        tools: { totalCalls: 5, editCalls: 2, editErrors: 5, rateLimitRetries: -3 },
+      }),
+      result({
+        taskId: 'flaky-task',
+        passed: true,
+        tools: { totalCalls: 3, editCalls: 0, editErrors: 0, rateLimitRetries: 2 },
+      }),
+    ]);
+    expect(agg.editApplyRate).toBe(0);
+    expect(agg.incompleteCount).toBe(1);
+    expect(agg.flakyTaskCount).toBe(1);
+    expect(agg.totalRateLimitRetries).toBe(2);
+  });
 });

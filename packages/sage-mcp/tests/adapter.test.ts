@@ -1,11 +1,11 @@
 import * as fsPromises from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { MemoryPort } from '@wrongstack/core/types';
 import type { MCPServer } from '@wrongstack/mcp';
 import { ProjectSageMemoryPort, SqliteMemoryPort } from '@wrongstack/sage';
-import type { MemoryPort } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createSageMcpServer } from '../src/adapter.js';
+import { createSageMcpServer, createSageMcpToolHost, requireSageService } from '../src/adapter.js';
 
 type RpcResponse = Record<string, unknown> | null;
 
@@ -225,6 +225,17 @@ describe('createSageMcpServer (read-only default)', () => {
     // caller's explicit audience must therefore be preserved. This is the
     // key invariant documented in docs/safety-contract.md §4.
     expect(persisted?.audience).toEqual(callerAudience);
+  });
+
+  it('rejects a MemoryPort without SAGE capability and coerces string-encoded schema primitives in callTool', async () => {
+    expect(() =>
+      requireSageService({ getCapability: () => undefined } as unknown as MemoryPort),
+    ).toThrow('SAGE MCP: the supplied MemoryPort does not expose the SAGE service capability');
+    await port.remember('Coerced limit marker', 'project-memory');
+    const host = createSageMcpToolHost(port);
+    const res = await host.callTool('memory_search', { query: 'Coerced limit', limit: '5' });
+    expect(res.isError).toBe(false);
+    expect(JSON.stringify(res.content)).toContain('Coerced limit marker');
   });
 });
 

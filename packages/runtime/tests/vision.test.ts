@@ -956,5 +956,39 @@ describe('vision routing', () => {
       ).rejects.toBeInstanceOf(VisionUrlBlockedError);
       expect(called).toBe(false);
     });
+
+    it('rejects empty base64 image data on native vision route and blocks non-http(s) URL schemes', async () => {
+      await expect(
+        routeImagesForModel(
+          [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/png', data: '   ' },
+            },
+          ],
+          {
+            supportsVision: true,
+            ctx,
+            signal: new AbortController().signal,
+          },
+        ),
+      ).rejects.toThrow('vision: base64 image data must not be empty');
+
+      await expect(
+        routeImagesForModel(
+          [
+            {
+              type: 'image',
+              source: { type: 'url', url: 'ftp://8.8.8.8/image.png', media_type: 'image/png' },
+            },
+          ],
+          {
+            supportsVision: true,
+            ctx,
+            signal: new AbortController().signal,
+          },
+        ),
+      ).rejects.toThrow(/only http\(s\) image URLs are allowed/);
+    });
   });
 });

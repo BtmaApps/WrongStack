@@ -109,6 +109,10 @@ describe('License Policy & Compliance', () => {
       const unlic = assessLicense('UNLICENSED');
       expect(unlic.category).toBe('unlicensed');
       expect(unlic.severity).toBe('medium');
+
+      const prop = assessLicense('PROPRIETARY');
+      expect(prop.category).toBe('unlicensed');
+      expect(prop.severity).toBe('medium');
     });
   });
 
@@ -142,6 +146,7 @@ describe('License Policy & Compliance', () => {
       expect(finding).not.toBeNull();
       expect(finding?.type).toBe('license');
       expect(finding?.severity).toBe('high');
+      expect(finding?.action).toBe('none');
       expect(finding?.rationale).toContain('non-commercial');
     });
   });

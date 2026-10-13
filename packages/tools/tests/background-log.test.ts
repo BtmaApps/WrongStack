@@ -88,13 +88,18 @@ describe('background shell output', () => {
 });
 
 describe('tailBackgroundLog', () => {
-  it('returns the last lines, and nothing for a missing file', async () => {
+  it('returns the last lines, and nothing for a missing file, and drops partial first line when log exceeds 64 KiB', async () => {
     const sb = await mkSandbox();
     try {
       const file = path.join(sb.dir, 'x.log');
       fs.writeFileSync(file, Array.from({ length: 50 }, (_, i) => `line ${i}`).join('\r\n'));
       expect(tailBackgroundLog(file, 3)).toEqual(['line 47', 'line 48', 'line 49']);
       expect(tailBackgroundLog(path.join(sb.dir, 'none.log'), 3)).toEqual([]);
+
+      const bigFile = path.join(sb.dir, 'big.log');
+      const head = `${'A'.repeat(70_000)}\nfull-line-1\nfull-line-2\n`;
+      fs.writeFileSync(bigFile, head);
+      expect(tailBackgroundLog(bigFile, 10)).toEqual(['full-line-1', 'full-line-2']);
     } finally {
       await sb.cleanup();
     }

@@ -541,4 +541,27 @@ describe('MAX_ADVANCEMENT_ATTEMPTS', () => {
     expect(MAX_ADVANCEMENT_ATTEMPTS).toBeGreaterThan(0);
     expect(Number.isInteger(MAX_ADVANCEMENT_ATTEMPTS)).toBe(true);
   });
+
+  it('includes up to 20 todos in generateAdvancementPrompt and skips <=5-char in_progress labels in matchTodoIdFromPrompt', () => {
+    const stalled = { id: 's', content: 'Stalled item' };
+    const todos = Array.from({ length: 20 }, (_, i) => ({
+      id: `t-${i}`,
+      content: `Item number ${i + 1}`,
+      status: 'pending' as const,
+    }));
+    const prompt = generateAdvancementPrompt(stalled, todos[0]!, 1, todos);
+    expect(prompt).toContain('Item number 20');
+
+    // S29-M8: in-progress todo with 3-char label "fix" (length <= 5) must NOT substring-match "prefix"
+    // when a later pending todo matches the prompt explicitly!
+    const shortInProgress = [
+      { id: 'short-ip', content: 'fix', status: 'in_progress' },
+      { id: 'real-pending', content: 'Update the prefix configuration', status: 'pending' },
+    ];
+    const matched = matchTodoIdFromPrompt(
+      shortInProgress,
+      'Board:\n  [ ] Update the prefix configuration',
+    );
+    expect(matched?.id).toBe('real-pending');
+  });
 });

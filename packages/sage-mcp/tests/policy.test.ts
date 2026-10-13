@@ -129,5 +129,30 @@ describe('proposalOnlyCandidatesTool', () => {
     );
     await tool.execute({ action: 'list' } as never, {} as never, undefined as never);
     expect(execute).toHaveBeenLastCalledWith({ action: 'list' }, {}, undefined);
+
+    // S17-M2: trims whitespace around reason
+    await tool.execute(
+      { action: 'propose', text: 't', reason: '  padded reason  ' } as never,
+      {} as never,
+      undefined as never,
+    );
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ reason: 'Proposed by codex over MCP: padded reason' }),
+      {},
+      undefined,
+    );
+
+    // S17-M1: passes propose through untouched when origin is omitted
+    const noOriginTool = proposalOnlyCandidatesTool(inner);
+    await noOriginTool.execute(
+      { action: 'propose', text: 't', reason: 'keep raw' } as never,
+      {} as never,
+      undefined as never,
+    );
+    expect(execute).toHaveBeenLastCalledWith(
+      { action: 'propose', text: 't', reason: 'keep raw' },
+      {},
+      undefined,
+    );
   });
 });

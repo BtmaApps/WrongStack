@@ -476,13 +476,31 @@ describe('ACPSessionStore', () => {
       expect(res).toBe('ok');
     });
 
-    it('list skips files missing an id property', async () => {
-      // Plant a JSON file without an id
+    it('list skips files missing an id property or with an empty string id, and save omits empty history array', async () => {
+      // Plant a JSON file without an id and one with empty string id
       const bogusPath = path.join(dir, 'sess_noid.json');
+      const emptyIdPath = path.join(dir, 'sess_emptyid.json');
       await fsp.writeFile(bogusPath, JSON.stringify({ title: 'no id here' }), 'utf8');
+      await fsp.writeFile(
+        emptyIdPath,
+        JSON.stringify({
+          id: '',
+          title: 'empty id',
+          cwd: '/tmp',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          turnCount: 0,
+        }),
+        'utf8',
+      );
       const list = await store.list();
-      expect(list.some((item) => item.id === undefined)).toBe(false);
+      expect(list.some((item) => !item.id)).toBe(false);
       await fsp.rm(bogusPath, { force: true }).catch(() => {});
+      await fsp.rm(emptyIdPath, { force: true }).catch(() => {});
+
+      await store.save(fakeState({ id: 'sess_empty_hist' }), []);
+      const raw = JSON.parse(await fsp.readFile(path.join(dir, 'sess_empty_hist.json'), 'utf8'));
+      expect('history' in raw).toBe(false);
     });
 
     it('swallows writeIndex error on list() background rebuild', async () => {

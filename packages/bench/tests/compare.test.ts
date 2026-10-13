@@ -290,10 +290,16 @@ describe('renderMarkdownReport edge outcomes', () => {
     // run whose other model passed read as a unanimous pass.
     expect(insights.matrix['task-repeat']!['opus']!.passed).toBe(false);
 
-    // False then true -> true
-    const resultsPass = [result('task-repeat2', opus, false), result('task-repeat2', opus, true)];
+    // False then true -> true, preferring passed attempt detail and summing costUsd
+    const failAttempt = result('task-repeat2', opus, false, { costUsd: 0.25 });
+    failAttempt.grade.detail = 'failed attempt detail';
+    const passAttempt = result('task-repeat2', opus, true, { costUsd: 0.35 });
+    passAttempt.grade.detail = 'passed attempt detail';
+    const resultsPass = [failAttempt, passAttempt];
     const insightsPass = buildIntraRunInsights(resultsPass);
     expect(insightsPass.matrix['task-repeat2']!['opus']!.passed).toBe(true);
+    expect(insightsPass.matrix['task-repeat2']!['opus']!.detail).toBe('passed attempt detail');
+    expect(insightsPass.matrix['task-repeat2']!['opus']!.costUsd).toBeCloseTo(0.6, 5);
 
     // False then false -> false
     const resultsFail = [result('task-repeat3', opus, false), result('task-repeat3', opus, false)];

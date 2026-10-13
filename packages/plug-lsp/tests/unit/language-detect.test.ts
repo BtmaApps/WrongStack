@@ -13,6 +13,7 @@ describe('languageIdFor', () => {
     expect(languageIdFor('src/app.spec.js')).toBe('javascript');
     expect(languageIdFor('src/app.test.jsx')).toBe('javascriptreact');
     expect(languageIdFor('src/SCRIPT.PY')).toBe('python');
+    expect(languageIdFor('src/types.pyi')).toBe('python');
   });
 
   it('detects special filenames', () => {
@@ -25,6 +26,7 @@ describe('languageIdFor', () => {
     expect(languageIdFor('compose.yaml')).toBe('yaml');
     expect(languageIdFor('deploy.yml')).toBe('yaml');
     expect(languageIdFor('script.sh')).toBe('shellscript');
+    expect(languageIdFor('script.bash')).toBe('shellscript');
   });
 
   it('returns null for unknown files', () => {

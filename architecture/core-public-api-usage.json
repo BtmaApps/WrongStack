@@ -184,9 +184,9 @@
       "runtimeOrMixed": 138
     },
     "@wrongstack/core/tasking": {
-      "files": 33,
+      "files": 34,
       "typeOnly": 12,
-      "runtimeOrMixed": 21
+      "runtimeOrMixed": 22
     },
     "@wrongstack/core/tools": {
       "files": 9,
@@ -13690,6 +13690,12 @@
     {
       "specifier": "@wrongstack/core/tasking",
       "file": "packages/sdd/tests/coverage-completion.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/tasking",
+      "file": "packages/sdd/tests/critical-path.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

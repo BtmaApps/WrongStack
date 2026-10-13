@@ -102,13 +102,23 @@ describe('computeHarnessFingerprint', () => {
     expect(a).toHaveLength(12);
   });
 
-  it('changes tool manifest hash when behavior-facing tool text changes', () => {
+  it('changes tool manifest hash when behavior-facing tool text or category changes', () => {
     const ref = computeToolManifestHash([
       { name: 'read', description: 'Read a file', inputSchema: { type: 'object' } },
     ]);
     expect(
       computeToolManifestHash([
         { name: 'read', description: 'Read a file carefully', inputSchema: { type: 'object' } },
+      ]),
+    ).not.toBe(ref);
+    expect(
+      computeToolManifestHash([
+        {
+          name: 'read',
+          description: 'Read a file',
+          category: 'filesystem',
+          inputSchema: { type: 'object' },
+        },
       ]),
     ).not.toBe(ref);
   });

@@ -193,6 +193,15 @@ describe('createSseLineFoldingTransform', () => {
     expect(events).toHaveLength(1);
     expect(JSON.parse(events[0]?.data ?? 'null')).toEqual(bigPayload);
   });
+
+  it('returns the source stream untouched when maxLineBytes is 0 and flushes trailing data line without newline in parseSSE', async () => {
+    const src = bodyFrom(['event: final\ndata: trailing-without-newline']);
+    const untouched = createSseLineFoldingTransform(src, 0);
+    expect(untouched).toBe(src);
+    const events: { event: string; data: string }[] = [];
+    for await (const msg of parseSSE(untouched)) events.push(msg);
+    expect(events).toEqual([{ event: 'final', data: 'trailing-without-newline' }]);
+  });
 });
 
 async function* arr<T>(items: T[]): AsyncIterable<T> {

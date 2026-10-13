@@ -129,4 +129,25 @@ describe('SageDomainTermExtractor.extractFromCommits', () => {
     });
     expect(terms).toEqual([]);
   });
+
+  it('forwards --since flag when opts.since is provided and falls back to blank-line splitting when --SUBJECT-- is absent', async () => {
+    const extractor = new SageDomainTermExtractor();
+    let capturedArgs: readonly string[] = [];
+    const terms = await extractor.extractFromCommits({
+      projectRoot: '/fake/project',
+      since: '7 days ago',
+      minConfidence: 0.4,
+      exec: async (_cmd, args) => {
+        capturedArgs = args;
+        return {
+          stdout: 'feat: add `MailboxBridge` transport\n\nchore: update `DomainTermsPipeline`',
+          stderr: '',
+        };
+      },
+    });
+    expect(capturedArgs).toContain('--since=7 days ago');
+    expect(terms.map((t) => t.term)).toEqual(
+      expect.arrayContaining(['MailboxBridge', 'DomainTermsPipeline']),
+    );
+  });
 });

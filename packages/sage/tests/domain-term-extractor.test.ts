@@ -564,6 +564,45 @@ describe('SageDomainTermExtractor — markdown file mirror', () => {
     expect(result.mirrorPath).toBeNull();
     expect(store()).toHaveLength(0);
   });
+
+  it('persistViaAndMirror returns mirrorPath: null when writeDomainTermsFile throws', async () => {
+    const { surface } = makeFakeSurface([]);
+    const ex = new SageDomainTermExtractor();
+    ex.writeDomainTermsFile = async () => {
+      throw new Error('disk full');
+    };
+    const result = await ex.persistViaAndMirror(
+      makeFakePort(surface),
+      [
+        {
+          term: 'SddBoardProjector',
+          definition: 'runtime projection',
+          confidence: 0.7,
+          mentionCount: 1,
+          evidence: [],
+          sources: ['user'],
+        },
+      ],
+      { projectRoot: '/fake/root' },
+    );
+    expect(result.mirrorPath).toBeNull();
+  });
+
+  it('extracts 2-word proper names like Mailbox Bridge and retains up to 6 distinct evidence snippets on merge', () => {
+    const ex = new SageDomainTermExtractor();
+    const terms = ex.extractFromConversation({
+      messages: [
+        { role: 'user', text: 'The Mailbox Bridge connects agents.' },
+        { role: 'user', text: 'Use `TaskGraph` in step 1.' },
+        { role: 'user', text: 'Check **TaskGraph** in step 2.' },
+        { role: 'user', text: 'Pass `TaskGraph` in step 3 and `TaskGraph_v2`.' },
+      ],
+      minConfidence: 0.4,
+    });
+    expect(terms.map((t) => t.term)).toContain('Mailbox Bridge');
+    const tg = terms.find((t) => t.term === 'TaskGraph');
+    expect(tg?.evidence.length).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe('SageDomainTermExtractor — normalizeTerm', () => {
