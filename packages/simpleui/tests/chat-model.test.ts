@@ -60,7 +60,9 @@ describe('SimpleUI chat projection', () => {
     const imageReplay = [
       {
         role: 'user',
-        content: [{ type: 'image', data: 'data123', mediaType: 'image/png' }],
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'data123' } },
+        ],
       },
     ];
     const imageMessages = replayToMessages(imageReplay);

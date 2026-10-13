@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-13T20:23:17.833Z
+**Generated:** 2026-10-13T20:25:02.999Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- packages/tools/src/bash-kill-guard.ts: "getBlockedKillMessage" is no longer test-only; remove it from architecture/test-only-exports.json in the same change
 
 ## Workspace packages
 

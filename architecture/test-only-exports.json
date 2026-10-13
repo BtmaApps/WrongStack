@@ -1223,6 +1223,7 @@
       "truncateHeadTail"
     ],
     "packages/tools/src/bash-kill-guard.ts": [
+      "getBlockedKillMessage",
       "parseKillCommand"
     ],
     "packages/tools/src/browser/artifacts.ts": [
