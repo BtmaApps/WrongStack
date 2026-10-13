@@ -68,6 +68,7 @@ installSqliteWarningFilter();
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { scrubErrorText } from '@wrongstack/core/security';
+import { closeAcpLeaderSessions } from './acp-leader/acp-leader-host.js';
 import {
   hardenWin32ExecutableSearch,
   installCrashShield,
@@ -242,7 +243,9 @@ export function runCliProcess(mainFn: (argv: string[]) => Promise<number>): void
       // libuv UV_HANDLE_CLOSING assertions seen on Windows when
       // process.exit() races with handle teardown.
       process.exitCode = c;
-      scheduleForcedExit(c);
+      // An ACP agent running as the leader would hold the process until the
+      // forced exit; close it first (bounded, and a no-op without one).
+      void closeAcpLeaderSessions().finally(() => scheduleForcedExit(c));
     },
     (err) => {
       // Salvage durability-critical state synchronously before reporting —

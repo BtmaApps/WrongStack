@@ -103,6 +103,14 @@ legacy map → bundled catalog**.
 
 ## Inline vs. `--bg`
 
+ACP fleet workers (including `claude-code`) use a separate task budget from
+WrongStack's internal workers. They do not inherit internal role/coordinator
+iteration, tool-call, token, cost or wall-clock defaults. By default a task is
+reaped after **10 minutes without activity**; streamed progress resets that
+clock. Explicit task limits still apply, and Stop cancels the worker. A
+`delegate` wait window does not automatically become an ACP task deadline;
+an explicitly supplied `timeoutMs` does, without the internal worker buffer.
+
 - **Inline** (default) runs the agent now, streams its tool calls / diffs into
   the chat, and returns the result. No director mode required.
 - **`--bg`** dispatches the agent as a background fleet subagent (requires
@@ -183,6 +191,40 @@ an unknown kind, a command or edit that names no target, or a tool this run does
 `--restricted`, shell, network and MCP requests are all refused). Thinking, searching the project
 and switching back to ask-first mode need no check. `wstack acp spawn` and inline `/acp` are runs
 you start yourself and keep the agent's own permission mode.
+
+## An ACP agent as the leader
+
+An installed agent can also lead the session instead of a model:
+
+```
+wstack --provider acp --model claude-code
+/model acp/claude-code
+```
+
+Each of your messages becomes one turn of a single agent session for the
+WrongStack session (the agent keeps its own conversation). Its reply streams
+into the chat, its tool calls show as tool cards, and its token usage and
+quota are tracked like a model's. It runs its own loop, so WrongStack's system
+prompt, compaction and model routing do not apply to it.
+
+- **Permissions** — the agent starts in its `default` mode and every request it
+  makes is decided by your own rules; one that needs approval is asked through
+  the same prompt as WrongStack's own tools (the REPL). Where no prompt is
+  available, such a request is refused.
+- **Side requests** — session titles, summaries, next-step suggestions and any
+  WrongStack subagent that inherits the leader's model never reach the agent;
+  they go to `acp.leader.sideModel` (falling back to `fallbackBridge`, then the
+  first `fallbackModels` entry):
+
+  ```json
+  { "acp": { "leader": { "sideModel": "zai/glm-5" } } }
+  ```
+
+- **A spent subscription** fails the turn as `quota_exhausted`, so a configured
+  fallback chain moves the session to a WrongStack model.
+
+Delegating from the agent to WrongStack subagents, resume and the WebUI are
+not done yet — see [`docs/plans/acp-leader-mode.md`](../plans/acp-leader-mode.md).
 
 ## Related
 

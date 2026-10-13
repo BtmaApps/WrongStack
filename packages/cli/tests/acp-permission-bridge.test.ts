@@ -250,4 +250,55 @@ describe('wrongstackAcpPermissionPolicy', () => {
     }
     expect(evaluate).not.toHaveBeenCalled();
   });
+
+  it("asks the user through the leader's prompt when the policy wants a question", async () => {
+    const confirm = vi.fn(async (_tool: Tool, call: { tool: string }) => call.tool === 'bash');
+    const refused = vi.fn();
+    const policy = wrongstackAcpPermissionPolicy({
+      evaluate: decide('confirm'),
+      getTool: (n) => tools[n],
+      projectRoot: ROOT,
+      confirm,
+      onRefused: refused,
+    });
+    await expect(policy(request('execute', { command: 'bun test' }))).resolves.toEqual({
+      outcome: 'selected',
+      optionId: 'allow-once',
+    });
+    await expect(policy(request('fetch', { url: 'https://x.dev' }))).resolves.toEqual({
+      outcome: 'selected',
+      optionId: 'reject',
+    });
+    expect(refused).toHaveBeenCalledWith(
+      { tool: 'fetch', input: { url: 'https://x.dev' } },
+      'declined by the user',
+    );
+    // A prompt that fails is a no, never a yes.
+    const broken = wrongstackAcpPermissionPolicy({
+      evaluate: decide('confirm'),
+      getTool: (n) => tools[n],
+      projectRoot: ROOT,
+      confirm: async () => {
+        throw new Error('prompt closed');
+      },
+    });
+    await expect(policy(request('execute', { command: 'bun test' }))).resolves.toMatchObject({
+      optionId: 'allow-once',
+    });
+    await expect(broken(request('execute', { command: 'bun test' }))).resolves.toMatchObject({
+      optionId: 'reject',
+    });
+    // Deny stays deny: the prompt is only for questions.
+    const denied = wrongstackAcpPermissionPolicy({
+      evaluate: decide('deny'),
+      getTool: (n) => tools[n],
+      projectRoot: ROOT,
+      confirm,
+    });
+    confirm.mockClear();
+    await expect(denied(request('execute', { command: 'rm -rf /' }))).resolves.toMatchObject({
+      optionId: 'reject',
+    });
+    expect(confirm).not.toHaveBeenCalled();
+  });
 });

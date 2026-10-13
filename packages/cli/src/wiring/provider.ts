@@ -13,7 +13,11 @@ import {
   withCatalogCapabilities,
 } from '@wrongstack/providers';
 import { registerBuiltinProviderAuthStrategies } from '@wrongstack/providers/oauth';
-import { resolveProviderCfgWithProxy } from './provider-runtime.js';
+import {
+  ACP_LEADER_PROVIDER_ID,
+  createAcpLeaderProviderFactory,
+} from '../acp-leader/acp-leader-provider.js';
+import { buildProviderForId, resolveProviderCfgWithProxy } from './provider-runtime.js';
 
 interface ProviderSetupResult {
   resolvedProvider: ResolvedProvider | undefined;
@@ -46,9 +50,21 @@ export async function setupProvider(params: {
     };
   }
 
-  // Resolve provider details from models.dev.
+  // Resolve provider details from models.dev. An ACP agent as the leader is
+  // never in the catalog: its "model" is the agent id.
   const savedProviderCfg = config.providers?.[config.provider];
-  let resolvedProvider = await modelsRegistry.getProvider(config.provider).catch(() => undefined);
+  const acpLeader = config.provider === ACP_LEADER_PROVIDER_ID;
+  let resolvedProvider: ResolvedProvider | undefined = acpLeader
+    ? {
+        id: ACP_LEADER_PROVIDER_ID,
+        name: 'ACP agent',
+        family: 'openai-compatible',
+        apiBase: undefined,
+        envVars: [],
+        models: [{ id: config.model, name: config.model }],
+        npm: undefined,
+      }
+    : await modelsRegistry.getProvider(config.provider).catch(() => undefined);
   if (!resolvedProvider && savedProviderCfg?.type && savedProviderCfg.type !== config.provider) {
     resolvedProvider = await modelsRegistry
       .getProvider(savedProviderCfg.type)
@@ -122,6 +138,16 @@ export async function setupProvider(params: {
   // means a `/model wrongstack-setup` switch or a fallback hop can construct
   // it instead of throwing "provider type not registered".
   providerRegistry.register(createSetupProviderFactory());
+  // An ACP agent as the leader (`--provider acp --model claude-code`). Inert
+  // unless named; its side requests go to a WrongStack model built the same
+  // way a `/model` switch builds one.
+  providerRegistry.register(
+    createAcpLeaderProviderFactory({
+      bootConfig: config,
+      buildProvider: (providerId, live) =>
+        buildProviderForId({ config: live, providerRegistry, logger }, providerId),
+    }),
+  );
   if (config.features.modelsRegistry) {
     try {
       const factories = await buildProviderFactoriesFromRegistry({
@@ -185,7 +211,7 @@ export async function setupProvider(params: {
   // inside are swallowed inside the helper — the family default stands
   // and the per-request output-limit lookup installed above still resolves
   // the ceiling from the catalog.
-  if (config.features.modelsRegistry) {
+  if (config.features.modelsRegistry && !acpLeader) {
     provider = await withCatalogCapabilities(
       modelsRegistry,
       config.provider,

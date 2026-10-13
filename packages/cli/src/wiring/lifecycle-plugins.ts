@@ -47,6 +47,7 @@ import {
   MCPRegistry,
   MCPVaultTokenStore,
 } from '@wrongstack/mcp';
+import { bindAcpLeaderHost } from '../acp-leader/acp-leader-host.js';
 import { openBrowser } from '../auth-menu/loopback-server.js';
 import type { EventWiring } from '../boot/event-wiring.js';
 import { effectiveMcpServers, parseLaunchMcpServers } from '../boot/mcp-config-flag.js';
@@ -437,6 +438,7 @@ export async function setupLifecycleAndPlugins(
   });
 
   // ── Agent ────────────────────────────────────────────────────────────────
+  const confirmAwaiter = makeConfirmAwaiter(reader);
   const agent = createAgent({
     container,
     tools: toolRegistry,
@@ -445,7 +447,7 @@ export async function setupLifecycleAndPlugins(
     pipelines,
     context,
     config,
-    confirmAwaiter: makeConfirmAwaiter(reader),
+    confirmAwaiter,
     hookRunner,
     tracer: deps.tracer,
     fullConfig: config,
@@ -454,6 +456,18 @@ export async function setupLifecycleAndPlugins(
 
   // Same late-registration rule for plugin SessionStart/Stop policy hooks.
   agent.extensions.register(createLifecycleHooksExtension(hookRunner));
+
+  // An ACP agent as the leader (`--provider acp`) puts its tool calls on this
+  // agent's event bus and asks through this agent's policy and prompt.
+  bindAcpLeaderHost({
+    events,
+    projectRoot: wpaths.projectRoot,
+    getConfig: () => configStore.get(),
+    permission: () => agent.permission,
+    context: () => agent.ctx,
+    getTool: (name) => toolRegistry.get(name),
+    confirmAwaiter,
+  });
 
   // ── MCP servers ──────────────────────────────────────────────────────────
   const mcpTokenStore = new MCPVaultTokenStore(

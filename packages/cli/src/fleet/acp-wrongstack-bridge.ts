@@ -149,6 +149,33 @@ export function bridgeNote(servers: readonly BridgeServer[], delegated = true): 
   ].join('\n');
 }
 
+/**
+ * The note for an agent running as the session's LEADER: the user talks to it
+ * through WrongStack, so it answers them directly and ends a turn the way
+ * WrongStack's own leader does, with next steps the user can send back.
+ */
+export function leaderBridgeNote(servers: readonly BridgeServer[]): string {
+  return [
+    'You are the leader of a WrongStack session. The user talks to you through WrongStack',
+    '(its terminal UI or web UI), which shows your replies, your tool calls and their results.',
+    '',
+    "WrongStack's project services are available as MCP servers:",
+    ...servers.map((s) => SERVER_NOTES[s](false)),
+    '',
+    "WrongStack applies the user's rules to your edits and commands and asks the user when one",
+    "needs approval. A refused permission is the user's decision or rule: do not retry it or",
+    'work around it.',
+    '',
+    'When you finish a turn and a concrete follow-on action exists, end your reply with a',
+    '<nextsteps> block of 1-4 exact prompts the user can send back to you, one per numbered',
+    'line, for example:',
+    '<nextsteps>',
+    '1. Run the package tests and fix any failure',
+    '</nextsteps>',
+    'When the work is done, end with <nextsteps-complete/> instead.',
+  ].join('\n');
+}
+
 /** True when `command` resolves to a file on PATH (PATHEXT-aware on Windows). */
 export function onPath(
   command: string,
@@ -201,6 +228,7 @@ export function wrongstackBridgeSetup(
   agentId: string,
   projectRoot: string,
   config: BridgeConfig | undefined,
+  role: 'worker' | 'leader' = 'worker',
 ): ((task: TaskSpec, ctx: SubagentRunContext) => AcpSessionSetup) | undefined {
   const agents = config?.agents ?? DEFAULT_BRIDGE_AGENTS;
   // `claude-code` is also reachable by its registry id, `claude-acp`.
@@ -217,7 +245,10 @@ export function wrongstackBridgeSetup(
     meta: {
       systemPrompt: {
         // `@session` only reaches someone when a WrongStack session delegated the task.
-        append: bridgeNote(servers, ctx.sessionId !== undefined),
+        append:
+          role === 'leader'
+            ? leaderBridgeNote(servers)
+            : bridgeNote(servers, ctx.sessionId !== undefined),
       },
     },
   });

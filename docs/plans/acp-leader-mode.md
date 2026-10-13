@@ -1,6 +1,23 @@
 # ACP leader mode — Claude Code (or another ACP agent) as the session's leader
 
-Status: design, not built. 2026-10-13.
+Status: phase 1 built (2026-10-13) — `packages/cli/src/acp-leader/`. Phases
+2 and 3 open.
+
+Phase 1 notes, as built:
+
+- the provider is registered in `wiring/provider.ts`; the host services are
+  bound in `wiring/lifecycle-plugins.ts` (`bindAcpLeaderHost`);
+- a leader turn is told apart from a subagent's by `cache.threadId !==
+  cache.sessionId`; `complete()` is always a side request;
+- the confirmation prompt is used only where the surface has one (the REPL);
+  the TUI and WebUI take it away (`disableInteractiveConfirmation` →
+  `dropAcpLeaderConfirm`) and answer confirmations their own way, so under
+  them a question is refused for now;
+- the agent's thoughts are not put into the response (an unsigned thinking
+  block would break a later switch to a real Anthropic model);
+- on exit the sessions are closed (bounded); the child's tree kill can outlast
+  the 500 ms exit grace on Windows, which prints `exit.forced` but leaves no
+  process behind.
 
 ## Goal
 

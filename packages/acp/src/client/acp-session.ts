@@ -451,7 +451,7 @@ export class ACPSession {
     cancelLateAcpSession(this.transport, createPromise);
   }
 
-  private async closeSession(): Promise<void> {
+  private async closeSession(graceMs = 10_000): Promise<void> {
     if (!this.sessionId) return;
     const sid = this.sessionId;
     this.sessionId = null;
@@ -459,7 +459,7 @@ export class ACPSession {
     if (this.agentCapabilities.sessionCapabilities?.close) {
       const id = this.allocId();
       try {
-        await this.sendRequest(id, 'session/close', { sessionId: sid }, 10_000);
+        await this.sendRequest(id, 'session/close', { sessionId: sid }, graceMs);
         /* v8 ignore next 3 - best-effort close request */
       } catch {
         // Best-effort
@@ -471,7 +471,12 @@ export class ACPSession {
   // Lifecycle — close
   // ──────────────────────────────────────────────────────────────────────
 
-  async close(): Promise<void> {
+  /**
+   * Close the session and stop the agent. `graceMs` bounds how long the
+   * agent may take to answer `session/close` before it is stopped anyway —
+   * shutdown passes a short one so a slow answer cannot outlive the process.
+   */
+  async close(opts: { graceMs?: number } = {}): Promise<void> {
     if (this.closed) return;
     this.closed = true;
     this.state = 'closed';
@@ -482,7 +487,7 @@ export class ACPSession {
 
     if (this.sessionId && this.agentCapabilities.sessionCapabilities?.close) {
       try {
-        await this.closeSession();
+        await this.closeSession(opts.graceMs);
         /* v8 ignore next 3 - best-effort close on teardown */
       } catch {
         // best-effort

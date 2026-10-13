@@ -14,6 +14,7 @@
  * inline — they are too deeply coupled to local mutable state for a
  * single-PR extraction.
  */
+
 import * as path from 'node:path';
 import type { Agent } from '@wrongstack/core/agent';
 import type { BrainArbiter } from '@wrongstack/core/coordination';
@@ -31,6 +32,7 @@ import type {
 import { color } from '@wrongstack/core/utils';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
+import { dropAcpLeaderConfirm } from '../acp-leader/acp-leader-host.js';
 import type { TerminalRenderer } from '../renderer.js';
 import type { AutonomyMode } from '../services/autonomy-mode.js';
 import { terminalLink, terminalText } from '../terminal-format.js';
@@ -230,6 +232,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
   // this, approvals appear in the terminal even when you're driving the
   // agent from the browser.
   agent.disableInteractiveConfirmation();
+  dropAcpLeaderConfirm();
   // Silence CLI rendering — WebUI owns the output surface. The writeInfo
   // calls below still flow (stderr), but streaming text/tool events are
   // suppressed so they don't appear in both the terminal and the browser.

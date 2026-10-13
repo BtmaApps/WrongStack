@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T17:45:52.208Z",
+  "generatedAt": "2026-10-13T18:36:41.662Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4947,
-    "testFiles": 4335,
-    "sourceLines": 1097503,
+    "sourceFiles": 4950,
+    "testFiles": 4336,
+    "sourceLines": 1098288,
     "workspaceEdges": 137,
-    "moduleEdges": 16296,
+    "moduleEdges": 16308,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 966
+    "testOnlyExports": 969
   },
   "errors": [],
   "packageCycles": [],
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 625,
-      "testFiles": 620,
+      "sourceFiles": 628,
+      "testFiles": 621,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 620
+          "testFiles": 621
         }
       ]
     },
@@ -1985,6 +1985,12 @@
       },
       {
         "file": "packages/cli/tests/acp-hq-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-provider.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27438,6 +27444,11 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/cli/src/execution.ts",
+      "lines": 756,
+      "relativeImports": 43
+    },
+    {
       "file": "packages/tools/src/codebase-index/skeleton-extractor.ts",
       "lines": 756,
       "relativeImports": 3
@@ -27456,11 +27467,6 @@
       "file": "packages/webui-hq/src/domain/fleet-topology.ts",
       "lines": 755,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/cli/src/execution.ts",
-      "lines": 754,
-      "relativeImports": 42
     },
     {
       "file": "packages/providers/src/codex-websocket.ts",
@@ -27706,6 +27712,18 @@
     {
       "file": "packages/acp/src/version.ts",
       "name": "versionCoverage"
+    },
+    {
+      "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
+      "name": "AcpLeaderProvider"
+    },
+    {
+      "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
+      "name": "isLeaderTurn"
+    },
+    {
+      "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
+      "name": "leaderSideModel"
     },
     {
       "file": "packages/cli/src/acp-mcp-servers.ts",

@@ -148,6 +148,16 @@ export interface Config {
       /** Project MCP servers to attach. Default `['sage', 'mailbox', 'kanban']`. */
       servers?: Array<'sage' | 'mailbox' | 'kanban' | 'codebase-index' | 'requirement-intake'>;
     };
+    /**
+     * An ACP agent as the session's leader (`--provider acp --model claude-code`).
+     * The agent runs its own loop, so WrongStack's side requests (titles,
+     * summaries, next-step suggestions, the refiner) and any WrongStack
+     * subagent that inherits the leader's model go to `sideModel` instead.
+     */
+    leader?: {
+      /** `provider/model` for side requests. Default: `fallbackBridge`, then `fallbackModels[0]`. */
+      sideModel?: string;
+    };
   };
   /**
    * Ordered list of fallback model references tried, in order, when the

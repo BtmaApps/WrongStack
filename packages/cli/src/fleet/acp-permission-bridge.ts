@@ -142,6 +142,12 @@ export interface AcpPermissionBridgeOptions {
    * MCP tools out of the registry and so out of a worker's reach too.
    */
   allowMcp?: boolean | undefined;
+  /**
+   * Ask the user when the policy wants a question (`confirm`). A worker has
+   * no one to ask, so without this a `confirm` is refused; a leader runs in
+   * front of the user and passes the session's own confirmation prompt.
+   */
+  confirm?: ((tool: Tool, call: WrongStackCall) => Promise<boolean>) | undefined;
   /** Told about every refusal, for the host's log. */
   onRefused?: ((call: WrongStackCall, reason: string) => void) | undefined;
 }
@@ -198,8 +204,18 @@ export function wrongstackAcpPermissionPolicy(
         reason: `permission check failed: ${toErrorMessage(err)}`,
       };
     }
-    // `confirm` is a question a worker's request cannot carry to the user.
     if (decision.permission === 'auto') return pick(req, true);
+    if (decision.permission === 'confirm' && opts.confirm) {
+      let approved = false;
+      try {
+        approved = await opts.confirm(tool, call);
+      } catch {
+        approved = false;
+      }
+      if (req.signal.aborted) return { outcome: 'cancelled' };
+      return approved ? pick(req, true) : refuse(req, call, 'declined by the user');
+    }
+    // Without a way to ask, `confirm` is a question nobody can answer.
     return refuse(req, call, decision.reason ?? decision.source);
   };
 }

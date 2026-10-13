@@ -72,6 +72,11 @@
     "packages/acp/src/version.ts": [
       "versionCoverage"
     ],
+    "packages/cli/src/acp-leader/acp-leader-provider.ts": [
+      "AcpLeaderProvider",
+      "isLeaderTurn",
+      "leaderSideModel"
+    ],
     "packages/cli/src/acp-mcp-servers.ts": [
       "acpMcpServerToConfig"
     ],

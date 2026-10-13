@@ -63,6 +63,7 @@ export {
 } from './client/trust-boundary-permission.js';
 export type { WebSocketClientTransportOptions } from './client/websocket-transport.js';
 export { WebSocketClientTransport } from './client/websocket-transport.js';
+export { classifyAgentFailure } from './integration/acp-agent-failure.js';
 export type {
   AcpBenchAgentResult,
   AcpBenchCheck,

@@ -8,6 +8,7 @@ import { normalizeTokenSavingTier } from '@wrongstack/core/types';
 import { mergeCustomModelDefs, sessionScopedPath } from '@wrongstack/core/utils';
 import { capabilitiesFor, catalogProviderIdFor } from '@wrongstack/providers';
 import { createToolVisionAdapters } from '@wrongstack/runtime/vision';
+import { dropAcpLeaderConfirm } from './acp-leader/acp-leader-host.js';
 import { runSingleShotDispatch } from './boot/dispatch-singleshot.js';
 import { runTuiDispatch } from './boot/dispatch-tui.js';
 import { resolveExecutionMode } from './boot/execution-mode.js';
@@ -299,6 +300,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       });
     } else if (executionMode === 'tui') {
       agent.disableInteractiveConfirmation();
+      dropAcpLeaderConfirm();
 
       const state: TuiRuntimeState = {
         projectRoot,

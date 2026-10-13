@@ -32,6 +32,19 @@ describe('wrongstackBridgeSetup', () => {
     expect(wrongstackBridgeSetup('codex-cli', ROOT, undefined)).toBeUndefined();
   });
 
+  it('gives a leader its own note: it answers the user and ends turns with next steps', () => {
+    const leader = wrongstackBridgeSetup('claude-code', ROOT, undefined, 'leader')!(task, ctx);
+    const note = (leader.meta as { systemPrompt: { append: string } }).systemPrompt.append;
+    expect(note).toContain('You are the leader of a WrongStack session');
+    expect(note).toContain('<nextsteps>\n1. ');
+    expect(note).toContain('<nextsteps-complete/>');
+    expect(note).not.toContain('delegated worker');
+    // The same servers a worker gets.
+    expect(leader.mcpServers).toEqual(
+      wrongstackBridgeSetup('claude-code', ROOT, undefined)!(task, ctx).mcpServers,
+    );
+  });
+
   it('is turned off by an empty agent or server list', () => {
     expect(wrongstackBridgeSetup('claude-code', ROOT, { agents: [] })).toBeUndefined();
     expect(wrongstackBridgeSetup('claude-code', ROOT, { servers: [] })).toBeUndefined();
