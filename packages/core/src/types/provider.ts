@@ -284,6 +284,22 @@ export interface Capabilities {
   audio?: boolean | undefined;
   /** Model supports the `n` parameter for multiple completions. */
   multipleCompletions?: boolean | undefined;
+  /**
+   * The provider is an agent that keeps its own conversation (an ACP agent
+   * leading the session): the messages WrongStack holds are a transcript of
+   * it, not what the model sees. Context fill comes from the agent's own
+   * report (`Response.agentContext`), and WrongStack never compacts or trims
+   * the transcript to fit a window it does not fill.
+   */
+  keepsOwnContext?: boolean | undefined;
+}
+
+/** The context an agent provider holds itself, as the agent reports it. */
+export interface AgentContextUsage {
+  /** Tokens in the agent's context now. */
+  used: number;
+  /** The agent's context window; 0 when it did not say. */
+  size: number;
 }
 
 export interface Request {
@@ -361,6 +377,12 @@ export interface Response {
   stopReason: StopReason;
   usage: Usage;
   model: string;
+  /**
+   * A provider that keeps its own context (`Capabilities.keepsOwnContext`):
+   * the context it holds after this response. `usage` stays what the response
+   * spent, which for an agent's turn is the sum of every model call in it.
+   */
+  agentContext?: AgentContextUsage | undefined;
   /** The backend served another model than the requested one (provider-reported, never inferred). */
   rerouted?: { requested: string; served: string; reason?: string | undefined } | undefined;
 }
@@ -392,7 +414,12 @@ export type StreamEvent =
    */
   | { type: 'thinking_meta'; providerMeta: Record<string, unknown> }
   | { type: 'thinking_stop' }
-  | { type: 'message_stop'; stopReason: StopReason; usage: Usage };
+  | {
+      type: 'message_stop';
+      stopReason: StopReason;
+      usage: Usage;
+      agentContext?: AgentContextUsage | undefined;
+    };
 
 export interface ProviderContextLimit {
   /** Provider-authoritative context ceiling for the selected route/model. */
@@ -428,6 +455,15 @@ export interface Provider {
    * and never costs tokens.
    */
   warm?(model: string): Promise<void>;
+  /**
+   * A provider that keeps its own context (`capabilities.keepsOwnContext`)
+   * compacts it when asked: `/compact` on that route. Resolves to the
+   * context the agent holds afterwards, when it reports one.
+   */
+  compactOwnContext?(opts: {
+    sessionId: string;
+    signal: AbortSignal;
+  }): Promise<AgentContextUsage | undefined>;
   /**
    * Optional text-to-image generation, on the wires that have an image API
    * (OpenAI images, Gemini). Absent means this provider cannot draw.

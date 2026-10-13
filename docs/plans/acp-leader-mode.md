@@ -1,7 +1,21 @@
 # ACP leader mode — Claude Code (or another ACP agent) as the session's leader
 
 Status: phases 1 and 2 built (2026-10-13) — `packages/cli/src/acp-leader/`.
-Phase 3 open.
+Phase 3 open; its recap fallback is built (see Context below).
+
+Context, as built: the provider declares `capabilities.keepsOwnContext`. A
+turn's usage is the sum of every model call the agent made (ten tool calls ≈
+ten times the context), so the agent's own reading travels beside it as
+`Response.agentContext` (`usage_update` `used`/`size`; a compaction's
+`postTokens`). The loop shows that reading as `ctx.pct` and in the token
+counter's per-request snapshot, never anchors or calibrates on the turn's
+usage, skips auto-compaction and the pre-flight overflow guard on this route,
+and the strategy compactor hands `/compact` (CLI, TUI, WebUI) to
+`provider.compactOwnContext`, which sends the agent `/compact`. The provider
+also publishes each reading as `ctx.pct` while the turn runs and adopts the
+agent's `size` as `capabilities.maxContext`. A fresh agent session (a switch
+to the agent mid-conversation, a resume) gets the earlier turns as text on its
+first turn (`earlierConversation`, newest 60k chars).
 
 Phase 2 notes, as built (`acp-leader-fleet.ts`): the endpoint offers the
 coordination tools the leader's registry has — a profile that disables
@@ -146,7 +160,8 @@ mailbox (through MCP), delegation to WrongStack subagents, interrupts.
 Not applied, because the agent runs its own loop:
 
 - WrongStack's system prompt, SAGE injection into the prompt, compaction and
-  context budgeting (the agent manages its own context);
+  context budgeting (the agent manages its own context; the context bar shows
+  the agent's reading and `/compact` asks the agent);
 - WrongStack's built-in tools and their per-tool rendering (the agent's own
   tools render through the external tool sink instead);
 - the next-steps final-turn gate (`nextsteps-final-turn-gate`) — must be

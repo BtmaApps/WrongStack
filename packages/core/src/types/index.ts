@@ -429,6 +429,7 @@ export type {
 // ── prompt-registry (8 symbols) ──
 export { diffRegistry, validateRegistryManifest } from './prompt-registry.js';
 export type {
+  AgentContextUsage,
   CacheTtl,
   Capabilities,
   JsonSchemaSpec,

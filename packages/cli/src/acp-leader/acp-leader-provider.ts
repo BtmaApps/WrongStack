@@ -18,6 +18,7 @@
  */
 import { type ACPProgressEvent, type ACPSession, findAgentDescriptor } from '@wrongstack/acp';
 import type {
+  AgentContextUsage,
   Capabilities,
   Config,
   Provider,
@@ -33,6 +34,7 @@ import { isRestrictedMode } from '../boot/restricted-mode.js';
 import { wrongstackAcpPermissionPolicy } from '../fleet/acp-permission-bridge.js';
 import { recordAcpRateLimit } from '../fleet/acp-quota-reading.js';
 import { wrongstackBridgeSetup } from '../fleet/acp-wrongstack-bridge.js';
+import { LeaderContext, publishLeaderContext } from './acp-leader-context.js';
 import {
   FLEET_SERVER_NAME,
   type FleetEndpoint,
@@ -43,6 +45,7 @@ import {
 import { ACP_LEADER_PROVIDER_ID, acpLeaderHost, trackAcpLeader } from './acp-leader-host.js';
 import {
   agentTurnError,
+  earlierConversation,
   latestUserText,
   StreamQueue,
   TextBlocks,
@@ -74,6 +77,8 @@ const CAPABILITIES: Capabilities = {
   logprobs: false,
   audio: false,
   multipleCompletions: false,
+  // The agent runs its own conversation and compacts it itself.
+  keepsOwnContext: true,
 };
 
 type AcpModule = typeof import('@wrongstack/acp');
@@ -81,6 +86,9 @@ type AcpModule = typeof import('@wrongstack/acp');
 interface LeaderSession {
   agentId: string;
   session: ACPSession;
+  context: LeaderContext;
+  /** Set once the agent has had a turn: its first one carries the earlier conversation. */
+  joined?: boolean;
 }
 
 /** `provider/model` → its parts; a bare id or the ACP provider itself is unusable here. */
@@ -184,38 +192,21 @@ export class AcpLeaderProvider implements Provider {
 
     const queue = new StreamQueue();
     const blocks = new TextBlocks(queue);
-    const host = acpLeaderHost();
-    const tools = new ToolCardRelay(host?.events, {
-      sessionId: req.cache?.sessionId,
-      model: agentId,
-    });
-    const onProgress = (event: ACPProgressEvent): void => {
-      switch (event.type) {
-        case 'message':
-          blocks.text(event.text);
-          return;
-        case 'tool_call':
-        case 'tool_call_update':
-          tools.update(event.toolCall);
-          return;
-        case 'rate_limit':
-          recordAcpRateLimit(agentId, event.info);
-          return;
-        default:
-          return;
-      }
-    };
+    const onProgress = this.progress(leader, req.cache?.sessionId, (text) => blocks.text(text));
 
     yield { type: 'message_start', model: agentId };
     const turn = leader.session
-      .prompt([acp.textContent(latestUserText(req.messages))], opts.signal, onProgress)
+      .prompt([acp.textContent(this.promptText(leader, req))], opts.signal, onProgress)
       .then(
         (result) => {
           blocks.close();
+          if (result.usage) this.observeContext(leader, req.cache?.sessionId, result.usage);
+          const agentContext = leader.context.current;
           queue.push({
             type: 'message_stop',
             stopReason: turnStopReason(result),
             usage: turnUsage(result),
+            ...(agentContext ? { agentContext } : {}),
           });
           queue.end();
         },
@@ -231,6 +222,87 @@ export class AcpLeaderProvider implements Provider {
     } finally {
       await turn;
     }
+  }
+
+  /** The turn's prompt; an agent joining a conversation under way gets the turns before it. */
+  private promptText(leader: LeaderSession, req: Request): string {
+    const latest = latestUserText(req.messages);
+    const earlier = leader.joined ? undefined : earlierConversation(req.messages);
+    leader.joined = true;
+    return earlier ? `${earlier}\n\n${latest}` : latest;
+  }
+
+  /**
+   * `/compact` on this route: the agent compacts its own conversation. No
+   * agent started yet means there is nothing in its context to compact.
+   */
+  async compactOwnContext(opts: {
+    sessionId: string;
+    signal: AbortSignal;
+  }): Promise<AgentContextUsage | undefined> {
+    const pending = this.sessions.get(opts.sessionId);
+    if (!pending) return undefined;
+    const leader = await pending;
+    const acp = await this.loadAcp();
+    await leader.session.prompt(
+      [acp.textContent('/compact')],
+      opts.signal,
+      this.progress(leader, opts.sessionId),
+    );
+    return leader.context.current;
+  }
+
+  /** The progress handler of one agent turn: text, tool cards, rate limits and context. */
+  private progress(
+    leader: LeaderSession,
+    sessionId: string | undefined,
+    onText?: (text: string) => void,
+  ): (event: ACPProgressEvent) => void {
+    const tools = new ToolCardRelay(acpLeaderHost()?.events, {
+      sessionId,
+      model: leader.agentId,
+    });
+    return (event) => {
+      switch (event.type) {
+        case 'message':
+          onText?.(event.text);
+          return;
+        case 'tool_call':
+        case 'tool_call_update': {
+          tools.update(event.toolCall);
+          const compacted = leader.context.toolCall(event.toolCall);
+          if (compacted) this.publishContext(sessionId, compacted);
+          return;
+        }
+        case 'usage':
+          this.observeContext(leader, sessionId, event.usage);
+          return;
+        case 'rate_limit':
+          recordAcpRateLimit(leader.agentId, event.info);
+          return;
+        default:
+          return;
+      }
+    };
+  }
+
+  /** A context reading from the agent: its window is the route's, and the fill shows at once. */
+  private observeContext(
+    leader: LeaderSession,
+    sessionId: string | undefined,
+    usage: { used: number; size: number },
+  ): void {
+    const reading = leader.context.usage(usage);
+    // The agent knows its model's window (Claude: 200k, or 1M on a [1m] model);
+    // refined in place, as the capabilities object is per agent.
+    if (reading.size > 0 && leader.agentId === this.config().model) {
+      this.capabilities.maxContext = reading.size;
+    }
+    this.publishContext(sessionId, reading);
+  }
+
+  private publishContext(sessionId: string | undefined, reading: AgentContextUsage): void {
+    publishLeaderContext(acpLeaderHost()?.events, sessionId, reading, this.capabilities.maxContext);
   }
 
   private async loadAcp(): Promise<AcpModule> {
@@ -357,7 +429,7 @@ export class AcpLeaderProvider implements Provider {
         ? { initialModeId: 'default', requireInitialMode: agentId === 'claude-code' }
         : {}),
     });
-    return { agentId, session };
+    return { agentId, session, context: new LeaderContext() };
   }
 
   /** Close every agent session (process shutdown). */

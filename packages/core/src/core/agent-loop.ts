@@ -25,6 +25,7 @@ import {
   signalAbortReason,
   toError,
 } from './agent-loop-retry.js';
+import { keepsOwnContext } from './agent-owned-context.js';
 import type { AgentResponseHandler } from './agent-response.js';
 import type { AgentToolHandler } from './agent-tools.js';
 import type { RunResult, UserInputPayload } from './agent-types.js';
@@ -354,10 +355,14 @@ export function createAgentLoopHandler(
           const calibratedTotal = cal.calibrated
             ? Math.round(preFlight.total * Math.min(1.5, Math.max(0.5, cal.ratio)))
             : preFlight.total;
-          const realInputTokens = effectiveInputTokens(res.usage);
+          // An agent keeping its own context reports it (recorded with the
+          // response); its usage is a turn's summed spend and must not
+          // calibrate or anchor the transcript.
+          const ownContext = keepsOwnContext(requestProvider);
+          const realInputTokens = ownContext ? 0 : effectiveInputTokens(res.usage);
           // Calibration learns actual/raw, not actual/already-calibrated:
           // feeding back the multiplier makes it converge to sqrt(actual/raw).
-          recordActualUsage(realInputTokens, preFlight.total, key);
+          if (!ownContext) recordActualUsage(realInputTokens, preFlight.total, key);
           const anchorIsPlausible = realInputTokens >= calibratedTotal * 0.5;
           const routeStillActive =
             a.ctx.provider.id === requestProvider.id && a.ctx.model === req.model;

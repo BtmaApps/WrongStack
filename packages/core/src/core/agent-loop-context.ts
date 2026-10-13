@@ -9,6 +9,7 @@ import {
   type RequestTokenBreakdown,
 } from '../utils/token-estimate.js';
 import type { AgentInternals } from './agent-internals.js';
+import { keepsOwnContext, readAgentContext } from './agent-owned-context.js';
 import type { AgentResponseHandler } from './agent-response.js';
 import { type RunOptions, resolveEventSessionId } from './context.js';
 import {
@@ -295,10 +296,13 @@ export function createAgentLoopContextManager(
       cal.calibrated,
       a.ctx.lastRealInputTokens,
       a.ctx.meta?.['realAnchorMsgCount'],
+      readAgentContext(a.ctx)?.used,
     ]);
   }
 
   async function compactContextIfNeeded(): Promise<boolean> {
+    // The agent compacts its own context; trimming the transcript frees none of it.
+    if (keepsOwnContext(a.ctx.provider)) return false;
     const msgCount = a.ctx.messages.length;
     const maxContext = currentMaxContext();
     const revision = a.ctx.state.revision;
@@ -378,6 +382,7 @@ export function createAgentLoopContextManager(
     // request before any provider call when context-window management is active.
     if (
       !a.ctx.signal?.aborted &&
+      !keepsOwnContext(prepared.provider) &&
       a.pipelines.contextWindow.size() > 0 &&
       a.ctx.meta?.['contextAutoCompact'] !== false
     ) {
@@ -436,10 +441,11 @@ export function createAgentLoopContextManager(
   }
 
   function emitContextPct(): void {
-    const anchored = readRealAnchoredContextTokens(a.ctx);
+    const agentContext = readAgentContext(a.ctx);
+    const anchored = agentContext ? agentContext.used : readRealAnchoredContextTokens(a.ctx);
     const msgCount = a.ctx.messages.length;
     const toolCount = (a.ctx.tools ?? []).length;
-    const maxContext = currentMaxContext();
+    const maxContext = agentContext?.size || currentMaxContext();
     const revision = a.ctx.state.revision;
     const accountingIdentity = compactionAccountingIdentity();
     const systemRef = a.ctx.systemPrompt;

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T20:25:02.999Z",
+  "generatedAt": "2026-10-13T20:52:43.336Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4951,
-    "testFiles": 4340,
-    "sourceLines": 1098584,
+    "sourceFiles": 4954,
+    "testFiles": 4342,
+    "sourceLines": 1098932,
     "workspaceEdges": 137,
-    "moduleEdges": 16314,
+    "moduleEdges": 16326,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -24,9 +24,7 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 971
   },
-  "errors": [
-    "packages/tools/src/bash-kill-guard.ts: \"getBlockedKillMessage\" is no longer test-only; remove it from architecture/test-only-exports.json in the same change"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -153,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 629,
-      "testFiles": 624,
+      "sourceFiles": 630,
+      "testFiles": 625,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -198,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 624
+          "testFiles": 625
         }
       ]
     },
@@ -249,8 +247,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1120,
-      "testFiles": 968,
+      "sourceFiles": 1122,
+      "testFiles": 969,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -265,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 968
+          "testFiles": 969
         }
       ]
     },
@@ -1987,6 +1985,12 @@
       },
       {
         "file": "packages/cli/tests/acp-hq-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-context.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7465,6 +7469,12 @@
       },
       {
         "file": "packages/core/tests/core/agent-nextsteps-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/agent-owned-context.test.ts",
         "projects": [
           "root-node"
         ]

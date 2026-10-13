@@ -205,7 +205,19 @@ Each of your messages becomes one turn of a single agent session for the
 WrongStack session (the agent keeps its own conversation). Its reply streams
 into the chat, its tool calls show as tool cards, and its token usage and
 quota are tracked like a model's. It runs its own loop, so WrongStack's system
-prompt, compaction and model routing do not apply to it.
+prompt and model routing do not apply to it.
+
+- **Context** — the agent keeps its own conversation, so the context bar,
+  `/context` and the WebUI show the agent's own reading of its window (Claude:
+  200k, or 1M on a `[1m]` model), live as a long turn grows and after Claude
+  compacts on its own. A turn's token usage is still the sum of every model
+  call in it; that is spend, not context. WrongStack never compacts or trims
+  its copy of the conversation on this route, and `/compact` asks the agent to
+  compact its own.
+- **Joining a conversation** — picking the agent mid-conversation (`/model
+  acp/claude-code`) or resuming a session starts a fresh agent; its first turn
+  carries the earlier turns as text (the newest ~60k characters, without tool
+  calls and their results).
 
 - **Permissions** — the agent starts in its `default` mode and every request it
   makes is decided by your own rules; one that needs approval is asked through

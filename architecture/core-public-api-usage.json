@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 363,
-      "typeOnly": 159,
-      "runtimeOrMixed": 225
+      "files": 365,
+      "typeOnly": 160,
+      "runtimeOrMixed": 226
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1401,
-      "typeOnly": 1234,
+      "files": 1403,
+      "typeOnly": 1236,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -6909,6 +6909,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/acp-leader/acp-leader-context.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/acp-leader/acp-leader-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7446,6 +7452,12 @@
       "file": "packages/cli/src/worktree-command-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/acp-leader-context.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -13887,6 +13899,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/acp-leader/acp-leader-context.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/acp-leader/acp-leader-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15834,6 +15852,12 @@
       "file": "packages/cli/src/wiring/wrongtrace-prompt-contributor.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-leader-context.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",

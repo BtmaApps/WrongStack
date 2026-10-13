@@ -22,6 +22,7 @@ import { toErrorMessage } from '../utils/error.js';
 import { LIVE_CONTEXT_MARKER } from '../utils/live-context.js';
 import { hasMeaningfulContent, repairToolUseAdjacency } from '../utils/message-invariants.js';
 import type { AgentInternals } from './agent-internals.js';
+import { recordAgentContext } from './agent-owned-context.js';
 import { refreshAgentToolSurface } from './agent-tool-surface.js';
 import { type RunOptions, resolveEventSessionId } from './context.js';
 import { bindRequestHistoryVersion, contextHistoryVersion } from './context-history-version.js';
@@ -588,6 +589,7 @@ export function createAgentResponseHandler(
       }
     }
     a.ctx.tokenCounter.account(res.usage, req.model, requestProvider.id);
+    if (res.agentContext) recordAgentContext(a.ctx, res.agentContext);
 
     // Issue #271: never append or persist a semantically empty assistant
     // response (e.g. a stream interrupted before the first meaningful delta,

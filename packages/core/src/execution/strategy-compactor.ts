@@ -1,3 +1,4 @@
+import { keepsOwnContext } from '../core/agent-owned-context.js';
 import type { Context } from '../core/context.js';
 import { LLMSelector } from '../models/llm-selector.js';
 import { SystemOneSelector } from '../models/system-one-selector.js';
@@ -11,6 +12,7 @@ import type { ContextWindowPolicy } from '../types/context-window.js';
 import type { Message } from '../types/messages.js';
 import type { TypeSafeJudge } from '../typesafe/judgments.js';
 import { toErrorMessage } from '../utils/index.js';
+import { compactAgentOwnedContext } from './agent-context-compaction.js';
 import {
   compactionReportStillCurrent,
   markStaleCompactionReport,
@@ -100,10 +102,19 @@ export function createStrategyCompactor(opts: StrategyCompactorOptions = {}): Co
   // compaction every tab actually got stayed whatever the process booted with.
   // The provider is already resolved from `ctx` at compact time for the same
   // reason; this is the same seam, one level up.
-  return new JournaledCompactor({
+  const journaled = new JournaledCompactor({
     compact: (ctx, compactOpts) =>
       forStrategy(strategyForContext(ctx, configured)).compact(ctx, compactOpts),
   });
+  // An agent keeping its own context compacts it itself; the transcript is
+  // left as it is, so there is no snapshot to journal.
+  return {
+    compact: (ctx, compactOpts) =>
+      keepsOwnContext(ctx.provider)
+        ? compactAgentOwnedContext(ctx)
+        : journaled.compact(ctx, compactOpts),
+    observe: (observer) => journaled.observe(observer),
+  };
 }
 
 /** The compaction strategy this conversation asked for, or the project's. */

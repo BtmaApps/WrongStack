@@ -20,6 +20,7 @@ interface StreamingState {
   rerouted?: Response['rerouted'];
   stopReason: Response['stopReason'];
   usage: Response['usage'];
+  agentContext?: Response['agentContext'];
   textBuffers: string[];
   currentTextIndex: number;
   tools: Map<
@@ -83,6 +84,7 @@ export function buildResponse(state: StreamingState): Response {
     stopReason: state.stopReason,
     usage: state.usage,
     model: state.model,
+    ...(state.agentContext ? { agentContext: state.agentContext } : {}),
     ...(state.rerouted ? { rerouted: state.rerouted } : {}),
   };
 }
@@ -269,10 +271,15 @@ export function handleThinkingStop(state: StreamingState): void {
 
 export function handleMessageStop(
   state: StreamingState,
-  ev: { stopReason?: Response['stopReason'] | undefined; usage?: Response['usage'] | undefined },
+  ev: {
+    stopReason?: Response['stopReason'] | undefined;
+    usage?: Response['usage'] | undefined;
+    agentContext?: Response['agentContext'];
+  },
 ): void {
   state.stopReason = ev.stopReason ?? 'end_turn';
   state.usage = ev.usage ?? { input: 0, output: 0 };
+  if (ev.agentContext) state.agentContext = ev.agentContext;
 }
 
 export async function streamProviderToResponse(
