@@ -12,6 +12,20 @@ import type { TuiSlashCommandOptions } from './tui-slash-command-options.js';
  * registration order (tests/slash-registration-enumeration.test.ts,
  * positions 2–3).
  */
+/**
+ * `/model acp/claude-code` or `/model acp claude-code` → the pair to switch to.
+ * The provider id never contains a slash; the model id may (`openrouter/x/y`).
+ */
+export function parseModelTarget(args: string): { provider: string; model: string } | undefined {
+  const text = args.trim();
+  if (!text) return undefined;
+  const space = text.match(/^(\S+)\s+(\S+)$/);
+  if (space?.[1] && space[2]) return { provider: space[1], model: space[2] };
+  const slash = text.indexOf('/');
+  if (slash <= 0 || slash === text.length - 1 || /\s/.test(text)) return undefined;
+  return { provider: text.slice(0, slash), model: text.slice(slash + 1) };
+}
+
 export function useProviderSlashCommands(deps: TuiSlashCommandOptions): void {
   const {
     slashRegistry,
@@ -29,10 +43,23 @@ export function useProviderSlashCommands(deps: TuiSlashCommandOptions): void {
     const cmd = {
       name: 'model',
       aliases: ['provider', 'switch'],
-      description: 'Pick a provider + model interactively (two-step).',
-      async run() {
-        await openModelPicker();
-        return { message: undefined };
+      description:
+        'Pick a provider + model interactively (two-step), or switch at once: /model <provider>/<model>.',
+      async run(args: string) {
+        const target = parseModelTarget(args);
+        if (!target) {
+          if (args.trim()) {
+            return { message: 'Usage: /model <provider>/<model>  (or /model to pick from a list)' };
+          }
+          await openModelPicker();
+          return { message: undefined };
+        }
+        const error = await switchProviderAndModel(target.provider, target.model);
+        return {
+          message: error
+            ? `Could not switch to ${target.provider}/${target.model}: ${error}`
+            : `Switched to ${target.provider} / ${target.model}.`,
+        };
       },
     };
     // Register as an official TUI plugin so it can override a CLI built-in

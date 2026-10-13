@@ -10,9 +10,11 @@ import type {
 } from '@wrongstack/runtime/governance-bootstrap';
 import { createGovernanceMutationSnapshotBridge } from '@wrongstack/runtime/governance-mutation-snapshot-bridge';
 import { sanitizeGovernanceMessage } from '@wrongstack/runtime/governance-sanitize';
+import { ACP_LEADER_PROVIDER_ID } from './acp-leader/acp-leader-provider.js';
 import { createGovernanceShadowBridge } from './boot/governance-shadow-bridge.js';
 import { createGovernanceTraceContext } from './boot/governance-trace-context.js';
 import { refreshRuntimeModelCatalog } from './context-limit.js';
+import { installedBridgeAgents } from './fleet/acp-wrongstack-bridge.js';
 import { buildPickableProviders } from './provider-helpers.js';
 
 export const WRONGSTACK_GOVERNANCE_ENV = 'WRONGSTACK_GOVERNANCE';
@@ -218,6 +220,21 @@ export function createPickableProvidersLoader(args: {
       logger,
       reason: 'model-picker',
     });
-    return buildPickableProviders(modelsRegistry, getConfig());
+    const config = getConfig();
+    const providers = await buildPickableProviders(modelsRegistry, config);
+    // ACP agents installed here can lead the session (`acp / claude-code`).
+    // They are not in the models.dev catalog, so the catalog list never has them.
+    const agents = installedBridgeAgents(config.acp);
+    return agents.length > 0 && !providers.some((p) => p.id === ACP_LEADER_PROVIDER_ID)
+      ? [
+          ...providers,
+          {
+            id: ACP_LEADER_PROVIDER_ID,
+            family: 'acp',
+            models: agents,
+            modelsLabel: 'ACP agent as leader',
+          },
+        ]
+      : providers;
   };
 }

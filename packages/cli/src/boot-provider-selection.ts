@@ -1,9 +1,6 @@
 import * as fs from 'node:fs/promises';
-
 import { createRequire } from 'node:module';
-
 import * as path from 'node:path';
-
 import { fileURLToPath } from 'node:url';
 import type { Config, ModelsRegistry } from '@wrongstack/core/types';
 import {
@@ -12,8 +9,8 @@ import {
   toErrorMessage,
   wrongstackPackageJsonPath,
 } from '@wrongstack/core/utils';
-
 import { isSetupProvider } from '@wrongstack/providers';
+import { ACP_LEADER_PROVIDER_ID } from './acp-leader/acp-leader-host.js';
 
 import type { ReadlineInputReader } from './input-reader.js';
 
@@ -56,6 +53,9 @@ export async function validateSavedProviderModel(
   // config entry, no credential. Every check below would (correctly) reject
   // it, so answer here instead of teaching each one about it.
   if (isSetupProvider(providerId)) return { ok: true };
+  // An ACP agent as the leader: no catalog entry and no key — the agent signs
+  // itself in. A missing agent surfaces on the first turn, by name.
+  if (providerId === ACP_LEADER_PROVIDER_ID) return { ok: true };
 
   const saved = config.providers?.[providerId];
   const lookupId = saved?.type && saved.type !== providerId ? saved.type : providerId;

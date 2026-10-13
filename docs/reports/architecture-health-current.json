@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T18:57:10.538Z",
+  "generatedAt": "2026-10-13T19:15:56.887Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4951,
-    "testFiles": 4337,
-    "sourceLines": 1098467,
+    "testFiles": 4339,
+    "sourceLines": 1098516,
     "workspaceEdges": 137,
-    "moduleEdges": 16310,
+    "moduleEdges": 16314,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 969
+    "testOnlyExports": 970
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 629,
-      "testFiles": 622,
+      "testFiles": 623,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 622
+          "testFiles": 623
         }
       ]
     },
@@ -794,7 +794,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 481,
-      "testFiles": 423,
+      "testFiles": 424,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -817,7 +817,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 423
+          "testFiles": 424
         }
       ]
     },
@@ -2297,6 +2297,12 @@
       },
       {
         "file": "packages/cli/tests/boot-launch-choices.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/boot-provider-acp-leader.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20458,6 +20464,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/model-command-direct-switch.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/model-picker-effort-reducer.test.ts",
         "projects": [
           "root-node"
@@ -30438,6 +30450,10 @@
     {
       "file": "packages/tui/src/hooks/use-prompt-picker.ts",
       "name": "buildPromptPickerPayload"
+    },
+    {
+      "file": "packages/tui/src/hooks/use-provider-slash-commands.ts",
+      "name": "parseModelTarget"
     },
     {
       "file": "packages/tui/src/hooks/use-statusline-hidden-sync.ts",

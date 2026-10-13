@@ -1522,6 +1522,9 @@
     "packages/tui/src/hooks/use-prompt-picker.ts": [
       "buildPromptPickerPayload"
     ],
+    "packages/tui/src/hooks/use-provider-slash-commands.ts": [
+      "parseModelTarget"
+    ],
     "packages/tui/src/hooks/use-statusline-hidden-sync.ts": [
       "statuslineHiddenDiffers"
     ],

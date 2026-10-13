@@ -40,7 +40,7 @@ import {
   fleetToolName,
   startFleetEndpoint,
 } from './acp-leader-fleet.js';
-import { acpLeaderHost, trackAcpLeader } from './acp-leader-host.js';
+import { ACP_LEADER_PROVIDER_ID, acpLeaderHost, trackAcpLeader } from './acp-leader-host.js';
 import {
   agentTurnError,
   latestUserText,
@@ -51,7 +51,7 @@ import {
   turnUsage,
 } from './acp-leader-stream.js';
 
-export const ACP_LEADER_PROVIDER_ID = 'acp';
+export { ACP_LEADER_PROVIDER_ID };
 
 const CAPABILITIES: Capabilities = {
   tools: true,

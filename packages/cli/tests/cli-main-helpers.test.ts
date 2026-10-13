@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
   getTaskTracker: vi.fn(),
   getActiveBuilder: vi.fn(),
   getTaskGraphId: vi.fn(),
+  installedBridgeAgents: vi.fn((): string[] => []),
+}));
+
+vi.mock('../src/fleet/acp-wrongstack-bridge.js', () => ({
+  installedBridgeAgents: mocks.installedBridgeAgents,
 }));
 
 vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
@@ -107,5 +112,21 @@ describe('cli-main helpers', () => {
     expect(mocks.refreshRuntimeModelCatalog.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.buildPickableProviders.mock.invocationCallOrder[0] ?? Infinity,
     );
+  });
+
+  it('offers installed ACP agents as the `acp` provider, which the catalog never lists', async () => {
+    mocks.buildPickableProviders.mockReturnValue([
+      { id: 'zai', family: 'openai', models: ['glm-5'] },
+    ]);
+    mocks.installedBridgeAgents.mockReturnValueOnce(['claude-code']);
+    const loader = createPickableProvidersLoader({
+      modelsRegistry: {} as never,
+      logger: {} as never,
+      getConfig: () => ({ acp: {} }) as never,
+    });
+    await expect(loader()).resolves.toEqual([
+      { id: 'zai', family: 'openai', models: ['glm-5'] },
+      { id: 'acp', family: 'acp', models: ['claude-code'], modelsLabel: 'ACP agent as leader' },
+    ]);
   });
 });

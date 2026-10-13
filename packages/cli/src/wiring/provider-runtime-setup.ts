@@ -20,6 +20,7 @@ import { readJsonObjectFile, type WstackPaths } from '@wrongstack/core/utils';
 import { createProxyInstantApply } from '@wrongstack/core/wiring/proxy-rewrite';
 import { unavailableProviderCredentials, withCatalogCapabilities } from '@wrongstack/providers';
 import { getSageService } from '@wrongstack/sage';
+import { ACP_LEADER_PROVIDER_ID } from '../acp-leader/acp-leader-provider.js';
 import { patchConfig } from '../utils.js';
 import { createFallbackGate } from './fallback-gate.js';
 import { resolveRawProviderConnection } from './provider-runtime.js';
@@ -165,7 +166,8 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
 
   const buildProviderForModel = async (providerId: string, modelId: string): Promise<Provider> => {
     const provider = buildProviderForId(providerId);
-    if (!cfg.features.modelsRegistry) return provider;
+    // An ACP agent as the leader has no catalog entry to overlay.
+    if (!cfg.features.modelsRegistry || providerId === ACP_LEADER_PROVIDER_ID) return provider;
     const { cfg: resolvedCfg } = resolveProviderCfg(providerId);
     // `withCatalogCapabilities` swallows its own failures — an unreachable
     // catalog leaves the family baseline in place rather than blocking the
