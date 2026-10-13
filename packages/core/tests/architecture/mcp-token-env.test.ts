@@ -21,11 +21,26 @@ import { describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(import.meta.dirname, '../../../..');
 
+// Each entry names the file that actually carries the CLI's argument parsing.
+//
+// mailbox/kanban/codebase-index were split: `src/cli.ts` became a thin
+// entrypoint shim (`import { main } from './main.js'` + an `isMainModule()`
+// path check) and the token handling moved wholesale into `src/main.ts`.
+// Pointing this ratchet at their `cli.ts` made every assertion a FALSE
+// NEGATIVE — the guard read a vacated file. The token hardening is intact in
+// `main.ts`; only the path was stale.
+//
+// sage-mcp was NOT split — it has no `src/main.ts` at all — so it keeps
+// pointing at `cli.ts`. Repointing it to a nonexistent `main.ts` would turn
+// its five passing assertions into ENOENT throws.
+//
+// Per-package by necessity, not by preference: the assertions below are
+// path-agnostic, so each entry just has to name the file that holds the logic.
 const MCP_CLIS = [
-  'packages/mailbox-mcp/src/cli.ts',
-  'packages/kanban-mcp/src/cli.ts',
+  'packages/mailbox-mcp/src/main.ts',
+  'packages/kanban-mcp/src/main.ts',
+  'packages/codebase-index-mcp/src/main.ts',
   'packages/sage-mcp/src/cli.ts',
-  'packages/codebase-index-mcp/src/cli.ts',
 ] as const;
 
 function source(relative: string): string {

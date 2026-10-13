@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 781,
+      "files": 782,
       "typeOnly": 70,
-      "runtimeOrMixed": 741
+      "runtimeOrMixed": 742
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -23110,6 +23110,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/fleet-statusline.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/acp-live-steer.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
