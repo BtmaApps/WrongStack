@@ -321,7 +321,7 @@ describe('buildNavFromTopology retention', () => {
           machineId: 'm1',
           projectId: 'p1',
           sessionId: 's1',
-          serviceMode: 'daemon',
+          serviceMode: 'mailbox-serve',
         },
       ],
       edges: [],

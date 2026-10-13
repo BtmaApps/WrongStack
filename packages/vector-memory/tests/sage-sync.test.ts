@@ -507,7 +507,7 @@ describe('first-boot sage sync', () => {
       indexed: 1,
       skipped: 0,
       failed: 1,
-      durationMs: 5,
+      errors: [{ memoryId: 'sage-2', message: 'embedding failed' }],
     });
     try {
       const result = await startFirstBootSageSync({

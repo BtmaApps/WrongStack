@@ -241,7 +241,7 @@ describe('splitGraphNode', () => {
     const blocker = tracker.addNode({
       title: 'Blocker',
       description: 'upstream',
-      type: 'task',
+      type: 'chore',
       priority: 'medium',
       status: 'pending',
     });
@@ -255,7 +255,7 @@ describe('splitGraphNode', () => {
     const dependent = tracker.addNode({
       title: 'Dependent',
       description: 'downstream',
-      type: 'task',
+      type: 'chore',
       priority: 'low',
       status: 'pending',
     });
@@ -277,7 +277,7 @@ describe('splitGraphNode', () => {
 
     const leafIds = splitGraphNode(tracker, parent.id, [
       { title: 'Leaf 1', description: 'First part', successCriterion: 'Must pass unit test' },
-      { title: 'Leaf 2', description: 'Second part', type: 'bug', priority: 'critical' },
+      { title: 'Leaf 2', description: 'Second part', type: 'bugfix', priority: 'critical' },
     ]);
 
     expect(leafIds).toHaveLength(2);

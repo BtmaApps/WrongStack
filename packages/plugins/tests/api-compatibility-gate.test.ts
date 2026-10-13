@@ -1,3 +1,4 @@
+import type { PathLike } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('node:fs', () => ({
@@ -254,7 +255,7 @@ describe('api-compatibility-gate plugin', () => {
   });
 
   it('recognizes package entry points via package.json', async () => {
-    vi.mocked(existsSync).mockImplementation((p: string) => {
+    vi.mocked(existsSync).mockImplementation((p: PathLike) => {
       return normalizePath(String(p)) === 'fake-root/package.json';
     });
     vi.mocked(readFileSync).mockImplementation((p: unknown) => {
@@ -344,7 +345,7 @@ describe('api-compatibility-gate plugin', () => {
 
     // 2) package.json heuristic: same parent directory basename + same stem (`src/entry.ts` matching `"main": "./src/entry.js"`)
     vi.spyOn(process, 'cwd').mockReturnValue('fake-root');
-    vi.mocked(existsSync).mockImplementation((p: string) =>
+    vi.mocked(existsSync).mockImplementation((p: PathLike) =>
       normalizePath(String(p)).endsWith('/src/package.json'),
     );
     vi.mocked(readFileSync).mockImplementation(() => JSON.stringify({ main: './entry.js' }));
