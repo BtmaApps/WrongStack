@@ -642,6 +642,12 @@ describe('createDelegateTool', () => {
   // hintForKind coverage — all error kinds + the default retryable path
   // ─────────────────────────────────────────────────────────────────
 
+  it('hintForKind tells the leader to route a spent quota elsewhere, not retry', () => {
+    const hint = hintForKind('provider_quota', false, 3_600_000);
+    expect(hint).toContain('Do not retry');
+    expect(hint).toContain('omit provider "acp"');
+  });
+
   it('hintForKind surfaces provider_rate_limit with backoff hint', () => {
     // Direct unit test — tests the function in isolation
     const hint = hintForKind('provider_rate_limit', true, 2000, undefined);

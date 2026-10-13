@@ -30,6 +30,8 @@ export function hintForKind(
       return 'Provider network timeout. Retry safe; reduce input size if it persists.';
     case 'provider_auth':
       return 'Provider rejected credentials. Cannot retry — fix the API key / config and re-invoke.';
+    case 'provider_quota':
+      return 'The worker\'s usage quota is spent. Do not retry it before the reset named in the error; delegate this task to a WrongStack model instead (omit provider "acp"), or tell the user.';
     case 'context_overflow':
       return 'Subagent context exceeded the model limit. Narrow the task, use a larger-context model, or split into multiple delegates.';
     case 'budget_iterations':

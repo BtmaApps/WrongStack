@@ -398,6 +398,31 @@ describe('makeACPSubagentRunner', () => {
     const subagentError = caught as SubagentError;
     expect(subagentError.kind).toBe('tool_failed');
   });
+
+  it('reports a spent quota as provider_quota, not a failed tool', async () => {
+    // The real shape: prompt_failed wraps the protocol_error that holds the reply.
+    const inner = Object.assign(
+      new ACPSessionError('protocol_error', "Internal error: You've hit your limit · resets 3pm"),
+      {
+        cause: {
+          code: -32603,
+          message: "Internal error: You've hit your limit · resets 3pm",
+          data: { errorKind: 'rate_limit' },
+        },
+      },
+    );
+    const err = Object.assign(
+      new ACPSessionError('prompt_failed', 'session/prompt failed: limit'),
+      { cause: inner },
+    );
+    hoisted.promptError = err;
+    const runner = await makeACPSubagentRunner({ command: 'claude', role: 'claude-code' });
+    await expect(runner(TASK, makeCtx(5000).ctx)).rejects.toMatchObject({
+      kind: 'provider_quota',
+      retryable: false,
+      message: expect.stringContaining("You've hit your limit"),
+    });
+  });
 });
 
 describe('makeACPSubagentRunner — a resolved turn is not automatically a success', () => {

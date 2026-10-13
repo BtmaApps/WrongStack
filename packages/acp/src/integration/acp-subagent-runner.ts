@@ -27,9 +27,11 @@ import {
   ACPSessionError,
   textContent,
 } from '../client/acp-session.js';
+import { isJsonRpcError } from '../client/acp-session-errors.js';
 import type { ACPSessionRunResult } from '../client/acp-session-types.js';
 import { findAgentDescriptor } from '../registry/agents.catalog.js';
 
+import { classifyAgentFailure } from './acp-agent-failure.js';
 import type { ACPSubagentRunnerOptions, AcpSessionSetup } from './acp-subagent-runner-options.js';
 
 export type { ACPSubagentRunnerOptions, AcpSessionSetup } from './acp-subagent-runner-options.js';
@@ -282,7 +284,29 @@ export async function makeACPSubagentRunnerWithStop(
  * classify and act on. Unknown error shapes get `kind: 'unknown'` —
  * they shouldn't crash the parent.
  */
+/**
+ * The JSON-RPC error the agent answered with, wherever it sits in the cause
+ * chain: a failed prompt arrives as prompt_failed → protocol_error → error.
+ */
+function agentRpcError(
+  err: unknown,
+): { code: number; message: string; data?: unknown } | undefined {
+  let cur: unknown = err;
+  for (let depth = 0; depth < 4 && cur; depth++) {
+    if (isJsonRpcError(cur)) return cur;
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
 function acpErrorToSubagentError(err: unknown, subagentId: string): SubagentError {
+  // A provider failure the agent reported (quota spent, rate limit, signed
+  // out) carries its own retry policy; a generic prompt failure does not.
+  const rpc = agentRpcError(err);
+  if (rpc) {
+    const classified = classifyAgentFailure(rpc, subagentId);
+    if (classified) return classified;
+  }
   if (err instanceof ACPSessionError) {
     const kind = mapACPKind(err.kind);
     return {

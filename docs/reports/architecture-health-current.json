@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T11:46:06.604Z",
+  "generatedAt": "2026-10-13T12:20:10.612Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4943,
-    "testFiles": 4330,
-    "sourceLines": 1096789,
+    "sourceFiles": 4945,
+    "testFiles": 4332,
+    "sourceLines": 1097030,
     "workspaceEdges": 137,
-    "moduleEdges": 16285,
+    "moduleEdges": 16288,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 966
+    "testOnlyExports": 969
   },
   "errors": [],
   "packageCycles": [],
@@ -108,8 +108,8 @@
     {
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
-      "sourceFiles": 49,
-      "testFiles": 57,
+      "sourceFiles": 50,
+      "testFiles": 58,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -123,7 +123,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 57
+          "testFiles": 58
         }
       ]
     },
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 623,
-      "testFiles": 618,
+      "sourceFiles": 624,
+      "testFiles": 619,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 618
+          "testFiles": 619
         }
       ]
     },
@@ -1282,6 +1282,12 @@
         ]
       },
       {
+        "file": "packages/acp/tests/acp-agent-failure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/acp/tests/acp-bench.test.ts",
         "projects": [
           "root-node"
@@ -2003,6 +2009,12 @@
       },
       {
         "file": "packages/cli/tests/acp-permission-bridge.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-quota-hold.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27646,6 +27658,14 @@
       "name": "trustBoundaryPermissionCoverage"
     },
     {
+      "file": "packages/acp/src/integration/acp-agent-failure.ts",
+      "name": "DEFAULT_QUOTA_HOLD_MS"
+    },
+    {
+      "file": "packages/acp/src/integration/acp-agent-failure.ts",
+      "name": "parseQuotaResetAt"
+    },
+    {
       "file": "packages/acp/src/integration/acp-bench.ts",
       "name": "acpBenchCoverage"
     },
@@ -27816,6 +27836,10 @@
     {
       "file": "packages/cli/src/fleet-statusline.ts",
       "name": "renderFleetLine"
+    },
+    {
+      "file": "packages/cli/src/fleet/acp-quota-hold.ts",
+      "name": "clearQuotaHolds"
     },
     {
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",

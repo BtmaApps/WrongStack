@@ -4,6 +4,52 @@ import { ProviderError } from '../../types/provider.js';
 import { toErrorMessage } from '../../utils/error.js';
 import { BudgetExceededError } from '../subagent-budget.js';
 
+/** Every kind, so a structured error a runner already classified is recognised. */
+const SUBAGENT_ERROR_KINDS: Readonly<Record<SubagentErrorKind, true>> = {
+  provider_5xx: true,
+  provider_rate_limit: true,
+  provider_timeout: true,
+  provider_auth: true,
+  provider_quota: true,
+  context_overflow: true,
+  tool_failed: true,
+  tool_threw: true,
+  budget_iterations: true,
+  budget_tool_calls: true,
+  budget_tokens: true,
+  budget_cost: true,
+  budget_timeout: true,
+  aborted_by_parent: true,
+  empty_response: true,
+  bridge_failed: true,
+  unknown: true,
+};
+
+/**
+ * A plain `SubagentError` a runner threw after classifying the failure itself
+ * (the ACP runner does: it knows an agent's quota from a crash). Re-deriving
+ * the kind from its message turned every one of them into `unknown`.
+ */
+function asStructuredSubagentError(err: unknown): SubagentError | undefined {
+  if (!err || typeof err !== 'object' || err instanceof Error) return undefined;
+  const e = err as Partial<SubagentError>;
+  if (
+    typeof e.kind !== 'string' ||
+    !Object.hasOwn(SUBAGENT_ERROR_KINDS, e.kind) ||
+    typeof e.message !== 'string' ||
+    typeof e.retryable !== 'boolean'
+  ) {
+    return undefined;
+  }
+  return {
+    kind: e.kind,
+    message: e.message,
+    retryable: e.retryable,
+    ...(typeof e.backoffMs === 'number' ? { backoffMs: e.backoffMs } : {}),
+    ...(e.cause ? { cause: e.cause } : {}),
+  };
+}
+
 /**
  * Map any raw exception thrown out of a subagent's runner into a
  * structured `SubagentError`. This is the single point where the
@@ -54,6 +100,13 @@ export function classifySubagentError(
       retryable: false,
       cause,
     };
+  }
+
+  const structured = asStructuredSubagentError(err);
+  if (structured) {
+    return hints.parentAborted
+      ? { ...structured, kind: 'aborted_by_parent', retryable: false }
+      : structured;
   }
 
   if (hints.parentAborted) {

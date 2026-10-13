@@ -323,3 +323,30 @@ describe('TaskResult.error envelope through the runner', () => {
     expect(r.error?.cause?.message).toContain('cannot read property');
   });
 });
+
+describe('classifySubagentError — errors a runner already classified', () => {
+  it('keeps the kind, retry policy and backoff of a structured SubagentError', () => {
+    const quota = {
+      kind: 'provider_quota',
+      message: "claude-code: usage quota spent — You've hit your limit · resets 3pm",
+      retryable: false,
+      backoffMs: 3_600_000,
+    } as const;
+    expect(classifySubagentError(quota)).toEqual(quota);
+    expect(
+      classifySubagentError({ kind: 'bridge_failed', message: 'spawn failed', retryable: false }),
+    ).toMatchObject({ kind: 'bridge_failed' });
+  });
+
+  it('still lets a parent abort win, and ignores look-alikes', () => {
+    expect(
+      classifySubagentError(
+        { kind: 'provider_quota', message: 'm', retryable: false },
+        { parentAborted: true },
+      ),
+    ).toMatchObject({ kind: 'aborted_by_parent', retryable: false });
+    expect(classifySubagentError({ kind: 'nonsense', message: 'x', retryable: true }).kind).toBe(
+      'unknown',
+    );
+  });
+});

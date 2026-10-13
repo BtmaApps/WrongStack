@@ -368,6 +368,11 @@ export type SubagentErrorKind =
   | 'provider_timeout'
   /** Provider rejected the credentials (401/403). NOT retryable — config fix required. */
   | 'provider_auth'
+  /**
+   * The account's usage quota is spent (a subscription's usage window, no
+   * credits left). NOT retryable until it resets — route the work elsewhere.
+   */
+  | 'provider_quota'
   /** Model returned a "context length exceeded" error. Retrying without trimming will fail again. */
   | 'context_overflow'
   /** A tool's `execute()` returned `ok:false`. Logical task failure, not a crash. */

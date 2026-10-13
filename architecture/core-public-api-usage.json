@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1394,
-      "typeOnly": 1227,
+      "files": 1396,
+      "typeOnly": 1229,
       "runtimeOrMixed": 421
     },
     "@wrongstack/core/types/limits": {
@@ -13791,6 +13791,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/acp/src/integration/acp-agent-failure.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/acp/src/integration/acp-subagent-runner-options.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14230,6 +14236,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/fleet/acp-permission-bridge.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/acp-quota-hold.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

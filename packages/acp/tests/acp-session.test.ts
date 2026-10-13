@@ -325,6 +325,31 @@ describe('ACPSession', () => {
     await session.close();
   });
 
+  it("keeps the agent's error reply in the cause chain of a failed prompt", async () => {
+    const session = await startSession();
+    const t = lastTransport();
+    const promptP = session.prompt([textContent('hi')], new AbortController().signal);
+    await new Promise((r) => setImmediate(r));
+    t.respond(t.sent.find((m) => m.method === 'session/new')!.id!, 'session/new', {
+      sessionId: 's',
+    });
+    await new Promise((r) => setImmediate(r));
+    const reply = {
+      code: -32603,
+      message: "Internal error: You've hit your limit · resets 3pm",
+      data: { errorKind: 'rate_limit' },
+    };
+    t.respondError(t.sent.find((m) => m.method === 'session/prompt')!.id!, 'session/prompt', reply);
+    const err = (await promptP.catch((e: unknown) => e)) as { kind?: string; cause?: unknown };
+    expect(err.kind).toBe('prompt_failed');
+    const chain: unknown[] = [];
+    for (let c: unknown = err; c; c = (c as { cause?: unknown }).cause) chain.push(c);
+    expect(chain).toContainEqual(
+      expect.objectContaining({ code: -32603, data: { errorKind: 'rate_limit' } }),
+    );
+    await session.close();
+  });
+
   it("reads the turn's token usage from the prompt response", async () => {
     for (const [usage, tokens] of [
       [
