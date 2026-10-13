@@ -6,6 +6,7 @@ describe('Codebase Index MCP CLI arguments', () => {
     expect(parseArgs(['--project-root', '.'])).toMatchObject({
       transport: 'stdio',
       writable: false,
+      watch: false,
       httpHost: '127.0.0.1',
       httpPort: 0,
     });
@@ -33,6 +34,13 @@ describe('Codebase Index MCP CLI arguments', () => {
       httpPort: 8767,
       httpToken: 'secret',
       writable: true,
+    });
+  });
+
+  it('parses --watch independently of --writable', () => {
+    expect(parseArgs(['--project-root', '.', '--watch'])).toMatchObject({
+      watch: true,
+      writable: false,
     });
   });
 });

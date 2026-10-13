@@ -7,6 +7,10 @@ export const CODEBASE_INDEX_READ_TOOLS = [
   'codebase_symbol_graph',
   'codebase_incoming_calls',
   'codebase_outgoing_calls',
+  'codebase_read_symbol',
+  'codebase_skeleton',
+  'codebase_impact_analysis',
+  'codebase_repo_map',
 ] as const;
 
 export const CODEBASE_INDEX_WRITE_TOOLS = ['codebase_index'] as const;

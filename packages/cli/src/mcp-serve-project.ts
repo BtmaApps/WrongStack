@@ -43,10 +43,18 @@ const SERVER_FLAGS = [
   'token',
   'index-dir',
   'origin',
+  'watch',
 ] as const;
 
 /** Switches in the servers' own parsers. */
-const SWITCHES = new Set(['--writable', '--admin', '--destructive', '--http', '--stdio']);
+const SWITCHES = new Set([
+  '--writable',
+  '--admin',
+  '--destructive',
+  '--http',
+  '--stdio',
+  '--watch',
+]);
 
 /**
  * The global parser treats every flag here as valued, so `--writable` written

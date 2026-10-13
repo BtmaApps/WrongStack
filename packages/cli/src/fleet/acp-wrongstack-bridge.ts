@@ -21,7 +21,12 @@ import { cliSpawnArgs, isStandaloneBinary } from '@wrongstack/core/utils';
 export type BridgeServer = 'sage' | 'mailbox' | 'kanban' | 'codebase-index' | 'requirement-intake';
 
 export const DEFAULT_BRIDGE_AGENTS: readonly string[] = ['claude-code'];
-export const DEFAULT_BRIDGE_SERVERS: readonly BridgeServer[] = ['sage', 'mailbox', 'kanban'];
+export const DEFAULT_BRIDGE_SERVERS: readonly BridgeServer[] = [
+  'codebase-index',
+  'sage',
+  'mailbox',
+  'kanban',
+];
 
 type BridgeConfig = NonNullable<NonNullable<Config['acp']>['bridge']>;
 
@@ -69,8 +74,13 @@ const SERVER_NOTES: Record<BridgeServer, (actor: string, delegated: boolean) => 
     'current. Lists return only the most recently updated (pass limit for more); use the ' +
     'stats action for totals and workbench for what is in flight.',
   'codebase-index': () =>
-    "- wrongstack-index: the project's code index: codebase_search for definitions, " +
-    'codebase_incoming_calls / codebase_outgoing_calls for callers and callees.',
+    '- wrongstack-index: a prebuilt, ranked symbol index of this repository, kept fresh by ' +
+    'WrongStack. Prefer it over grep/glob and whole-file reads for code navigation: ' +
+    'codebase_search (where something is defined), codebase_incoming_calls / ' +
+    "codebase_outgoing_calls (callers, callees), codebase_read_symbol (one symbol's source), " +
+    'codebase_skeleton (a file or folder outline), codebase_impact_analysis (what a change ' +
+    'affects), codebase_context (files relevant to a task), codebase_repo_map (overview). ' +
+    'Use grep for literal text such as strings, comments and config values.',
   'requirement-intake': () =>
     "- wrongstack-intake: the project's requirements intake. List open requests; file a new " +
     'one when you are handed an unrecorded software request.',
@@ -97,7 +107,8 @@ function serverArgs(server: BridgeServer, projectRoot: string, ctx: SubagentRunC
     case 'kanban':
       return [...base, `--actor=${actor}`, '--writable'];
     case 'codebase-index':
-      return base;
+      // Read-only for the worker, but kept fresh: it edits outside WrongStack.
+      return [...base, '--watch'];
     case 'requirement-intake':
       return [...base, '--writable'];
   }

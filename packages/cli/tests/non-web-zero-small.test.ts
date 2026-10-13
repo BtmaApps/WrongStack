@@ -160,6 +160,7 @@ describe('small non-WebUI CLI modules', () => {
       { subagentId: 'claude-code', config: { id: 'claude-code' }, sessionId: 's' },
     );
     expect(setup.mcpServers.map((s) => s.name)).toEqual([
+      'wrongstack-index',
       'wrongstack-sage',
       'wrongstack-mailbox',
       'wrongstack-kanban',

@@ -16,6 +16,10 @@ describe('createCodebaseIndexMcpToolHost', () => {
       'codebase_symbol_graph',
       'codebase_incoming_calls',
       'codebase_outgoing_calls',
+      'codebase_read_symbol',
+      'codebase_skeleton',
+      'codebase_impact_analysis',
+      'codebase_repo_map',
     ]);
     const search = tools[1]!.inputSchema as { properties: Record<string, unknown> };
     expect(search.properties).not.toHaveProperty('preferLsp');
@@ -37,6 +41,35 @@ describe('createCodebaseIndexMcpToolHost', () => {
     const toolNames = executeTool.mock.calls.map((call) => (call[0] as { name: string }).name);
     expect(toolNames).toEqual(['codebase-incoming-calls', 'codebase-outgoing-calls']);
     expect(executeTool.mock.calls[0]![1]).toEqual({ symbol: 'start', limit: 5 });
+  });
+
+  it('serves symbol source, outlines, impact and the repo map from the index tools', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ ok: true });
+    const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
+
+    const calls: Array<[string, Record<string, unknown>]> = [
+      ['codebase_read_symbol', { file: 'src/a.ts', symbol: 'run' }],
+      ['codebase_skeleton', { path: 'src' }],
+      ['codebase_impact_analysis', { symbol: 'run' }],
+      ['codebase_repo_map', {}],
+    ];
+    for (const [name, args] of calls) {
+      await expect(host.callTool(name, args)).resolves.toMatchObject({ isError: false });
+    }
+    expect(executeTool.mock.calls.map((call) => (call[0] as { name: string }).name)).toEqual([
+      'codebase-read-symbol',
+      'codebase-skeleton',
+      'codebase-impact-analysis',
+      'codebase-repo-map',
+    ]);
+    // Required fields come from each tool's own schema.
+    await expect(host.callTool('codebase_read_symbol', { file: 'src/a.ts' })).resolves.toEqual({
+      content: 'codebase_read_symbol requires a non-empty string "symbol"',
+      isError: true,
+    });
+    await expect(host.callTool('codebase_skeleton', { path: ' ' })).resolves.toMatchObject({
+      isError: true,
+    });
   });
 
   it('executes canonical index tools with project and index directory context', async () => {
@@ -181,8 +214,20 @@ describe('createCodebaseIndexMcpServer', () => {
       (await server.handleMessage(
         JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }),
       ))!,
-    ) as { result: { serverInfo: { name: string } } };
+    ) as { result: { serverInfo: { name: string }; instructions?: string } };
     expect(initialized.result.serverInfo.name).toBe('wrongstack-codebase-index-mcp');
+    // Shown to the client even while tools sit behind a tool search.
+    expect(initialized.result.instructions).toMatch(/before grep\/glob/);
+
+    const listed = JSON.parse(
+      (await server.handleMessage(
+        JSON.stringify({ jsonrpc: '2.0', id: 9, method: 'tools/list', params: {} }),
+      ))!,
+    ) as { result: { tools: Array<{ name: string; _meta?: Record<string, unknown> }> } };
+    const upfront = listed.result.tools
+      .filter((tool) => tool._meta?.['anthropic/alwaysLoad'] === true)
+      .map((tool) => tool.name);
+    expect(upfront).toEqual(['codebase_search', 'codebase_incoming_calls', 'codebase_read_symbol']);
 
     const prompts = JSON.parse(
       (await server.handleMessage(

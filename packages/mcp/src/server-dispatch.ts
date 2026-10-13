@@ -28,6 +28,12 @@ export interface MCPServerTool {
    * hint in this object.
    */
   annotations?: MCPToolAnnotations | undefined;
+  /**
+   * Client-specific extensions, published verbatim. E.g. Claude Code reads
+   * `"anthropic/alwaysLoad": true` to load a tool upfront instead of behind
+   * its tool search.
+   */
+  _meta?: Record<string, unknown> | undefined;
 }
 
 /** The result of a `tools/call`, as the host produces it. */

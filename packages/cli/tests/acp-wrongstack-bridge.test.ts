@@ -38,7 +38,9 @@ describe('wrongstackBridgeSetup', () => {
   it('launches each default server through `wstack mcp serve` bound to the project', () => {
     const setup = wrongstackBridgeSetup('claude-code', ROOT, undefined)!(task, ctx);
     const servers = setup.mcpServers as { name: string; args: string[]; env: unknown[] }[];
+    const byName = (name: string) => servers.find((s) => s.name === name)!;
     expect(servers.map((s) => s.name)).toEqual([
+      'wrongstack-index',
       'wrongstack-sage',
       'wrongstack-mailbox',
       'wrongstack-kanban',
@@ -48,7 +50,7 @@ describe('wrongstackBridgeSetup', () => {
       expect(wstackArgs(s)).toContain(`--project-root=${ROOT}`);
       expect(s.env).toEqual([]);
     }
-    const mailbox = wstackArgs(servers[1]!);
+    const mailbox = wstackArgs(byName('wrongstack-mailbox'));
     expect(mailbox).toEqual([
       'mcp',
       'serve',
@@ -61,8 +63,26 @@ describe('wrongstackBridgeSetup', () => {
       // A switch must come last: the global parser reads a following word as its value.
       '--writable',
     ]);
-    expect(wstackArgs(servers[0]!)).toContain('--origin=claude-code');
-    expect(wstackArgs(servers[2]!).at(-1)).toBe('--writable');
+    expect(wstackArgs(byName('wrongstack-sage'))).toContain('--origin=claude-code');
+    expect(wstackArgs(byName('wrongstack-kanban')).at(-1)).toBe('--writable');
+    // The index is read-only for workers (no rebuild tool) but kept fresh,
+    // since the worker edits files outside WrongStack.
+    expect(wstackArgs(byName('wrongstack-index'))).not.toContain('--writable');
+    expect(wstackArgs(byName('wrongstack-index')).at(-1)).toBe('--watch');
+  });
+
+  it('steers code navigation to the index over grep', () => {
+    const note = bridgeNote(['codebase-index'], 'w', 't');
+    expect(note).toMatch(/Prefer it over grep\/glob/);
+    for (const tool of [
+      'codebase_search',
+      'codebase_incoming_calls',
+      'codebase_read_symbol',
+      'codebase_skeleton',
+      'codebase_impact_analysis',
+    ]) {
+      expect(note).toContain(tool);
+    }
   });
 
   it('appends a note naming only the attached servers, keeping the agent identity', () => {
@@ -87,7 +107,9 @@ describe('wrongstackBridgeSetup', () => {
     const append = (setup.meta as { systemPrompt: { append: string } }).systemPrompt.append;
     expect(append).toContain('"all"');
     expect(append).not.toContain('@session');
-    const mailbox = (setup.mcpServers as { name: string; args: string[] }[])[1]!;
+    const mailbox = (setup.mcpServers as { name: string; args: string[] }[]).find(
+      (s) => s.name === 'wrongstack-mailbox',
+    )!;
     expect(mailbox.args.some((a) => a.startsWith('--session-id'))).toBe(false);
   });
 

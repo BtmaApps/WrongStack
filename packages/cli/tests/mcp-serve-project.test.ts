@@ -90,6 +90,11 @@ describe('wstack mcp serve <project server>', () => {
     expect(hoisted.index).toHaveBeenCalledWith(['--project-root', '/proj/here']);
   });
 
+  it('passes --watch through to the index server as a bare switch', async () => {
+    await runWstack(['mcp', 'serve', 'codebase-index', '--project-root=/p', '--watch']);
+    expect(hoisted.index).toHaveBeenCalledWith(['--project-root', '/p', '--watch']);
+  });
+
   it('runs requirement-intake with a relative root as the presets pass it', async () => {
     await runWstack(['mcp', 'serve', 'requirement-intake', '--project-root', '.', '--writable']);
     expect(hoisted.intake).toHaveBeenCalledWith(['--project-root', '.', '--writable']);

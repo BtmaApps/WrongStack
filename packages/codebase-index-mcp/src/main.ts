@@ -5,6 +5,7 @@ import {
   checkCodebaseIndexServerHealth,
   ensureCodebaseIndexServer,
   resolveProjectIndexDaemonAvailability,
+  runStartupIndex,
   shutdownCodebaseIndexHost,
 } from '@wrongstack/tools/codebase-index';
 import { createCodebaseIndexMcpServer } from './adapter.js';
@@ -18,6 +19,7 @@ export interface ParsedArgs {
   httpHost: string;
   httpToken?: string | undefined;
   writable: boolean;
+  watch: boolean;
   help: boolean;
 }
 
@@ -40,6 +42,8 @@ export function printHelp(stdout: NodeJS.WriteStream): void {
       '                          Prefer WRONGSTACK_MCP_TOKEN — a command line is readable',
       '                          by other local processes (WS-064).',
       '  --writable              Also expose codebase_index for incremental/full rebuilds.',
+      '  --watch                 Keep the index fresh while connected: catch up incrementally',
+      '                          at start, then reindex files changed on disk.',
       '  -h, --help              Show this message.',
       '',
       'The MCP process is an IPC client. The detached project daemon remains the only SQLite owner.',
@@ -74,6 +78,7 @@ export function parseArgs(
     httpPort: 0,
     httpHost: '127.0.0.1',
     writable: false,
+    watch: false,
     help: false,
   };
 
@@ -135,6 +140,9 @@ export function parseArgs(
       }
       case '--writable':
         parsed.writable = true;
+        break;
+      case '--watch':
+        parsed.watch = true;
         break;
       case '-h':
       case '--help':
@@ -218,7 +226,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     await ensureCodebaseIndexServer({
       projectRoot,
       ...(args.indexDir ? { indexDir: args.indexDir } : {}),
-      watchExternal: false,
+      // A client that edits outside WrongStack (an external agent) makes the
+      // index stale unless the project server watches the disk for it.
+      watchExternal: args.watch,
     });
     const health = await checkCodebaseIndexServerHealth(projectRoot, args.indexDir);
     if (health.status === 'unresponsive') {
@@ -236,11 +246,31 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     clearInterval(startupLease);
   }
 
+  if (args.watch) {
+    // Catch up on edits made while nobody was watching. Incremental and
+    // change-proportional; queries are served meanwhile from the last index.
+    void runStartupIndex({ projectRoot, ...(args.indexDir ? { indexDir: args.indexDir } : {}) })
+      .then((result) =>
+        process.stderr.write(
+          `${SERVER_INFO.name}: index caught up (${JSON.stringify(result).slice(0, 160)})
+`,
+        ),
+      )
+      .catch((error: unknown) =>
+        process.stderr.write(
+          `${SERVER_INFO.name}: index catch-up failed: ${
+            error instanceof Error ? error.message : String(error)
+          }
+`,
+        ),
+      );
+  }
+
   const server = createCodebaseIndexMcpServer(projectRoot, {
     writable: args.writable,
     ...(args.indexDir ? { indexDir: args.indexDir } : {}),
   });
-  const policyText = `writable=${String(args.writable)}`;
+  const policyText = `writable=${String(args.writable)} watch=${String(args.watch)}`;
 
   if (args.transport === 'http') {
     try {

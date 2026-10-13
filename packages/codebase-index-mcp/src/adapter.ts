@@ -8,10 +8,14 @@ import {
 } from '@wrongstack/mcp';
 import {
   codebaseContextTool,
+  codebaseImpactAnalysisTool,
   codebaseIncomingCallsTool,
   codebaseIndexTool,
   codebaseOutgoingCallsTool,
+  codebaseReadSymbolTool,
+  codebaseRepoMapTool,
   codebaseSearchTool,
+  codebaseSkeletonTool,
   codebaseStatsTool,
   fileGraphService,
   packageGraphService,
@@ -100,6 +104,14 @@ const TOOL_DESCRIPTIONS: Record<CodebaseIndexMcpToolName, string> = {
     'List who calls or references a function, method or type: compact call sites with file and line. Use this, not codebase_symbol_graph, to find callers.',
   codebase_outgoing_calls:
     'List what a function or method calls: compact call sites with file and line.',
+  codebase_read_symbol:
+    "Return one symbol's source (function, class, method) by file and name, without reading the whole file.",
+  codebase_skeleton:
+    'Outline a file or directory: exported signatures and declarations without bodies.',
+  codebase_impact_analysis:
+    'Estimate what a change to a symbol affects: dependent symbols and files, optionally transitive.',
+  codebase_repo_map:
+    'A ranked overview of the repository: the most central files and their key symbols.',
   codebase_index:
     'Build or incrementally refresh the project Codebase Index. Hidden unless the server starts with --writable.',
 };
@@ -110,6 +122,10 @@ const BUILTIN_TOOLS: Partial<Record<CodebaseIndexMcpToolName, Tool>> = {
   codebase_stats: codebaseStatsTool,
   codebase_incoming_calls: codebaseIncomingCallsTool,
   codebase_outgoing_calls: codebaseOutgoingCallsTool,
+  codebase_read_symbol: codebaseReadSymbolTool,
+  codebase_skeleton: codebaseSkeletonTool,
+  codebase_impact_analysis: codebaseImpactAnalysisTool,
+  codebase_repo_map: codebaseRepoMapTool,
   codebase_index: codebaseIndexTool,
 };
 
@@ -122,6 +138,28 @@ function cloneToolSchema(name: CodebaseIndexMcpToolName, tool: Tool): Record<str
   return schema as unknown as Record<string, unknown>;
 }
 
+/**
+ * The navigation tools a coding agent reaches for most. Claude Code defers MCP
+ * tools behind a tool search, and an agent that must search before it can call
+ * the index falls back to its always-loaded grep; loading these three upfront
+ * costs little context and makes the index the shorter path.
+ */
+export const ALWAYS_LOADED_TOOLS: ReadonlySet<CodebaseIndexMcpToolName> = new Set([
+  'codebase_search',
+  'codebase_incoming_calls',
+  'codebase_read_symbol',
+]);
+
+/** `InitializeResult.instructions`: shown to the client even while tools are deferred. */
+export const CODEBASE_INDEX_MCP_INSTRUCTIONS =
+  'A prebuilt, ranked symbol index of this repository. Use it before grep/glob or whole-file ' +
+  'reads to navigate code: codebase_search finds where a symbol is defined, ' +
+  'codebase_incoming_calls / codebase_outgoing_calls list callers and callees, ' +
+  "codebase_read_symbol returns one symbol's source, codebase_skeleton outlines a file or " +
+  'folder, codebase_impact_analysis estimates what a change affects, and codebase_context ' +
+  'finds files relevant to a task. Grep stays the right tool for literal text such as ' +
+  'strings, comments and config values.';
+
 function toolDescriptor(name: CodebaseIndexMcpToolName): MCPServerTool {
   const builtin = BUILTIN_TOOLS[name];
   const graphSchema = GRAPH_SCHEMAS[name as keyof typeof GRAPH_SCHEMAS];
@@ -130,6 +168,7 @@ function toolDescriptor(name: CodebaseIndexMcpToolName): MCPServerTool {
     name,
     description: TOOL_DESCRIPTIONS[name],
     inputSchema: builtin ? cloneToolSchema(name, builtin) : graphSchema!,
+    ...(ALWAYS_LOADED_TOOLS.has(name) ? { _meta: { 'anthropic/alwaysLoad': true } } : {}),
   };
 }
 
@@ -171,11 +210,18 @@ function validateArgs(
   if (name === 'codebase_file_graph' && !nonEmptyString(args['package'])) {
     return 'codebase_file_graph requires a non-empty string "package"';
   }
-  if (
-    (name === 'codebase_incoming_calls' || name === 'codebase_outgoing_calls') &&
-    !nonEmptyString(args['symbol'])
-  ) {
-    return `${name} requires a non-empty string "symbol"`;
+  // Built-in tools: every string field their own schema marks required.
+  const builtin = BUILTIN_TOOLS[name];
+  if (builtin && name !== 'codebase_search') {
+    const schema = builtin.inputSchema as {
+      required?: readonly string[];
+      properties?: Record<string, { type?: unknown }>;
+    };
+    for (const field of schema.required ?? []) {
+      if (schema.properties?.[field]?.type === 'string' && !nonEmptyString(args[field])) {
+        return `${name} requires a non-empty string "${field}"`;
+      }
+    }
   }
   if (name === 'codebase_symbol_graph' && !nonEmptyString(args['file'])) {
     return 'codebase_symbol_graph requires a non-empty string "file"';
@@ -290,6 +336,7 @@ export function createCodebaseIndexMcpServer(
   return new MCPServer({
     host: createCodebaseIndexMcpToolHost(projectRoot, opts),
     serverInfo: { name: 'wrongstack-codebase-index-mcp', version: SERVER_INFO.version },
+    instructions: CODEBASE_INDEX_MCP_INSTRUCTIONS,
     prompts: [
       {
         name: 'explore-codebase',

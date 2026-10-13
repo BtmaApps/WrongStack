@@ -114,15 +114,18 @@ A delegated worker keeps its own identity, tools and sign-in. WrongStack only te
 works and gives it the project's coordination services:
 
 - **MCP servers** in `session/new`, each launched as `wstack mcp serve <name> --project-root=<project>`:
-  `wrongstack-sage` (memory: recall, propose with `memory_candidates`), `wrongstack-mailbox`
-  (writable, actor = the worker's subagent id, `@session` = the session that delegated the task),
-  `wrongstack-kanban` (writable, no destructive ops), and optionally `wrongstack-index`.
+  `wrongstack-index` (read-only code index with `--watch`, so files the worker edits stay
+  searchable; `codebase_search`, `codebase_incoming_calls` and `codebase_read_symbol` load upfront
+  instead of behind tool search), `wrongstack-sage` (memory: recall, propose with
+  `memory_candidates`), `wrongstack-mailbox` (writable, actor = the worker's subagent id,
+  `@session` = the session that delegated the task), `wrongstack-kanban` (writable, no destructive
+  ops; `stats` gives whole-project totals), and optionally `wrongstack-intake`.
 - **A short note appended to the agent's own system prompt** (`_meta.systemPrompt.append`, which
   the Claude ACP adapter forwards to the `claude_code` preset), saying it works inside WrongStack,
   how to report progress, and that its final reply returns to WrongStack.
 
 It applies to inline runs, `--bg` dispatch and `wstack acp spawn`. Default: on for `claude-code`
-with sage, mailbox and kanban. Configure it in the active profile config (never from in-project
+with codebase-index, sage, mailbox and kanban. Configure it in the active profile config (never from in-project
 config):
 
 ```json
