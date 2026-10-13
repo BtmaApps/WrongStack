@@ -73,6 +73,9 @@ const SHARED_CORPUS: Array<[string, string]> = [
   ['aws access key id', 'AKIAIOSFODNN7EXAMPLE'],
   ['gcp key', `AIza${'c'.repeat(35)}`],
   ['stripe', `sk_live_${'d'.repeat(24)}`],
+  // F464: Stripe restricted keys and PyPI macaroon tokens passed both sides.
+  ['stripe restricted', `rk_live_${'d'.repeat(24)}`],
+  ['pypi token', `pypi-AgEIcHlwaS5vcmc${'e'.repeat(60)}`],
   ['jwt', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.ZmFrZXNpZ25hdHVyZXZhbHVlMDAw'],
   ['mongodb uri', 'mongodb://admin:hunter2@db.internal:27017'],
   ['json keyed', '{"api_key": "7f3a9c1e5b8d2f4a6c0e9b7d"}'],

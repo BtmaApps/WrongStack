@@ -104,8 +104,9 @@ export const PATTERNS: Pattern[] = [
   },
   {
     type: 'stripe_key',
-    regex: /(?<![A-Za-z0-9])sk_(?:live|test)_[A-Za-z0-9]{24,}(?![A-Za-z0-9])/g,
-    anchor: 'sk_',
+    // Secret (`sk_`) and restricted (`rk_`) keys carry the same authority.
+    regex: /(?<![A-Za-z0-9])[sr]k_(?:live|test)_[A-Za-z0-9]{24,}(?![A-Za-z0-9])/g,
+    anchor: ['sk_', 'rk_'],
   },
   {
     type: 'twilio_sid',
@@ -160,8 +161,11 @@ export const PATTERNS: Pattern[] = [
     // `~/.aws/credentials` spells the key in lowercase; `high_entropy_env`
     // only accepts UPPERCASE key names, so `aws_secret_access_key = …` leaked.
     // Forward match from the literal key (a lookbehind alternative is
-    // re-tried at every position of the combined regex).
-    regex: /aws_secret_access_key[ \t]*[=:][ \t]*['"]?[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/g,
+    // re-tried at every position of the combined regex). The separator may
+    // also be bare whitespace — the documented CLI form,
+    // `aws configure set aws_secret_access_key <key>`.
+    regex:
+      /aws_secret_access_key(?:[ \t]*[=:][ \t]*|[ \t]+)['"]?[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/g,
     anchor: 'aws_secret_access_key',
   },
   {
@@ -176,6 +180,13 @@ export const PATTERNS: Pattern[] = [
     // HuggingFace tokens: hf_ followed by 34 alphanumeric chars
     regex: /(?<![A-Za-z0-9])hf_[A-Za-z0-9]{34}(?![A-Za-z0-9])/g,
     anchor: 'hf_',
+  },
+  {
+    type: 'pypi_token',
+    // PyPI API tokens are macaroons: `pypi-` + base64url of a v2 header, which
+    // always encodes as `AgE…` (pypi.org and test.pypi.org alike).
+    regex: /(?<![A-Za-z0-9_-])pypi-AgE[A-Za-z0-9_-]{50,}(?![A-Za-z0-9_-])/g,
+    anchor: 'pypi-',
   },
   {
     type: 'replicate_token',

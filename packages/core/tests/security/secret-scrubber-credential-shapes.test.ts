@@ -25,6 +25,16 @@ describe('DefaultSecretScrubber — credential shapes', () => {
     expect(scrubber.scrub(`aws_secret_access_key=${KEY40}x`)).toContain(KEY40);
   });
 
+  // F465: the documented CLI form separates the name and the key with a space.
+  it('redacts the aws configure set form', () => {
+    expect(scrubber.scrub(`aws configure set aws_secret_access_key ${KEY40}`)).toBe(
+      'aws configure set [REDACTED:aws_secret_key]',
+    );
+    expect(scrubber.scrub('aws_secret_access_key is required')).toBe(
+      'aws_secret_access_key is required',
+    );
+  });
+
   it('redacts only the password of a URL userinfo', () => {
     expect(scrubber.scrub(`git clone https://user:${TOKEN}@github.com/o/r.git`)).toBe(
       'git clone https://user:[REDACTED:url_credentials]@github.com/o/r.git',
@@ -69,5 +79,17 @@ describe('DefaultSecretScrubber — credential shapes', () => {
     expect(scrubber.scrub(`DISCORD_TOKEN=${token}`)).toBe(
       'DISCORD_TOKEN=[REDACTED:high_entropy_env]',
     );
+  });
+
+  // F464: a Stripe restricted key and a PyPI upload token went out verbatim.
+  it('redacts Stripe restricted keys and PyPI tokens', () => {
+    const body = 'Zq7xK2mPa9LrT4vNb8Wc3Yd6Fh1Jk5Qs';
+    expect(scrubber.scrub(`key rk_live_${body} end`)).toBe('key [REDACTED:stripe_key] end');
+    expect(scrubber.scrub(`rk_test_${body}`)).toBe('[REDACTED:stripe_key]');
+    expect(scrubber.scrub(`twine -p pypi-AgEIcHlwaS5vcmc${body}${body} upload`)).toBe(
+      'twine -p [REDACTED:pypi_token] upload',
+    );
+    expect(scrubber.scrub('pip install pypi-package-name')).toBe('pip install pypi-package-name');
+    expect(scrubber.scrub(`rk_live_${'a'.repeat(23)}`)).toBe(`rk_live_${'a'.repeat(23)}`);
   });
 });

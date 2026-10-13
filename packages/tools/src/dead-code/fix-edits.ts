@@ -91,9 +91,23 @@ function removalEdit(ts: Ts, sf: TS.SourceFile, stmt: TS.Statement): Edit {
   const indent = /^[ \t]*/.exec(sf.text.slice(lineStart))![0];
   const eol = sf.text.includes('\r\n') ? '\r\n' : '\n';
   const wrapped = /^(\{|function\b|class\b|let\s*\[)/.test(expr) ? `(${expr})` : expr;
+  const guard = asiGlues(sf, stmt, wrapped) ? ';' : '';
   const tail = sf.text.slice(start, end).endsWith('\n') ? eol : '';
   const atLineStart = start === 0 || sf.text[start - 1] === '\n';
-  return { start, end, text: `${atLineStart ? indent : ''}${wrapped};${tail}` };
+  return { start, end, text: `${atLineStart ? indent : ''}${guard}${wrapped};${tail}` };
+}
+
+/**
+ * True when `expr`, kept as a bare statement, would continue the previous
+ * statement: without a terminating `;` there, ASI does not split before a
+ * line starting with `(`, `[`, a template, `+`, `-` or `/`
+ * (`const a = f()\n[1].forEach(g)` parses as `f()[1].forEach(g)`).
+ */
+function asiGlues(sf: TS.SourceFile, stmt: TS.Statement, expr: string): boolean {
+  if (!/^[[(`+\-/]/.test(expr)) return false;
+  const siblings = (stmt.parent as { statements?: readonly TS.Statement[] }).statements;
+  const prev = siblings?.[siblings.indexOf(stmt) - 1];
+  return prev !== undefined && !prev.getText(sf).endsWith(';');
 }
 
 function nextTokenStart(text: string, pos: number): number {

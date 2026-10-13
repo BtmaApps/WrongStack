@@ -85,7 +85,8 @@ export const CREDENTIAL_PATTERNS: readonly CredentialPattern[] = [
   // Stripe
   {
     type: 'stripe_key',
-    regex: /(?<![A-Za-z0-9])sk_(?:live|test)_[A-Za-z0-9]{24,}(?![A-Za-z0-9])/g,
+    // Secret (`sk_`) and restricted (`rk_`) keys carry the same authority.
+    regex: /(?<![A-Za-z0-9])[sr]k_(?:live|test)_[A-Za-z0-9]{24,}(?![A-Za-z0-9])/g,
   },
   // Twilio
   { type: 'twilio_sid', regex: /(?<![A-Za-z0-9])AC[a-f0-9]{32}(?![A-Za-z0-9])/g },
@@ -112,6 +113,11 @@ export const CREDENTIAL_PATTERNS: readonly CredentialPattern[] = [
   },
   // AI/ML provider tokens
   { type: 'huggingface_token', regex: /(?<![A-Za-z0-9])hf_[A-Za-z0-9]{34}(?![A-Za-z0-9])/g },
+  // PyPI: `pypi-` + a macaroon whose base64url v2 header always reads `AgE…`
+  {
+    type: 'pypi_token',
+    regex: /(?<![A-Za-z0-9_-])pypi-AgE[A-Za-z0-9_-]{50,}(?![A-Za-z0-9_-])/g,
+  },
   { type: 'replicate_token', regex: /(?<![A-Za-z0-9])r8_[A-Za-z0-9]{40,}(?![A-Za-z0-9])/g },
   { type: 'perplexity_key', regex: /(?<![A-Za-z0-9])pplx-[A-Za-z0-9]{40,}(?![A-Za-z0-9])/g },
   { type: 'groq_key', regex: /(?<![A-Za-z0-9])gsk_[A-Za-z0-9]{40,}(?![A-Za-z0-9])/g },

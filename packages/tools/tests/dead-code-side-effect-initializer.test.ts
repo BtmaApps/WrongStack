@@ -65,4 +65,43 @@ describe('dead-code fix keeps side-effecting initializers', () => {
     );
     expect(out).toBe('export const k = 1;\n');
   });
+
+  // F463: in a semicolon-less file a kept `[…]`/`(…)` expression would
+  // otherwise continue the previous statement (`f()\n[1].map(g)` = `f()[1]…`).
+  it('guards a kept expression against ASI gluing onto the previous line', () => {
+    const out = computeFileEdit(
+      ts,
+      'a.ts',
+      'const a = foo()\nconst h = [1, 2].forEach(log)\nconst g = (init as Fn)()\nexport const z = a\n',
+      ops({ removeLocals: ['h', 'g'] }),
+    );
+    expect(out).toBe(
+      'const a = foo()\n;[1, 2].forEach(log);\n;(init as Fn)();\nexport const z = a\n',
+    );
+    const sf = ts.createSourceFile('a.ts', out, ts.ScriptTarget.Latest, true);
+    const first = sf.statements[0];
+    expect(first && ts.isVariableStatement(first)).toBe(true);
+    if (first && ts.isVariableStatement(first)) {
+      expect(first.declarationList.declarations[0]?.initializer?.getText(sf)).toBe('foo()');
+    }
+  });
+
+  it('adds no guard after a terminated statement or at the top of the file', () => {
+    expect(
+      computeFileEdit(
+        ts,
+        'a.ts',
+        'const a = foo();\nconst h = [1].map(f);\nexport const z = a;\n',
+        ops({ removeLocals: ['h'] }),
+      ),
+    ).toBe('const a = foo();\n[1].map(f);\nexport const z = a;\n');
+    expect(
+      computeFileEdit(
+        ts,
+        'a.ts',
+        'const h = [1].map(f)\nexport const z = 1\n',
+        ops({ removeLocals: ['h'] }),
+      ),
+    ).toBe('[1].map(f);\nexport const z = 1\n');
+  });
 });
