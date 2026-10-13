@@ -31,5 +31,8 @@ describe('timingSafeTokenEqual', () => {
     // Two strings of equal .length can differ in UTF-8 byte length; the
     // comparison must not throw on them.
     expect(timingSafeTokenEqual('é', 'e')).toBe(false);
+    // Distinct lone UTF-16 surrogates would both encode to U+FFFD in UTF-8,
+    // so UTF-16LE encoding is required to distinguish them.
+    expect(timingSafeTokenEqual('\uD800', '\uD801')).toBe(false);
   });
 });

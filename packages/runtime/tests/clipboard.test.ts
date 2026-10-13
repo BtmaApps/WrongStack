@@ -336,6 +336,38 @@ describe('readClipboardText', () => {
       await expect(result).resolves.toBeNull();
     });
 
+    it('escapes single quotes in TEMP path when saving clipboard image on Windows', async () => {
+      const prevTemp = process.env.TEMP;
+      const prevTmp = process.env.TMP;
+      const quotedTmpDir = path.join(tmpDir, "O'Brien");
+      process.env.TEMP = quotedTmpDir;
+      process.env.TMP = quotedTmpDir;
+      try {
+        let capturedCmd = '';
+        spawnMock.spawn.mockImplementation((_cmd: string, args: string[]) => {
+          capturedCmd = (args[args.length - 1] as string) || '';
+          return mkChildEmittingStdout('NO_IMAGE');
+        });
+        await readClipboardImage();
+        expect(capturedCmd).toContain("O''Brien");
+      } finally {
+        process.env.TEMP = prevTemp;
+        process.env.TMP = prevTmp;
+      }
+    });
+
+    it('flushes trailing incomplete multi-byte UTF-8 sequence via decoder.end() on exit', async () => {
+      const child = new FakeChild();
+      spawnMock.spawn.mockReturnValue(child);
+      setImmediate(() => {
+        // 0x41 ('A') followed by 2 bytes of a 3-byte UTF-8 sequence (0xe2, 0x82)
+        child.stdout.emit('data', Buffer.from([0x41, 0xe2, 0x82]));
+        child.emit('exit', 0);
+      });
+      const text = await readClipboardText();
+      expect(text).toBe('A\ufffd');
+    });
+
     it('kills a stalled command and accepts its eventual exit', async () => {
       vi.useFakeTimers();
       try {

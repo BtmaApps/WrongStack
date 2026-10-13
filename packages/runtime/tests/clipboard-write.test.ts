@@ -65,6 +65,14 @@ describe('writeClipboardText', () => {
     expect(spawnMock.spawn).not.toHaveBeenCalled();
   });
 
+  it('allows text of exact MAX_TEXT_BYTES length', async () => {
+    setPlatform('win32');
+    spawnMock.spawn.mockImplementation(() => mkChild(0));
+    const exact = 'a'.repeat(MAX_TEXT_BYTES);
+    expect(await writeClipboardText(exact)).toBe(true);
+    expect(spawnMock.spawn).toHaveBeenCalledTimes(1);
+  });
+
   describe('windows', () => {
     beforeEach(() => setPlatform('win32'));
 

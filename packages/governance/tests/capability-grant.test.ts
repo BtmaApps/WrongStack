@@ -1101,4 +1101,58 @@ describe('authenticated governance project service', () => {
     );
     service.close();
   });
+
+  it('tracks hasActiveGrants, remainingTtlMs and rotate at exact expiry, minimum 32-char secret, and issuedAt sort order', () => {
+    let now = START_TIME;
+    let seq = 0;
+    const ids = ['z-first', 'a-second'];
+    const registry = new GovernanceCapabilityGrantRegistry('project-1', {
+      now: () => now,
+      tokenMaterial: () => {
+        const id = ids[seq] ?? `g-${seq}`;
+        seq += 1;
+        return { grantId: id, secret: `${SECRET}${seq}` };
+      },
+    });
+    expect(registry.hasActiveGrants()).toBe(false);
+    const first = registry.issue({
+      clientId: 'c1',
+      capabilities: ['task_read'],
+      ttlMs: 10_000,
+    });
+    expect(registry.hasActiveGrants()).toBe(true);
+    expect(registry.remainingTtlMs(first.grant.grantId)).toBe(10_000);
+
+    now += 1_000;
+    const second = registry.issue({
+      clientId: 'c2',
+      capabilities: ['task_read'],
+      ttlMs: 20_000,
+    });
+    expect(registry.listGrants().map((g) => g.grantId)).toEqual([
+      first.grant.grantId,
+      second.grant.grantId,
+    ]);
+
+    // Advance to exact expiry of first grant (START_TIME + 10_000)
+    now = START_TIME + 10_000;
+    expect(registry.remainingTtlMs(first.grant.grantId)).toBeNull();
+    expect(() =>
+      registry.rotate(first.grant.grantId, {
+        rotatedBy: 'bootstrap-admin',
+        ttlMs: 10_000,
+      }),
+    ).toThrow('Only an active governance capability grant can be rotated.');
+
+    const shortSecretRegistry = new GovernanceCapabilityGrantRegistry('project-1', {
+      tokenMaterial: () => ({ grantId: 'short-sec', secret: 'x'.repeat(31) }),
+    });
+    expect(() =>
+      shortSecretRegistry.issue({
+        clientId: 'c1',
+        capabilities: ['task_read'],
+        ttlMs: 1_000,
+      }),
+    ).toThrow(/between 32 and 512 characters/);
+  });
 });

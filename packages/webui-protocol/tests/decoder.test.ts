@@ -105,10 +105,15 @@ describe('decodeProtocolMessage', () => {
     }
   });
 
-  it('rejects payloads deeper than MAX_PAYLOAD_DEPTH', () => {
-    let payload: unknown = { leaf: 1 };
-    for (let i = 0; i < 40; i++) payload = { nested: payload };
-    const result = decodeProtocolMessage({ type: 'session.start', payload }, 'server');
+  it('rejects payloads deeper than MAX_PAYLOAD_DEPTH and accepts exact depth 32', () => {
+    let atLimit: unknown = 1;
+    for (let i = 0; i < 31; i++) atLimit = { nested: atLimit };
+    expect(decodeProtocolMessage({ type: 'session.start', payload: atLimit }, 'server').ok).toBe(
+      true,
+    );
+
+    const overLimit = { nested: atLimit };
+    const result = decodeProtocolMessage({ type: 'session.start', payload: overLimit }, 'server');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issue.code).toBe('too_deep');
   });

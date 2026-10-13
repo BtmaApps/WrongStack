@@ -738,4 +738,147 @@ describe('createHttpClient', () => {
     expect(seen.every((s) => s.token === 'tk')).toBe(true);
     expect(JSON.parse(seen[1]?.body ?? '')).toEqual({ text: 'steer this' });
   });
+
+  it('marks 403 as auth and 408/429/5xx HTTP errors as retryable', async () => {
+    let statusToReturn = 403;
+    server = await FakeServer.start({
+      announce: false,
+      httpHandler: (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.writeHead(statusToReturn).end(JSON.stringify({ error: `err_${statusToReturn}` }));
+      },
+    });
+    const api = createHttpClient({ url: server.url });
+    await expect(api.listLiveSessions()).rejects.toMatchObject({
+      kind: 'auth',
+      code: '403',
+      retryable: false,
+    });
+    statusToReturn = 429;
+    await expect(api.listLiveSessions()).rejects.toMatchObject({
+      kind: 'invalid',
+      code: '429',
+      retryable: true,
+    });
+  });
+
+  it('caps subscribed sessions at 4, handles already-in-progress busy refusals, closed getter, and listSessions error', async () => {
+    const { server, client } = await connected();
+    expect(client.closed).toBe(false);
+    await server.frame('session.subscribe');
+
+    // Subscribe to 5 sessions total (sess_1 + sess_2..sess_5) -> capped at 4 most recent
+    for (const id of ['sess_2', 'sess_3', 'sess_4', 'sess_5']) {
+      const p = client.resumeSession(id);
+      await server.frame('session.resume');
+      server.emit({ type: 'session.start', payload: { sessionId: id, provider: 'p', model: 'm' } });
+      await p;
+      await server.frame('session.subscribe');
+    }
+    const subscribes = server.received.filter((f) => f.type === 'session.subscribe');
+    const lastSub = subscribes[subscribes.length - 1]?.payload;
+    expect(lastSub?.sessionIds).toEqual(['sess_5', 'sess_4', 'sess_3', 'sess_2']);
+
+    // BUSY_REFUSAL with "already in progress"
+    const run1 = client.send('first');
+    const firstId = (await server.frame('user_message')).payload?.id;
+    const run2 = client.send('second');
+    await server.frame('user_message');
+    server.emit({
+      type: 'error',
+      payload: {
+        phase: 'user_message',
+        message: 'Session turn is already in progress',
+        sessionId: 'sess_5',
+      },
+    });
+    await expect(run2.result).rejects.toMatchObject({
+      kind: 'server',
+      detail: 'Session turn is already in progress',
+    });
+    server.emit({
+      type: 'run.result',
+      payload: { requestId: firstId, status: 'done', iterations: 1, sessionId: 'sess_5' },
+    });
+    await expect(run1.result).resolves.toMatchObject({ status: 'done' });
+
+    // listSessions error payload
+    const listPending = client.listSessions();
+    const listRejected = expect(listPending).rejects.toMatchObject({
+      kind: 'server',
+      code: 'sessions.list',
+      detail: 'db locked',
+    });
+    await server.frame('sessions.list');
+    server.emit({ type: 'sessions.list', payload: { sessions: [], error: 'db locked' } });
+    await listRejected;
+
+    const closedPromise = new Promise<void>((r) => client.onClose(() => r()));
+    client.close();
+    await closedPromise;
+    expect(client.closed).toBe(true);
+  });
+
+  it('bounds answeredConfirms at 1000 entries and drains pending iterator waiters on early return', async () => {
+    const confirmed: string[] = [];
+    const { server, client } = await connected(
+      {},
+      {
+        onConfirm: (req) => {
+          confirmed.push(req.id);
+          return 'yes';
+        },
+      },
+    );
+    // Fill 1000 confirmations so the next one triggers answeredConfirms.clear()
+    for (let i = 0; i < 1_000; i += 1) {
+      client.confirm(`c_${i}`, 'yes');
+    }
+    // Now c_0 is still in answeredConfirms until the 1001st confirm clears the set
+    client.confirm('c_1000', 'yes');
+    // Sending tool.confirm_needed for c_0 now triggers onConfirm again because clear() ran at size >= 1000
+    const run = client.send('go');
+    const reqId = (await server.frame('user_message')).payload?.id;
+    server.broadcast({
+      type: 'tool.confirm_needed',
+      payload: { id: 'c_0', toolName: 'bash', args: {}, sessionId: 'sess_1' },
+    });
+    await expect.poll(() => confirmed).toContain('c_0');
+
+    // Drain pending iterator waiters via iterator.return() while a next() is waiting
+    const iter = run[Symbol.asyncIterator]();
+    const firstEv = await iter.next();
+    expect(firstEv.done).toBe(false);
+    const pendingNext = iter.next();
+    const ret = await iter.return!();
+    expect(ret).toEqual({ value: undefined, done: true });
+    await expect(pendingNext).resolves.toEqual({ value: undefined, done: true });
+
+    server.emit({
+      type: 'run.result',
+      payload: { requestId: reqId, status: 'done', iterations: 1, sessionId: 'sess_1' },
+    });
+    await run.result;
+  });
+
+  it('doubles reconnect delay on successive attempts and times out unannounced connections', async () => {
+    // 1. Connect timeout when server does not announce session.start
+    server = await FakeServer.start({ announce: false });
+    await expect(
+      WrongStackClient.connect({ url: server.url, timeoutMs: 80 }),
+    ).rejects.toMatchObject({ kind: 'timeout', code: 'connect', retryable: true });
+    await server.stop();
+
+    // 2. Exponential backoff doubling between reconnect attempts
+    const { server: s2, client: c2 } = await connected(
+      {},
+      { reconnect: { attempts: 2, initialDelayMs: 60, maxDelayMs: 500 }, timeoutMs: 200 },
+    );
+    const t0 = Date.now();
+    await s2.stop();
+    await expect.poll(() => c2.closed, { timeout: 2_000 }).toBe(true);
+    const elapsed = Date.now() - t0;
+    // Attempt 1 waits 60ms, Attempt 2 waits 120ms (total >= 165ms; without *2 it would be ~120ms)
+    expect(elapsed).toBeGreaterThanOrEqual(165);
+  });
 });

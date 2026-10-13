@@ -183,6 +183,20 @@ describe('planConnectionReconnect', () => {
     );
     expect(plan).toEqual({ attempt: 1, delayMs: 1_000, retryAt: 2_000 });
   });
+
+  it('clamps jitterRatio > 1 to 1 and falls back to default backoffMultiplier when <= 0', () => {
+    const state = { ...createSurfaceConnectionState(), reconnectAttempt: 1 };
+    const cfg = {
+      ...DEFAULT_SURFACE_CONNECTION_CONFIG,
+      initialBackoffMs: 1000,
+      backoffMultiplier: 0,
+      jitterRatio: 5,
+    };
+    // attempt 1 -> nextAttempt 2, backoffMultiplier=0 falls back to 2 -> base delay 2000ms.
+    // jitterRatio=5 clamped to 1 -> at random()=1, delay is 2000 * (1 + 1) = 4000ms.
+    const { plan } = planConnectionReconnect(state, cfg, 0, () => 1);
+    expect(plan?.delayMs).toBe(4000);
+  });
 });
 
 describe('isConnectionHeartbeatTimedOut', () => {
@@ -229,6 +243,7 @@ describe('isConnectionHeartbeatTimedOut', () => {
     };
     // strict > comparison: at exactly (interval + timeout) the timer is not yet
     // considered expired. One ms past the boundary it is.
+    expect(isConnectionHeartbeatTimedOut(state, cfg, 2500)).toBe(false);
     expect(isConnectionHeartbeatTimedOut(state, cfg, 2501)).toBe(true);
   });
 });

@@ -211,4 +211,57 @@ describe('FrameResume', () => {
     const unnamed: Frame = { type: 'x', seq: 1, payload: { sessionId: '' } };
     expect(gate.accept(unnamed)).toEqual([unnamed]);
   });
+
+  it('treats negative or non-integer seq as unnumbered, clears timer when all sessions resume, and unions overlapping request() calls', () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      const applied: Frame[] = [];
+      const resume = new FrameResume<Frame>((frames) => applied.push(...frames), 1_000);
+      resume.onSessionStart(start('s1', { eventEpoch: 'e1' }));
+      resume.onSessionStart(start('s2', { eventEpoch: 'e1' }));
+
+      // Negative and float seq values must be treated as unnumbered (pass straight through without advancing cursor)
+      const negSeq = f(-1, 's1', 'neg');
+      const floatSeq = f(1.5, 's1', 'float');
+      expect(resume.gate.accept(negSeq)).toEqual([negSeq]);
+      expect(resume.gate.accept(floatSeq)).toEqual([floatSeq]);
+      expect(resume.gate.cursors(['s1'])).toBeNull();
+
+      // Advance real cursors for s1 and s2
+      resume.gate.accept(f(1, 's1', 's1-1'));
+      resume.gate.accept(f(1, 's2', 's2-1'));
+
+      // Overlapping request(['s1']) then request(['s2']) must union this.requested
+      resume.request(['s1']);
+      resume.request(['s2']);
+      resume.gate.accept(f(3, 's1', 's1-3'));
+      resume.gate.accept(f(3, 's2', 's2-3'));
+
+      // Finish s2 first: timer not cleared yet because s1 is still in this.requested and resuming
+      const clearsBefore = clearTimeoutSpy.mock.calls.length;
+      resume.onFramesResumed({ type: 'session.frames_resumed', payload: { sessionId: 's2' } });
+      expect(clearTimeoutSpy.mock.calls.length).toBe(clearsBefore);
+
+      // Finish s1: all sessions in this.requested are now done, so clearTimeout is called
+      resume.onFramesResumed({ type: 'session.frames_resumed', payload: { sessionId: 's1' } });
+      expect(clearTimeoutSpy.mock.calls.length).toBe(clearsBefore + 1);
+
+      // Also verify that if timeout fires after overlapping requests, both s1 and s2 are flushed
+      const appliedTimeout: Frame[] = [];
+      const resume2 = new FrameResume<Frame>((frames) => appliedTimeout.push(...frames), 500);
+      resume2.onSessionStart(start('s1', { eventEpoch: 'e1' }));
+      resume2.onSessionStart(start('s2', { eventEpoch: 'e1' }));
+      resume2.gate.accept(f(1, 's1', 'a1'));
+      resume2.gate.accept(f(1, 's2', 'b1'));
+      resume2.request(['s1']);
+      resume2.request(['s2']);
+      resume2.gate.accept(f(3, 's1', 'a3'));
+      resume2.gate.accept(f(3, 's2', 'b3'));
+      vi.advanceTimersByTime(500);
+      expect(texts(appliedTimeout)).toEqual(['a3', 'b3']);
+    } finally {
+      clearTimeoutSpy.mockRestore();
+    }
+  });
 });

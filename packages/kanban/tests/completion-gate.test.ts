@@ -5,7 +5,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { validateDefinitionOfDone } from '../src/manager/lifecycle.js';
 import { readKanbanEvents } from '../src/storage.js';
 import type { KanbanBoard, KanbanCheckStatus } from '../src/types.js';
-import { resolveGateEnforcement } from '../src/verification/completion-gate.js';
+import {
+  attachVerificationReport,
+  resolveAutoAccept,
+  resolveGateEnforcement,
+} from '../src/verification/completion-gate.js';
+import { VerifierRegistry } from '../src/verification/verifier-registry.js';
+import { readKanbanWorkflowState } from '../src/workflow-state.js';
 import {
   addCheckToTask,
   addTask,
@@ -262,5 +268,90 @@ describe('validateDefinitionOfDone parity', () => {
     const issues = validateDefinitionOfDone(task);
     expect(issues.some((issue) => issue.field === 'verificationReport')).toBe(true);
     expect(issues.some((issue) => issue.field === 'successCriteria')).toBe(true);
+  });
+
+  it('resolves autoAccept default and explicit policy values', () => {
+    expect(resolveAutoAccept({} as unknown as KanbanBoard)).toBe(true);
+    expect(
+      resolveAutoAccept({
+        lifecycle: { mode: 'managed', autoAccept: true },
+      } as unknown as KanbanBoard),
+    ).toBe(true);
+    expect(
+      resolveAutoAccept({
+        lifecycle: { mode: 'managed', autoAccept: false },
+      } as unknown as KanbanBoard),
+    ).toBe(false);
+  });
+
+  it('attaches verification reports idempotently and records agent checkedBy and checksPassed event counts', async () => {
+    const board = await createBoard(tmpDir, {
+      title: 'Agent gate board',
+      completionGate: { enforcement: 'strict' },
+    });
+    const added = await addTask(tmpDir, board.id, { title: 'Agent checked task' });
+    const taskId = added!.task.id;
+    await addCheckToTask(tmpDir, board.id, taskId, {
+      description: 'Agent review criterion',
+      type: 'agent',
+      status: 'pending',
+    });
+    await assignTask(tmpDir, board.id, taskId, { agentId: 'worker' });
+    await updateTaskAssignment(tmpDir, board.id, taskId, { status: 'completed' });
+
+    const registry = new VerifierRegistry().register({
+      id: 'agent',
+      name: 'Agent Verifier',
+      supportedTypes: ['agent'],
+      canHandle: (type) => type === 'agent',
+      verify: async (check) => ({
+        checkId: check.id,
+        description: check.description,
+        type: 'agent',
+        status: 'passed',
+        evidence: {
+          command: 'bun run test',
+          exitCode: 0,
+          output: '1 passed',
+          artifacts: ['packages/kanban/src/index.ts'],
+        },
+        durationMs: 5,
+      }),
+    });
+
+    const finalized = await finalizeTaskCompletion(tmpDir, board.id, taskId, { registry });
+    expect(finalized?.task.successCriteria?.[0]?.checkedBy).toBe('agent');
+
+    const events = await readKanbanEvents(tmpDir, board.id);
+    const verifiedEvent = events.find((e) => e.type === 'task.verified');
+    expect(verifiedEvent?.after).toMatchObject({
+      verdict: 'passed',
+      checksPassed: 1,
+      checksTotal: 1,
+    });
+
+    const report = {
+      ...finalized!.task.verificationReport!,
+      summary: 'Updated external summary',
+    };
+    const attached = await attachVerificationReport(tmpDir, board.id, taskId, report);
+    expect(attached?.tasks.find((t) => t.id === taskId)?.verificationReport?.summary).toBe(
+      'Updated external summary',
+    );
+    const duplicateAttach = await attachVerificationReport(tmpDir, board.id, taskId, report);
+    expect(duplicateAttach).toBeNull();
+  });
+
+  it('rejects workflow state reads when the Kanban project server is disabled', async () => {
+    const prev = process.env.WRONGSTACK_KANBAN_SERVER;
+    process.env.WRONGSTACK_KANBAN_SERVER = '0';
+    try {
+      await expect(readKanbanWorkflowState(tmpDir, 'wf-1')).rejects.toThrow(
+        'Kanban project server is disabled; workflow state requires IPC',
+      );
+    } finally {
+      if (prev === undefined) delete process.env.WRONGSTACK_KANBAN_SERVER;
+      else process.env.WRONGSTACK_KANBAN_SERVER = prev;
+    }
   });
 });

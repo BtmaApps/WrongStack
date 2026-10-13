@@ -245,4 +245,35 @@ describe('runSearchRace — zero-score vector hits', () => {
     expect(race.metrics.lexicalCount).toBe(0);
     expect(race.metrics.vectorCount).toBe(0);
   });
+
+  it('truncates >140 char previews, skips duplicate lexical IDs, updates duplicate vector score when higher arrives second, and caps uniqueVectorHits at limit', async () => {
+    const longText = 'x'.repeat(160);
+    const lexical = [
+      { id: 'm1', text: longText },
+      { id: 'm1', text: 'duplicate m1 should be ignored' },
+      { id: 'm2', text: 'second unique lexical' },
+    ] as unknown as Sage[];
+    const store = {
+      search: async () =>
+        [
+          { entry: { id: 'v1', text: 'chunk 1 low', metadata: { sageId: 'm1' } }, score: 0.25 },
+          { entry: { id: 'v2', text: 'chunk 2 high', metadata: { sageId: 'm1' } }, score: 0.95 },
+          { entry: { id: 'v3', text: 'vec only 1', metadata: { sageId: 'v-only-1' } }, score: 0.8 },
+          {
+            entry: { id: 'v4', text: 'vec only 2 over limit', metadata: { sageId: 'v-only-2' } },
+            score: 0.7,
+          },
+        ] as unknown as VectorSearchHit[],
+    } as unknown as VectorMemoryStore;
+
+    const race = await runSearchRace('query', lexical, store, { limit: 2 });
+    expect(race.metrics.lexicalCount).toBe(2);
+    expect(race.metrics.vectorCount).toBe(2);
+    expect(race.overlap).toHaveLength(1);
+    expect(race.overlap[0]!.id).toBe('m1');
+    expect(race.overlap[0]!.vectorScore).toBe(0.95);
+    expect(race.overlap[0]!.preview).toHaveLength(140);
+    expect(race.overlap[0]!.preview.endsWith('…')).toBe(true);
+    expect(race.vectorOnly.map((r) => r.id)).toEqual(['v-only-1']);
+  });
 });

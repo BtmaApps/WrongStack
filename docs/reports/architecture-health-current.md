@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-13T19:15:56.887Z
+**Generated:** 2026-10-13T19:44:02.525Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4951 |
-| Production source lines | 1098516 |
-| Test files | 4339 |
+| Production source lines | 1098609 |
+| Test files | 4341 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16314 |
 | Non-command slash imports | 0 |
@@ -29,10 +29,10 @@ PASS — no blocking architecture-health errors.
 |---|---:|---:|---|
 | @wrongstack/acp | 50 | 58 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
-| @wrongstack/cli | 629 | 623 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/cli | 629 | 624 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1120 | 968 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1120 | 969 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 46 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 105 | 82 | @wrongstack/persistence, @wrongstack/primitives |
@@ -91,6 +91,7 @@ None.
 | 766 | `packages/tools/src/todo.ts` |
 | 766 | `packages/webui/src/components/MessageBubble/index.tsx` |
 | 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
+| 764 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 763 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
 | 762 | `packages/core/src/coordination/fleet-manager.ts` |
 | 762 | `packages/core/src/plugin/api.ts` |
@@ -105,7 +106,6 @@ None.
 | 759 | `packages/tui/src/components/context-panel-sections.tsx` |
 | 758 | `packages/core/src/registry/tool-registry.ts` |
 | 758 | `packages/providers/src/openai-codex.ts` |
-| 758 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 757 | `packages/techstack/src/adapters/npm.ts` |
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
 | 757 | `packages/webui/src/components/ChimeraReviewsView.tsx` |
@@ -136,7 +136,7 @@ None.
 
 ## Exports only tests reference
 
-- 970 runtime exports are referenced by tests and by no other production file.
+- 971 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

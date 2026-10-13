@@ -115,7 +115,10 @@ describe('attached SAGE MCP (external coding agents)', () => {
 
   it('releases the daemon socket once calls go idle', async () => {
     vi.useFakeTimers();
-    const { server } = createAttachedSageMcp(port, { projectRoot: dir, idleReleaseMs: 1_000 });
+    const { server, dispose } = createAttachedSageMcp(port, {
+      projectRoot: dir,
+      idleReleaseMs: 1_000,
+    });
 
     await call(server, {
       jsonrpc: '2.0',
@@ -128,5 +131,34 @@ describe('attached SAGE MCP (external coding agents)', () => {
     expect(port.releaseConnection).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(port.releaseConnection).toHaveBeenCalledTimes(1);
+
+    // S17-M9: starting a new call while the idle countdown is armed clears the earlier timer on entry
+    port.releaseConnection.mockClear();
+    await call(server, {
+      jsonrpc: '2.0',
+      id: 7,
+      method: 'tools/call',
+      params: { name: 'memory_search', arguments: { query: 'first' } },
+    });
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      await call(server, {
+        jsonrpc: '2.0',
+        id: 8,
+        method: 'tools/call',
+        params: { name: 'memory_search', arguments: { query: 'second' } },
+      });
+      // clearTimeout is called once on callTool entry (clearing the pending idle timer)
+      // and once inside armRelease() in finally
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      clearTimeoutSpy.mockRestore();
+    }
+
+    // S17-M10: dispose() clears any pending idle release timer (armed at the end of call #8)
+    port.releaseConnection.mockClear();
+    dispose();
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(port.releaseConnection).not.toHaveBeenCalled();
   });
 });

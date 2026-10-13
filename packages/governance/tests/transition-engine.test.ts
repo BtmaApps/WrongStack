@@ -156,6 +156,100 @@ describe('decideTransition', () => {
       ),
     ).toMatchObject({ allowed: false, code: 'rollback_unverified' });
   });
+
+  it('requires contract approval, plan approval, and non-empty authorization before authorizing', () => {
+    expect(
+      decideTransition(
+        proposal('planned', 'authorized', {
+          facts: { ...approvedFacts, contractApproved: false },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'contract_not_approved',
+      message: 'The task contract must be approved before authorization.',
+    });
+
+    expect(
+      decideTransition(
+        proposal('planned', 'authorized', {
+          facts: { ...approvedFacts, planApproved: false },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'plan_not_approved',
+      message: 'The active plan version must be approved before authorization.',
+    });
+
+    expect(
+      decideTransition(
+        proposal('planned', 'authorized', {
+          facts: { ...approvedFacts, authorization: 'none' },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'authorization_missing',
+      message: 'No automatic or human authorization is present.',
+    });
+  });
+
+  it('rejects transitioning to verifying when the result snapshot is stale', () => {
+    expect(
+      decideTransition(
+        proposal('proposed_complete', 'verifying', {
+          actor: 'system',
+          facts: { ...approvedFacts, snapshotCurrent: false },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'stale_snapshot',
+      message: 'Verification must use the current result snapshot.',
+    });
+  });
+
+  it('enforces current snapshot, mandatory evidence, and zero blocking findings on completion', () => {
+    expect(
+      decideTransition(
+        proposal('ready_to_merge', 'completed', {
+          actor: 'policy',
+          facts: { ...approvedFacts, snapshotCurrent: false },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'stale_snapshot',
+      message: 'Completion requires the current workspace snapshot.',
+    });
+
+    expect(
+      decideTransition(
+        proposal('ready_to_merge', 'completed', {
+          actor: 'policy',
+          facts: { ...approvedFacts, requiredEvidenceSatisfied: false },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'evidence_missing',
+      message: 'Completion requires all mandatory evidence.',
+    });
+
+    expect(
+      decideTransition(
+        proposal('ready_to_merge', 'completed', {
+          actor: 'policy',
+          facts: { ...approvedFacts, blockingFindings: 1 },
+        }),
+      ),
+    ).toEqual({
+      allowed: false,
+      code: 'blocking_findings',
+      message: 'Completion is blocked by unresolved review findings.',
+    });
+  });
 });
 
 describe('workflow state classification', () => {

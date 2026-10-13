@@ -14,6 +14,7 @@ import {
   type VerificationRunContract,
   type VerificationRunContractV1,
   type VerificationRunContractV2,
+  verificationExecutionBindingHash,
   verificationExecutionLeaseId,
   workspaceSnapshotFenceId,
 } from '../src/index.js';
@@ -292,6 +293,12 @@ describe('verification execution lease store', () => {
         workspaceManifestHash: 'e'.repeat(64),
       }),
     ).toMatchObject({ authorized: false, code: 'binding_mismatch' });
+    expect(
+      reopened.consumeVerificationExecutionLease(issued.credential, {
+        ...binding(issued.run),
+        taskId: 'task-other',
+      }),
+    ).toMatchObject({ authorized: false, code: 'binding_mismatch' });
     expect(reopened.readVerificationExecutionLeaseStatus(issued.lease.leaseId)).toMatchObject({
       state: 'active',
       consumption: null,
@@ -306,9 +313,12 @@ describe('verification execution lease store', () => {
         leaseId: issued.lease.leaseId,
         runId: issued.run.runId,
         consumedAt: '2026-08-02T12:02:00.000Z',
-        bindingHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        bindingHash: verificationExecutionBindingHash(binding(issued.run)),
       },
     });
+    expect(
+      verificationExecutionBindingHash({ ...binding(issued.run), taskId: 'task-other' }),
+    ).not.toBe(verificationExecutionBindingHash(binding(issued.run)));
     expect(
       reopened.consumeVerificationExecutionLease(issued.credential, binding(issued.run)),
     ).toMatchObject({ authorized: false, code: 'already_consumed' });

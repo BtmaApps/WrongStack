@@ -350,6 +350,86 @@ describe('createRequirementIntakeMcpToolHost — default project wiring', () => 
     ) as { projectId: string };
     expect(identity.projectId).toBe(content.projectId);
   });
+
+  it('rejects default listing before project identity exists, forwards title/idempotencyKey, filters invalid statuses, checks post-list abort, and requires strict writable === true', async () => {
+    // S16-M10: non-boolean truthy writable does not enable submit tool
+    const nonStrictHost = createRequirementIntakeMcpToolHost(root, {
+      writable: 'yes' as unknown as boolean,
+    });
+    expect((await nonStrictHost.listTools()).map((t) => t.name)).toEqual([
+      'requirement_intake_list',
+    ]);
+
+    // S16-M1: defaultResolveProjectId(root, false) throws when project.json does not exist
+    const readHost = createRequirementIntakeMcpToolHost(root);
+    const missingIdRes = await readHost.callTool('requirement_intake_list', {});
+    expect(missingIdRes.isError).toBe(true);
+    expect(String(missingIdRes.content)).toContain('No WrongStack project identity found');
+
+    // S16-M3, S16-M6, S16-M7: explicit title, idempotencyKey, and idempotent: true on second submit
+    const writeHost = createRequirementIntakeMcpToolHost(root, {
+      writable: true,
+      actor: 'codex-agent',
+    });
+    const first = await writeHost.callTool('requirement_intake_submit', {
+      request: REQUEST_TEXT,
+      title: 'Explicit custom title',
+      idempotencyKey: 'idem-key-1',
+    });
+    expect(first.isError).toBe(false);
+    expect(first.content).toMatchObject({
+      title: 'Explicit custom title',
+      created: true,
+      idempotent: false,
+    });
+
+    const second = await writeHost.callTool('requirement_intake_submit', {
+      request: REQUEST_TEXT,
+      title: 'Explicit custom title',
+      idempotencyKey: 'idem-key-1',
+    });
+    expect(second.isError).toBe(false);
+    expect(second.content).toMatchObject({
+      title: 'Explicit custom title',
+      created: false,
+      idempotent: true,
+    });
+
+    // S16-M9: filterStatuses strips invalid status strings
+    const listed = await writeHost.callTool('requirement_intake_list', {
+      statuses: ['submitted', 'not_a_real_status'],
+    });
+    expect(listed.isError).toBe(false);
+    expect((listed.content as { count: number }).count).toBe(1);
+
+    // S16-M8 & S16-M9: post-listIntakes throwIfAborted(signal) + exact filtered statuses passed to service.listIntakes
+    const abortCtrl = new AbortController();
+    const listIntakesMock = vi.fn(async () => {
+      abortCtrl.abort(new Error('aborted-after-list'));
+      return [];
+    });
+    const abortAfterListHost = createRequirementIntakeMcpToolHost(root, {
+      dependencies: {
+        resolveProjectId: async () => 'proj_alpha',
+        service: {
+          listIntakes: listIntakesMock,
+        } as unknown as RequirementIntakeService,
+      },
+    });
+    await expect(
+      abortAfterListHost.callTool(
+        'requirement_intake_list',
+        { statuses: ['submitted', 'not_a_real_status'] },
+        { signal: abortCtrl.signal },
+      ),
+    ).resolves.toEqual({
+      content: 'aborted-after-list',
+      isError: true,
+    });
+    expect(listIntakesMock).toHaveBeenCalledWith('proj_alpha', expect.anything(), {
+      statuses: ['submitted'],
+    });
+  });
 });
 
 describe('createRequirementIntakeMcpServer', () => {

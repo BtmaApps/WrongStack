@@ -888,4 +888,129 @@ describe('verification issuance coordinator', () => {
     });
     expect(runner).toHaveBeenCalledTimes(1);
   });
+
+  it('returns workspace_identity_unavailable and workspace_snapshot_invalid when workspace capture or recording fails', async () => {
+    const store = openStore();
+    const identityUnavailable = new VerificationIssuanceCoordinator({
+      mode: 'enforced',
+      verifierClientId: 'independent-verifier',
+      ttlMs: 60_000,
+      maxDurationMs: 30_000,
+      now: () => '2026-08-02T12:05:00.000Z',
+      captureWorkspaceIdentity: async () => {
+        throw new Error('git status failed');
+      },
+      checkBindings: defaultRegistry(),
+      leaseIssuer: store,
+    });
+    await expect(identityUnavailable.issue(input())).resolves.toEqual({
+      route: 'governed',
+      handled: true,
+      issued: false,
+      phase: 'workspace',
+      code: 'workspace_identity_unavailable',
+      message: 'Fresh workspace identity could not be captured for verification issuance.',
+    });
+
+    const snapshotInvalid = new VerificationIssuanceCoordinator({
+      mode: 'enforced',
+      verifierClientId: 'independent-verifier',
+      ttlMs: 60_000,
+      maxDurationMs: 30_000,
+      now: () => '2026-08-02T12:05:00.000Z',
+      captureWorkspaceIdentity: async () => ({ manifestHash: workspaceManifestHash }),
+      checkBindings: defaultRegistry(),
+      workspaceSnapshots: {
+        recordWorkspaceSnapshot: () => ({
+          recorded: false,
+          code: 'manifest_hash_invalid',
+          message: 'Workspace manifest hash is invalid.',
+        }),
+      },
+      leaseIssuer: store,
+    });
+    await expect(snapshotInvalid.issue(input())).resolves.toEqual({
+      route: 'governed',
+      handled: true,
+      issued: false,
+      phase: 'workspace',
+      code: 'workspace_snapshot_invalid',
+      message: 'Workspace manifest hash is invalid.',
+    });
+  });
+
+  it('permits issuance when task state is verifying and rejects mismatched lease run contracts', async () => {
+    const store = openStore();
+    const transition = store.execute(
+      {
+        type: 'transition_task',
+        commandId: 'advance-to-verifying',
+        taskId: 'task-1',
+        expectedRevision: 7,
+        actor: 'system',
+        issuedAt: '2026-08-02T12:04:00.000Z',
+        to: 'verifying',
+      },
+      decisionContext,
+    );
+    expect(transition.handled && transition.decision.accepted).toBe(true);
+
+    const baseInput = input();
+    if (!baseInput.task) throw new Error('Expected task fixture.');
+    const verifyingInput: VerificationIssuanceCoordinatorInput = {
+      ...baseInput,
+      task: { ...baseInput.task, revision: 8, state: 'verifying' },
+    };
+
+    const coordinator = new VerificationIssuanceCoordinator({
+      mode: 'enforced',
+      verifierClientId: 'independent-verifier',
+      ttlMs: 60_000,
+      maxDurationMs: 30_000,
+      now: () => '2026-08-02T12:05:00.000Z',
+      captureWorkspaceIdentity: async () => ({ manifestHash: workspaceManifestHash }),
+      checkBindings: defaultRegistry(),
+      leaseIssuer: store,
+    });
+    await expect(coordinator.issue(verifyingInput)).resolves.toMatchObject({
+      route: 'governed',
+      handled: true,
+      issued: true,
+    });
+
+    const mismatchedLeaseCoordinator = new VerificationIssuanceCoordinator({
+      mode: 'enforced',
+      verifierClientId: 'independent-verifier',
+      ttlMs: 60_000,
+      maxDurationMs: 30_000,
+      now: () => '2026-08-02T12:05:00.000Z',
+      captureWorkspaceIdentity: async () => ({ manifestHash: workspaceManifestHash }),
+      checkBindings: defaultRegistry(),
+      workspaceSnapshots: store,
+      leaseIssuer: {
+        issueVerificationExecutionLeaseIfCurrent: (run) => ({
+          issued: true,
+          run: { ...run, runId: '0'.repeat(64) },
+          lease: {
+            schemaVersion: 1,
+            leaseId: '1'.repeat(64),
+            runId: '0'.repeat(64),
+            taskId: run.taskId,
+            verifierClientId: run.verifierClientId,
+            issuedAt: '2026-08-02T12:05:00.000Z',
+            expiresAt: '2026-08-02T12:06:00.000Z',
+          },
+          credential: { leaseId: '1'.repeat(64), secret: 's'.repeat(43) },
+        }),
+      },
+    });
+    await expect(mismatchedLeaseCoordinator.issue(verifyingInput)).resolves.toEqual({
+      route: 'governed',
+      handled: true,
+      issued: false,
+      phase: 'internal',
+      code: 'lease_result_mismatch',
+      message: 'Verification lease issuer returned a mismatched run contract.',
+    });
+  });
 });

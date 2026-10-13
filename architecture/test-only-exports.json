@@ -1031,6 +1031,9 @@
       "applyWrongStackPacks",
       "createRuntimeHostFromParts"
     ],
+    "packages/sage-mcp/src/cli.ts": [
+      "projectRelativeStorageDirectory"
+    ],
     "packages/sage/src/anchors/verify.ts": [
       "anchorVerificationCoverage"
     ],

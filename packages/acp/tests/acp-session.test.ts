@@ -511,6 +511,49 @@ describe('ACPSession', () => {
     await session.close();
   });
 
+  it('keeps a tool result sent as content text blocks or as a text rawOutput', async () => {
+    const session = await startSession();
+    const t = lastTransport();
+    const promptP = session.prompt([textContent('look')], new AbortController().signal);
+
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_abc' });
+    await new Promise((r) => setImmediate(r));
+    const promptMsg = t.sent.find((m) => m.method === 'session/prompt');
+    const update = (u: unknown) =>
+      t.emit({
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: { sessionId: 'sess_abc', update: u },
+      } as never as ACPMessage);
+
+    // Claude's adapter: the result as `content` blocks, `rawOutput` the raw
+    // tool_result content (a string or an array of text blocks).
+    update({ sessionUpdate: 'tool_call', toolCallId: 'r1', title: 'Read a.ts', status: 'pending' });
+    update({
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'r1',
+      status: 'completed',
+      rawOutput: [{ type: 'text', text: 'raw' }],
+      content: [{ type: 'content', content: { type: 'text', text: 'line 1\nline 2' } }],
+    });
+    update({ sessionUpdate: 'tool_call', toolCallId: 'b1', title: 'git status', status: 'pending' });
+    update({ sessionUpdate: 'tool_call_update', toolCallId: 'b1', rawOutput: 'clean' });
+    update({ sessionUpdate: 'tool_call_update', toolCallId: 'b1', status: 'completed' });
+    t.respond(promptMsg!.id!, 'session/prompt', { stopReason: 'end_turn' });
+
+    const { toolCalls } = await promptP;
+    expect(toolCalls.find((c) => c.toolCallId === 'r1')?.output).toBe('line 1\nline 2');
+    // A later update without a result keeps the one already seen.
+    expect(toolCalls.find((c) => c.toolCallId === 'b1')).toMatchObject({
+      status: 'completed',
+      output: 'clean',
+      rawOutput: undefined,
+    });
+    await session.close();
+  });
+
   it('abort mid-turn sends session/cancel and returns stopReason=cancelled', async () => {
     const session = await startSession();
     const t = lastTransport();

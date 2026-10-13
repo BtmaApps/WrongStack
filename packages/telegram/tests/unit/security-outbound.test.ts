@@ -40,13 +40,31 @@ describe('Telegram outbound security', () => {
         getAllowedOutboundChatIds: () => [200],
       }),
     ).toThrow(/not paired/);
+
+    try {
+      resolveTelegramOutboundTarget(undefined, { getDefaultChatId: () => undefined });
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect((err as { context?: { field?: string } }).context?.field).toBe('chat_id');
+    }
+
+    try {
+      resolveTelegramOutboundTarget('300', {
+        getDefaultChatId: () => '100',
+        getAllowedOutboundChatIds: () => [200],
+      });
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect((err as { context?: { field?: string } }).context?.field).toBe('chat_id');
+    }
   });
 
-  it('scrubs core secrets, Telegram bot tokens, and labelled flags', () => {
+  it('scrubs core secrets, Telegram bot tokens (including 6-digit ID / 22-char secret), and labelled flags', () => {
     const output = scrubTelegramOutboundText(
-      'token 123456789:abcdefghijklmnopqrstuvwxyzABCDEF --password=hunter2',
+      'token 123456789:abcdefghijklmnopqrstuvwxyzABCDEF short 123456:abcdefghijklmnopqrstuv --password=hunter2',
     );
     expect(output).not.toContain('123456789:');
+    expect(output).not.toContain('123456:');
     expect(output).not.toContain('hunter2');
   });
 

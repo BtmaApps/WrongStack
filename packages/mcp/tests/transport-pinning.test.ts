@@ -196,13 +196,29 @@ describe('transportPinnedLookup', () => {
     expect(v6.address).toBe('2606:4700::1111');
   });
 
-  it('surfaces ENOTFOUND from the resolver', async () => {
+  it('surfaces ENOTFOUND from the resolver or when the resolver returns an empty record list', async () => {
     const lookup = transportPinnedLookup({
       allowPrivateNetworks: false,
-      lookup: makeLookup({}),
+      lookup: makeLookup({ 'empty.test': [] }),
     });
     const result = await invokeOnce(lookup, 'missing.test');
     expect(result.err?.code).toBe('ENOTFOUND');
+    const emptyResult = await invokeOnce(lookup, 'empty.test');
+    expect(emptyResult.err?.code).toBe('ENOTFOUND');
+  });
+
+  it('returns all resolved records when connectOptions.all is true', async () => {
+    const records = [
+      { address: '8.8.8.8', family: 4 as const },
+      { address: '1.1.1.1', family: 4 as const },
+    ];
+    const lookup = transportPinnedLookup({
+      allowPrivateNetworks: false,
+      lookup: makeLookup({ 'multi.test': records }),
+    });
+    const result = await invokeOnce(lookup, 'multi.test', { all: true });
+    expect(result.err).toBeNull();
+    expect(result.address).toEqual(records);
   });
 });
 
@@ -358,5 +374,20 @@ describe('J3 / classifyTransportAddress — IPv6 transition-format IMDS', () => 
   it('does NOT collapse a public IPv6 to private just because it has an embedded IPv4', () => {
     // 64:ff9b:0:0:0:0:0808:0808 — NAT64 wrap of the public 8.8.8.8.
     expect(_classify('64:ff9b:0:0:0:0:0808:0808', 6)).toBe('public');
+  });
+});
+
+import { validateTransportUrl } from '../src/transport-security.js';
+
+describe('validateTransportUrl — protocol and plaintext remote guard', () => {
+  it('rejects plaintext http:// for non-loopback hosts even when allowPrivateNetworks is true', () => {
+    expect(() => validateTransportUrl('http://example.com/mcp')).toThrow(
+      /http:\/\/ is only allowed for loopback addresses/,
+    );
+    expect(() =>
+      validateTransportUrl('http://10.0.0.5/mcp', { allowPrivateNetworks: true }),
+    ).toThrow(/http:\/\/ is only allowed for loopback addresses/);
+    expect(() => validateTransportUrl('http://127.0.0.1:8080/mcp')).not.toThrow();
+    expect(() => validateTransportUrl('https://example.com/mcp')).not.toThrow();
   });
 });

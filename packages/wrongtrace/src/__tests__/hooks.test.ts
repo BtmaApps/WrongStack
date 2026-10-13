@@ -350,4 +350,63 @@ describe('createWrongTraceHookPair gate events', () => {
     await pair.postToolUse(call('tab-1'));
     expect(locks.has('src/foo.ts')).toBe(false);
   });
+
+  it('withFileLock unlocks only when lockFile succeeded and gate-counters persists and reloads total counts', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { withFileLock } = await import('../gate.js');
+    const {
+      loadWrongTraceGateCounters,
+      persistWrongTraceGateCounters,
+      recordGateDecision,
+      resetGateDecisions,
+      snapshotGateDecisions,
+    } = await import('../gate-counters.js');
+
+    const unlocked: string[] = [];
+    globalThis.fetch = makeFetch(async (url, init) => {
+      const u = new URL(url);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/guardrail/lock') {
+        if (body.path === 'src/locked.ts') {
+          return jsonResponse({ ok: true, path: body.path, status: 'locked' });
+        }
+        return jsonResponse({ ok: false, status: 'conflict' }, 409);
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        unlocked.push(body.path);
+        return jsonResponse({ ok: true, path: body.path, status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+    resetWrongTraceGate();
+    await expect(withFileLock('src/locked.ts', 'test', async () => 'ok')).resolves.toBe('ok');
+    await expect(withFileLock('src/conflict.ts', 'test', async () => 'ok2')).resolves.toBe('ok2');
+    expect(unlocked).toEqual(['src/locked.ts']);
+
+    const dir = mkdtempSync(join(tmpdir(), 'wt-gate-counters-'));
+    try {
+      resetGateDecisions();
+      recordGateDecision({ kind: 'deny', sessionId: 's1', path: 'src/a.ts', reason: 'locked' });
+      recordGateDecision({ kind: 'lock-acquired', sessionId: 's1', path: 'src/b.ts' });
+      recordGateDecision({ kind: 'lock-released', sessionId: 's1', path: 'src/b.ts' });
+      const snap = snapshotGateDecisions();
+      expect(snap.total).toBe(3);
+      await persistWrongTraceGateCounters(dir, snap);
+      resetGateDecisions();
+      const loaded = await loadWrongTraceGateCounters(dir);
+      expect(loaded).toEqual({
+        deny: 1,
+        allowFragile: 0,
+        lockAcquired: 1,
+        lockConflictRace: 0,
+        lockReleased: 1,
+        total: 3,
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

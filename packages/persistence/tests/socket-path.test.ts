@@ -60,6 +60,21 @@ describe('checkUnixSocketPath', () => {
     expect(checkUnixSocketPath(flat, 'darwin').ok).toBe(true);
     expect(Buffer.byteLength(flat)).toBeLessThan(100);
   });
+
+  it('rejects non-string, empty, and NUL-containing socket paths even on win32', () => {
+    expect(checkUnixSocketPath('' as string, 'win32')).toMatchObject({
+      ok: false,
+      byteLength: 0,
+    });
+    expect(checkUnixSocketPath('/tmp/a\0b.sock', 'win32')).toMatchObject({
+      ok: false,
+      byteLength: 0,
+    });
+    expect(checkUnixSocketPath(null as unknown as string, 'win32')).toMatchObject({
+      ok: false,
+      byteLength: 0,
+    });
+  });
 });
 
 describe('assertUnixSocketPathWithinLimit', () => {
@@ -80,6 +95,18 @@ describe('assertUnixSocketPathWithinLimit', () => {
     );
     expect(() => assertUnixSocketPathWithinLimit(over, 'kanban', 'darwin')).toThrowError(
       /shorter TMPDIR/,
+    );
+  });
+
+  it('reports specific diagnostic errors for non-string, empty, and NUL-byte socket paths', () => {
+    expect(() =>
+      assertUnixSocketPathWithinLimit(123 as unknown as string, 'kanban', 'linux'),
+    ).toThrow('kanban IPC socket path must be a string, received number.');
+    expect(() => assertUnixSocketPathWithinLimit('', 'kanban', 'linux')).toThrow(
+      /kanban IPC socket path must not be empty/,
+    );
+    expect(() => assertUnixSocketPathWithinLimit('/tmp/bad\0.sock', 'kanban', 'linux')).toThrow(
+      /kanban IPC socket path contains a NUL byte/,
     );
   });
 });

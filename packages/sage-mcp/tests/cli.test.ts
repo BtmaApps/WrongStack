@@ -11,7 +11,7 @@
  */
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseArgs } from '../src/cli.js';
+import { main, parseArgs, projectRelativeStorageDirectory } from '../src/cli.js';
 
 describe('parseArgs', () => {
   afterEach(() => {
@@ -106,6 +106,21 @@ describe('parseArgs', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(parseArgs(['--port', '99999'], {}).httpPort).toBe(0);
     expect(parseArgs(['--port', '12.5'], {}).httpPort).toBe(0);
-    expect(warn).toHaveBeenCalled();
+    expect(parseArgs(['--port', '65535'], {}).httpPort).toBe(65_535);
+    expect(parseArgs(['--port', '8080', '--port', '0'], {}).httpPort).toBe(0);
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to WRONGSTACK_MCP_TOKEN, guards storage-dir traversal, and requires --project-root in main()', async () => {
+    expect(parseArgs([], { WRONGSTACK_MCP_TOKEN: '  env-tok-123  ' }).httpToken).toBe(
+      'env-tok-123',
+    );
+    expect(projectRelativeStorageDirectory('/repo/proj', '/repo/proj/.sage')).toBe('.sage');
+    expect(() => projectRelativeStorageDirectory('/repo/proj', '/repo/other')).toThrow(
+      '--storage-dir must stay inside the project root',
+    );
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    await expect(main([])).resolves.toBe(2);
+    expect(stderrSpy).toHaveBeenCalled();
   });
 });

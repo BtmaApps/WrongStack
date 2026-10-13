@@ -266,4 +266,32 @@ describe('MCP explicit content selection', () => {
       }),
     ).toThrow(/nesting depth limit/);
   });
+
+  it('accepts exact upper bounds (64 resource blocks, 128 prompt messages, 256-char identities) and sorts promptArgumentNames', () => {
+    const server256 = 's'.repeat(256);
+    const prompt256 = 'p'.repeat(256);
+    const contents64 = Array.from({ length: 64 }, (_, i) => ({
+      uri: 'mem://one',
+      text: `b${i}`,
+    }));
+    const resInsertion = prepareResourceInsertion(server256, 'mem://one', {
+      contents: contents64,
+    });
+    expect(resInsertion.contents).toHaveLength(64);
+    expect(resInsertion.provenance.serverName).toBe(server256);
+
+    const messages128 = Array.from({ length: 128 }, (_, i) => ({
+      role: 'user' as const,
+      content: { type: 'text', text: `m${i}` },
+    }));
+    const promptInsertion = preparePromptInsertion(
+      server256,
+      prompt256,
+      { z_last: '1', a_first: '2', m_mid: '3' },
+      { messages: messages128 },
+    );
+    expect(promptInsertion.messages).toHaveLength(128);
+    expect(promptInsertion.provenance.promptName).toBe(prompt256);
+    expect(promptInsertion.provenance.promptArgumentNames).toEqual(['a_first', 'm_mid', 'z_last']);
+  });
 });

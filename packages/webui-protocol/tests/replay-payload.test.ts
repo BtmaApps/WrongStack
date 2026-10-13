@@ -63,12 +63,18 @@ describe('buildReplayPayload — usage', () => {
     expect(out.replayUsage).toBeUndefined();
   });
 
-  it('includes replayUsage when input is non-zero', () => {
+  it('includes replayUsage when input is non-zero or output is non-zero alone', () => {
     const out = buildReplayPayload({
       messages: [message('a')],
       usage: { input: 10, output: 0 },
     });
     expect(out.replayUsage).toEqual({ input: 10, output: 0, cacheRead: 0, cacheWrite: 0 });
+
+    const outOnly = buildReplayPayload({
+      messages: [message('a')],
+      usage: { input: 0, output: 15 },
+    });
+    expect(outOnly.replayUsage).toEqual({ input: 0, output: 15, cacheRead: 0, cacheWrite: 0 });
   });
 
   it('defaults cacheRead and cacheWrite to zero when missing', () => {

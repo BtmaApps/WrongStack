@@ -413,6 +413,14 @@ describe('capSubject', () => {
     expect(capped.length).toBe(MAX_SUBJECT_LEN);
     expect(capped).toBe(line.slice(0, MAX_SUBJECT_LEN));
   });
+
+  it('returns empty string for non-string subjects and allows {1}/{0,1} quantifiers while rejecting non-string flags', () => {
+    expect(capSubject(null as unknown as string)).toBe('');
+    expect(compileUserRegex('(a|a){1}', '').ok).toBe(true);
+    expect(compileUserRegex('(a|a){0,1}', '').ok).toBe(true);
+    const badFlags = compileUserRegex('a', 123 as unknown as string);
+    expect(badFlags).toEqual({ ok: false, reason: 'flags must be a string' });
+  });
 });
 
 describe('compileUserRegex — instance independence (shared-cache regression)', () => {

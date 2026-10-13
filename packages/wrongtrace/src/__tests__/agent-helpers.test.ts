@@ -417,4 +417,67 @@ describe('digestAtlas', () => {
     const d = digestAtlas(summaryAtlas as never);
     expect(d?.fragileFileCount).toBe(11); // 7 + 3 + 1
   });
+
+  it('isolates is_fragile vs health_score < 70 + fileFriction caution band and thrash > 5 boundary', async () => {
+    const fragileHighHealth = await getCrossAgentRisk(
+      {
+        ...offlineStub(),
+        isAvailable: true,
+        async getFileHealth() {
+          return {
+            path: 'src/fragile.ts',
+            health_score: 85,
+            is_fragile: true,
+            recent_thrashing_count: 0,
+            is_locked: false,
+          };
+        },
+      },
+      'src/fragile.ts',
+    );
+    expect(fragileHighHealth.band).toBe('fragile');
+    expect(fragileHighHealth.risk).toBeGreaterThanOrEqual(80);
+
+    const cautionWithFriction = await getCrossAgentRisk(
+      {
+        ...offlineStub(),
+        isAvailable: true,
+        async getFileHealth() {
+          return {
+            path: 'src/caution.ts',
+            health_score: 60,
+            is_fragile: false,
+            recent_thrashing_count: 0,
+            is_locked: false,
+          };
+        },
+        async getFrictionMatrix() {
+          return [
+            {
+              author_model: 'm1',
+              overwriter_model: 'm2',
+              file_count: 1,
+              deleted_lines: 10,
+              conflict_count: 3,
+              files: ['src/caution.ts'],
+            } as never,
+          ];
+        },
+      },
+      'src/caution.ts',
+    );
+    expect(cautionWithFriction.band).toBe('caution');
+    expect(cautionWithFriction.risk).toBe(65); // 45 (health_score < 70) + 20 (totalConflicts >= 3)
+
+    const boundaryThrashAtlas = {
+      workspaces: ['packages'],
+      packages: [
+        {
+          name: 'exact-five-thrash',
+          files: Array.from({ length: 10 }, () => ({ recent_thrashing_count: 5 })),
+        },
+      ],
+    };
+    expect(digestAtlas(boundaryThrashAtlas as never)?.selfThrashWorkspaces).toEqual([]);
+  });
 });

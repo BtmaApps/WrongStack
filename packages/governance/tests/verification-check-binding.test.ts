@@ -60,5 +60,33 @@ describe('verification check binding', () => {
         testDescriptor,
       ),
     ).toBe(false);
+    expect(verificationCheckBindingMatches(binding, registryFingerprint, lintDescriptor)).toBe(
+      false,
+    );
+  });
+
+  it('rejects bindings with invalid schemaVersion, checkId, evidenceKind, or malformed inputs', () => {
+    const registryFingerprint = calculateVerificationCheckRegistryFingerprint([testDescriptor]);
+    const valid = createVerificationCheckBinding(registryFingerprint, testDescriptor);
+
+    expect(isVerificationCheckBindingIntegrityValid({ ...valid, schemaVersion: 2 as 1 })).toBe(
+      false,
+    );
+    expect(() => createVerificationCheckBinding('invalid-registry-fp', testDescriptor)).toThrow(
+      'Verification check registry fingerprint is invalid.',
+    );
+    expect(() =>
+      createVerificationCheckBinding(registryFingerprint, {
+        ...testDescriptor,
+        id: '-invalid-check-id',
+      }),
+    ).toThrow('Verification check descriptor cannot produce a valid binding.');
+    expect(() =>
+      createVerificationCheckBinding(registryFingerprint, {
+        ...testDescriptor,
+        evidenceKind: 'unknown-kind' as VerificationCheckDescriptor['evidenceKind'],
+      }),
+    ).toThrow('Verification check descriptor cannot produce a valid binding.');
+    expect(isVerificationCheckBindingIntegrityValid(null as unknown as typeof valid)).toBe(false);
   });
 });

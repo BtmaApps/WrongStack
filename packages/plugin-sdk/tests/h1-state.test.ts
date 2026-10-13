@@ -93,4 +93,13 @@ describe('H1 releaseAll reentrancy', () => {
     ]);
     expect(h1.size()).toBe(0);
   });
+
+  it('swallows errors thrown by an already-disposed unregister callback during release', () => {
+    const h1 = createH1State<{ ok: boolean }>({ ok: true });
+    h1.register('throwing-hook', () => {
+      throw new Error('hook already disposed');
+    });
+    expect(() => h1.releaseAll()).not.toThrow();
+    expect(h1.size()).toBe(0);
+  });
 });

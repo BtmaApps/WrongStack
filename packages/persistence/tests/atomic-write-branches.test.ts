@@ -604,4 +604,39 @@ describe('persistence primitive edge branches', () => {
       primitives.withFileLock('/tmp/locked.txt', async () => {}, { timeoutMs: 5, staleMs: 1000 }),
     ).rejects.toThrow('Timed out waiting for file lock: /tmp/locked.txt');
   });
+
+  it('never widens an existing stricter file mode and settles lock watcher on error events', async () => {
+    usePlatform('linux');
+    doubles.fs.stat.mockResolvedValueOnce({ mode: 0o100600 });
+    const primitives = createPersistencePrimitives();
+    await primitives.atomicWrite('/tmp/strict.txt', 'secret', { mode: 0o644 });
+    expect(doubles.fs.chmod).toHaveBeenCalledWith(expect.stringContaining('.tmp'), 0o600);
+
+    let errorHandler: (() => void) | undefined;
+    let closedImmediatelyOnError = false;
+    const watcher = {
+      close: vi.fn(),
+      on: vi.fn((event: string, cb: () => void) => {
+        if (event === 'error') errorHandler = cb;
+      }),
+    };
+    doubles.watch.mockImplementationOnce(() => {
+      queueMicrotask(() => {
+        errorHandler?.();
+        closedImmediatelyOnError = watcher.close.mock.calls.length === 1;
+      });
+      return watcher;
+    });
+    doubles.fs.open
+      .mockRejectedValueOnce(errorWithCode('EEXIST'))
+      .mockResolvedValueOnce(doubles.lockHandle);
+    doubles.fs.stat.mockResolvedValue({ mtimeMs: Date.now() });
+    doubles.fs.access.mockResolvedValue(undefined);
+
+    await expect(
+      primitives.withFileLock('/tmp/watch-err.json', async () => 'ok', { timeoutMs: 5_000 }),
+    ).resolves.toBe('ok');
+    expect(closedImmediatelyOnError).toBe(true);
+    expect(watcher.close).toHaveBeenCalledOnce();
+  });
 });

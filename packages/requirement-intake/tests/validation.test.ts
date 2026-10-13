@@ -12,10 +12,12 @@ import {
   createIntakeSchema,
   deterministicSummary,
   deterministicTitle,
+  isBlank,
   normalizeRequestType,
   validateAnswerInput,
   validateAttachResourceInput,
   validateCreateInput,
+  validateFieldSource,
   validateUpdateInput,
 } from '../src/validation.js';
 
@@ -262,5 +264,25 @@ describe('normalizeRequestType', () => {
     expect(normalizeRequestType('unknown-custom')).toBe('other');
     expect(normalizeRequestType('')).toBe('unspecified');
     expect(normalizeRequestType(null)).toBe('unspecified');
+  });
+
+  it('enforces exact boundaries for isBlank, deterministicSummary, deterministicTitle, MAX_METADATA_ENTRIES, and validateFieldSource', () => {
+    expect(isBlank('   \t\n ')).toBe(true);
+    expect(isBlank(' x ')).toBe(false);
+    expect(deterministicSummary('abcde', 0)).toBe('');
+    expect(deterministicSummary('abcde', 5)).toBe('abcde');
+    expect(deterministicTitle('abcde', 5)).toBe('abcde');
+
+    const exactMetadata = Object.fromEntries(
+      Array.from({ length: MAX_METADATA_ENTRIES }, (_, i) => [`key_${i}`, i]),
+    );
+    const created = validateCreateInput({
+      ...VALID_CREATE,
+      metadata: exactMetadata,
+    });
+    expect(Object.keys(created.metadata)).toHaveLength(MAX_METADATA_ENTRIES);
+
+    expect(validateFieldSource('user')).toBe('user');
+    expect(() => validateFieldSource('invalid_source')).toThrow(IntakeValidationError);
   });
 });

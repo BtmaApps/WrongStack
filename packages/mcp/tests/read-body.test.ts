@@ -61,4 +61,33 @@ describe('readBodyCapped', () => {
 
     await expect(readBodyCapped(response as never, 10)).rejects.toThrow(/exceeded/i);
   });
+
+  it('accepts a streamed body whose byte length equals maxBytes exactly and falls back to default cap on non-positive maxBytes', async () => {
+    const exact = {
+      body: streamOf([new TextEncoder().encode('hello'), new TextEncoder().encode(' world')]),
+      text: async () => 'unused',
+    };
+    expect(await readBodyCapped(exact, 11)).toBe('hello world');
+
+    const negativeCap = {
+      body: streamOf([new TextEncoder().encode('hello')]),
+      text: async () => 'unused',
+    };
+    expect(await readBodyCapped(negativeCap, -1)).toBe('hello');
+    expect(
+      await readBodyCapped(
+        { body: streamOf([new TextEncoder().encode('hello')]), text: async () => 'unused' },
+        Number.NaN,
+      ),
+    ).toBe('hello');
+  });
+
+  it('rejects a non-stream fallback body when its UTF-8 byte length exceeds maxBytes', async () => {
+    await expect(readBodyCapped({ body: null, text: async () => '123456' }, 5)).rejects.toThrow(
+      /exceeded 5 bytes/,
+    );
+    await expect(readBodyCapped({ body: null, text: async () => '12345' }, 5)).resolves.toBe(
+      '12345',
+    );
+  });
 });

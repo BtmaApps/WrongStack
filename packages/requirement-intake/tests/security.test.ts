@@ -245,4 +245,16 @@ describe('security — sensitive data must not leak into logs or events', () => 
     expect(eventPayload).not.toContain(SECRET);
     expect(eventPayload).not.toContain(SECRET_ANSWER);
   });
+
+  it('denies all operations in DenyAllIntakeAuthorizer and denies ownerOnlyOperations when no record is supplied', async () => {
+    const { DenyAllIntakeAuthorizer } = await import('../src/authorization.js');
+    const denyAll = new DenyAllIntakeAuthorizer();
+    expect(denyAll.isAllowed('read', ALICE)).toBe(false);
+
+    const ownerOnlyAuth = new ProjectMembershipIntakeAuthorizer({
+      projectsOf: () => new Set(['proj_alpha']),
+      ownerOnlyOperations: new Set(['create', 'submit']),
+    });
+    expect(await ownerOnlyAuth.isAllowed('create', ALICE, undefined)).toBe(false);
+  });
 });

@@ -253,6 +253,13 @@ describe('TechStackDetector - remaining uncovered paths', () => {
       ): string[];
     };
     expect(internals.findWorkspaceConfigs([{ packageManager: 'future-pm' }], [], [])).toEqual([]);
+    expect(
+      internals.findWorkspaceConfigs(
+        [{ packageManager: 'npm' }, { packageManager: 'yarn' }],
+        ['packages'],
+        ['lerna.json'],
+      ),
+    ).toEqual(['lerna.json']);
   });
 
   it('does not match manifest wildcard patterns when dot is substituted with arbitrary characters', async () => {
@@ -262,5 +269,28 @@ describe('TechStackDetector - remaining uncovered paths', () => {
     });
     const result = await detector.detect(dir);
     expect(result.detectedStacks.some((s) => s.stack === 'dotnet')).toBe(false);
+  });
+
+  it('marks a multi-stack repository as a monorepo even without workspace config files and expires cache at exact TTL boundary', async () => {
+    const dir = await createProject({
+      'package.json': '{"name":"app"}',
+    });
+    const zeroTtlDetector = new TechStackDetector(0);
+    const nowSpy = { restore: () => {} };
+    const origNow = Date.now;
+    Date.now = () => 1_000;
+    nowSpy.restore = () => {
+      Date.now = origNow;
+    };
+    try {
+      const first = await zeroTtlDetector.detect(dir);
+      expect(first.isMonorepo).toBe(false);
+      await fs.writeFile(path.join(dir, 'Cargo.toml'), '[package]\nname = "core"\n');
+      const second = await zeroTtlDetector.detect(dir);
+      expect(second.detectedStacks.length).toBe(2);
+      expect(second.isMonorepo).toBe(true);
+    } finally {
+      nowSpy.restore();
+    }
   });
 });

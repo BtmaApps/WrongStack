@@ -246,6 +246,126 @@ describe('createKanbanMcpToolHost', () => {
     );
     expect(getConnection).not.toHaveBeenCalled();
   });
+
+  it('clamps watch timeout to 100ms, handles daemon disconnect, post-connect abort, array event data, sessionId, ok:false, post-exec abort, and retryable/non-Error failures', async () => {
+    // S14-M1 & S14-M3: normalizeTimeout minimum 100ms clamp & timeout resolution
+    const timeoutHost = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: vi.fn().mockResolvedValue({
+          subscribe: () => () => {},
+          onDisconnect: () => () => {},
+        }),
+      },
+    });
+    await expect(timeoutHost.callTool('kanban_watch', { timeoutMs: 5 })).resolves.toEqual({
+      content: { changed: false, timedOut: true, timeoutMs: 100 },
+      isError: false,
+    });
+
+    // S14-M2 & S14-M10: onDisconnect callback & array event.data with boardId property ignored
+    let eventListener: ((event: KanbanServerEvent) => void) | undefined;
+    let disconnectListener: (() => void) | undefined;
+    const discHost = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: vi.fn().mockResolvedValue({
+          subscribe: (fn: (event: KanbanServerEvent) => void) => {
+            eventListener = fn;
+            return () => {};
+          },
+          onDisconnect: (fn: () => void) => {
+            disconnectListener = fn;
+            return () => {};
+          },
+        }),
+      },
+    });
+    const watchDisc = discHost.callTool('kanban_watch', { boardId: 'b1', timeoutMs: 5_000 });
+    await vi.waitFor(() => expect(disconnectListener).toBeTypeOf('function'));
+    const arrData = Object.assign([], { boardId: 'b1' });
+    eventListener?.({ type: 'event', event: 'board.updated', data: arrData as unknown });
+    disconnectListener?.();
+    await expect(watchDisc).resolves.toEqual({
+      content: { changed: false, disconnected: true, reason: 'Kanban daemon disconnected' },
+      isError: false,
+    });
+
+    // S14-M4: signal aborted during getConnection before subscribe is called
+    const subscribeSpy = vi.fn(() => () => {});
+    const abortCtrl = new AbortController();
+    const raceHost = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: vi.fn(async () => {
+          abortCtrl.abort(new Error('aborted during connect'));
+          return { subscribe: subscribeSpy, onDisconnect: () => () => {} };
+        }),
+      },
+    });
+    await expect(
+      raceHost.callTool('kanban_watch', {}, { signal: abortCtrl.signal }),
+    ).resolves.toEqual({
+      content: 'aborted during connect',
+      isError: true,
+    });
+    expect(subscribeSpy).not.toHaveBeenCalled();
+
+    // S14-M5 & S14-M6: opts.sessionId override & result.ok === false
+    let seenSessionId = '';
+    const customHost = createKanbanMcpToolHost('C:/project', {
+      sessionId: '  custom-sess-99  ',
+      dependencies: {
+        executeKanban: vi.fn(async (_args, ctx) => {
+          seenSessionId = (ctx as unknown as { eventSessionId: () => string }).eventSessionId();
+          return { ok: false, reason: 'soft-fail' };
+        }),
+      },
+    });
+    await expect(customHost.callTool('kanban_read', { action: 'list_boards' })).resolves.toEqual({
+      content: { ok: false, reason: 'soft-fail' },
+      isError: true,
+    });
+    expect(seenSessionId).toBe('custom-sess-99');
+
+    // S14-M7, S14-M8, S14-M9: retryable: true error, non-Error throw, and post-await abort on executeKanban
+    const retryableErr = Object.assign(new Error('lock busy'), {
+      kanbanCode: 'BUSY',
+      retryable: true,
+    });
+    const errHost = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi
+          .fn()
+          .mockRejectedValueOnce(retryableErr)
+          .mockRejectedValueOnce('plain-string-error'),
+      },
+    });
+    await expect(errHost.callTool('kanban_read', { action: 'list_boards' })).resolves.toEqual({
+      content: { ok: false, error: { code: 'BUSY', message: 'lock busy', retryable: true } },
+      isError: true,
+    });
+    await expect(errHost.callTool('kanban_read', { action: 'list_boards' })).resolves.toEqual({
+      content: 'plain-string-error',
+      isError: true,
+    });
+
+    const execCtrl = new AbortController();
+    const postAbortHost = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(async () => {
+          execCtrl.abort(new Error('aborted-after-exec'));
+          return { ok: true };
+        }),
+      },
+    });
+    await expect(
+      postAbortHost.callTool('kanban_read', { action: 'list_boards' }, { signal: execCtrl.signal }),
+    ).resolves.toEqual({
+      content: 'aborted-after-exec',
+      isError: true,
+    });
+  });
 });
 
 describe('Kanban MCP against the real kanban tool', () => {

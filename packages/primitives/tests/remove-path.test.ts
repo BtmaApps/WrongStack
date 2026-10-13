@@ -13,7 +13,10 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { removePathSync } from '../src/remove-path.js';
 
-const state = vi.hoisted(() => ({ rmSyncIsNoop: false }));
+const state = vi.hoisted(() => ({
+  rmSyncIsNoop: false,
+  onReaddir: undefined as ((target: string) => void) | undefined,
+}));
 
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
@@ -22,11 +25,17 @@ vi.mock('node:fs', async (importOriginal) => {
     rmSync: (...args: Parameters<typeof actual.rmSync>) => {
       if (!state.rmSyncIsNoop) actual.rmSync(...args);
     },
+    readdirSync: ((...args: Parameters<typeof actual.readdirSync>) => {
+      const entries = actual.readdirSync(...args);
+      state.onReaddir?.(String(args[0]));
+      return entries;
+    }) as typeof actual.readdirSync,
   };
 });
 
 afterEach(() => {
   state.rmSyncIsNoop = false;
+  state.onReaddir = undefined;
 });
 
 function tempDir(): string {
@@ -88,6 +97,24 @@ describe('removePathSync', () => {
       const dir = tree(tempDir());
       removePathSync(dir, { force: true });
       expect(fs.existsSync(path.join(dir, 'kök.txt'))).toBe(true);
+    });
+
+    it('aborts fallback traversal when a directory is replaced during readdir', () => {
+      state.rmSyncIsNoop = true;
+      const root = tempDir();
+      const dir = path.join(root, 'target-dir');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'child.txt'), 'x');
+      state.onReaddir = (target) => {
+        if (target === dir) {
+          fs.unlinkSync(path.join(dir, 'child.txt'));
+          fs.rmdirSync(dir);
+          fs.writeFileSync(dir, 'replaced-with-file');
+        }
+      };
+      expect(() => removePathSync(dir, { recursive: true, force: true })).toThrow(
+        /Path changed during recursive removal/,
+      );
     });
   });
 });

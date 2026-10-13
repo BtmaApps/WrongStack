@@ -50,6 +50,7 @@ describe('formatAutoWakeNotice', () => {
   it('notes the chain position only for a positive chain', () => {
     expect(formatAutoWakeNotice(['d1'], 3)).toContain(' — woken turn 3 without your input.');
     expect(formatAutoWakeNotice(['d1'], 0)).not.toContain('woken turn');
+    expect(formatAutoWakeNotice(['d1'], -1)).not.toContain('woken turn');
   });
 });
 
@@ -58,7 +59,10 @@ describe('formatDeliveryPendingNotice', () => {
     expect(formatDeliveryPendingNotice(['d1'], 1)).toBe('Background delegation result ready (d1).');
   });
 
-  it('formats several ready results without ids', () => {
+  it('formats several ready results with comma-separated ids and without ids', () => {
+    expect(formatDeliveryPendingNotice(['d1', 'd2'], 2)).toBe(
+      '2 background delegation results ready (d1, d2).',
+    );
     expect(formatDeliveryPendingNotice([], 2)).toBe('2 background delegation results ready.');
   });
 });

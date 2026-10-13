@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T19:15:56.887Z",
+  "generatedAt": "2026-10-13T19:44:02.525Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4951,
-    "testFiles": 4339,
-    "sourceLines": 1098516,
+    "testFiles": 4341,
+    "sourceLines": 1098609,
     "workspaceEdges": 137,
     "moduleEdges": 16314,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 970
+    "testOnlyExports": 971
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 629,
-      "testFiles": 623,
+      "testFiles": 624,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 623
+          "testFiles": 624
         }
       ]
     },
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1120,
-      "testFiles": 968,
+      "testFiles": 969,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 968
+          "testFiles": 969
         }
       ]
     },
@@ -1997,6 +1997,12 @@
       },
       {
         "file": "packages/cli/tests/acp-leader-provider.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-tool-cards.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6347,6 +6353,12 @@
       },
       {
         "file": "packages/core/tests/cloud-provider.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/acp-budget-policy.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27372,6 +27384,11 @@
       "relativeImports": 12
     },
     {
+      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "lines": 764,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "lines": 763,
       "relativeImports": 1
@@ -27440,11 +27457,6 @@
       "file": "packages/providers/src/openai-codex.ts",
       "lines": 758,
       "relativeImports": 26
-    },
-    {
-      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
-      "lines": 758,
-      "relativeImports": 10
     },
     {
       "file": "packages/techstack/src/adapters/npm.ts",
@@ -29582,6 +29594,10 @@
     {
       "file": "packages/runtime/src/host.ts",
       "name": "createRuntimeHostFromParts"
+    },
+    {
+      "file": "packages/sage-mcp/src/cli.ts",
+      "name": "projectRelativeStorageDirectory"
     },
     {
       "file": "packages/sage/src/anchors/verify.ts",

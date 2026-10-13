@@ -49,8 +49,10 @@ describe('privateEndpointKey', () => {
 
   it('differs for another user (another secret)', () => {
     const mine = privateEndpointKey(publicKey);
-    fs.writeFileSync(file, `${'a'.repeat(64)}\n`);
-    __resetIpcEndpointSecretForTests();
+    const otherFile = path.join(dir, 'other', 'ipc-endpoint.secret');
+    fs.mkdirSync(path.dirname(otherFile), { recursive: true });
+    fs.writeFileSync(otherFile, `${'a'.repeat(64)}\n`);
+    _ipcEndpointSecretOps.file = () => otherFile;
     expect(privateEndpointKey(publicKey)).not.toBe(mine);
   });
 

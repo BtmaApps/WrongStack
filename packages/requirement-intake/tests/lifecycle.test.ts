@@ -5,6 +5,7 @@ import {
   ALLOWED_TRANSITIONS,
   assertTransition,
   canTransition,
+  isKnownStatus,
   isMutableStatus,
   isTerminalStatus,
 } from '../src/lifecycle.js';
@@ -67,5 +68,11 @@ describe('intake lifecycle', () => {
       expect(error).toBeInstanceOf(IntakeStateTransitionError);
       expect((error as IntakeStateTransitionError).code).toBe('INTAKE_INVALID_TRANSITION');
     }
+  });
+
+  it('rejects Object.prototype keys in canTransition and validates known statuses in isKnownStatus', () => {
+    expect(canTransition('toString' as never, 'includes' as never)).toBe(false);
+    expect(isKnownStatus('draft')).toBe(true);
+    expect(isKnownStatus('not_a_status')).toBe(false);
   });
 });

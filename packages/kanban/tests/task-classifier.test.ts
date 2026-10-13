@@ -328,4 +328,95 @@ describe('managed card-detail contract — classifier vs lifecycle', () => {
     expect(fields).not.toContain('dueDate');
     expect(fields).not.toContain('labels');
   });
+
+  it('appends singular and plural parked reasons and flags heartbeat due at exact interval boundary', () => {
+    const b = board();
+    const parkedOnce = task({
+      status: 'review',
+      park: {
+        attempts: 1,
+        maxRefusals: 1,
+        parkedAt: NOW,
+        reason: 'Missing unit test.',
+        previousStatus: 'in_progress',
+      },
+    });
+    const parkedTwice = task({
+      status: 'review',
+      park: {
+        attempts: 2,
+        maxRefusals: 2,
+        parkedAt: NOW,
+        reason: 'Still failing.',
+        previousStatus: 'in_progress',
+      },
+    });
+    expect(classifyTaskForQueue(b, parkedOnce, { now: NOW }).reasons.at(-1)).toContain(
+      'Parked after 1 refused completion: Missing unit test.',
+    );
+    expect(classifyTaskForQueue(b, parkedTwice, { now: NOW }).reasons.at(-1)).toContain(
+      'Parked after 2 refused completions: Still failing.',
+    );
+
+    const exactHeartbeat = task({
+      status: 'in_progress',
+      assignment: {
+        agentId: 'worker-1',
+        status: 'running',
+        assignedAt: NOW,
+        leaseId: 'lease-1',
+        leaseExpiresAt: '2026-08-01T00:01:00.000Z',
+      },
+    });
+    const runningClass = classifyTaskForQueue(b, exactHeartbeat, {
+      now: NOW,
+      heartbeatIntervalMs: 60_000,
+    });
+    expect(runningClass.bucket).toBe('running_live');
+    expect(runningClass.reasons).toContain(
+      'Running assignment heartbeat is due before the next interval elapses.',
+    );
+  });
+
+  it('classifies queued/assigned assignments and blocks non-atomic tasks when board enforces atomicity', () => {
+    const b = board({ atomicity: { mode: 'enforce' } });
+    const queuedLive = task({
+      status: 'ready',
+      assignment: {
+        agentId: 'worker-1',
+        status: 'queued',
+        assignedAt: NOW,
+        leaseId: 'l1',
+        leaseExpiresAt: FUTURE,
+      },
+    });
+    const assignedExpired = task({
+      status: 'ready',
+      assignment: {
+        agentId: 'worker-1',
+        status: 'assigned',
+        assignedAt: NOW,
+        leaseId: 'l2',
+        leaseExpiresAt: PAST,
+      },
+    });
+    expect(classifyTaskForQueue(b, queuedLive, { now: NOW }).bucket).toBe('queued');
+    expect(classifyTaskForQueue(b, assignedExpired, { now: NOW }).bucket).toBe('queued_expired');
+
+    const needsDecomp = task({
+      status: 'ready',
+      atomicityAssessment: {
+        verdict: 'needs_decomposition',
+        score: 0.2,
+        reasons: ['Too broad'],
+        evaluatedAt: NOW,
+      },
+    });
+    const decompClass = classifyTaskForQueue(b, needsDecomp, { now: NOW });
+    expect(decompClass.bucket).toBe('not_dispatchable');
+    expect(decompClass.claimable).toBe(false);
+    expect(decompClass.reasons).toContain(
+      'Board enforces atomicity and this task needs decomposition.',
+    );
+  });
 });

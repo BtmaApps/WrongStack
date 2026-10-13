@@ -454,4 +454,21 @@ describe('createWrongTraceClient()', () => {
     expect(rows.total_collisions).toBe(12);
     expect(rows.events).toEqual(rawEvents);
   });
+
+  it('strips trailing slashes from baseUrl in discover() and resolves home socket path on non-win32 platforms', async () => {
+    const requestedUrls: string[] = [];
+    const res = await discover({
+      baseUrl: 'http://localhost:3444///',
+      fetchImpl: makeFetch(async (url) => {
+        requestedUrls.push(url);
+        return jsonResponse({ status: 'ok', version: '1.0.0' });
+      }),
+    });
+    expect(res.available).toBe(true);
+    expect(res.baseUrl).toBe('http://localhost:3444');
+    expect(requestedUrls).toEqual(['http://localhost:3444/api/health']);
+
+    expect(defaultSocketPath('/home/alice', 'linux')).toContain('.wrongtrace');
+    expect(defaultSocketPath('', 'linux')).toBe('/tmp/wrongtrace.sock');
+  });
 });

@@ -142,4 +142,71 @@ describe('file-permissions', () => {
       expect(stdout).toContain(':(F)');
     },
   );
+
+  it('warns and skips icacls when Windows username is missing or contains a NUL byte, and warns on live icacls failure', async () => {
+    const { _filePermOps } = await import('../src/file-permissions.js');
+    const origOps = { ..._filePermOps };
+    const origUsername = process.env['USERNAME'];
+    const origUser = process.env['USER'];
+    try {
+      const execCalls: string[][] = [];
+      const warnings: string[] = [];
+      _filePermOps.platform = 'win32';
+      _filePermOps.execFileAsync = async (_file, args) => {
+        execCalls.push([...args]);
+        return { stdout: '', stderr: '' };
+      };
+      process.env['USERNAME'] = 'invalid\0user';
+      delete process.env['USER'];
+
+      await restrictFilePermissions('C:\\temp\\secret.json', {
+        label: 'vault',
+        warn: (msg) => warnings.push(msg),
+      });
+      expect(execCalls).toHaveLength(0);
+      expect(warnings).toEqual([
+        '[vault] Could not determine the current Windows user for C:\\temp\\secret.json; skipping icacls hardening.',
+      ]);
+
+      warnings.length = 0;
+      process.env['USERNAME'] = 'validuser';
+      _filePermOps.stat = async () => ({ mode: 0o600 });
+      _filePermOps.execFileAsync = async () => {
+        throw new Error('icacls denied');
+      };
+      await restrictFilePermissions('C:\\temp\\live.json', {
+        label: 'vault',
+        warn: (msg) => warnings.push(msg),
+      });
+      expect(warnings).toEqual([
+        '[vault] Could not restrict permissions on C:\\temp\\live.json (icacls denied) — it may be readable by other users on this system.',
+      ]);
+    } finally {
+      Object.assign(_filePermOps, origOps);
+      if (origUsername !== undefined) process.env['USERNAME'] = origUsername;
+      else delete process.env['USERNAME'];
+      if (origUser !== undefined) process.env['USER'] = origUser;
+      else delete process.env['USER'];
+    }
+  });
+
+  it('applies 0o600 for files and 0o700 for directories on POSIX platforms', async () => {
+    const { _filePermOps } = await import('../src/file-permissions.js');
+    const origOps = { ..._filePermOps };
+    try {
+      const chmodCalls: Array<{ path: string; mode: number }> = [];
+      _filePermOps.platform = 'linux';
+      _filePermOps.chmod = async (targetPath, mode) => {
+        chmodCalls.push({ path: targetPath, mode });
+      };
+      await restrictFilePermissions('/tmp/secret.key');
+      await restrictDirPermissions('/tmp/secret-dir');
+      expect(chmodCalls).toEqual([
+        { path: '/tmp/secret.key', mode: SECRET_FILE_MODE },
+        { path: '/tmp/secret-dir', mode: SECRET_DIR_MODE },
+      ]);
+    } finally {
+      Object.assign(_filePermOps, origOps);
+    }
+  });
 });

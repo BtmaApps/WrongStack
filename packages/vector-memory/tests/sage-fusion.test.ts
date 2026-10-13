@@ -198,6 +198,46 @@ describe('fuseWithVectorMemory', () => {
     const expectedM2Score = 0.5 * (1 / 62) + 0.5 * (1 / 62);
     expect(m2.finalScore).toBeCloseTo(expectedM2Score, 5);
   });
+
+  it('falls back to default rrfK=60 when rrfK <= 0 or non-finite, deduplicates lexical IDs, slices to limit, and clamps vectorWeight to [0, 1]', async () => {
+    const dupA1 = fakeSage('a', 'first a');
+    const dupA2 = fakeSage('a', 'duplicate a');
+    const b = fakeSage('b', 'second b');
+    const c = fakeSage('c', 'third c');
+    const vectorHits = [
+      { entry: { id: 'v1', text: 'b hit', metadata: { sageId: 'b' } }, score: 0.9 },
+    ] as unknown as VectorSearchHit[];
+
+    // rrfK: 0 falls back to 60; duplicate lexical 'a' ignored so 'b' gets lexical rank 1 (not 2);
+    // limit: 2 slices output to 2 items.
+    const resZeroK = await fuseWithVectorMemory('q', [dupA1, dupA2, b, c], {
+      vectorHits,
+      vectorWeight: 0.5,
+      rrfK: 0,
+      limit: 2,
+    });
+    expect(resZeroK).toHaveLength(2);
+    const itemA = resZeroK.find((r) => r.memory.id === 'a')!;
+    expect(itemA.memory.text).toBe('first a');
+    expect(itemA.finalScore).toBeCloseTo(0.5 * (1 / 61), 5);
+
+    // vectorWeight < 0 clamps to 0 (pure lexical); vectorWeight > 1 clamps to 1 (pure vector)
+    const negWeight = await fuseWithVectorMemory('q', [dupA1, b], {
+      vectorHits,
+      vectorWeight: -2,
+      rrfK: 60,
+    });
+    expect(negWeight.find((r) => r.memory.id === 'a')!.finalScore).toBeCloseTo(1 / 61, 5);
+    expect(negWeight.find((r) => r.memory.id === 'b')!.finalScore).toBeCloseTo(1 / 62, 5);
+
+    const overWeight = await fuseWithVectorMemory('q', [dupA1, b], {
+      vectorHits,
+      vectorWeight: 3,
+      rrfK: 60,
+    });
+    expect(overWeight.find((r) => r.memory.id === 'a')!.finalScore).toBeCloseTo(0, 5);
+    expect(overWeight.find((r) => r.memory.id === 'b')!.finalScore).toBeCloseTo(1 / 61, 5);
+  });
 });
 
 describe('asVectorRecallProvider', () => {

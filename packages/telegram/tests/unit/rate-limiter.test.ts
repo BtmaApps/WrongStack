@@ -54,10 +54,61 @@ describe('createTokenBucket.isFull', () => {
   it('returns at the deadline and caps individual sleeps at five seconds', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
-    const bucket = createTokenBucket({ tokensPerSecond: 0.01, burst: 1 });
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      const bucket = createTokenBucket({ tokensPerSecond: 0.01, burst: 1 });
+      await bucket.waitForToken(0);
+      const pending = bucket.waitForToken(10_000);
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await expect(pending).resolves.toBeUndefined();
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it('throws immediately on pre-aborted signal before consuming available tokens and guards sleep against pre-aborted signals', async () => {
+    const bucket = createTokenBucket({ tokensPerSecond: 1, burst: 2 });
+    const ac = new AbortController();
+    ac.abort();
+    await expect(bucket.waitForToken(1000, ac.signal)).rejects.toThrow();
+    expect(bucket.fill()).toBe(2);
+
+    // Also exercise sleep()'s own signal.aborted guard when signal becomes aborted right after throwIfAborted
+    const emptyBucket = createTokenBucket({ tokensPerSecond: 1, burst: 0 });
+    const lateAbortSignal = {
+      aborted: true,
+      throwIfAborted: () => {
+        /* no-op on first check so execution reaches sleep(delay, signal) */
+      },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as AbortSignal;
+    await expect(emptyBucket.waitForToken(1000, lateAbortSignal)).rejects.toThrow(/aborted/i);
+    expect(lateAbortSignal.addEventListener).not.toHaveBeenCalled();
+  });
+
+  it('enforces 1ms minimum sleep floor and ignores backward clock jumps in refill()', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    const bucket = createTokenBucket({ tokensPerSecond: 1, burst: 4 });
     await bucket.waitForToken(0);
-    const pending = bucket.waitForToken(10_000);
-    await vi.advanceTimersByTimeAsync(10_000);
-    await expect(pending).resolves.toBeUndefined();
+    expect(bucket.fill()).toBe(3);
+
+    // Backward clock jump (elapsed < 0) must not reduce tokens
+    vi.setSystemTime(5_000);
+    expect(bucket.fill()).toBe(3);
+
+    // When untilToken <= 0 (e.g. negative tokensPerSecond configuration), delay is floored at 1ms
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      const negRateBucket = createTokenBucket({ tokensPerSecond: -1, burst: 0 });
+      const p = negRateBucket.waitForToken(2);
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1);
+      await vi.advanceTimersByTimeAsync(5);
+      await p;
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
   });
 });

@@ -285,4 +285,83 @@ describe('governance credential lease controller', () => {
         }),
     ).toThrow(/retry window must fit/);
   });
+
+  it('truncates sanitized messages at 512 chars, enforces exact constructor and capability_admin boundaries, and clamps retry delay to remaining lease time', async () => {
+    const { sanitizeGovernanceMessage } = await import('../src/sanitize.js');
+    const sanitized = sanitizeGovernanceMessage(`err wsg_g1.secret123 ${'x'.repeat(600)}`);
+    expect(sanitized).toHaveLength(512);
+    expect(sanitized).toContain('[credential]');
+
+    expect(
+      () =>
+        new GovernanceCredentialLeaseController({
+          projectRoot: 'C:/project',
+          projectId: 'project-1',
+          grantId: 'admin-1',
+          expiresAt: new Date(START + 60_000).toISOString(),
+          credential: credential(),
+          rotationTtlMs: 10_000,
+          renewBeforeMs: 10_000,
+          now: () => START,
+        }),
+    ).toThrow('renewBeforeMs must be less than rotationTtlMs.');
+
+    // Exact replayWindowMs === 30_000 ((4 - 1) * (5_000 + 5_000)) must be rejected
+    expect(
+      () =>
+        new GovernanceCredentialLeaseController({
+          projectRoot: 'C:/project',
+          projectId: 'project-1',
+          grantId: 'admin-1',
+          expiresAt: new Date(START + 60_000).toISOString(),
+          credential: credential(),
+          rotationTtlMs: 60_000,
+          renewBeforeMs: 5_000,
+          retryDelayMs: 5_000,
+          requestTimeoutMs: 5_000,
+          maxAttempts: 4,
+          now: () => START,
+        }),
+    ).toThrow(/retry window must fit/);
+
+    // Rotated grant missing capability_admin + retry delay clamped to remaining (2_000 < 5_000)
+    const scheduler = new FakeScheduler();
+    const controller = new GovernanceCredentialLeaseController({
+      projectRoot: 'C:/project',
+      projectId: 'project-1',
+      grantId: 'admin-1',
+      expiresAt: new Date(START + 2_000).toISOString(),
+      credential: credential(),
+      rotationTtlMs: 20_000,
+      renewBeforeMs: 5_000,
+      retryDelayMs: 5_000,
+      requestTimeoutMs: 1_000,
+      maxAttempts: 3,
+      now: () => START,
+      scheduler,
+      clientFactory: () => ({
+        async request(req) {
+          const bad = rotatedResponse(req.requestId);
+          if (bad.ok && bad.result.type === 'capability_grant_rotated') {
+            return {
+              ...bad,
+              result: {
+                ...bad.result,
+                grant: {
+                  ...bad.result.grant,
+                  capabilities: ['audit_read'],
+                },
+              },
+            };
+          }
+          return bad;
+        },
+      }),
+    });
+
+    const snap = await controller.rotateNow();
+    expect(snap.state).toBe('retry_wait');
+    expect(snap.lastFailure).toContain('Credential rotation identity validation failed');
+    expect(scheduler.delays()).toEqual([2_000]);
+  });
 });
