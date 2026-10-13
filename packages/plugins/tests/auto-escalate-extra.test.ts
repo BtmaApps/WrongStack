@@ -97,7 +97,7 @@ describe('auto-escalate per-run WeakMap isolation and checkpoint state helpers',
     );
     expect(nextSnapshotId()).toMatch(/^cp-\d+$/);
 
-    const fakeKey = {};
+    const fakeKey = {} as Parameters<typeof hosts.reset>[0];
     const host = hosts.reset(fakeKey);
     const s1 = await scopeFor(host, process.cwd(), { sessionId: 'sess-1' });
     const s2 = await scopeFor(host, process.cwd(), { sessionId: 'sess-2' });
@@ -107,6 +107,6 @@ describe('auto-escalate per-run WeakMap isolation and checkpoint state helpers',
     expect(s1.abort.signal.aborted).toBe(true);
     expect(s2.abort.signal.aborted).toBe(false);
     expect(host.scopes.size).toBe(1);
-    hosts.remove(fakeKey as never);
+    hosts.remove(fakeKey);
   });
 });

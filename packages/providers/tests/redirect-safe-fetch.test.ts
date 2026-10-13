@@ -293,7 +293,7 @@ describe('redirectSafeFetch', () => {
 
   it('downgrades POST to GET and drops body on 301 and 302 redirects', async () => {
     for (const code of [301, 302]) {
-      const calls: Array<{ method?: string; body?: string }> = [];
+      const calls: Array<{ method: string | undefined; body: string | undefined }> = [];
       const impl = vi.fn(async (_url: string, init: { method?: string; body?: string }) => {
         calls.push({ method: init.method, body: init.body });
         return calls.length === 1 ? response(code, 'https://api.example/v2') : response(200);
