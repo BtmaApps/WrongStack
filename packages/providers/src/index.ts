@@ -17,12 +17,8 @@ export {
 } from './ai-gateway.js';
 export { AnthropicProvider, type AnthropicProviderOptions } from './anthropic.js';
 export {
-  type AnthropicOAuthCredentials,
-  AnthropicOAuthProvider,
-  type AnthropicOAuthProviderOptions,
-  type AnthropicOAuthTokens,
-  CLAUDE_CODE_SYSTEM_PROMPT,
-  refreshAnthropicOAuthToken,
+  ANTHROPIC_OAUTH_RETIRED_MESSAGE,
+  RetiredAnthropicOAuthProvider,
 } from './anthropic-oauth.js';
 export { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
 export {

@@ -14,7 +14,7 @@ import { bindProviderCatalogId, expectDefined } from '@wrongstack/core/utils';
 import { attachAccountQuotaReporting } from './account-quota.js';
 import { AiGatewayProvider, createAiGatewayProviderFactory } from './ai-gateway.js';
 import { AnthropicProvider } from './anthropic.js';
-import { AnthropicOAuthProvider } from './anthropic-oauth.js';
+import { RetiredAnthropicOAuthProvider } from './anthropic-oauth.js';
 import { CATALOG_ALIAS_BY_PROVIDER_TYPE, capabilitiesFor } from './capabilities.js';
 import { createCatalogAwareProvider } from './catalog-provider-routing.js';
 import { GitHubCopilotProvider } from './github-copilot.js';
@@ -592,21 +592,10 @@ export function buildProvider(
         // the catalog probe the transport already makes.
       });
     }
-    case 'anthropic-oauth': {
-      const entry = resolveActiveKeyEntry(cfg);
-      const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;
-      return new AnthropicOAuthProvider({
-        id,
-        baseUrl,
-        credentials: {
-          accessToken: expectDefined(apiKey),
-          refreshToken: entry?.refreshToken,
-          expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
-        },
-        ...(entry?.authMethod === 'oauth' ? { credential: entry } : {}),
-        onRefresh: oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)).onRefresh,
-      });
-    }
+    case 'anthropic-oauth':
+      // Retired: a saved entry still loads, but every request is refused with
+      // guidance. Its tokens are never read, refreshed or sent.
+      return new RetiredAnthropicOAuthProvider(id);
     case 'github-copilot': {
       const entry = resolveActiveKeyEntry(cfg);
       const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;

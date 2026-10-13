@@ -250,7 +250,7 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
     if (
       active?.authMethod === 'oauth' &&
       ((strategy && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, strategy)) ||
-        ['github-copilot', 'openai-codex', 'anthropic-oauth'].includes(cfg.family ?? cfg.type))
+        ['github-copilot', 'openai-codex'].includes(cfg.family ?? cfg.type))
     ) {
       const copilot = cfg.family === 'github-copilot';
       const codex = (cfg.family ?? cfg.type) === 'openai-codex';

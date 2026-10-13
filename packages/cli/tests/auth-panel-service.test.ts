@@ -13,7 +13,9 @@ import type { AuthFlowIo } from '@wrongstack/tui';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const flowMocks = vi.hoisted(() => ({
-  runProviderAuthLogin: vi.fn(async (_deps: unknown, kind: string) => (kind === 'claude' ? 1 : 0)),
+  runProviderAuthLogin: vi.fn(async (_deps: unknown, kind: string) =>
+    kind === 'openrouter' ? 1 : 0,
+  ),
   runAuthLocal: vi.fn(async () => 0),
 }));
 
@@ -519,11 +521,11 @@ describe('flow delegation', () => {
     expect(kind).toBe('chatgpt');
     expect(opts.signal).toBe(io.signal);
 
-    expect((await host.oauthLogin('claude', io)).ok).toBe(false); // mock exit code 1
+    expect((await host.oauthLogin('openrouter', io)).ok).toBe(false); // mock exit code 1
     expect((await host.oauthLogin('copilot', io)).ok).toBe(true);
     expect(flowMocks.runProviderAuthLogin.mock.calls.map((call) => call[1])).toEqual([
       'chatgpt',
-      'claude',
+      'openrouter',
       'copilot',
     ]);
   });

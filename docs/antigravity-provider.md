@@ -1,7 +1,7 @@
 # Google Antigravity (`google-antigravity`)
 
 Use a Google Antigravity (Gemini) subscription as a WrongStack provider, the
-same way `openai-codex`, `anthropic-oauth` and `github-copilot` use theirs.
+same way `openai-codex` and `github-copilot` use theirs.
 
 > **Read this before relying on it.** Antigravity is served through Google's
 > internal Cloud Code surface. Nothing about it is documented or promised, and

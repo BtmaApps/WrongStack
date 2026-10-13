@@ -20,10 +20,11 @@ export {
 export {
   BUILTIN_PROVIDER_AUTH_STRATEGIES,
   createBuiltinProviderAuthRegistry,
+  RETIRED_CLAUDE_LOGIN_HINT,
   registerBuiltinProviderAuthStrategies,
+  retiredProviderAuthLoginHint,
 } from './builtin-strategies.js';
 export { createChatGPTDirectAuthStrategy } from './chatgpt-direct.js';
-export { buildClaudeAuthorizeUrl, CLAUDE_PROVIDER_ID } from './claude.js';
 export {
   CODEX_CATALOG_FAMILIES,
   FALLBACK_CODEX_MODELS,

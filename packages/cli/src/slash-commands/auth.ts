@@ -142,7 +142,6 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
             `${color.bold('OAuth sign-in')}`,
             '',
             `  Run ${color.cyan('wstack auth login chatgpt')} — ChatGPT Plus/Pro (→ openai-codex)`,
-            `  Run ${color.cyan('wstack auth login claude')}  — Claude Pro/Max (→ anthropic-oauth)`,
             `  Run ${color.cyan('wstack auth login copilot')} — GitHub Copilot (→ github-copilot)`,
             `  Run ${color.cyan('wstack auth login openrouter')} — OpenRouter API key (→ openrouter)`,
           ].join('\n'),

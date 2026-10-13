@@ -1,5 +1,4 @@
 import {
-  Bot,
   CheckCircle2,
   Code2,
   ExternalLink,
@@ -50,7 +49,6 @@ interface ProviderMeta {
 
 function providerIcon(id: string) {
   if (id === 'chatgpt' || id === 'chatgpt-api') return <Sparkles className="h-5 w-5" />;
-  if (id === 'claude') return <Bot className="h-5 w-5" />;
   if (id === 'copilot') return <Code2 className="h-5 w-5" />;
   return <User className="h-5 w-5" />;
 }
@@ -265,7 +263,7 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
                   strategy registry's English `notes` otherwise. Wrapped, so it
                   may be several sentences. Shown above the flow detail so it is
                   read before the user starts a sign-in, not after. */}
-              {['chatgpt', 'claude', 'copilot'].includes(meta.id) && (
+              {['chatgpt', 'copilot'].includes(meta.id) && (
                 <p className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-3 text-xs leading-5 text-warning">
                   {t('settings:oauth.termsWarning')}
                 </p>

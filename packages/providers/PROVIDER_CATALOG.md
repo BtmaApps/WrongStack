@@ -8,7 +8,7 @@
 | anthropic | Anthropic | anthropic | metered-api | — | ANTHROPIC_API_KEY | catalog/discovery |
 | google | Google | google | metered-api | — | GOOGLE_GENERATIVE_AI_API_KEY, GEMINI_API_KEY | catalog/discovery |
 | openai-codex | OpenAI Codex OAuth | openai-codex | subscription-interactive | — | — | catalog/discovery |
-| anthropic-oauth | Anthropic OAuth | anthropic-oauth | subscription-interactive | — | — | catalog/discovery |
+| anthropic-oauth | Anthropic OAuth (retired) | anthropic-oauth | subscription-interactive | — | — | catalog/discovery |
 | openai-chatgpt | ChatGPT plan API | openai | subscription-interactive | https://api.openai.com/v1 | — | catalog/discovery |
 | meta | Meta Model API | openai-compatible | metered-api | https://api.meta.ai/v1 | META_API_KEY | catalog/discovery |
 | google-antigravity | Google Antigravity | google-antigravity | subscription-interactive | — | — | catalog/discovery |

@@ -3,6 +3,7 @@ import { color, toErrorMessage } from '@wrongstack/core/utils';
 import {
   applyProviderAuthOutcome,
   createBuiltinProviderAuthRegistry,
+  retiredProviderAuthLoginHint,
 } from '@wrongstack/providers/oauth';
 import { mutateConfigProviders } from '../provider-config-utils.js';
 import { loadProviders } from './helpers.js';
@@ -36,7 +37,9 @@ export async function runProviderAuthLogin(
   const registry = providerAuthRegistryFor(deps);
   const strategy = registry.get(strategyId);
   if (!strategy) {
-    deps.renderer.writeError(`Unknown OAuth login "${strategyId}".`);
+    deps.renderer.writeError(
+      retiredProviderAuthLoginHint(strategyId) ?? `Unknown OAuth login "${strategyId}".`,
+    );
     return 1;
   }
 

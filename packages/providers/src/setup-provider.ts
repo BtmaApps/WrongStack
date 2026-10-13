@@ -82,7 +82,7 @@ const SETUP_REPLY = [
   '',
   'To connect a real model, run one of these:',
   '',
-  '  /auth login    Sign in with a subscription (ChatGPT, Claude, GitHub Copilot)',
+  '  /auth login    Sign in with a subscription (ChatGPT, GitHub Copilot)',
   '  /auth          Add an API key (Anthropic, OpenAI, Google, OpenRouter, …)',
   '',
   'From a shell you can use `wstack auth` for the same menu.',

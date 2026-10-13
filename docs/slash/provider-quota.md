@@ -16,7 +16,7 @@ them report into the same store:
 
 | Provider | Windows | Where the reading comes from |
 | --- | --- | --- |
-| Claude Pro/Max (`anthropic-oauth`) | `5h`, `7d` | `anthropic-ratelimit-unified-*` response headers |
+| Anthropic (`anthropic`) | `5h`, `7d` when the response carries them | `anthropic-ratelimit-unified-*` response headers |
 | ChatGPT / Codex (`openai-codex`) | `primary`, `secondary` (5h and/or weekly, per plan), plus per-feature meters | `GET chatgpt.com/backend-api/wham/usage` on demand; `x-codex-*` response headers per turn |
 | GitHub Copilot (`github-copilot`) | one 30-day window per pool (`premium_interactions`, `chat`, `code`) | `GET api.github.com/copilot_internal/user` |
 | Google Antigravity (`google-antigravity`) | one per model bucket | `POST cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
@@ -29,11 +29,6 @@ same question without making you read past the other providers.
 
 ```
 WrongStack — provider subscription quota
-
-  anthropic-oauth — claude plan: max
-    5h   █████████████░░░░░░░░░░░ 55% (45% left) · resets in 1h 42m
-    7d   ███░░░░░░░░░░░░░░░░░░░░░ 12% (88% left) · resets in 5d 3h
-    as of 8s ago
 
   github-copilot — copilot plan: individual
     30d  ██████████████████████░░ 90% (10% left) · resets in 13d

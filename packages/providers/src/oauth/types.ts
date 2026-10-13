@@ -1,7 +1,7 @@
 /**
  * Public types for the headless OAuth login engine.
  *
- * The engine drives a subscription sign-in (ChatGPT / Claude / Copilot) to
+ * The engine drives a subscription sign-in (ChatGPT / Copilot) to
  * completion and returns a {@link OAuthLoginOutcome} — a persistence-agnostic
  * description of the provider + credential to save. The caller persists it
  * with whatever config store it owns (CLI `mutateConfigProviders`, WebUI
@@ -11,7 +11,7 @@
 import type { ModelsRegistry, ProviderApiKey } from '@wrongstack/core/types';
 
 /** Which subscription login to run. */
-export type OAuthKind = 'chatgpt' | 'claude' | 'copilot';
+export type OAuthKind = 'chatgpt' | 'copilot';
 
 /** Progress phase surfaced to the caller while a flow is in motion. */
 export type OAuthPhase =
@@ -28,7 +28,7 @@ export type OAuthPhase =
  * `family` / `baseUrl` / `models` fields.
  */
 export interface OAuthLoginOutcome {
-  /** Canonical provider id: openai-codex | anthropic-oauth | github-copilot. */
+  /** Canonical provider id: openai-codex | github-copilot. */
   providerId: string;
   /** Wire family to stamp on the provider config. */
   family: string;

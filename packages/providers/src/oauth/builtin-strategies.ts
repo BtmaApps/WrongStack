@@ -66,23 +66,6 @@ export const BUILTIN_PROVIDER_AUTH_STRATEGIES: readonly ProviderAuthStrategy[] =
     },
   },
   {
-    id: 'claude',
-    providerId: 'anthropic-oauth',
-    label: 'Claude',
-    description: 'Pro / Max → anthropic-oauth',
-    notes: [
-      'This login is for extra usage: it signs in with your Claude account and saves the ' +
-        'credential as its own anthropic-oauth provider, alongside the providers you already use.',
-      'To spend your Claude subscription instead, run OmniRoute as a proxy, sign in with your ' +
-        'Claude account on OmniRoute, then add OmniRoute as a provider here.',
-    ],
-    aliases: ['anthropic', 'claude-pro', 'claude-max', 'anthropic-oauth', 'max'],
-    interactionTypes: ['browser'],
-    async begin(deps, signal) {
-      return adaptSession(await beginOAuthLogin('claude', deps as BeginOAuthDeps, signal));
-    },
-  },
-  {
     id: 'copilot',
     providerId: 'github-copilot',
     label: 'GitHub Copilot',
@@ -100,6 +83,33 @@ export const BUILTIN_PROVIDER_AUTH_STRATEGIES: readonly ProviderAuthStrategy[] =
   createMetaAuthStrategy(),
   createChatGPTDirectAuthStrategy(),
 ];
+
+/**
+ * Sign-ins that were removed, by every name they used to answer to. Claude's
+ * only worked by presenting WrongStack as Claude Code (its OAuth client id,
+ * User-Agent and system prompt); Anthropic has no OAuth client for third-party
+ * apps, so the honest routes are an API key or Claude Code itself over ACP.
+ */
+const RETIRED_LOGIN_ALIASES = new Set([
+  'claude',
+  'anthropic',
+  'claude-pro',
+  'claude-max',
+  'anthropic-oauth',
+  'max',
+]);
+
+export const RETIRED_CLAUDE_LOGIN_HINT =
+  'Claude sign-in was removed: it only worked by presenting WrongStack as Claude Code. ' +
+  'Use an Anthropic API key instead: `wstack auth anthropic`. On a Claude Max or Team ' +
+  'plan, link a Claude Console organization under claude.ai Settings → Billing first, so ' +
+  'the key draws on your monthly API credits. To run on your subscription limits, use ' +
+  'Claude Code as an ACP agent (`/acp`).';
+
+/** Guidance for a login name that no longer exists, or undefined. */
+export function retiredProviderAuthLoginHint(id: string): string | undefined {
+  return RETIRED_LOGIN_ALIASES.has(id.trim().toLowerCase()) ? RETIRED_CLAUDE_LOGIN_HINT : undefined;
+}
 
 export function registerBuiltinProviderAuthStrategies(registry: ProviderAuthRegistry): void {
   for (const strategy of BUILTIN_PROVIDER_AUTH_STRATEGIES) registry.register(strategy);

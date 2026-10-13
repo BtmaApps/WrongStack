@@ -23,9 +23,9 @@ describe('resolveOAuthKind', () => {
     }
   });
 
-  it('maps every Claude spelling both surfaces used to accept', () => {
+  it('resolves no Claude spelling: that sign-in was removed', () => {
     for (const alias of ['claude', 'anthropic', 'claude-pro', 'claude-max', 'anthropic-oauth']) {
-      expect(resolveOAuthKind(alias)).toBe('claude');
+      expect(resolveOAuthKind(alias)).toBeUndefined();
     }
   });
 
@@ -37,14 +37,14 @@ describe('resolveOAuthKind', () => {
 
   it('is case- and whitespace-insensitive', () => {
     expect(resolveOAuthKind('  ChatGPT  ')).toBe('chatgpt');
-    expect(resolveOAuthKind('CLAUDE-MAX')).toBe('claude');
+    expect(resolveOAuthKind('GH')).toBe('copilot');
   });
 
   it('resolves the menu 1/2/3 picks only when numeric input is allowed', () => {
     expect(resolveOAuthKind('1')).toBe('chatgpt');
-    expect(resolveOAuthKind('2')).toBe('claude');
-    expect(resolveOAuthKind('3')).toBe('copilot');
-    // `wstack auth login 2` is a typo, not a request to sign into Claude.
+    expect(resolveOAuthKind('2')).toBe('copilot');
+    expect(resolveOAuthKind('3')).toBe('openrouter');
+    // `wstack auth login 2` is a typo, not a request for the second strategy.
     expect(resolveOAuthKind('2', { allowNumeric: false })).toBeUndefined();
   });
 

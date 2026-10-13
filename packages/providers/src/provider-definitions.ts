@@ -66,7 +66,8 @@ const CORE_PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
   },
   {
     id: 'anthropic-oauth',
-    name: 'Anthropic OAuth',
+    // Retired sign-in: kept so saved entries still load and explain themselves.
+    name: 'Anthropic OAuth (retired)',
     family: 'anthropic-oauth',
     envVars: [],
     models: [],

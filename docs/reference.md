@@ -65,7 +65,7 @@ The catalog is fetched from [models.dev](https://models.dev) at boot and cached.
 It covers four API-key wire families plus subscription sign-in:
 
 - **API-key families:** Anthropic, OpenAI, Google, and ~125 OpenAI-compatible endpoints.
-- **Subscription sign-in (OAuth):** ChatGPT (Codex), Claude Pro/Max, and GitHub Copilot — usable *alongside* API keys.
+- **Subscription sign-in (OAuth):** ChatGPT (Codex) and GitHub Copilot — usable *alongside* API keys. Claude uses an API key (Max/Team plans include monthly API credits).
 
 Browse with `wstack models` (paginated) or switch at runtime with `/model` in a
 session. See [OAuth sign-in](oauth-signin.md) for subscription auth.

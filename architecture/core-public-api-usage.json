@@ -129,9 +129,9 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 53,
+      "files": 52,
       "typeOnly": 1,
-      "runtimeOrMixed": 52
+      "runtimeOrMixed": 51
     },
     "@wrongstack/core/registry": {
       "files": 155,
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1390,
-      "typeOnly": 1221,
-      "runtimeOrMixed": 423
+      "files": 1387,
+      "typeOnly": 1220,
+      "runtimeOrMixed": 421
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 780,
+      "files": 779,
       "typeOnly": 70,
-      "runtimeOrMixed": 740
+      "runtimeOrMixed": 739
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -9687,12 +9687,6 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
-      "file": "packages/providers/src/anthropic-oauth.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/anthropic-rate-limits.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -13827,12 +13821,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/cli/src/auth-menu/anthropic-oauth.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/auth-menu/auth-menu-audit.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15720,12 +15708,6 @@
       "file": "packages/cli/tests/acp-server-agent.test.ts",
       "typeOnly": 2,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/cli/tests/anthropic-oauth.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -17799,12 +17781,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/providers/src/oauth/claude.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/oauth/codex-models.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -18148,8 +18124,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/anthropic-oauth.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -22702,12 +22678,6 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/auth-menu/add-provider.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/auth-menu/anthropic-oauth.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

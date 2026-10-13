@@ -33,7 +33,6 @@ wstack auth rm <provider-id>
 
 ```text
 wstack auth login chatgpt
-wstack auth login claude
 wstack auth login copilot
 wstack auth login openrouter
 wstack auth login antigravity
@@ -50,7 +49,6 @@ or generic API-provider lists are substituted when discovery is unavailable.
 Accepted login aliases are:
 
 - ChatGPT/Codex: `chatgpt`, `openai`, `codex`, `codex-cli`, `openai-codex`, `chatgpt-plus`, `plus`, `pro`.
-- Claude: `claude`, `anthropic`, `claude-pro`, `claude-max`, `anthropic-oauth`, `max`.
 - GitHub Copilot: `copilot`, `github`, `github-copilot`, `gh`.
 - OpenRouter: `openrouter`, `openrouter-login`, `openrouter-oauth`.
 - xAI/Grok: `xai`, `grok`, `xai-oauth`.
@@ -58,6 +56,11 @@ Accepted login aliases are:
 - Meta: `meta`, `muse`, `meta-oauth`.
 - ChatGPT plan API: `chatgpt-api`, `chatgpt-direct`, `openai-chatgpt`. This uses
   public Responses with a separate grant; `chatgpt` still means legacy Codex.
+
+Claude has no sign-in: `claude`, `anthropic`, `claude-pro`, `claude-max`,
+`anthropic-oauth` and `max` print how to add an Anthropic API key instead (on
+Max/Team, link a Console organization first for the monthly API credits). See
+[oauth-signin.md](../oauth-signin.md#claude-no-sign-in-use-an-api-key).
 
 All four new flows use the existing account aliases, vault, TUI picker, and WebUI
 settings. See [OAuth sign-in](../oauth-signin.md) for endpoints and renewal behavior.
@@ -162,7 +165,7 @@ packages/cli/src/auth-menu/         # Modular auth menu implementation
   local.ts          — Local-LLM presets (OmniRoute / Ollama / vLLM / LM Studio)
   local-presets.ts  — Local preset table
   loopback-server.ts — OAuth loopback listener
-  anthropic-oauth.ts / openai-codex-oauth.ts / github-copilot-oauth.ts — per-kind OAuth flows
+  openai-codex-oauth.ts / github-copilot-oauth.ts — per-kind OAuth flows
   auth-menu-audit.ts — Auth menu audit logging
   helpers.ts        — Config I/O wrappers
   index.ts          — Public API re-exports

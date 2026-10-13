@@ -1,15 +1,4 @@
-export {
-  CLAUDE_PROVIDER_ID,
-  type ClaudeLoginOptions,
-  type ClaudeTokens,
-  runClaudeOAuthLogin,
-} from './anthropic-oauth.js';
 export { runAuthDirect } from './direct.js';
-export {
-  providerAuthRegistryFor,
-  providerAuthStrategiesFor,
-  runProviderAuthLogin,
-} from './provider-auth-login.js';
 export {
   COPILOT_PROVIDER_ID,
   type CopilotLoginOptions,
@@ -49,5 +38,10 @@ export {
   resolveCodexModels,
   runCodexOAuthLogin,
 } from './openai-codex-oauth.js';
+export {
+  providerAuthRegistryFor,
+  providerAuthStrategiesFor,
+  runProviderAuthLogin,
+} from './provider-auth-login.js';
 export { runTopMenu as runAuthMenu } from './top-menu.js';
 export type { AuthMenuDeps } from './types.js';

@@ -79,6 +79,18 @@ it.each(['openai', 'login'])(
   },
 );
 
+it.each(['claude', 'anthropic', 'claude-max'])(
+  'answers the removed Claude sign-in (%s) with the API-key route instead of a login',
+  async (name) => {
+    const deps = fakeDeps();
+    expect(await authCmd(['login', name], deps)).toBe(1);
+    expect(runOAuthLoginKind).not.toHaveBeenCalled();
+    expect(deps.renderer.writeError).toHaveBeenCalledWith(
+      expect.stringContaining('wstack auth anthropic'),
+    );
+  },
+);
+
 it('makes account/profile help available without starting an interactive auth flow', async () => {
   const deps = fakeDeps();
   deps.flags = { help: true };

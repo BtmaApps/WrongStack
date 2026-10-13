@@ -10,7 +10,6 @@ describe('barrel modules (import coverage)', () => {
     expect(mod.runAuthDirect).toBeDefined();
     expect(mod.runAuthMenu).toBeDefined();
     expect(mod.runCodexOAuthLogin).toBeDefined();
-    expect(mod.runClaudeOAuthLogin).toBeDefined();
     expect(mod.runCopilotOAuthLogin).toBeDefined();
     expect(mod.runAuthLocal).toBeDefined();
     expect(mod.resolveModelList).toBeDefined();

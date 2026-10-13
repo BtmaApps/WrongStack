@@ -20,10 +20,8 @@ describe('beginOAuthLogin — routing', () => {
     await expect(beginOAuthLogin(mockDeps)).rejects.toThrow();
   });
 
-  it('OAUTH_PROVIDER_IDS maps known OAuth kinds to provider IDs', () => {
-    expect(OAUTH_PROVIDER_IDS).toHaveProperty('claude');
-    expect(typeof OAUTH_PROVIDER_IDS.claude).toBe('string');
-    expect(OAUTH_PROVIDER_IDS.claude.length).toBeGreaterThan(0);
+  it('OAUTH_PROVIDER_IDS has no Claude kind: that sign-in was removed', () => {
+    expect(OAUTH_PROVIDER_IDS).not.toHaveProperty('claude');
   });
 
   it('OAUTH_PROVIDER_IDS includes chatgpt key', () => {

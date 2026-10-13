@@ -1,6 +1,6 @@
 # @wrongstack/providers
 
-LLM provider adapters for WrongStack: Anthropic, OpenAI, Google, OpenAI-compatible (Mistral, DeepSeek, xAI/Grok, Groq, Together, Fireworks, OpenRouter, …), plus interactive sign-in for Claude Pro/Max, ChatGPT, GitHub Copilot, and OpenRouter PKCE.
+LLM provider adapters for WrongStack: Anthropic, OpenAI, Google, OpenAI-compatible (Mistral, DeepSeek, xAI/Grok, Groq, Together, Fireworks, OpenRouter, …), plus interactive sign-in for ChatGPT, GitHub Copilot, and OpenRouter PKCE.
 
 All providers ride a single declarative `WireFormatConfig` adapter — even the majors (Anthropic / OpenAI / Google) are thin wrappers around their presets. Adding a new OpenAI-compatible provider is usually a 20-line preset, not a new file.
 
@@ -25,7 +25,7 @@ For ChatGPT subscription cache identity, volatile prompt handling, upstream comp
 | Family | Class | Preset | Used by |
 |--------|-------|--------|---------|
 | `anthropic` | `AnthropicProvider` | `anthropicWireFormat` | Claude API key |
-| `anthropic-oauth` | `AnthropicOAuthProvider` | `anthropicWireFormat` | Claude Pro/Max (OAuth) |
+| `anthropic-oauth` | `RetiredAnthropicOAuthProvider` | — | Retired Claude sign-in; refuses every request with guidance |
 | `openai` | `OpenAIProvider` | `openaiWireFormat` | OpenAI API key |
 | `openai-codex` | `OpenAICodexProvider` | — | ChatGPT (Responses API, OAuth) |
 | `github-copilot` | `GitHubCopilotProvider` | — | GitHub Copilot (OAuth) |
@@ -49,7 +49,7 @@ src/
   openai.ts                thin WireFormatProvider wrapper (openai preset)
   google.ts                thin WireFormatProvider wrapper (google preset)
   openai-compatible.ts     generic /v1/chat/completions adapter
-  anthropic-oauth.ts       Claude Pro/Max OAuth (same wire as anthropic)
+  anthropic-oauth.ts       Retired Claude sign-in (saved entries load, requests are refused)
   openai-codex.ts          ChatGPT Responses API (OAuth)
   github-copilot.ts        GitHub Copilot (OAuth)
   wire-adapter.ts          base HTTP + SSE streaming for all providers
@@ -304,7 +304,7 @@ OpenRouter.
 
 Three runtime providers use OAuth token refresh patterns:
 
-- **AnthropicOAuthProvider** — Claude Pro/Max "Sign in with Claude". Same wire as the API-key Anthropic family but with `Authorization: Bearer` and Claude Code identity headers. Tokens self-refresh near-expiry and on 401.
+- **RetiredAnthropicOAuthProvider** — what a saved `anthropic-oauth` entry builds now. The Claude sign-in only worked by presenting WrongStack as Claude Code, so it was removed; every request fails with a non-retryable `auth` error pointing at an Anthropic API key (Max/Team plans include monthly API credits). Nothing is sent and the stored tokens are never read.
 
 - **OpenAICodexProvider** — ChatGPT "Sign in with ChatGPT" (Responses API). Uses the OpenAI Responses wire format (not chat/completions). Reasoning effort is configurable via `reasoningEffort`.
 

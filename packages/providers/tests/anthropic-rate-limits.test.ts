@@ -20,7 +20,6 @@ import {
 import type { Request } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AnthropicProvider } from '../src/anthropic.js';
-import { AnthropicOAuthProvider } from '../src/anthropic-oauth.js';
 import { parseAnthropicRateLimitHeaders } from '../src/anthropic-rate-limits.js';
 
 afterEach(() => {
@@ -287,28 +286,26 @@ describe('Anthropic transports report quota', () => {
     [PREFIX + '-7d-utilization']: '0.12',
   };
 
-  it('records the subscription reading from an OAuth response', async () => {
-    // The path that matters: a Pro/Max login is metered on rolling windows and
-    // this is the only channel that reports the burn.
-    const provider = new AnthropicOAuthProvider({
-      credentials: { accessToken: 'sk-ant-oat-x', expiresAt: Date.now() + 3_600_000 },
+  it('records a plan-window reading when the response carries one', async () => {
+    const provider = new AnthropicProvider({
+      apiKey: 'sk-ant-key',
       fetchImpl: streamingFetch(quotaHeaders),
     });
     await provider.complete(req, { signal: new AbortController().signal });
-    const [snapshot] = getProviderQuota('anthropic-oauth');
+    const [snapshot] = getProviderQuota('anthropic');
     expect(windowOf(snapshot, '5h')?.usedPercent).toBeCloseTo(55);
     expect(windowOf(snapshot, '7d')?.usedPercent).toBeCloseTo(12);
   });
 
   it('records under a custom provider id', async () => {
-    const provider = new AnthropicOAuthProvider({
+    const provider = new AnthropicProvider({
       id: 'claude-work',
-      credentials: { accessToken: 'sk-ant-oat-x', expiresAt: Date.now() + 3_600_000 },
+      apiKey: 'sk-ant-key',
       fetchImpl: streamingFetch(quotaHeaders),
     });
     await provider.complete(req, { signal: new AbortController().signal });
     expect(getProviderQuota('claude-work')).toHaveLength(1);
-    expect(getProviderQuota('anthropic-oauth')).toEqual([]);
+    expect(getProviderQuota('anthropic')).toEqual([]);
   });
 
   it('records nothing for an API-key account that reports no plan window', async () => {

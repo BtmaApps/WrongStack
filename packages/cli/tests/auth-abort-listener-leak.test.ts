@@ -88,18 +88,4 @@ describe('OAuth login flows detach their abort listener', () => {
     expect(code).toBe(1); // user declined at the paste prompt
     expect(live()).toBe(0);
   });
-
-  it('runClaudeOAuthLogin leaves no listener on a caller-owned signal', async () => {
-    release = await occupy([53692]);
-    const mod = await import('../src/auth-menu/anthropic-oauth.js');
-    const run = (mod as Record<string, unknown>)['runClaudeOAuthLogin'] as
-      | ((deps: unknown, opts: { signal: AbortSignal }) => Promise<number>)
-      | undefined;
-    expect(run, 'runClaudeOAuthLogin export').toBeTypeOf('function');
-    const { signal, live } = trackedSignal();
-
-    await run!(silentDeps(), { signal });
-
-    expect(live()).toBe(0);
-  });
 });

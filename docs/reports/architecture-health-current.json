@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T06:37:05.016Z",
+  "generatedAt": "2026-10-13T06:37:57.669Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4936,
-    "testFiles": 4325,
-    "sourceLines": 1096399,
+    "sourceFiles": 4934,
+    "testFiles": 4323,
+    "sourceLines": 1095473,
     "workspaceEdges": 133,
-    "moduleEdges": 16274,
+    "moduleEdges": 16255,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 963
+    "testOnlyExports": 964
   },
   "errors": [],
   "packageCycles": [],
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 620,
-      "testFiles": 615,
+      "sourceFiles": 619,
+      "testFiles": 614,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 615
+          "testFiles": 614
         }
       ]
     },
@@ -507,8 +507,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 132,
-      "testFiles": 114,
+      "sourceFiles": 131,
+      "testFiles": 113,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -521,7 +521,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 114
+          "testFiles": 113
         }
       ]
     },
@@ -1999,12 +1999,6 @@
       },
       {
         "file": "packages/cli/tests/alibaba-token-plan-catalog-overlay-sync.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/cli/tests/anthropic-oauth.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14323,12 +14317,6 @@
       },
       {
         "file": "packages/providers/tests/oauth/chatgpt.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/providers/tests/oauth/claude.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27662,6 +27650,10 @@
     {
       "file": "packages/cli/src/auth-menu/auth-menu-audit.ts",
       "name": "memAuthAuditSink"
+    },
+    {
+      "file": "packages/cli/src/auth-menu/openai-codex-oauth.ts",
+      "name": "exchangeAuthorizationCode"
     },
     {
       "file": "packages/cli/src/boot/config-backup-recovery.ts",

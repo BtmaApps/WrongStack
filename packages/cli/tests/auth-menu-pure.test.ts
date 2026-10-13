@@ -158,9 +158,9 @@ describe('oauth-menu.ts', () => {
     expect(resolveOAuthKind('chatgpt')).toBe('chatgpt');
     expect(resolveOAuthKind('OpenAI-Codex')).toBe('chatgpt');
     expect(resolveOAuthKind('plus')).toBe('chatgpt');
-    expect(resolveOAuthKind('claude-max')).toBe('claude');
+    expect(resolveOAuthKind('claude-max')).toBeUndefined(); // Claude sign-in was removed
     expect(resolveOAuthKind('gh')).toBe('copilot');
-    expect(resolveOAuthKind('2')).toBe('claude'); // numeric allowed by default
+    expect(resolveOAuthKind('2')).toBe('copilot'); // numeric allowed by default
     expect(resolveOAuthKind('  ')).toBeUndefined();
     expect(resolveOAuthKind('unknown')).toBeUndefined();
   });

@@ -227,7 +227,6 @@ describe('addFromCatalog — interactive picker path', () => {
 
   it.each([
     ['chatgpt', 'openai-codex'],
-    ['claude', 'anthropic-oauth'],
     ['copilot', 'github-copilot'],
   ] as const)('completes via the OAuth offer for %s', async (kind, providerId) => {
     const { deps, answers } = await setup({ listProviders: async () => [CATALOG_ROW] });

@@ -1,13 +1,12 @@
 # Sign in with a subscription (OAuth)
 
-WrongStack ships nine interactive provider-auth strategies. Account access,
+WrongStack ships eight interactive provider-auth strategies. Account access,
 subscription eligibility, and billing depend on the grant returned by the provider.
 OpenRouter mints an API key; Meta exchanges identity for a renewable Model API key.
 
 | Sign-in | Subscription | Wire family (provider id) | Endpoint |
 |---|---|---|---|
 | **Sign in with ChatGPT** | ChatGPT Plus / Pro / Team (Codex) | `openai-codex` | `chatgpt.com/backend-api` (Responses API) |
-| **Sign in with Claude** | Claude Pro / Max | `anthropic-oauth` | `api.anthropic.com` (Messages API) |
 | **Sign in with GitHub Copilot** | GitHub Copilot | `github-copilot` | Copilot proxy (OpenAI Chat Completions) |
 | **Sign in with OpenRouter** | OpenRouter account | `openrouter` | `openrouter.ai/api/v1` (OpenAI-compatible) |
 | **Continue with ChatGPT** | Authorized ChatGPT plan usage | `openai` (`openai-chatgpt`) | `api.openai.com/v1/responses` |
@@ -116,10 +115,10 @@ account or subscription-billing evidence.
 ## How it works
 
 - **Distinct wire families.** Each subscription is its own `WireFamily`
-  (`openai-codex`, `anthropic-oauth`, `github-copilot`) with its own request
+  (`openai-codex`, `github-copilot`) with its own request
   shape, headers, and auth. Nothing about the API-key `openai` / `anthropic`
   families changes.
-- **Browser/device login.** Codex, Claude, and OpenRouter use a **PKCE loopback**
+- **Browser/device login.** Codex and OpenRouter use a **PKCE loopback**
   flow (a local callback server receives the code); Copilot uses **GitHub's
   device flow** (you enter a code at `github.com/login/device`). No API key is
   typed.
@@ -149,7 +148,6 @@ Or go straight to one provider:
 
 ```bash
 wstack auth login chatgpt     # Sign in with ChatGPT  → provider openai-codex
-wstack auth login claude      # Sign in with Claude   → provider anthropic-oauth
 wstack auth login copilot     # Sign in with Copilot  → provider github-copilot
 wstack auth login openrouter  # Sign in with OpenRouter → provider openrouter
 ```
@@ -158,7 +156,6 @@ After login, select the provider/model like any other:
 
 ```bash
 wstack --provider openai-codex --model <account-model-id> "explain this repo"
-wstack --provider anthropic-oauth --model <account-model-id> "find the bug in src/auth.ts"
 wstack --provider github-copilot --model <account-model-id> "write tests for utils.ts"
 ```
 
@@ -219,23 +216,23 @@ because everything they save is quota that is not spent twice:
   transport drops the replay and retries, so this can only cost tokens, never a
   turn.
 
-## Sign in with Claude
+## Claude: no sign-in, use an API key
 
-```bash
-wstack auth login claude
-# aliases: anthropic · claude-pro · claude-max · anthropic-oauth
-```
+There is no "Sign in with Claude". Anthropic publishes no OAuth client for
+third-party apps; the earlier `anthropic-oauth` login only worked by presenting
+WrongStack as Claude Code (Claude Code's OAuth client id, User-Agent, beta
+header and system prompt), so it was removed.
 
-- **Flow:** PKCE loopback (`localhost:53692/callback`) against
-  `claude.ai/oauth/authorize`, the same grant Claude Code uses.
-- **Provider id:** `anthropic-oauth` · **Endpoint:** `https://api.anthropic.com`
-  (Messages API, Bearer auth + Claude Code beta headers).
-- **Models:** fetched live from your account's `/v1/models` at login; falls back
-  to `anthropic-test-model`, `claude-opus-4-8`.
-- **Use:** `wstack --provider anthropic-oauth --model claude-opus-4-8 "<task>"`
-- **Requires** a Claude **Pro / Max** subscription. Modern Claude models
-  eligible long-context models serve their full **1M-token** context window on this
-  path with no extra flags (see [context windows](#context-windows) below).
+- **API key (recommended):** `wstack auth anthropic`. On a Claude **Max** or
+  **Team** plan, first link a Claude Console organization under claude.ai
+  Settings → Billing; a key from that organization draws on the plan's monthly
+  API credits, then on normal API billing.
+- **Subscription limits:** run Claude Code itself as an ACP agent (`/acp`,
+  agent `claude-code`); it signs in with your own Claude login.
+- **Old entries:** a saved `anthropic-oauth` provider still loads, but every
+  request fails with an `auth` error naming these routes, and nothing is sent.
+  `wstack auth login claude` (and its old aliases) prints the same guidance.
+  Remove it with `wstack auth remove <provider>`.
 
 ## Sign in with GitHub Copilot
 
@@ -300,9 +297,9 @@ wstack auth login antigravity
 
 OAuth providers aren't published in the models.dev catalog under their own id, so
 WrongStack resolves each model's real context window from its **sibling catalog**
-(`anthropic-oauth` → `anthropic`, `openai-codex` / `github-copilot` → `openai`).
-That means you get the true per-model window — e.g. **Claude Opus 4.8 → 1M**,
-**gpt-5.5 → ~1.05M** — instead of a flat family default.
+(`openai-codex` / `github-copilot` → `openai`).
+That means you get the true per-model window — e.g. **gpt-5.5 → ~1.05M** —
+instead of a flat family default.
 
 No beta header or `[1m]` suffix is needed: modern Claude (4.6+/4.8) serves 1M
 natively, and the legacy `context-1m-2025-08-07` beta was retired on

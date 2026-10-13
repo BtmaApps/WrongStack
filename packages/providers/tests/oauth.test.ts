@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildClaudeAuthorizeUrl,
   buildCodexAuthorizeUrl,
   generatePkce,
   isUsableCopilotChatModel,
@@ -31,14 +30,6 @@ describe('oauth engine — authorize URLs', () => {
       'openid profile email offline_access api.connectors.read api.connectors.invoke',
     );
     expect(url.searchParams.get('originator')).toBe('wrongstack');
-  });
-
-  it('claude authorize url reuses the verifier as state and uses :53692 callback', () => {
-    const url = new URL(buildClaudeAuthorizeUrl('CHAL', 'VERIFIER'));
-    expect(url.origin).toBe('https://claude.ai');
-    expect(url.searchParams.get('state')).toBe('VERIFIER');
-    expect(url.searchParams.get('code')).toBe('true');
-    expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:53692/callback');
   });
 });
 
@@ -87,7 +78,6 @@ describe('oauth engine — provider id map', () => {
   it('maps each kind to its canonical provider id', () => {
     expect(OAUTH_PROVIDER_IDS).toEqual({
       chatgpt: 'openai-codex',
-      claude: 'anthropic-oauth',
       copilot: 'github-copilot',
     });
   });

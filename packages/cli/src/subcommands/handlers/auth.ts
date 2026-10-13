@@ -1,6 +1,7 @@
 import type { NativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import { color } from '@wrongstack/core/utils';
 import { authProfileAliasError } from '@wrongstack/providers';
+import { retiredProviderAuthLoginHint } from '@wrongstack/providers/oauth';
 import { parseAuthFlags } from '../../arg-parser.js';
 import { createAuthAuditLogger, resolveAuditSink } from '../../auth-menu/auth-menu-audit.js';
 import {
@@ -192,8 +193,13 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
     const pid = (flags.positional[1] ?? '').toLowerCase();
     // Bare `wstack auth login` keeps its historical default: ChatGPT.
     if (!pid) return runOAuthLoginKind(menuDeps, 'chatgpt', { providerId: flags.alias });
+    const retiredHint = retiredProviderAuthLoginHint(pid);
+    if (retiredHint) {
+      deps.renderer.writeError(retiredHint);
+      return 1;
+    }
     // Numeric picks are a menu affordance, not a CLI one — `auth login 2`
-    // is a typo, not a request to sign into Claude.
+    // is a typo, not a request for the second strategy.
     const kind = resolveOAuthKind(pid, { allowNumeric: false, deps: menuDeps });
     if (kind) return runOAuthLoginKind(menuDeps, kind, { providerId: flags.alias });
     const available = providerAuthStrategiesFor(menuDeps);

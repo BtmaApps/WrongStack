@@ -12,7 +12,6 @@
  */
 import type { ProviderApiKey, ProviderConfig } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AnthropicOAuthProvider } from '../src/anthropic-oauth.js';
 import { refreshChatGPTDirect } from '../src/oauth/chatgpt-direct.js';
 import {
   OAuthRefreshCoordinator,
@@ -129,52 +128,6 @@ describe('Codex renewal across processes', () => {
     }).refreshContextLimit('m', { signal: new AbortController().signal });
     expect(onRefresh).not.toHaveBeenCalled();
     expect(disk.providers['openai-codex']?.apiKeys?.[0]?.apiKey).toBe('a1');
-  });
-});
-
-describe('Claude renewal across processes', () => {
-  beforeEach(() => resetSharedOAuthRefreshState());
-  afterEach(() => {
-    setSubscriptionRefreshTransaction(undefined);
-    resetSharedOAuthRefreshState();
-  });
-
-  it('a second process adopts the rotated pair instead of replaying the consumed token', async () => {
-    const stale: ProviderApiKey = {
-      label: 'oauth-default',
-      apiKey: 'sk-ant-oat-old',
-      refreshToken: 'r0',
-      authMethod: 'oauth',
-      createdAt: '',
-      expiresAt: new Date(Date.now() - 1000).toISOString(),
-    };
-    const disk = fakeConfigDisk({
-      'anthropic-oauth': { type: 'anthropic-oauth', activeKey: 'oauth-default', apiKeys: [stale] },
-    });
-    setSubscriptionRefreshTransaction(createSubscriptionRefreshTransaction(disk.mutate));
-    const exchanged: string[] = [];
-    const refreshFn = async (refreshToken: string) => {
-      exchanged.push(refreshToken);
-      if (refreshToken !== 'r0') throw new Error(`replayed ${refreshToken}`);
-      return { access: 'sk-ant-oat-new', refresh: 'r1', expires: Date.now() + 3_600_000 };
-    };
-    const build = () =>
-      new AnthropicOAuthProvider({
-        id: 'anthropic-oauth',
-        credentials: { accessToken: stale.apiKey, refreshToken: 'r0', expiresAt: 0 },
-        credential: stale,
-        refreshFn,
-      });
-    const signal = new AbortController().signal;
-    await (
-      build() as unknown as { ensureFreshToken(s: AbortSignal): Promise<void> }
-    ).ensureFreshToken(signal);
-    resetSharedOAuthRefreshState();
-    await (
-      build() as unknown as { ensureFreshToken(s: AbortSignal): Promise<void> }
-    ).ensureFreshToken(signal);
-    expect(exchanged).toEqual(['r0']);
-    expect(disk.providers['anthropic-oauth']?.apiKeys?.[0]?.refreshToken).toBe('r1');
   });
 });
 

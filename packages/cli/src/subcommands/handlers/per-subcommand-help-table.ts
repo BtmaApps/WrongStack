@@ -149,9 +149,9 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
           'Pre-fill Ollama / vLLM / LM Studio (--name, --base-url, --no-probe, --model, --audit …).',
       },
       {
-        name: 'login <chatgpt|claude|copilot>',
+        name: 'login <chatgpt|copilot>',
         description:
-          'Subscription OAuth login: chatgpt (→ openai-codex), claude (→ anthropic-oauth), or copilot (→ github-copilot). Opens browser; no API key. ⚠ Using subscriptions outside official clients may violate provider ToS (account ban risk); an API key is the sanctioned path.',
+          'Subscription OAuth login: chatgpt (→ openai-codex) or copilot (→ github-copilot). Claude has no third-party sign-in: use `wstack auth anthropic` with an API key (Max/Team plans include monthly API credits). Opens browser; no API key. ⚠ Using subscriptions outside official clients may violate provider ToS (account ban risk); an API key is the sanctioned path.',
       },
     ],
     seeAlso: 'wstack auth local (pre-fill Ollama / vLLM / LM Studio)',

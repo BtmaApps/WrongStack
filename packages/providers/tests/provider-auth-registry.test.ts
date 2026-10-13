@@ -23,7 +23,6 @@ describe('built-in provider auth strategies', () => {
     const registry = createBuiltinProviderAuthRegistry();
     expect(registry.list().map((entry) => entry.id)).toEqual([
       'chatgpt',
-      'claude',
       'copilot',
       'openrouter',
       'antigravity',
@@ -33,7 +32,7 @@ describe('built-in provider auth strategies', () => {
       'chatgpt-api',
     ]);
     expect(registry.resolveId('openai-codex')).toBe('chatgpt');
-    expect(registry.resolveId('anthropic-oauth')).toBe('claude');
+    expect(registry.resolveId('anthropic-oauth')).toBeUndefined();
     expect(registry.resolveId('github-copilot')).toBe('copilot');
     expect(registry.get('copilot')?.interactionTypes).toEqual(['device_code']);
     expect(registry.resolveId('openrouter-login')).toBe('openrouter');

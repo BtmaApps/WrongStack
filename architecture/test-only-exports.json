@@ -85,6 +85,9 @@
       "fileAuditSink",
       "memAuthAuditSink"
     ],
+    "packages/cli/src/auth-menu/openai-codex-oauth.ts": [
+      "exchangeAuthorizationCode"
+    ],
     "packages/cli/src/boot/config-backup-recovery.ts": [
       "defaultProfileProvidersAreEmpty",
       "findLatestProviderBackup"
