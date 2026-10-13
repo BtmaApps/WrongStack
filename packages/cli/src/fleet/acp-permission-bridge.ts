@@ -29,7 +29,7 @@ const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v 
  * same effect, or undefined when it has no counterpart (the worker's own MCP
  * tools, task lists, and the like), which WrongStack leaves to the worker.
  */
-export function wrongstackCallFor(
+function wrongstackCallFor(
   req: Pick<AcpPermissionRequest, 'toolCall'>,
 ): WrongStackCall | undefined {
   const call = req.toolCall;

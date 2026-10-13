@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-13T10:37:07.083Z
+**Generated:** 2026-10-13T10:39:07.992Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -136,7 +136,7 @@ None.
 
 ## Exports only tests reference
 
-- 967 runtime exports are referenced by tests and by no other production file.
+- 966 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

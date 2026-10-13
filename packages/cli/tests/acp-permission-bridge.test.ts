@@ -1,10 +1,7 @@
 import type { PermissionRequest } from '@wrongstack/acp';
 import type { PermissionDecision, Tool } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  wrongstackAcpPermissionPolicy,
-  wrongstackCallFor,
-} from '../src/fleet/acp-permission-bridge.js';
+import { wrongstackAcpPermissionPolicy } from '../src/fleet/acp-permission-bridge.js';
 
 const ROOT = 'D:/proj';
 
@@ -25,38 +22,55 @@ function request(
   } as unknown as PermissionRequest;
 }
 
-describe('wrongstackCallFor', () => {
-  it("maps Claude's requests to the WrongStack call with the same effect", () => {
+/** The WrongStack call the policy is asked about for `req`, or undefined when none is. */
+async function wrongstackCallFor(req: PermissionRequest) {
+  let seen: { tool: string; input: unknown } | undefined;
+  const policy = wrongstackAcpPermissionPolicy({
+    evaluate: async (tool, input) => {
+      seen = { tool: tool.name, input };
+      return { permission: 'auto', source: 'default' };
+    },
+    getTool: (name) => ({ name }) as Tool,
+    projectRoot: ROOT,
+  });
+  await policy(req);
+  return seen;
+}
+
+describe('request translation', () => {
+  it("maps Claude's requests to the WrongStack call with the same effect", async () => {
     expect(
-      wrongstackCallFor(request('execute', { command: 'bun test', description: 'x' })),
+      await wrongstackCallFor(request('execute', { command: 'bun test', description: 'x' })),
     ).toEqual({
       tool: 'bash',
       input: { command: 'bun test' },
     });
-    expect(wrongstackCallFor(request('edit', { file_path: `${ROOT}/a.ts`, content: 'x' }))).toEqual(
-      { tool: 'write', input: { path: `${ROOT}/a.ts`, content: 'x' } },
-    );
     expect(
-      wrongstackCallFor(
+      await wrongstackCallFor(request('edit', { file_path: `${ROOT}/a.ts`, content: 'x' })),
+    ).toEqual({ tool: 'write', input: { path: `${ROOT}/a.ts`, content: 'x' } });
+    expect(
+      await wrongstackCallFor(
         request('edit', { file_path: `${ROOT}/a.ts`, old_string: 'a', new_string: 'b' }),
       ),
     ).toEqual({ tool: 'edit', input: { path: `${ROOT}/a.ts`, old_string: 'a', new_string: 'b' } });
-    expect(wrongstackCallFor(request('fetch', { url: 'https://x.dev', prompt: 'p' }))).toEqual({
+    expect(
+      await wrongstackCallFor(request('fetch', { url: 'https://x.dev', prompt: 'p' })),
+    ).toEqual({
       tool: 'fetch',
       input: { url: 'https://x.dev' },
     });
     expect(
-      wrongstackCallFor(request('delete', {}, { locations: [{ path: `${ROOT}/old.ts` }] })),
+      await wrongstackCallFor(request('delete', {}, { locations: [{ path: `${ROOT}/old.ts` }] })),
     ).toEqual({ tool: 'bash', input: { command: `rm "${ROOT}/old.ts"` } });
-    expect(wrongstackCallFor(request('read', { file_path: '~/.aws/credentials' }))).toEqual({
+    expect(await wrongstackCallFor(request('read', { file_path: '~/.aws/credentials' }))).toEqual({
       tool: 'read',
       input: { path: '~/.aws/credentials' },
     });
   });
 
-  it("leaves the worker's own tools (MCP, todo lists) to the worker", () => {
-    expect(wrongstackCallFor(request('other', { query: 'x' }))).toBeUndefined();
-    expect(wrongstackCallFor(request('execute', {}))).toBeUndefined();
+  it("leaves the worker's own tools (MCP, todo lists) to the worker", async () => {
+    expect(await wrongstackCallFor(request('other', { query: 'x' }))).toBeUndefined();
+    expect(await wrongstackCallFor(request('execute', {}))).toBeUndefined();
   });
 });
 

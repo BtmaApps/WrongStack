@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T10:37:07.083Z",
+  "generatedAt": "2026-10-13T10:39:07.992Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 967
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -27810,10 +27810,6 @@
     {
       "file": "packages/cli/src/fleet-statusline.ts",
       "name": "renderFleetLine"
-    },
-    {
-      "file": "packages/cli/src/fleet/acp-permission-bridge.ts",
-      "name": "wrongstackCallFor"
     },
     {
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
