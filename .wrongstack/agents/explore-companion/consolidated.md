@@ -2,44 +2,46 @@
 
 ## Evidence and Reporting
 
-- Submit findings with `submit_result`; this role has no submission `mailbox`. Keep fields ASCII-only; on validation failure, shorten narrative and `files_examined` before dropping evidence.
-- Separate confirmed dependencies, behavioral coupling, historical references, and inconclusive checks. Tool errors, ignored paths, stale indexes, truncation, denied reads, and unvalidated zero-hit searches do not prove absence.
-- Read named targets directly. Treat `codebase-skeleton`, `codebase-impact-analysis`, and `codebase-incoming-calls` as leads, not authority; verify declarations, imports, re-exports, and runtime wiring yourself.
-- Revalidate prior "zero importers" findings on every invocation with module-path and exported-symbol searches; sessions live-edit this tree, so a first-round hit followed by zero is concurrent editing, not tool failure.
+- Submit findings with `submit_result`; this role has no submission `mailbox`. Keep fields ASCII-only. On validation failure, shorten narrative and `files_examined` before dropping evidence.
+- Separate confirmed dependencies, behavioral coupling, documentation references, and inconclusive checks. Tool errors, ignored paths, stale indexes, truncation, denied reads, and unvalidated zero-hit searches do not prove absence.
+- Read targets directly; treat `codebase-skeleton`, `codebase-impact-analysis`, and `codebase-incoming-calls` as leads. Verify declarations, imports, re-exports, and runtime wiring.
+- Verify a todo-named file exists before mapping it: glob the literal stem, then search its exact filename or label repo-wide. For example, `**/mailbox-http-*.ts` may miss while `surface: 'mailbox-http-server'` identifies `packages/cli/src/subcommands/handlers/mailbox-serve.ts`.
+- When `todo-listener` is broadcasting, confirm the task remains live before deep-mapping; completion evidence such as file line counts can cross-check current source.
+- Revalidate prior zero-consumer findings on every invocation; concurrent edits can change results. Capture scratch targets on the first successful read. After disappearance, verify once with a parent-directory tree and report captured evidence with its limitation.
 - Never retry or bypass denied reads of `.npmrc`, `.env*`, `.pypirc`, or `.netrc`; report the restriction.
-- Report `files_with_matches` counts and read enclosing ranges when content output is capped (~3 matches/file); grep alternation patterns over 256 chars fail with `VALIDATION_ERROR` — split symbol sets.
-- When a probe quotes a todo item's wording verbatim, search `packages/core/skills/**/SKILL.md` first: the owning skill holds the acceptance contract, not just file locations.
+- For verbatim todo wording, search `packages/core/skills/**/SKILL.md` for the owning skill's acceptance contract.
 
-## Consumer Closure
+## Search and Consumer Closure
 
-- Classify the target before choosing tools: type-only modules, top-level scripts, tests, configuration, JSON baselines, and logs require search or runner evidence, not call graphs.
-- Close source consumers with repo-wide module-path/subpath, relative-specifier, and per-exported-symbol greps, including dynamic `import('...')` and inline `type` expressions — none appear in call graphs. Close multi-export modules per symbol: a module can have many importers while one export is test-only or ratcheted (`architecture/test-only-exports.json`).
-- Classify every grep hit by its full import specifier before attributing it. Substring collisions (`tool-schema` also matches `tool-schema-helpers.js`, `kanban-tool-schema.js`) and repo-duplicated symbols (`slugify` exists independently in `packages/core/src/utils/slug.ts`, `wstack-paths.ts`, `packages/kanban/src/manager/basic-helpers.ts`, `build-prompts.mjs`; `codebase-incoming-calls` floods with "symbol exists in multiple files") misattribute — resolve by import source.
-- Never use `codebase-incoming-calls` for hyper-generic symbols, barrel-mediated symbols, or type-only seams (`import type`, `Pick<Port, 'method'>`, `Parameters<typeof useHook>[0]`); grep is authoritative.
-- Follow barrels and facades: check `package.json` `exports` and the actual re-export form. A barrel that never re-exports a module (e.g. `packages/mcp/src/index.ts` → `client-stdio-protocol.ts`, `tool-schema.ts`) makes it internal-only; `export * from` makes new exports public automatically, named-list barrels do not. External sage consumers import via `@wrongstack/sage`, not module paths.
-- Alias-substituted test fixtures have zero static importers by design: close them by grepping the swapped specifier strings in package source (Vite `resolve.alias` exact entries, e.g. `./ws.js` / `../lib/ws.js` against `packages/simpleui/src`), separating value imports from type-only imports the alias never touches.
-- Enumerate files with case-sensitive `files_with_matches` and `truncated=false`; when content output shows `count=N` but few matches, read the enclosing range instead of retrying patterns.
-- Search source strings, subprocess arguments, `spawn`/`exec` bodies, and non-TypeScript harnesses; comments, lockfile sites, glossary ratchets, and `docs/archive/**` are documentation, not consumers. Dependency-removal provenance needs `pnpm-lock.yaml` `importers`/`packages`/`snapshots` entries plus a grep of human-readable brand names.
-- Behavioral ratchets exist without static importers: env-var test seams (`WRONGSTACK_*` vars read by a spawning daemon) and distinctive assertion literals matching only one spec — that spec is then the sole regression ratchet.
-- Confirm package-manager state against **root** `pnpm-lock.yaml`/`pnpm-workspace.yaml`/`package.json` `packageManager`; `packages/techstack/tests/fixtures/monorepo-pnpm/` hits are test-fixture decoys.
+- Classify targets before choosing tools: type-only modules, scripts, tests, configuration, JSON baselines, and logs need search or runner evidence, not merely call graphs.
+- Close source consumers with repo-wide module-path, subpath, relative-specifier, and per-exported-symbol searches, including dynamic imports and inline type expressions. Separate value imports, type-only consumers, and individual exports.
+- Do not pass module stems to `codebase-impact-analysis` as symbols; use module-path and exported-symbol searches plus the package barrel, including `packages/sage/src/index.ts` for Sage middleware.
+- Classify matches by full import specifier and declaration source. A filename stem, duplicated helper name, comment, lockfile entry, or archived reference is not sufficient consumer evidence.
+- Search `formatOutput` repo-wide before attributing callers: `packages/cli/src/slash-commands/dev.ts` has a local namesake, and `packages/webui` has `formatOutputBytes`; `codebase-incoming-calls` can report ambiguous symbols.
+- In `packages/governance`, distinguish `verification-ledger-preconditions` imports from sibling `verification-ledger-preconditions-contracts.js` matches; verify current importers and barrel exposure rather than counting stem hits.
+- In `packages/core/src/coordination/`, distinguish `instantiateRosterConfig` by arity and source: `director-input-helpers.ts` exports the two-argument version; `delegation/delegation-preparation.ts` has a four-argument local version. Likewise disambiguate local `stringArray` helpers and exact `readLeaderEffort` versus `readLeaderEffortOverride` matches.
+- Avoid incoming-call tools for generic, barrel-mediated, or type-only symbols. Search runtime strings, subprocess arguments, `spawn`/`exec` bodies, and non-TypeScript harnesses as well.
+- Enumerate with case-sensitive `files_with_matches` and confirm `truncated=false`. When content output is capped, read enclosing ranges; split grep alternations exceeding 256 characters to avoid `VALIDATION_ERROR`.
 
-## Scratch Rounds (`.temp_files/`)
+## Public Surfaces and Indirect Dependencies
 
-- `rg` and the codebase index respect `.gitignore` and skip `.temp_files/` entirely — a zero-hit repo-wide grep proves nothing there. Map `.temp_files/proof-driven-bug-hunter/<round>/` scripts with direct `read`, a `tree` of the round dir, and a repo-wide grep of the script's hardcoded needle strings (e.g. `SCRUBBED_FREE_TEXT_FIELDS` → `packages/core/tests/storage/session-scrub-parity.test.ts`).
-- Tree the **parent** `.temp_files/proof-driven-bug-hunter/` directory (check `total_files`) to rule out a sibling `run.mjs` or shared runner; if the subtree is script-only, invoke the proof directly by path (`vitest.proof.config.mjs`, `proof.test.ts`).
-- Capture the full content of a round target on the first successful read: concurrent sessions delete round dirs mid-probe, and a mid-probe ENOENT is concurrent-edit evidence — verify once with a parent-dir tree, then report the captured content instead of retrying reads. If all needle strings are absent from the target, the script already ran and a re-run will fail closed.
+- Verify public exposure through `package.json` `exports` and actual package-barrel re-exports, not facade visibility alone. Named export lists and `export *` have different exposure behavior.
+- For `packages/mcp`, check `packages/mcp/src/index.ts`, not only `src/transport.ts`: the transport export list includes `HttpTransportOptions`, `SSEReader`, `SSETransport`, and `StreamableHTTPTransport`, not every facade export.
+- Alias-substituted fixtures may have no static importers. Search the substituted specifiers and Vite `resolve.alias` entries; distinguish value imports from type-only imports that aliases do not affect.
+- Behavioral dependencies may exist without imports: inspect environment-variable seams, spawning daemons, and distinctive assertions that establish regression coverage.
+- For `packages/*/tests/`, check `architecture/test-skip-budget.json` and `docs/reports/architecture-health-current.json`; skip/content changes can require re-syncing through root `check:architecture`.
+- Treat `architecture/*.json` as data ratchets. Check `architecture/core-public-api-usage.json` for target paths and `architecture/test-only-exports.json` for export constraints; trace guarding scripts and use root `check:architecture` / `check:architecture:sync` as appropriate.
+- Confirm package-manager state against root `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `package.json` `packageManager`, not monorepo fixture copies.
+
+## Scratch Proof Rounds
+
+- For `.temp_files/proof-driven-bug-hunter/<round>/`, bypass indexes with direct `read`, `tree`, and explicitly path-scoped grep; default repo-wide searches skip `.temp_files`, and zero in-directory references do not exclude external `vitest run -c` invocation.
+- Tree the round before describing execution. Only `proof.ts`, without `run.mjs`, `vitest.proof.config.mjs`, or `REPORT.md`, indicates a bare direct-path proof whose exit codes 0/1/2 are its interface, not a completed report-backed round.
+- Verify every config's `include` target exists before calling it runnable. `vitest run -c` collecting zero tests is not proof of a passing baseline.
+- Close scratch-artifact consumers with an explicit parent-hunt-directory grep for the round ID plus repo-wide distinctive harness needles; classify `verify-full.ps1` and `full-verification/runtime-temp/` self-matches as harness residue, not consumers.
 
 ## Project Wiring Anchors
 
-- `architecture/*.json` files are data ratchets; `architecture/core-public-api-usage.json` records each source file's `@wrongstack/core/*` imports repo-wide — grep it for the target path before assessing edit risk; changes require root `check:architecture` / `check:architecture:sync`. Trace other ratchet files to their guarding scripts and re-sync commands.
-- `packages/webui-server/src/server/*-adapter.ts` modules may mirror CLI behavior through `@wrongstack/core/*` without importing CLI code — close by symbol grep plus barrel/facade reads. `goal-ws-handler-*.ts` siblings are contract-driven and break silently at type seams.
-- `packages/sage` keeps two parallel pagination modules (`shared/pagination.ts` and `sqlite-store-pagination.ts`) with duplicate `decodePageCursor`/`PageCursor` exports; the SQLite list path imports the sibling's version, and the shared module's `decodePageCursor`/`compareByUpdatedDesc`/`CONTEXT_STATUSES` have zero production importers — grep both modules, close per symbol.
-- `packages/sage/src/project-server-*.ts` helpers bind to env-driven daemon behavior in tests — close with module-stem + symbol greps plus a full barrel read before declaring internal-only.
-- `packages/sdd`/`packages/telegram` symbols appearing in domain-glossary ratchets or as construction sites inside the plugin-entry barrel (`new PollLock(...)` in `src/index.ts`) are not module consumers; check the barrel's re-export form before "public API" language.
-- Core `atomic-write.ts` is a thin adapter (`createLockTimeoutError` over `FsError`) on `packages/persistence` primitives, shared with `packages/kanban/src/utils/atomic-write.ts`; `packages/persistence/tests/adapter-conformance.test.ts` ratchets both adapters.
-- `packages/providers/src/error-parse.ts` is widely imported, but individual exports (`retryAfterMsFromBody`) may have zero production callers — verify per symbol.
-- Close `packages/cli/src/subcommands/` handlers through the lazy-import registry in `subcommands/index.ts` plus filename and symbol searches. Verify slash-command test `vi.mock('../src/.../<module>.js')` paths against live imports; stale mocks intercept nothing.
-- WebUI route views register in `packages/webui/src/components/view-registry.ts`; HQ views in `packages/webui-hq/src/components/hq/view-router.tsx`. Keep `@xyflow/react` inside HQ lazy chunks; check `packages/webui-hq/tests/components/views-smoke.test.tsx`.
-- `packages/kanban/src/types.ts`: external access is via the `@wrongstack/kanban` barrel, not a `./types` subpath — use quote-anchored relative-specifier searches.
-
-_(truncated at 8192 bytes — the next optimization pass must shorten it)_
+- Close CLI subcommand handlers through the lazy-import registry in `packages/cli/src/subcommands/index.ts` plus filename and symbol searches. Check test `vi.mock` paths against live imports.
+- WebUI views register in `packages/webui/src/components/view-registry.ts`; HQ views register in `packages/webui-hq/src/components/hq/view-router.tsx`. Check HQ lazy-chunk boundaries and `packages/webui-hq/tests/components/views-smoke.test.tsx` when tracing `@xyflow/react`.
+- Parallel adapters can share behavior without importing one another. Inspect `packages/webui-server/src/server/*-adapter.ts` core imports and symbol contracts before asserting independence from CLI behavior.

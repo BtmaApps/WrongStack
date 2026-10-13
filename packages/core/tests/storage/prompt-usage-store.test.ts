@@ -79,4 +79,30 @@ describe('PromptUsageStore', () => {
     await fs.writeFile(path.join(dir, 'prompt-usage.json'), '{ broken');
     expect(await store.load()).toEqual({});
   });
+
+  // F469: record() is a read-modify-write, and loadInternal mapped a corrupt
+  // file to {} — one record then rewrote the file with only the new slug,
+  // silently resetting every accumulated count. The read path above keeps
+  // degrading to {}; the write path must refuse.
+  it('refuses to record over a file it cannot parse, leaving its bytes alone', async () => {
+    const file = path.join(dir, 'prompt-usage.json');
+    const torn = '{"version":1,"usage":{"veteran":{"count":41';
+    await fs.writeFile(file, torn);
+    await expect(store.record('fresh', '2026-08-01T00:00:00.000Z')).rejects.toThrow();
+    expect(await fs.readFile(file, 'utf8')).toBe(torn);
+  });
+
+  it('keeps the counts behind a BOM when recording', async () => {
+    const file = path.join(dir, 'prompt-usage.json');
+    await fs.writeFile(
+      file,
+      `\uFEFF${JSON.stringify({
+        version: 1,
+        usage: { veteran: { count: 41, lastUsedAt: '2026-01-01T00:00:00.000Z' } },
+      })}`,
+    );
+    await store.record('fresh', '2026-08-01T00:00:00.000Z');
+    expect((await store.get('veteran'))?.count).toBe(41);
+    expect((await store.get('fresh'))?.count).toBe(1);
+  });
 });

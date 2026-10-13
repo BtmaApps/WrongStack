@@ -23,7 +23,12 @@ export function createSessionCheckpointHandlers(
 
   return {
     inspectSession: async (ws, msg) => {
-      const { id } = (msg as { payload: { id: string } }).payload;
+      // A payload-less frame is legal at this boundary (the protocol decoder
+      // requires a payload only for server frames) — destructure it the same way
+      // the sibling handlers do, so the `Session id is required` response below
+      // is actually reachable instead of a TypeError escaping the dispatcher
+      // and leaving the client without a response frame (cf. candidateResolve).
+      const { id } = (msg as { payload?: { id?: string | undefined } }).payload ?? {};
       if (!id) {
         sendTo(ws, {
           type: 'session.inspect',
@@ -85,7 +90,16 @@ export function createSessionCheckpointHandlers(
     },
     rewindSession: async (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'session.rewind')) return;
-      const { checkpointIndex } = (msg as { payload: { checkpointIndex: number } }).payload;
+      // Payload-less frames are legal here too — see inspectSession above.
+      const { checkpointIndex } = (
+        msg as { payload?: { checkpointIndex?: number | undefined } }
+      ).payload ?? {};
+      // The old non-optional cast asserted a number the wire may never carry;
+      // rewind truncates a journal, so refuse rather than rewind to `undefined`.
+      if (typeof checkpointIndex !== 'number') {
+        result(ws, false, 'checkpointIndex is required');
+        return;
+      }
       // Rewind truncates the session journal AND reverts project files, so
       // running it under a live run destroys the in-flight turn's journal
       // window and reverts files its tools are mid-way through editing — the

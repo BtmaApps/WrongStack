@@ -130,6 +130,30 @@ describe('compactSessionMirrorBoard', () => {
     expect(still?.status).toBe('blocked');
   });
 
+  // F467: mutateBoard resolves to { board, result } even when the mutator
+  // bailed with null, and compact only checked `!updated` — so a board it
+  // must not touch reported a successful (empty) compaction instead of the
+  // null its signature promises for "nothing compacted".
+  it('returns null for a project board it must not touch', async () => {
+    const board = await createBoard(tmpDir, { title: 'Project board' });
+    await addTask(tmpDir, board.id, { title: 'Done', status: 'completed' });
+
+    const result = await compactSessionMirrorBoard(tmpDir, board.id, { limit: 0 });
+
+    expect(result).toBeNull();
+    const after = await getBoard(tmpDir, board.id);
+    expect(after?.tasks).toHaveLength(1);
+  });
+
+  it('returns null when a session mirror is already within the limit', async () => {
+    const board = await makeSessionMirror();
+    await addTask(tmpDir, board.id, { title: 'Done', status: 'completed' });
+
+    const result = await compactSessionMirrorBoard(tmpDir, board.id, { limit: 5 });
+
+    expect(result).toBeNull();
+  });
+
   it('still re-stamps the atomicity assessment of an affected card', async () => {
     const board = await makeSessionMirror();
     const boardWithAtomicity = await createBoard(tmpDir, {

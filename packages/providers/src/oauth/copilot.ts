@@ -76,7 +76,10 @@ async function startDeviceFlow(signal?: AbortSignal): Promise<DeviceCode> {
     !json?.device_code ||
     !json.user_code ||
     !json.verification_uri ||
-    typeof json.expires_in !== 'number'
+    typeof json.expires_in !== 'number' ||
+    !Number.isFinite(json.expires_in) ||
+    json.expires_in <= 0 ||
+    json.expires_in > 3600
   ) {
     throw new ParseError({
       message: 'Invalid device-code response',
@@ -87,7 +90,14 @@ async function startDeviceFlow(signal?: AbortSignal): Promise<DeviceCode> {
     device_code: json.device_code,
     user_code: json.user_code,
     verification_uri: json.verification_uri,
-    interval: json.interval ?? 5,
+    // An interval of 0 (or negative, or not a number) would make the poll
+    // loop sleep(0) and hammer the token endpoint for the code's whole
+    // lifetime. The sibling RFC 8628 flow in device-code.ts floors the
+    // interval at 1000ms and defaults to 5s; mirror it here (F470).
+    interval:
+      typeof json.interval === 'number' && Number.isFinite(json.interval) && json.interval > 0
+        ? Math.max(1, json.interval)
+        : 5,
     expires_in: json.expires_in,
   };
 }

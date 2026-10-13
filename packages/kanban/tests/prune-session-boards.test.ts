@@ -133,6 +133,40 @@ describe('pruneSessionBoards', () => {
     expect(result.deleted).not.toContain(archivedId);
   });
 
+  // F466: an unparseable updatedAt makes Date.parse return NaN, and every
+  // NaN comparison is false — so the "still inside TTL" guard never fired
+  // and the board was pruned as if its TTL had long elapsed. Age unknown
+  // must mean "not eligible", never "expired".
+  it('keeps a session mirror whose updatedAt is unparseable', async () => {
+    const id = await createSessionBoard({
+      retention: { mode: 'delete_after_ttl', ttlMs: 1000 },
+      updatedAt: 'not-a-date',
+    });
+
+    const result = await pruneSessionBoards(tmpDir, { now: '2026-08-01T00:00:00.000Z' });
+
+    expect(result.skipped).toContain(id);
+    expect(result.deleted).not.toContain(id);
+    expect(await getBoard(tmpDir, id)).toBeTruthy();
+  });
+
+  it('rejects an unparseable now instead of pruning against a NaN clock', async () => {
+    const id = await createSessionBoard({
+      kind: 'archive',
+      retention: {
+        mode: 'archive_after_ttl',
+        ttlMs: 1000,
+        archivedAt: '2026-07-31T23:00:00.000Z',
+        purgeAfterArchiveMs: 86_400_000,
+      },
+    });
+
+    await expect(pruneSessionBoards(tmpDir, { now: 'not-a-date' })).rejects.toThrow(
+      'invalid now timestamp',
+    );
+    expect(await getBoard(tmpDir, id)).toBeTruthy();
+  });
+
   it('handles mixed boards in one pass', async () => {
     const expiredArchive = await createSessionBoard({
       retention: { mode: 'archive_after_ttl', ttlMs: 1000 },
@@ -240,6 +274,26 @@ describe('pruneSessionBoards second stage (archived boards)', () => {
     // And the very next sweep, a day later, can now act on it.
     const later = await pruneSessionBoards(tmpDir, { now: '2026-08-03T00:00:00.000Z' });
     expect(later.deleted).toContain(id);
+  });
+
+  // F466 (archivedAt twin of the updatedAt case): a corrupt archivedAt
+  // cannot show the purge window elapsed, so the archive is retained.
+  it('retains an archived board whose archivedAt is unparseable', async () => {
+    const id = await createSessionBoard({
+      kind: 'archive',
+      retention: {
+        mode: 'archive_after_ttl',
+        ttlMs: 1000,
+        archivedAt: 'not-a-date',
+        purgeAfterArchiveMs: 86_400_000,
+      },
+    });
+
+    const result = await pruneSessionBoards(tmpDir, { now: '2026-08-01T00:00:00.000Z' });
+
+    expect(result.archivedRetained).toContain(id);
+    expect(result.deleted).not.toContain(id);
+    expect(await getBoard(tmpDir, id)).toBeTruthy();
   });
 
   it('purges a legacy board still tagged session_mirror after archiving', async () => {

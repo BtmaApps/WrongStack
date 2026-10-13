@@ -72,8 +72,13 @@ export class InputHistoryStore {
       if (strict && (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       return [];
     }
+    // A Windows editor saves the file with a UTF-8 BOM, which JSON.parse
+    // rejects; the entries behind it are real history, not corruption.
+    const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    // A blank file holds nothing to lose; refusing it would lock the store out.
+    if (body.trim() === '') return [];
     try {
-      const raw: InputHistoryFile = JSON.parse(text);
+      const raw: InputHistoryFile = JSON.parse(body);
       if (
         raw &&
         typeof raw === 'object' &&
@@ -82,7 +87,11 @@ export class InputHistoryStore {
       ) {
         return raw.entries.slice(0, this.maxEntries);
       }
-    } catch {
+      if (strict) throw new Error(`unsupported input history file schema in ${this.file}`);
+    } catch (err) {
+      // save() merges foreign entries from this read: taking an unparseable
+      // file as [] in strict mode wrote those prompts away (F468).
+      if (strict) throw err;
       // missing or corrupt → empty
     }
     return [];

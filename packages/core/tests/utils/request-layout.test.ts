@@ -359,3 +359,74 @@ describe('getRequestResidency request-scoped blocks', () => {
     });
   });
 });
+
+describe('getRequestResidency cache_control awareness', () => {
+  const stableA = 'You are a coding agent. '.repeat(40);
+  const stableB = 'Follow the repository conventions. '.repeat(40);
+  const marked = (text: string): TextBlock => ({
+    type: 'text',
+    text,
+    cache_control: { type: 'ephemeral' },
+  });
+
+  /**
+   * Two committed turns on one ctx: turn 1 sends `system1`, turn 2 extends the
+   * history and sends `system2`. Returns the ctx (to read residency) and the
+   * second request object (to attach usage).
+   */
+  function twoTurns(
+    system1: TextBlock[],
+    system2: TextBlock[],
+  ): { ctx: { messages: Message[] }; req2: object } {
+    const h1 = [msg('user', 'first question')];
+    const ctx = { messages: h1 };
+    send(ctx, input(h1, { system: system1 }), 1_000);
+    const h2 = [...h1, msg('assistant', 'ok'), msg('user', 'second question')];
+    ctx.messages = h2;
+    const req2 = send(ctx, input(h2, { system: system2 }), 2_000);
+    return { ctx, req2 };
+  }
+
+  const systemLane = (ctx: { messages: Message[] }): string | undefined =>
+    getRequestResidency(ctx)?.segments.find((s) => s.kind === 'system')?.lane;
+  const breakerKinds = (ctx: { messages: Message[] }): string[] =>
+    (getRequestResidency(ctx)?.breakers ?? []).map((b) => b.kind);
+
+  it('treats a moved cache_control marker as a system change, not a reusable prefix', () => {
+    // Same blocks, same order, same text — only the breakpoint moved.
+    const { ctx } = twoTurns([marked(stableA), block(stableB)], [block(stableA), marked(stableB)]);
+    // `CacheLane` defines `cached` as a byte-identical prefix; a marker moved is
+    // not one, so the segment must not claim reuse the wire cannot deliver.
+    expect(systemLane(ctx)).not.toBe('cached');
+    expect(breakerKinds(ctx)).toContain('system');
+  });
+
+  it('does not blame the provider for a miss caused by our own marker move', () => {
+    const { ctx, req2 } = twoTurns(
+      [marked(stableA), block(stableB)],
+      [block(stableA), marked(stableB)],
+    );
+    recordRequestLayoutUsage(req2, { input: 900, output: 10, cacheRead: 0, cacheWrite: 800 });
+
+    expect(getRequestResidency(ctx)?.verdict).toBe('miss');
+    // The provider is only at fault when the prefix really was unchanged on our side.
+    expect(breakerKinds(ctx)).not.toContain('provider');
+  });
+
+  it('still reports an unchanged system prefix as cached (control)', () => {
+    const { ctx } = twoTurns([marked(stableA), block(stableB)], [marked(stableA), block(stableB)]);
+
+    expect(systemLane(ctx)).toBe('cached');
+    expect(breakerKinds(ctx)).not.toContain('system');
+  });
+
+  it('still detects a real system text change (control)', () => {
+    const { ctx } = twoTurns(
+      [block(stableA), block(stableB)],
+      [block(`${stableA} CHANGED`), block(stableB)],
+    );
+
+    expect(breakerKinds(ctx)).toContain('system');
+    expect(systemLane(ctx)).not.toBe('cached');
+  });
+});

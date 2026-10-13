@@ -44,21 +44,46 @@ export class PromptUsageStore {
     return cloneUsage(await this.loadInternal());
   }
 
-  private async loadInternal(): Promise<Record<string, PromptUsage>> {
+  private async loadInternal(strict = false): Promise<Record<string, PromptUsage>> {
     const signature = await this.fileSignature();
-    if (this.cachedUsage && sameSignature(signature, this.cachedSignature)) {
+    // The drain's read-modify-write always re-reads under the file lock: a
+    // cache entry derived from a corrupt file must never be its input.
+    if (!strict && this.cachedUsage && sameSignature(signature, this.cachedSignature)) {
       return this.cachedUsage;
     }
 
+    let text: string;
     try {
-      const raw: RawUsageFile = JSON.parse(await fs.readFile(this.file, 'utf8'));
-      if (raw && typeof raw === 'object' && raw.usage && typeof raw.usage === 'object') {
-        this.cachedUsage = raw.usage;
+      text = await fs.readFile(this.file, 'utf8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.cachedUsage = {};
         this.cachedSignature = signature;
         return this.cachedUsage;
       }
-    } catch {
-      // missing or corrupt → empty
+      if (strict) throw err;
+      this.cachedUsage = {};
+      this.cachedSignature = signature;
+      return this.cachedUsage;
+    }
+    // A Windows editor saves the file with a UTF-8 BOM, which JSON.parse
+    // rejects; the counts behind it are real usage, not corruption.
+    const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    if (body.trim() !== '') {
+      try {
+        const raw: RawUsageFile = JSON.parse(body);
+        if (raw && typeof raw === 'object' && raw.usage && typeof raw.usage === 'object') {
+          this.cachedUsage = raw.usage;
+          this.cachedSignature = signature;
+          return this.cachedUsage;
+        }
+        if (strict) throw new Error(`unsupported prompt usage file schema in ${this.file}`);
+      } catch (err) {
+        // record() rewrites the whole file from this read: taking an
+        // unparseable file as {} in strict mode reset every count (F469).
+        if (strict) throw err;
+        // missing or corrupt → empty
+      }
     }
     this.cachedUsage = {};
     this.cachedSignature = signature;
@@ -121,7 +146,7 @@ export class PromptUsageStore {
         // Validate the cache after taking the cross-process lock. A peer may
         // have updated the file since our last read; size/mtime/ctime makes
         // that visible without re-reading unchanged JSON on every record.
-        const usage = { ...(await this.loadInternal()) };
+        const usage = { ...(await this.loadInternal(true)) };
         const nextValues: PromptUsage[] = [];
         for (const item of batch) {
           const previous = usage[item.slug];

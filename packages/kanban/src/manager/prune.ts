@@ -126,7 +126,10 @@ export async function compactSessionMirrorBoard(
     removedTaskIds.push(...dropped);
     return removedTaskIds.length;
   });
-  if (!updated) return null;
+  // mutateBoard resolves to { board, result } even when the mutator bailed
+  // out with null (non-mirror, managed, or already within the limit): that
+  // is "nothing compacted", which this function's null return exists to say.
+  if (!updated || updated.result === null) return null;
   return { removedTaskIds, remainingTaskCount: updated.board.tasks.length };
 }
 
@@ -181,6 +184,12 @@ export async function pruneSessionBoards(
 ): Promise<PruneSessionBoardsResult> {
   const now = options.now ?? new Date().toISOString();
   const nowMs = Date.parse(now);
+  // Fail closed on an unparseable clock: every elapsed check below compares
+  // against nowMs, and a NaN comparison is always false, which reads as
+  // "window elapsed" and would delete boards inside their purge window.
+  if (!Number.isFinite(nowMs)) {
+    throw new Error(`pruneSessionBoards: invalid now timestamp: ${JSON.stringify(now)}`);
+  }
   const summaries = await listBoardSummaries(projectRoot);
 
   const result: PruneSessionBoardsResult = {
@@ -204,7 +213,9 @@ export async function pruneSessionBoards(
         else result.skipped.push(summary.id);
         continue;
       }
-      if (nowMs - Date.parse(archived.archivedAt) < archived.purgeAfterArchiveMs) {
+      const archivedAtMs = Date.parse(archived.archivedAt);
+      if (!Number.isFinite(archivedAtMs) || nowMs - archivedAtMs < archived.purgeAfterArchiveMs) {
+        // An unparseable archivedAt cannot show the purge window elapsed.
         result.archivedRetained.push(summary.id);
         continue;
       }
@@ -227,9 +238,11 @@ export async function pruneSessionBoards(
     // Already archived but still carrying `session_mirror` — a board written
     // before the kind rewrite existed. Treated the same as the branch above.
     if (retention.archivedAt) {
+      const archivedAtMs = Date.parse(retention.archivedAt);
       if (
         retention.purgeAfterArchiveMs &&
-        nowMs - Date.parse(retention.archivedAt) >= retention.purgeAfterArchiveMs
+        Number.isFinite(archivedAtMs) &&
+        nowMs - archivedAtMs >= retention.purgeAfterArchiveMs
       ) {
         await deleteBoard(projectRoot, summary.id);
         result.deleted.push(summary.id);
@@ -240,6 +253,11 @@ export async function pruneSessionBoards(
     }
 
     const updatedAtMs = Date.parse(summary.updatedAt);
+    if (!Number.isFinite(updatedAtMs)) {
+      // Age is unknowable; a NaN age would read as "TTL elapsed" below.
+      result.skipped.push(summary.id);
+      continue;
+    }
     const ageMs = nowMs - updatedAtMs;
     if (ageMs < retention.ttlMs) {
       result.skipped.push(summary.id);

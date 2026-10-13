@@ -168,6 +168,32 @@ describe('InputHistoryStore', () => {
       ]);
     });
 
+    // F468: save() merges foreign entries through readEntries(strict), but
+    // strict only covered read errors — a torn file read as [] and the save
+    // wrote this instance's list over the other session's prompts.
+    it('refuses to save over a file it cannot parse, leaving its bytes alone', async () => {
+      await new InputHistoryStore(file, fakeScrubber).save(['foreign prompt']);
+      const b = new InputHistoryStore(file, fakeScrubber);
+      await b.load();
+      const torn = '{"version":1,"entries":["foreign prompt"';
+      await fs.writeFile(file, torn);
+      await expect(b.save(['my prompt'])).rejects.toThrow();
+      expect(await fs.readFile(file, 'utf8')).toBe(torn);
+    });
+
+    it('keeps the entries behind a BOM when saving', async () => {
+      await fs.writeFile(
+        file,
+        `\uFEFF${JSON.stringify({ version: 1, updatedAt: 'x', entries: ['foreign prompt'] })}`,
+      );
+      const store = new InputHistoryStore(file, fakeScrubber);
+      await store.save(['my prompt']);
+      expect(await new InputHistoryStore(file, fakeScrubber).load()).toEqual([
+        'my prompt',
+        'foreign prompt',
+      ]);
+    });
+
     it("still honors an instance's own removals", async () => {
       const a = new InputHistoryStore(file, fakeScrubber);
       await a.load();

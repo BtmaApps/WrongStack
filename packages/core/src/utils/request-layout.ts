@@ -226,13 +226,32 @@ function sameTools(a: readonly Tool[], b: readonly Tool[]): boolean {
   return true;
 }
 
+/**
+ * `cache_control` is wire state, not decoration: it marks the breakpoint the
+ * provider may serve from cache. Two blocks with identical text but different
+ * markers are NOT a byte-identical prefix, so comparing text alone reports a
+ * `cached` lane the wire cannot deliver — and, on the resulting miss,
+ * `attributeBreakers` blames the provider for a change we made ourselves.
+ *
+ * Only the declared `type` is compared: this layer runs before providers add
+ * their own wire fields (`ttl`) to the marker.
+ */
+function sameCacheControl(
+  a: TextBlock['cache_control'],
+  b: TextBlock['cache_control'],
+): boolean {
+  return a?.type === b?.type;
+}
+
 function sameSystem(a: readonly TextBlock[], b: readonly TextBlock[]): boolean {
   if (a === b) return true;
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     const x = a[i] as TextBlock;
     const y = b[i] as TextBlock;
-    if (x !== y && x.text !== y.text) return false;
+    if (x !== y && (x.text !== y.text || !sameCacheControl(x.cache_control, y.cache_control))) {
+      return false;
+    }
   }
   return true;
 }

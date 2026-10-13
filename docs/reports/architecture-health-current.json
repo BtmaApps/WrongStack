@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T15:03:32.854Z",
+  "generatedAt": "2026-10-13T15:14:40.498Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4946,
-    "testFiles": 4333,
-    "sourceLines": 1097233,
+    "testFiles": 4334,
+    "sourceLines": 1097328,
     "workspaceEdges": 137,
     "moduleEdges": 16290,
     "nonCommandSlashImports": 0,
@@ -924,7 +924,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 296,
-      "testFiles": 283,
+      "testFiles": 284,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 283
+          "testFiles": 284
         }
       ]
     },
@@ -23639,6 +23639,12 @@
       },
       {
         "file": "packages/webui-server/tests/session-catalog-connections.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/session-checkpoint-nopayload.test.ts",
         "projects": [
           "root-node"
         ]
