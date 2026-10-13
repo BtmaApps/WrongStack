@@ -58,13 +58,13 @@ const SERVER_NAMES: Record<BridgeServer, string> = {
   'requirement-intake': 'wrongstack-intake',
 };
 
-const SERVER_NOTES: Record<BridgeServer, (actor: string, delegated: boolean) => string> = {
+const SERVER_NOTES: Record<BridgeServer, (delegated: boolean) => string> = {
   sage: () =>
     "- wrongstack-sage: the project's shared memory. Recall what is relevant before you " +
     'start; when you learn something durable (a decision, a gotcha, a convention), propose ' +
     'it with memory_candidates (WrongStack reviews proposals).',
-  mailbox: (actor, delegated) =>
-    `- wrongstack-mailbox: the project's agent mailbox. You are "${actor}". Send progress, ` +
+  mailbox: (delegated) =>
+    "- wrongstack-mailbox: the project's agent mailbox, already signed in as you. Send progress, " +
     'blockers and questions to ' +
     (delegated
       ? '"@session" (the WrongStack session that delegated this task), '
@@ -116,14 +116,16 @@ function serverArgs(server: BridgeServer, projectRoot: string, ctx: SubagentRunC
   }
 }
 
-export function bridgeNote(
-  servers: readonly BridgeServer[],
-  actor: string,
-  taskId: string,
-  delegated = true,
-): string {
+/**
+ * The note appended to the worker's system prompt. It must not vary per task
+ * or per worker: the system prompt is the head of the agent's prompt cache, so
+ * a task id or worker id in it made every worker rewrite ~25k cached tokens
+ * (measured: $0.21 per one-line task, against $0.008 with a stable prompt).
+ * Per-worker identity lives in the MCP servers' arguments instead.
+ */
+export function bridgeNote(servers: readonly BridgeServer[], delegated = true): string {
   return [
-    `You are working as a delegated worker inside a WrongStack project (task ${taskId}).`,
+    'You are working as a delegated worker inside a WrongStack project.',
     'WrongStack is the orchestrator the user runs: it sent you this task and receives your',
     'final reply, so end with a clear summary of what you did and what is left.',
     ...(delegated
@@ -135,7 +137,7 @@ export function bridgeNote(
       : []),
     '',
     "WrongStack's project services are available as MCP servers:",
-    ...servers.map((s) => SERVER_NOTES[s](actor, delegated)),
+    ...servers.map((s) => SERVER_NOTES[s](delegated)),
     '',
     'Use your own tools for code and files; these servers are for coordination. If one is',
     'unavailable, carry on without it.',
@@ -207,7 +209,7 @@ export function wrongstackBridgeSetup(
     (s): s is BridgeServer => Object.hasOwn(SERVER_NAMES, s),
   );
   if (servers.length === 0) return undefined;
-  return (task, ctx) => ({
+  return (_task, ctx) => ({
     mcpServers: servers.map((server): StdioServer => {
       const launch = wstackLaunch(serverArgs(server, projectRoot, ctx));
       return { name: SERVER_NAMES[server], ...launch, env: [] };
@@ -215,7 +217,7 @@ export function wrongstackBridgeSetup(
     meta: {
       systemPrompt: {
         // `@session` only reaches someone when a WrongStack session delegated the task.
-        append: bridgeNote(servers, ctx.subagentId, task.id, ctx.sessionId !== undefined),
+        append: bridgeNote(servers, ctx.sessionId !== undefined),
       },
     },
   });

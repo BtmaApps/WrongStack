@@ -77,7 +77,7 @@ describe('wrongstackBridgeSetup', () => {
   });
 
   it('steers code navigation to the index over grep', () => {
-    const note = bridgeNote(['codebase-index'], 'w', 't');
+    const note = bridgeNote(['codebase-index']);
     expect(note).toMatch(/Prefer it over grep\/glob/);
     for (const tool of [
       'codebase_search',
@@ -90,10 +90,25 @@ describe('wrongstackBridgeSetup', () => {
     }
   });
 
+  it('appends the same note for every task and worker, so the prompt cache holds', () => {
+    const bridge = wrongstackBridgeSetup('claude-code', ROOT, undefined)!;
+    const other = { ...ctx, subagentId: 'w-other' } as unknown as SubagentRunContext;
+    const noteFor = (t: TaskSpec, c: SubagentRunContext) =>
+      (bridge(t, c).meta as { systemPrompt: { append: string } }).systemPrompt.append;
+    const note = noteFor(task, ctx);
+    expect(noteFor({ id: 't-99', description: 'other work' }, other)).toBe(note);
+    expect(note).not.toContain('t-42');
+    expect(note).not.toContain('claude-code');
+    // The worker's identity still reaches the mailbox, through its server.
+    const mailbox = (bridge(task, other).mcpServers as { name: string; args: string[] }[]).find(
+      (s) => s.name === 'wrongstack-mailbox',
+    )!;
+    expect(mailbox.args).toContain('--actor=w-other');
+  });
+
   it('appends a note naming only the attached servers, keeping the agent identity', () => {
     const setup = wrongstackBridgeSetup('claude-code', ROOT, { servers: ['mailbox'] })!(task, ctx);
     const append = (setup.meta as { systemPrompt: { append: string } }).systemPrompt.append;
-    expect(append).toContain('task t-42');
     expect(append).toContain('wrongstack-mailbox');
     expect(append).toContain('"@session"');
     expect(append).not.toContain('wrongstack-sage');
@@ -104,8 +119,8 @@ describe('wrongstackBridgeSetup', () => {
   });
 
   it('tells a delegated worker how WrongStack steers it, and only then', () => {
-    expect(bridgeNote(['mailbox'], 'w', 't')).toContain('"[WrongStack <kind> from <agent>]"');
-    expect(bridgeNote(['mailbox'], 'w', 't', false)).not.toContain('[WrongStack');
+    expect(bridgeNote(['mailbox'])).toContain('"[WrongStack <kind> from <agent>]"');
+    expect(bridgeNote(['mailbox'], false)).not.toContain('[WrongStack');
   });
 
   it('sends mail to "all" when no WrongStack session delegated the task', () => {
@@ -131,7 +146,7 @@ describe('wrongstackBridgeSetup', () => {
       'wrongstack-kanban',
       'wrongstack-index',
     ]);
-    expect(bridgeNote(['codebase-index'], 'w', 't')).toContain('wrongstack-index');
+    expect(bridgeNote(['codebase-index'])).toContain('wrongstack-index');
   });
 });
 
