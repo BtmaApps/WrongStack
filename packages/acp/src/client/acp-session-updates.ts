@@ -28,6 +28,8 @@ export interface ACPSessionScratch {
   messageBreak?: boolean;
   /** Diffs already captured, keyed by tool call; agents resend them on update. */
   seenDiffs?: Set<string>;
+  /** Tool calls already reported as started (see captureToolCall). */
+  announced?: Set<string>;
 }
 
 export function createSessionScratch(): ACPSessionScratch {
@@ -153,8 +155,19 @@ function captureToolCall(
     }
   }
 
-  emitProgress({
-    type: isNew ? 'tool_call' : 'tool_call_update',
-    toolCall: record,
-  });
+  // Report a call as started once it says what it does. Claude's adapter
+  // opens every call as a bare "Terminal" / "Edit" with no input and sends the
+  // command or path in the next update, so announcing on `tool_call` showed
+  // live views a row of "Terminal {}". An agent that never sends input is
+  // announced at its first update instead.
+  scratch.announced ??= new Set();
+  if (!scratch.announced.has(toolCallId)) {
+    const hasInput = record.rawInput !== undefined && Object.keys(record.rawInput).length > 0;
+    if (isNew && !hasInput) return;
+    scratch.announced.add(toolCallId);
+    emitProgress({ type: 'tool_call', toolCall: record });
+    // Announced by an update that already ended the call: report the end too.
+    if (isNew || (record.status !== 'completed' && record.status !== 'failed')) return;
+  }
+  emitProgress({ type: 'tool_call_update', toolCall: record });
 }

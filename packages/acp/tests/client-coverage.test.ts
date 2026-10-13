@@ -174,6 +174,52 @@ describe('acp-session-updates', () => {
     expect(scratch.text).toBe('I will run the check.\n\nAll checks passed.');
   });
 
+  it('announces a tool call once it says what it does', async () => {
+    const { handleAcpSessionUpdate, createSessionScratch } = await import(
+      '../src/client/acp-session-updates.js'
+    );
+    const scratch = createSessionScratch();
+    const seen: string[] = [];
+    const update = (u: Record<string, unknown>) =>
+      handleAcpSessionUpdate(
+        { jsonrpc: '2.0', method: 'session/update', params: { update: u } } as never,
+        scratch,
+        (e) => {
+          if (e.type === 'tool_call' || e.type === 'tool_call_update') {
+            seen.push(`${e.type}:${e.toolCall.title}:${e.toolCall.status}`);
+          }
+        },
+      );
+    // Claude: a bare "Terminal" first, the command in the next update.
+    update({ sessionUpdate: 'tool_call', toolCallId: 'b1', title: 'Terminal', status: 'pending' });
+    update({
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'b1',
+      title: 'bun src/check.ts',
+      rawInput: { command: 'bun src/check.ts' },
+    });
+    update({ sessionUpdate: 'tool_call_update', toolCallId: 'b1', status: 'completed' });
+    // An agent that sends the input up front is announced at once.
+    update({
+      sessionUpdate: 'tool_call',
+      toolCallId: 'r1',
+      title: 'Read a.ts',
+      rawInput: { path: 'a.ts' },
+      status: 'pending',
+    });
+    // One that never sends input is announced at its first update.
+    update({ sessionUpdate: 'tool_call', toolCallId: 'n1', title: 'Think', status: 'pending' });
+    update({ sessionUpdate: 'tool_call_update', toolCallId: 'n1', status: 'completed' });
+    expect(seen).toEqual([
+      'tool_call:bun src/check.ts:pending',
+      'tool_call_update:bun src/check.ts:completed',
+      'tool_call:Read a.ts:pending',
+      'tool_call:Think:completed',
+      'tool_call_update:Think:completed',
+    ]);
+    expect(scratch.toolCalls.size).toBe(3);
+  });
+
   it('captures a diff once when the completing update repeats it', async () => {
     const { handleAcpSessionUpdate, createSessionScratch } = await import(
       '../src/client/acp-session-updates.js'
