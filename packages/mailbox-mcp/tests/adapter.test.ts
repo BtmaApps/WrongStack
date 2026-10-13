@@ -430,7 +430,9 @@ describe('createMailboxMcpToolHost', () => {
     emitter.emit({
       type: 'message.acked',
       messageId: 'other-1',
-      readerId: 'external-admin',
+      // An ack carries the message's ends, as the mailbox emits it.
+      from: 'external-admin',
+      to: 'leader',
       timestamp: new Date().toISOString(),
     });
     await expect(watchPending).resolves.toEqual({
