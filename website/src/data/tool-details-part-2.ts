@@ -562,7 +562,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
     params: [
       {
         name: 'action',
-        type: "'list_boards' | 'get_board' | 'create_board' | 'duplicate_board' | 'update_board' | 'adopt_managed_lifecycle' | 'release_managed_lifecycle' | 'delete_board' | 'generate_board' | 'export_markdown' | 'export_task_graph' | 'sync_task_graph' | 'create_from_graph' | 'import_session_tasks' | 'search_tasks' | 'ready_tasks' | 'snapshot' | 'workbench' | 'add_task' | 'split_task' | 'merge_tasks' | 'copy_task' | 'transfer_task' | 'get_task' | 'start_task' | 'update_task' | 'transition_task' | 'repair_managed_projection' | 'move_task' | 'delete_task' | 'set_chain' | 'get_chain' | 'claim_task' | 'release_task' | 'assign_task' | 'mark_assignment' | 'heartbeat_assignment' | 'recover_stale' | 'events' | 'board_history' | 'record_activity' | 'queue_health' | 'add_dependency' | 'add_goal_metric' | 'update_goal_metric' | 'add_check' | 'update_check' | 'remove_check' | 'add_note' | 'review_task' | 'add_link' | 'verify_completion' | 'split_atomic' | 'assess_atomicity' | 'propose_decomposition' | 'approve_decomposition' | 'reject_decomposition' | 'get_contract_graph' | 'configure_contract_graph' | 'upsert_contract_node' | 'remove_contract_node' | 'add_contract_edge' | 'remove_contract_edge'",
+        type: "'list_boards' | 'get_board' | 'create_board' | 'duplicate_board' | 'update_board' | 'adopt_managed_lifecycle' | 'release_managed_lifecycle' | 'delete_board' | 'generate_board' | 'export_markdown' | 'export_task_graph' | 'sync_task_graph' | 'create_from_graph' | 'import_session_tasks' | 'search_tasks' | 'ready_tasks' | 'snapshot' | 'workbench' | 'stats' | 'add_task' | 'split_task' | 'merge_tasks' | 'copy_task' | 'transfer_task' | 'get_task' | 'start_task' | 'update_task' | 'transition_task' | 'repair_managed_projection' | 'move_task' | 'delete_task' | 'set_chain' | 'get_chain' | 'claim_task' | 'release_task' | 'assign_task' | 'mark_assignment' | 'heartbeat_assignment' | 'recover_stale' | 'events' | 'board_history' | 'record_activity' | 'queue_health' | 'add_dependency' | 'add_goal_metric' | 'update_goal_metric' | 'add_check' | 'update_check' | 'remove_check' | 'add_note' | 'review_task' | 'add_link' | 'verify_completion' | 'split_atomic' | 'assess_atomicity' | 'propose_decomposition' | 'approve_decomposition' | 'reject_decomposition' | 'get_contract_graph' | 'configure_contract_graph' | 'upsert_contract_node' | 'remove_contract_node' | 'add_contract_edge' | 'remove_contract_edge'",
         required: true,
         description:
           'Operation to perform. Choose an action first; supply only the fields that action needs.',
@@ -670,7 +670,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
         name: 'limit',
         type: 'number',
         description:
-          'ready_tasks: max results. workbench: per-lane and alert limit. events: return only the most recent N events.',
+          'ready_tasks: max results. workbench: per-lane and alert limit. events: return only the most recent N events. list_boards / search_tasks: return only the N most recently updated (omit for all).',
       },
       {
         name: 'agentId',
@@ -979,7 +979,8 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'includeArchived',
         type: 'boolean',
-        description: 'Whether the selected action should include archived.',
+        description:
+          'export_task_graph: include archived cards. list_boards: false hides archived boards.',
       },
       {
         name: 'archiveMissingTasks',
