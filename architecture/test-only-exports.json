@@ -48,10 +48,6 @@
     "packages/acp/src/client/trust-boundary-permission.ts": [
       "trustBoundaryPermissionCoverage"
     ],
-    "packages/acp/src/integration/acp-agent-failure.ts": [
-      "DEFAULT_QUOTA_HOLD_MS",
-      "parseQuotaResetAt"
-    ],
     "packages/acp/src/integration/acp-bench.ts": [
       "acpBenchCoverage"
     ],
@@ -152,9 +148,6 @@
     ],
     "packages/cli/src/fleet-statusline.ts": [
       "renderFleetLine"
-    ],
-    "packages/cli/src/fleet/acp-quota-hold.ts": [
-      "clearQuotaHolds"
     ],
     "packages/cli/src/fleet/acp-wrongstack-bridge.ts": [
       "bridgeNote",

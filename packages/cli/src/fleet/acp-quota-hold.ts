@@ -49,8 +49,3 @@ export async function runWithQuotaHold<T>(
     throw err;
   }
 }
-
-/** Test seam: forget every hold. */
-export function clearQuotaHolds(): void {
-  holds.clear();
-}

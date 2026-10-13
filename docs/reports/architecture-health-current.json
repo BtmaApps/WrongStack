@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T12:20:10.612Z",
+  "generatedAt": "2026-10-13T12:22:08.203Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4945,
     "testFiles": 4332,
-    "sourceLines": 1097030,
+    "sourceLines": 1097025,
     "workspaceEdges": 137,
     "moduleEdges": 16288,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 969
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -27658,14 +27658,6 @@
       "name": "trustBoundaryPermissionCoverage"
     },
     {
-      "file": "packages/acp/src/integration/acp-agent-failure.ts",
-      "name": "DEFAULT_QUOTA_HOLD_MS"
-    },
-    {
-      "file": "packages/acp/src/integration/acp-agent-failure.ts",
-      "name": "parseQuotaResetAt"
-    },
-    {
       "file": "packages/acp/src/integration/acp-bench.ts",
       "name": "acpBenchCoverage"
     },
@@ -27836,10 +27828,6 @@
     {
       "file": "packages/cli/src/fleet-statusline.ts",
       "name": "renderFleetLine"
-    },
-    {
-      "file": "packages/cli/src/fleet/acp-quota-hold.ts",
-      "name": "clearQuotaHolds"
     },
     {
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",

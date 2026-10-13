@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clearQuotaHolds, runWithQuotaHold } from '../src/fleet/acp-quota-hold.js';
+import { describe, expect, it, vi } from 'vitest';
+import { runWithQuotaHold } from '../src/fleet/acp-quota-hold.js';
 
-afterEach(() => clearQuotaHolds());
+// Holds are process-wide; each test uses its own agent ids.
 
 const quota = {
   kind: 'provider_quota',
@@ -17,27 +17,29 @@ describe('runWithQuotaHold', () => {
     const start = vi.fn(async () => {
       throw quota;
     });
-    await expect(runWithQuotaHold('claude-code', start, now)).rejects.toBe(quota);
+    await expect(runWithQuotaHold('held-claude', start, now)).rejects.toBe(quota);
 
     t += 30_000;
     const again = vi.fn(async () => 'ran');
-    await expect(runWithQuotaHold('claude-code', again, now)).rejects.toMatchObject({
+    await expect(runWithQuotaHold('held-claude', again, now)).rejects.toMatchObject({
       kind: 'provider_quota',
       retryable: false,
       backoffMs: 30_000,
-      message: expect.stringContaining('not started: claude-code is held until'),
+      message: expect.stringContaining('not started: held-claude is held until'),
     });
     expect(again).not.toHaveBeenCalled();
     // Another agent is not held.
     await expect(runWithQuotaHold('codex-cli', again, now)).resolves.toBe('ran');
 
     t += 31_000;
-    await expect(runWithQuotaHold('claude-code', again, now)).resolves.toBe('ran');
+    await expect(runWithQuotaHold('held-claude', again, now)).resolves.toBe('ran');
   });
 
   it('does not hold on any other failure', async () => {
     const other = { kind: 'provider_rate_limit', message: 'x', retryable: true, backoffMs: 1 };
-    await expect(runWithQuotaHold('a', async () => Promise.reject(other))).rejects.toBe(other);
-    await expect(runWithQuotaHold('a', async () => 'ok')).resolves.toBe('ok');
+    await expect(
+      runWithQuotaHold('rate-limited-agent', async () => Promise.reject(other)),
+    ).rejects.toBe(other);
+    await expect(runWithQuotaHold('rate-limited-agent', async () => 'ok')).resolves.toBe('ok');
   });
 });

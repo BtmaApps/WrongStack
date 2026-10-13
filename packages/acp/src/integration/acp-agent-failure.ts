@@ -13,7 +13,7 @@ import type { SubagentError } from '@wrongstack/core/types';
  * Leading text of the usage-limit messages Claude Code synthesises (the SDK's
  * `USAGE_LIMIT_ERROR_PREFIXES`, claude-agent-sdk 2026-10).
  */
-export const USAGE_LIMIT_PREFIXES: readonly string[] = [
+const USAGE_LIMIT_PREFIXES: readonly string[] = [
   "You've hit your",
   "You've reached your",
   "You're out of usage credits",
@@ -28,14 +28,14 @@ export const USAGE_LIMIT_PREFIXES: readonly string[] = [
 ];
 
 /** Without a reset time, wait this long before trying the agent again. */
-export const DEFAULT_QUOTA_HOLD_MS = 15 * 60_000;
+const DEFAULT_QUOTA_HOLD_MS = 15 * 60_000;
 
 /**
  * When the limit resets, read from the message: "resets 3pm", "resets at
  * 14:30", or the older "Claude AI usage limit reached|<epoch seconds>".
  * Times are local; one already past means tomorrow.
  */
-export function parseQuotaResetAt(text: string, now = Date.now()): number | undefined {
+function parseQuotaResetAt(text: string, now = Date.now()): number | undefined {
   const epoch = /usage limit reached\|(\d{9,11})/i.exec(text);
   if (epoch?.[1]) return Number(epoch[1]) * 1000;
   const m = /\bresets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i.exec(text);

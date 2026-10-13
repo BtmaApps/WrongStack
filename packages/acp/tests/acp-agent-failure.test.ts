@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import {
-  classifyAgentFailure,
-  DEFAULT_QUOTA_HOLD_MS,
-  parseQuotaResetAt,
-} from '../src/integration/acp-agent-failure.js';
+import { classifyAgentFailure } from '../src/integration/acp-agent-failure.js';
+
+const DEFAULT_QUOTA_HOLD_MS = 15 * 60_000;
+/** When a usage-limit message with this text says the quota resets. */
+const parseQuotaResetAt = (text: string, now: number): number | undefined => {
+  const e = classifyAgentFailure(
+    { code: -32603, message: `You've hit your limit · ${text}` },
+    'w',
+    now,
+  );
+  return e?.backoffMs === DEFAULT_QUOTA_HOLD_MS ? undefined : now + (e?.backoffMs ?? 0);
+};
 
 // 2026-10-13 10:00 local.
 const NOW = new Date(2026, 9, 13, 10, 0, 0, 0).getTime();
@@ -67,11 +74,17 @@ describe('parseQuotaResetAt', () => {
     expect(parseQuotaResetAt('resets at 14:30', NOW)).toBe(at(14, 30));
     expect(parseQuotaResetAt('resets 9am', NOW)).toBe(at(9, 0, 1));
     expect(parseQuotaResetAt('resets 12am', NOW)).toBe(at(0, 0, 1));
-    expect(parseQuotaResetAt('Claude AI usage limit reached|1760356800', NOW)).toBe(1760356800000);
+    expect(
+      classifyAgentFailure(
+        { code: -32603, message: 'Claude AI usage limit reached|1760356800' },
+        'w',
+        1760356800000 - 60_000,
+      )?.backoffMs,
+    ).toBe(60_000);
   });
 
   it('gives up on text without a usable time', () => {
-    expect(parseQuotaResetAt("You've hit your limit", NOW)).toBeUndefined();
+    expect(parseQuotaResetAt('', NOW)).toBeUndefined();
     expect(parseQuotaResetAt('resets 15', NOW)).toBeUndefined();
     expect(parseQuotaResetAt('resets 25:00', NOW)).toBeUndefined();
   });
