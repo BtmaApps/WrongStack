@@ -225,9 +225,8 @@ describe('a leader turn', () => {
       initialModeId: 'default',
       requireInitialMode: true,
     });
-    expect(
-      (acp.starts[0]?.sessionMeta as { systemPrompt: { append: string } }).systemPrompt.append,
-    ).toContain('You are the leader of a WrongStack session');
+    const meta = acp.starts[0]?.sessionMeta as { systemPrompt: { append: string } } | undefined;
+    expect(meta?.systemPrompt.append).toContain('You are the leader of a WrongStack session');
 
     await closeAcpLeaderSessions();
     expect(acp.closes).toEqual([{ graceMs: 500 }]);
