@@ -1,0 +1,164 @@
+# ACP leader mode — Claude Code (or another ACP agent) as the session's leader
+
+Status: design, not built. 2026-10-13.
+
+## Goal
+
+Let the user pick an installed ACP agent — first `claude-code` — as the
+**leader** of a WrongStack session, the way they pick a model today, and keep
+WrongStack's surfaces (TUI, WebUI, sessions, fleet, SAGE, index, kanban,
+mailbox, quota) working around it. Today an ACP agent can only be a delegated
+**worker** (`delegate({ provider: "acp" })`, `/acp`).
+
+## The seam: a provider, not a new Agent
+
+The leader is `Agent` (`packages/core/src/core/agent.ts`), a large concrete
+class that the TUI, WebUI, slash commands and plugins reach into far beyond
+`run()`. Replacing it would touch every surface.
+
+One level down is the seam that already fits: the loop calls
+`Provider.stream(req)` (`packages/core/src/types/provider.ts`) once per
+iteration and ends the turn when a response carries no `tool_use`. An
+**`AcpLeaderProvider`** can therefore:
+
+1. take only the newest user message from `req.messages` (the agent keeps its
+   own conversation — WrongStack's history is not replayed);
+2. send it as one `session/prompt` on a **persistent** ACP session keyed by
+   `req.cache.sessionId` (one Claude session per WrongStack session);
+3. stream the agent's updates back as `StreamEvent`s:
+
+| ACP update | StreamEvent |
+|---|---|
+| `agent_message_chunk` | `text_delta` |
+| `agent_thought_chunk` | `thinking_start` / `thinking_delta` |
+| `tool_call` / `tool_call_update` | none — rendered through the host sink below |
+| `PromptResponse.usage` | `message_stop.usage` (input/output/cache tokens) |
+| `PromptResponse.stopReason` | `message_stop.stopReason` |
+
+4. never emit `tool_use`: the agent runs its own tools, so every turn is a
+   single text-only iteration and the loop ends it normally.
+
+Everything that keys off the loop keeps working unchanged: history entries,
+session JSONL + resume list, cost and token accounting, the status line,
+interrupts (abort signal → `session/cancel`, already implemented).
+
+### What the provider needs from the host
+
+`makeProviderFromConfig(id, cfg)` builds providers without host services. The
+ACP leader provider is built in CLI wiring instead and registered on the
+`ProviderRegistry`, with:
+
+- **a tool sink** — the agent's tool calls are emitted on the host EventBus as
+  `tool.started` / `tool.executed` with `external: true`, so TUI/WebUI tool
+  cards, F3 and the transcript show what Claude ran (the ACP client already
+  produces clean `tool_call` events: title, kind, input, status, diffs);
+- **the leader's permission path** — see below;
+- **the bridge setup** — the same MCP servers and system-prompt note a worker
+  gets (`acp-wrongstack-bridge.ts`), with a leader variant of the note;
+- **live progress** — `usage_update` (context used/size → the context meter),
+  `_claude/rateLimit` → `recordAcpRateLimit` (quota page/chip).
+
+`@wrongstack/acp` must stay off the boot graph (`boot-graph-boundary.test.ts`
+lists it in `MUST_BE_LAZY`), so the provider module is loaded with a dynamic
+import only when the configured leader is an ACP agent.
+
+## Permissions: the user is present
+
+A worker cannot ask, so its requests are decided by `AutoApprovePermissionPolicy`
+(refuse anything that would need a question). A leader runs in front of the
+user, so its requests should go through the **leader's** policy and prompt:
+
+- reuse the request translation in `acp-permission-bridge.ts` (fail-closed
+  mapping to `bash` / `write` / `edit` / `fetch` / `read` / `mcp__…`);
+- decide with the leader's `PermissionPolicy` (trust rules, YOLO, YOLO+);
+- on `confirm`, ask through the leader's `ConfirmAwaiter`
+  (`packages/core/src/types/tool-executor.ts`) — the same prompt the TUI and
+  WebUI show for WrongStack's own tools; `always*` answers record trust rules
+  exactly as they do there;
+- start the session in Claude's `default` mode (`initialModeId` +
+  `requireInitialMode`, already implemented) so Claude asks at all.
+
+## Delegation from the leader
+
+The bridge gives the agent SAGE, index, mailbox and kanban. A leader also needs
+WrongStack's **fleet**: `delegate`, fleet status, `session_note` (steer a
+worker), and awaiting results. These live in the host process (the Director),
+so they cannot be stdio servers the agent spawns. Claude's adapter accepts
+HTTP MCP servers (`mcpCapabilities.http: true`), so:
+
+- the host serves a loopback HTTP MCP endpoint (`@wrongstack/mcp` `serveHttp`,
+  per-session bearer token, 127.0.0.1 only) exposing a curated set of the
+  host's own coordination tools;
+- it is passed in `session/new` `mcpServers` as `{ type: "http", url, headers }`;
+- calls run as the leader would run them, so delegated WrongStack subagents
+  show in F2/F3 and report back exactly as today.
+
+This is what makes the mode worth having: Claude plans and reviews, WrongStack's
+cheaper models do the parallel work.
+
+## Choosing it
+
+ACP agents are not in the models.dev catalog, like the OAuth/subscription
+providers (`oauth-providers-not-in-catalog`). They go in the same place: a
+saved-config provider entry (proposed id `acp`, models = installed bridged
+agents, e.g. `claude-code`), so the existing pickers list it as
+`acp / claude-code` with no catalog change.
+
+Guards it needs, because it is a leader-only provider:
+
+- lanes, `/setmodel` routes, tiers, fallback suggestions and subagent model
+  resolution must never pick it (`isExternalAgentSpawn` already keeps
+  `delegate({ provider: "acp" })` out of lanes; the same exclusion applies to
+  the provider id);
+- the WebUI provider/key screens must not offer a key field for it.
+
+## What changes for the user (trade-offs)
+
+Kept: TUI/WebUI, sessions and resume, F2/F3, cost/quota, SAGE/index/kanban/
+mailbox (through MCP), delegation to WrongStack subagents, interrupts.
+
+Not applied, because the agent runs its own loop:
+
+- WrongStack's system prompt, SAGE injection into the prompt, compaction and
+  context budgeting (the agent manages its own context);
+- WrongStack's built-in tools and their per-tool rendering (the agent's own
+  tools render through the external tool sink instead);
+- the next-steps final-turn gate (`nextsteps-final-turn-gate`) — must be
+  disabled for this provider, or every turn fails the gate;
+- `/setmodel` model routing, council/brain features that call the leader
+  model for side questions (they need a real model; they keep using the
+  session's default WrongStack model).
+
+## Resume
+
+The provider stores the ACP session id on the WrongStack session. On resume it
+calls `session/load` with it when the agent advertises `loadSession`;
+otherwise it starts a new agent session and sends a short recap built from the
+WrongStack history (the agent's previous context is gone and the user is told
+so once).
+
+## Phases
+
+1. **Leader turn** — `AcpLeaderProvider` (stream mapping, persistent session,
+   usage, abort), saved-config provider entry, picker guard, next-steps gate
+   off, external tool sink. Leader-policy permissions with the confirm prompt.
+   *Done when:* a TUI session with `acp / claude-code` chats, edits with
+   approval prompts, shows tools, cost and context, and survives Esc.
+2. **Fleet over HTTP MCP** — loopback MCP endpoint with `delegate`, fleet
+   status, `session_note`; leader note explains them. *Done when:* Claude as
+   leader delegates to two WrongStack subagents in parallel and uses their
+   results.
+3. **Resume and WebUI** — `session/load` resume, recap fallback, WebUI parity
+   (provider picker, tool cards, confirm prompts).
+
+## Risks / open questions
+
+- One Claude subscription runs the whole session: a spent quota stops the
+  leader, not just a worker. Proposal: offer switching the session to a
+  WrongStack model when the quota error arrives (the history is already in
+  WrongStack's format).
+- Concurrency: one ACP session takes one prompt at a time; WrongStack's queued
+  input and steer map onto `_session/steering` (already implemented for
+  workers).
+- Provider id `acp` vs. one provider per agent (`acp-claude-code`) — the first
+  keeps the picker short, the second makes per-agent config simpler.
