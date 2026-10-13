@@ -199,6 +199,40 @@ describe('validateToml', () => {
     expect(validateToml("[t]\n'my key' = 1\n'my key' = 2\n")[0]).toContain('duplicate key');
   });
 
+  // TOML quoted and bare keys with the same decoded content are the SAME key
+  // (the spec forbids defining a key twice in one table), so the duplicate
+  // check compares the decoded form — not the captured spelling.
+  it('flags a duplicate key when one form is bare and the other quoted', () => {
+    expect(validateToml('[t]\nkey = 1\n"key" = 2\n')).toHaveLength(1);
+    expect(validateToml("[t]\nkey = 1\n'key' = 2\n")[0]).toContain('duplicate key');
+  });
+
+  it('does not flag equal key text across different tables', () => {
+    expect(validateToml('[a]\nkey = 1\n[b]\n"key" = 2\n')).toHaveLength(0);
+  });
+
+  // TOML v1.0 allows comments after table headers. The header regex used to
+  // require the line to end at `]`, so a commented header was skipped, keys
+  // after it attributed to the STALE previous table, and valid files were
+  // reported as phantom duplicates.
+  it('does not flag a phantom duplicate when a table header carries a comment', () => {
+    expect(validateToml('[a]\nx = 1\n[b] # section b\nx = 2\n')).toHaveLength(0);
+  });
+
+  it('flags duplicate tables whose headers carry comments', () => {
+    expect(validateToml('[a] # first\nx = 1\n[a] # second\ny = 2\n')[0]).toContain(
+      'duplicate table',
+    );
+  });
+
+  it('keeps array-table key scopes fresh when their headers carry comments', () => {
+    expect(validateToml('[[items]] # one\nn = 1\n[[items]] # two\nn = 2\n')).toHaveLength(0);
+  });
+
+  it('treats a bracket inside a header comment as comment text', () => {
+    expect(validateToml('[a] # see also [b]\nx = 1\n[b]\nx = 2\n')).toHaveLength(0);
+  });
+
   it('does not flag a valid quoted key containing a space', () => {
     expect(validateToml('[t]\n"my key" = 1\n"other key" = 2\n')).toHaveLength(0);
   });

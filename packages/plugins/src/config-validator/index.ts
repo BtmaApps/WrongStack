@@ -396,7 +396,11 @@ export function validateToml(text: string): string[] {
     const line = (lines[i] as string).trim();
     const lineNo = i + 1;
     if (line === '' || line.startsWith('#')) continue;
-    const tableMatch = /^\[\[?([^\]]+)\]\]?$/.exec(line);
+    // A trailing comment is legal after a header (`[t] # section t` — TOML
+    // v1.0). Without the `(?:#.*)?` tail the header went unrecognized, keys
+    // after it attributed to the STALE previous table, and valid files were
+    // reported as duplicates.
+    const tableMatch = /^\[\[?([^\]]+)\]\]?\s*(?:#.*)?$/.exec(line);
     if (tableMatch) {
       const isArrayTable = line.startsWith('[[');
       currentTable = (tableMatch[1] ?? '').trim();
@@ -420,13 +424,19 @@ export function validateToml(text: string): string[] {
     const keyMatch = /^("(?:[^"]*)"|'(?:[^']*)'|[A-Za-z0-9_.-]+)\s*=/.exec(line);
     if (keyMatch?.[1]) {
       const key = keyMatch[1];
+      // TOML quoted and bare keys with the same decoded content are the SAME
+      // key (`"key"` collides with `key`; basic- and literal-quoted forms with
+      // equal content collide too) — every compliant parser rejects the second
+      // definition, so the duplicate check compares the decoded form while the
+      // message keeps the captured spelling.
+      const dupKey = key.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
       const seen = keysInTable.get(currentTable) ?? new Set<string>();
-      if (seen.has(key)) {
+      if (seen.has(dupKey)) {
         problems.push(
           `TOML: duplicate key "${key}" in [${currentTable || 'root'}] at line ${lineNo}`,
         );
       }
-      seen.add(key);
+      seen.add(dupKey);
       keysInTable.set(currentTable, seen);
     }
   }
