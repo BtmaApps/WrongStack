@@ -3,7 +3,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type FallbackPendingInfo, FallbackModal } from '../src/fallback-modal.js';
+import { FallbackModal, type FallbackPendingInfo } from '../src/fallback-modal.js';
 import type { ServerMessage } from '../src/types.js';
 
 const roots: Root[] = [];

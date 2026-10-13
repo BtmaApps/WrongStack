@@ -34,8 +34,9 @@ vi.mock('../src/lib/ws.js', () => ({
   SimpleSocket: MockSocket,
 }));
 
-import type { SimpleSocket } from '../src/lib/ws.js';
 import type { UseSimpleSocketOptions } from '../src/hooks/use-simple-socket.js';
+import type { SimpleSocket } from '../src/lib/ws.js';
+
 const { useSimpleSocket } = await import('../src/hooks/use-simple-socket.js');
 
 interface Captured {

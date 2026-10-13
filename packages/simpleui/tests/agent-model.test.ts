@@ -72,6 +72,48 @@ describe('SimpleUI agent tabs', () => {
       expect.objectContaining({ status: 'running', task: 'Second pass' }),
     );
   });
+
+  it('truncates tasks at 48 chars, resolves full id collisions with number suffixes, and prunes agents at exactly ttlMs', () => {
+    // S30-M7: task description of 60 chars gets truncated at <= 48 chars
+    const tabs = buildAgentTabs(
+      [
+        {
+          id: 'sub-long',
+          name: '',
+          task: 'This is a long task description that exceeds forty-eight characters definitely',
+          status: 'idle',
+        },
+      ],
+      false,
+    );
+    const assigned = tabs.find((t) => t.id === 'sub-long');
+    expect(assigned?.name.length).toBeLessThanOrEqual(48);
+    expect(assigned?.name.endsWith('…')).toBe(true);
+
+    // S30-M8: assignName with multiple identical tasks and short IDs triggering full id collision fallback
+    const id = 'w1';
+    const task = 'Identical Task';
+    const subagents = [
+      { id: `${id}-a`, name: '', task, status: 'idle' as const },
+      { id: `${id}-b`, name: '', task, status: 'idle' as const },
+      { id: `${id}-c`, name: '', task, status: 'idle' as const },
+    ];
+    const collisionTabs = buildAgentTabs(subagents, false);
+    const names = collisionTabs.map((t) => t.name);
+    const uniqueNames = new Set(names);
+    expect(uniqueNames.size).toBe(names.length);
+
+    // S30-M9: pruneAgents prunes at now - agent.updatedAt === ttlMs (strictly < ttlMs survives)
+    const now = 1_000_000;
+    const ttl = 60_000;
+    const testAgents: SimpleSubagent[] = [
+      { id: 'survivor', name: 'A', status: 'idle', updatedAt: now - (ttl - 1) },
+      { id: 'boundary', name: 'B', status: 'idle', updatedAt: now - ttl },
+      { id: 'expired', name: 'C', status: 'idle', updatedAt: now - (ttl + 1) },
+    ];
+    const pruned = pruneAgents(testAgents, now, ttl);
+    expect(pruned.map((a) => a.id)).toEqual(['survivor']);
+  });
 });
 
 describe('SimpleUI per-agent histories', () => {

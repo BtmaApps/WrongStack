@@ -3,8 +3,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RefinePanel } from '../src/refine-panel.js';
 import type { RefineDecision, RefineState } from '../src/lib/refine-model.js';
+import { RefinePanel } from '../src/refine-panel.js';
 
 const roots: Root[] = [];
 

@@ -53,4 +53,13 @@ describe('agent display names are unique', () => {
     const second = workerNames([...list].reverse()).reverse();
     expect(second).toEqual(first);
   });
+
+  it('numbers labels when multiple workers share both task and id', () => {
+    const names = workerNames([
+      agent('id1', 'Build'),
+      { id: 'id2', name: 'Build #w1', status: 'running' },
+      agent('w1', 'Build'),
+    ]);
+    expect(names).toEqual(['Build', 'Build #w1', 'Build #w1 2']);
+  });
 });

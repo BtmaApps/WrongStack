@@ -3,7 +3,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useImageAttachments, type AttachedImage } from '../src/hooks/use-image-attachments.js';
+import { type AttachedImage, useImageAttachments } from '../src/hooks/use-image-attachments.js';
 
 interface Captured {
   current: ReturnType<typeof useImageAttachments>;

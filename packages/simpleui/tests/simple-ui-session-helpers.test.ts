@@ -1,12 +1,12 @@
 // @vitest-environment node
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   compactTokens,
-  messageId,
-  payloadText,
-  payloadSucceeded,
   isIncomingMailboxPayload,
+  messageId,
+  payloadSucceeded,
+  payloadText,
 } from '../src/simple-ui-session.js';
 
 describe('simple-ui-session helpers', () => {

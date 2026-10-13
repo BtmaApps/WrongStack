@@ -44,6 +44,7 @@ describe('command palette model', () => {
     });
     expect(items.find((item) => item.id === 'open-context-breakdown')?.disabled).toBe(false);
     expect(items.find((item) => item.id === 'compact-context')?.disabled).toBe(true);
+    expect(items.find((item) => item.id === 'new-session')?.disabled).toBe(true);
   });
 
   it('filters by title, section, hint, and keywords', () => {
