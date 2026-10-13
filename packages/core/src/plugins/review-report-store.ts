@@ -412,7 +412,14 @@ export class JsonlReportStore implements ReportStore {
           // `oldEvents` is in file (append) order, so the newest lifecycle event
           // must be picked from the newest-first view — scanning the raw array
           // would return the OLDEST one and resurrect the creation-time value.
-          const newestFirst = [...oldEvents].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+          // Timestamps are millisecond ISO strings: `created` and the first
+          // transition often share one, and a stable descending sort then
+          // ranks `created` first. Append order breaks the tie, as it does in
+          // `_materialize`.
+          const newestFirst = oldEvents
+            .map((ev, index) => ({ ev, index }))
+            .sort((a, b) => b.ev.timestamp.localeCompare(a.ev.timestamp) || b.index - a.index)
+            .map(({ ev }) => ev);
           const newestOld = newestFirst[0]!;
           const newestOldLifecycle = newestFirst.find((ev) => ev.eventType !== 'note_added');
           const survivors =

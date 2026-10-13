@@ -7,7 +7,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JsonlReportStore } from '../../src/plugins/review-report-store.js';
 import {
   InvalidReportTransitionError,
@@ -550,6 +550,39 @@ describe('JsonlReportStore.compact', () => {
     expect(result.removedNonTerminal).toBe(0);
 
     expect((await store.get('c3'))!.lifecycle).toBe('actioned');
+  });
+
+  it('keeps the transition when it shares a millisecond with the creation', async () => {
+    // Timestamps are millisecond ISO strings, so on a fast machine `created`
+    // and `actioned` tie; a stable newest-first sort then ranked `created`
+    // first, the fold kept it and the report read back as "open".
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const store = new JsonlReportStore(dir);
+      vi.setSystemTime(new Date('2026-10-13T12:00:00.000Z'));
+      await store.persist({
+        id: 'c4',
+        sessionId: 's',
+        agentId: 'a',
+        reviewerModel: 'm',
+        source: 'chimera',
+        reviewStatus: 'success',
+        files: [],
+        counts: { critical: 0, high: 0, medium: 0, low: 0 },
+        totalFindings: 0,
+        unparseableCount: 0,
+        rawText: '',
+      });
+      await store.transition('c4', 'actioned', { id: 'op', kind: 'operator' });
+      vi.setSystemTime(new Date('2026-10-13T12:00:00.005Z'));
+      await store.addNote('c4', { id: 'op', kind: 'operator' }, 'operator note');
+      vi.setSystemTime(new Date('2026-10-13T12:01:00.000Z'));
+
+      await store.compact({ maxAgeMs: 0 });
+      expect((await store.get('c4'))!.lifecycle).toBe('actioned');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
