@@ -174,6 +174,32 @@ describe('acp-session-updates', () => {
     expect(scratch.text).toBe('I will run the check.\n\nAll checks passed.');
   });
 
+  it("reports the agent's rate-limit reading carried on usage_update", async () => {
+    const { handleAcpSessionUpdate, createSessionScratch } = await import(
+      '../src/client/acp-session-updates.js'
+    );
+    const emit = vi.fn();
+    const info = { status: 'allowed', unifiedWindows: { five_hour: { utilization: 0.09 } } };
+    handleAcpSessionUpdate(
+      {
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: {
+          update: {
+            sessionUpdate: 'usage_update',
+            used: 1,
+            size: 2,
+            _meta: { '_claude/rateLimit': info, '_claude/model': 'm' },
+          },
+        },
+      } as never,
+      createSessionScratch(),
+      emit,
+    );
+    expect(emit).toHaveBeenCalledWith({ type: 'rate_limit', info });
+    expect(emit).toHaveBeenCalledWith({ type: 'usage', usage: { used: 1, size: 2 } });
+  });
+
   it('announces a tool call once it says what it does', async () => {
     const { handleAcpSessionUpdate, createSessionScratch } = await import(
       '../src/client/acp-session-updates.js'

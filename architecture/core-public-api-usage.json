@@ -129,9 +129,9 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 52,
+      "files": 54,
       "typeOnly": 1,
-      "runtimeOrMixed": 51
+      "runtimeOrMixed": 53
     },
     "@wrongstack/core/registry": {
       "files": 155,
@@ -9675,6 +9675,12 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/cli/src/fleet/acp-quota-reading.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/cli/src/slash-commands/openai-quota.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9688,6 +9694,12 @@
     {
       "specifier": "@wrongstack/core/quota",
       "file": "packages/cli/src/tui-provider-quota-menu.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/cli/tests/acp-quota-reading.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -8,6 +8,7 @@ import {
 import type { Config } from '@wrongstack/core/types';
 import { publishAcpLiveProgress } from './acp-live-progress.js';
 import { wrongstackAcpPermissionPolicy } from './acp-permission-bridge.js';
+import { recordAcpRateLimit } from './acp-quota-reading.js';
 import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
 
 export interface HostAcpRunnerHost {
@@ -57,6 +58,11 @@ export function acpCommandOpts(this: HostAcpRunnerHost): BuildAcpSubagentRunnerO
       });
     },
     publishLive: (ctx, task, event) => {
+      if (event.type === 'rate_limit') {
+        // Keyed by agent (claude-code), like the delegation that names it.
+        recordAcpRateLimit(ctx.config.role ?? ctx.config.name ?? ctx.subagentId, event.info);
+        return;
+      }
       publishAcpLiveProgress({
         event,
         subagentId: ctx.subagentId,

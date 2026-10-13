@@ -12,6 +12,7 @@ import type { QuotaRefreshOutcome, QuotaSnapshot, QuotaWindow } from '@/stores';
 export type QuotaVendor =
   | 'codex'
   | 'chatgpt'
+  | 'claude'
   | 'minimax'
   | 'zai'
   | 'kimi'
@@ -26,6 +27,7 @@ export type QuotaVendor =
 export const VENDOR_ORDER: readonly QuotaVendor[] = [
   'codex',
   'chatgpt',
+  'claude',
   'minimax',
   'zai',
   'kimi',
@@ -45,6 +47,8 @@ export const VENDOR_ORDER: readonly QuotaVendor[] = [
 export const VENDOR_NAME: Record<QuotaVendor, string> = {
   codex: 'ChatGPT / Codex',
   chatgpt: 'ChatGPT',
+  // The subscription of a delegated Claude Code worker (ACP), read from it.
+  claude: 'Claude Code worker',
   minimax: 'MiniMax',
   zai: 'Z.AI',
   kimi: 'Kimi Code',
@@ -66,6 +70,7 @@ export function isQuotaVendor(value: unknown): value is QuotaVendor {
  * user alias (`glm-work`) and is shown so two accounts can be told apart.
  */
 export const CATALOG_IDS = new Set([
+  'claude-code',
   'openai-codex',
   'openai-chatgpt',
   'minimax',
@@ -110,6 +115,7 @@ function upstreamOf(url: string | undefined): { host: string; path: string } {
 
 /** Catalog ids of the key-read vendors, for a provider saved without a base URL. */
 const CATALOG_VENDOR: Readonly<Record<string, QuotaVendor>> = {
+  'claude-code': 'claude',
   'kimi-for-coding': 'kimi',
   'kimi-code-plan-cn': 'kimi',
   'kimi-code-plan-global': 'kimi',

@@ -82,7 +82,9 @@ export function handleAcpSessionUpdate(
         emitProgress({ type: 'plan', entries: u.entries as PlanEntry[] });
       }
       return;
-    case 'usage_update':
+    case 'usage_update': {
+      const rateLimit = (u._meta as Record<string, unknown> | undefined)?.['_claude/rateLimit'];
+      if (isRecord(rateLimit)) emitProgress({ type: 'rate_limit', info: rateLimit });
       if (
         typeof u.used === 'number' &&
         Number.isFinite(u.used) &&
@@ -100,6 +102,7 @@ export function handleAcpSessionUpdate(
         emitProgress({ type: 'usage', usage });
       }
       return;
+    }
     case 'available_commands_update':
     case 'current_mode_update':
     case 'config_option_update':

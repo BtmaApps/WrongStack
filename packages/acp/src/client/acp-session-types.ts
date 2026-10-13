@@ -96,6 +96,11 @@ export type ACPProgressEvent =
   | { type: 'diff'; diff: ACPCapturedDiff }
   | { type: 'plan'; entries: PlanEntry[] }
   | { type: 'usage'; usage: { used: number; size: number; cost?: UsageCost | undefined } }
+  /**
+   * The agent's account rate-limit reading, as it sent it (Claude's adapter:
+   * `usage_update._meta["_claude/rateLimit"]` — status, resetsAt, windows).
+   */
+  | { type: 'rate_limit'; info: Record<string, unknown> }
   /** Emitted by the subagent runner once a turn ends: what the turn consumed. */
   | { type: 'turn_usage'; tokens?: ACPTokenUsage | undefined; costUsd: number }
   | { type: 'raw'; update: AnySessionUpdate };
