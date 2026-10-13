@@ -934,14 +934,22 @@ describe('HQ server', () => {
       }),
     );
 
-    const first = (await (
-      await fetch(`http://127.0.0.1:${handle.port}/api/projects/proj-auto`)
-    ).json()) as {
-      mailboxes: { totals: { unread: number; messages: number } }[];
-    };
-    expect(first.mailboxes).toHaveLength(1);
-    expect(first.mailboxes[0]?.totals.unread).toBe(1);
-    expect(first.mailboxes[0]?.totals.messages).toBe(1);
+    // The WebSocket event and the HTTP read race: nothing orders a socket
+    // message before the next request, so read until the snapshot has landed
+    // (a loaded runner lost that race and read the previous totals).
+    const hqPort = handle.port;
+    const readTotals = async () =>
+      (
+        (await (await fetch(`http://127.0.0.1:${hqPort}/api/projects/proj-auto`)).json()) as {
+          mailboxes: { totals: { unread: number; messages: number } }[];
+        }
+      ).mailboxes;
+
+    await vi.waitFor(async () => {
+      const first = await readTotals();
+      expect(first).toHaveLength(1);
+      expect(first[0]?.totals).toMatchObject({ unread: 1, messages: 1 });
+    });
 
     // Second snapshot: 5 unread, 5 messages. The dashboard's auto-refresh
     // would re-call this endpoint on the next applySnapshot tick and the
@@ -968,13 +976,10 @@ describe('HQ server', () => {
       }),
     );
 
-    const second = (await (
-      await fetch(`http://127.0.0.1:${handle.port}/api/projects/proj-auto`)
-    ).json()) as {
-      mailboxes: { totals: { unread: number; messages: number } }[];
-    };
-    expect(second.mailboxes[0]?.totals.unread).toBe(5);
-    expect(second.mailboxes[0]?.totals.messages).toBe(5);
+    await vi.waitFor(async () => {
+      const second = await readTotals();
+      expect(second[0]?.totals).toMatchObject({ unread: 5, messages: 5 });
+    });
 
     client.close();
   });
