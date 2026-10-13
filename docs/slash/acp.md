@@ -217,10 +217,16 @@ prompt and model routing do not apply to it.
   call in it; that is spend, not context. WrongStack never compacts or trims
   its copy of the conversation on this route, and `/compact` asks the agent to
   compact its own.
+- **Resume** — resuming a WrongStack session the agent led continues the
+  agent's own session (`session/resume`, remembered per project in
+  `acp-leader-sessions.json`), with its full context and tool history.
 - **Joining a conversation** — picking the agent mid-conversation (`/model
-  acp/claude-code`) or resuming a session starts a fresh agent; its first turn
-  carries the earlier turns as text (the newest ~60k characters, without tool
-  calls and their results).
+  acp/claude-code`), or a resume the agent cannot continue, starts a fresh
+  agent; its first turn carries the earlier turns as text (the newest ~60k
+  characters, without tool calls and their results).
+- **Tabs** — on the WebUI each tab's agent runs its own fleet tools and is
+  decided by that tab's permissions; a fleet call you approve on the agent's
+  permission request runs without a second question.
 
 - **Permissions** — the agent starts in its `default` mode and every request it
   makes is decided by your own rules; one that needs approval is asked through
@@ -249,7 +255,7 @@ prompt and model routing do not apply to it.
   model routing; a background `delegate` result reaches the agent with its next
   turn. Its permission requests for these tools are decided as those tools.
 
-Resume and the WebUI are not done yet — see
+Design and status:
 [`docs/plans/acp-leader-mode.md`](../plans/acp-leader-mode.md).
 
 ## Related

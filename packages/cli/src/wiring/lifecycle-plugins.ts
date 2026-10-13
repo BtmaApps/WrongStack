@@ -465,6 +465,7 @@ export async function setupLifecycleAndPlugins(
       agent,
       events,
       projectRoot: wpaths.projectRoot,
+      stateDir: wpaths.projectDir,
       getConfig: () => configStore.get(),
       getTool: (name) => toolRegistry.get(name),
       confirmAwaiter,

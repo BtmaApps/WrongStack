@@ -4,12 +4,16 @@
  * and `/compact`, which the agent runs on its own conversation. The turn's
  * usage stays the summed spend; the context rides beside it.
  */
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
 import type { Config, StreamEvent } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const acp = vi.hoisted(() => ({
   prompts: [] as string[],
+  opened: [] as string[],
   turn: undefined as ((onProgress: (e: unknown) => void) => Promise<void>) | undefined,
   result: {} as Record<string, unknown>,
 }));
@@ -21,7 +25,13 @@ vi.mock('@wrongstack/acp', () => ({
   resolveAcpAgentCommand: (id: string) => ({ command: 'npx', args: ['adapter'], role: id }),
   classifyAgentFailure: () => undefined,
   ACPSession: {
-    start: async () => ({
+    start: async (opts: { resumeSessionId?: string }) => ({
+      openSession: async () => {
+        acp.opened.push(opts.resumeSessionId ?? 'new');
+        return opts.resumeSessionId
+          ? { sessionId: opts.resumeSessionId, resumed: true }
+          : { sessionId: `sess_${acp.opened.length}`, resumed: false };
+      },
       prompt: async (
         blocks: Array<{ text: string }>,
         _signal: AbortSignal,
@@ -83,6 +93,7 @@ async function turn(provider: InstanceType<typeof AcpLeaderProvider>): Promise<S
 
 afterEach(() => {
   acp.prompts.length = 0;
+  acp.opened.length = 0;
   acp.turn = undefined;
   acp.result = {};
   bindAcpLeaderHost(undefined);
@@ -250,6 +261,61 @@ describe("the ACP leader's context", () => {
       internals.approveFleetCall('tab-2', delegate, { scope: 'a', task: 'x' }),
     ).resolves.toBe(true);
     expect(asked).toEqual(['tab-2 delegate', 'tab-2 delegate']);
+  });
+
+  it("resumes the agent's own session for a resumed WrongStack session, with no recap", async () => {
+    const stateDir = await mkdtemp(path.join(tmpdir(), 'acp-leader-resume-'));
+    try {
+      const bind = () =>
+        bindAcpLeaderHost({
+          events: new EventBus(),
+          projectRoot: '/proj',
+          stateDir,
+          getConfig: () => CONFIG,
+          permission: () =>
+            ({ evaluate: async () => ({ permission: 'auto', source: 'default' }) }) as never,
+          context: () => ({}) as never,
+          getTool: () => undefined,
+          runTool: async () => ({ content: '', isError: false }),
+        });
+      const request = {
+        model: 'claude-code',
+        messages: [
+          { role: 'user' as const, content: 'earlier question' },
+          { role: 'assistant' as const, content: 'earlier answer' },
+          { role: 'user' as const, content: 'next' },
+        ],
+        cache: { sessionId: 's1', threadId: 's1' },
+      };
+      const run = async () => {
+        bind();
+        const provider = new AcpLeaderProvider({
+          bootConfig: CONFIG,
+          buildProvider: () => undefined,
+        });
+        for await (const _ of provider.stream(request as never, { signal: SIGNAL })) {
+          // drain
+        }
+        await provider.closeAll();
+      };
+
+      // First run: a new agent session, which joins with the earlier turns.
+      await run();
+      expect(acp.opened).toEqual(['new']);
+      expect(acp.prompts[0]).toContain('<earlier-conversation>');
+      await vi.waitFor(async () => {
+        const { readLeaderSession } = await import('../src/acp-leader/acp-leader-resume.js');
+        expect(await readLeaderSession(stateDir, 's1', 'claude-code')).toBe('sess_1');
+      });
+
+      // The process restarts and the session is resumed: the agent continues
+      // its own session, so the turn is just the new message.
+      await run();
+      expect(acp.opened).toEqual(['new', 'sess_1']);
+      expect(acp.prompts[1]).toBe('next');
+    } finally {
+      await rm(stateDir, { recursive: true, force: true });
+    }
   });
 
   it('ignores a settled call that is not a compaction', () => {

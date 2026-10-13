@@ -559,6 +559,50 @@ describe('ACPSession', () => {
     await session.close();
   });
 
+  it('resumes an earlier session when asked and offered, with this session meta and mode', async () => {
+    const init = {
+      protocolVersion: 1,
+      agentCapabilities: { sessionCapabilities: { resume: {} } },
+      agentInfo: { name: 'claude', version: '1' },
+    };
+    const session = await startSession(init, {
+      resumeSessionId: 'sess_old',
+      sessionMeta: { systemPrompt: { append: 'note' } },
+      initialModeId: 'default',
+    });
+    const t = lastTransport();
+    const opening = session.openSession();
+    await new Promise((r) => setImmediate(r));
+    const resume = t.sent.find((m) => m.method === 'session/resume');
+    expect(resume?.params).toMatchObject({
+      sessionId: 'sess_old',
+      _meta: { systemPrompt: { append: 'note' } },
+    });
+    t.respond(resume!.id!, 'session/resume', {
+      modes: { currentModeId: 'default', availableModes: [{ id: 'default' }] },
+    });
+    await expect(opening).resolves.toEqual({ sessionId: 'sess_old', resumed: true });
+    expect(t.sent.some((m) => m.method === 'session/new')).toBe(false);
+    await session.close();
+  });
+
+  it('starts a new session when the agent no longer has the one to resume', async () => {
+    const session = await startSession(
+      { protocolVersion: 1, agentCapabilities: { sessionCapabilities: { resume: {} } } },
+      { resumeSessionId: 'sess_gone' },
+    );
+    const t = lastTransport();
+    const opening = session.openSession();
+    await new Promise((r) => setImmediate(r));
+    const resume = t.sent.find((m) => m.method === 'session/resume');
+    t.respondError(resume!.id!, 'session/resume', { code: -32002, message: 'not found' });
+    await new Promise((r) => setImmediate(r));
+    const created = t.sent.find((m) => m.method === 'session/new');
+    t.respond(created!.id!, 'session/new', { sessionId: 'sess_new' });
+    await expect(opening).resolves.toEqual({ sessionId: 'sess_new', resumed: false });
+    await session.close();
+  });
+
   it('abort mid-turn sends session/cancel and returns stopReason=cancelled', async () => {
     const session = await startSession();
     const t = lastTransport();

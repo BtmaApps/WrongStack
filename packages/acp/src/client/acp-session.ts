@@ -48,6 +48,7 @@ import {
   executeListSessions,
   executeLoadSession,
   executeMcpMessage,
+  executeOpenSession,
   executeResumeSession,
   executeSetConfigOption,
   executeSetMode,
@@ -363,6 +364,11 @@ export class ACPSession {
       resetScratch: () => this.resetScratch(),
       closeSession: () => this.closeSession(),
     };
+  }
+
+  /** Start (or, with `resumeSessionId`, resume) the agent session now, not at the first prompt. */
+  async openSession(): Promise<{ sessionId: SessionId; resumed: boolean }> {
+    return executeOpenSession(this.opContext(), () => this.createSessionWithAuth());
   }
 
   async loadSession(sessionId: SessionId, mcpServers?: McpServer[], cwd?: string): Promise<void> {

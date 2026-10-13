@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 784,
+      "files": 785,
       "typeOnly": 70,
-      "runtimeOrMixed": 744
+      "runtimeOrMixed": 745
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -22942,6 +22942,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/acp-leader/acp-leader-resume.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

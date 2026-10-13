@@ -1,8 +1,8 @@
 # ACP leader mode — Claude Code (or another ACP agent) as the session's leader
 
 Status: phases 1 and 2 built (2026-10-13) — `packages/cli/src/acp-leader/`.
-Phase 3: WebUI parity and the TUI/WebUI confirmations are built (see below);
-`session/load` resume is open, its recap fallback is built.
+Phase 3 built (2026-10-14): WebUI parity, the TUI/WebUI confirmations, per-tab
+fleet calls and resume (see below and Resume).
 
 WebUI, as built: the CLI host lists `acp` with the installed agents beside the
 saved providers (`hostProviders` → `providers.saved`, `provider.models`) and
@@ -185,11 +185,15 @@ Not applied, because the agent runs its own loop:
 
 ## Resume
 
-The provider stores the ACP session id on the WrongStack session. On resume it
-calls `session/load` with it when the agent advertises `loadSession`;
-otherwise it starts a new agent session and sends a short recap built from the
-WrongStack history (the agent's previous context is gone and the user is told
-so once).
+As built: the provider records, per project (`<projectDir>/acp-leader-sessions.json`,
+newest 200), which agent session led each WrongStack session. Starting an
+agent for a session it led before passes `resumeSessionId`; the ACP client
+sends `session/resume` (no history replay, unlike `session/load`) with the
+session's MCP servers, `_meta` and mode, and falls back to `session/new` when
+the agent refuses it. `ACPSession.openSession()` runs this before the first
+turn and says whether it resumed; only a fresh session gets the
+`earlierConversation` recap. Verified live: a new process resumed Claude's
+session and recalled a word from the old one.
 
 ## Phases
 

@@ -267,12 +267,25 @@ export async function executeMcpMessage(
 
 export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<SessionId> {
   const servers = filterMcpServers(ctx.agentCapabilities, ctx.opts.mcpServers);
-  const id = ctx.allocId();
-  const result = await ctx.sendRequest(id, 'session/new', {
+  const params = {
     cwd: ctx.opts.cwd ?? ctx.opts.projectRoot,
     mcpServers: servers,
     ...(ctx.opts.sessionMeta ? { _meta: ctx.opts.sessionMeta } : {}),
-  });
+  };
+  const resumeId = ctx.opts.resumeSessionId;
+  if (resumeId && ctx.agentCapabilities.sessionCapabilities?.resume) {
+    // An agent that no longer has the session (deleted, another machine)
+    // refuses it; a new session starts instead.
+    const resumed = await ctx
+      .sendRequest(ctx.allocId(), 'session/resume', { ...params, sessionId: resumeId })
+      .catch((err: unknown) => ({ refused: err }));
+    if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
+    if (!isJsonRpcError(resumed) && !(resumed as { refused?: unknown }).refused) {
+      return adoptSessionMode(ctx, resumeId as SessionId, resumed);
+    }
+  }
+  const id = ctx.allocId();
+  const result = await ctx.sendRequest(id, 'session/new', params);
   if (isJsonRpcError(result)) {
     throw new ACPSessionError(
       'session_create_failed',
@@ -284,6 +297,31 @@ export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<Se
   if (typeof sessionId !== 'string' || sessionId.length === 0) {
     throw new ACPSessionError('protocol_error', 'session/new returned no sessionId', result);
   }
+  return adoptSessionMode(ctx, sessionId as SessionId, result);
+}
+
+/**
+ * Create the session now rather than at the first prompt. `resumed` is true
+ * when it continues `opts.resumeSessionId` (the agent remembers it), false for
+ * a new session.
+ */
+export async function executeOpenSession(
+  ctx: ACPSessionOpContext,
+  create: () => Promise<SessionId>,
+): Promise<{ sessionId: SessionId; resumed: boolean }> {
+  if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
+  if (ctx.sessionId) return { sessionId: ctx.sessionId, resumed: false };
+  const sessionId = await create();
+  ctx.setSessionId(sessionId);
+  return { sessionId, resumed: sessionId === ctx.opts.resumeSessionId };
+}
+
+/** Put a new or resumed session in the mode the host asked for (`initialModeId`). */
+async function adoptSessionMode(
+  ctx: ACPSessionOpContext,
+  sessionId: SessionId,
+  result: unknown,
+): Promise<SessionId> {
   const want = ctx.opts.initialModeId;
   const modes = (result as { modes?: { currentModeId?: unknown; availableModes?: unknown } }).modes;
   const offered =
@@ -298,9 +336,9 @@ export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<Se
   }
   if (want && offered && modes?.currentModeId !== want) {
     // A failed switch must not start the turn in a mode the host did not ask for.
-    await executeSetMode(ctx, sessionId as SessionId, want);
+    await executeSetMode(ctx, sessionId, want);
   }
-  return sessionId as SessionId;
+  return sessionId;
 }
 
 /** What a steer did: joined the running turn, found none, or cannot steer. */

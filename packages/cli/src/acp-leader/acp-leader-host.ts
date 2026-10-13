@@ -19,6 +19,8 @@ export const ACP_LEADER_PROVIDER_ID = 'acp';
 export interface AcpLeaderHost {
   events: EventBus;
   projectRoot: string;
+  /** The project's state directory, where a session's agent session is remembered for resume. */
+  stateDir?: string | undefined;
   getConfig(): Config;
   /**
    * The live permission policy (it can change with YOLO and trust rules) of

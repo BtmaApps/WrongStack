@@ -46,6 +46,7 @@ import {
   startFleetEndpoint,
 } from './acp-leader-fleet.js';
 import { ACP_LEADER_PROVIDER_ID, acpLeaderHost, trackAcpLeader } from './acp-leader-host.js';
+import { readLeaderSession, writeLeaderSession } from './acp-leader-resume.js';
 import {
   agentTurnError,
   earlierConversation,
@@ -92,7 +93,10 @@ interface LeaderSession {
   context: LeaderContext;
   /** This session's fleet tools endpoint, when the leader has fleet tools. */
   fleet?: FleetEndpoint | undefined;
-  /** Set once the agent has had a turn: its first one carries the earlier conversation. */
+  /**
+   * The agent already has this conversation: it resumed its earlier session,
+   * or had a turn here. Until then its first turn carries the earlier one.
+   */
   joined?: boolean;
 }
 
@@ -212,7 +216,14 @@ export class AcpLeaderProvider implements Provider {
     const agentId = req.model;
     const key = req.cache?.sessionId ?? 'default';
     const acp = await this.loadAcp();
-    const leader = await this.sessionFor(key, agentId);
+    let leader: LeaderSession;
+    try {
+      leader = await this.sessionFor(key, agentId);
+    } catch (err) {
+      // Starting the agent failed (not installed, not logged in, no session):
+      // a typed error the loop and the fallback chain understand.
+      throw agentTurnError(err, agentId, acp.classifyAgentFailure).error;
+    }
 
     const queue = new StreamQueue();
     const blocks = new TextBlocks(queue);
@@ -505,6 +516,12 @@ export class AcpLeaderProvider implements Provider {
             : {}),
         })
       : undefined;
+    // A WrongStack session this agent led before (a resume): continue the
+    // agent's own conversation rather than starting it over from a recap.
+    const stateDir = host?.stateDir;
+    const resumeSessionId = stateDir
+      ? await readLeaderSession(stateDir, key, agentId).catch(() => undefined)
+      : undefined;
     const session = await acp.ACPSession.start({
       command: cmd.command,
       ...(cmd.args ? { args: cmd.args } : {}),
@@ -519,8 +536,22 @@ export class AcpLeaderProvider implements Provider {
       ...(permissionPolicy
         ? { initialModeId: 'default', requireInitialMode: agentId === 'claude-code' }
         : {}),
+      ...(resumeSessionId ? { resumeSessionId } : {}),
     });
-    return { agentId, session, context: new LeaderContext(), fleet };
+    // Open it now: whether the agent continued its earlier session decides
+    // whether the first turn has to carry the earlier conversation.
+    let opened: { sessionId: string; resumed: boolean };
+    try {
+      opened = await session.openSession();
+    } catch (err) {
+      void session.close().catch(() => undefined);
+      void fleet?.close().catch(() => undefined);
+      throw err;
+    }
+    if (stateDir) {
+      void writeLeaderSession(stateDir, key, { agentId, agentSessionId: opened.sessionId });
+    }
+    return { agentId, session, context: new LeaderContext(), fleet, joined: opened.resumed };
   }
 
   /** Close every agent session (process shutdown). */

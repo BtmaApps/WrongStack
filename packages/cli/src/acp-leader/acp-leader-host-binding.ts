@@ -19,6 +19,7 @@ export interface AcpLeaderHostOptions {
   agent: Agent;
   events: EventBus;
   projectRoot: string;
+  stateDir?: string | undefined;
   getConfig(): Config;
   getTool(name: string): Tool | undefined;
   confirmAwaiter?: ConfirmAwaiter | undefined;
@@ -30,6 +31,7 @@ export function createAcpLeaderHost(opts: AcpLeaderHostOptions): AcpLeaderHost {
   return {
     events: opts.events,
     projectRoot: opts.projectRoot,
+    stateDir: opts.stateDir,
     getConfig: opts.getConfig,
     permission: (sessionId) => agentFor(sessionId).permission,
     context: (sessionId) => agentFor(sessionId).ctx,

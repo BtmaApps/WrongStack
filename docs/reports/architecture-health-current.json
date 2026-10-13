@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T21:50:15.625Z",
+  "generatedAt": "2026-10-13T21:58:46.620Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4958,
+    "sourceFiles": 4959,
     "testFiles": 4347,
-    "sourceLines": 1099415,
+    "sourceLines": 1099572,
     "workspaceEdges": 137,
-    "moduleEdges": 16338,
+    "moduleEdges": 16339,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 633,
+      "sourceFiles": 634,
       "testFiles": 627,
       "workspaceDependencies": [
         "@wrongstack/acp",

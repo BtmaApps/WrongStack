@@ -30,6 +30,7 @@ vi.mock('@wrongstack/acp', () => ({
     start: async (opts: Record<string, unknown>) => {
       acp.starts.push(opts);
       return {
+        openSession: async () => ({ sessionId: 'sess_1', resumed: false }),
         prompt: async (
           blocks: Array<{ text: string }>,
           _signal: AbortSignal,

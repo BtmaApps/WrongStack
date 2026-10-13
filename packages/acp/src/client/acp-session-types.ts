@@ -58,6 +58,13 @@ export interface ACPSessionOptions {
    * host depends on that mode (an agent left in its own mode may never ask).
    */
   requireInitialMode?: boolean | undefined;
+  /**
+   * An earlier session of this agent to continue instead of starting one
+   * (`session/resume`, with this session's MCP servers, `_meta` and mode).
+   * Used when the agent advertises resume; when it does not, or no longer has
+   * the session, a new session starts. `openSession()` says which happened.
+   */
+  resumeSessionId?: string | undefined;
 }
 
 export interface ACPCapturedDiff {
