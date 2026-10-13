@@ -226,6 +226,35 @@ describe('ExtensionRegistry — onError', () => {
   });
 });
 
+describe('ExtensionRegistry — wrapProviderRunner abort logging', () => {
+  it('logs a wrapper failure as an error, but an aborted run only at debug', async () => {
+    const reg = new ExtensionRegistry();
+    const log = noopLogger();
+    reg.setLogger(log as never);
+    reg.register({
+      name: 'fallback-model',
+      wrapProviderRunner: async () => {
+        throw new Error('Empty response from p/m: the run was aborted');
+      },
+    });
+    const composed = reg.wrapProviderRunner(vi.fn());
+    const ac = new AbortController();
+
+    await expect(composed({ signal: ac.signal } as never, {} as never)).rejects.toThrow();
+    expect(log.error).toHaveBeenCalledTimes(1);
+
+    ac.abort();
+    await expect(composed({ signal: ac.signal } as never, {} as never)).rejects.toThrow(
+      'the run was aborted',
+    );
+    expect(log.error).toHaveBeenCalledTimes(1);
+    expect(log.debug).toHaveBeenCalledWith(
+      'Extension "fallback-model" wrapProviderRunner: run aborted',
+      expect.any(Error),
+    );
+  });
+});
+
 describe('ExtensionRegistry — wrapProviderRunner', () => {
   it('returns the inner runner unchanged when no wrappers are registered', () => {
     const reg = new ExtensionRegistry();

@@ -291,7 +291,14 @@ export class ExtensionRegistry {
         try {
           return await wrapper.wrap(ctx, req, next);
         } catch (err) {
-          this.log?.error(`Extension "${wrapper.name}" wrapProviderRunner failed`, err);
+          // A run torn down mid-request (session end, Ctrl+C) surfaces here as
+          // the abort it is; logging it at error level printed a failure at the
+          // end of every headless run that delegated work.
+          if (ctx?.signal?.aborted) {
+            this.log?.debug(`Extension "${wrapper.name}" wrapProviderRunner: run aborted`, err);
+          } else {
+            this.log?.error(`Extension "${wrapper.name}" wrapProviderRunner failed`, err);
+          }
           throw err;
         }
       };

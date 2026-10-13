@@ -1630,7 +1630,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin/extension contract",
       "sourceFiles": 3,
-      "sourceLines": 496
+      "sourceLines": 503
     },
     {
       "directory": "goal",
