@@ -14,9 +14,29 @@ describe('createCodebaseIndexMcpToolHost', () => {
       'codebase_package_graph',
       'codebase_file_graph',
       'codebase_symbol_graph',
+      'codebase_incoming_calls',
+      'codebase_outgoing_calls',
     ]);
     const search = tools[1]!.inputSchema as { properties: Record<string, unknown> };
     expect(search.properties).not.toHaveProperty('preferLsp');
+  });
+
+  it('answers who-calls and what-calls through the compact call-graph tools', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ symbol: 'start', callSites: [] });
+    const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
+
+    for (const name of ['codebase_incoming_calls', 'codebase_outgoing_calls']) {
+      await expect(host.callTool(name, { symbol: 'start', limit: 5 })).resolves.toMatchObject({
+        isError: false,
+      });
+      await expect(host.callTool(name, {})).resolves.toEqual({
+        content: `${name} requires a non-empty string "symbol"`,
+        isError: true,
+      });
+    }
+    const toolNames = executeTool.mock.calls.map((call) => (call[0] as { name: string }).name);
+    expect(toolNames).toEqual(['codebase-incoming-calls', 'codebase-outgoing-calls']);
+    expect(executeTool.mock.calls[0]![1]).toEqual({ symbol: 'start', limit: 5 });
   });
 
   it('executes canonical index tools with project and index directory context', async () => {

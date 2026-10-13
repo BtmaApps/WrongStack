@@ -123,7 +123,7 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     limit: {
       type: 'number',
       description:
-        'ready_tasks: max results. workbench: per-lane and alert limit. events: return only the most recent N events.',
+        'ready_tasks: max results. workbench: per-lane and alert limit. events: return only the most recent N events. list_boards / search_tasks: return only the N most recently updated (omit for all).',
     },
     agentId: { type: 'string' },
     name: { type: 'string' },
@@ -216,7 +216,11 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     sourceSystem: { type: 'string' },
     phaseId: { type: 'string' },
     preserveOriginTaskIds: { type: 'boolean' },
-    includeArchived: { type: 'boolean' },
+    includeArchived: {
+      type: 'boolean',
+      description:
+        'export_task_graph: include archived cards. list_boards: false hides archived boards.',
+    },
     archiveMissingTasks: { type: 'boolean' },
     preserveManualDependencies: { type: 'boolean' },
     dependencyTaskId: { type: 'string' },

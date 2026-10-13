@@ -280,7 +280,7 @@ export function createKanbanMcpToolHost(
 
       try {
         signal.throwIfAborted();
-        const result = await executeKanban(args, context, signal);
+        const result = await executeKanban(withListDefaults(action, args), context, signal);
         signal.throwIfAborted();
         const failed =
           !!result &&
@@ -292,6 +292,27 @@ export function createKanbanMcpToolHost(
         return { content: mcpErrorContent(error), isError: true };
       }
     },
+  };
+}
+
+/**
+ * Unbounded list reads overflow an MCP client's result budget on a real
+ * project (100+ boards, 1000+ cards; a card match is ~4 KB, a board ~2 KB):
+ * the client spills the payload to a file and the agent has to parse it.
+ * External callers get the most recently updated few, sized to stay near
+ * 10k tokens, and no archived boards unless they ask; the result message
+ * says how many exist so a caller can raise `limit`.
+ */
+export const MCP_LIST_DEFAULT_LIMITS = { list_boards: 20, search_tasks: 10 } as const;
+
+function withListDefaults(action: string, args: Record<string, unknown>): Record<string, unknown> {
+  if (action !== 'list_boards' && action !== 'search_tasks') return args;
+  return {
+    ...(args['limit'] === undefined ? { limit: MCP_LIST_DEFAULT_LIMITS[action] } : {}),
+    ...(action === 'list_boards' && args['includeArchived'] === undefined
+      ? { includeArchived: false }
+      : {}),
+    ...args,
   };
 }
 

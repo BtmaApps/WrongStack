@@ -8,7 +8,9 @@ import {
 } from '@wrongstack/mcp';
 import {
   codebaseContextTool,
+  codebaseIncomingCallsTool,
   codebaseIndexTool,
+  codebaseOutgoingCallsTool,
   codebaseSearchTool,
   codebaseStatsTool,
   fileGraphService,
@@ -94,6 +96,10 @@ const TOOL_DESCRIPTIONS: Record<CodebaseIndexMcpToolName, string> = {
     'Return the project package dependency graph from the authoritative Codebase Index service.',
   codebase_file_graph: 'Return the file dependency graph for one package or package-path fragment.',
   codebase_symbol_graph: 'Return the symbol dependency graph for one project-relative source file.',
+  codebase_incoming_calls:
+    'List who calls or references a function, method or type: compact call sites with file and line. Use this, not codebase_symbol_graph, to find callers.',
+  codebase_outgoing_calls:
+    'List what a function or method calls: compact call sites with file and line.',
   codebase_index:
     'Build or incrementally refresh the project Codebase Index. Hidden unless the server starts with --writable.',
 };
@@ -102,6 +108,8 @@ const BUILTIN_TOOLS: Partial<Record<CodebaseIndexMcpToolName, Tool>> = {
   codebase_context: codebaseContextTool,
   codebase_search: codebaseSearchTool,
   codebase_stats: codebaseStatsTool,
+  codebase_incoming_calls: codebaseIncomingCallsTool,
+  codebase_outgoing_calls: codebaseOutgoingCallsTool,
   codebase_index: codebaseIndexTool,
 };
 
@@ -162,6 +170,12 @@ function validateArgs(
   }
   if (name === 'codebase_file_graph' && !nonEmptyString(args['package'])) {
     return 'codebase_file_graph requires a non-empty string "package"';
+  }
+  if (
+    (name === 'codebase_incoming_calls' || name === 'codebase_outgoing_calls') &&
+    !nonEmptyString(args['symbol'])
+  ) {
+    return `${name} requires a non-empty string "symbol"`;
   }
   if (name === 'codebase_symbol_graph' && !nonEmptyString(args['file'])) {
     return 'codebase_symbol_graph requires a non-empty string "file"';

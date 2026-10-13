@@ -65,7 +65,7 @@ describe('createKanbanMcpToolHost', () => {
     const result = await host.callTool('kanban_read', { action: 'list_boards' });
     expect(result).toEqual({ content: { ok: true, boards: [] }, isError: false });
     expect(executeKanban).toHaveBeenCalledWith(
-      { action: 'list_boards' },
+      { action: 'list_boards', limit: 20, includeArchived: false },
       expect.objectContaining({ projectRoot: 'C:/project', agentId: 'cursor-agent' }),
       expect.any(AbortSignal),
     );
@@ -81,10 +81,29 @@ describe('createKanbanMcpToolHost', () => {
     await host.callTool('kanban_read', { action: 'list_boards' }, { signal: controller.signal });
 
     expect(executeKanban).toHaveBeenCalledWith(
-      { action: 'list_boards' },
+      { action: 'list_boards', limit: 20, includeArchived: false },
       expect.anything(),
       controller.signal,
     );
+  });
+
+  it('bounds list reads for external callers unless they ask for more', async () => {
+    const executeKanban = vi.fn().mockResolvedValue({ ok: true });
+    const host = createKanbanMcpToolHost('C:/project', { dependencies: { executeKanban } });
+
+    await host.callTool('kanban_read', { action: 'search_tasks', query: 'x' });
+    await host.callTool('kanban_read', {
+      action: 'list_boards',
+      limit: 500,
+      includeArchived: true,
+    });
+    await host.callTool('kanban_read', { action: 'get_board', boardId: 'b1' });
+
+    expect(executeKanban.mock.calls.map((call) => call[0])).toEqual([
+      { action: 'search_tasks', query: 'x', limit: 10 },
+      { action: 'list_boards', limit: 500, includeArchived: true },
+      { action: 'get_board', boardId: 'b1' },
+    ]);
   });
 
   it('rejects hidden tools and cross-tier actions', async () => {

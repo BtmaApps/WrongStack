@@ -41,6 +41,25 @@ import {
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 import { taskFileToSerializedGraph } from './session-kanban.js';
 
+/**
+ * `limit` on a list read: newest-updated first, then bounded. Without one the
+ * whole list comes back in its usual order, as before; with 100+ boards and
+ * 1000+ cards that payload overflows an MCP client's result budget.
+ */
+function newestFirst<T>(
+  items: T[],
+  updatedAt: (item: T) => string | undefined,
+  limit: unknown,
+): { items: T[]; total: number; bounded: boolean } {
+  const n =
+    typeof limit === 'number' && Number.isFinite(limit) && limit > 0
+      ? Math.floor(limit)
+      : undefined;
+  if (n === undefined) return { items, total: items.length, bounded: false };
+  const sorted = [...items].sort((a, b) => (updatedAt(b) ?? '').localeCompare(updatedAt(a) ?? ''));
+  return { items: sorted.slice(0, n), total: items.length, bounded: true };
+}
+
 export async function handleKanbanBoardAction(
   projectRoot: string,
   input: KanbanToolInput,
@@ -52,8 +71,18 @@ export async function handleKanbanBoardAction(
   };
   switch (input.action) {
     case 'list_boards': {
-      const boards = await listBoards(projectRoot);
-      return { ok: true, message: `${boards.length} board(s).`, boards };
+      const all = await listBoards(projectRoot);
+      const visible =
+        input.includeArchived === false ? all.filter((board) => board.kind !== 'archive') : all;
+      const {
+        items: boards,
+        total,
+        bounded,
+      } = newestFirst(visible, (board) => board.updatedAt, input.limit);
+      const message = bounded
+        ? `${boards.length} of ${total} board(s), most recently updated first.`
+        : `${boards.length} board(s).`;
+      return { ok: true, message, boards };
     }
     case 'get_board': {
       if (!input.boardId) throw invalidInput('get_board requires boardId.', 'boardId');
@@ -289,7 +318,15 @@ export async function handleKanbanBoardAction(
         label: input.label ?? input.labels?.[0],
         chainId: input.chainId,
       });
-      return { ok: true, message: `${tasks.length} task(s) matched.`, tasks };
+      const { items, total, bounded } = newestFirst(
+        tasks,
+        (match) => match.task.updatedAt,
+        input.limit,
+      );
+      const message = bounded
+        ? `${items.length} of ${total} task(s) matched, most recently updated first.`
+        : `${total} task(s) matched.`;
+      return { ok: true, message, tasks: items };
     }
     case 'ready_tasks': {
       const tasks = await listReadyTasks(projectRoot, {

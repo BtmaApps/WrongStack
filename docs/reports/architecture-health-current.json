@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T07:52:58.958Z",
+  "generatedAt": "2026-10-13T08:12:53.234Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4940,
-    "testFiles": 4325,
-    "sourceLines": 1095870,
+    "testFiles": 4326,
+    "sourceLines": 1095961,
     "workspaceEdges": 137,
     "moduleEdges": 16277,
     "nonCommandSlashImports": 0,
@@ -770,7 +770,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 322,
-      "testFiles": 325,
+      "testFiles": 326,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -786,7 +786,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 325
+          "testFiles": 326
         }
       ]
     },
@@ -18467,6 +18467,12 @@
       },
       {
         "file": "packages/tools/tests/kanban-executable-criteria.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/kanban-list-limit.test.ts",
         "projects": [
           "root-node"
         ]

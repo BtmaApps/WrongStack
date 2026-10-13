@@ -5,6 +5,8 @@ export const CODEBASE_INDEX_READ_TOOLS = [
   'codebase_package_graph',
   'codebase_file_graph',
   'codebase_symbol_graph',
+  'codebase_incoming_calls',
+  'codebase_outgoing_calls',
 ] as const;
 
 export const CODEBASE_INDEX_WRITE_TOOLS = ['codebase_index'] as const;

@@ -65,9 +65,12 @@ const SERVER_NOTES: Record<BridgeServer, (actor: string, delegated: boolean) => 
     '(a send needs a type, e.g. "note"), check unread mail during long work, and acknowledge ' +
     'what you handle.',
   kanban: () =>
-    "- wrongstack-kanban: the project's board. If the task names a card, keep its status current.",
+    "- wrongstack-kanban: the project's board. If the task names a card, keep its status " +
+    'current. Lists return only the most recently updated (pass limit for more); use the ' +
+    'workbench action for an overview.',
   'codebase-index': () =>
-    "- wrongstack-index: the project's code index, for symbol and reference lookups.",
+    "- wrongstack-index: the project's code index: codebase_search for definitions, " +
+    'codebase_incoming_calls / codebase_outgoing_calls for callers and callees.',
   'requirement-intake': () =>
     "- wrongstack-intake: the project's requirements intake. List open requests; file a new " +
     'one when you are handed an unrecorded software request.',
