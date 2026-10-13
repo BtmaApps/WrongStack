@@ -13,8 +13,8 @@ import type { ChronicleEventView } from '@/types';
 
 /**
  * Story → Context: the context window over the session. One stacked bar per
- * answered request (cached / written / not cached), the provider-reported
- * prompt size as a line, the window as a ceiling, and markers where content
+ * answered request (provider-reported cache read / cache write / fresh input),
+ * the estimated request size as a line, the window as a ceiling, and markers where content
  * left the window (compaction, trims, repair, rewind). A ledger underneath
  * reads the same data as "what came in, what went out".
  */
@@ -122,8 +122,8 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
   const xAt = (index: number) => LEFT + (index + 0.5) * slot;
   const yAt = (tokens: number) => TOP + plotH - (Math.min(tokens, ceiling) / ceiling) * plotH;
   const windowVisible = timeline.maxContext > 0 && timeline.maxContext <= ceiling;
-  const usageLine = points
-    .map((p, i) => (p.usage > 0 ? `${xAt(i).toFixed(1)},${yAt(p.usage).toFixed(1)}` : ''))
+  const layoutLine = points
+    .map((p, i) => (p.total > 0 ? `${xAt(i).toFixed(1)},${yAt(p.total).toFixed(1)}` : ''))
     .filter(Boolean)
     .join(' ');
   const focus = points.find((p) => p.id === selected) ?? points[points.length - 1];
@@ -252,7 +252,7 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
                 className="cursor-pointer"
                 role="button"
                 tabIndex={0}
-                aria-label={`#${point.seq} · ${fmtTok(point.total)}`}
+                aria-label={`#${point.seq} · ${fmtTok(point.usage)}`}
                 onClick={() => setSelected(point.id)}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -262,12 +262,17 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
                 opacity={focus && focus.id !== point.id && selected ? 0.55 : 1}
               >
                 <title>
-                  {`#${point.seq} · ${clock(point.at)} · ${fmtTok(point.total)} · ${t(
+                  {`#${point.seq} · ${clock(point.at)} · ${fmtTok(point.usage)} · ${t(
                     VERDICT_KEY[point.verdict]?.labelKey ?? 'activity:ctxDash.verdictPending',
                   )}`}
                 </title>
                 {LANE_ORDER.map((laneId) => {
-                  const tokens = point[laneId];
+                  const tokens =
+                    laneId === 'cached'
+                      ? point.cacheRead
+                      : laneId === 'written'
+                        ? point.cacheWrite
+                        : Math.max(0, point.usage - point.cacheRead - point.cacheWrite);
                   if (tokens <= 0) return null;
                   const y0 = yAt(base);
                   base += tokens;
@@ -286,9 +291,9 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
               </g>
             );
           })}
-          {usageLine && (
+          {layoutLine && (
             <polyline
-              points={usageLine}
+              points={layoutLine}
               fill="none"
               stroke="hsl(var(--primary))"
               strokeWidth={1.5}

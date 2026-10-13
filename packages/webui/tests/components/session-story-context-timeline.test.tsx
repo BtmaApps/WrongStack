@@ -48,6 +48,26 @@ const point = (at: number, seq: number, verdict = 'hit', breakers: string[] = []
   });
 
 describe('ContextTimeline', () => {
+  it('draws provider-reported cache reads even when layout predicted no reusable prefix', () => {
+    const { container } = render(
+      <ContextTimeline
+        events={[
+          event('context.residency', 1_000, {
+            ...point(1_000, 1).attributes,
+            mechanism: 'none',
+            cached: 0,
+            written: 0,
+            uncached: 30_000,
+            usageInput: 4_000,
+            usageCacheRead: 26_000,
+            usageCacheWrite: 0,
+          }),
+        ]}
+      />,
+    );
+    expect(container.querySelector('svg rect[fill="hsl(var(--success))"]')).not.toBeNull();
+  });
+
   it('shows an honest empty state without residency events', () => {
     render(<ContextTimeline events={[]} />);
     expect(screen.getByText(/No context data yet/)).toBeTruthy();
