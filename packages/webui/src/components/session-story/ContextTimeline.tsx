@@ -25,10 +25,22 @@ const LANE_FILL: Record<ContextLane, string> = {
   uncached: 'hsl(var(--muted-foreground) / 0.45)',
 };
 const LANE_ORDER: ContextLane[] = ['cached', 'written', 'uncached'];
-const LANE_KEY: Record<ContextLane, { labelKey: string }> = {
-  cached: { labelKey: 'activity:ctxDash.laneCached' },
-  written: { labelKey: 'activity:ctxDash.laneWritten' },
-  uncached: { labelKey: 'activity:ctxDash.laneUncached' },
+const LANE_KEY: Record<ContextLane, { labelKey: string; hintKey: string; text: string }> = {
+  cached: {
+    labelKey: 'activity:ctxDash.laneCached',
+    hintKey: 'activity:story.contextCachedHint',
+    text: 'text-success',
+  },
+  written: {
+    labelKey: 'activity:ctxDash.laneWritten',
+    hintKey: 'activity:story.contextWrittenHint',
+    text: 'text-warning',
+  },
+  uncached: {
+    labelKey: 'activity:ctxDash.laneUncached',
+    hintKey: 'activity:story.contextUncachedHint',
+    text: 'text-muted-foreground',
+  },
 };
 const MARK_STYLE: Record<ContextMarkKind, { color: string; labelKey: string }> = {
   compaction: { color: 'hsl(var(--destructive))', labelKey: 'activity:story.markCompaction' },
@@ -64,6 +76,7 @@ const BREAKER_KEY: Record<string, { labelKey: string }> = {
 };
 
 const WIDTH = 1100;
+const MIN_BAR_SLOT = 36;
 const HEIGHT = 260;
 const LEFT = 56;
 const RIGHT = 16;
@@ -79,6 +92,11 @@ function clock(at: number): string {
 }
 function pct(n: number, total: number): string {
   return total > 0 ? `${Math.round((n / total) * 100)}%` : '—';
+}
+function laneTokens(point: ContextPoint, laneId: ContextLane): number {
+  if (laneId === 'cached') return point.cacheRead;
+  if (laneId === 'written') return point.cacheWrite;
+  return Math.max(0, point.usage - point.cacheRead - point.cacheWrite);
 }
 
 type LedgerRow = { at: number; point?: ContextPoint; mark?: ContextMark };
@@ -115,7 +133,8 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
     scale === 'window' && timeline.maxContext > 0
       ? Math.max(timeline.maxContext, timeline.peak)
       : Math.max(1, timeline.peak) * 1.12;
-  const plotW = WIDTH - LEFT - RIGHT;
+  const chartWidth = Math.max(WIDTH, LEFT + RIGHT + points.length * MIN_BAR_SLOT);
+  const plotW = chartWidth - LEFT - RIGHT;
   const plotH = HEIGHT - TOP - BOTTOM;
   const slot = plotW / points.length;
   const barW = Math.max(1, Math.min(28, slot * 0.72));
@@ -195,8 +214,9 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
 
       <div className="overflow-x-auto">
         <svg
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          viewBox={`0 0 ${chartWidth} ${HEIGHT}`}
           className="min-w-[640px] w-full"
+          style={chartWidth > WIDTH ? { minWidth: chartWidth } : undefined}
           role="img"
           aria-label={t('activity:story.contextTitle')}
         >
@@ -204,7 +224,7 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
             <g key={tick}>
               <line
                 x1={LEFT}
-                x2={WIDTH - RIGHT}
+                x2={chartWidth - RIGHT}
                 y1={yAt(tick)}
                 y2={yAt(tick)}
                 stroke="hsl(var(--border))"
@@ -225,7 +245,7 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
             <g>
               <line
                 x1={LEFT}
-                x2={WIDTH - RIGHT}
+                x2={chartWidth - RIGHT}
                 y1={yAt(timeline.maxContext)}
                 y2={yAt(timeline.maxContext)}
                 stroke="hsl(var(--destructive))"
@@ -233,7 +253,7 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
                 strokeWidth={1}
               />
               <text
-                x={WIDTH - RIGHT}
+                x={chartWidth - RIGHT}
                 y={yAt(timeline.maxContext) - 4}
                 textAnchor="end"
                 fontSize={10}
@@ -267,12 +287,7 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
                   )}`}
                 </title>
                 {LANE_ORDER.map((laneId) => {
-                  const tokens =
-                    laneId === 'cached'
-                      ? point.cacheRead
-                      : laneId === 'written'
-                        ? point.cacheWrite
-                        : Math.max(0, point.usage - point.cacheRead - point.cacheWrite);
+                  const tokens = laneTokens(point, laneId);
                   if (tokens <= 0) return null;
                   const y0 = yAt(base);
                   base += tokens;
@@ -328,7 +343,7 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
             {clock(points[0]?.at ?? 0)}
           </text>
           <text
-            x={WIDTH - RIGHT}
+            x={chartWidth - RIGHT}
             y={HEIGHT - 8}
             textAnchor="end"
             fontSize={10}
@@ -339,33 +354,48 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
         </svg>
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4">
         {LANE_ORDER.map((laneId) => (
-          <span key={laneId} className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: LANE_FILL[laneId] }}
-            />
-            {t(LANE_KEY[laneId].labelKey)}
-          </span>
+          <div key={laneId} className="rounded-lg border border-border/70 bg-background/60 p-2">
+            <div className={`flex items-center gap-1.5 font-medium ${LANE_KEY[laneId].text}`}>
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                style={{ background: LANE_FILL[laneId] }}
+              />
+              {t(LANE_KEY[laneId].labelKey)}
+            </div>
+            <p className={`mt-1 text-[11px] ${LANE_KEY[laneId].text}`}>
+              {t(LANE_KEY[laneId].hintKey)}
+            </p>
+          </div>
         ))}
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ background: 'hsl(var(--primary))' }} />
-          {t('activity:story.contextUsageLine')}
-        </span>
-        {(Object.keys(MARK_STYLE) as ContextMarkKind[])
-          .filter((kind) => marks.some((m) => m.kind === kind))
-          .map((kind) => (
-            <span key={kind} className="flex items-center gap-1.5">
-              <span style={{ color: MARK_STYLE[kind].color }}>▼</span>
-              {t(MARK_STYLE[kind].labelKey)}
-            </span>
-          ))}
+        <div className="rounded-lg border border-border/70 bg-background/60 p-2">
+          <div className="flex items-center gap-1.5 font-medium text-primary">
+            <span className="inline-block h-0.5 w-4 shrink-0 bg-primary" />
+            {t('activity:story.contextUsageLine')}
+          </div>
+          <p className="mt-1 text-[11px] text-primary">{t('activity:story.contextUsageHint')}</p>
+        </div>
       </div>
+      {marks.length > 0 && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          {(Object.keys(MARK_STYLE) as ContextMarkKind[])
+            .filter((kind) => marks.some((m) => m.kind === kind))
+            .map((kind) => (
+              <span key={kind} className="flex items-center gap-1.5">
+                <span style={{ color: MARK_STYLE[kind].color }}>▼</span>
+                {t(MARK_STYLE[kind].labelKey)}
+              </span>
+            ))}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {focus && (
-          <div className="rounded-xl border border-border/70 bg-background/60 p-3 text-xs">
+          <div
+            data-testid="context-request-detail"
+            className="rounded-xl border border-border/70 bg-background/60 p-3 text-xs"
+          >
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-mono text-muted-foreground">
                 #{focus.seq} · {clock(focus.at)} · {focus.provider}/{focus.model}
@@ -374,6 +404,40 @@ export function ContextTimeline({ events }: { events: readonly ChronicleEventVie
                 {t(VERDICT_KEY[focus.verdict]?.labelKey ?? 'activity:ctxDash.verdictPending')}
               </span>
             </div>
+            <div className="mb-3 space-y-1.5">
+              {LANE_ORDER.map((laneId) => {
+                const tokens = laneTokens(focus, laneId);
+                return (
+                  <div key={laneId} className="rounded-md border border-border/60 px-2 py-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`flex items-center gap-1.5 font-medium ${LANE_KEY[laneId].text}`}
+                      >
+                        <span
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                          style={{ background: LANE_FILL[laneId] }}
+                        />
+                        {t(LANE_KEY[laneId].labelKey)}
+                      </span>
+                      <span className={`font-mono tabular-nums ${LANE_KEY[laneId].text}`}>
+                        {fmtTok(tokens)} · {pct(tokens, focus.usage)}
+                      </span>
+                    </div>
+                    <p className={`mt-0.5 text-[11px] ${LANE_KEY[laneId].text}`}>
+                      {t(LANE_KEY[laneId].hintKey)}
+                    </p>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between gap-2 px-2 text-primary">
+                <span>{t('activity:story.contextUsageLine')}</span>
+                <span className="font-mono tabular-nums">{fmtTok(focus.total)}</span>
+              </div>
+              <p className="px-2 text-[11px] text-primary">
+                {t('activity:story.contextUsageHint')}
+              </p>
+            </div>
+            <h3 className="mb-1 font-medium">{t('activity:story.contextEstimatedLayout')}</h3>
             <table className="w-full">
               <tbody>
                 {focus.segments.map((seg) => (

@@ -194,11 +194,21 @@ describe('prepareWorkdir', () => {
     expect(await fs.readFile(path.join(dest2, 'solution.py'), 'utf8')).toBe('pass'); // reset
   });
 
-  it('slugifies awkward labels and ids into a safe dir name', async () => {
+  it('slugifies awkward labels and ids into a safe dir name and appends attempt suffix when attempt > 1', async () => {
     const sandbox = await createSandbox({ baseDir: base, maxIterations: 1, yolo: false });
-    const dest = await prepareWorkdir(sandbox, await template(), 'Weird/ID With Spaces!', '@@@');
+    const t = await template();
+    const dest = await prepareWorkdir(sandbox, t, 'Weird/ID With Spaces!', '@@@');
     // '@@@' slugifies to the fallback 'x'; the awkward id becomes a dashed slug.
     expect(path.basename(dest)).toMatch(/^x-[a-f0-9]{12}__weird-id-with-spaces-[a-f0-9]{12}$/);
+    const destAttempt2 = await prepareWorkdir(
+      sandbox,
+      t,
+      'Weird/ID With Spaces!',
+      '@@@',
+      undefined,
+      2,
+    );
+    expect(path.basename(destAttempt2)).toBe(`${path.basename(dest)}__a2`);
   });
 });
 

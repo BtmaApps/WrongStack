@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T22:11:37.408Z",
+  "generatedAt": "2026-10-13T22:35:28.183Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4959,
     "testFiles": 4347,
-    "sourceLines": 1099572,
+    "sourceLines": 1099636,
     "workspaceEdges": 137,
     "moduleEdges": 16339,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 972
+    "testOnlyExports": 973
   },
   "errors": [],
   "packageCycles": [],
@@ -29978,6 +29978,10 @@
     {
       "file": "packages/tools/src/_util.ts",
       "name": "truncateHeadTail"
+    },
+    {
+      "file": "packages/tools/src/bash-kill-guard.ts",
+      "name": "getBlockedKillMessage"
     },
     {
       "file": "packages/tools/src/bash-kill-guard.ts",

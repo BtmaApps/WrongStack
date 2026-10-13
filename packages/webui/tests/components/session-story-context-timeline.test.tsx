@@ -48,6 +48,25 @@ const point = (at: number, seq: number, verdict = 'hit', breakers: string[] = []
   });
 
 describe('ContextTimeline', () => {
+  it('grows the plot for long sessions so every bar remains horizontally scrollable', () => {
+    const { container, rerender } = render(
+      <ContextTimeline
+        events={Array.from({ length: 80 }, (_, index) => point(1_000 + index * 1_000, index + 1))}
+      />,
+    );
+    const svg = container.querySelector('svg');
+    const chartWidth = Number(svg?.getAttribute('viewBox')?.split(' ')[2]);
+    expect(chartWidth).toBeGreaterThan(1_100);
+    expect(Number.parseInt(svg?.style.minWidth ?? '', 10)).toBe(chartWidth);
+    expect(svg?.parentElement?.classList.contains('overflow-x-auto')).toBe(true);
+    expect(
+      Number(container.querySelector('svg g:last-of-type rect')?.getAttribute('x')),
+    ).toBeGreaterThan(1_100);
+
+    rerender(<ContextTimeline events={[point(1_000, 1), point(2_000, 2)]} />);
+    expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 1100 260');
+  });
+
   it('draws provider-reported cache reads even when layout predicted no reusable prefix', () => {
     const { container } = render(
       <ContextTimeline
@@ -100,5 +119,54 @@ describe('ContextTimeline', () => {
     fireEvent.click(screen.getByRole('button', { name: /#1 ·/ }));
     expect(screen.getAllByText(/Cold start/).length).toBeGreaterThan(0);
     expect(screen.getByText(/memory-evidence/)).toBeTruthy();
+  });
+
+  it('explains chart colors and shows provider usage for the selected bar', () => {
+    const { container } = render(
+      <ContextTimeline
+        events={[
+          point(1_000, 1),
+          event('context.residency', 3_000, {
+            ...point(3_000, 2).attributes,
+            usageInput: 4_000,
+            usageCacheRead: 26_000,
+            usageCacheWrite: 0,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText(/provider reported reading from cache/).length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/provider reported writing to cache/).length).toBeGreaterThan(1);
+    expect(
+      screen.getAllByText(/provider did not report as cache reads or writes/).length,
+    ).toBeGreaterThan(1);
+    expect(screen.getAllByText(/Calculated from the request layout/)).toHaveLength(2);
+    expect(
+      screen
+        .getAllByText(/provider reported reading from cache/)
+        .every((hint) => hint.classList.contains('text-success')),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByText(/Calculated from the request layout/)
+        .every((hint) => hint.classList.contains('text-primary')),
+    ).toBe(true);
+    expect(
+      screen.getAllByText('cached').some((label) => label.classList.contains('text-success')),
+    ).toBe(true);
+    expect(
+      screen.getAllByText('written').some((label) => label.classList.contains('text-warning')),
+    ).toBe(true);
+
+    const detail = container.querySelector('[data-testid="context-request-detail"]');
+    expect(detail?.textContent).toContain('26.0k · 87%');
+    expect(detail?.textContent).toContain('0 · 0%');
+    expect(detail?.textContent).toContain('4.0k · 13%');
+
+    fireEvent.click(screen.getByRole('button', { name: /#1 ·/ }));
+    expect(detail?.textContent).toContain('26.0k · 84%');
+    expect(detail?.textContent).toContain('4.0k · 13%');
+    expect(detail?.textContent).toContain('1.0k · 3%');
   });
 });

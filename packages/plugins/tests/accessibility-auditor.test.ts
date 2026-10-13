@@ -870,4 +870,18 @@ describe('accessibility-auditor plugin', () => {
       expect.any(Object),
     );
   });
+
+  it('formatSummary reports clean message on zero findings and role="none" suppresses missing-alt', async () => {
+    const { formatSummary } = await import('../src/accessibility-auditor/a11y-audit.js');
+    expect(formatSummary({ path: 'src/Clean.tsx', findings: [], fileCount: 1 })).toContain(
+      'no issues found in src/Clean.tsx',
+    );
+    writeFixture('RoleNone.tsx', '<img src="/spacer.gif" alt="" role="none" />\n');
+    const api = makeApi();
+    accessibilityAuditorPlugin.setup(api as never);
+    const result = (await getTool(api, 'a11y_audit')({ path: FIXTURE_DIR })) as {
+      findings: Array<{ rule: string }>;
+    };
+    expect(result.findings.some((f) => f.rule === 'missing-alt')).toBe(false);
+  });
 });

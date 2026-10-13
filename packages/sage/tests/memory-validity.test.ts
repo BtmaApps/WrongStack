@@ -112,3 +112,64 @@ it('does not infer global contradiction links from claims with conditional appli
   expect((await store.getSage(first.id))?.contradicts ?? []).toEqual([]);
   expect((await store.getSage(other.id))?.contradicts ?? []).toEqual([]);
 });
+
+it('enforces short-text quality cap, ephemeral rejection, relationship scoring, structural anchor near-duplication, and critical legacy priority', async () => {
+  const { assessRememberQuality, validateRememberInput } = await import(
+    '../src/memory-input-validation.js'
+  );
+  const { isNearDuplicateMemory, scoreMemoryRelationship } = await import(
+    '../src/memory-similarity.js'
+  );
+  const { toLegacyEntry } = await import('../src/legacy-memory-conversion.js');
+
+  // S27-M6: text.length < 12 applies short_text penalty (0.55 cap)
+  const shortQuality = assessRememberQuality({
+    text: 'a b c',
+    anchors: [{ type: 'file', path: 'src/a.ts' }],
+    tags: ['t1'],
+  });
+  expect(shortQuality.confidenceCap).toBe(0.55);
+  expect(shortQuality.reasons).toContain('short_text');
+
+  // S27-M7: non-session ephemeral memory text is rejected by validateRememberInput
+  expect(() =>
+    validateRememberInput({
+      text: 'Still working on the auth refactor right now',
+      scope: 'project',
+    }),
+  ).toThrow(/ephemeral progress text/);
+
+  // S27-M8: scoreMemoryRelationship returns > 0 when candidate shares tags/anchors with seed and is not in seeds
+  const seed = await store.rememberSage({
+    text: 'Authentication middleware validates JWT tokens on all routes.',
+    tags: ['auth', 'jwt'],
+    anchors: [{ type: 'file', path: 'src/auth.ts' }],
+  });
+  const candidate = await store.rememberSage({
+    text: 'Refresh token endpoint rotates JWT session cookies.',
+    tags: ['auth', 'jwt'],
+    anchors: [{ type: 'file', path: 'src/auth.ts' }],
+  });
+  expect(scoreMemoryRelationship(candidate, [seed])).toBeGreaterThan(0);
+  expect(scoreMemoryRelationship(seed, [seed])).toBe(0);
+
+  // S27-M9: isNearDuplicateMemory returns true when overlap is >= 0.72 (< 0.88) and anchors share structural key
+  const sharedAnchor = [{ type: 'file' as const, path: 'src/retry.ts' }];
+  expect(
+    isNearDuplicateMemory(
+      {
+        text: 'alpha bravo charlie delta echo',
+        kind: 'fact',
+        anchors: sharedAnchor,
+      },
+      {
+        text: 'alpha bravo charlie delta foxtrot',
+        kind: 'fact',
+        anchors: sharedAnchor,
+      },
+    ),
+  ).toBe(true);
+
+  // S27-M10: toLegacyEntry maps importance >= 0.9 to 'critical'
+  expect(toLegacyEntry({ ...seed, importance: 0.95 }).priority).toBe('critical');
+});

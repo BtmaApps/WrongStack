@@ -86,6 +86,25 @@ describe('fleet endpoint', () => {
     await expect(startFleetEndpoint(host(['read'], vi.fn()))).resolves.toBeUndefined();
   });
 
+  it('invokes runTool with 2 arguments when run options are omitted', async () => {
+    const runTool = vi.fn(async (_name: string, _input: Record<string, unknown>) => ({
+      content: 'ok',
+      isError: false,
+    }));
+    const endpoint = await startFleetEndpoint(host(['spawn_subagent'], runTool));
+    expect(endpoint).toBeDefined();
+    try {
+      await rpc(endpoint!.url, endpoint!.token, 'tools/call', {
+        name: 'spawn_subagent',
+        arguments: { role: 'worker' },
+      });
+      expect(runTool).toHaveBeenCalledTimes(1);
+      expect(runTool).toHaveBeenCalledWith('spawn_subagent', { role: 'worker' });
+    } finally {
+      await endpoint?.close();
+    }
+  });
+
   it('maps a fleet MCP tool name back to the leader tool, and nothing else', () => {
     expect(fleetToolName(`mcp__${FLEET_SERVER_NAME}__delegate`)).toBe('delegate');
     expect(fleetToolName(`mcp__${FLEET_SERVER_NAME}__bash`)).toBeUndefined();

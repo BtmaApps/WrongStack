@@ -148,8 +148,75 @@ describe('Cross-Workspace Version Misalignment Detector', () => {
         status: 'local_path',
         evidence: [],
       },
+      {
+        id: 'dep-git-1',
+        workspaceId: 'ws-app',
+        ecosystem: 'npm',
+        name: 'git-pkg',
+        sourceType: 'git',
+        direct: true,
+        scope: 'runtime',
+        requested: 'github:org/repo#a',
+        locked: '1.0.0',
+        status: 'current',
+        evidence: [],
+      },
+      {
+        id: 'dep-git-2',
+        workspaceId: 'ws-core',
+        ecosystem: 'npm',
+        name: 'git-pkg',
+        sourceType: 'git',
+        direct: true,
+        scope: 'runtime',
+        requested: 'github:org/repo#b',
+        locked: '2.0.0',
+        status: 'current',
+        evidence: [],
+      },
     ];
 
     expect(detectWorkspaceMisalignments(deps, workspaces)).toEqual([]);
+
+    const multiWithinWs: DependencyObservation[] = [
+      {
+        id: 'dep-m1',
+        workspaceId: 'ws-app',
+        ecosystem: 'npm',
+        name: 'semver',
+        sourceType: 'registry',
+        direct: false,
+        scope: 'transitive',
+        locked: '7.5.4',
+        status: 'current',
+        evidence: [],
+      },
+      {
+        id: 'dep-m2',
+        workspaceId: 'ws-app',
+        ecosystem: 'npm',
+        name: 'semver',
+        sourceType: 'registry',
+        direct: false,
+        scope: 'transitive',
+        locked: '6.3.1',
+        status: 'current',
+        evidence: [],
+      },
+      {
+        id: 'dep-m3',
+        workspaceId: 'ws-core',
+        ecosystem: 'npm',
+        name: 'semver',
+        sourceType: 'registry',
+        direct: false,
+        scope: 'transitive',
+        locked: '7.5.4',
+        status: 'current',
+        evidence: [],
+      },
+    ];
+    const multiFindings = detectWorkspaceMisalignments(multiWithinWs, workspaces);
+    expect(multiFindings[0]?.rationale).toContain('apps/web (6.3.1, 7.5.4)');
   });
 });

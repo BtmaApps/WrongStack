@@ -265,4 +265,48 @@ describe('redirectSafeFetch', () => {
       expect(res.status).toBe(200);
     });
   });
+
+  it('allows a local/private origin to redirect to another local/private target', async () => {
+    const impl = vi.fn(async (url: string) =>
+      url === 'http://localhost:8000/v1'
+        ? response(307, 'http://127.0.0.1:8000/v2')
+        : response(200),
+    );
+    const res = await redirectSafeFetch(
+      impl as unknown as typeof fetch,
+      'http://localhost:8000/v1',
+      {
+        headers: {},
+      },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects a redirect to a non-http/https protocol scheme', async () => {
+    const impl = vi.fn(async () => response(302, 'file:///etc/passwd'));
+    await expect(
+      redirectSafeFetch(impl as unknown as typeof fetch, 'https://api.example/v1', {
+        headers: {},
+      }),
+    ).rejects.toThrow(/non-HTTP\(S\) protocol/);
+  });
+
+  it('downgrades POST to GET and drops body on 301 and 302 redirects', async () => {
+    for (const code of [301, 302]) {
+      const calls: Array<{ method?: string; body?: string }> = [];
+      const impl = vi.fn(async (_url: string, init: { method?: string; body?: string }) => {
+        calls.push({ method: init.method, body: init.body });
+        return calls.length === 1 ? response(code, 'https://api.example/v2') : response(200);
+      });
+      await redirectSafeFetch(impl as unknown as typeof fetch, 'https://api.example/v1', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{"a":1}',
+      });
+      expect(calls).toEqual([
+        { method: 'POST', body: '{"a":1}' },
+        { method: 'GET', body: undefined },
+      ]);
+    }
+  });
 });

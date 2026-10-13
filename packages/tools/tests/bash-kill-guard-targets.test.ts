@@ -8,7 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * module load (the older POSIX suites are skipped on Windows runners).
  */
 
-const { PROTECTED_PID } = vi.hoisted(() => ({ PROTECTED_PID: 424_242 }));
+const { PROTECTED_PID, heartbeatAt } = vi.hoisted(() => ({
+  PROTECTED_PID: 424_242,
+  heartbeatAt: { value: undefined as number | undefined },
+}));
 
 vi.mock('../src/process-registry-persistent.js', () => ({
   getPersistentProcessRegistry: () => ({
@@ -23,7 +26,7 @@ vi.mock('../src/process-registry-persistent.js', () => ({
               pid: PROTECTED_PID,
               name: 'wrongstack-daemon',
               protected: true,
-              lastHeartbeat: Date.now(),
+              lastHeartbeat: heartbeatAt.value ?? Date.now(),
             },
           ],
         ],
@@ -227,4 +230,34 @@ describe('bash-kill-guard — verb spelled with path/.exe, cmd /c, launchers, ex
       expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
     },
   );
+
+  it('covers bracket wildcards, pkill selector flags, 30s heartbeat staleness, getBlockedKillMessage, unquoted shell -c, and /proc/<pid>/kill', async () => {
+    const linuxGuard = await loadGuard('linux');
+    const detect = await import('../src/bash-kill-detect.js');
+
+    // S29-M1: wildcardNameMatches returns true when pattern contains '[' (character class fails closed)
+    expect(linuxGuard.wildcardNameMatches('foo[bar]', 'anything')).toBe(true);
+
+    // S29-M2: pkill selector flag (`pkill -u root`) is blocked when protected processes exist
+    expect((await linuxGuard.checkAndBlockKillCommand('pkill -u root')).blocked).toBe(true);
+
+    // S29-M4: getBlockedKillMessage formats the PID and optional signal
+    expect(linuxGuard.getBlockedKillMessage(1234, 'SIGTERM')).toContain(
+      'Kill command blocked: PID 1234 (signal SIGTERM) is a protected WrongStack process.',
+    );
+
+    // S29-M5: extractKillCommand unwraps unquoted `<shell> -c kill -9 12345`
+    expect(detect.extractKillCommand('bash -c kill -9 12345')).toBe('kill -9 12345');
+
+    // S29-M6: isKillRelatedCommand detects `/proc/<pid>/kill` and `/proc/<pid>/fd` on POSIX
+    expect(detect.isKillRelatedCommand('/proc/1234/kill')).toBe(true);
+
+    // S29-M3: entries with lastHeartbeat older than 30_000ms (e.g. 50_000ms ago) are excluded as stale
+    heartbeatAt.value = Date.now() - 50_000;
+    try {
+      expect((await linuxGuard.checkAndBlockKillCommand('pkill node')).blocked).toBe(false);
+    } finally {
+      heartbeatAt.value = undefined;
+    }
+  });
 });

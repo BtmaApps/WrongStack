@@ -340,11 +340,17 @@ describe('retryAfterMsFromBody', () => {
     );
   });
 
-  it('returns undefined for text with no recognizable pattern', () => {
+  it('returns undefined for text with no recognizable pattern or hours > 24 in limit reached', () => {
     const body: ProviderErrorBody = {
       message: 'Internal server error',
     };
     expect(retryAfterMsFromBody(body)).toBeUndefined();
+    expect(retryAfterMsFromBody({ message: 'Usage limit reached for 25 hours' })).toBeUndefined();
+  });
+
+  it('parses compound retry durations (e.g. 1h30m, 2m15s)', () => {
+    expect(retryAfterMsFromBody({ message: 'Please retry in 1h30m' })).toBe(5_400_000);
+    expect(retryAfterMsFromBody({ message: 'Please retry in 2m15s' })).toBe(135_000);
   });
 });
 

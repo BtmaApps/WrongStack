@@ -458,4 +458,69 @@ describe('FileServer', () => {
       content: 'root content',
     });
   });
+
+  it('enforces maxReadBytes on both pre-read stat size and post-read content byte length, plus maxWriteBytes and parent dir TOCTOU', async () => {
+    const statOversized = new FileServer({
+      projectRoot,
+      maxReadBytes: 10,
+      operations: fakeOperations({
+        stat: async () => ({ size: 11 }) as any,
+      }),
+    });
+    await expect(
+      statOversized.readTextFile({ sessionId: 's1', path: path.join(projectRoot, 'big.txt') }),
+    ).rejects.toMatchObject({ code: 'TOO_LARGE' });
+
+    const contentOversized = new FileServer({
+      projectRoot,
+      maxReadBytes: 10,
+      operations: fakeOperations({
+        stat: async () => ({ size: 5 }) as any,
+        readFile: async () => '01234567890',
+      }),
+    });
+    await expect(
+      contentOversized.readTextFile({ sessionId: 's1', path: path.join(projectRoot, 'grew.txt') }),
+    ).rejects.toMatchObject({ code: 'TOO_LARGE' });
+
+    const writeOversized = new FileServer({
+      projectRoot,
+      maxWriteBytes: 5,
+      operations: fakeOperations(),
+    });
+    await expect(
+      writeOversized.writeTextFile({
+        sessionId: 's1',
+        path: path.join(projectRoot, 'out.txt'),
+        content: '123456',
+      }),
+    ).rejects.toMatchObject({ code: 'TOO_LARGE' });
+
+    let parentChecks = 0;
+    const targetSubdir = path.join(projectRoot, 'sub');
+    const parentSwapServer = new FileServer({
+      projectRoot,
+      operations: fakeOperations({
+        realpath: async (f) => {
+          if (f === targetSubdir) {
+            parentChecks++;
+            if (parentChecks >= 3) {
+              return path.resolve(projectRoot, '..', 'escaped-dir');
+            }
+          }
+          if (f.startsWith(`${targetSubdir}${path.sep}`)) {
+            throw Object.assign(new Error('missing file'), { code: 'ENOENT' });
+          }
+          return fakeRealpath(f);
+        },
+      }),
+    });
+    await expect(
+      parentSwapServer.writeTextFile({
+        sessionId: 's1',
+        path: path.join(targetSubdir, 'file.txt'),
+        content: 'hi',
+      }),
+    ).rejects.toMatchObject({ code: 'OUTSIDE_ROOT' });
+  });
 });
