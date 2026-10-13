@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.2 → 1.0.0).
+// Changelog — 1.x era (1.1.3 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -9,11 +9,21 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.3',
+    date: '2026-10-13',
+    tagline: 'ACP tab leaders, conversation resume and provider-reported context usage',
+    latest: true,
+    highlights: [
+      'An ACP agent such as Claude Code can lead a WebUI tab, and resumed sessions continue the ACP leader’s own conversation',
+      'ACP leader fleet calls belong to their own tab and run once approved; ACP workers retain their own budget instead of internal worker caps',
+      'ACP leader context bars show the agent’s own context, and the context timeline separates provider-reported cache reads and writes',
+    ],
+  },
+  {
     version: '1.1.2',
     date: '2026-10-13',
     tagline:
       'Lossless edits, no silent overwrites, secrets kept off sync and terminal safety refusals',
-    latest: true,
     highlights: [
       'edit, replace, write, patch, the AST symbol mutator, the dead-code fixer and LSP workspace edits refuse non-UTF-8 files instead of rewriting their non-ASCII bytes as U+FFFD',
       'Plan, task, annotation and goal stores never write over an unparseable or unknown-schema file and accept a UTF-8 BOM; an unreadable goal file is moved aside',

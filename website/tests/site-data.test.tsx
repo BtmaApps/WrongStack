@@ -17,6 +17,9 @@ import {
 
 const websiteRoot = process.cwd();
 const repoRoot = resolve(websiteRoot, '..');
+const packageVersion: string = JSON.parse(
+  readFileSync(resolve(repoRoot, 'package.json'), 'utf8'),
+).version;
 
 const releaseVersion = (version: string): [number, number, number] => {
   const parts = version.split('.').map(Number);
@@ -45,9 +48,9 @@ describe('site data — changelog invariants', () => {
     expect(latest[0]?.version).toBe(META.version);
   });
 
-  it('leads with the 1.1.2 release dated 2026-10-13', () => {
-    expect(changelog[0]?.version).toBe('1.1.2');
-    expect(changelog[0]?.date).toBe('2026-10-13');
+  it('leads with the current package release', () => {
+    expect(changelog[0]?.version).toBe(packageVersion);
+    expect(changelog[0]?.latest).toBe(true);
     expect(changelog[0]?.highlights.length).toBeGreaterThan(0);
   });
 
@@ -77,7 +80,7 @@ describe('site data — skills catalog', () => {
 describe('site data — public export surface of @/lib/utils', () => {
   it('still exports every consumer-facing value after the split', () => {
     expect(typeof cn).toBe('function');
-    expect(META.version).toBe('1.1.2');
+    expect(META.version).toBe(packageVersion);
     expect(Array.isArray(changelog)).toBe(true);
     expect(changelog.length).toBeGreaterThan(90);
     expect(Array.isArray(toolGroups)).toBe(true);
