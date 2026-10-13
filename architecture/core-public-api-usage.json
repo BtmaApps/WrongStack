@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1387,
-      "typeOnly": 1220,
+      "files": 1389,
+      "typeOnly": 1222,
       "runtimeOrMixed": 421
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 779,
+      "files": 780,
       "typeOnly": 70,
-      "runtimeOrMixed": 739
+      "runtimeOrMixed": 740
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3849,7 +3849,7 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/src/cli.ts",
+      "file": "packages/mailbox-mcp/src/main.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -14193,6 +14193,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/fleet/budget-source.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15707,6 +15713,12 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/acp-server-agent.test.ts",
       "typeOnly": 2,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-wrongstack-bridge.test.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
@@ -23019,6 +23031,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/fleet/host-context.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24831,13 +24849,13 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/kanban-mcp/src/cli.ts",
+      "file": "packages/kanban-mcp/src/main.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/mailbox-mcp/src/cli.ts",
+      "file": "packages/mailbox-mcp/src/main.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -25185,7 +25203,7 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/requirement-intake-mcp/src/cli.ts",
+      "file": "packages/requirement-intake-mcp/src/main.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -135,6 +135,19 @@ export interface Config {
    */
   acp?: {
     agents?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>;
+    /**
+     * What WrongStack hands a delegated ACP worker so it can work inside this
+     * project: the project's MCP servers (memory, mailbox, kanban, index) and
+     * a short note appended to the agent's own system prompt saying where it
+     * works and how to report back. The agent keeps its own identity, tools
+     * and sign-in. Default: on for `claude-code` with sage, mailbox and kanban.
+     */
+    bridge?: {
+      /** ACP agent ids that get the bridge. `[]` turns it off. Default `['claude-code']`. */
+      agents?: string[];
+      /** Project MCP servers to attach. Default `['sage', 'mailbox', 'kanban']`. */
+      servers?: Array<'sage' | 'mailbox' | 'kanban' | 'codebase-index' | 'requirement-intake'>;
+    };
   };
   /**
    * Ordered list of fallback model references tried, in order, when the

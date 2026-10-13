@@ -18,6 +18,7 @@ import {
   loadCachedAcpRegistry,
   refreshAcpRegistry,
 } from '../../acp-registry-cache.js';
+import { wrongstackBridgeSetup } from '../../fleet/acp-wrongstack-bridge.js';
 import type { SubcommandDeps } from '../contracts.js';
 
 /** User-config ACP command overrides (never sourced from in-project config). */
@@ -99,6 +100,7 @@ export async function spawnACPAgent(args: string[], deps: SubcommandDeps): Promi
       task,
       signal: ac.signal,
       permissionPolicy: defaultPermissionPolicy,
+      sessionSetup: wrongstackBridgeSetup(subagentId, deps.projectRoot, deps.config.acp?.bridge),
       onProgress: (event) => {
         const line = formatProgress(event);
         if (line) deps.renderer.writeInfo(`  ${line}\n`);

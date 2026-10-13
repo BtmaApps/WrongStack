@@ -8,6 +8,7 @@ import {
   updateJsonObjectFile,
 } from '@wrongstack/core/utils';
 import { serveMcpStdio } from '../../mcp-serve.js';
+import { isProjectMcpServer, serveProjectMcp } from '../../mcp-serve-project.js';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 import { restoreFlags } from '../flags.js';
@@ -20,6 +21,8 @@ export const mcpCmd: SubcommandHandler = async (args, deps) => {
   args = restoreFlags(args, deps, ['enable', 'e', 'transport', 'url', 'command']);
   const sub = args[0];
   if (sub === 'serve') {
+    // `serve <mailbox|kanban|codebase-index|sage>` runs that project server.
+    if (isProjectMcpServer(args[1])) return serveProjectMcp(args[1], args.slice(2), deps);
     // Run WrongStack as an MCP server over stdio. Blocks until stdin closes.
     // Flags (--yolo/--tools) come via deps.flags — the dispatcher strips them
     // from positional args. The remaining positionals are forwarded so

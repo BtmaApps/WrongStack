@@ -77,6 +77,7 @@ export type {
   AcpAgentCommandOverrides,
   AcpLiveCatalog,
   AcpProbeResult,
+  AcpSessionSetup,
   ProbeAcpAgentsOptions,
 } from './integration/acp-subagent-runner.js';
 export {

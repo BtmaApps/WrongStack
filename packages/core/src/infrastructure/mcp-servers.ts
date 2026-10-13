@@ -394,6 +394,10 @@ export const sshManagerServer = (): MCPServerConfig => ({
   requestTimeoutMs: 180_000,
 });
 
+// The project presets below launch through `wstack mcp serve <name>`: the
+// separate `wstack-*-mcp` bins exist only in npm installs, never in the
+// standalone binary, so a preset naming them could not start there.
+
 /**
  * WrongStack Requirements Intake — list intake records and file + submit new
  * ones against the project's intake store (`wstack-requirement-intake-mcp`).
@@ -407,8 +411,8 @@ export const requirementIntakeServer = (): MCPServerConfig => ({
   description:
     'WrongStack Requirements Intake — list intake records and file new ones (project-scoped, --writable)',
   transport: 'stdio',
-  command: 'wstack-requirement-intake-mcp',
-  args: ['--project-root', '.', '--writable'],
+  command: 'wstack',
+  args: ['mcp', 'serve', 'requirement-intake', '--project-root', '.', '--writable'],
   permission: 'auto',
 });
 
@@ -424,8 +428,8 @@ export const kanbanServer = (): MCPServerConfig => ({
   description:
     'WrongStack Kanban — inspect and manage project work boards (project-scoped, manage tier, no destructive ops)',
   transport: 'stdio',
-  command: 'wstack-kanban-mcp',
-  args: ['--project-root', '.', '--writable'],
+  command: 'wstack',
+  args: ['mcp', 'serve', 'kanban', '--project-root', '.', '--writable'],
   permission: 'confirm',
 });
 
@@ -444,8 +448,17 @@ export const mailboxServer = (): MCPServerConfig => ({
   description:
     'WrongStack Mailbox — read and send project agent mail (project-scoped, no admin/credentials)',
   transport: 'stdio',
-  command: 'wstack-mailbox-mcp',
-  args: ['--project-root', '.', '--actor', 'external-agent', '--writable'],
+  command: 'wstack',
+  args: [
+    'mcp',
+    'serve',
+    'mailbox',
+    '--project-root',
+    '.',
+    '--actor',
+    'external-agent',
+    '--writable',
+  ],
   permission: 'auto',
 });
 
@@ -460,8 +473,8 @@ export const codebaseIndexServer = (): MCPServerConfig => ({
   description:
     'WrongStack Codebase Index — symbol search and dependency graphs (project-scoped, --writable)',
   transport: 'stdio',
-  command: 'wstack-codebase-index-mcp',
-  args: ['--project-root', '.', '--writable'],
+  command: 'wstack',
+  args: ['mcp', 'serve', 'codebase-index', '--project-root', '.', '--writable'],
   permission: 'auto',
 });
 

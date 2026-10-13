@@ -26,6 +26,7 @@ vi.mock('@wrongstack/acp', () => ({
   findAgentDescriptor: mocks.findAgentDescriptor,
   resolveAcpAgentCommand: mocks.resolveAcpAgentCommand,
   makeACPSubagentRunner: mocks.makeACPSubagentRunner,
+  REGISTRY_ID_ALIASES: { 'claude-code': 'claude-acp' },
 }));
 
 vi.mock('@wrongstack/core/agent', async (importOriginal) => {
@@ -141,6 +142,35 @@ describe('small non-WebUI CLI modules', () => {
       env: { TOKEN: 'test' },
       permissionPolicy: mocks.defaultPermissionPolicy,
     });
+  });
+
+  it('hands the WrongStack bridge to bridged agents only', async () => {
+    const cmd = { command: 'npx', args: ['-y', 'adapter'], role: 'claude-code' };
+    mocks.resolveAcpAgentCommand.mockReturnValue(cmd);
+    mocks.makeACPSubagentRunner.mockReturnValue({ run: vi.fn() });
+    const bridge = { projectRoot: '/proj' };
+
+    buildAcpSubagentRunner('claude-code', { bridge });
+    const claude = mocks.makeACPSubagentRunner.mock.calls[0]![0] as {
+      sessionSetup?: (task: unknown, ctx: unknown) => { mcpServers: { name: string }[] };
+    };
+    expect(claude.sessionSetup).toBeTypeOf('function');
+    const setup = claude.sessionSetup!(
+      { id: 't', description: 'd' },
+      { subagentId: 'claude-code', config: { id: 'claude-code' }, sessionId: 's' },
+    );
+    expect(setup.mcpServers.map((s) => s.name)).toEqual([
+      'wrongstack-sage',
+      'wrongstack-mailbox',
+      'wrongstack-kanban',
+    ]);
+
+    buildAcpSubagentRunner('gemini-cli', { bridge });
+    buildAcpSubagentRunner('claude-code', { bridge: { ...bridge, config: { agents: [] } } });
+    expect(mocks.makeACPSubagentRunner.mock.calls[1]![0]).not.toHaveProperty('sessionSetup');
+    expect(mocks.makeACPSubagentRunner.mock.calls[2]![0]).not.toHaveProperty('sessionSetup');
+    mocks.resolveAcpAgentCommand.mockReset();
+    mocks.makeACPSubagentRunner.mockReset();
   });
 
   it('forwards user overrides and rejects unknown ACP agents', async () => {

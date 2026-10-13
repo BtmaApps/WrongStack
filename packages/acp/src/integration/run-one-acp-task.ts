@@ -9,7 +9,10 @@ import { SubagentBudget } from '@wrongstack/core/coordination';
 import type { SubagentRunContext } from '@wrongstack/core/types';
 import type { ACPProgressHandler } from '../client/acp-session.js';
 import type { PermissionPolicy } from '../client/permission.js';
-import { makeACPSubagentRunnerWithStop } from './acp-subagent-runner.js';
+import {
+  type ACPSubagentRunnerOptions,
+  makeACPSubagentRunnerWithStop,
+} from './acp-subagent-runner.js';
 
 export interface RunOneAcpTaskOptions {
   command: string;
@@ -27,6 +30,8 @@ export interface RunOneAcpTaskOptions {
   permissionPolicy?: PermissionPolicy | undefined;
   /** Owning WrongStack session for session-scoped ACP operations. */
   sessionId?: string | undefined;
+  /** Per-session MCP servers and `_meta`; see {@link ACPSubagentRunnerOptions.sessionSetup}. */
+  sessionSetup?: ACPSubagentRunnerOptions['sessionSetup'];
 }
 
 export interface RunOneAcpTaskResult {
@@ -53,6 +58,7 @@ export async function runOneAcpTask(opts: RunOneAcpTaskOptions): Promise<RunOneA
     timeoutMs,
     ...(opts.onProgress !== undefined ? { onProgress: opts.onProgress } : {}),
     ...(opts.permissionPolicy !== undefined ? { permissionPolicy: opts.permissionPolicy } : {}),
+    ...(opts.sessionSetup !== undefined ? { sessionSetup: opts.sessionSetup } : {}),
   });
   try {
     const budget = new SubagentBudget({

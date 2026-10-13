@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T06:37:57.669Z",
+  "generatedAt": "2026-10-13T07:52:58.958Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4934,
-    "testFiles": 4323,
-    "sourceLines": 1095473,
-    "workspaceEdges": 133,
-    "moduleEdges": 16255,
+    "sourceFiles": 4940,
+    "testFiles": 4325,
+    "sourceLines": 1095870,
+    "workspaceEdges": 137,
+    "moduleEdges": 16277,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 964
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -151,14 +151,17 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 619,
-      "testFiles": 614,
+      "sourceFiles": 621,
+      "testFiles": 616,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
+        "@wrongstack/codebase-index-mcp",
         "@wrongstack/core",
         "@wrongstack/desktop",
         "@wrongstack/kanban",
+        "@wrongstack/kanban-mcp",
+        "@wrongstack/mailbox-mcp",
         "@wrongstack/mcp",
         "@wrongstack/persistence",
         "@wrongstack/plug-lsp",
@@ -166,6 +169,7 @@
         "@wrongstack/primitives",
         "@wrongstack/providers",
         "@wrongstack/requirement-intake",
+        "@wrongstack/requirement-intake-mcp",
         "@wrongstack/runtime",
         "@wrongstack/sage",
         "@wrongstack/sage-mcp",
@@ -192,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 614
+          "testFiles": 616
         }
       ]
     },
@@ -220,7 +224,7 @@
     {
       "name": "@wrongstack/codebase-index-mcp",
       "dir": "packages/codebase-index-mcp",
-      "sourceFiles": 5,
+      "sourceFiles": 6,
       "testFiles": 5,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -333,7 +337,7 @@
     {
       "name": "@wrongstack/kanban-mcp",
       "dir": "packages/kanban-mcp",
-      "sourceFiles": 5,
+      "sourceFiles": 6,
       "testFiles": 5,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -358,7 +362,7 @@
     {
       "name": "@wrongstack/mailbox-mcp",
       "dir": "packages/mailbox-mcp",
-      "sourceFiles": 6,
+      "sourceFiles": 7,
       "testFiles": 8,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -549,7 +553,7 @@
     {
       "name": "@wrongstack/requirement-intake-mcp",
       "dir": "packages/requirement-intake-mcp",
-      "sourceFiles": 5,
+      "sourceFiles": 6,
       "testFiles": 3,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -1987,6 +1991,12 @@
       },
       {
         "file": "packages/cli/tests/acp-server-agent.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-wrongstack-bridge.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3625,6 +3635,12 @@
       },
       {
         "file": "packages/cli/tests/mcp-serve-http-port.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/mcp-serve-project.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27772,6 +27788,14 @@
       "name": "renderFleetLine"
     },
     {
+      "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
+      "name": "bridgeNote"
+    },
+    {
+      "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
+      "name": "wstackLaunch"
+    },
+    {
       "file": "packages/cli/src/fleet/host-helpers.ts",
       "name": "DEFAULT_SUBAGENT_HIDDEN_TOOLS"
     },
@@ -28228,7 +28252,7 @@
       "name": "buildWrongTraceTelemetryReport"
     },
     {
-      "file": "packages/codebase-index-mcp/src/cli.ts",
+      "file": "packages/codebase-index-mcp/src/main.ts",
       "name": "resolveIndexProjectRoot"
     },
     {

@@ -3,6 +3,8 @@ export {
   createMailboxMcpToolHost,
   type MailboxMcpToolHostOptions,
 } from './adapter.js';
+// Side-effect free: hosts (the `wstack` binary) run the server in-process.
+export { main as runMailboxMcpServer } from './main.js';
 export {
   MAILBOX_ADMIN_ACTIONS,
   MAILBOX_MANAGE_ACTIONS,

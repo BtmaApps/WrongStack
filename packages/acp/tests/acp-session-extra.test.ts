@@ -207,6 +207,24 @@ describe('ACPSession — focused coverage', () => {
     await session.close();
   });
 
+  it('sends sessionMeta as session/new _meta, and nothing when unset', async () => {
+    const meta = { systemPrompt: { append: 'You work inside WrongStack.' } };
+    for (const sessionMeta of [meta, undefined]) {
+      const session = await startSession(undefined, sessionMeta ? { sessionMeta } : {});
+      const t = lastTransport();
+      const promptP = session.prompt([textContent('x')], new AbortController().signal);
+      await new Promise((r) => setImmediate(r));
+      const params = t.sent.find((m) => m.method === 'session/new')?.params as
+        | { _meta?: unknown }
+        | undefined;
+      expect(params).toBeDefined();
+      expect(params?._meta).toEqual(sessionMeta);
+      expect(Object.hasOwn(params ?? {}, '_meta')).toBe(sessionMeta !== undefined);
+      await session.close();
+      await promptP.catch(() => undefined);
+    }
+  });
+
   it('sendRequest rejects on timeout when the agent never answers', async () => {
     const session = await startSession(undefined, { timeoutMs: 40 });
     const t = lastTransport();

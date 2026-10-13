@@ -33,6 +33,12 @@ export interface ACPSessionOptions {
   terminalOutputByteLimit?: number | undefined;
   terminalMaxCount?: number | undefined;
   mcpServers?: McpServer[] | undefined;
+  /**
+   * Opaque `_meta` sent with `session/new`. ACP reserves `_meta` for
+   * agent-specific extensions; e.g. the Claude adapter reads
+   * `systemPrompt: { append }` from it. Agents that know no key ignore it.
+   */
+  sessionMeta?: Record<string, unknown> | undefined;
 }
 
 export interface ACPCapturedDiff {

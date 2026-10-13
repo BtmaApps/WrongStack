@@ -79,12 +79,24 @@ export interface ACPSubagentRunnerOptions {
    */
   mcpServers?: McpServer[] | undefined;
   /**
+   * Per-session setup, computed from the task and run context each time a
+   * session starts (once per task, or once for a persistent session): extra
+   * MCP servers, appended to `mcpServers`, and the `_meta` for `session/new`.
+   * Lets the host give each worker its own identity on shared channels.
+   */
+  sessionSetup?: ((task: TaskSpec, ctx: SubagentRunContext) => AcpSessionSetup) | undefined;
+  /**
    * When true, the underlying `ACPSession` is kept open across multiple
    * runner invocations (multi-turn conversation — the external agent
    * keeps its context). The caller MUST call `stop()` to tear it down.
    * Defaults to false (one process per task).
    */
   persistent?: boolean | undefined;
+}
+
+export interface AcpSessionSetup {
+  mcpServers?: McpServer[] | undefined;
+  meta?: Record<string, unknown> | undefined;
 }
 
 /**
@@ -168,7 +180,11 @@ export async function makeACPSubagentRunnerWithStop(
   // Turns on the shared session run one at a time (it takes one prompt).
   let turns: Promise<unknown> = Promise.resolve();
 
-  const startSession = async (): Promise<ACPSession> => {
+  const startSession = async (setup: AcpSessionSetup | undefined): Promise<ACPSession> => {
+    const mcpServers =
+      setup?.mcpServers && setup.mcpServers.length > 0
+        ? [...(options.mcpServers ?? []), ...setup.mcpServers]
+        : options.mcpServers;
     return ACPSession.start({
       command: options.command,
       ...(options.args !== undefined ? { args: options.args } : {}),
@@ -180,7 +196,8 @@ export async function makeACPSubagentRunnerWithStop(
       ...(options.permissionPolicy !== undefined
         ? { permissionPolicy: options.permissionPolicy }
         : {}),
-      ...(options.mcpServers !== undefined ? { mcpServers: options.mcpServers } : {}),
+      ...(mcpServers !== undefined ? { mcpServers } : {}),
+      ...(setup?.meta ? { sessionMeta: setup.meta } : {}),
     });
   };
 
@@ -190,15 +207,16 @@ export async function makeACPSubagentRunnerWithStop(
   ): Promise<SubagentRunOutcome> => {
     let session: ACPSession;
     try {
+      const setup = options.sessionSetup?.(task, ctx);
       if (persistent) {
-        shared ??= startSession();
+        shared ??= startSession(setup);
         const starting = shared;
         session = await starting.catch((err: unknown) => {
           if (shared === starting) shared = null;
           throw err;
         });
       } else {
-        session = await startSession();
+        session = await startSession(setup);
       }
     } catch (err) {
       // init / spawn failure. Throw a structured error so the host can

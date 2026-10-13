@@ -19,6 +19,23 @@ wstack mcp serve --http --host 0.0.0.0 --token SECRET  # LAN, token required
 
 Over stdio, stdout is the JSON-RPC channel; all status/log output goes to stderr.
 
+### Project servers: `wstack mcp serve <name>`
+
+The narrower project servers below run from `wstack` itself:
+
+```bash
+wstack mcp serve kanban --writable
+wstack mcp serve mailbox --actor my-agent --writable
+wstack mcp serve codebase-index
+wstack mcp serve requirement-intake --writable
+wstack mcp serve sage --origin my-agent        # same as `wstack sage mcp`
+```
+
+`--project-root` defaults to the project the command runs in; every other flag goes to the server
+unchanged. Each server only attaches to that project's running owner. This works in every install,
+including the standalone binary, which does not ship the separate `wstack-*-mcp` bins shown below
+(those remain for npm installs). The built-in presets use this form.
+
 ### Project Kanban server
 
 Use the narrower Kanban MCP server when an external coding agent should inspect or manage durable
@@ -37,7 +54,7 @@ The bundled external-agent workflow is
 event-reconciliation contract.
 
 The built-in preset (`wstack mcp add kanban`) spawns
-`wstack-kanban-mcp --project-root . --writable` from the current working directory — the manage
+`wstack mcp serve kanban --project-root . --writable` from the current working directory — the manage
 tier without destructive ops. Add `--destructive` to the server's args only when agents genuinely
 need delete/merge/transfer.
 
@@ -64,7 +81,7 @@ The bundled external-agent workflow is
 and event reconciliation.
 
 The built-in preset (`wstack mcp add mailbox`) spawns
-`wstack-mailbox-mcp --project-root . --actor external-agent --writable` from the current working
+`wstack mcp serve mailbox --project-root . --actor external-agent --writable` from the current working
 directory — send, receipts, and self-presence without `--admin` credential operations. `--actor`
 is required by the server; change the default `external-agent` identity in the server's args to a
 per-agent id so sends, receipts, and registration are attributed correctly.
@@ -88,7 +105,7 @@ See [`packages/codebase-index-mcp/README.md`](../packages/codebase-index-mcp/REA
 configuration and the complete tool inventory.
 
 The built-in preset (`wstack mcp add codebase-index`) spawns
-`wstack-codebase-index-mcp --project-root . --writable` from the current working directory so
+`wstack mcp serve codebase-index --project-root . --writable` from the current working directory so
 both queries and rebuilds are available; drop `--writable` for a strictly read-only surface.
 
 ### Project Requirements Intake server
@@ -110,7 +127,7 @@ one project intake store for every surface. The server is a direct adapter over 
 `@wrongstack/requirement-intake` store; it never touches other project state.
 
 The built-in preset (`wstack mcp add requirement-intake`) spawns
-`wstack-requirement-intake-mcp --project-root . --writable` from the current working directory;
+`wstack mcp serve requirement-intake --project-root . --writable` from the current working directory;
 point `--project-root` at an absolute path when the client cwd is not the project root. See
 [`packages/requirement-intake-mcp/README.md`](../packages/requirement-intake-mcp/README.md) and
 [`docs/specs/requirement-intake-sdd.md`](./specs/requirement-intake-sdd.md) for details.

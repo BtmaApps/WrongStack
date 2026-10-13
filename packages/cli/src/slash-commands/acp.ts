@@ -1,8 +1,8 @@
 import {
   type ACPProgressEvent,
   type AcpAgentCommandOverrides,
-  EnsembleRegistry,
   defaultPermissionPolicy,
+  EnsembleRegistry,
   probeAcpAgents,
   renderAcpBenchText,
   renderEnsembleText,
@@ -19,8 +19,8 @@ import {
   loadCachedAcpRegistry,
   refreshAcpRegistry,
 } from '../acp-registry-cache.js';
+import { wrongstackBridgeSetup } from '../fleet/acp-wrongstack-bridge.js';
 import type { SlashCommandContext } from './command-context.js';
-
 /**
  * /acp — discover and drive the ACP-supporting coding CLIs installed on this
  * machine (Claude Code, Codex CLI, Gemini CLI, OpenCode, …) from inside the
@@ -103,6 +103,15 @@ export function buildAcpCommand(opts: SlashCommandContext): SlashCommand {
       return runSingle(head, rest, overrides, live, opts);
     },
   };
+}
+
+/** The `acp.bridge` config: what WrongStack hands a delegated worker. */
+function readBridgeConfig(opts: SlashCommandContext) {
+  try {
+    return opts.configStore?.get()?.acp?.bridge;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read user-config ACP overrides (never from in-project config — stripped). */
@@ -375,6 +384,7 @@ async function runSingle(
       projectRoot: opts.projectRoot,
       sessionId: opts.context?.eventSessionId(),
       permissionPolicy: defaultPermissionPolicy,
+      sessionSetup: wrongstackBridgeSetup(agentId, opts.projectRoot, readBridgeConfig(opts)),
       onProgress: (event) => {
         const line = formatProgress(event);
         if (line) opts.renderer.writeInfo(`  ${line}\n`);

@@ -28,8 +28,11 @@ Expect an MCP server named `wrongstack-mailbox`. For full authorized access conf
 {
   "mcpServers": {
     "wrongstack-mailbox": {
-      "command": "wstack-mailbox-mcp",
+      "command": "wstack",
       "args": [
+        "mcp",
+        "serve",
+        "mailbox",
         "--project-root",
         "/absolute/project/path",
         "--actor",

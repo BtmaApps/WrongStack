@@ -108,6 +108,37 @@ legacy map → bundled catalog**.
 - **`--bg`** dispatches the agent as a background fleet subagent (requires
   director mode — run `/director` first). Track it with `/agents`.
 
+## The WrongStack bridge
+
+A delegated worker keeps its own identity, tools and sign-in. WrongStack only tells it where it
+works and gives it the project's coordination services:
+
+- **MCP servers** in `session/new`, each launched as `wstack mcp serve <name> --project-root=<project>`:
+  `wrongstack-sage` (memory: recall, propose with `memory_candidates`), `wrongstack-mailbox`
+  (writable, actor = the worker's subagent id, `@session` = the session that delegated the task),
+  `wrongstack-kanban` (writable, no destructive ops), and optionally `wrongstack-index`.
+- **A short note appended to the agent's own system prompt** (`_meta.systemPrompt.append`, which
+  the Claude ACP adapter forwards to the `claude_code` preset), saying it works inside WrongStack,
+  how to report progress, and that its final reply returns to WrongStack.
+
+It applies to inline runs, `--bg` dispatch and `wstack acp spawn`. Default: on for `claude-code`
+with sage, mailbox and kanban. Configure it in the active profile config (never from in-project
+config):
+
+```json
+{
+  "acp": {
+    "bridge": {
+      "agents": ["claude-code"],
+      "servers": ["sage", "mailbox", "kanban", "codebase-index"]
+    }
+  }
+}
+```
+
+`"agents": []` or `"servers": []` turns it off. Agents that do not read the `_meta` extension still
+get the MCP servers.
+
 ## Related
 
 - `/ensemble <csv> <task>` — the original parallel fan-out (same engine as

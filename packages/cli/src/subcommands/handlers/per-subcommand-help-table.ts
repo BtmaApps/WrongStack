@@ -54,6 +54,12 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
         description:
           'Run the wstack MCP server; --resources/--prompts explicitly expose selected files.',
       },
+      {
+        name: 'serve <mailbox|kanban|codebase-index|requirement-intake|sage>',
+        description:
+          "Run one of this project's MCP servers over stdio (works in the standalone binary). " +
+          '--project-root defaults to the current project; other flags pass through.',
+      },
     ],
     seeAlso: 'wstack plugin (manage tool plugins similarly)',
   },

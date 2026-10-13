@@ -15,14 +15,16 @@ export interface HostAcpRunnerHost {
 }
 
 export function acpCommandOpts(this: HostAcpRunnerHost): BuildAcpSubagentRunnerOptions {
-  let overrides: BuildAcpSubagentRunnerOptions['overrides'];
+  let acp: Config['acp'];
   try {
-    overrides = this.deps.configStore.get()?.acp?.agents;
+    acp = this.deps.configStore.get()?.acp;
   } catch {
-    overrides = undefined;
+    acp = undefined;
   }
+  const overrides = acp?.agents;
   return {
     ...(overrides ? { overrides } : {}),
+    bridge: { projectRoot: this.deps.projectRoot, config: acp?.bridge },
     publishLive: (ctx, task, event) => {
       publishAcpLiveProgress({
         event,

@@ -23,6 +23,7 @@ Servers are started automatically when WrongStack boots (REPL/TUI mode).
 | `wstack mcp remove <name>` | Remove a server from config |
 | `wstack mcp restart <name>` | Print a warning that restart is REPL-only; use `/mcp restart` |
 | `wstack mcp serve [--yolo] [--tools <csv>]` | Run WrongStack as an MCP server over stdio until stdin closes |
+| `wstack mcp serve <mailbox\|kanban\|codebase-index\|requirement-intake\|sage> [flags]` | Run one of this project's MCP servers over stdio. `--project-root` defaults to the current project; other flags pass through. Works in the standalone binary |
 
 `serve` is a process mode, not management of one configured remote server. It exports WrongStack's tool surface to an MCP client.
 

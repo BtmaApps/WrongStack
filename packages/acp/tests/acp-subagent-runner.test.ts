@@ -23,6 +23,8 @@ const hoisted = vi.hoisted(() => ({
     cwd?: string;
     projectRoot: string;
     timeoutMs: number;
+    mcpServers?: unknown[];
+    sessionMeta?: Record<string, unknown>;
   }>,
   session: undefined as MockSession | undefined,
   errorKind: undefined as undefined | string,
@@ -75,6 +77,8 @@ vi.mock('../src/client/acp-session.js', () => {
         cwd?: string;
         projectRoot: string;
         timeoutMs: number;
+        mcpServers?: unknown[];
+        sessionMeta?: Record<string, unknown>;
       }) => {
         hoisted.startCalls.push({
           command: opts.command,
@@ -83,6 +87,8 @@ vi.mock('../src/client/acp-session.js', () => {
           ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}),
           projectRoot: opts.projectRoot,
           timeoutMs: opts.timeoutMs,
+          ...(opts.mcpServers !== undefined ? { mcpServers: opts.mcpServers } : {}),
+          ...(opts.sessionMeta !== undefined ? { sessionMeta: opts.sessionMeta } : {}),
         });
         if (hoisted.errorKind) {
           throw new ACPSessionError(hoisted.errorKind, hoisted.errorMessage ?? 'mock error');
@@ -406,6 +412,32 @@ describe('makeACPSubagentRunnerWithStop', () => {
     expect(onProgress).toHaveBeenCalledWith(hoisted.progressEvent);
     expect(publishLive).toHaveBeenCalledWith(ctx, TASK, hoisted.progressEvent);
     expect(hoisted.startCalls).toHaveLength(1);
+  });
+
+  it('builds each session from sessionSetup: extra MCP servers and _meta', async () => {
+    const { ctx } = makeCtx();
+    const base = { name: 'base', command: 'b', args: [] };
+    const sessionSetup = vi.fn((task: TaskSpec) => ({
+      mcpServers: [{ name: `for-${task.id}`, command: 'w', args: [] }],
+      meta: { systemPrompt: { append: `task ${task.id}` } },
+    }));
+    const { runner } = await makeACPSubagentRunnerWithStop({
+      command: 'agent',
+      mcpServers: [base],
+      sessionSetup,
+    });
+
+    await runner(TASK, ctx);
+    await runner({ ...TASK, id: 't2' }, ctx);
+    expect(sessionSetup).toHaveBeenCalledTimes(2);
+    expect(hoisted.startCalls.map((c) => c.mcpServers)).toEqual([
+      [base, { name: 'for-t1', command: 'w', args: [] }],
+      [base, { name: 'for-t2', command: 'w', args: [] }],
+    ]);
+    expect(hoisted.startCalls.map((c) => c.sessionMeta)).toEqual([
+      { systemPrompt: { append: 'task t1' } },
+      { systemPrompt: { append: 'task t2' } },
+    ]);
   });
 
   it('does not fail the turn when publishLive throws', async () => {

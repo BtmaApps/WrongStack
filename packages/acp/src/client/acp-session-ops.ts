@@ -271,6 +271,7 @@ export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<Se
   const result = await ctx.sendRequest(id, 'session/new', {
     cwd: ctx.opts.cwd ?? ctx.opts.projectRoot,
     mcpServers: servers,
+    ...(ctx.opts.sessionMeta ? { _meta: ctx.opts.sessionMeta } : {}),
   });
   if (isJsonRpcError(result)) {
     throw new ACPSessionError(

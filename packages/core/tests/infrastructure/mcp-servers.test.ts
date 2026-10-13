@@ -157,19 +157,32 @@ describe('built-in MCP server presets (V0-D)', () => {
     // mailbox CLI exits 2 without --actor). Pin each project-scoped
     // binary's mandatory flags here.
     const REQUIRED_ARGS: Record<string, string[]> = {
-      'wstack-requirement-intake-mcp': ['--project-root'],
-      'wstack-kanban-mcp': ['--project-root'],
-      'wstack-mailbox-mcp': ['--project-root', '--actor'],
-      'wstack-codebase-index-mcp': ['--project-root'],
+      'requirement-intake': ['--project-root'],
+      kanban: ['--project-root'],
+      mailbox: ['--project-root', '--actor'],
+      'codebase-index': ['--project-root'],
     };
+    const served = new Set<string>();
     for (const [label, factory] of presets) {
       const cfg = factory();
-      const required = cfg.command ? REQUIRED_ARGS[cfg.command] : undefined;
+      // Project servers launch as `wstack mcp serve <name>`.
+      const [sub, verb, server] = cfg.args ?? [];
+      const required =
+        cfg.command === 'wstack' && sub === 'mcp' && verb === 'serve' && server
+          ? REQUIRED_ARGS[server]
+          : undefined;
       if (!required) continue;
+      served.add(server as string);
       const args = cfg.args ?? [];
       for (const flag of required) {
         expect(args, `${label}: preset args must include required flag ${flag}`).toContain(flag);
       }
+    }
+    // Every project preset goes through `wstack`: the separate `wstack-*-mcp`
+    // bins are absent from the standalone binary, so naming one breaks there.
+    expect([...served].sort()).toEqual(Object.keys(REQUIRED_ARGS).sort());
+    for (const [label, factory] of presets) {
+      expect(factory().command ?? '', label).not.toMatch(/^wstack-.+-mcp$/);
     }
   });
 
