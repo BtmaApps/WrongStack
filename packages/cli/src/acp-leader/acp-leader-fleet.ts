@@ -48,8 +48,15 @@ export interface FleetEndpoint {
   close(): Promise<void>;
 }
 
-/** Serve the leader's fleet tools; undefined when the leader has none of them. */
-export async function startFleetEndpoint(host: AcpLeaderHost): Promise<FleetEndpoint | undefined> {
+/**
+ * Serve the leader's fleet tools to one agent session; undefined when the
+ * leader has none of them. Its calls run on the agent of `run.sessionId` (a
+ * WebUI tab's own), and one the policy wants confirmed runs on `run.approve`.
+ */
+export async function startFleetEndpoint(
+  host: AcpLeaderHost,
+  run?: Parameters<AcpLeaderHost['runTool']>[2],
+): Promise<FleetEndpoint | undefined> {
   const tools = FLEET_TOOLS.flatMap((name) => {
     const tool = host.getTool(name);
     return tool ? [tool] : [];
@@ -68,7 +75,7 @@ export async function startFleetEndpoint(host: AcpLeaderHost): Promise<FleetEndp
         if (!offered.has(name)) {
           return { content: `Tool "${name}" is not offered here`, isError: true };
         }
-        return host.runTool(name, args);
+        return run ? host.runTool(name, args, run) : host.runTool(name, args);
       },
     },
   });

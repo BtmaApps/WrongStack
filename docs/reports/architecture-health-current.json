@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T21:40:14.294Z",
+  "generatedAt": "2026-10-13T21:50:15.625Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4957,
-    "testFiles": 4346,
-    "sourceLines": 1099254,
+    "sourceFiles": 4958,
+    "testFiles": 4347,
+    "sourceLines": 1099415,
     "workspaceEdges": 137,
-    "moduleEdges": 16335,
+    "moduleEdges": 16338,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 632,
-      "testFiles": 626,
+      "sourceFiles": 633,
+      "testFiles": 627,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 626
+          "testFiles": 627
         }
       ]
     },
@@ -2003,6 +2003,12 @@
       },
       {
         "file": "packages/cli/tests/acp-leader-fleet.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-host-binding.test.ts",
         "projects": [
           "root-node"
         ]

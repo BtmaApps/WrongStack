@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
 import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
 import { CouncilOrchestrator, OneShotOrchestrator } from '@wrongstack/core/execution';
@@ -49,6 +48,7 @@ import {
   MCPVaultTokenStore,
 } from '@wrongstack/mcp';
 import { bindAcpLeaderHost } from '../acp-leader/acp-leader-host.js';
+import { createAcpLeaderHost } from '../acp-leader/acp-leader-host-binding.js';
 import { openBrowser } from '../auth-menu/loopback-server.js';
 import type { EventWiring } from '../boot/event-wiring.js';
 import { effectiveMcpServers, parseLaunchMcpServers } from '../boot/mcp-config-flag.js';
@@ -460,29 +460,16 @@ export async function setupLifecycleAndPlugins(
 
   // An ACP agent as the leader (`--provider acp`) puts its tool calls on this
   // agent's event bus and asks through this agent's policy and prompt.
-  bindAcpLeaderHost({
-    events,
-    projectRoot: wpaths.projectRoot,
-    getConfig: () => configStore.get(),
-    permission: () => agent.permission,
-    context: () => agent.ctx,
-    getTool: (name) => toolRegistry.get(name),
-    runTool: async (name, input) => {
-      const use = { type: 'tool_use' as const, id: `acp_fleet_${randomUUID()}`, name, input };
-      const batch = await agent.toolExecutor.executeBatch([use], agent.ctx, 'sequential');
-      const result = batch.outputs[0]?.result;
-      if (!result || result.type === 'tool_confirm_pending') {
-        return {
-          content: `${name} needs the user's approval, which this surface cannot ask for here.`,
-          isError: true,
-        };
-      }
-      const content =
-        typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
-      return { content, isError: Boolean(result.is_error) };
-    },
-    confirmAwaiter,
-  });
+  bindAcpLeaderHost(
+    createAcpLeaderHost({
+      agent,
+      events,
+      projectRoot: wpaths.projectRoot,
+      getConfig: () => configStore.get(),
+      getTool: (name) => toolRegistry.get(name),
+      confirmAwaiter,
+    }),
+  );
 
   // ── MCP servers ──────────────────────────────────────────────────────────
   const mcpTokenStore = new MCPVaultTokenStore(

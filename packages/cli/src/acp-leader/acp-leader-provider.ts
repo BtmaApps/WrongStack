@@ -39,6 +39,7 @@ import { confirmThroughEvents } from './acp-leader-confirm.js';
 import { LeaderContext, publishLeaderContext } from './acp-leader-context.js';
 import {
   FLEET_SERVER_NAME,
+  FLEET_TOOLS,
   type FleetEndpoint,
   fleetNote,
   fleetToolName,
@@ -89,8 +90,25 @@ interface LeaderSession {
   agentId: string;
   session: ACPSession;
   context: LeaderContext;
+  /** This session's fleet tools endpoint, when the leader has fleet tools. */
+  fleet?: FleetEndpoint | undefined;
   /** Set once the agent has had a turn: its first one carries the earlier conversation. */
   joined?: boolean;
+}
+
+/** A fleet call's identity: its session, tool and input, keys in a stable order. */
+function fleetGrantKey(sessionId: string, tool: string, input: unknown): string {
+  const stable = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(stable)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.keys(value as Record<string, unknown>)
+              .sort()
+              .map((k) => [k, stable((value as Record<string, unknown>)[k])]),
+          )
+        : value;
+  return JSON.stringify([sessionId, tool, stable(input)]);
 }
 
 /** `provider/model` → its parts; a bare id or the ACP provider itself is unusable here. */
@@ -130,8 +148,12 @@ export class AcpLeaderProvider implements Provider {
   private acp: AcpModule | undefined;
   private readonly sessions = new Map<string, Promise<LeaderSession>>();
   private readonly sideProviders = new Map<string, Provider>();
-  /** The fleet tools endpoint, started with the first agent session. */
-  private fleet: Promise<FleetEndpoint | undefined> | undefined;
+  /**
+   * Fleet calls the user already approved through the agent's permission
+   * request, by session, tool and input: the call that follows runs on that
+   * approval instead of asking again.
+   */
+  private readonly fleetGrants = new Map<string, number>();
 
   constructor(private readonly opts: AcpLeaderProviderOptions) {
     this.id = opts.id ?? ACP_LEADER_PROVIDER_ID;
@@ -321,6 +343,7 @@ export class AcpLeaderProvider implements Provider {
   private drop(key: string, leader: LeaderSession): void {
     this.sessions.delete(key);
     void leader.session.close().catch(() => {});
+    void leader.fleet?.close().catch(() => {});
   }
 
   /** The persistent agent session for this conversation, started on first use. */
@@ -352,6 +375,44 @@ export class AcpLeaderProvider implements Provider {
     input: Record<string, unknown>,
     request: { toolCallId: string | undefined; signal: AbortSignal },
   ): Promise<boolean> {
+    const approved = await this.ask(sessionId, tool, input, request);
+    // A fleet tool runs in this process right after; that run must not ask again.
+    if (approved && FLEET_TOOLS.includes(tool.name)) {
+      const key = fleetGrantKey(sessionId, tool.name, input);
+      this.fleetGrants.set(key, (this.fleetGrants.get(key) ?? 0) + 1);
+    }
+    return approved;
+  }
+
+  /**
+   * A fleet call the policy wants confirmed: the approval the user gave the
+   * agent's permission request for it, once, or a question now (an agent
+   * whose own settings let it call the tool without asking).
+   */
+  private async approveFleetCall(
+    sessionId: string,
+    tool: Tool,
+    input: Record<string, unknown>,
+  ): Promise<boolean> {
+    const key = fleetGrantKey(sessionId, tool.name, input);
+    const granted = this.fleetGrants.get(key) ?? 0;
+    if (granted > 0) {
+      if (granted === 1) this.fleetGrants.delete(key);
+      else this.fleetGrants.set(key, granted - 1);
+      return true;
+    }
+    return this.ask(sessionId, tool, input, {
+      toolCallId: undefined,
+      signal: new AbortController().signal,
+    });
+  }
+
+  private async ask(
+    sessionId: string,
+    tool: Tool,
+    input: Record<string, unknown>,
+    request: { toolCallId: string | undefined; signal: AbortSignal },
+  ): Promise<boolean> {
     const host = acpLeaderHost();
     const suggestedPattern =
       subjectForToolInput(tool.name, input, tool.subjectKey, tool.subjectFields) ?? tool.name;
@@ -369,7 +430,7 @@ export class AcpLeaderProvider implements Provider {
       toolUseId,
       suggestedPattern,
       signal: request.signal,
-      permission: host.permission(),
+      permission: host.permission(sessionId),
     });
   }
 
@@ -400,8 +461,12 @@ export class AcpLeaderProvider implements Provider {
       config.acp?.bridge,
       'leader',
     )?.({ id: 'leader', description: '' }, leaderCtx);
-    if (host && !this.fleet) this.fleet = startFleetEndpoint(host).catch(() => undefined);
-    const fleet = host ? await this.fleet : undefined;
+    const fleet = host
+      ? await startFleetEndpoint(host, {
+          sessionId: key,
+          approve: (tool, input) => this.approveFleetCall(key, tool, input),
+        }).catch(() => undefined)
+      : undefined;
     const mcpServers = [
       ...(setup?.mcpServers ?? []),
       ...(fleet
@@ -428,7 +493,7 @@ export class AcpLeaderProvider implements Provider {
         : meta;
     const permissionPolicy = host
       ? wrongstackAcpPermissionPolicy({
-          evaluate: (tool, input) => host.permission().evaluate(tool, input, host.context()),
+          evaluate: (tool, input) => host.permission(key).evaluate(tool, input, host.context(key)),
           // A fleet tool is decided as the leader tool it runs, not as an MCP proxy.
           getTool: (name) => host.getTool(fleetToolName(name) ?? name),
           projectRoot,
@@ -455,19 +520,21 @@ export class AcpLeaderProvider implements Provider {
         ? { initialModeId: 'default', requireInitialMode: agentId === 'claude-code' }
         : {}),
     });
-    return { agentId, session, context: new LeaderContext() };
+    return { agentId, session, context: new LeaderContext(), fleet };
   }
 
   /** Close every agent session (process shutdown). */
   async closeAll(): Promise<void> {
     const all = [...this.sessions.values()];
     this.sessions.clear();
-    const fleet = this.fleet;
-    this.fleet = undefined;
-    void fleet?.then((endpoint) => endpoint?.close()).catch(() => undefined);
     await Promise.all(
       all.map((p) =>
-        p.then((leader) => leader.session.close({ graceMs: 500 })).catch(() => undefined),
+        p
+          .then((leader) => {
+            void leader.fleet?.close().catch(() => undefined);
+            return leader.session.close({ graceMs: 500 });
+          })
+          .catch(() => undefined),
       ),
     );
   }

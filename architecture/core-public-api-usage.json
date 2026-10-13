@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 387,
-      "typeOnly": 303,
+      "files": 389,
+      "typeOnly": 305,
       "runtimeOrMixed": 105
     },
     "@wrongstack/core/agent-catalog": {
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 367,
-      "typeOnly": 161,
-      "runtimeOrMixed": 227
+      "files": 369,
+      "typeOnly": 162,
+      "runtimeOrMixed": 228
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1407,
-      "typeOnly": 1240,
+      "files": 1409,
+      "typeOnly": 1242,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -336,6 +336,18 @@
       "file": "packages/cli/src/acp-leader/acp-leader-confirm.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/acp-leader/acp-leader-host-binding.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/acp-leader/acp-leader-host.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -6927,6 +6939,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/acp-leader/acp-leader-host-binding.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/acp-leader/acp-leader-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7480,6 +7498,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/acp-leader-fleet.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/acp-leader-host-binding.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13941,6 +13965,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/acp-leader/acp-leader-host-binding.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/acp-leader/acp-leader-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15910,6 +15940,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/acp-leader-fleet.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-leader-host-binding.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

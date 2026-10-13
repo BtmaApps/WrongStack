@@ -48,8 +48,10 @@ describe('fleet endpoint', () => {
       isError: false,
     }));
     // `delegate` is disabled in this profile; `read` is not a fleet tool.
+    const run = { sessionId: 'tab-2' };
     const endpoint = await startFleetEndpoint(
       host(['spawn_subagent', 'await_tasks', 'read'], runTool),
+      run,
     );
     expect(endpoint).toBeDefined();
     try {
@@ -66,7 +68,8 @@ describe('fleet endpoint', () => {
         arguments: { taskIds: ['t1'] },
       });
       expect(JSON.stringify(call.body)).toContain('await_tasks ran with');
-      expect(runTool).toHaveBeenCalledWith('await_tasks', { taskIds: ['t1'] });
+      // Run for the session the endpoint serves.
+      expect(runTool).toHaveBeenCalledWith('await_tasks', { taskIds: ['t1'] }, run);
 
       // Not offered, so not run.
       await rpc(endpoint!.url, endpoint!.token, 'tools/call', { name: 'read', arguments: {} });

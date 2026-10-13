@@ -29,6 +29,7 @@ import {
   startTerminalDashboard,
 } from '@wrongstack/webui-server';
 import type { WebSocket } from 'ws';
+import { setAcpLeaderSessionAgents } from './acp-leader/acp-leader-host.js';
 import {
   createEmbeddedClientRegistration,
   startEmbeddedLiveStatusLogger,
@@ -278,6 +279,9 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     abortControllers,
   );
   sessionAgentsRef = sessionAgents;
+  // An ACP agent leading a tab asks that tab's policy and runs its fleet tools
+  // on that tab's agent, so the workers it starts belong to the tab.
+  setAcpLeaderSessionAgents((sessionId) => sessionAgents.peek(sessionId));
 
   /**
    * Background-delegation auto-wake. The controller is the CLI's — one per

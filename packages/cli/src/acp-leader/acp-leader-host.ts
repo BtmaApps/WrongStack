@@ -9,6 +9,7 @@
  * never binds them — the provider runs the agent with the read-only default
  * permission policy and shows no tool cards.
  */
+import type { Agent } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Config, ConfirmAwaiter, PermissionPolicy, Tool } from '@wrongstack/core/types';
 
@@ -19,19 +20,28 @@ export interface AcpLeaderHost {
   events: EventBus;
   projectRoot: string;
   getConfig(): Config;
-  /** The leader's live permission policy (it can change with YOLO and trust rules). */
-  permission(): PermissionPolicy;
-  /** The leader's context, which the policy reads (files already read, the session). */
-  context(): Parameters<PermissionPolicy['evaluate']>[2];
+  /**
+   * The live permission policy (it can change with YOLO and trust rules) of
+   * the agent running `sessionId` — a WebUI tab's own; the leader's without one.
+   */
+  permission(sessionId?: string): PermissionPolicy;
+  /** That agent's context, which the policy reads (files already read, the session). */
+  context(sessionId?: string): Parameters<PermissionPolicy['evaluate']>[2];
   getTool(name: string): Tool | undefined;
   /**
-   * Run one of the leader's tools as the leader would — its executor and
-   * context, so permissions, hooks, events and the session all apply. Used
-   * by the fleet tools the agent reaches over MCP (`delegate` and kin).
+   * Run one of the leader's tools as the leader would — the executor and
+   * context of the agent running `sessionId`, so permissions, hooks, events
+   * and the session all apply. Used by the fleet tools the agent reaches over
+   * MCP (`delegate` and kin). A call the policy wants confirmed runs only when
+   * `approve` says yes.
    */
   runTool(
     name: string,
     input: Record<string, unknown>,
+    run?: {
+      sessionId?: string | undefined;
+      approve?: ((tool: Tool, input: Record<string, unknown>) => Promise<boolean>) | undefined;
+    },
   ): Promise<{ content: string; isError: boolean }>;
   /** The leader's confirmation prompt, when the surface has one. */
   confirmAwaiter?: ConfirmAwaiter | undefined;
@@ -43,6 +53,25 @@ export interface AcpLeaderHost {
 }
 
 let bound: AcpLeaderHost | undefined;
+
+/** The agent of a session, on a host that runs one agent per session (the WebUI's tabs). */
+export type AcpLeaderSessionAgent = Pick<
+  Agent,
+  'ctx' | 'permission' | 'toolExecutor' | 'perIterationOutputCapBytes'
+>;
+
+let sessionAgents: ((sessionId: string) => AcpLeaderSessionAgent | undefined) | undefined;
+
+/** Set by a host with an agent per session; without it every session uses the leader. */
+export function setAcpLeaderSessionAgents(
+  resolve: ((sessionId: string) => AcpLeaderSessionAgent | undefined) | undefined,
+): void {
+  sessionAgents = resolve;
+}
+
+export function acpLeaderSessionAgent(sessionId: string): AcpLeaderSessionAgent | undefined {
+  return sessionAgents?.(sessionId);
+}
 
 export function bindAcpLeaderHost(host: AcpLeaderHost | undefined): void {
   bound = host;

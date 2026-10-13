@@ -211,6 +211,47 @@ describe("the ACP leader's context", () => {
     expect(long).not.toContain('old question');
   });
 
+  it('runs a fleet call the user approved through the permission request without asking again', async () => {
+    const events = new EventBus();
+    const asked: string[] = [];
+    events.on('tool.confirm_needed', (e) => {
+      asked.push(`${e.sessionId} ${e.tool.name}`);
+      e.resolve('yes');
+    });
+    bindAcpLeaderHost({
+      events,
+      projectRoot: '/proj',
+      getConfig: () => CONFIG,
+      permission: () => ({ trust: async () => {}, deny: async () => {} }) as never,
+      context: () => ({}) as never,
+      getTool: () => undefined,
+      runTool: async () => ({ content: '', isError: false }),
+      confirmThroughEvents: true,
+    });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    const internals = provider as unknown as {
+      confirm(s: string, t: { name: string }, i: unknown, r: unknown): Promise<boolean>;
+      approveFleetCall(s: string, t: { name: string }, i: unknown): Promise<boolean>;
+    };
+    const delegate = { name: 'delegate' };
+    const signal = new AbortController().signal;
+
+    // The agent's permission request for the call: asked, approved.
+    await expect(
+      internals.confirm('tab-2', delegate, { task: 'x', scope: 'a' }, { toolCallId: 't1', signal }),
+    ).resolves.toBe(true);
+    // The run that follows (keys in another order) uses that approval, once.
+    await expect(
+      internals.approveFleetCall('tab-2', delegate, { scope: 'a', task: 'x' }),
+    ).resolves.toBe(true);
+    expect(asked).toEqual(['tab-2 delegate']);
+    // A second run of the same call was never approved: it asks.
+    await expect(
+      internals.approveFleetCall('tab-2', delegate, { scope: 'a', task: 'x' }),
+    ).resolves.toBe(true);
+    expect(asked).toEqual(['tab-2 delegate', 'tab-2 delegate']);
+  });
+
   it('ignores a settled call that is not a compaction', () => {
     const context = new LeaderContext();
     context.usage({ used: 5_000, size: 0 });
