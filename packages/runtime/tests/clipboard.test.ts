@@ -351,8 +351,12 @@ describe('readClipboardText', () => {
         await readClipboardImage();
         expect(capturedCmd).toContain("O''Brien");
       } finally {
-        process.env.TEMP = prevTemp;
-        process.env.TMP = prevTmp;
+        // Assigning undefined stores the string "undefined": on POSIX, where
+        // TEMP/TMP are usually unset, os.tmpdir() then returned "undefined".
+        if (prevTemp === undefined) delete process.env.TEMP;
+        else process.env.TEMP = prevTemp;
+        if (prevTmp === undefined) delete process.env.TMP;
+        else process.env.TMP = prevTmp;
       }
     });
 

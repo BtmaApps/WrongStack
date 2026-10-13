@@ -34,6 +34,52 @@ describe('SimpleUI chat projection', () => {
     expect(bounded.length).toBeLessThanOrEqual(8);
     expect(bounded.startsWith('abcd')).toBe(true);
     expect(bounded.endsWith('ghij')).toBe(true);
+
+    const longText = 'x'.repeat(200);
+    const boundedLong = boundSimpleChatText(longText, 100);
+    expect(boundedLong.length).toBe(100);
+    expect(boundedLong).toContain('… [older streamed text omitted to protect memory] …');
+    expect(boundedLong.startsWith('x'.repeat(22))).toBe(true);
+    expect(boundedLong.endsWith('x'.repeat(22))).toBe(true);
+  });
+
+  it('formats message time string when valid timestamp is provided', async () => {
+    const { formatMessageTime } = await import('../src/lib/chat-model.js');
+    expect(formatMessageTime('2026-07-25T10:05:00Z')).toMatch(/^\d{2}:\d{2}$/);
+    expect(formatMessageTime(undefined)).toBeNull();
+  });
+
+  it('replays [AUTO-WAKE] user messages as system notices, retains user images, marks in-flight tool calls running, and handles task_completed', () => {
+    // S30-M3: [AUTO-WAKE]
+    const wakeReplay = [{ role: 'user', content: '[AUTO-WAKE] background task finished' }];
+    const wakeMessages = replayToMessages(wakeReplay);
+    expect(wakeMessages[0]?.role).toBe('system');
+    expect(wakeMessages[0]?.text).toContain('Auto-wake');
+
+    // S30-M4: user images
+    const imageReplay = [
+      {
+        role: 'user',
+        content: [{ type: 'image', data: 'data123', mediaType: 'image/png' }],
+      },
+    ];
+    const imageMessages = replayToMessages(imageReplay);
+    expect(imageMessages[0]?.images).toEqual([{ data: 'data123', mime: 'image/png' }]);
+
+    // S30-M5: in-flight tool call (ok === undefined) -> status: 'running'
+    const inflightReplay = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'call-running', name: 'read', input: {} }],
+      },
+    ];
+    const inflightCalls = replayToToolCalls(inflightReplay);
+    expect(inflightCalls[0]?.status).toBe('running');
+
+    // S30-M6: updateSubagents task_completed
+    const current = [{ id: 'sub-1', name: 'sub-1', status: 'running' as const }];
+    const updated = updateSubagents(current, { kind: 'task_completed', subagentId: 'sub-1' });
+    expect(updated[0]?.status).toBe('completed');
   });
 
   it('retains the newest transcript rows within count and byte budgets', () => {
