@@ -132,6 +132,9 @@ export function handleMessage(this: AcpSessionMessagesHost, msg: ACPMessage): vo
       );
       return;
     }
+    // ACP extension notifications start with `_` and a receiver that does not
+    // know one ignores it (Claude's adapter sends `_auth/status_update`).
+    if (msg.method.startsWith('_')) return;
     // eslint-disable-next-line no-console
     console.warn(
       JSON.stringify({

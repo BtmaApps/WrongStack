@@ -21,11 +21,21 @@ export interface ACPSessionScratch {
   usage?: { used: number; size: number; cost?: UsageCost | undefined };
   toolCalls: Map<string, ACPCapturedToolCall>;
   diffs: ACPCapturedDiff[];
+  /**
+   * Set when a tool call ran after the last message text: the next text
+   * chunk starts a new assistant message, not a continuation.
+   */
+  messageBreak?: boolean;
+  /** Diffs already captured, keyed by tool call; agents resend them on update. */
+  seenDiffs?: Set<string>;
 }
 
 export function createSessionScratch(): ACPSessionScratch {
   return { text: '', thoughts: '', toolCalls: new Map(), diffs: [] };
 }
+
+/** Separates two assistant messages that a tool call split apart. */
+const MESSAGE_SEPARATOR = '\n\n';
 
 export function handleAcpSessionUpdate(
   msg: ACPMessage,
@@ -40,6 +50,12 @@ export function handleAcpSessionUpdate(
     case 'agent_message_chunk': {
       const text = extractText(u.content);
       if (text) {
+        // Without a separator, "…the checkout path.Now I'll run…" reads as one
+        // garbled sentence in the result WrongStack hands back.
+        if (scratch.messageBreak && scratch.text && !/\s$/.test(scratch.text)) {
+          scratch.text += MESSAGE_SEPARATOR;
+        }
+        scratch.messageBreak = false;
         scratch.text += text;
         emitProgress({ type: 'message', text });
       }
@@ -116,10 +132,16 @@ function captureToolCall(
     rawOutput: isRecord(u.rawOutput) ? u.rawOutput : prev?.rawOutput,
   };
   scratch.toolCalls.set(toolCallId, record);
+  if (scratch.text) scratch.messageBreak = true;
 
   if (Array.isArray(u.content)) {
     for (const c of u.content as ToolCallContent[]) {
       if (c && typeof c === 'object' && c.type === 'diff') {
+        // Claude's adapter repeats the edit's diff on the completing update.
+        const key = `${toolCallId}\0${c.path}\0${c.oldText ?? ''}\0${c.newText}`;
+        scratch.seenDiffs ??= new Set();
+        if (scratch.seenDiffs.has(key)) continue;
+        scratch.seenDiffs.add(key);
         const diff: ACPCapturedDiff = {
           path: c.path,
           oldText: c.oldText,

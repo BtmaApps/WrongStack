@@ -152,6 +152,55 @@ describe('acp-session-updates', () => {
     expect(s.diffs).toEqual([]);
   });
 
+  it('separates assistant messages that a tool call split apart', async () => {
+    const { handleAcpSessionUpdate, createSessionScratch } = await import(
+      '../src/client/acp-session-updates.js'
+    );
+    const scratch = createSessionScratch();
+    const update = (u: Record<string, unknown>) =>
+      handleAcpSessionUpdate(
+        { jsonrpc: '2.0', method: 'session/update', params: { update: u } } as never,
+        scratch,
+        () => {},
+      );
+    const say = (text: string) =>
+      update({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } });
+    say('I will run the ');
+    say('check.');
+    update({ sessionUpdate: 'tool_call', toolCallId: 'c1', title: 'Bash' });
+    update({ sessionUpdate: 'tool_call_update', toolCallId: 'c1', status: 'completed' });
+    say('All checks ');
+    say('passed.');
+    expect(scratch.text).toBe('I will run the check.\n\nAll checks passed.');
+  });
+
+  it('captures a diff once when the completing update repeats it', async () => {
+    const { handleAcpSessionUpdate, createSessionScratch } = await import(
+      '../src/client/acp-session-updates.js'
+    );
+    const scratch = createSessionScratch();
+    const emit = vi.fn();
+    const diff = { type: 'diff', path: 'src/a.ts', oldText: 'a', newText: 'b' };
+    for (const u of [
+      { sessionUpdate: 'tool_call', toolCallId: 'e1', title: 'Edit', content: [diff] },
+      { sessionUpdate: 'tool_call_update', toolCallId: 'e1', status: 'completed', content: [diff] },
+      {
+        sessionUpdate: 'tool_call',
+        toolCallId: 'e2',
+        title: 'Edit',
+        content: [{ ...diff, oldText: 'b', newText: 'c' }],
+      },
+    ]) {
+      handleAcpSessionUpdate(
+        { jsonrpc: '2.0', method: 'session/update', params: { update: u } } as never,
+        scratch,
+        emit,
+      );
+    }
+    expect(scratch.diffs.map((d) => d.newText)).toEqual(['b', 'c']);
+    expect(emit.mock.calls.filter(([e]) => e.type === 'diff')).toHaveLength(2);
+  });
+
   it('handleAcpSessionUpdate handles null/undefined update', async () => {
     const { handleAcpSessionUpdate, createSessionScratch } = await import(
       '../src/client/acp-session-updates.js'
@@ -1482,6 +1531,16 @@ describe('ACPSession message routing (handleMessage)', () => {
     expect(replies).toEqual([]);
     expect(String(warned[0]?.[0])).toContain('acp_session.unhandled_method');
     expect(String(warned[0]?.[0])).toContain('vendor/frobnicate');
+  });
+
+  it('ignores ACP extension notifications it does not know', async () => {
+    const { transport } = await startSession();
+    const { replies, warned } = await emitAndObserve(transport, {
+      method: '_auth/status_update',
+      params: { status: 'ok' },
+    });
+    expect(replies).toEqual([]);
+    expect(warned).toEqual([]);
   });
 
   it('requires valid permissionPolicy/trustBoundary', async () => {

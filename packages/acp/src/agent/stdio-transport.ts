@@ -16,6 +16,29 @@ import { buildWin32CmdShimInvocation } from '../win32-cmd.js';
 const DEFAULT_MAX_FRAME_CHARS = 20 * 1024 * 1024;
 const DEFAULT_MAX_QUEUED_MESSAGES = 1_000;
 const DEFAULT_MAX_QUEUED_CHARS = 32 * 1024 * 1024;
+/** Characters of a child's stderr kept to explain a crash. */
+const STDERR_TAIL_CHARS = 4096;
+
+/**
+ * Whether to echo an ACP child's stderr live. External agents log routine
+ * diagnostics there (Claude's adapter prints every SDK message it does not
+ * map), and the host is often a TUI or a web server where those lines are
+ * noise. Off by default; the tail is still shown when the child crashes.
+ */
+function echoChildStderr(): boolean {
+  const v = process.env.WRONGSTACK_DEBUG;
+  return !!v && v !== '0' && v !== 'false';
+}
+
+/** The last non-empty line of `text`, bounded for a one-line reason. */
+function lastLine(text: string): string {
+  const lines = text.split(/\r?\n/);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]?.trim();
+    if (line) return line.length > 300 ? `${line.slice(0, 300)}…` : line;
+  }
+  return '';
+}
 
 interface QueuedMessage {
   message: ACPMessage;
@@ -352,6 +375,8 @@ export interface ACPChildProcess extends EventEmitter {
 export class ClientTransport implements ACPClientTransport {
   private child: ACPChildProcess | null = null;
   private buffer = '';
+  private stderrTail = '';
+  private stopRequested = false;
   private readonly handlers = new Set<(msg: ACPMessage) => void>();
   private readonly claimHandlers = new Set<(msg: ACPMessage) => boolean>();
   private readonly closeHandlers = new Set<(reason: string) => void>();
@@ -566,6 +591,7 @@ export class ClientTransport implements ACPClientTransport {
 
   stop(reason = 'transport stopped'): void {
     this.closed = true;
+    this.stopRequested = true;
     this.resolveRead?.(null);
     this.resolveRead = null;
     this.buffer = '';
@@ -607,7 +633,8 @@ export class ClientTransport implements ACPClientTransport {
   }
 
   private onChildError(chunk: string): void {
-    writeErr(`[acp-child stderr] ${chunk}`);
+    this.stderrTail = (this.stderrTail + chunk).slice(-STDERR_TAIL_CHARS);
+    if (echoChildStderr()) writeErr(`[acp-child stderr] ${chunk}`);
   }
 
   private onChildClose(code: number | null): void {
@@ -620,10 +647,17 @@ export class ClientTransport implements ACPClientTransport {
     this.queuedChars = 0;
     this.handlers.clear();
     this.claimHandlers.clear();
-    if (code !== 0 && code !== null) {
-      writeErr(`[acp-child exited with code ${code}]\n`);
+    // Killing the tree on stop() ends the child with a non-zero code (1 on
+    // Windows): that is our teardown, not a crash to report.
+    const failed = code !== 0 && code !== null && !this.stopRequested;
+    if (failed) {
+      // The live echo is off by default, so a crash shows what led up to it.
+      const tail = echoChildStderr() ? '' : this.stderrTail.trimEnd();
+      writeErr(`[acp-child exited with code ${code}]\n${tail ? `${tail}\n` : ''}`);
     }
-    this.notifyClosed(`agent process exited with code ${code}`);
+    const cause = failed ? lastLine(this.stderrTail) : '';
+    this.stderrTail = '';
+    this.notifyClosed(`agent process exited with code ${code}${cause ? `: ${cause}` : ''}`);
   }
 
   private dispatch(msg: ACPMessage, chars = JSON.stringify(msg).length): void {

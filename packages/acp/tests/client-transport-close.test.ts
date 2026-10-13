@@ -88,6 +88,54 @@ describe('ClientTransport onClose', () => {
     stderr.mockRestore();
   });
 
+  it('keeps routine child stderr off the host and shows it when the child crashes', async () => {
+    vi.stubEnv('WRONGSTACK_DEBUG', '');
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const { transport, child } = await startedChild();
+    const reasons: string[] = [];
+    transport.onClose((r) => reasons.push(r));
+    child.stderr.emit('data', 'Unexpected case: {"type":"system","subtype":"ui_status"}\n');
+    expect(stderr).not.toHaveBeenCalled();
+    child.stderr.emit('data', 'Error: not signed in\n\n');
+    child.emit('close', 1);
+    expect(reasons).toEqual(['agent process exited with code 1: Error: not signed in']);
+    const printed = stderr.mock.calls.map((c) => String(c[0])).join('');
+    expect(printed).toContain('[acp-child exited with code 1]');
+    expect(printed).toContain('Error: not signed in');
+    stderr.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it('does not report its own teardown kill as a crash', async () => {
+    vi.stubEnv('WRONGSTACK_DEBUG', '');
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const { transport, child } = await startedChild();
+    child.stderr.emit('data', 'Unexpected case: {"subtype":"ui_status"}\n');
+    transport.stop();
+    // treeKill on Windows ends the process with exit code 1.
+    child.emit('close', 1);
+    const printed = stderr.mock.calls.map((c) => String(c[0])).join('');
+    expect(printed).not.toContain('exited with code');
+    expect(printed).not.toContain('ui_status');
+    stderr.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it('echoes child stderr live under WRONGSTACK_DEBUG and stays quiet on a clean exit', async () => {
+    vi.stubEnv('WRONGSTACK_DEBUG', '1');
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const { transport, child } = await startedChild();
+    const reasons: string[] = [];
+    transport.onClose((r) => reasons.push(r));
+    child.stderr.emit('data', 'phase=sdk-initialize\n');
+    expect(String(stderr.mock.calls[0]?.[0])).toBe('[acp-child stderr] phase=sdk-initialize\n');
+    child.emit('close', 0);
+    expect(reasons).toEqual(['agent process exited with code 0']);
+    expect(stderr).toHaveBeenCalledTimes(1);
+    stderr.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
   it('refuses to send once the connection is closed, even before the child is reaped', async () => {
     const { transport, child } = await startedChild();
     child.emit('error', new Error('post-ready crash'));
