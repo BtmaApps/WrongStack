@@ -9,8 +9,8 @@
  */
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HqSessionAgentSummary, HqSnapshot } from '@wrongstack/core/hq';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/data/api.js', () => ({
   fetchJson: vi.fn(() => Promise.reject(new Error('offline'))),

@@ -510,4 +510,30 @@ describe('groupMailboxEvents', () => {
     expect(projects[0]?.incompleteCount).toBe(1);
     expect(projects[0]?.unreadCount).toBe(0);
   });
+
+  it('preserves authoritative snapshot onlineAgentCount against live agent events', () => {
+    const snap = {
+      mailboxes: [mailboxSummaryRecord('demo', { onlineAgentCount: 10, messageCount: 1 })],
+    };
+    const offlineEvent: HqEventEnvelope = {
+      ...mailboxEvent('hb-1', undefined, 'demo', 1),
+      payload: {
+        mailboxId: 'demo:mailbox',
+        action: 'agent.heartbeat',
+        agent: {
+          agentId: 'a1',
+          name: 'a1',
+          sessionId: 's',
+          status: 'idle',
+          iterations: 0,
+          toolCalls: 0,
+          lastActivityAt: '2026-07-03T08:00:00.000Z',
+          lastSeenAt: '2026-07-03T08:00:00.000Z',
+          online: false,
+        },
+      },
+    };
+    const { projects } = groupMailboxEvents(snap, [offlineEvent]);
+    expect(projects[0]?.onlineAgentCount).toBe(10);
+  });
 });

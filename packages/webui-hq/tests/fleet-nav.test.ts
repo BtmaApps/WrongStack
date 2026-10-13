@@ -300,4 +300,33 @@ describe('buildNavFromTopology retention', () => {
 
     expect(buildNavFromTopology(topology)[0]?.projects[0]?.clients[0]?.retained).toBeUndefined();
   });
+
+  it('omits terminal nodes with serviceMode defined from nav clients', () => {
+    const topology: FleetTopology = {
+      nodes: [
+        { id: 'machine:m1', kind: 'machine', label: 'box', chips: [], machineId: 'm1' },
+        {
+          id: 'project:m1:p1',
+          kind: 'project',
+          label: 'repo',
+          chips: [],
+          machineId: 'm1',
+          projectId: 'p1',
+        },
+        {
+          id: 'terminal:s1',
+          kind: 'terminal',
+          label: 'daemon-svc',
+          chips: [],
+          machineId: 'm1',
+          projectId: 'p1',
+          sessionId: 's1',
+          serviceMode: 'daemon',
+        },
+      ],
+      edges: [],
+    };
+    const nav = buildNavFromTopology(topology);
+    expect(nav).toHaveLength(0);
+  });
 });

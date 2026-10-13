@@ -113,4 +113,100 @@ describe('HQ Kanban view model', () => {
     });
     expect(boards[0]?.columns[3]?.tasks[0]?.priority).toBe('medium');
   });
+
+  it('falls back to "Unmapped" for missing columns with empty string id', () => {
+    const rawSnapshot: HqKanbanSnapshotPayload = {
+      projectId: 'proj-1',
+      generatedAt: '2026-07-23T10:00:00.000Z',
+      boards: [
+        {
+          boardId: 'b1',
+          revision: 1,
+          updatedAt: '2026-07-23T10:00:00.000Z',
+          board: {
+            id: 'b1',
+            columns: [],
+            tasks: [{ id: 't1', title: 'Orphan Task', columnId: '' }],
+          },
+        },
+      ],
+      tombstones: [],
+    };
+    const boards = projectKanbanBoards(rawSnapshot);
+    const unmappedCol = boards[0]?.columns.find((c) => c.id === '');
+    expect(unmappedCol?.title).toBe('Unmapped');
+  });
+
+  it('counts review tasks in activeTaskCount', () => {
+    const rawSnapshot: HqKanbanSnapshotPayload = {
+      projectId: 'proj-1',
+      generatedAt: '2026-07-23T10:00:00.000Z',
+      boards: [
+        {
+          boardId: 'b1',
+          revision: 1,
+          updatedAt: '2026-07-23T10:00:00.000Z',
+          board: {
+            id: 'b1',
+            columns: [{ id: 'col1', title: 'Col', order: 0 }],
+            tasks: [{ id: 't1', title: 'Review Task', columnId: 'col1', status: 'review' }],
+          },
+        },
+      ],
+      tombstones: [],
+    };
+    const boards = projectKanbanBoards(rawSnapshot);
+    expect(boards[0]?.activeTaskCount).toBe(1);
+  });
+
+  it('counts failed tasks in blockedTaskCount', () => {
+    const rawSnapshot: HqKanbanSnapshotPayload = {
+      projectId: 'proj-1',
+      generatedAt: '2026-07-23T10:00:00.000Z',
+      boards: [
+        {
+          boardId: 'b1',
+          revision: 1,
+          updatedAt: '2026-07-23T10:00:00.000Z',
+          board: {
+            id: 'b1',
+            columns: [{ id: 'col1', title: 'Col', order: 0 }],
+            tasks: [{ id: 't1', title: 'Failed Task', columnId: 'col1', status: 'failed' }],
+          },
+        },
+      ],
+      tombstones: [],
+    };
+    const boards = projectKanbanBoards(rawSnapshot);
+    expect(boards[0]?.blockedTaskCount).toBe(1);
+  });
+
+  it('falls back to assignedAgent when assignee is absent', () => {
+    const rawSnapshot: HqKanbanSnapshotPayload = {
+      projectId: 'proj-1',
+      generatedAt: '2026-07-23T10:00:00.000Z',
+      boards: [
+        {
+          boardId: 'b1',
+          revision: 1,
+          updatedAt: '2026-07-23T10:00:00.000Z',
+          board: {
+            id: 'b1',
+            columns: [{ id: 'col1', title: 'Col', order: 0 }],
+            tasks: [
+              {
+                id: 't1',
+                title: 'Task with agent',
+                columnId: 'col1',
+                assignedAgent: 'agent-bot',
+              },
+            ],
+          },
+        },
+      ],
+      tombstones: [],
+    };
+    const boards = projectKanbanBoards(rawSnapshot);
+    expect(boards[0]?.columns[0]?.tasks[0]?.assignee).toBe('agent-bot');
+  });
 });

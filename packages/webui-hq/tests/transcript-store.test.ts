@@ -143,6 +143,16 @@ describe('applyLiveBatch', () => {
     expect(s.entries[0]!.text).toBe('');
     expect(s.entries[0]!.durationMs).toBe(10);
   });
+
+  it('does not record seen key for streamed thinking entries across successive live batches', () => {
+    let s = applyFetch(createTranscriptState(), []);
+    const thinkingEntry = e({ role: 'thinking', text: 'analyzing requirements...', ts: 't0' });
+    s = applyLiveBatch(s, 0, [thinkingEntry]);
+    s = applyLiveBatch(s, 1, [thinkingEntry]);
+    expect(s.entries).toHaveLength(2);
+    expect(s.entries[0]?.text).toBe('analyzing requirements...');
+    expect(s.entries[1]?.text).toBe('analyzing requirements...');
+  });
 });
 
 describe('entryKey', () => {

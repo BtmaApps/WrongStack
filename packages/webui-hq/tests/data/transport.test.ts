@@ -9,14 +9,14 @@
  */
 import { HQ_BROWSER_PEER_RESUME_CLIENT_ID } from '@wrongstack/core/hq/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
+import { clearHqToken, setHqToken } from '../../src/data/auth/token-storage.js';
+import { resolveHqSocketUrl } from '../../src/data/transport/hq-socket.js';
 import { isLoopbackBrowserOrigin } from '../../src/data/transport/loopback.js';
 import {
   buildResumeFrames,
   MAX_RESUME_FRAMES,
   normalizeResumeSeq,
 } from '../../src/data/transport/resume-frames.js';
-import { resolveHqSocketUrl } from '../../src/data/transport/hq-socket.js';
-import { clearHqToken, setHqToken } from '../../src/data/auth/token-storage.js';
 
 afterEach(() => {
   clearHqToken();

@@ -2,13 +2,14 @@ import type { HqSnapshot } from '@wrongstack/core/hq';
 import { describe, expect, it } from 'vitest';
 import {
   buildFleetTopology,
-  filterFleetTopology,
-  filterFleetTopologyByQuery,
   FLEET_COLUMN_GAP,
   FLEET_LEAF_H,
+  type FleetTopologyNode,
+  filterFleetTopology,
+  filterFleetTopologyByQuery,
   layoutFleetTopology,
   orderFleetTopologyNodes,
-  type FleetTopologyNode,
+  retainFleetTopology,
 } from '../src/domain/fleet-topology.js';
 
 function baseSnapshot(overrides: Partial<HqSnapshot> = {}): HqSnapshot {
@@ -740,5 +741,126 @@ describe('buildFleetTopology — edge cases', () => {
     );
     const project = topology.nodes.find((n) => n.kind === 'project');
     expect(project?.chips?.slice(0, 2)).toEqual(['1 client', '1 terminal']);
+  });
+
+  it('truncates projectRootDisplay longer than 54 characters with an ellipsis', () => {
+    const longPath = 'D:/Codebox/PROJECTS/VeryLongDirectoryPathNameToTriggerTruncationNow';
+    expect(longPath.length).toBeGreaterThan(54);
+    expect(longPath.length).toBeLessThan(99);
+    const topology = buildFleetTopology(
+      baseSnapshot({
+        machines: [
+          {
+            machineId: 'm1',
+            hostname: 'host',
+            clientCount: 1,
+            sessionCount: 1,
+            agentCount: 0,
+            projectIds: ['p1'],
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+          },
+        ],
+        projects: [
+          {
+            projectId: 'p1',
+            projectName: 'LongProj',
+            projectRootDisplay: longPath,
+            machineIds: ['m1'],
+            activeClients: 1,
+            activeSessions: 1,
+            activeSubagents: 0,
+            totalCostUsd: 0,
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+            status: 'active',
+          },
+        ],
+        liveSessions: [
+          {
+            sessionId: 'sess-1',
+            clientKind: 'tui',
+            machineId: 'm1',
+            projectId: 'p1',
+            projectName: 'LongProj',
+            projectRoot: longPath,
+            status: 'active',
+            startedAt: '2026-07-09T00:00:00.000Z',
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+            agentCount: 0,
+            agents: [],
+          },
+        ],
+      }),
+    );
+    const projNode = topology.nodes.find((n) => n.kind === 'project');
+    expect(projNode?.sub).toBe(`…${longPath.slice(-51)}`);
+    expect(projNode?.sub?.startsWith('…')).toBe(true);
+  });
+
+  it('truncates sessionId longer than 18 characters in terminal label', () => {
+    const longSessionId = 'sess-abcdef-1234567890-xyz';
+    expect(longSessionId.length).toBeGreaterThan(18);
+    expect(longSessionId.length).toBeLessThan(99);
+    const topology = buildFleetTopology(
+      baseSnapshot({
+        machines: [
+          {
+            machineId: 'm1',
+            hostname: 'host',
+            clientCount: 1,
+            sessionCount: 1,
+            agentCount: 0,
+            projectIds: ['p1'],
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+          },
+        ],
+        projects: [
+          {
+            projectId: 'p1',
+            projectName: 'Proj',
+            projectRootDisplay: '/tmp/p',
+            machineIds: ['m1'],
+            activeClients: 1,
+            activeSessions: 1,
+            activeSubagents: 0,
+            totalCostUsd: 0,
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+            status: 'active',
+          },
+        ],
+        liveSessions: [
+          {
+            sessionId: longSessionId,
+            clientKind: 'tui',
+            machineId: 'm1',
+            projectId: 'p1',
+            projectName: 'Proj',
+            projectRoot: '/tmp/p',
+            status: 'active',
+            startedAt: '2026-07-09T00:00:00.000Z',
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+            agentCount: 0,
+            agents: [],
+          },
+        ],
+      }),
+    );
+    const termNode = topology.nodes.find((n) => n.kind === 'terminal');
+    expect(termNode?.label).toBe(`TUI · …${longSessionId.slice(-14)}`);
+  });
+
+  it('retains vanished nodes within retention grace window', () => {
+    const prevTopology = {
+      nodes: [{ id: 'term-1', kind: 'terminal' as const, label: 'term', chips: [] }],
+      edges: [],
+    };
+    const nextTopology = {
+      nodes: [],
+      edges: [],
+    };
+    const res = retainFleetTopology(nextTopology, prevTopology, { 'term-1': 1000 }, 1500, 2000);
+    expect(res.topology.nodes).toHaveLength(1);
+    expect(res.topology.nodes[0]?.id).toBe('term-1');
+    expect(res.topology.nodes[0]?.retained).toBe(true);
+    expect(res.missingSince['term-1']).toBe(1000);
   });
 });
