@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 361,
+      "files": 362,
       "typeOnly": 159,
-      "runtimeOrMixed": 223
+      "runtimeOrMixed": 224
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1400,
-      "typeOnly": 1233,
+      "files": 1401,
+      "typeOnly": 1234,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -7446,6 +7446,12 @@
       "file": "packages/cli/src/worktree-command-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/acp-leader-fleet.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -15822,6 +15828,12 @@
       "file": "packages/cli/src/wiring/wrongtrace-prompt-contributor.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-leader-fleet.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",

@@ -33,6 +33,13 @@ import { isRestrictedMode } from '../boot/restricted-mode.js';
 import { wrongstackAcpPermissionPolicy } from '../fleet/acp-permission-bridge.js';
 import { recordAcpRateLimit } from '../fleet/acp-quota-reading.js';
 import { wrongstackBridgeSetup } from '../fleet/acp-wrongstack-bridge.js';
+import {
+  FLEET_SERVER_NAME,
+  type FleetEndpoint,
+  fleetNote,
+  fleetToolName,
+  startFleetEndpoint,
+} from './acp-leader-fleet.js';
 import { acpLeaderHost, trackAcpLeader } from './acp-leader-host.js';
 import {
   agentTurnError,
@@ -112,6 +119,8 @@ export class AcpLeaderProvider implements Provider {
   private acp: AcpModule | undefined;
   private readonly sessions = new Map<string, Promise<LeaderSession>>();
   private readonly sideProviders = new Map<string, Provider>();
+  /** The fleet tools endpoint, started with the first agent session. */
+  private fleet: Promise<FleetEndpoint | undefined> | undefined;
 
   constructor(private readonly opts: AcpLeaderProviderOptions) {
     this.id = opts.id ?? ACP_LEADER_PROVIDER_ID;
@@ -266,10 +275,37 @@ export class AcpLeaderProvider implements Provider {
       config.acp?.bridge,
       'leader',
     )?.({ id: 'leader', description: '' }, leaderCtx);
+    if (host && !this.fleet) this.fleet = startFleetEndpoint(host).catch(() => undefined);
+    const fleet = host ? await this.fleet : undefined;
+    const mcpServers = [
+      ...(setup?.mcpServers ?? []),
+      ...(fleet
+        ? [
+            {
+              type: 'http' as const,
+              name: FLEET_SERVER_NAME,
+              url: fleet.url,
+              headers: [{ name: 'Authorization', value: `Bearer ${fleet.token}` }],
+            },
+          ]
+        : []),
+    ];
+    const meta = setup?.meta as { systemPrompt?: { append?: string } } | undefined;
+    const sessionMeta =
+      meta?.systemPrompt?.append !== undefined
+        ? {
+            ...meta,
+            systemPrompt: {
+              ...meta.systemPrompt,
+              append: meta.systemPrompt.append + (fleet ? `\n${fleetNote(fleet.tools)}` : ''),
+            },
+          }
+        : meta;
     const permissionPolicy = host
       ? wrongstackAcpPermissionPolicy({
           evaluate: (tool, input) => host.permission().evaluate(tool, input, host.context()),
-          getTool: (name) => host.getTool(name),
+          // A fleet tool is decided as the leader tool it runs, not as an MCP proxy.
+          getTool: (name) => host.getTool(fleetToolName(name) ?? name),
           projectRoot,
           allowMcp: !isRestrictedMode({}),
           ...(host.confirmAwaiter
@@ -300,8 +336,8 @@ export class AcpLeaderProvider implements Provider {
       projectRoot,
       role: agentId,
       ...(permissionPolicy ? { permissionPolicy } : {}),
-      ...(setup?.mcpServers ? { mcpServers: setup.mcpServers } : {}),
-      ...(setup?.meta ? { sessionMeta: setup.meta } : {}),
+      ...(mcpServers.length > 0 ? { mcpServers } : {}),
+      ...(sessionMeta ? { sessionMeta } : {}),
       // Claude asks before edits and commands only in `default`.
       ...(permissionPolicy
         ? { initialModeId: 'default', requireInitialMode: agentId === 'claude-code' }
@@ -314,6 +350,9 @@ export class AcpLeaderProvider implements Provider {
   async closeAll(): Promise<void> {
     const all = [...this.sessions.values()];
     this.sessions.clear();
+    const fleet = this.fleet;
+    this.fleet = undefined;
+    void fleet?.then((endpoint) => endpoint?.close()).catch(() => undefined);
     await Promise.all(
       all.map((p) =>
         p.then((leader) => leader.session.close({ graceMs: 500 })).catch(() => undefined),

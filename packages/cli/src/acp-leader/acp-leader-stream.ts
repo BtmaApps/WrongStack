@@ -144,20 +144,30 @@ export class ToolCardRelay {
   }
 }
 
-/** The newest user message's text: the agent keeps its own conversation. */
+/**
+ * What the agent has not seen yet: the text of every user message since its
+ * last reply (the user's prompt plus anything WrongStack folded in after it —
+ * a [DELEGATION RESULT], a session note). The agent keeps its own history.
+ */
 export function latestUserText(messages: readonly Message[]): string {
+  const parts: string[] = [];
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
+    if (message?.role === 'assistant') break;
     if (message?.role !== 'user') continue;
     const content = message.content as string | ContentBlock[];
-    if (typeof content === 'string') return content;
-    const text = content
-      .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n\n');
-    if (text.trim()) return text;
+    const text =
+      typeof content === 'string'
+        ? content
+        : content
+            .filter(
+              (block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text',
+            )
+            .map((block) => block.text)
+            .join('\n\n');
+    if (text.trim()) parts.unshift(text);
   }
-  return '';
+  return parts.join('\n\n');
 }
 
 export function turnUsage(result: ACPSessionRunResult): Usage {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
 import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
 import { CouncilOrchestrator, OneShotOrchestrator } from '@wrongstack/core/execution';
@@ -466,6 +467,20 @@ export async function setupLifecycleAndPlugins(
     permission: () => agent.permission,
     context: () => agent.ctx,
     getTool: (name) => toolRegistry.get(name),
+    runTool: async (name, input) => {
+      const use = { type: 'tool_use' as const, id: `acp_fleet_${randomUUID()}`, name, input };
+      const batch = await agent.toolExecutor.executeBatch([use], agent.ctx, 'sequential');
+      const result = batch.outputs[0]?.result;
+      if (!result || result.type === 'tool_confirm_pending') {
+        return {
+          content: `${name} needs the user's approval, which this surface cannot ask for here.`,
+          isError: true,
+        };
+      }
+      const content =
+        typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
+      return { content, isError: Boolean(result.is_error) };
+    },
     confirmAwaiter,
   });
 

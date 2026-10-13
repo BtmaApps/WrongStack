@@ -1,7 +1,16 @@
 # ACP leader mode — Claude Code (or another ACP agent) as the session's leader
 
-Status: phase 1 built (2026-10-13) — `packages/cli/src/acp-leader/`. Phases
-2 and 3 open.
+Status: phases 1 and 2 built (2026-10-13) — `packages/cli/src/acp-leader/`.
+Phase 3 open.
+
+Phase 2 notes, as built (`acp-leader-fleet.ts`): the endpoint offers the
+coordination tools the leader's registry has — a profile that disables
+`delegate` leaves the spawn/assign/await path; each call runs through the
+leader's executor and context (`AcpLeaderHost.runTool`); the provider sends
+the agent everything since its last reply, so an auto-wake and the
+`[DELEGATION RESULT]` folded after it arrive together. Verified live: Claude as
+leader spawned a WrongStack worker (zai glm-5.3 via routing), assigned it a
+task, awaited it and checked its answer.
 
 Phase 1 notes, as built:
 

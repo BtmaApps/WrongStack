@@ -168,6 +168,7 @@ describe('a leader turn', () => {
         ({ evaluate: async () => ({ permission: 'auto', source: 'default' }) }) as never,
       context: () => ({}) as never,
       getTool: () => undefined,
+      runTool: async () => ({ content: '', isError: false }),
     });
     acp.turn = async (onProgress) => {
       onProgress({ type: 'message', text: 'Hello ' });
@@ -256,6 +257,59 @@ describe('a leader turn', () => {
   });
 });
 
+describe('the fleet endpoint for a leader', () => {
+  it('hands the agent the fleet server, explains it, and decides its tools as the leader tools', async () => {
+    const evaluated: string[] = [];
+    bindAcpLeaderHost({
+      events: new EventBus(),
+      projectRoot: '/proj',
+      getConfig: () => CONFIG,
+      permission: () =>
+        ({
+          evaluate: async (tool: { name: string }) => {
+            evaluated.push(tool.name);
+            return { permission: 'auto', source: 'default' };
+          },
+        }) as never,
+      context: () => ({}) as never,
+      getTool: (name) =>
+        name === 'delegate'
+          ? ({ name, description: 'hand off', inputSchema: { type: 'object' } } as never)
+          : undefined,
+      runTool: async () => ({ content: 'ok', isError: false }),
+    });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    await collect(provider.stream(leaderRequest('go') as never, { signal: SIGNAL }));
+    const start = acp.starts[0] as {
+      mcpServers: Array<{ type?: string; name: string; url?: string; headers?: unknown[] }>;
+      sessionMeta: { systemPrompt: { append: string } };
+      permissionPolicy: (req: unknown) => Promise<unknown>;
+    };
+    const fleet = start.mcpServers.find((s) => s.name === 'wrongstack-fleet');
+    expect(fleet).toMatchObject({
+      type: 'http',
+      url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:/),
+    });
+    expect(fleet?.headers).toEqual([
+      { name: 'Authorization', value: expect.stringMatching(/^Bearer .{20,}/) },
+    ]);
+    expect(start.sessionMeta.systemPrompt.append).toContain('wrongstack-fleet gives you');
+
+    await start.permissionPolicy({
+      toolCall: {
+        toolCallId: 'c1',
+        kind: 'other',
+        title: 'mcp__wrongstack-fleet__delegate',
+        rawInput: { task: 'x' },
+      },
+      options: [{ optionId: 'allow', name: 'Allow', kind: 'allow_once' }],
+      signal: SIGNAL,
+    });
+    expect(evaluated).toEqual(['delegate']);
+    await provider.closeAll();
+  });
+});
+
 describe('the host binding', () => {
   it('forgets the stdin prompt once the surface (TUI, WebUI) takes confirmations over', () => {
     bindAcpLeaderHost({
@@ -265,6 +319,7 @@ describe('the host binding', () => {
       permission: () => ({}) as never,
       context: () => ({}) as never,
       getTool: () => undefined,
+      runTool: async () => ({ content: '', isError: false }),
       confirmAwaiter: async () => 'yes',
     });
     dropAcpLeaderConfirm();
@@ -276,6 +331,15 @@ describe('the host binding', () => {
 describe('stream helpers', () => {
   it('reads the newest user text and maps a stall to a timeout', () => {
     expect(latestUserText(leaderRequest('now').messages as never)).toBe('now');
+    // Everything since the agent last spoke: an auto-wake plus the result folded in.
+    expect(
+      latestUserText([
+        { role: 'user', content: [{ type: 'text', text: 'old' }] },
+        { role: 'assistant', content: [{ type: 'text', text: 'answer' }] },
+        { role: 'user', content: [{ type: 'text', text: '[AUTO-WAKE]' }] },
+        { role: 'user', content: [{ type: 'text', text: '[DELEGATION RESULT] done' }] },
+      ] as never),
+    ).toBe('[AUTO-WAKE]\n\n[DELEGATION RESULT] done');
     expect(
       agentTurnError(
         Object.assign(new Error('silent'), { kind: 'stalled' }),

@@ -21,6 +21,15 @@ export interface AcpLeaderHost {
   /** The leader's context, which the policy reads (files already read, the session). */
   context(): Parameters<PermissionPolicy['evaluate']>[2];
   getTool(name: string): Tool | undefined;
+  /**
+   * Run one of the leader's tools as the leader would — its executor and
+   * context, so permissions, hooks, events and the session all apply. Used
+   * by the fleet tools the agent reaches over MCP (`delegate` and kin).
+   */
+  runTool(
+    name: string,
+    input: Record<string, unknown>,
+  ): Promise<{ content: string; isError: boolean }>;
   /** The leader's confirmation prompt, when the surface has one. */
   confirmAwaiter?: ConfirmAwaiter | undefined;
 }

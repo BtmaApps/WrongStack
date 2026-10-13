@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T18:36:41.662Z",
+  "generatedAt": "2026-10-13T18:54:34.375Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4950,
-    "testFiles": 4336,
-    "sourceLines": 1098288,
+    "sourceFiles": 4951,
+    "testFiles": 4337,
+    "sourceLines": 1098467,
     "workspaceEdges": 137,
-    "moduleEdges": 16308,
+    "moduleEdges": 16310,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 628,
-      "testFiles": 621,
+      "sourceFiles": 629,
+      "testFiles": 622,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 621
+          "testFiles": 622
         }
       ]
     },
@@ -1985,6 +1985,12 @@
       },
       {
         "file": "packages/cli/tests/acp-hq-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-fleet.test.ts",
         "projects": [
           "root-node"
         ]

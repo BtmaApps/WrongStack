@@ -223,8 +223,17 @@ prompt, compaction and model routing do not apply to it.
 - **A spent subscription** fails the turn as `quota_exhausted`, so a configured
   fallback chain moves the session to a WrongStack model.
 
-Delegating from the agent to WrongStack subagents, resume and the WebUI are
-not done yet — see [`docs/plans/acp-leader-mode.md`](../plans/acp-leader-mode.md).
+- **WrongStack's workers** — the agent also gets a `wrongstack-fleet` MCP
+  server, served by this process on a loopback port behind a per-process
+  token. It offers the coordination tools your profile has enabled
+  (`delegate`, `spawn_subagent`, `assign_task`, `await_tasks`, `roll_up`,
+  `fleet_status`, `session_note`, `terminate_subagent`). Each call runs as the
+  leader's own tool call, so the workers show in F2/F3 and use WrongStack's
+  model routing; a background `delegate` result reaches the agent with its next
+  turn. Its permission requests for these tools are decided as those tools.
+
+Resume and the WebUI are not done yet — see
+[`docs/plans/acp-leader-mode.md`](../plans/acp-leader-mode.md).
 
 ## Related
 
