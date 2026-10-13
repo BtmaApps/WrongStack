@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 357,
+      "files": 358,
       "typeOnly": 157,
-      "runtimeOrMixed": 221
+      "runtimeOrMixed": 222
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 197,
+      "files": 198,
       "typeOnly": 29,
-      "runtimeOrMixed": 170
+      "runtimeOrMixed": 171
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1392,
-      "typeOnly": 1225,
+      "files": 1394,
+      "typeOnly": 1227,
       "runtimeOrMixed": 421
     },
     "@wrongstack/core/types/limits": {
@@ -7077,6 +7077,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/fleet/host-acp-runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/fleet/host-context.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11139,6 +11145,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/fleet/host-acp-runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/fleet/host-helpers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -14217,6 +14229,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/acp-permission-bridge.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15736,6 +15754,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/acp-live-steer.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-permission-bridge.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

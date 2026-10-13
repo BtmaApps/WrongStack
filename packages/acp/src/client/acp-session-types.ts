@@ -39,6 +39,12 @@ export interface ACPSessionOptions {
    * `systemPrompt: { append }` from it. Agents that know no key ignore it.
    */
   sessionMeta?: Record<string, unknown> | undefined;
+  /**
+   * Session mode to switch to right after `session/new`, when the agent
+   * offers it (e.g. Claude's `default`, so it asks before edits and
+   * commands instead of following the user's own Claude permission mode).
+   */
+  initialModeId?: string | undefined;
 }
 
 export interface ACPCapturedDiff {

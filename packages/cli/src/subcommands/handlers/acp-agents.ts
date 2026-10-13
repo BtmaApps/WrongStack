@@ -98,6 +98,10 @@ export async function spawnACPAgent(args: string[], deps: SubcommandDeps): Promi
       ...(cmd.env !== undefined ? { env: cmd.env } : {}),
       role: subagentId,
       task,
+      // The project, not wherever `wstack` was launched from: the bridge's
+      // servers are bound to it, and the agent must edit the same tree.
+      cwd: deps.projectRoot,
+      projectRoot: deps.projectRoot,
       signal: ac.signal,
       permissionPolicy: defaultPermissionPolicy,
       sessionSetup: wrongstackBridgeSetup(subagentId, deps.projectRoot, deps.config.acp?.bridge),

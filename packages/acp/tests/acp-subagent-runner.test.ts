@@ -26,6 +26,8 @@ const hoisted = vi.hoisted(() => ({
     timeoutMs: number;
     mcpServers?: unknown[];
     sessionMeta?: Record<string, unknown>;
+    permissionPolicy?: unknown;
+    initialModeId?: string;
   }>,
   session: undefined as MockSession | undefined,
   errorKind: undefined as undefined | string,
@@ -83,6 +85,8 @@ vi.mock('../src/client/acp-session.js', () => {
         timeoutMs: number;
         mcpServers?: unknown[];
         sessionMeta?: Record<string, unknown>;
+        permissionPolicy?: unknown;
+        initialModeId?: string;
       }) => {
         hoisted.startCalls.push({
           command: opts.command,
@@ -93,6 +97,10 @@ vi.mock('../src/client/acp-session.js', () => {
           timeoutMs: opts.timeoutMs,
           ...(opts.mcpServers !== undefined ? { mcpServers: opts.mcpServers } : {}),
           ...(opts.sessionMeta !== undefined ? { sessionMeta: opts.sessionMeta } : {}),
+          ...(opts.permissionPolicy !== undefined
+            ? { permissionPolicy: opts.permissionPolicy }
+            : {}),
+          ...(opts.initialModeId !== undefined ? { initialModeId: opts.initialModeId } : {}),
         });
         if (hoisted.errorKind) {
           throw new ACPSessionError(hoisted.errorKind, hoisted.errorMessage ?? 'mock error');
@@ -446,6 +454,24 @@ describe('makeACPSubagentRunnerWithStop', () => {
     expect(onProgress).toHaveBeenCalledWith(hoisted.progressEvent);
     expect(publishLive).toHaveBeenCalledWith(ctx, TASK, hoisted.progressEvent);
     expect(hoisted.startCalls).toHaveLength(1);
+  });
+
+  it("lets a session's setup replace the permission policy and starts it in the asked mode", async () => {
+    const runnerPolicy = vi.fn();
+    const sessionPolicy = vi.fn();
+    const { runner } = await makeACPSubagentRunnerWithStop({
+      command: 'agent',
+      permissionPolicy: runnerPolicy as never,
+      initialModeId: 'default',
+      sessionSetup: (task) =>
+        task.id === 't2' ? { permissionPolicy: sessionPolicy as never } : {},
+    });
+    await runner(TASK, makeCtx().ctx);
+    await runner({ ...TASK, id: 't2' }, makeCtx().ctx);
+    expect(hoisted.startCalls.map((c) => [c.permissionPolicy, c.initialModeId])).toEqual([
+      [runnerPolicy, 'default'],
+      [sessionPolicy, 'default'],
+    ]);
   });
 
   it('builds each session from sessionSetup: extra MCP servers and _meta', async () => {

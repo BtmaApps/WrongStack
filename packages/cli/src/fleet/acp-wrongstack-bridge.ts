@@ -139,6 +139,11 @@ export function bridgeNote(
     '',
     'Use your own tools for code and files; these servers are for coordination. If one is',
     'unavailable, carry on without it.',
+    '',
+    "WrongStack applies the user's rules to your edits and commands. A refused permission",
+    'comes from them (a deny rule the user wrote, a history-rewriting git command, a',
+    'credential read): do not retry it or work around it; finish what you can and name what',
+    'was refused in your final reply.',
   ].join('\n');
 }
 

@@ -57,6 +57,8 @@ export interface ACPSubagentRunnerOptions {
    * are surfaced to a human instead of silently auto-approved.
    */
   permissionPolicy?: PermissionPolicy | undefined;
+  /** Session mode to switch to after `session/new` (see ACPSessionOptions.initialModeId). */
+  initialModeId?: string | undefined;
   /**
    * MCP servers to expose to the external agent (passed through
    * `session/new` / `session/load`). Stdio servers are always sent;
@@ -82,4 +84,6 @@ export interface ACPSubagentRunnerOptions {
 export interface AcpSessionSetup {
   mcpServers?: McpServer[] | undefined;
   meta?: Record<string, unknown> | undefined;
+  /** Replaces `permissionPolicy` for this session (e.g. bound to the delegating session). */
+  permissionPolicy?: PermissionPolicy | undefined;
 }

@@ -2,6 +2,8 @@ import {
   type ACPProgressEvent,
   type AcpAgentCommandOverrides,
   type AcpLiveCatalog,
+  type PermissionPolicy as AcpPermissionPolicy,
+  type AcpSessionSetup,
   defaultPermissionPolicy,
   makeACPSubagentRunner,
   resolveAcpAgentCommand,
@@ -18,6 +20,12 @@ export type AcpLivePublisher = (
 ) => void;
 
 export interface BuildAcpSubagentRunnerOptions {
+  /**
+   * The project the worker works in: its cwd and file-access root. Without it
+   * the worker ran in the host process's cwd — a subdirectory, or another
+   * repository than the session's.
+   */
+  projectRoot?: string | undefined;
   overrides?: AcpAgentCommandOverrides | undefined;
   live?: AcpLiveCatalog | undefined;
   publishLive?: AcpLivePublisher | undefined;
@@ -25,6 +33,13 @@ export interface BuildAcpSubagentRunnerOptions {
   bridge?:
     | { projectRoot: string; config?: NonNullable<Config['acp']>['bridge'] | undefined }
     | undefined;
+  /**
+   * WrongStack's permission rules for the worker's session (see
+   * acp-permission-bridge.ts). When set, the worker is also started in its
+   * `default` mode so it asks before edits and commands, whatever mode the
+   * user runs the agent in on their own.
+   */
+  permissions?: ((ctx: SubagentRunContext) => AcpPermissionPolicy) | undefined;
 }
 
 /**
@@ -48,12 +63,23 @@ export function buildAcpSubagentRunner(
   // host-acp-runner-cache.ts) — pass the auto-approve policy explicitly.
   // Without it ACPSession falls back to readOnlyPermissionPolicy and
   // denies every file write / command the subagent requests.
-  const sessionSetup = options?.bridge
+  const bridgeSetup = options?.bridge
     ? wrongstackBridgeSetup(subagentId, options.bridge.projectRoot, options.bridge.config)
     : undefined;
+  const permissions = options?.permissions;
+  const sessionSetup =
+    bridgeSetup || permissions
+      ? (task: TaskSpec, ctx: SubagentRunContext): AcpSessionSetup => ({
+          ...bridgeSetup?.(task, ctx),
+          ...(permissions ? { permissionPolicy: permissions(ctx) } : {}),
+        })
+      : undefined;
+  const projectRoot = options?.projectRoot;
   return makeACPSubagentRunner({
     ...cmd,
+    ...(projectRoot ? { cwd: projectRoot, projectRoot } : {}),
     permissionPolicy: defaultPermissionPolicy,
+    ...(permissions ? { initialModeId: 'default' } : {}),
     ...(options?.publishLive ? { publishLive: options.publishLive } : {}),
     ...(sessionSetup ? { sessionSetup } : {}),
     // The leader's `session_note` to a running worker joins its turn.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T09:36:58.091Z",
+  "generatedAt": "2026-10-13T10:37:07.083Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4942,
-    "testFiles": 4327,
-    "sourceLines": 1096408,
+    "sourceFiles": 4943,
+    "testFiles": 4329,
+    "sourceLines": 1096621,
     "workspaceEdges": 137,
-    "moduleEdges": 16284,
+    "moduleEdges": 16285,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 966
+    "testOnlyExports": 967
   },
   "errors": [],
   "packageCycles": [],
@@ -109,7 +109,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 49,
-      "testFiles": 56,
+      "testFiles": 57,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -123,7 +123,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 56
+          "testFiles": 57
         }
       ]
     },
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 622,
-      "testFiles": 617,
+      "sourceFiles": 623,
+      "testFiles": 618,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 617
+          "testFiles": 618
         }
       ]
     },
@@ -1348,6 +1348,12 @@
         ]
       },
       {
+        "file": "packages/acp/tests/acp-session-initial-mode.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/acp/tests/acp-session.test.ts",
         "projects": [
           "root-node"
@@ -1991,6 +1997,12 @@
       },
       {
         "file": "packages/cli/tests/acp-mcp-servers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-permission-bridge.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27798,6 +27810,10 @@
     {
       "file": "packages/cli/src/fleet-statusline.ts",
       "name": "renderFleetLine"
+    },
+    {
+      "file": "packages/cli/src/fleet/acp-permission-bridge.ts",
+      "name": "wrongstackCallFor"
     },
     {
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",

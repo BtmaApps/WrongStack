@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import { TOKENS } from '@wrongstack/core/kernel';
+import {
+  AutoApprovePermissionPolicy,
+  subagentYoloPlus,
+  ToolCapabilities,
+} from '@wrongstack/core/security';
 import type { Config } from '@wrongstack/core/types';
 import { publishAcpLiveProgress } from './acp-live-progress.js';
+import { wrongstackAcpPermissionPolicy } from './acp-permission-bridge.js';
 import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
 
 export interface HostAcpRunnerHost {
@@ -24,7 +31,31 @@ export function acpCommandOpts(this: HostAcpRunnerHost): BuildAcpSubagentRunnerO
   const overrides = acp?.agents;
   return {
     ...(overrides ? { overrides } : {}),
+    projectRoot: this.deps.projectRoot,
     bridge: { projectRoot: this.deps.projectRoot, config: acp?.bridge },
+    // The worker answers to the same rules as WrongStack's own subagents:
+    // the user's deny rules, the destructive and credential guards, YOLO+.
+    // Every capability is granted; the guards, not an allowlist, gate it.
+    permissions: (ctx) => {
+      const leaderPolicy = this.deps.container.safeResolve(TOKENS.PermissionPolicy);
+      const policy = new AutoApprovePermissionPolicy(Object.values(ToolCapabilities), {
+        yoloPlus: () =>
+          subagentYoloPlus({
+            sessionId: ctx.sessionId,
+            leaderPolicy,
+            fallback: () => this.deps.configStore.get().autonomy?.yoloPlus === true,
+          }),
+      });
+      return wrongstackAcpPermissionPolicy({
+        evaluate: (tool, input, scope) => policy.evaluate(tool, input, scope),
+        getTool: (name) => this.deps.toolRegistry.get(name),
+        projectRoot: this.deps.projectRoot,
+        onRefused: (call, reason) =>
+          this.deps.container
+            .safeResolve(TOKENS.Logger)
+            ?.info(`acp worker ${ctx.subagentId}: refused ${call.tool} — ${reason}`),
+      });
+    },
     publishLive: (ctx, task, event) => {
       publishAcpLiveProgress({
         event,

@@ -149,6 +149,9 @@
     "packages/cli/src/fleet-statusline.ts": [
       "renderFleetLine"
     ],
+    "packages/cli/src/fleet/acp-permission-bridge.ts": [
+      "wrongstackCallFor"
+    ],
     "packages/cli/src/fleet/acp-wrongstack-bridge.ts": [
       "bridgeNote",
       "wstackLaunch"

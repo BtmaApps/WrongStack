@@ -146,6 +146,33 @@ describe('small non-WebUI CLI modules', () => {
     });
   });
 
+  it("runs the worker in the project, asking, under the delegating session's rules", async () => {
+    mocks.resolveAcpAgentCommand.mockReturnValue({ command: 'agent', role: 'x' });
+    mocks.makeACPSubagentRunner.mockReturnValue({ run: vi.fn() });
+    const sessionPolicy = vi.fn();
+    const permissions = vi.fn(() => sessionPolicy);
+
+    buildAcpSubagentRunner('x', { projectRoot: '/proj', permissions });
+    const opts = mocks.makeACPSubagentRunner.mock.calls[0]![0] as {
+      cwd?: string;
+      projectRoot?: string;
+      initialModeId?: string;
+      sessionSetup?: (task: unknown, ctx: unknown) => { permissionPolicy?: unknown };
+    };
+    expect(opts).toMatchObject({ cwd: '/proj', projectRoot: '/proj', initialModeId: 'default' });
+    const ctx = { subagentId: 'w', config: { id: 'w' }, sessionId: 'sess-9' };
+    expect(opts.sessionSetup!({ id: 't', description: 'd' }, ctx).permissionPolicy).toBe(
+      sessionPolicy,
+    );
+    expect(permissions).toHaveBeenCalledWith(ctx);
+
+    // Without WrongStack deciding, the agent keeps its own mode.
+    buildAcpSubagentRunner('x', { projectRoot: '/proj' });
+    expect(mocks.makeACPSubagentRunner.mock.calls[1]![0]).not.toHaveProperty('initialModeId');
+    mocks.resolveAcpAgentCommand.mockReset();
+    mocks.makeACPSubagentRunner.mockReset();
+  });
+
   it('hands the WrongStack bridge to bridged agents only', async () => {
     const cmd = { command: 'npx', args: ['-y', 'adapter'], role: 'claude-code' };
     mocks.resolveAcpAgentCommand.mockReturnValue(cmd);

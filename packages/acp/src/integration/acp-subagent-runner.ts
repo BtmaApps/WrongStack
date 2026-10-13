@@ -120,6 +120,7 @@ export async function makeACPSubagentRunnerWithStop(
       setup?.mcpServers && setup.mcpServers.length > 0
         ? [...(options.mcpServers ?? []), ...setup.mcpServers]
         : options.mcpServers;
+    const permissionPolicy = setup?.permissionPolicy ?? options.permissionPolicy;
     return ACPSession.start({
       command: options.command,
       ...(options.args !== undefined ? { args: options.args } : {}),
@@ -128,11 +129,10 @@ export async function makeACPSubagentRunnerWithStop(
       projectRoot,
       timeoutMs,
       role: options.role,
-      ...(options.permissionPolicy !== undefined
-        ? { permissionPolicy: options.permissionPolicy }
-        : {}),
+      ...(permissionPolicy !== undefined ? { permissionPolicy } : {}),
       ...(mcpServers !== undefined ? { mcpServers } : {}),
       ...(setup?.meta ? { sessionMeta: setup.meta } : {}),
+      ...(options.initialModeId ? { initialModeId: options.initialModeId } : {}),
     });
   };
 

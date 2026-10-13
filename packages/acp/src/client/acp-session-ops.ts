@@ -284,6 +284,15 @@ export async function executeCreateSession(ctx: ACPSessionOpContext): Promise<Se
   if (typeof sessionId !== 'string' || sessionId.length === 0) {
     throw new ACPSessionError('protocol_error', 'session/new returned no sessionId', result);
   }
+  const want = ctx.opts.initialModeId;
+  const modes = (result as { modes?: { currentModeId?: unknown; availableModes?: unknown } }).modes;
+  const offered =
+    Array.isArray(modes?.availableModes) &&
+    modes.availableModes.some((m) => (m as { id?: unknown } | null)?.id === want);
+  if (want && offered && modes?.currentModeId !== want) {
+    // A failed switch must not start the turn in a mode the host did not ask for.
+    await executeSetMode(ctx, sessionId as SessionId, want);
+  }
   return sessionId as SessionId;
 }
 
