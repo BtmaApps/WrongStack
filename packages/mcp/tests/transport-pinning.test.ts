@@ -380,13 +380,13 @@ describe('J3 / classifyTransportAddress — IPv6 transition-format IMDS', () => 
 import { validateTransportUrl } from '../src/transport-security.js';
 
 describe('validateTransportUrl — protocol and plaintext remote guard', () => {
-  it('rejects plaintext http:// for non-loopback hosts even when allowPrivateNetworks is true', () => {
+  it('rejects plaintext http:// for non-loopback hosts, private-network ones included', () => {
     expect(() => validateTransportUrl('http://example.com/mcp')).toThrow(
       /http:\/\/ is only allowed for loopback addresses/,
     );
-    expect(() =>
-      validateTransportUrl('http://10.0.0.5/mcp', { allowPrivateNetworks: true }),
-    ).toThrow(/http:\/\/ is only allowed for loopback addresses/);
+    expect(() => validateTransportUrl('http://10.0.0.5/mcp')).toThrow(
+      /http:\/\/ is only allowed for loopback addresses/,
+    );
     expect(() => validateTransportUrl('http://127.0.0.1:8080/mcp')).not.toThrow();
     expect(() => validateTransportUrl('https://example.com/mcp')).not.toThrow();
   });

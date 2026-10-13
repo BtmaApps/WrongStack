@@ -301,8 +301,7 @@ describe('validateDefinitionOfDone parity', () => {
 
     const registry = new VerifierRegistry().register({
       id: 'agent',
-      name: 'Agent Verifier',
-      supportedTypes: ['agent'],
+      kind: 'deterministic',
       canHandle: (type) => type === 'agent',
       verify: async (check) => ({
         checkId: check.id,
@@ -332,10 +331,10 @@ describe('validateDefinitionOfDone parity', () => {
 
     const report = {
       ...finalized!.task.verificationReport!,
-      summary: 'Updated external summary',
+      markdownSummary: 'Updated external summary',
     };
     const attached = await attachVerificationReport(tmpDir, board.id, taskId, report);
-    expect(attached?.tasks.find((t) => t.id === taskId)?.verificationReport?.summary).toBe(
+    expect(attached?.tasks.find((t) => t.id === taskId)?.verificationReport?.markdownSummary).toBe(
       'Updated external summary',
     );
     const duplicateAttach = await attachVerificationReport(tmpDir, board.id, taskId, report);

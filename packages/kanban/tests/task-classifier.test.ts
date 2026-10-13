@@ -335,20 +335,16 @@ describe('managed card-detail contract — classifier vs lifecycle', () => {
       status: 'review',
       park: {
         attempts: 1,
-        maxRefusals: 1,
         parkedAt: NOW,
         reason: 'Missing unit test.',
-        previousStatus: 'in_progress',
       },
     });
     const parkedTwice = task({
       status: 'review',
       park: {
         attempts: 2,
-        maxRefusals: 2,
         parkedAt: NOW,
         reason: 'Still failing.',
-        previousStatus: 'in_progress',
       },
     });
     expect(classifyTaskForQueue(b, parkedOnce, { now: NOW }).reasons.at(-1)).toContain(
@@ -363,7 +359,6 @@ describe('managed card-detail contract — classifier vs lifecycle', () => {
       assignment: {
         agentId: 'worker-1',
         status: 'running',
-        assignedAt: NOW,
         leaseId: 'lease-1',
         leaseExpiresAt: '2026-08-01T00:01:00.000Z',
       },
@@ -379,13 +374,12 @@ describe('managed card-detail contract — classifier vs lifecycle', () => {
   });
 
   it('classifies queued/assigned assignments and blocks non-atomic tasks when board enforces atomicity', () => {
-    const b = board({ atomicity: { mode: 'enforce' } });
+    const b = board({ atomicity: { mode: 'enforce', decomposition: 'propose' } });
     const queuedLive = task({
       status: 'ready',
       assignment: {
         agentId: 'worker-1',
         status: 'queued',
-        assignedAt: NOW,
         leaseId: 'l1',
         leaseExpiresAt: FUTURE,
       },
@@ -395,7 +389,6 @@ describe('managed card-detail contract — classifier vs lifecycle', () => {
       assignment: {
         agentId: 'worker-1',
         status: 'assigned',
-        assignedAt: NOW,
         leaseId: 'l2',
         leaseExpiresAt: PAST,
       },
@@ -408,8 +401,9 @@ describe('managed card-detail contract — classifier vs lifecycle', () => {
       atomicityAssessment: {
         verdict: 'needs_decomposition',
         score: 0.2,
-        reasons: ['Too broad'],
-        evaluatedAt: NOW,
+        criteria: [],
+        assessedAt: NOW,
+        assessedBy: 'rules',
       },
     });
     const decompClass = classifyTaskForQueue(b, needsDecomp, { now: NOW });

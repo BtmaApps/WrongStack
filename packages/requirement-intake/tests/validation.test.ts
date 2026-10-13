@@ -280,7 +280,7 @@ describe('normalizeRequestType', () => {
       ...VALID_CREATE,
       metadata: exactMetadata,
     });
-    expect(Object.keys(created.metadata)).toHaveLength(MAX_METADATA_ENTRIES);
+    expect(Object.keys(created.metadata ?? {})).toHaveLength(MAX_METADATA_ENTRIES);
 
     expect(validateFieldSource('user')).toBe('user');
     expect(() => validateFieldSource('invalid_source')).toThrow(IntakeValidationError);

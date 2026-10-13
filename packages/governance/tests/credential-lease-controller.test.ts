@@ -341,7 +341,9 @@ describe('governance credential lease controller', () => {
       scheduler,
       clientFactory: () => ({
         async request(req) {
-          const bad = rotatedResponse(req.requestId);
+          const requestId =
+            req && typeof req === 'object' && 'requestId' in req ? String(req.requestId) : '';
+          const bad = rotatedResponse(requestId);
           if (bad.ok && bad.result.type === 'capability_grant_rotated') {
             return {
               ...bad,

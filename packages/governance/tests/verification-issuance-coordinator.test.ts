@@ -923,7 +923,7 @@ describe('verification issuance coordinator', () => {
       workspaceSnapshots: {
         recordWorkspaceSnapshot: () => ({
           recorded: false,
-          code: 'manifest_hash_invalid',
+          code: 'workspace_snapshot_invalid',
           message: 'Workspace manifest hash is invalid.',
         }),
       },
