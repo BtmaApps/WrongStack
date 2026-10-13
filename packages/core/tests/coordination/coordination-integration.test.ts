@@ -514,7 +514,7 @@ describe('Full Coordination Workflow', () => {
     } as Omit<ChangeNode, 'id'>);
 
     // Initiate vote
-    consensus.initiateVote(changeId.id);
+    await consensus.initiateVote(changeId.id);
 
     // Cast votes - castVote returns ConsensusResult directly. With
     // quorumFraction 0.6 (quorum = 2 of 3), the second vote reaches

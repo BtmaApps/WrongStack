@@ -174,7 +174,9 @@ export class ChangeManager {
     if (change.status !== 'proposed') {
       throw new Error(`ChangeManager: change "${changeId}" is not in 'proposed' state`);
     }
-    this.consensus.initiateVote(changeId);
+    // Awaited: a vote that failed to start must fail the submission, not
+    // surface later as an unhandled rejection after it was announced.
+    await this.consensus.initiateVote(changeId);
     this._emit('change:submitted_for_review', { changeId, title: change.title });
   }
 

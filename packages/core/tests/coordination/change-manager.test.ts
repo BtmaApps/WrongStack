@@ -207,6 +207,19 @@ describe('ChangeManager', () => {
       await expect(manager.submitForReview(node.id)).rejects.toThrow(/not in 'proposed' state/);
     });
 
+    it('fails, and announces nothing, when the vote cannot be started', async () => {
+      // A floating initiateVote turned a failed graph write into an unhandled
+      // rejection while the caller was told the change was under review.
+      const node = await manager.propose(sampleChangeProposal());
+      vi.mocked(consensus.initiateVote).mockRejectedValueOnce(new Error('graph write failed'));
+      vi.mocked(fleet.emit).mockClear();
+
+      await expect(manager.submitForReview(node.id)).rejects.toThrow('graph write failed');
+      expect(fleet.emit).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'change:submitted_for_review' }),
+      );
+    });
+
     it('emits change:submitted_for_review event', async () => {
       const node = await manager.propose(sampleChangeProposal());
       await manager.submitForReview(node.id);
