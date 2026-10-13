@@ -325,6 +325,32 @@ describe('ACPSession', () => {
     await session.close();
   });
 
+  it("reads the turn's token usage from the prompt response", async () => {
+    for (const [usage, tokens] of [
+      [
+        { inputTokens: 120, outputTokens: 30, cachedReadTokens: 4000, totalTokens: 4150 },
+        { input: 120, output: 30, cacheRead: 4000, cacheWrite: 0 },
+      ],
+      [{ totalTokens: 9 }, undefined],
+      [undefined, undefined],
+    ] as const) {
+      const session = await startSession();
+      const t = lastTransport();
+      const promptP = session.prompt([textContent('hi')], new AbortController().signal);
+      await new Promise((r) => setImmediate(r));
+      t.respond(t.sent.find((m) => m.method === 'session/new')!.id!, 'session/new', {
+        sessionId: 's',
+      });
+      await new Promise((r) => setImmediate(r));
+      t.respond(t.sent.find((m) => m.method === 'session/prompt')!.id!, 'session/prompt', {
+        stopReason: 'end_turn',
+        ...(usage ? { usage } : {}),
+      });
+      expect((await promptP).tokens).toEqual(tokens);
+      await session.close();
+    }
+  });
+
   it('CONTROL: still handles a session/update that omits sessionId', async () => {
     const session = await startSession();
     const t = lastTransport();

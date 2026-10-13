@@ -116,6 +116,29 @@ export function publishAcpLiveProgress(opts: PublishAcpLiveProgressOpts): void {
       });
       return;
     }
+    case 'turn_usage': {
+      // The same event a native worker's turn produces, so the fleet usage
+      // snapshot (fleet panel, `delegate.completed` cost) counts the worker.
+      // The agent reports its own cost; there is no price table for it here.
+      const t = event.tokens;
+      fleet?.emit({
+        subagentId,
+        taskId,
+        ts,
+        type: 'provider.response',
+        payload: {
+          provider: 'acp',
+          usage: {
+            input: t?.input ?? 0,
+            output: t?.output ?? 0,
+            cacheRead: t?.cacheRead ?? 0,
+            cacheWrite: t?.cacheWrite ?? 0,
+          },
+          costUsd: event.costUsd,
+        },
+      });
+      return;
+    }
     default:
       return;
   }

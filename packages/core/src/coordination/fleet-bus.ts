@@ -323,6 +323,8 @@ export class FleetUsageAggregator {
         cacheRead?: number | undefined;
         cacheWrite?: number | undefined;
       };
+      /** Cost the worker reported itself (an external ACP agent); skips the price table. */
+      costUsd?: number | undefined;
     };
     const usage = p?.usage;
     if (!usage) return;
@@ -334,8 +336,15 @@ export class FleetUsageAggregator {
     this.total.output += usage.output ?? 0;
     this.total.cacheRead += usage.cacheRead ?? 0;
     this.total.cacheWrite += usage.cacheWrite ?? 0;
-    const price = this.priceLookup?.(e.subagentId, snap.provider, snap.model);
-    if (price) {
+    const reported = p.costUsd;
+    const price =
+      typeof reported === 'number'
+        ? undefined
+        : this.priceLookup?.(e.subagentId, snap.provider, snap.model);
+    if (typeof reported === 'number' && Number.isFinite(reported) && reported > 0) {
+      snap.cost += reported;
+      this.total.cost += reported;
+    } else if (price) {
       const delta =
         ((usage.input ?? 0) / 1_000_000) * (price.input ?? 0) +
         ((usage.output ?? 0) / 1_000_000) * (price.output ?? 0) +

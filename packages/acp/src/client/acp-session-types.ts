@@ -67,10 +67,23 @@ export interface ACPSessionRunResult {
   stopReason: StopReason;
   hasText: boolean;
   usage?: { used: number; size: number; cost?: UsageCost | undefined } | undefined;
+  /**
+   * Token counts for the turn, from the `session/prompt` response
+   * (`PromptResponse.usage`). `usage.cost`, by contrast, is the session's
+   * running total.
+   */
+  tokens?: ACPTokenUsage | undefined;
   plan?: PlanEntry[] | undefined;
   toolCalls: ACPCapturedToolCall[];
   diffs: ACPCapturedDiff[];
   thoughts: string;
+}
+
+export interface ACPTokenUsage {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
 }
 
 export type ACPProgressHandler = (event: ACPProgressEvent) => void;
@@ -83,6 +96,8 @@ export type ACPProgressEvent =
   | { type: 'diff'; diff: ACPCapturedDiff }
   | { type: 'plan'; entries: PlanEntry[] }
   | { type: 'usage'; usage: { used: number; size: number; cost?: UsageCost | undefined } }
+  /** Emitted by the subagent runner once a turn ends: what the turn consumed. */
+  | { type: 'turn_usage'; tokens?: ACPTokenUsage | undefined; costUsd: number }
   | { type: 'raw'; update: AnySessionUpdate };
 
 export type ACPSessionErrorKind =

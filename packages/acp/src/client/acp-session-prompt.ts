@@ -4,7 +4,11 @@ import type { AgentCapabilities, ContentBlock, SessionId, StopReason } from '../
 import type { State } from './acp-request-state.js';
 import { emptyRunResult } from './acp-session-content.js';
 import { ACPSessionError, isJsonRpcError } from './acp-session-errors.js';
-import type { ACPProgressHandler, ACPSessionRunResult } from './acp-session-types.js';
+import type {
+  ACPProgressHandler,
+  ACPSessionRunResult,
+  ACPTokenUsage,
+} from './acp-session-types.js';
 import type { ACPSessionScratch } from './acp-session-updates.js';
 export interface AcpSessionPromptHost {
   closed: boolean;
@@ -242,14 +246,30 @@ export async function prompt(
   }
   const stopReason = (response as { stopReason?: StopReason }).stopReason ?? 'end_turn';
   const finalText = host.scratch.text;
+  const tokens = readTokenUsage((response as { usage?: unknown }).usage);
   return {
     text: finalText,
     stopReason,
     hasText: finalText.length > 0,
     usage: host.scratch.usage,
+    ...(tokens ? { tokens } : {}),
     plan: host.scratch.plan,
     toolCalls: [...host.scratch.toolCalls.values()],
     diffs: host.scratch.diffs,
     thoughts: host.scratch.thoughts,
+  };
+}
+
+/** `PromptResponse.usage` (inputTokens, outputTokens, cachedRead/WriteTokens), when well-formed. */
+function readTokenUsage(raw: unknown): ACPTokenUsage | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const r = raw as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0);
+  if (typeof r.inputTokens !== 'number' && typeof r.outputTokens !== 'number') return undefined;
+  return {
+    input: n(r.inputTokens),
+    output: n(r.outputTokens),
+    cacheRead: n(r.cachedReadTokens),
+    cacheWrite: n(r.cachedWriteTokens),
   };
 }

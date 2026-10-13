@@ -45,7 +45,8 @@ const hoisted = vi.hoisted(() => ({
         diffs: unknown[];
         thoughts: string;
         plan?: unknown[];
-        usage?: { used: number; size: number };
+        usage?: { used: number; size: number; cost?: { amount: number; currency: string } };
+        tokens?: { input: number; output: number; cacheRead: number; cacheWrite: number };
       }
     | undefined,
   promptError: undefined as unknown,
@@ -211,6 +212,54 @@ describe('ACP_AGENT_COMMANDS', () => {
 });
 
 describe('makeACPSubagentRunner', () => {
+  it("charges each turn's tokens and cost to the worker's budget", async () => {
+    const recordUsage = vi.fn();
+    const { ctx } = makeCtx();
+    (ctx.budget as unknown as { recordUsage: typeof recordUsage }).recordUsage = recordUsage;
+    const publishLive = vi.fn();
+    const { runner } = await makeACPSubagentRunnerWithStop({
+      command: 'agent',
+      persistent: true,
+      publishLive,
+    });
+    hoisted.promptResult = {
+      ...hoisted.promptResult!,
+      usage: { used: 1, size: 2, cost: { amount: 0.3, currency: 'USD' } },
+      tokens: { input: 100, output: 20, cacheRead: 900, cacheWrite: 50 },
+    };
+    await runner(TASK, ctx);
+    // The agent reports the session's running cost; the second turn adds 0.2.
+    hoisted.promptResult = {
+      ...hoisted.promptResult,
+      usage: { used: 1, size: 2, cost: { amount: 0.5, currency: 'USD' } },
+      tokens: { input: 10, output: 2, cacheRead: 0, cacheWrite: 0 },
+    };
+    await runner(TASK, ctx);
+    expect(recordUsage.mock.calls[0]).toEqual([
+      { input: 100, output: 20, cacheRead: 900, cacheWrite: 50 },
+      0.3,
+    ]);
+    expect(recordUsage.mock.calls[1]![0]).toEqual({
+      input: 10,
+      output: 2,
+      cacheRead: 0,
+      cacheWrite: 0,
+    });
+    expect(recordUsage.mock.calls[1]![1]).toBeCloseTo(0.2);
+    // The fleet usage panels see the same turn on the live stream.
+    expect(publishLive).toHaveBeenCalledWith(ctx, TASK, {
+      type: 'turn_usage',
+      tokens: { input: 100, output: 20, cacheRead: 900, cacheWrite: 50 },
+      costUsd: 0.3,
+    });
+
+    // A budget that trips after the fact must not fail the finished turn.
+    recordUsage.mockImplementation(() => {
+      throw new Error('maxCostUsd exceeded');
+    });
+    await expect(runner(TASK, ctx)).resolves.toMatchObject({ result: 'ok' });
+  });
+
   it('opens a live steering window for the turn only when the agent can steer', async () => {
     const events: string[] = [];
     const onTurnLive = vi.fn((_ctx, _task, steer: (t: string) => Promise<string>) => {

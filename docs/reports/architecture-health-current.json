@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T11:21:19.298Z",
+  "generatedAt": "2026-10-13T11:22:16.345Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4943,
-    "testFiles": 4329,
-    "sourceLines": 1096628,
+    "testFiles": 4330,
+    "sourceLines": 1096774,
     "workspaceEdges": 137,
     "moduleEdges": 16285,
     "nonCommandSlashImports": 0,
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1120,
-      "testFiles": 967,
+      "testFiles": 968,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 967
+          "testFiles": 968
         }
       ]
     },
@@ -6683,6 +6683,12 @@
       },
       {
         "file": "packages/core/tests/coordination/director-prompts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/director-session-monitor-fallback.test.ts",
         "projects": [
           "root-node"
         ]

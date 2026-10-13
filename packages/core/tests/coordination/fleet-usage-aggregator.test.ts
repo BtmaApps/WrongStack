@@ -121,3 +121,27 @@ describe('FleetUsageAggregator (M2 cost accuracy)', () => {
     expect(agg.snapshot().total.cacheRead).toBe(500_000);
   });
 });
+
+describe('FleetUsageAggregator — self-reported cost', () => {
+  it("adds a worker's reported cost instead of pricing its tokens", () => {
+    const bus = new FleetBus();
+    const agg = new FleetUsageAggregator(
+      bus,
+      () => ({ input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 }),
+      () => ({ provider: 'acp', model: undefined }),
+    );
+    bus.emit({
+      subagentId: 'claude',
+      ts: Date.now(),
+      type: 'provider.response',
+      payload: {
+        usage: { input: 1_000_000, output: 0, cacheRead: 0, cacheWrite: 0 },
+        costUsd: 0.25,
+      },
+    });
+    const snap = agg.snapshot();
+    expect(snap.perSubagent.claude?.input).toBe(1_000_000);
+    expect(snap.perSubagent.claude?.cost).toBeCloseTo(0.25);
+    expect(snap.total.cost).toBeCloseTo(0.25);
+  });
+});

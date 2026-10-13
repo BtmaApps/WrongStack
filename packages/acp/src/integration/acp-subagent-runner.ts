@@ -100,6 +100,40 @@ export async function makeACPSubagentRunner(
  * CLI command, which holds the child open for the duration of a user
  * task and tears down on SIGINT.
  */
+/** Running cost total last seen per session: the agent reports a session total, the budget wants turns. */
+const sessionCostSeen = new WeakMap<ACPSession, number>();
+
+function recordTurnUsage(
+  ctx: SubagentRunContext,
+  session: ACPSession,
+  result: ACPSessionRunResult,
+): Extract<ACPProgressEvent, { type: 'turn_usage' }> | undefined {
+  const cost = result.usage?.cost;
+  const total =
+    cost?.currency === 'USD' && Number.isFinite(cost.amount) && cost.amount >= 0
+      ? cost.amount
+      : undefined;
+  const turnCost =
+    total === undefined ? 0 : Math.max(0, total - (sessionCostSeen.get(session) ?? 0));
+  if (total !== undefined) sessionCostSeen.set(session, total);
+  const t = result.tokens;
+  if (!t && turnCost === 0) return undefined;
+  try {
+    ctx.budget.recordUsage(
+      {
+        input: t?.input ?? 0,
+        output: t?.output ?? 0,
+        cacheRead: t?.cacheRead ?? 0,
+        cacheWrite: t?.cacheWrite ?? 0,
+      },
+      turnCost,
+    );
+  } catch {
+    // Accounting must never fail a finished turn.
+  }
+  return { type: 'turn_usage', ...(t ? { tokens: t } : {}), costUsd: turnCost };
+}
+
 export async function makeACPSubagentRunnerWithStop(
   options: ACPSubagentRunnerOptions,
 ): Promise<{ runner: SubagentRunner; stop: () => void | Promise<void> }> {
@@ -203,6 +237,11 @@ export async function makeACPSubagentRunnerWithStop(
     // returns (rather than throws) a cancelled turn, and a refusal or a
     // token/turn limit also resolves. Those used to reach the coordinator as
     // `status: 'success'`, the same false green AgentSubagentRunner guards.
+    // Charge the turn to the worker's budget like any subagent's, before a
+    // failed turn is thrown: it consumed tokens all the same.
+    const turnUsage = recordTurnUsage(ctx, session, result);
+    // Fleet usage panels and `delegate.completed` read it off the live stream.
+    if (turnUsage) onProgress(turnUsage);
     const failure = acpTurnFailure(result, options.role ?? 'acp-subagent');
     if (failure) throw failure;
 

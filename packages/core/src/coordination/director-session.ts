@@ -136,7 +136,9 @@ export async function readDirectorSubagentSession(args: {
   try {
     raw = await fsp.readFile(filePath, 'utf8');
   } catch {
-    return null;
+    // An external ACP worker (Claude Code, …) runs no WrongStack session, so
+    // it has no session file; the agent monitor still records its turn.
+    return readMonitorTranscript(args);
   }
   const lines = raw.split('\n').filter((l) => l.trim());
   const targetLines = args.tail ? lines.slice(-args.tail) : lines;
@@ -166,6 +168,44 @@ export async function readDirectorSubagentSession(args: {
   return {
     lastAssistantText,
     lastStopReason,
+    toolUsesObserved: toolUses,
+    events: targetLines.length,
+    path: filePath,
+  };
+}
+
+/**
+ * Summary of the agent monitor's transcript (`<sessionsRoot>/transcripts/<id>/transcript.jsonl`,
+ * entries `{ kind: 'text' | 'tool_use' | 'tool_result' | 'status' | …, content }`), or null.
+ */
+async function readMonitorTranscript(args: {
+  sessionsRoot?: string | undefined;
+  subagentId: string;
+  tail?: number | undefined;
+}): Promise<DirectorSubagentSessionSummary | null> {
+  if (!args.sessionsRoot) return null;
+  const filePath = path.join(args.sessionsRoot, 'transcripts', args.subagentId, 'transcript.jsonl');
+  let raw: string;
+  try {
+    raw = await fsp.readFile(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+  const lines = raw.split('\n').filter((l) => l.trim());
+  const targetLines = args.tail ? lines.slice(-args.tail) : lines;
+  let lastAssistantText: string | undefined;
+  let toolUses = 0;
+  for (const line of targetLines) {
+    const parsed = safeParse<{ kind?: string | undefined; content?: string | undefined }>(line);
+    if (!parsed.ok || !parsed.value) continue;
+    const entry = parsed.value;
+    if (entry.kind === 'text' && typeof entry.content === 'string')
+      lastAssistantText = entry.content;
+    else if (entry.kind === 'tool_use') toolUses++;
+  }
+  return {
+    lastAssistantText,
+    lastStopReason: undefined,
     toolUsesObserved: toolUses,
     events: targetLines.length,
     path: filePath,

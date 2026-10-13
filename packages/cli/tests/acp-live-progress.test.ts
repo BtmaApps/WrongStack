@@ -232,3 +232,27 @@ describe('publishAcpLiveProgress', () => {
     expect(hostEvents.emits).toHaveLength(0);
   });
 });
+
+describe('publishAcpLiveProgress turn usage', () => {
+  it("reports the worker's turn on the fleet bus as a provider response with its own cost", () => {
+    const { fleet, hostEvents } = publish({
+      type: 'turn_usage',
+      tokens: { input: 12, output: 3, cacheRead: 400, cacheWrite: 39_000 },
+      costUsd: 0.31,
+    });
+    expect(fleet.events).toEqual([
+      expect.objectContaining({
+        subagentId: BASE.subagentId,
+        taskId: BASE.taskId,
+        type: 'provider.response',
+        payload: {
+          provider: 'acp',
+          usage: { input: 12, output: 3, cacheRead: 400, cacheWrite: 39_000 },
+          costUsd: 0.31,
+        },
+      }),
+    ]);
+    // The leader's own session stats stay the leader's.
+    expect(hostEvents.emits).toEqual([]);
+  });
+});
