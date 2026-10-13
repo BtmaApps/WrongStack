@@ -60,6 +60,37 @@ describe('embedded-host-adapters', () => {
       expect(ctx.broadcast).toHaveBeenCalled();
     });
 
+    it("builds a provider the host serves itself with the host's builder", async () => {
+      // The CLI's ACP leader (`acp`) is registered only in the CLI's provider
+      // registry; the provider package cannot build it.
+      const agent = mockAgent();
+      const leader = { id: 'acp', capabilities: { maxContext: 1_000_000 } };
+      const buildProvider = vi.fn((id: string) => (id === 'acp' ? (leader as any) : undefined));
+      await applyEmbeddedModelSwitch(
+        {
+          agent,
+          modeStore: undefined,
+          buildSessionStart: vi.fn(async () => ({})),
+          loadSavedProviders: vi.fn(async () => ({})),
+          modelsRegistry: {
+            refresh: vi.fn(async () => undefined),
+            getModel: vi.fn(async () => undefined),
+          } as any,
+          buildProvider,
+          send: vi.fn(),
+          broadcast: vi.fn(),
+          log: vi.fn(),
+        },
+        'acp',
+        'claude-code',
+      );
+      expect(buildProvider).toHaveBeenCalledWith('acp', { type: 'acp' });
+      expect(agent.ctx.provider).toBe(leader);
+      expect(agent.ctx.model).toBe('claude-code');
+      // No catalog entry: the window stays the provider's own.
+      expect(leader.capabilities.maxContext).toBe(1_000_000);
+    });
+
     it('calls onMaxContextResolved when provided', async () => {
       const agent = mockAgent();
       const onMaxContextResolved = vi.fn();

@@ -201,6 +201,9 @@ wstack --provider acp --model claude-code
 /model acp/claude-code
 ```
 
+In the WebUI, pick **acp / claude-code** in the model switcher; `acp` is
+listed with the ACP agents installed on the machine.
+
 Each of your messages becomes one turn of a single agent session for the
 WrongStack session (the agent keeps its own conversation). Its reply streams
 into the chat, its tool calls show as tool cards, and its token usage and
@@ -221,8 +224,10 @@ prompt and model routing do not apply to it.
 
 - **Permissions** — the agent starts in its `default` mode and every request it
   makes is decided by your own rules; one that needs approval is asked through
-  the same prompt as WrongStack's own tools (the REPL). Where no prompt is
-  available, such a request is refused.
+  the same prompt as WrongStack's own tools: the REPL's, or the TUI and WebUI
+  approval prompt in the session's tab, beside the call's tool card. Nobody
+  answering within two minutes refuses it; with YOLO on, your rules allow it
+  without a question.
 - **Side requests** — session titles, summaries, next-step suggestions and any
   WrongStack subagent that inherits the leader's model never reach the agent;
   they go to `acp.leader.sideModel` (falling back to `fallbackBridge`, then the

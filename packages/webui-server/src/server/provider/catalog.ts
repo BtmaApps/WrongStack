@@ -13,6 +13,7 @@ import {
 } from '../model-catalog.js';
 import { searchCatalogModels } from '../model-catalog-search.js';
 import { errMessage } from '../ws-utils.js';
+import { hostProviderModels, withHostProviders } from './host-providers.js';
 import type { ProviderServiceContext } from './mutations.js';
 import { probeModelDescriptors, projectSavedProviders } from './projection.js';
 
@@ -157,7 +158,12 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
     try {
       ctx.sendMessage(ws, {
         type: 'providers.saved',
-        payload: { providers: projectSavedProviders(await ctx.loadConfigProviders()) },
+        payload: {
+          providers: withHostProviders(
+            projectSavedProviders(await ctx.loadConfigProviders()),
+            ctx.deps.hostProviders?.(),
+          ),
+        },
       });
     } catch (error) {
       ctx.sendOperationResult(ws, false, errMessage(error));
@@ -189,6 +195,14 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
     providerId: string,
     options: { includeDisabled?: boolean | undefined } = {},
   ): Promise<void> {
+    const hosted = hostProviderModels(ctx.deps.hostProviders?.(), providerId);
+    if (hosted) {
+      ctx.sendMessage(ws, {
+        type: 'provider.models',
+        payload: { provider: providerId, models: hosted },
+      });
+      return;
+    }
     if (!ctx.deps.modelsRegistry) {
       ctx.sendOperationResult(ws, false, 'Models registry not available');
       return;

@@ -1223,7 +1223,6 @@
       "truncateHeadTail"
     ],
     "packages/tools/src/bash-kill-guard.ts": [
-      "getBlockedKillMessage",
       "parseKillCommand"
     ],
     "packages/tools/src/browser/artifacts.ts": [
@@ -1892,6 +1891,9 @@
       "handlePrefsUpdated",
       "handleSystemPromptInfo",
       "handleWorkingDirChanged"
+    ],
+    "packages/webui/src/hooks/ws-handlers/session-execution-handlers.ts": [
+      "shownThisTurn"
     ],
     "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts": [
       "hydrateReplayMessages",

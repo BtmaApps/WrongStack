@@ -55,7 +55,7 @@ vi.mock('@wrongstack/acp', () => ({
   },
 }));
 
-const { acpLeaderHost, bindAcpLeaderHost, closeAcpLeaderSessions, dropAcpLeaderConfirm } =
+const { acpLeaderHost, bindAcpLeaderHost, closeAcpLeaderSessions, confirmAcpLeaderThroughEvents } =
   await import('../src/acp-leader/acp-leader-host.js');
 const { AcpLeaderProvider, isLeaderTurn, leaderSideModel } = await import(
   '../src/acp-leader/acp-leader-provider.js'
@@ -218,10 +218,13 @@ describe('a leader turn', () => {
     const events1 = await collect(
       provider.stream(leaderRequest('first') as never, { signal: SIGNAL }),
     );
+    // The tool call between "Hello " and "world" ends the first text block.
     expect(events1.map((e) => e.type)).toEqual([
       'message_start',
       'content_block_start',
       'text_delta',
+      'content_block_stop',
+      'content_block_start',
       'text_delta',
       'content_block_stop',
       'message_stop',
@@ -343,7 +346,7 @@ describe('the fleet endpoint for a leader', () => {
 });
 
 describe('the host binding', () => {
-  it('forgets the stdin prompt once the surface (TUI, WebUI) takes confirmations over', () => {
+  it('asks through events, not stdin, once the surface (TUI, WebUI) takes confirmations over', () => {
     bindAcpLeaderHost({
       events: new EventBus(),
       projectRoot: '/proj',
@@ -354,8 +357,9 @@ describe('the host binding', () => {
       runTool: async () => ({ content: '', isError: false }),
       confirmAwaiter: async () => 'yes',
     });
-    dropAcpLeaderConfirm();
+    confirmAcpLeaderThroughEvents();
     expect(acpLeaderHost()?.confirmAwaiter).toBeUndefined();
+    expect(acpLeaderHost()?.confirmThroughEvents).toBe(true);
     expect(acpLeaderHost()?.projectRoot).toBe('/proj');
   });
 });

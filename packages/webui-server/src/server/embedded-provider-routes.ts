@@ -25,6 +25,7 @@ export function createEmbeddedProviderRoutes(
     modelsRegistry: deps.providerCtx.modelsRegistry,
     getDisabledModels: deps.providerCtx.getDisabledModels,
     getDisabledProviders: deps.providerCtx.getDisabledProviders,
+    hostProviders: deps.providerCtx.hostProviders,
     providerAuthRegistry: deps.providerCtx.providerAuthRegistry,
     log: deps.providerCtx.log,
     hasActiveModel: () => Boolean(deps.agentConfigCtx.agent.ctx.model),

@@ -37,6 +37,7 @@ import {
   type SkillsContext,
 } from '@wrongstack/webui-server';
 import type { WebSocket } from 'ws';
+import { buildAcpLeaderProvider } from '../acp-leader/acp-leader-picker.js';
 import type { CliWebUIOptions } from '../webui-server-options.js';
 import type { WSServerMessage } from './contracts.js';
 import { loadSavedProviders } from './provider-config.js';
@@ -224,6 +225,9 @@ export function createWebuiRouteContexts({
     getConfig: () => opts.appConfig,
     onMaxContextResolved: opts.onModelContextResolved,
     persistPrefs,
+    // The ACP leader's factory lives in the CLI's provider registry.
+    buildProvider: (providerId, config) =>
+      buildAcpLeaderProvider(opts.agent.providers, providerId, config),
     send,
     broadcast,
     log: (m) => console.log(m),

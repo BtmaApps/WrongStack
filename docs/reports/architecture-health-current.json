@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T21:06:27.311Z",
+  "generatedAt": "2026-10-13T21:40:14.294Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4954,
-    "testFiles": 4343,
-    "sourceLines": 1098962,
+    "sourceFiles": 4957,
+    "testFiles": 4346,
+    "sourceLines": 1099254,
     "workspaceEdges": 137,
-    "moduleEdges": 16326,
+    "moduleEdges": 16335,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 630,
-      "testFiles": 625,
+      "sourceFiles": 632,
+      "testFiles": 626,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 625
+          "testFiles": 626
         }
       ]
     },
@@ -848,7 +848,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 721,
-      "testFiles": 483,
+      "testFiles": 484,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -871,7 +871,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 483
+          "testFiles": 484
         }
       ]
     },
@@ -923,8 +923,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 296,
-      "testFiles": 284,
+      "sourceFiles": 297,
+      "testFiles": 285,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 284
+          "testFiles": 285
         }
       ]
     },
@@ -1985,6 +1985,12 @@
       },
       {
         "file": "packages/cli/tests/acp-hq-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-confirm.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23518,6 +23524,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/provider-host-providers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/provider-keys-and-probe.test.ts",
         "projects": [
           "root-node"
@@ -25757,6 +25769,12 @@
       },
       {
         "file": "packages/webui/tests/hooks/provider-model-auth-profiles.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/hooks/provider-response-shown-this-turn.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -29957,10 +29975,6 @@
     },
     {
       "file": "packages/tools/src/bash-kill-guard.ts",
-      "name": "getBlockedKillMessage"
-    },
-    {
-      "file": "packages/tools/src/bash-kill-guard.ts",
       "name": "parseKillCommand"
     },
     {
@@ -31214,6 +31228,10 @@
     {
       "file": "packages/webui/src/hooks/ws-handlers/misc-handlers.ts",
       "name": "handleWorkingDirChanged"
+    },
+    {
+      "file": "packages/webui/src/hooks/ws-handlers/session-execution-handlers.ts",
+      "name": "shownThisTurn"
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",

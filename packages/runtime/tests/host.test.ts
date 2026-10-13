@@ -27,14 +27,14 @@ const noopProvider: Provider = {
     };
   },
   async *stream() {
+    yield { type: 'message_start' as const, model: 'noop' };
+    yield { type: 'content_block_start' as const, kind: 'text' as const };
+    yield { type: 'text_delta' as const, text: 'ok' };
+    yield { type: 'content_block_stop' as const, index: 0 };
     yield {
-      type: 'response',
-      response: {
-        content: [{ type: 'text', text: 'ok' }],
-        stopReason: 'end_turn',
-        usage: { input: 0, output: 0 },
-        model: 'noop',
-      },
+      type: 'message_stop' as const,
+      stopReason: 'end_turn' as const,
+      usage: { input: 0, output: 0 },
     };
   },
 };

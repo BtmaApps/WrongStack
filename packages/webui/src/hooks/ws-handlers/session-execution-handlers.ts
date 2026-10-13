@@ -45,6 +45,27 @@ function toastIfForeground(chat: ChatLaneActions, emit: () => void): void {
  * tokens, cost and reply land in its own tab and the foreground never sees
  * them until the user switches to it.
  */
+/**
+ * The response is exactly the text this turn already put on screen. An agent
+ * that runs its own tools (an ACP agent leading the session) streams its text,
+ * each of its tool cards closes the message before it, and its one response
+ * arrives after the last card — with every message already shown. Adding it
+ * would print the turn twice.
+ */
+export function shownThisTurn(
+  messages: ReadonlyArray<{ role: string; content?: string | undefined }>,
+  responseText: string,
+): boolean {
+  const flat = (text: string) => text.replace(/\s+/g, ' ').trim();
+  const shown: string[] = [];
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (!message || message.role === 'user') break;
+    if (message.role === 'assistant' && message.content?.trim()) shown.unshift(message.content);
+  }
+  return shown.length > 0 && flat(shown.join(' ')) === flat(responseText);
+}
+
 export function handleProviderResponse(msg: WSServerMessage) {
   const chat = chatFor(msg);
   const meta = sessionFor(msg);
@@ -102,7 +123,7 @@ export function handleProviderResponse(msg: WSServerMessage) {
     chat.finalizeMessage(id, { final });
     if (payload.usage && (payload.usage.output ?? 0) > 0)
       chat.updateMessage(id, { usage: payload.usage });
-  } else if (responseText.trim()) {
+  } else if (responseText.trim() && !shownThisTurn(chat.messages, responseText)) {
     const messageId = chat.addMessage({
       role: 'assistant',
       content: responseText,

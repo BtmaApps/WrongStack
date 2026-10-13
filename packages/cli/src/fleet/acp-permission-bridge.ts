@@ -147,7 +147,13 @@ export interface AcpPermissionBridgeOptions {
    * no one to ask, so without this a `confirm` is refused; a leader runs in
    * front of the user and passes the session's own confirmation prompt.
    */
-  confirm?: ((tool: Tool, call: WrongStackCall) => Promise<boolean>) | undefined;
+  confirm?:
+    | ((
+        tool: Tool,
+        call: WrongStackCall,
+        request: { toolCallId: string | undefined; signal: AbortSignal },
+      ) => Promise<boolean>)
+    | undefined;
   /** Told about every refusal, for the host's log. */
   onRefused?: ((call: WrongStackCall, reason: string) => void) | undefined;
 }
@@ -208,7 +214,10 @@ export function wrongstackAcpPermissionPolicy(
     if (decision.permission === 'confirm' && opts.confirm) {
       let approved = false;
       try {
-        approved = await opts.confirm(tool, call);
+        approved = await opts.confirm(tool, call, {
+          toolCallId: req.toolCall.toolCallId,
+          signal: req.signal,
+        });
       } catch {
         approved = false;
       }

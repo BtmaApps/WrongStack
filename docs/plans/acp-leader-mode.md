@@ -1,7 +1,20 @@
 # ACP leader mode — Claude Code (or another ACP agent) as the session's leader
 
 Status: phases 1 and 2 built (2026-10-13) — `packages/cli/src/acp-leader/`.
-Phase 3 open; its recap fallback is built (see Context below).
+Phase 3: WebUI parity and the TUI/WebUI confirmations are built (see below);
+`session/load` resume is open, its recap fallback is built.
+
+WebUI, as built: the CLI host lists `acp` with the installed agents beside the
+saved providers (`hostProviders` → `providers.saved`, `provider.models`) and
+builds it from its own provider registry on a switch (`buildProvider` in the
+embedded host). On the TUI and WebUI the agent's permission questions go out as
+`tool.confirm_needed` with the session id and the ACP tool call id
+(`confirmAcpLeaderThroughEvents`, `acp-leader-confirm.ts`): the tab's ordinary
+prompt, refused after 120 s, "always"/"deny" remembered like the leader's own.
+A tool call ends a text block, and the WebUI does not print a response that is
+exactly the text the turn already showed. Verified live over the WebUI's
+WebSocket: picker, switch, tool cards with output, live `ctx.pct`, an edit
+approved through the prompt.
 
 Context, as built: the provider declares `capabilities.keepsOwnContext`. A
 turn's usage is the sum of every model call the agent made (ten tool calls ≈

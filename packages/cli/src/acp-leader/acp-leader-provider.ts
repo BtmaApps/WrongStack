@@ -27,6 +27,7 @@ import type {
   Response,
   StreamEvent,
   SubagentRunContext,
+  Tool,
 } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { subjectForToolInput } from '@wrongstack/core/utils';
@@ -34,6 +35,7 @@ import { isRestrictedMode } from '../boot/restricted-mode.js';
 import { wrongstackAcpPermissionPolicy } from '../fleet/acp-permission-bridge.js';
 import { recordAcpRateLimit } from '../fleet/acp-quota-reading.js';
 import { wrongstackBridgeSetup } from '../fleet/acp-wrongstack-bridge.js';
+import { confirmThroughEvents } from './acp-leader-confirm.js';
 import { LeaderContext, publishLeaderContext } from './acp-leader-context.js';
 import {
   FLEET_SERVER_NAME,
@@ -192,7 +194,12 @@ export class AcpLeaderProvider implements Provider {
 
     const queue = new StreamQueue();
     const blocks = new TextBlocks(queue);
-    const onProgress = this.progress(leader, req.cache?.sessionId, (text) => blocks.text(text));
+    // A tool call ends a run of text: the next words are a new block, as a
+    // model's reply after a tool result would be.
+    const onProgress = this.progress(leader, req.cache?.sessionId, {
+      text: (text) => blocks.text(text),
+      toolCall: () => blocks.close(),
+    });
 
     yield { type: 'message_start', model: agentId };
     const turn = leader.session
@@ -256,7 +263,7 @@ export class AcpLeaderProvider implements Provider {
   private progress(
     leader: LeaderSession,
     sessionId: string | undefined,
-    onText?: (text: string) => void,
+    on: { text?: (text: string) => void; toolCall?: () => void } = {},
   ): (event: ACPProgressEvent) => void {
     const tools = new ToolCardRelay(acpLeaderHost()?.events, {
       sessionId,
@@ -265,10 +272,11 @@ export class AcpLeaderProvider implements Provider {
     return (event) => {
       switch (event.type) {
         case 'message':
-          onText?.(event.text);
+          on.text?.(event.text);
           return;
         case 'tool_call':
         case 'tool_call_update': {
+          if (event.type === 'tool_call') on.toolCall?.();
           tools.update(event.toolCall);
           const compacted = leader.context.toolCall(event.toolCall);
           if (compacted) this.publishContext(sessionId, compacted);
@@ -326,7 +334,7 @@ export class AcpLeaderProvider implements Provider {
         return this.sessionFor(key, agentId);
       });
     }
-    const starting = this.startSession(agentId);
+    const starting = this.startSession(key, agentId);
     this.sessions.set(key, starting);
     starting.catch(() => {
       if (this.sessions.get(key) === starting) this.sessions.delete(key);
@@ -334,7 +342,38 @@ export class AcpLeaderProvider implements Provider {
     return starting;
   }
 
-  private async startSession(agentId: string): Promise<LeaderSession> {
+  /**
+   * Ask the user about one of the agent's calls on the prompt the surface
+   * has: the REPL's own, or the TUI/WebUI approval prompt in the session's tab.
+   */
+  private async confirm(
+    sessionId: string,
+    tool: Tool,
+    input: Record<string, unknown>,
+    request: { toolCallId: string | undefined; signal: AbortSignal },
+  ): Promise<boolean> {
+    const host = acpLeaderHost();
+    const suggestedPattern =
+      subjectForToolInput(tool.name, input, tool.subjectKey, tool.subjectFields) ?? tool.name;
+    const toolUseId = request.toolCallId ?? `acp-${Date.now()}`;
+    if (host?.confirmAwaiter) {
+      const answer = await host.confirmAwaiter(tool, input, toolUseId, suggestedPattern);
+      return answer !== 'no' && answer !== 'deny';
+    }
+    if (!host?.confirmThroughEvents) return false;
+    return confirmThroughEvents({
+      events: host.events,
+      sessionId,
+      tool,
+      input,
+      toolUseId,
+      suggestedPattern,
+      signal: request.signal,
+      permission: host.permission(),
+    });
+  }
+
+  private async startSession(key: string, agentId: string): Promise<LeaderSession> {
     const acp = await this.loadAcp();
     const config = this.config();
     const host = acpLeaderHost();
@@ -394,22 +433,9 @@ export class AcpLeaderProvider implements Provider {
           getTool: (name) => host.getTool(fleetToolName(name) ?? name),
           projectRoot,
           allowMcp: !isRestrictedMode({}),
-          ...(host.confirmAwaiter
+          ...(host.confirmAwaiter || host.confirmThroughEvents
             ? {
-                confirm: async (tool, call) => {
-                  const answer = await host.confirmAwaiter?.(
-                    tool,
-                    call.input,
-                    `acp-${Date.now()}`,
-                    subjectForToolInput(
-                      tool.name,
-                      call.input,
-                      tool.subjectKey,
-                      tool.subjectFields,
-                    ) ?? tool.name,
-                  );
-                  return answer !== undefined && answer !== 'no' && answer !== 'deny';
-                },
+                confirm: (tool, call, request) => this.confirm(key, tool, call.input, request),
               }
             : {}),
         })

@@ -5,6 +5,7 @@ import {
   createEmbeddedProviderOperations,
   type EmbeddedProviderContext,
 } from '@wrongstack/webui-server';
+import { acpLeaderPickable } from '../acp-leader/acp-leader-picker.js';
 import type { CliWebUIOptions } from '../webui-server-options.js';
 import { startWebuiCredentialWatcher } from './credential-watcher.js';
 import { createProviderConfigStore } from './provider-config.js';
@@ -26,6 +27,9 @@ export function createEmbeddedProviderPlane(input: {
     providerAuthRegistry: opts.providerAuthRegistry,
     getDisabledModels: () => opts.appConfig?.disabledModels ?? [],
     getDisabledProviders: () => opts.appConfig?.disabledProviders ?? [],
+    // `acp` with the installed ACP agents: an agent such as Claude Code can
+    // lead a tab like a model (see docs/slash/acp.md).
+    hostProviders: () => acpLeaderPickable(opts.appConfig),
     send,
     broadcast,
     log: (m) => console.log(m),

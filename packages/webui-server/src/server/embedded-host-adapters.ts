@@ -8,6 +8,7 @@ import type {
   MemoryPort,
   ModelsRegistry,
   ModeStore,
+  Provider,
   ProviderConfig,
   SessionEvent,
   SessionStore,
@@ -25,6 +26,7 @@ import type { WebuiLeaderAutoWakeHost } from './leader-auto-wake-host.js';
 import type { PendingConfirm } from './pending-confirms.js';
 import { createProjectHandlers } from './project-handlers.js';
 import type { ProjectRouteHandlers } from './project-routes.js';
+import type { HostProvider } from './provider/host-providers.js';
 import { createProviderOperations } from './provider-handlers.js';
 import { routeProviderCfgThroughProxy } from './proxy-runtime.js';
 import type { LoadAgentSessions } from './session-agent-sessions.js';
@@ -50,6 +52,8 @@ export interface EmbeddedProviderContext extends EmbeddedHostTransport {
   providerAuthRegistry?: import('@wrongstack/core/registry').ProviderAuthRegistry | undefined;
   getDisabledModels?: (() => readonly string[]) | undefined;
   getDisabledProviders?: (() => readonly string[]) | undefined;
+  /** Providers the host serves itself (the CLI's ACP leader), listed beside the saved ones. */
+  hostProviders?: (() => readonly HostProvider[]) | undefined;
 }
 
 export interface EmbeddedAgentConfigContext extends EmbeddedHostTransport {
@@ -64,6 +68,14 @@ export interface EmbeddedAgentConfigContext extends EmbeddedHostTransport {
     | ((providerId: string, modelId: string, maxContext: number) => void)
     | undefined;
   persistPrefs?: ((payload: Record<string, unknown>) => Promise<void>) | undefined;
+  /**
+   * The host's own provider builder, tried before the provider package's: a
+   * provider only the host registers (the CLI's ACP leader, `acp`) is built
+   * there. Returns undefined for anything it does not build itself.
+   */
+  buildProvider?:
+    | ((providerId: string, config: ProviderConfig) => Provider | undefined)
+    | undefined;
 }
 
 export async function applyEmbeddedModelSwitch(
@@ -93,7 +105,9 @@ export async function applyEmbeddedModelSwitch(
       ctx.getConfig?.()?.baseUrl,
       providerId,
     );
-    const nextProvider = makeProviderFromConfig(providerId, routedConfig);
+    const nextProvider =
+      ctx.buildProvider?.(providerId, routedConfig) ??
+      makeProviderFromConfig(providerId, routedConfig);
     await ctx.modelsRegistry?.refresh().catch((error) => {
       ctx.log(
         JSON.stringify({
@@ -156,6 +170,7 @@ export function createEmbeddedProviderOperations(ctx: EmbeddedProviderContext) {
     providerAuthRegistry: ctx.providerAuthRegistry,
     getDisabledModels: ctx.getDisabledModels,
     getDisabledProviders: ctx.getDisabledProviders,
+    hostProviders: ctx.hostProviders,
     log: ctx.log,
   });
 }

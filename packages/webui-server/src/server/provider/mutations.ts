@@ -3,6 +3,7 @@ import type { ModelsRegistry, ProviderConfig } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from '../types.js';
 import { send as sendToSocket, stampDispatchSession } from '../ws-utils.js';
+import { type HostProvider, withHostProviders } from './host-providers.js';
 import { projectSavedProviders } from './projection.js';
 
 export interface ProviderPersistence {
@@ -25,6 +26,8 @@ export interface ProviderOperationsDeps {
     | ((providers: Record<string, ProviderConfig>) => void | Promise<void>)
     | undefined;
   applyModelSwitch?: ((providerId: string, modelId: string) => Promise<void>) | undefined;
+  /** Providers the host serves itself (the CLI's ACP leader), listed beside the saved ones. */
+  hostProviders?: (() => readonly HostProvider[]) | undefined;
 }
 
 /**
@@ -57,7 +60,9 @@ export function createProviderServiceContext(deps: ProviderOperationsDeps): Prov
     broadcastSaved: (providers) => {
       deps.broadcast({
         type: 'providers.saved',
-        payload: { providers: projectSavedProviders(providers) },
+        payload: {
+          providers: withHostProviders(projectSavedProviders(providers), deps.hostProviders?.()),
+        },
       });
     },
   };

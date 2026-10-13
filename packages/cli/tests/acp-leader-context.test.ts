@@ -114,6 +114,32 @@ describe("the ACP leader's context", () => {
     await provider.closeAll();
   });
 
+  it('starts a new text block after each tool call, as a reply after a tool result would', async () => {
+    const { provider } = setup();
+    acp.turn = async (onProgress) => {
+      onProgress({ type: 'message', text: 'Let me read it.' });
+      onProgress({
+        type: 'tool_call',
+        toolCall: { toolCallId: 't1', title: 'Read a.ts', status: 'pending', rawInput: { p: 1 } },
+      });
+      onProgress({ type: 'message', text: 'Fixed.' });
+    };
+
+    const events = await turn(provider);
+
+    expect(events.map((e) => (e.type === 'text_delta' ? `text ${e.text}` : e.type))).toEqual([
+      'message_start',
+      'content_block_start',
+      'text Let me read it.',
+      'content_block_stop',
+      'content_block_start',
+      'text Fixed.',
+      'content_block_stop',
+      'message_stop',
+    ]);
+    await provider.closeAll();
+  });
+
   it('follows a compaction the agent ran mid-turn', async () => {
     const { provider, fills } = setup();
     acp.turn = async (onProgress) => {

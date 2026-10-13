@@ -35,6 +35,11 @@ export interface AcpLeaderHost {
   ): Promise<{ content: string; isError: boolean }>;
   /** The leader's confirmation prompt, when the surface has one. */
   confirmAwaiter?: ConfirmAwaiter | undefined;
+  /**
+   * The surface answers confirmations itself (TUI, WebUI): a question goes
+   * out as a `tool.confirm_needed` event, the leader tools' own prompt.
+   */
+  confirmThroughEvents?: boolean | undefined;
 }
 
 let bound: AcpLeaderHost | undefined;
@@ -51,9 +56,10 @@ export function acpLeaderHost(): AcpLeaderHost | undefined {
  * The surface took the prompt away (`agent.disableInteractiveConfirmation()`:
  * the TUI and WebUI answer confirmations themselves). The stdin prompt must
  * not be used under them: it would read the terminal Ink or the browser owns.
+ * The agent's questions are asked the way the leader's own tools ask there.
  */
-export function dropAcpLeaderConfirm(): void {
-  if (bound) bound = { ...bound, confirmAwaiter: undefined };
+export function confirmAcpLeaderThroughEvents(): void {
+  if (bound) bound = { ...bound, confirmAwaiter: undefined, confirmThroughEvents: true };
 }
 
 /** Something holding live agent sessions: an ACP leader provider. */
