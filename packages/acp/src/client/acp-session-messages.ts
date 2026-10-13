@@ -1,5 +1,6 @@
 import type { ACPMessage } from '../types/acp-messages.js';
 import { isBestEffortAckMethod } from './acp-message-routing.js';
+import { touchIdleRequests } from './acp-request-state.js';
 import {
   type ACPCallbackOptions,
   type ACPResponseSender,
@@ -65,6 +66,10 @@ export function handleMessage(this: AcpSessionMessagesHost, msg: ACPMessage): vo
     }
     return;
   }
+
+  // Anything else the agent sends (an update, a permission request, a file or
+  // terminal call) shows it is still working on the turn.
+  touchIdleRequests(this.pending);
 
   if (msg.method === 'session/update') {
     // Defense in depth. A `session/update` names the session it belongs to.

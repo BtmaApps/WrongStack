@@ -14,10 +14,14 @@ export interface ACPSubagentRunnerOptions {
   /** Subagent role label — surfaced in errors and used for logging. */
   role?: string | undefined;
   /**
-   * Hard wall-clock cap for one prompt turn. Defaults to 5 minutes.
-   * Overrides `SubagentRunContext.budget.limits.timeoutMs` if both are set.
+   * Cap for each request to the agent other than a prompt turn (initialize,
+   * session/new, …). Defaults to 5 minutes. A prompt turn has no length cap:
+   * it ends when the agent finishes, is aborted through `ctx.signal`, or goes
+   * silent for `promptIdleTimeoutMs`.
    */
   timeoutMs?: number | undefined;
+  /** See `ACPSessionOptions.promptIdleTimeoutMs`. Default 10 minutes. */
+  promptIdleTimeoutMs?: number | undefined;
   /**
    * Filesystem sandbox root. Defaults to `options.cwd` (when set) or
    * the process's current working directory. All `fs/read_text_file` /

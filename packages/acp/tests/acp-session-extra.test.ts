@@ -225,8 +225,8 @@ describe('ACPSession — focused coverage', () => {
     }
   });
 
-  it('sendRequest rejects on timeout when the agent never answers', async () => {
-    const session = await startSession(undefined, { timeoutMs: 40 });
+  it('cancels a prompt turn once the agent goes silent, and says it stalled', async () => {
+    const session = await startSession(undefined, { promptIdleTimeoutMs: 40 });
     const t = lastTransport();
     const promptP = session.prompt([textContent('x')], new AbortController().signal);
     await new Promise((r) => setImmediate(r));
@@ -234,14 +234,43 @@ describe('ACPSession — focused coverage', () => {
     expect(newMsg).toBeDefined();
     t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_abc' });
     await new Promise((r) => setImmediate(r));
-    const promptMsg = t.sent.find((m) => m.method === 'session/prompt');
-    expect(promptMsg).toBeDefined();
-    // Never respond — the timeout must fire (acp-session.ts:867-875); the
-    // prompt wrapper surfaces it as prompt_failed with the timeout detail.
+    expect(t.sent.find((m) => m.method === 'session/prompt')).toBeDefined();
+    // Never respond and never report: the turn is stalled, and the agent is
+    // told to stop rather than left editing after the caller gave up.
     await expect(promptP).rejects.toMatchObject({
-      kind: 'prompt_failed',
-      message: expect.stringContaining('timed out'),
+      kind: 'stalled',
+      message: expect.stringContaining('no activity from the agent'),
     });
+    expect(t.sent.some((m) => m.method === 'session/cancel')).toBe(true);
+    await session.close();
+  });
+
+  it('lets a turn that keeps reporting run past the silence window', async () => {
+    const session = await startSession(undefined, { timeoutMs: 40, promptIdleTimeoutMs: 60 });
+    const t = lastTransport();
+    const promptP = session.prompt([textContent('x')], new AbortController().signal);
+    await new Promise((r) => setImmediate(r));
+    t.respond(t.sent.find((m) => m.method === 'session/new')!.id!, 'session/new', {
+      sessionId: 'sess_abc',
+    });
+    await new Promise((r) => setImmediate(r));
+    const promptMsg = t.sent.find((m) => m.method === 'session/prompt')!;
+    // Report every 30ms for ~200ms: far past both the 60ms silence window and
+    // the 40ms request cap, which no longer bounds a prompt turn.
+    for (let i = 0; i < 7; i++) {
+      await new Promise((r) => setTimeout(r, 30));
+      t.emit({
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: {
+          sessionId: 'sess_abc',
+          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: '.' } },
+        },
+      } as never as ACPMessage);
+    }
+    t.respond(promptMsg.id!, 'session/prompt', { stopReason: 'end_turn' });
+    await expect(promptP).resolves.toMatchObject({ stopReason: 'end_turn', text: '.......' });
+    expect(t.sent.some((m) => m.method === 'session/cancel')).toBe(false);
     await session.close();
   });
 

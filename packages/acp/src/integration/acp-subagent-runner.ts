@@ -164,6 +164,9 @@ export async function makeACPSubagentRunnerWithStop(
       ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
       projectRoot,
       timeoutMs,
+      ...(options.promptIdleTimeoutMs !== undefined
+        ? { promptIdleTimeoutMs: options.promptIdleTimeoutMs }
+        : {}),
       role: options.role,
       ...(permissionPolicy !== undefined ? { permissionPolicy } : {}),
       ...(mcpServers !== undefined ? { mcpServers } : {}),
@@ -382,6 +385,9 @@ function mapACPKind(acpKind: ACPSessionErrorKind): SubagentErrorKind {
       return 'bridge_failed';
     case 'aborted':
       return 'aborted_by_parent';
+    // The agent went silent mid-turn and the turn was cancelled.
+    case 'stalled':
+      return 'budget_timeout';
     case 'closed':
     case 'unsupported_capability':
       return 'unknown';

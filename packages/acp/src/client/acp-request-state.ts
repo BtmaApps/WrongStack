@@ -6,6 +6,13 @@ export interface PendingRequest {
   reject: (e: Error) => void;
   timeoutMs: number;
   timeoutHandle: ReturnType<typeof setTimeout>;
+  /** Set on a request timed by inactivity: restarts its clock. */
+  rearm?: (() => void) | undefined;
+}
+
+/** The agent was heard from: restart the clock of every inactivity-timed request. */
+export function touchIdleRequests(pending: Map<string | number, PendingRequest>): void {
+  for (const p of pending.values()) p.rearm?.();
 }
 
 export type State =

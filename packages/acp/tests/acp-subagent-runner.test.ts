@@ -404,6 +404,23 @@ describe('makeACPSubagentRunner', () => {
     expect(subagentError.kind).toBe('tool_failed');
   });
 
+  it('reports a stalled turn as a timeout, not a broken bridge', async () => {
+    hoisted.promptError = new ACPSessionError(
+      'stalled',
+      'session/prompt: no activity from the agent for 600s',
+    );
+    hoisted.errorKind = undefined;
+    const runner = await makeACPSubagentRunner({ command: 'claude' });
+    const caught = (await runner(TASK, makeCtx(5000).ctx).catch(
+      (e: unknown) => e,
+    )) as SubagentError;
+    expect(caught).toMatchObject({
+      kind: 'budget_timeout',
+      retryable: false,
+      message: expect.stringContaining('no activity from the agent'),
+    });
+  });
+
   it('reports a spent quota as provider_quota, not a failed tool', async () => {
     // The real shape: prompt_failed wraps the protocol_error that holds the reply.
     const inner = Object.assign(

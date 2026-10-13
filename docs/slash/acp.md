@@ -108,6 +108,11 @@ legacy map → bundled catalog**.
 - **`--bg`** dispatches the agent as a background fleet subagent (requires
   director mode — run `/director` first). Track it with `/agents`.
 
+A worker's turn has no length limit: it runs until the agent finishes, you cancel it, or the agent
+goes silent for 10 minutes (no update, permission request, file or terminal call). A silent turn
+is cancelled with `session/cancel`, so the agent stops instead of editing on after WrongStack has
+given up, and it is reported as a stalled worker, not a broken connection.
+
 ## The WrongStack bridge
 
 A delegated worker keeps its own identity, tools and sign-in. WrongStack only tells it where it

@@ -22,8 +22,14 @@ export interface AcpSessionPromptHost {
   resetScratch(): void;
   progressHandler: ACPProgressHandler | null;
   allocId(): number;
-  sendRequest(id: number, method: string, params: unknown, timeoutMs?: number): Promise<unknown>;
-  timeoutMs: number;
+  sendRequest(
+    id: number,
+    method: string,
+    params: unknown,
+    timeoutMs?: number,
+    idle?: boolean,
+  ): Promise<unknown>;
+  promptIdleTimeoutMs: number;
   scratch: ACPSessionScratch;
 }
 
@@ -196,7 +202,9 @@ export async function prompt(
         sessionId: host.sessionId,
         prompt: blocks,
       },
-      host.timeoutMs,
+      // Timed by silence, not length: a working agent keeps it alive.
+      host.promptIdleTimeoutMs,
+      true,
     ),
     new Promise<never>((_, reject) => {
       rejectTurn = reject;
@@ -220,6 +228,20 @@ export async function prompt(
     const abortedKind = err instanceof ACPSessionError && err.kind === 'aborted';
     if (cancelled || abortedKind) {
       return emptyRunResult('cancelled');
+    }
+    if (err instanceof ACPSessionError && err.kind === 'stalled') {
+      // Stop the agent too: left running, it would keep editing files after
+      // the caller has given up on the turn.
+      if (host.sessionId) {
+        host.transport
+          .send({
+            jsonrpc: '2.0',
+            method: 'session/cancel',
+            params: { sessionId: host.sessionId },
+          } as never as ACPMessage)
+          .catch(() => {});
+      }
+      throw err;
     }
     const msg = err instanceof Error ? err.message : String(err);
     if (signal.aborted) {

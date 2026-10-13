@@ -22,7 +22,15 @@ export interface ACPSessionOptions {
   cwd?: string | undefined;
   role?: string | undefined;
   projectRoot: string;
+  /** Cap for each request to the agent other than a prompt turn. Default 5 minutes. */
   timeoutMs?: number | undefined;
+  /**
+   * How long a prompt turn may go without hearing from the agent (an update,
+   * a permission request, a file or terminal call) before it counts as
+   * stalled and is cancelled. Default 10 minutes. A turn that keeps reporting
+   * runs until it ends: a coding agent's turn routinely outlasts any fixed cap.
+   */
+  promptIdleTimeoutMs?: number | undefined;
   permissionPolicy?: PermissionPolicy | undefined;
   trustBoundary?: TrustBoundary | undefined;
   trustActor?: TrustActor | undefined;
@@ -121,4 +129,6 @@ export type ACPSessionErrorKind =
   | 'aborted'
   | 'closed'
   | 'agent_died'
+  /** A prompt turn heard nothing from the agent for `promptIdleTimeoutMs`. */
+  | 'stalled'
   | 'unsupported_capability';

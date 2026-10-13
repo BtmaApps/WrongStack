@@ -89,6 +89,7 @@ export class ACPSession {
   private readonly terminalServer: TerminalServer;
   private readonly permissionPolicy: PermissionPolicy;
   private readonly timeoutMs: number;
+  private readonly promptIdleTimeoutMs: number;
   private readonly opts: ACPSessionOptions;
   private transportOff: (() => void) | null = null;
   private readonly callbackAbort = new AbortController();
@@ -115,6 +116,7 @@ export class ACPSession {
     this.opts = opts;
     this.transport = transport;
     this.timeoutMs = opts.timeoutMs ?? 5 * 60_000;
+    this.promptIdleTimeoutMs = opts.promptIdleTimeoutMs ?? 10 * 60_000;
     const fsOpts: ConstructorParameters<typeof FileServer>[0] = {
       projectRoot: opts.projectRoot,
     };
@@ -520,26 +522,44 @@ export class ACPSession {
     method: string,
     params: unknown,
     timeoutMs?: number,
+    idle = false,
   ): Promise<unknown> {
     return new Promise<unknown>((resolve, reject) => {
       const effectiveTimeout = timeoutMs ?? this.timeoutMs;
-      const handle = setTimeout(() => {
+      // `idle`: the clock restarts whenever the agent is heard from
+      // (touchIdleRequests), so it measures silence, not the request's length.
+      const expire = (): void => {
         this.pending.delete(id);
         reject(
-          new ACPSessionError('protocol_error', `${method} timed out after ${effectiveTimeout}ms`),
+          idle
+            ? new ACPSessionError(
+                'stalled',
+                `${method}: no activity from the agent for ${Math.round(effectiveTimeout / 1000)}s`,
+              )
+            : new ACPSessionError(
+                'protocol_error',
+                `${method} timed out after ${effectiveTimeout}ms`,
+              ),
         );
-      }, effectiveTimeout);
-      this.pending.set(id, {
+      };
+      const entry: PendingRequest = {
         method,
         resolve: resolve as (v: unknown) => void,
         reject,
         timeoutMs: effectiveTimeout,
-        timeoutHandle: handle,
-      });
+        timeoutHandle: setTimeout(expire, effectiveTimeout),
+      };
+      if (idle) {
+        entry.rearm = () => {
+          clearTimeout(entry.timeoutHandle);
+          entry.timeoutHandle = setTimeout(expire, effectiveTimeout);
+        };
+      }
+      this.pending.set(id, entry);
       this.transport
         .send({ jsonrpc: '2.0', id, method, params } as never as ACPMessage)
         .catch((err) => {
-          clearTimeout(handle);
+          clearTimeout(entry.timeoutHandle);
           this.pending.delete(id);
           const msg = err instanceof Error ? err.message : String(err);
           reject(new ACPSessionError('protocol_error', `send ${method} failed: ${msg}`, err));
@@ -658,7 +678,7 @@ export class ACPSession {
       progressHandler: this.progressHandler,
       allocId: this.allocId,
       sendRequest: this.sendRequest,
-      timeoutMs: this.timeoutMs,
+      promptIdleTimeoutMs: this.promptIdleTimeoutMs,
       scratch: this.scratch,
     } satisfies AcpSessionPromptHost);
     return this as unknown as AcpSessionPromptHost;
