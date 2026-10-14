@@ -16,6 +16,7 @@ import {
   hashRecoveryCode,
 } from '@wrongstack/core/security';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
 
 let handle: HqServerHandle | null = null;
@@ -30,7 +31,7 @@ afterEach(async () => {
     await handle.close();
     handle = null;
   }
-  await fs.rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(dataDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 const PASSWORD = 'secret123';

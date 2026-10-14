@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { runWebUI } from '../src/webui-server.js';
 import { openWs } from './_ws-client.js';
 
@@ -42,17 +43,10 @@ afterEach(async () => {
   // rm leaves one tmp dir for the OS temp cleaner; the dangling promise is
   // caught so it can never surface as an unhandled rejection.
   const outcome = await Promise.race([
-    fs.promises
-      .rm(tmpDir, {
-        recursive: true,
-        force: true,
-        maxRetries: 5,
-        retryDelay: 200,
-      })
-      .then(
-        () => 'removed' as const,
-        () => 'removed' as const, // force:true + best-effort: a failed rm must not fail the suite
-      ),
+    removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 200 }).then(
+      () => 'removed' as const,
+      () => 'removed' as const, // force:true + best-effort: a failed rm must not fail the suite
+    ),
     new Promise<'wedged'>((r) => setTimeout(() => r('wedged'), 5_000)),
   ]);
   if (outcome === 'wedged') {

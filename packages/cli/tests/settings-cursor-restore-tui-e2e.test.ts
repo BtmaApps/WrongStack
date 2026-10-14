@@ -28,6 +28,8 @@ import { fileURLToPath } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CLI_ENTRY = path.join(REPO_ROOT, 'packages', 'cli', 'dist', 'index.js');
 const ESC = String.fromCharCode(27);
@@ -133,11 +135,9 @@ describe.skipIf(!runnable)('settings cursor restore — PTY end-to-end', () => {
     child = null;
     await sleep(750);
     await Promise.all([
-      home
-        ? fs.promises.rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
-        : undefined,
+      home ? removeProjectFixtureDirectory(home, { maxRetries: 20, retryDelay: 250 }) : undefined,
       project
-        ? fs.promises.rm(project, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
+        ? removeProjectFixtureDirectory(project, { maxRetries: 20, retryDelay: 250 })
         : undefined,
     ]);
     home = undefined;

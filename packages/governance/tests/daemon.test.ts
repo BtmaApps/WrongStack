@@ -1,9 +1,10 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
 import { launchGovernanceProjectDaemonWithRuntime } from '../src/daemon-launcher.js';
 import {
   connectGovernanceAdminSessionFromLaunch,
@@ -118,7 +119,7 @@ function request(
 afterEach(async () => {
   for (const pid of [...daemonPids]) await stopDaemon(pid);
   for (const directory of temporaryDirectories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    removeProjectFixtureDirectorySync(directory, { maxRetries: 10, retryDelay: 50 });
   }
 });
 

@@ -147,6 +147,7 @@ function decodeFrame(payload: Buffer): unknown {
   return decodeBinaryFrame(payload);
 }
 
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 // The production encode/decode module (source build) shares the wire format
 // with the compiled daemon — the protocol handshake governs compatibility.
 import * as binaryFrameModule from '../src/codebase-index/binary-frame.js';
@@ -195,9 +196,9 @@ afterAll(async () => {
   for (const child of children.splice(0)) child.kill();
   await new Promise((resolve) => setTimeout(resolve, 200));
   for (const root of roots.splice(0)) {
-    await fs
-      .rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
-      .catch(() => undefined);
+    await removeProjectFixtureDirectory(root, { maxRetries: 20, retryDelay: 50 }).catch(
+      () => undefined,
+    );
   }
 });
 

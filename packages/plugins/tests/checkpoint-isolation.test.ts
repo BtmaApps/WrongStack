@@ -28,6 +28,7 @@ vi.mock('node:fs/promises', async (original) => {
   };
 });
 
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import plugin from '../src/checkpoint/index.js';
 
 let root: string;
@@ -40,7 +41,7 @@ beforeEach(async () => {
 afterEach(async () => {
   for (const dispose of cleanup.splice(0)) await dispose();
   vi.restoreAllMocks();
-  await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
+  await removeProjectFixtureDirectory(root, { maxRetries: 3, retryDelay: 100 });
 });
 function host(config: Record<string, unknown> = {}) {
   const tools = new Map<string, Tool>();

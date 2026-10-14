@@ -16,15 +16,15 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import { resolveSendType } from '../../src/coordination/mailbox-message-codec.js';
 import {
-  MAILBOX_TYPE_PROPERTIES,
   isMailboxMessageVisibleTo,
+  MAILBOX_TYPE_PROPERTIES,
 } from '../../src/coordination/mailbox-types.js';
+import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import type { EventBus } from '../../src/kernel/events.js';
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 import {
-  FIXTURE_TIME,
   buildAllPriorities,
   buildAllRecipientForms,
   buildAllSendInputs,
@@ -39,6 +39,7 @@ import {
   buildOrphanAckFixture,
   buildReplyThread,
   buildV1Message,
+  FIXTURE_TIME,
 } from './fixtures/mailbox/index.js';
 
 let dir: string;
@@ -52,7 +53,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await mb.close().catch(() => undefined);
   // SQLite keeps `-wal`/`-shm` mapped for a moment after the handle closes.
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
 });
 
 /**
@@ -66,7 +67,7 @@ async function loadLegacyFixture(jsonl: string): Promise<void> {
   await mb.close();
   const rmOptions = { force: true, maxRetries: 10, retryDelay: 50 } as const;
   for (const suffix of ['', '-wal', '-shm']) {
-    await fs.rm(path.join(dir, `_mailbox.sqlite${suffix}`), rmOptions);
+    await removeProjectFixtureDirectory(path.join(dir, `_mailbox.sqlite${suffix}`), rmOptions);
   }
   await fs.writeFile(path.join(dir, '_mailbox.jsonl'), jsonl);
   mb = new SqliteMailbox(dir, undefined as unknown as EventBus);

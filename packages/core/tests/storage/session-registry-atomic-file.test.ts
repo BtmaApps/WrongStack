@@ -8,6 +8,8 @@ import {
   maybeUnlinkOwnedLock,
 } from '../../src/session-catalog/session-registry-atomic-file.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 describe('session-registry advisory lock primitives', () => {
   let dir: string;
   let lockPath: string;
@@ -20,7 +22,7 @@ describe('session-registry advisory lock primitives', () => {
   afterEach(async () => {
     // maxRetries: the stale-lock tombstone is unlinked fire-and-forget and is
     // still delete-pending on Windows (EPERM) when teardown runs.
-    await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
   });
 
   async function backdate(msAgo: number): Promise<void> {

@@ -17,6 +17,8 @@ import {
   SessionRegistry,
 } from '../src/session-catalog/session-registry.js';
 
+import { removeProjectFixtureDirectory } from './helpers/project-server-harness.js';
+
 let tempRoot: string;
 
 beforeAll(async () => {
@@ -28,7 +30,7 @@ afterAll(async () => {
   // Heartbeat callbacks can finish a pending atomic rename while teardown is
   // removing the tree. Windows reports that transient race as ENOTEMPTY;
   // fs.rm's built-in retries are specifically intended for this case.
-  await fs.rm(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  await removeProjectFixtureDirectory(tempRoot, { maxRetries: 5, retryDelay: 50 });
 });
 
 /** Create an isolated subdirectory for each test to avoid cross-test pollution. */

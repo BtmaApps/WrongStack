@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { SqliteSageStore } from '../src/sqlite-store.js';
 
 /**
@@ -52,7 +53,7 @@ afterEach(async () => {
     // Close before removing: the SQLite -shm/-wal sidecars stay locked on
     // Windows and `rm -r` then fails with EBUSY (teardown artifact, not result).
     entry.store.close();
-    await fs.rm(entry.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(entry.dir, { maxRetries: 5, retryDelay: 50 });
   }
 });
 

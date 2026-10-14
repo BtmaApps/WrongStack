@@ -6,6 +6,8 @@ import type { MailboxMessage } from '../../src/coordination/mailbox-types.js';
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import type { EventBus } from '../../src/kernel/events.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let dir: string;
 let mb: SqliteMailbox;
 let events: { emitCustom: ReturnType<typeof vi.fn> };
@@ -19,7 +21,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await mb.close().catch(() => undefined);
   // SQLite keeps `-wal`/`-shm` mapped for a moment after the handle closes.
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
 });
 
 /**
@@ -49,7 +51,7 @@ async function writeRawMessages(messages: Partial<MailboxMessage>[]): Promise<vo
   await mb.close();
   const rmOptions = { force: true, maxRetries: 10, retryDelay: 50 } as const;
   for (const suffix of ['', '-wal', '-shm']) {
-    await fs.rm(path.join(dir, `_mailbox.sqlite${suffix}`), rmOptions);
+    await removeProjectFixtureDirectory(path.join(dir, `_mailbox.sqlite${suffix}`), rmOptions);
   }
   await fs.writeFile(path.join(dir, '_mailbox.jsonl'), `${lines}\n`);
   mb = new SqliteMailbox(dir, events as never as EventBus);

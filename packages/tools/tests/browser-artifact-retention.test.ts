@@ -11,6 +11,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { _resetArtifactSweepForTests, BrowserArtifactStore } from '../src/browser/artifacts.js';
 
 let root: string;
@@ -22,7 +23,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(root, { maxRetries: 10, retryDelay: 50 });
 });
 
 async function seed(session: string, name: string, ageDays: number): Promise<string> {

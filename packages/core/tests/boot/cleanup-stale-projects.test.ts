@@ -16,6 +16,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanupStaleProjects } from '../../src/boot.js';
 import type { WstackPaths } from '../../src/utils/wstack-paths.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let globalRoot: string;
 let projectsRoot: string;
 
@@ -26,7 +28,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(globalRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(globalRoot, { maxRetries: 10, retryDelay: 50 });
 });
 
 /** `cleanupStaleProjects` only reads `path.dirname(wpaths.projectDir)`. */

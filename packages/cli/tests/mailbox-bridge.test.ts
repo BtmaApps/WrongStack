@@ -8,7 +8,10 @@ import {
 } from '@wrongstack/core/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { waitForProcessExit } from '../../core/tests/helpers/project-server-harness.js';
+import {
+  removeProjectFixtureDirectory,
+  waitForProcessExit,
+} from '../../core/tests/helpers/project-server-harness.js';
 import { mailboxServeCmd } from '../src/subcommands/handlers/mailbox-serve.js';
 
 /**
@@ -194,9 +197,7 @@ afterAll(async () => {
   }
   if (process.env['WRONGSTACK_HOME']) {
     // maxRetries/retryDelay ride out any lingering Windows file lock.
-    await fs.rm(process.env['WRONGSTACK_HOME'], {
-      recursive: true,
-      force: true,
+    await removeProjectFixtureDirectory(process.env['WRONGSTACK_HOME'], {
       maxRetries: 10,
       retryDelay: 100,
     });

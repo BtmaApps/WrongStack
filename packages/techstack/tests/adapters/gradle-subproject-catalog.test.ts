@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../../core/tests/helpers/project-server-harness.js';
 import { GradleAdapter } from '../../src/adapters/gradle.js';
 import type { Workspace } from '../../src/types.js';
 
@@ -17,7 +18,7 @@ const temps: string[] = [];
 
 afterEach(async () => {
   for (const dir of temps.splice(0)) {
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
   }
 });
 

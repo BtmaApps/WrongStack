@@ -2,14 +2,16 @@
  * Smoke test — full dependency watcher → mailbox → tech-stack round-trip.
  * Verifies the complete pipeline works end-to-end.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
-import { makeMailboxTool, mailboxSessionTag } from '../../src/coordination/mailbox-tool.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeDependencyWatcherConfig } from '../../src/coordination/dep-watcher.js';
+import { mailboxSessionTag, makeMailboxTool } from '../../src/coordination/mailbox-tool.js';
+import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 describe('mailbox end-to-end smoke test', () => {
   let tmpRoot: string;
@@ -37,9 +39,9 @@ describe('mailbox end-to-end smoke test', () => {
     for (const store of extraStores.splice(0)) await store.close().catch(() => {});
     await mailbox.close().catch(() => {});
     // Best-effort cleanup of the per-test temp dir.
-    await fs
-      .rm(tmpRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 })
-      .catch(() => {});
+    await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 10, retryDelay: 50 }).catch(
+      () => {},
+    );
   });
 
   it('full round-trip: dep-watcher → mailbox → tech-stack → result', async () => {

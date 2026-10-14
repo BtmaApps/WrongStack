@@ -5,6 +5,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { verifyGoalProject } from '../../src/goal/project-verifier.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 // A real cmd.exe shim tree: `pnpm.cmd` -> node script that records its pid and
 // hangs. The step timeout must take the script down, not just cmd.exe.
 describe.skipIf(process.platform !== 'win32')('verifyGoalProject step timeout', () => {
@@ -37,7 +39,7 @@ describe.skipIf(process.platform !== 'win32')('verifyGoalProject step timeout', 
 
   afterEach(async () => {
     process.env['PATH'] = savedPath;
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 100 });
   });
 
   const alive = (pid: number): boolean => {

@@ -42,6 +42,8 @@ import {
   SEND_DEF,
 } from '../../core/tests/coordination/mailbox-mutation-fixtures.js';
 
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
+
 let tmpProject: string;
 let baseUrl: string;
 let token: string;
@@ -165,9 +167,7 @@ afterAll(async () => {
     });
   }
   if (process.env['WRONGSTACK_HOME']) {
-    await fs.rm(process.env['WRONGSTACK_HOME'], {
-      recursive: true,
-      force: true,
+    await removeProjectFixtureDirectory(process.env['WRONGSTACK_HOME'], {
       maxRetries: 10,
       retryDelay: 100,
     });

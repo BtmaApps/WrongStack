@@ -39,14 +39,16 @@ import { ToolRegistry } from '../../src/registry/tool-registry.js';
 import { DefaultPermissionPolicy } from '../../src/security/permission-policy.js';
 import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
-import type { Request } from '../../src/types/provider.js';
 import type {
   SubagentRunContext,
   SubagentRunOutcome,
   TaskSpec,
 } from '../../src/types/multi-agent.js';
+import type { Request } from '../../src/types/provider.js';
 import type { Tool } from '../../src/types/tool.js';
 import { MockProvider } from '../helpers/mock-provider.js';
+
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 const dirs: string[] = [];
 const cleanups: Array<() => unknown> = [];
@@ -55,7 +57,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0)) await fn();
   leaderDeliveryHub.reset();
   for (const d of dirs.splice(0)) {
-    await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(d, { maxRetries: 10, retryDelay: 50 });
   }
 });
 

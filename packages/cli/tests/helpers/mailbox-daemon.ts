@@ -22,6 +22,8 @@ import {
   mailboxProjectServerMetadataPath,
 } from '@wrongstack/core/coordination';
 
+import { removeProjectFixtureDirectory } from '../../../core/tests/helpers/project-server-harness.js';
+
 interface ClosableMailbox {
   close(): Promise<void>;
 }
@@ -143,7 +145,10 @@ export async function removeMailboxTempRoot(dir: string, deadlineMs = 5_000): Pr
     timer.unref?.();
   });
   try {
-    await Promise.race([fs.rm(dir, MAILBOX_RM_OPTIONS).catch(() => undefined), giveUp]);
+    await Promise.race([
+      removeProjectFixtureDirectory(dir, MAILBOX_RM_OPTIONS).catch(() => undefined),
+      giveUp,
+    ]);
   } finally {
     if (timer) clearTimeout(timer);
   }

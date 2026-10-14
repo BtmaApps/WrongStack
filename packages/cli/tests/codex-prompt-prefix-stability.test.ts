@@ -41,6 +41,7 @@ import {
 } from '@wrongstack/core/types';
 import { diffCacheProbe, fingerprintCacheProbe, OpenAICodexProvider } from '@wrongstack/providers';
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { OpenAIResponsesProvider } from '../../providers/src/openai-responses.js';
 
 const TURNS = 3;
@@ -290,7 +291,7 @@ async function wireBodies(
 describe('openai-codex prompt prefix stability', () => {
   let tmp = '';
   afterEach(async () => {
-    if (tmp) await fs.rm(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    if (tmp) await removeProjectFixtureDirectory(tmp, { maxRetries: 10, retryDelay: 50 });
     tmp = '';
   });
 

@@ -7,6 +7,7 @@ import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import {
   projectIndexServerEndpoint,
   projectIndexServerMetadataPath,
@@ -16,9 +17,7 @@ const roots: string[] = [];
 
 afterEach(async () => {
   for (const root of roots.splice(0)) {
-    await fs
-      .rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 })
-      .catch(() => {});
+    await removeProjectFixtureDirectory(root, { maxRetries: 5, retryDelay: 25 }).catch(() => {});
   }
 });
 

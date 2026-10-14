@@ -21,6 +21,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { startHeapWatchdog } from '../../src/utils/heap-watchdog.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let dir: string;
 let logPath: string;
 
@@ -33,7 +35,7 @@ afterEach(async () => {
   // The append chain may still hold an in-flight write; let it settle before
   // removing the directory (Windows ENOTEMPTY race).
   await new Promise((r) => setTimeout(r, 50));
-  await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
 });
 
 async function sizeOf(file: string): Promise<number> {

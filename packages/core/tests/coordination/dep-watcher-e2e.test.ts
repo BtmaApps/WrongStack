@@ -1,11 +1,13 @@
-import { describe, expect, it, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import { attachDepWatcherBridge } from '../../src/coordination/dep-watcher-bridge.js';
-import { startTechStackConsumer } from '../../src/coordination/techstack-mailbox-consumer.js';
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import { startTechStackConsumer } from '../../src/coordination/techstack-mailbox-consumer.js';
 import { EventBus } from '../../src/kernel/events.js';
+
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 /**
  * Live end-to-end proof of the dep-watcher chain.
@@ -44,8 +46,8 @@ describe('dep-watcher chain end-to-end (live filesystem + mailbox)', () => {
     await mailbox?.close().catch(() => undefined);
     // SQLite holds the store open for the connection's life; on Windows
     // `rm` then fails with EBUSY on the -wal/-shm siblings.
-    await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    await fs.rm(mailboxDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(projectRoot, { maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(mailboxDir, { maxRetries: 10, retryDelay: 50 });
   });
 
   it('wakes the tech-stack audit and names the newly added package@version', async () => {

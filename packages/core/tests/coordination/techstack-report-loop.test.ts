@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { startPackageOutdatedWatcher } from '../../src/coordination/package-outdated-watcher.js';
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 /**
  * Closes the last seam in the dep-watcher chain: the REPORT path.
  *
@@ -27,7 +29,7 @@ describe('tech-stack report delivery loop', () => {
     dispose?.();
     dispose = undefined;
     await mailbox?.close().catch(() => undefined);
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
   });
 
   it('consumes a tech-stack result and notifies the recorded package author', async () => {

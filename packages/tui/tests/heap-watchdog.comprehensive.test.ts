@@ -2,6 +2,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { defaultHeapLogPath, startHeapWatchdog, takeHeapSample } from '../src/heap-watchdog.js';
 
 describe('takeHeapSample', () => {
@@ -42,7 +43,7 @@ describe('startHeapWatchdog', () => {
   afterEach(async () => {
     vi.useRealTimers();
     await new Promise((r) => setTimeout(r, 50));
-    await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
   });
 
   it('writes an immediate first diagnostic line including collectStats extras', async () => {

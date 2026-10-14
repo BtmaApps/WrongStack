@@ -12,10 +12,11 @@
  *   unowned  (session scope, owner NULL)  → visible under the default clause
  *   victim   (session scope, owner set)   → visible only with the flag
  */
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { setupSage } from '../src/host-wiring.js';
 import { SqliteMemoryPort } from '../src/memory-port.js';
 
@@ -134,9 +135,7 @@ describe('daily dry-run triage session scope', () => {
         /* best-effort close */
       }
       vi.useRealTimers();
-      await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }).catch(
-        () => {},
-      );
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 100 }).catch(() => {});
     }
   });
 });

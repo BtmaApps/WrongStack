@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
-import { startTechStackConsumer } from '../../src/coordination/techstack-mailbox-consumer.js';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import { startTechStackConsumer } from '../../src/coordination/techstack-mailbox-consumer.js';
+
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 describe('techstack-mailbox-consumer', () => {
   let tmpDir: string;
@@ -25,7 +27,7 @@ describe('techstack-mailbox-consumer', () => {
     // SQLite holds the store open for the life of the connection; on Windows
     // `fs.rm` then fails with EBUSY on `_mailbox.sqlite` and its `-wal`/`-shm`.
     await mailbox.close().catch(() => undefined);
-    await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(tmpDir, { maxRetries: 10, retryDelay: 50 });
   });
 
   it('spawns agent when assign message arrives', async () => {

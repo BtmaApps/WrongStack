@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,12 +10,14 @@ import {
 import { loadDatabaseSync } from '../../src/chronicle/metrics-schema.js';
 import type { ChronicleEventInput } from '../../src/chronicle/types.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 afterEach(async () =>
   Promise.all(
     dirs.splice(0).map((dir) =>
       // Windows holds SQLite WAL sidecar handles briefly after close().
-      rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
+      removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 200 }),
     ),
   ),
 );

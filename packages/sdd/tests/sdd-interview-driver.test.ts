@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { SddInterviewDriver } from '../src/sdd-interview-driver.js';
 import { SpecStore } from '../src/spec-store.js';
 import { TaskGraphStore } from '../src/task-graph-store.js';
@@ -33,7 +34,7 @@ afterEach(async () => {
   await Promise.all(
     tempRoots
       .splice(0)
-      .map((dir) => fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 })),
+      .map((dir) => removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 })),
   );
 });
 

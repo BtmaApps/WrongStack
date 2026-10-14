@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
 import {
   AuthenticatedGovernanceProjectService,
   GOVERNANCE_SERVICE_PROTOCOL_VERSION,
@@ -68,7 +69,7 @@ function openService(projectId = 'project-1'): GovernanceProjectService {
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    removeProjectFixtureDirectorySync(directory, { maxRetries: 5, retryDelay: 50 });
   }
 });
 

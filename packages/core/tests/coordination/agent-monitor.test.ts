@@ -18,6 +18,8 @@ import {
 import { FleetBus } from '../../src/coordination/fleet-bus.js';
 import { EventBus } from '../../src/kernel/events.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function tmpDir(): string {
@@ -71,7 +73,7 @@ describe('AgentMonitorService', () => {
     // close(), not stop(): stop() only starts the transcript flush, so removing
     // the dir here would race the in-flight appends (ENOTEMPTY on Windows).
     await monitor.close();
-    await fsp.rm(transcriptsDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(transcriptsDir, { maxRetries: 5, retryDelay: 50 });
   });
 
   // ── Lifecycle ────────────────────────────────────────────────────

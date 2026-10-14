@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +21,7 @@ vi.mock('node:child_process', async (orig) => {
   };
 });
 
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
 import { parseArgs } from '../src/arg-parser.js';
 import {
   detectUpdatePackageManager,
@@ -227,7 +228,7 @@ describe('updateCmd subcommand', () => {
       expect(code).toBe(0);
       expectSpawned(pm, [...argv]);
     } finally {
-      if (stubBin) rmSync(stubBin, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+      if (stubBin) removeProjectFixtureDirectorySync(stubBin, { maxRetries: 3, retryDelay: 50 });
     }
   });
 
@@ -467,7 +468,7 @@ describe('Windows package-manager resolution', () => {
       expect(args[2]).toContain(`"${externalNpm}"`);
       expect(args[2]).not.toContain(`"${path.join(projectBin, 'npm.CMD')}"`);
     } finally {
-      rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+      removeProjectFixtureDirectorySync(root, { maxRetries: 3, retryDelay: 50 });
     }
   });
 });

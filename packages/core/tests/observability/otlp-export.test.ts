@@ -29,6 +29,8 @@ import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { Tool } from '../../src/types/tool.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 interface WireSpan {
   traceId: string;
   spanId: string;
@@ -122,7 +124,7 @@ describe('a real turn at the collector', () => {
     exporter.exportMetrics(sink);
 
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-otlp-'));
-    cleanups.push(() => fs.rm(tmp, { recursive: true, force: true, maxRetries: 5 }));
+    cleanups.push(() => removeProjectFixtureDirectory(tmp, { maxRetries: 5, retryDelay: 100 }));
     const container = new Container();
     container.bind(TOKENS.Logger, () => new DefaultLogger({ level: 'error', stderr: false }));
     container.bind(TOKENS.RetryPolicy, () => new DefaultRetryPolicy());

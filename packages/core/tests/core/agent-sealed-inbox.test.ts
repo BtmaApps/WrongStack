@@ -25,6 +25,8 @@ import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 async function buildAgent(sealed: boolean) {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-sealed-inbox-'));
   const container = new Container();
@@ -83,7 +85,7 @@ describe('Agent sealed inbox', () => {
   const dirs: string[] = [];
   afterEach(async () => {
     for (const dir of dirs.splice(0)) {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
     }
   });
 

@@ -10,8 +10,9 @@ import {
   writeHqAuthFile,
 } from '@wrongstack/core/hq';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { WebSocket } from '../src/ws-runtime.js';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
+import { WebSocket } from '../src/ws-runtime.js';
 
 let handle: HqServerHandle | null = null;
 let dataDir: string;
@@ -28,12 +29,7 @@ afterEach(async () => {
   // Windows: HQ may still hold auth/login-attempt files for a beat after
   // close(), so bare rmdir flakes with ENOTEMPTY under full-suite load.
   // Node's recursive rm retries EBUSY/ENOTEMPTY when maxRetries is set.
-  await fs.rm(dataDir, {
-    recursive: true,
-    force: true,
-    maxRetries: 10,
-    retryDelay: 50,
-  });
+  await removeProjectFixtureDirectory(dataDir, { maxRetries: 10, retryDelay: 50 });
 });
 
 /**

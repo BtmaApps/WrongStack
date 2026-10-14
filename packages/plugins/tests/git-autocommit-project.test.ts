@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { PluginAPI, Tool } from '@wrongstack/core/types';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import plugin from '../src/git-autocommit/index.js';
 
 let root = '';
@@ -44,7 +45,7 @@ afterEach(async () => {
   try {
     if (api) await plugin.teardown?.(api);
   } finally {
-    if (root) await rm(root, { recursive: true, force: true, maxRetries: 3 });
+    if (root) await removeProjectFixtureDirectory(root, { maxRetries: 3, retryDelay: 100 });
   }
 });
 

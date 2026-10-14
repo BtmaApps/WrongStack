@@ -7,11 +7,13 @@
  *  - WS-108 `?token=` was accepted on every route regardless of bind, which is
  *    the query-string exposure class (C-598) the WS path had already closed.
  */
+
+import * as nodeFs from 'node:fs/promises';
 import type * as http from 'node:http';
 import * as os from 'node:os';
-import * as nodeFs from 'node:fs/promises';
 import * as nodePath from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../../core/tests/helpers/project-server-harness.js';
 import { createHttpServer, requestToken } from '../../src/server/http-server.js';
 import { extractTokenFromCookie } from '../../src/server/ws-auth.js';
 
@@ -105,7 +107,7 @@ describe('WS-107 — Set-Cookie flags follow the deployment', () => {
       await run(`http://127.0.0.1:${addr.port}`);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
-      await nodeFs.rm(distDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(distDir, { maxRetries: 5, retryDelay: 25 });
     }
   }
 

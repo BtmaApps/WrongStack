@@ -16,6 +16,8 @@ import { resolveProjectDir } from '../../src/coordination/global-mailbox-paths.j
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import type { EventBus } from '../../src/kernel/events.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let dir: string;
 let mb: SqliteMailbox;
 let events: { emitCustom: ReturnType<typeof vi.fn> };
@@ -33,8 +35,8 @@ beforeEach(async () => {
 afterEach(async () => {
   for (const store of extraStores.splice(0)) await store.close().catch(() => undefined);
   await mb.close().catch(() => undefined);
-  for (const extra of extraDirs.splice(0)) await fs.rm(extra, RM_OPTIONS);
-  await fs.rm(dir, RM_OPTIONS);
+  for (const extra of extraDirs.splice(0)) await removeProjectFixtureDirectory(extra, RM_OPTIONS);
+  await removeProjectFixtureDirectory(dir, RM_OPTIONS);
 });
 
 const send = (over: Record<string, unknown> = {}) =>

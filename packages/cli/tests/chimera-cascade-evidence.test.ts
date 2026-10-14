@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
 import { extractCascadeEvidence, verifyCascadeEvidence } from '../src/chimera-cascade-evidence.js';
 
 const block = (body: unknown): string => `fixed\n\n\`\`\`json\n${JSON.stringify(body)}\n\`\`\``;
@@ -140,7 +141,7 @@ describe('verifyCascadeEvidence', () => {
         expect(leaked).toBe(false);
       } finally {
         process.env['PATH'] = savedPath;
-        fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+        removeProjectFixtureDirectorySync(dir, { maxRetries: 10, retryDelay: 100 });
       }
     },
     20_000,

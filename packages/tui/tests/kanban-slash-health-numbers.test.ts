@@ -5,6 +5,7 @@ import type { KanbanQueueHealth } from '@wrongstack/kanban';
 import { createBoard, getKanbanQueueHealth, listReadyTasks } from '@wrongstack/kanban';
 import { addDependency, addTask } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { renderHealthReport } from '../src/kanban-slash.js';
 
 /**
@@ -25,7 +26,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 describe('/kanban health', () => {

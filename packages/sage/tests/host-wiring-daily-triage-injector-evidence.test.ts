@@ -13,11 +13,12 @@
  * every run) while staying gray-zone for triage (total 56 → 54 with the
  * clamp). The control is anchored elsewhere and never retrieved.
  */
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { setupSage } from '../src/host-wiring.js';
 import { SqliteMemoryPort } from '../src/memory-port.js';
 
@@ -152,9 +153,7 @@ describe('daily dry-run triage injector evidence', () => {
         /* best-effort close */
       }
       vi.useRealTimers();
-      await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }).catch(
-        () => {},
-      );
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 100 }).catch(() => {});
     }
   });
 });

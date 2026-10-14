@@ -37,6 +37,8 @@ import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { ErrorHandler } from '../../src/types/error-handler.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 /** Provider that fails once, then serves a normal text response. */
 class RecoveringProvider extends MockProvider {
   private failuresLeft = 1;
@@ -178,7 +180,7 @@ describe('agent-loop provider recovery → self_healing_retry journal entry', ()
   let cleanupDirs: string[] = [];
   afterEach(async () => {
     for (const dir of cleanupDirs) {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
     }
     cleanupDirs = [];
   });

@@ -18,7 +18,7 @@
  *    latching on an error the session already recovered from;
  *  - a zero-byte or garbage journal never throws on the listing path.
  */
-import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -26,12 +26,12 @@ import { extractInterruptedTools, SessionRecovery } from '../../src/storage/sess
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { SessionEvent } from '../../src/types/session.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 afterEach(async () =>
   Promise.all(
-    dirs
-      .splice(0)
-      .map((d) => rm(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })),
+    dirs.splice(0).map((d) => removeProjectFixtureDirectory(d, { maxRetries: 5, retryDelay: 200 })),
   ),
 );
 

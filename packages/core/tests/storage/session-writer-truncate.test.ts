@@ -7,13 +7,13 @@ import {
   rewriteSessionToCheckpoint,
 } from '../../src/storage/session-writer-truncate.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    dirs
-      .splice(0)
-      .map((d) => fs.rm(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })),
+    dirs.splice(0).map((d) => removeProjectFixtureDirectory(d, { maxRetries: 5, retryDelay: 200 })),
   );
 });
 

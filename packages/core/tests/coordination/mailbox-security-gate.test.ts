@@ -14,6 +14,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 import {
   closeOpenedCredentialStores,
   openCredentialStore,
@@ -29,7 +30,7 @@ afterEach(async () => {
   // Each store holds a SQLite handle open; Windows will not unlink the
   // directory until every one of them is released.
   await closeOpenedCredentialStores();
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
 });
 
 // ── 1. Non-loopback startup fails without TLS ────────────────────────

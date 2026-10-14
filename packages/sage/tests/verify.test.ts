@@ -1,9 +1,10 @@
+import { execFile } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { verifyMemoryAnchors } from '../src/anchors/verify.js';
 import type { Sage } from '../src/types.js';
 
@@ -16,7 +17,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 100 });
 });
 
 function makeMemory(overrides: Partial<Sage> = {}): Sage {

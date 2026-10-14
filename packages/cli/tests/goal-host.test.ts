@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { createGoalHost, type GoalHostDeps } from '../src/goal-host.js';
 
 // A minimal fake MultiAgentHost: makeSubagentFactory() returns a factory whose
@@ -72,8 +73,8 @@ describe('createGoalHost', () => {
       { timeout: 30_000 },
     );
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
-    await fs.rm(storeDir, rmOpts);
-    await fs.rm(projectRoot, rmOpts);
+    await removeProjectFixtureDirectory(storeDir, rmOpts);
+    await removeProjectFixtureDirectory(projectRoot, rmOpts);
   });
 
   const makeHost = (host: GoalHostDeps['multiAgentHost'], events: EventBus) =>

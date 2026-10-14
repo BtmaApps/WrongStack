@@ -15,6 +15,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let dir: string;
 let mb: SqliteMailbox;
 const extraStores: SqliteMailbox[] = [];
@@ -29,7 +31,7 @@ beforeEach(async () => {
 afterEach(async () => {
   for (const store of extraStores.splice(0)) await store.close().catch(() => undefined);
   await mb.close().catch(() => undefined);
-  await fs.rm(dir, RM_OPTIONS);
+  await removeProjectFixtureDirectory(dir, RM_OPTIONS);
 });
 
 const send = (over: Record<string, unknown> = {}) =>

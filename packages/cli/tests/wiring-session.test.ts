@@ -5,6 +5,7 @@ import type { Message, SessionStore, SessionWriter } from '@wrongstack/core/type
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { settleSessionKanbanBackgroundWork } from '@wrongstack/tools/session-kanban';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { type SessionResult, setupSession } from '../src/wiring/session.js';
 
 /**
@@ -44,7 +45,7 @@ afterEach(async () => {
     await result.detachTodosCheckpoint();
   }
   await settleSessionKanbanBackgroundWork();
-  await fs.rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await removeProjectFixtureDirectory(tmp, { maxRetries: 5, retryDelay: 100 });
 });
 
 function makeWpaths(): WstackPaths {

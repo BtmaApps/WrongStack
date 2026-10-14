@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { type PhaseGraph, PhaseGraphBuilder, PhaseStore } from '@wrongstack/core/goal';
 import { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import {
   configureGoalPolicy,
   createGoalHost,
@@ -135,8 +136,8 @@ describe('createGoalHost — start failures and task errors', () => {
     if (prevVerify === undefined) delete process.env['WRONGSTACK_GOAL_VERIFY'];
     else process.env['WRONGSTACK_GOAL_VERIFY'] = prevVerify;
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
-    await fs.rm(storeDir, rmOpts);
-    await fs.rm(projectRoot, rmOpts);
+    await removeProjectFixtureDirectory(storeDir, rmOpts);
+    await removeProjectFixtureDirectory(projectRoot, rmOpts);
   });
 
   const makeHost = (
@@ -397,8 +398,8 @@ describe('createGoalHost — verify gate', () => {
     resetGoalPolicy();
     await waitForRunLeaseRelease(storeDir);
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
-    await fs.rm(storeDir, rmOpts);
-    await fs.rm(projectRoot, rmOpts);
+    await removeProjectFixtureDirectory(storeDir, rmOpts);
+    await removeProjectFixtureDirectory(projectRoot, rmOpts);
   });
 
   const makeHost = (host: GoalHostDeps['multiAgentHost'], events: EventBus) =>
@@ -542,8 +543,8 @@ describe('createGoalHost — worktree actions', () => {
   afterEach(async () => {
     await waitForRunLeaseRelease(storeDir);
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
-    await fs.rm(storeDir, rmOpts);
-    await fs.rm(projectRoot, rmOpts);
+    await removeProjectFixtureDirectory(storeDir, rmOpts);
+    await removeProjectFixtureDirectory(projectRoot, rmOpts);
   });
 
   const makeHost = () =>

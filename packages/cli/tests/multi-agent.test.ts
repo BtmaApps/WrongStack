@@ -57,6 +57,7 @@ import type {
   Tool,
 } from '@wrongstack/core/types';
 import { capabilitiesFor } from '@wrongstack/providers';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { type MultiAgentDeps, MultiAgentHost } from '../src/multi-agent.js';
 
 beforeEach(() => {
@@ -644,7 +645,7 @@ describe('MultiAgentHost', () => {
       expect(parsed.directorRunId).toBeTruthy();
       expect(parsed.children.length).toBeGreaterThanOrEqual(1);
       await host.stopAll();
-      await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 50 });
     });
 
     it('status() / usage() keep working in director mode', async () => {
@@ -719,7 +720,7 @@ describe('MultiAgentHost', () => {
       // actually invoked with the director's session writer.
       expect(entries.some((e) => e.endsWith('.jsonl'))).toBe(true);
       await host.stopAll();
-      await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 50 });
     });
 
     it('director-mode passes sharedScratchpadPath through to Director', async () => {
@@ -748,7 +749,7 @@ describe('MultiAgentHost', () => {
       const stat = await fs.stat(scratch).catch(() => null);
       expect(stat?.isDirectory() ?? false).toBe(true);
       await host.stopAll();
-      await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 50 });
     });
 
     describe('promoteToDirector (runtime promotion)', () => {
@@ -830,7 +831,7 @@ describe('MultiAgentHost', () => {
         expect(parsed.directorRunId).toBeTruthy();
         expect(parsed.children.length).toBeGreaterThanOrEqual(1);
         await host.stopAll();
-        await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+        await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 50 });
       });
 
       it('derives manifest/shared/subagent paths from fleetRoot', async () => {
@@ -849,7 +850,7 @@ describe('MultiAgentHost', () => {
         const written = await host.manifest();
         expect(written).toBe(path.join(fleetRoot, 'fleet.json'));
         await host.stopAll();
-        await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+        await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 50 });
       });
 
       it('works without fleetRoot — director still built, no paths', async () => {
@@ -910,7 +911,7 @@ describe('MultiAgentHost', () => {
         expect(child!.provider).toBe('anthropic');
         expect(child!.model).toBe('claude');
         await host.stopAll();
-        await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+        await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 50 });
       });
     });
   });

@@ -33,6 +33,8 @@ import {
   setSkillPinned,
 } from '../../src/coordination/agents/project-agent-skill-layer.js';
 
+import { removeProjectFixtureDirectorySync } from '../helpers/project-server-harness.js';
+
 let tempRoot: string;
 
 beforeAll(() => {
@@ -41,7 +43,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  fs.rmSync(tempRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  removeProjectFixtureDirectorySync(tempRoot, { maxRetries: 3, retryDelay: 50 });
 });
 
 function freshProject(): string {

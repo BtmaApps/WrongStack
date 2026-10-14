@@ -14,7 +14,7 @@
  * fsync per event.
  */
 import { spawn } from 'node:child_process';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,12 +23,12 @@ import { SessionRecovery } from '../../src/storage/session-recovery.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { SessionEvent } from '../../src/types/session.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 afterEach(async () =>
   Promise.all(
-    dirs
-      .splice(0)
-      .map((d) => rm(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })),
+    dirs.splice(0).map((d) => removeProjectFixtureDirectory(d, { maxRetries: 5, retryDelay: 200 })),
   ),
 );
 

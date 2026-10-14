@@ -18,11 +18,12 @@
  *    `WRONGSTACK_*` knob would never reach it. That choice is what makes a
  *    short window testable here at all.
  */
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
 import { GovernanceProjectServer } from '../src/index.js';
 
 const temporaryDirectories: string[] = [];
@@ -37,7 +38,7 @@ function projectRoot(): string {
 afterEach(async () => {
   for (const server of servers.splice(0).reverse()) await server.close();
   for (const directory of temporaryDirectories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    removeProjectFixtureDirectorySync(directory, { maxRetries: 10, retryDelay: 50 });
   }
 });
 

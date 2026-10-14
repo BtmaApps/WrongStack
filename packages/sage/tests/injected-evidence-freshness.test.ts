@@ -6,6 +6,7 @@ import { EventBus } from '@wrongstack/core/kernel';
 import type { Config, Request } from '@wrongstack/core/types';
 import { formatMemoryEvidenceBlock } from '@wrongstack/core/utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { setupSage } from '../src/host-wiring.js';
 import { SqliteMemoryPort } from '../src/memory-port.js';
 import { createSageEvidenceRefreshMiddleware } from '../src/middleware/evidence-refresh.js';
@@ -38,7 +39,7 @@ async function fixture() {
   cleanups.push(async () => {
     await teardown();
     memory.close();
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 100 });
   });
   const ctx = {
     cwd: dir,

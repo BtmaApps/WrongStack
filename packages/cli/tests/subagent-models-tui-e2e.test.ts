@@ -14,6 +14,7 @@ import { stripVTControlCharacters } from 'node:util';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { touchProjectInManifest } from '../src/services/project-manifest.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -84,11 +85,9 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     // child begin its shutdown before removing its isolated HOME/project dirs.
     await sleep(750);
     await Promise.all([
-      home
-        ? fs.promises.rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
-        : undefined,
+      home ? removeProjectFixtureDirectory(home, { maxRetries: 20, retryDelay: 250 }) : undefined,
       project
-        ? fs.promises.rm(project, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
+        ? removeProjectFixtureDirectory(project, { maxRetries: 20, retryDelay: 250 })
         : undefined,
     ]);
     home = undefined;

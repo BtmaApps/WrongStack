@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,6 +10,8 @@ import {
 import { loadDatabaseSync } from '../../src/chronicle/metrics-schema.js';
 import type { ChronicleEventInput } from '../../src/chronicle/types.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 afterEach(async () =>
   Promise.all(
@@ -18,7 +20,7 @@ afterEach(async () =>
       // handles (-shm, -wal) briefly after close(), causing EBUSY on
       // immediate unlink. Linear backoff (200ms × 5 retries) lets the
       // OS release the handles without masking real cleanup failures.
-      rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
+      removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 200 }),
     ),
   ),
 );

@@ -5,6 +5,7 @@ import { EventBus } from '@wrongstack/core/kernel/events.js';
 import { DefaultTaskStore } from '@wrongstack/core/tasking';
 import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
 import { afterAll, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { SddBoardProjector } from '../src/sdd-board-projector.js';
 import { SddBoardStore } from '../src/sdd-board-store.js';
 import { TaskTracker, type TaskTrackerChange } from '../src/task-tracker.js';
@@ -82,8 +83,7 @@ describe('SddBoardProjector', () => {
   const store = new SddBoardStore({ baseDir: dir });
 
   afterAll(async () => {
-    const { rm } = await import('node:fs/promises');
-    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 20 });
   });
 
   it('builds a live snapshot from tracker state + run events', () => {
@@ -250,9 +250,7 @@ describe('SddBoardProjector', () => {
     expect(eventLog).toContain('[command omitted]');
 
     proj.dispose();
-    await import('node:fs/promises').then((fs) =>
-      fs.rm(isolatedDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }),
-    );
+    await removeProjectFixtureDirectory(isolatedDir, { maxRetries: 10, retryDelay: 50 });
   });
 
   it('rejects task telemetry correlated to a different run', () => {
@@ -378,9 +376,7 @@ describe('SddBoardProjector', () => {
     expect(saved).toHaveLength(2);
     expect(saved.at(-1)?.wave).toBe(5);
     proj.dispose();
-    await import('node:fs/promises').then((fs) =>
-      fs.rm(slowDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }),
-    );
+    await removeProjectFixtureDirectory(slowDir, { maxRetries: 10, retryDelay: 50 });
   });
 
   it('marks a user-stopped run as "stopped" (terminal, not the resumable "paused")', async () => {

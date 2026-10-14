@@ -4,7 +4,10 @@ import * as path from 'node:path';
 import { HQ_AUTH_FILE_VERSION, type HqPublisher, writeHqAuthFile } from '@wrongstack/core/hq';
 import { SageProjectServerConnection } from '@wrongstack/sage';
 import { afterEach, expect, it, vi } from 'vitest';
-import { waitForProcessExit } from '../../core/tests/helpers/project-server-harness.js';
+import {
+  removeProjectFixtureDirectory,
+  waitForProcessExit,
+} from '../../core/tests/helpers/project-server-harness.js';
 import { createCliHqPublisher } from '../src/hq-publisher.js';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
 import { createSageHqSync } from '../src/sage-hq-sync.js';
@@ -34,7 +37,7 @@ afterEach(async () => {
     }),
   );
   clients.length = 0;
-  if (root) await fs.rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+  if (root) await removeProjectFixtureDirectory(root, { maxRetries: 20, retryDelay: 100 });
 });
 
 it('syncs external daemon writes over real HQ WebSockets, isolates projects, restores late/reconnected clients', async () => {

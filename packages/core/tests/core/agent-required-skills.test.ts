@@ -28,6 +28,7 @@ import { markRequiredSkillLoaded } from '../../src/skills/required-skill-gate.js
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { ContentBlock, ToolResultBlock } from '../../src/types/blocks.js';
 import { MockProvider, type ScriptedResponse } from '../helpers/mock-provider.js';
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 import { createMockTool } from '../helpers/test-harness.js';
 
 const MARKER = '<!-- wrongstack:required-skills bug-hunter -->';
@@ -114,7 +115,7 @@ describe('Agent.run required-skill gate', () => {
   const dirs: string[] = [];
   afterEach(async () => {
     for (const dir of dirs.splice(0)) {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
     }
   });
 

@@ -30,6 +30,7 @@
  * the existing child-process lifecycle tests in packages/kanban/tests.
  */
 
+import * as fsSync from 'node:fs';
 import { type FSWatcher, watch as watchFs } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as net from 'node:net';
@@ -59,6 +60,30 @@ export async function removeProjectFixtureDirectory(
       )
         throw error;
       await sleep(retryDelay * (attempt + 1));
+    }
+  }
+}
+
+/** Synchronous twin of `removeProjectFixtureDirectory`, for sync teardown paths. */
+export function removeProjectFixtureDirectorySync(
+  directory: string,
+  options: { maxRetries?: number; retryDelay?: number } = {},
+): void {
+  const maxRetries = options.maxRetries ?? 20;
+  const retryDelay = options.retryDelay ?? 50;
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fsSync.rmSync(directory, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (
+        attempt >= maxRetries ||
+        !['EBUSY', 'EMFILE', 'ENFILE', 'ENOTEMPTY', 'EPERM'].includes(code ?? '')
+      )
+        throw error;
+      Atomics.wait(pause, 0, 0, retryDelay * (attempt + 1));
     }
   }
 }
@@ -296,9 +321,9 @@ export async function makeTempRoot(
     release: keep
       ? async () => undefined
       : async () => {
-          await fs
-            .rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 })
-            .catch(() => {});
+          await removeProjectFixtureDirectory(root, { maxRetries: 5, retryDelay: 25 }).catch(
+            () => {},
+          );
         },
   };
 }

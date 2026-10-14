@@ -6,6 +6,8 @@ import { applyRewindToConversation } from '../../src/storage/session-rewind-appl
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { Message } from '../../src/types/messages.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let tmp: string;
 
 beforeEach(async () => {
@@ -13,7 +15,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await removeProjectFixtureDirectory(tmp, { maxRetries: 5, retryDelay: 100 });
 });
 
 /** Minimal stand-in for ConversationState's replaceMessages surface. */

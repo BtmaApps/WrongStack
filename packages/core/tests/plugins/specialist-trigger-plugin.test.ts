@@ -10,6 +10,8 @@ import {
 } from '../../src/plugins/specialist-trigger-plugin.js';
 import type { SlashCommand } from '../../src/types/slash-command.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 let tmp: string;
 
 function gitInit(dir: string): void {
@@ -104,7 +106,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   // A scan's `git status` can outlive the test; on Windows its open handle on
   // the repo makes the removal EBUSY until it exits.
-  await fs.rm(tmp, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 });
+  await removeProjectFixtureDirectory(tmp, { maxRetries: 40, retryDelay: 250 });
 });
 
 describe('specialist trigger plugin', () => {

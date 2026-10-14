@@ -2,6 +2,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import {
   startHeapWatchdog,
   startSharedHeapWatchdog,
@@ -39,7 +40,7 @@ describe('startHeapWatchdog', () => {
     // The watchdog's append chain may still have an in-flight write —
     // let it settle, then rm with retries (Windows ENOTEMPTY race).
     await new Promise((r) => setTimeout(r, 50));
-    await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
   });
 
   it('writes an immediate first diagnostic line including collectStats extras', async () => {

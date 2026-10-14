@@ -10,6 +10,8 @@ import { PhaseOrchestrator } from '../../src/goal/phase-orchestrator.js';
 import { GoalRunLeaseBusyError, PhaseStore } from '../../src/goal/phase-store.js';
 import { WorktreeManager } from '../../src/worktree/worktree-manager.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const git = promisify(execFile);
 
 it('resumes stopped work in its original checkout and verifies the merged result', async () => {
@@ -148,6 +150,6 @@ it('resumes stopped work in its original checkout and verifies the merged result
   } finally {
     await releaseFirst?.();
     await releaseSecond?.();
-    await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 50 });
   }
 }, 60_000);

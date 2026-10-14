@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 
+import { removeProjectFixtureDirectory } from '../../helpers/project-server-harness.js';
+
 const run = promisify(execFile);
 export async function goalGitFixture() {
   const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-multi-goal-'));
@@ -37,7 +39,7 @@ export async function goalGitFixture() {
         await git('worktree', 'remove', '--force', directory);
       }
       await git('worktree', 'prune');
-      await fs.rm(parent, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+      await removeProjectFixtureDirectory(parent, { maxRetries: 20, retryDelay: 250 });
     },
   };
 }

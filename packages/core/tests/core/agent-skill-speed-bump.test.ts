@@ -31,6 +31,7 @@ import {
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { ContentBlock, ToolResultBlock } from '../../src/types/blocks.js';
 import { MockProvider, type ScriptedResponse } from '../helpers/mock-provider.js';
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 import { createMockTool } from '../helpers/test-harness.js';
 
 function toolUse(id: string, name: string, input: Record<string, unknown> = {}): ScriptedResponse {
@@ -116,7 +117,7 @@ describe('Agent.run Skill Companion speed bump', () => {
   const dirs: string[] = [];
   afterEach(async () => {
     for (const dir of dirs.splice(0)) {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
     }
   });
 

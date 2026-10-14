@@ -7,6 +7,7 @@ import { GoalRunLeaseBusyError } from '@wrongstack/core/goal';
 import { EventBus } from '@wrongstack/core/kernel';
 import { WorktreeManager } from '@wrongstack/core/worktree';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { createWorktreeCommandHost } from '../src/worktree-command-host.js';
 
 const execFileAsync = promisify(execFile);
@@ -26,7 +27,7 @@ describe('createWorktreeCommandHost', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 50 });
   });
 
   function makeHost(over: { goalActive?: boolean; leaseBusy?: boolean } = {}) {

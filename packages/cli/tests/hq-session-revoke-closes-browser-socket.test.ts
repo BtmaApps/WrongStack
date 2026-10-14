@@ -21,8 +21,9 @@ import {
   writeHqAuthFile,
 } from '@wrongstack/core/hq';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { WebSocket } from '../src/ws-runtime.js';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
+import { WebSocket } from '../src/ws-runtime.js';
 
 const PASSWORD = 'dummy-password-123';
 
@@ -49,7 +50,7 @@ afterEach(async () => {
     await handle.close();
     handle = null;
   }
-  await fs.rm(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dataDir, { maxRetries: 10, retryDelay: 50 });
 });
 
 const httpUrl = (p: string): string => `http://${handle!.host}:${handle!.port}${p}`;

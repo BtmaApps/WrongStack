@@ -10,7 +10,7 @@
  * held 100 000 events, so `wstack chronicle metrics` and the WebUI reliability
  * strip were rendering an empty projection that looked like "no activity".
  */
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -22,12 +22,14 @@ import {
 } from '../../src/chronicle/sqlite-journal.js';
 import type { ChronicleEventInput } from '../../src/chronicle/types.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 afterEach(async () =>
   Promise.all(
     dirs
       .splice(0)
-      .map((dir) => rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })),
+      .map((dir) => removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 200 })),
   ),
 );
 

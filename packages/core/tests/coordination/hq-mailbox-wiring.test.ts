@@ -22,6 +22,7 @@ import {
 import type { HqPublisher } from '../../src/hq/publisher.js';
 import { EventBus } from '../../src/kernel/events.js';
 import {
+  removeProjectFixtureDirectory,
   waitForEndpointClosed,
   waitForMetadataRemoval,
   waitForProcessExit,
@@ -77,7 +78,7 @@ afterEach(async () => {
   } finally {
     control.close();
   }
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
 });
 
 describe('project mailbox HQ publisher wiring', () => {

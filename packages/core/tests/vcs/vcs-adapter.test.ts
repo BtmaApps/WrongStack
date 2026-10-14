@@ -13,6 +13,8 @@ import { SessionCheckpointCas } from '../../src/storage/session-checkpoint-cas.j
 import { detectVcs, openVcs, type VcsKind, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
 import { runVcs, type VcsRunResult } from '../../src/vcs/vcs-runner.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const execFileAsync = promisify(execFile);
 const REV = 'ab'.repeat(20);
 
@@ -21,7 +23,7 @@ beforeEach(async () => {
   tmp = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-vcs-')));
 });
 afterEach(async () => {
-  await fsp.rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await removeProjectFixtureDirectory(tmp, { maxRetries: 5, retryDelay: 100 });
 });
 
 /** A runner that answers by the command, recording what it was asked. */

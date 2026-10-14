@@ -15,6 +15,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { MailboxProjectServerConnection } from '@wrongstack/core/coordination';
 
+import { removeProjectFixtureDirectory } from '../../../core/tests/helpers/project-server-harness.js';
 /**
  * Ask the detached mailbox owner for `projectDir` to exit. Safe when none runs.
  */
@@ -71,7 +72,10 @@ export async function removeMailboxTempRoot(dir: string, deadlineMs = 5_000): Pr
     timer.unref?.();
   });
   try {
-    await Promise.race([fs.rm(dir, RM_OPTIONS).catch(() => undefined), giveUp]);
+    await Promise.race([
+      removeProjectFixtureDirectory(dir, RM_OPTIONS).catch(() => undefined),
+      giveUp,
+    ]);
   } finally {
     if (timer) clearTimeout(timer);
   }

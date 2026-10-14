@@ -32,6 +32,8 @@ import type { Capabilities } from '../../src/types/provider.js';
 import { getRequestResidency } from '../../src/utils/request-layout.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 /** Explicit-breakpoint wire, so the live tail rides behind the cache boundary. */
 class ExplicitCacheProvider extends MockProvider {
   override readonly capabilities: Capabilities = {
@@ -103,7 +105,8 @@ async function buildAgent(provider: MockProvider): Promise<{ agent: Agent; tmp: 
 describe('mailbox mail rides the live-context tail', () => {
   let tmpDirs: string[] = [];
   afterEach(async () => {
-    for (const dir of tmpDirs) await fs.rm(dir, { recursive: true, force: true, maxRetries: 5 });
+    for (const dir of tmpDirs)
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 100 });
     tmpDirs = [];
   });
 

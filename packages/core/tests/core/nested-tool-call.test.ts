@@ -37,12 +37,14 @@ import type { Tool } from '../../src/types/tool.js';
 import { wstackGlobalRoot } from '../../src/utils/wstack-paths.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 const dirs: string[] = [];
 const spoolFiles: string[] = [];
 afterEach(async () => {
   for (const file of spoolFiles.splice(0)) await fs.rm(file, { force: true });
   for (const dir of dirs.splice(0))
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
 });
 
 const ran: string[] = [];

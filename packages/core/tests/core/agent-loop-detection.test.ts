@@ -37,6 +37,8 @@ import type { LoopDetectionConfig } from '../../src/types/config.js';
 import type { Tool } from '../../src/types/tool.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 async function buildAgent(
   provider: MockProvider,
   extraTools: Tool[] = [],
@@ -125,7 +127,7 @@ describe('agent-loop fingerprint detector', () => {
   });
   afterEach(async () => {
     for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(d, { maxRetries: 10, retryDelay: 50 });
     }
   });
 
@@ -744,7 +746,7 @@ describe('agent-loop cycle detector', () => {
   });
   afterEach(async () => {
     for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(d, { maxRetries: 10, retryDelay: 50 });
     }
   });
 
@@ -824,7 +826,7 @@ describe('agent-loop iteration budget enforcement', () => {
   });
   afterEach(async () => {
     for (const d of cleanupDirs) {
-      await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(d, { maxRetries: 10, retryDelay: 50 });
     }
   });
 

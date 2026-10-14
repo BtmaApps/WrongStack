@@ -33,6 +33,8 @@ import type { BuildContext } from '../../src/types/system-prompt.js';
 import type { Tool } from '../../src/types/tool.js';
 import { MockProvider, StreamingMockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 // Every session writer holds a JSONL FileHandle. Tests that never close their
 // session leave it for GC, which Node now reports as an uncaught
 // ERR_INVALID_STATE attributed to whichever test happens to be running.
@@ -47,7 +49,7 @@ async function closeOpenSessions(): Promise<void> {
 async function cleanupTestDirs(dirs: readonly string[]): Promise<void> {
   await closeOpenSessions();
   for (const d of dirs) {
-    await fs.rm(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(d, { maxRetries: 10, retryDelay: 50 });
   }
 }
 

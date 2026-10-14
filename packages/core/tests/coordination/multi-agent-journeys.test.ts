@@ -12,6 +12,8 @@ import type {
   TaskSpec,
 } from '../../src/types/multi-agent.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 /** Owning session for coordinator-scoped work under test. */
 const TEST_SESSION_ID = 'sess_test';
 
@@ -23,7 +25,7 @@ afterEach(async () => {
   await Promise.all(
     tempRoots
       .splice(0)
-      .map((root) => fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 })),
+      .map((root) => removeProjectFixtureDirectory(root, { maxRetries: 5, retryDelay: 25 })),
   );
 });
 

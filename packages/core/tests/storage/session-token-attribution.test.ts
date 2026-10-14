@@ -6,6 +6,8 @@ import type { SessionEvent, SessionSummary } from '../../src/index.js';
 import { DefaultSessionStore } from '../../src/index.js';
 import { totalUsageTokens } from '../../src/types/provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 /**
  * Token and routed-identity attribution across the session journal.
  *
@@ -164,7 +166,7 @@ describe('session outcome agreement', () => {
     tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-outcome-'));
   });
   afterEach(async () => {
-    await fs.rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    await removeProjectFixtureDirectory(tmp, { maxRetries: 5, retryDelay: 200 });
   });
 
   /** Write one journal, then read its summary from both producers. */

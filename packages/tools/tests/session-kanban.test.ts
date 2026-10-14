@@ -18,6 +18,7 @@ import {
   updateTask,
 } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import {
   applySessionKanbanBoardToTodos,
   applySessionKanbanTaskToSource,
@@ -809,7 +810,7 @@ describe('session board retention policy', () => {
   afterEach(async () => {
     if (saved === undefined) delete process.env[ENV];
     else process.env[ENV] = saved;
-    await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+    await removeProjectFixtureDirectory(tmpRoot, { maxRetries: 5, retryDelay: 25 });
   });
 
   it('archives after a week and keeps the archive when no purge window is set', async () => {
@@ -841,7 +842,7 @@ describe('session board retention policy', () => {
           `value ${JSON.stringify(value)}`,
         ).toBeUndefined();
       } finally {
-        await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+        await removeProjectFixtureDirectory(root, { maxRetries: 5, retryDelay: 25 });
       }
     }
   });

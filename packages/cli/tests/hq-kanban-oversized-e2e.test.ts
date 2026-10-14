@@ -37,9 +37,10 @@ import {
 } from '@wrongstack/core/hq';
 import { createBoard, getBoard, writeBoard } from '@wrongstack/kanban';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WebSocket } from '../src/ws-runtime.js';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
 import { createKanbanHqSync } from '../src/kanban-hq-sync.js';
+import { WebSocket } from '../src/ws-runtime.js';
 
 let tempRoot: string;
 let dataDir: string;
@@ -65,7 +66,7 @@ afterEach(async () => {
     await handle.close();
     handle = null;
   }
-  await fs.rm(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  await removeProjectFixtureDirectory(tempRoot, { maxRetries: 5, retryDelay: 50 });
   vi.restoreAllMocks();
 });
 

@@ -1,10 +1,11 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { closeKanbanServerConnections, getKanbanServerConnection } from '@wrongstack/kanban';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { createKanbanMcpToolHost } from '../src/adapter.js';
 
 function objectContent(result: { content: unknown; isError: boolean }): Record<string, unknown> {
@@ -80,7 +81,7 @@ describe('Kanban MCP full-access IPC integration', () => {
       if (previousForceIpc === undefined) delete process.env['WRONGSTACK_KANBAN_FORCE_IPC'];
       else process.env['WRONGSTACK_KANBAN_FORCE_IPC'] = previousForceIpc;
       if (projectRoot) {
-        await rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+        await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 50 });
       }
     }
   });

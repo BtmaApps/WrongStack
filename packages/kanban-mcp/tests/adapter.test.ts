@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBoard, type KanbanServerEvent, type KanbanTask } from '@wrongstack/kanban';
@@ -8,6 +8,7 @@ import type { MCPServerTool } from '@wrongstack/mcp';
 // tsconfig resolves it to the built dist, which may predate the export.
 import * as kanbanToolModule from '@wrongstack/tools/kanban';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { createKanbanMcpServer, createKanbanMcpToolHost } from '../src/adapter.js';
 import { KANBAN_READ_ACTIONS } from '../src/policy.js';
 
@@ -375,7 +376,7 @@ describe('Kanban MCP against the real kanban tool', () => {
     dir = await mkdtemp(join(tmpdir(), 'wstack-kanban-mcp-adapter-'));
   });
   afterEach(async () => {
-    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
   });
 
   it('keeps the read tier identical to the tool read-only actions', () => {

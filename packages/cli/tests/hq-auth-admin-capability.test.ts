@@ -25,6 +25,7 @@ import {
 } from '@wrongstack/core/hq';
 import { generateTotp, generateTotpSecret, verifyTotpCounter } from '@wrongstack/core/security';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { hqAuthRequired, readHqSessionCookie } from '../src/hq-server/auth.js';
 import { createHqAuthState, projectAuthFile } from '../src/hq-server/auth-state.js';
 import { LoginAttemptStore } from '../src/hq-server/login-attempt-store.js';
@@ -197,7 +198,7 @@ describe('WS-104 — credential-scoped login backoff', () => {
       expect(store.get('10.0.0.1')).toBeUndefined();
       expect(store.get('10.0.0.2')).toBeDefined();
     } finally {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 25 });
     }
   });
 
@@ -227,7 +228,7 @@ describe('WS-104 — credential-scoped login backoff', () => {
       expect(store.checkBlocked('10.0.0.9', 'other').blocked).toBe(false);
       await store.flush();
     } finally {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 25 });
     }
   });
 
@@ -242,7 +243,7 @@ describe('WS-104 — credential-scoped login backoff', () => {
       expect(store.size).toBe(2);
       await store.flush();
     } finally {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 25 });
     }
   });
 });
@@ -302,7 +303,7 @@ describe('WS-102 — end to end over HTTP', () => {
       await handle.close();
       handle = null;
     }
-    await fs.rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+    await removeProjectFixtureDirectory(dataDir, { maxRetries: 5, retryDelay: 25 });
   });
 
   const call = (pathname: string, token: string, method = 'POST'): Promise<Response> =>
@@ -434,7 +435,7 @@ describe('WS-105 — /api/login/verify refuses a replayed TOTP code', () => {
       await handle.close();
       handle = null;
     }
-    await fs.rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+    await removeProjectFixtureDirectory(dataDir, { maxRetries: 5, retryDelay: 25 });
   });
 
   const url = (p: string): string => `http://${handle!.host}:${handle!.port}${p}`;

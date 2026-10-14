@@ -16,6 +16,8 @@ import type {
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import { buildMailboxBlock, createMailboxChecker } from '../../src/core/mailbox-loop.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 /** Minimal mock Context for tool tests — the mailbox tool only reads ctx.meta. */
@@ -76,7 +78,7 @@ function tmpDir(): string {
  */
 async function disposeMailbox(mailbox: SqliteMailbox, dir: string): Promise<void> {
   await mailbox.close().catch(() => undefined);
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
 }
 
 async function createMailbox(): Promise<{ mailbox: SqliteMailbox; dir: string }> {
@@ -101,7 +103,7 @@ describe('SqliteMailbox', () => {
     // SQLite holds the store open; close before unlinking or Windows fails the
     // rm with EBUSY. `-wal`/`-shm` stay mapped briefly, hence the retries.
     await mailbox.close().catch(() => undefined);
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
   });
 
   it('creates the mailbox store on first send', async () => {

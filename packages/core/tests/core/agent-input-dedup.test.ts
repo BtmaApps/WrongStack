@@ -40,6 +40,8 @@ import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { ErrorHandler } from '../../src/types/error-handler.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
+
 /** ErrorHandler stub that never recovers — errors propagate out of the loop. */
 class NeverRetryErrorHandler implements ErrorHandler {
   async recover(): Promise<null> {
@@ -148,7 +150,7 @@ describe('Agent.run input-dedup burst window', { retry: 1 }, () => {
   let cleanupDirs: string[] = [];
   afterEach(async () => {
     for (const dir of cleanupDirs) {
-      await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 });
     }
     cleanupDirs = [];
   });

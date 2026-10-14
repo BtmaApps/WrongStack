@@ -3,6 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import {
   dependencyChange,
   findLockfileDrift,
@@ -112,7 +113,7 @@ describe('findLockfileDrift', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 });
+    await removeProjectFixtureDirectory(dir, { maxRetries: 3, retryDelay: 100 });
   });
 
   it('flags a dependency change committed without the lockfile', async () => {
@@ -159,7 +160,7 @@ describe('findLockfileDrift', () => {
     try {
       expect(await findLockfileDrift(outside)).toBeNull();
     } finally {
-      await fs.rm(outside, { recursive: true, force: true, maxRetries: 3 });
+      await removeProjectFixtureDirectory(outside, { maxRetries: 3, retryDelay: 100 });
     }
     // beforeEach made the root commit: a manifest with dependencies, nothing to compare to.
     expect(await findLockfileDrift(dir)).toBeNull();

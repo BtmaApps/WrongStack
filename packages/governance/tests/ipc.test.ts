@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
 import {
   createGovernanceEvidenceCandidate,
   decodeGovernanceIpcEnvelope,
@@ -116,7 +117,7 @@ function client(
 afterEach(async () => {
   for (const instance of servers.splice(0).reverse()) await instance.close();
   for (const directory of temporaryDirectories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    removeProjectFixtureDirectorySync(directory, { maxRetries: 10, retryDelay: 50 });
   }
 });
 

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
+import { mkdtemp, utimes, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,8 @@ import {
   recordCompletedReview,
   recordStartedReview,
 } from '../../src/plugins/review-claim-registry.js';
+
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 function bundle(content: string, filePath = 'src/file.ts'): ReviewContextBundle {
   return {
@@ -49,7 +51,7 @@ describe('review claim registry', () => {
     // maxRetries: a stale-lock break unlinks its tombstone fire-and-forget; on
     // Windows that file is still delete-pending here and rm's own unlink of
     // it throws EPERM until the pending delete completes.
-    await rm(storeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    await removeProjectFixtureDirectory(storeDir, { maxRetries: 5, retryDelay: 50 });
   });
 
   it('allows only one plugin to emit the same file content on a shared session bus', async () => {
@@ -224,7 +226,7 @@ describe('review claim registry', () => {
       expect(emitA).toHaveBeenCalledOnce();
       expect(emitB).toHaveBeenCalledOnce();
     } finally {
-      await rm(otherTree, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      await removeProjectFixtureDirectory(otherTree, { maxRetries: 5, retryDelay: 50 });
     }
   });
 

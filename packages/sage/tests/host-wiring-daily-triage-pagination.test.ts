@@ -19,10 +19,11 @@
  * - Only `hygiene` is stubbed so anchor verification cannot reorder the
  *   seeded rows mid-run; the LLM stub records prompts and scores '3'.
  */
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { setupSage } from '../src/host-wiring.js';
 import { SqliteMemoryPort } from '../src/memory-port.js';
 import type { Sage } from '../src/types.js';
@@ -148,7 +149,7 @@ async function disposeHarness(h: DailyHarness): Promise<void> {
     /* best-effort close */
   }
   vi.useRealTimers();
-  await rm(h.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }).catch(() => {});
+  await removeProjectFixtureDirectory(h.dir, { maxRetries: 5, retryDelay: 100 }).catch(() => {});
 }
 
 describe('daily dry-run triage pagination', () => {

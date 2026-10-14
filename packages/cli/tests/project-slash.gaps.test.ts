@@ -17,9 +17,11 @@ vi.mock('node:child_process', async (importOriginal) => {
     })),
   };
 });
+
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
+import { saveManifest } from '../src/services/project-manifest.js';
 import type { SlashCommandContext } from '../src/slash-commands/index.js';
 import { buildProjectCommand } from '../src/slash-commands/project.js';
-import { saveManifest } from '../src/services/project-manifest.js';
 
 let home: string;
 let projectRoot: string;
@@ -33,8 +35,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
-  await fs.rm(home, rmOpts);
-  await fs.rm(projectRoot, rmOpts);
+  await removeProjectFixtureDirectory(home, rmOpts);
+  await removeProjectFixtureDirectory(projectRoot, rmOpts);
 });
 
 interface CtxOverrides {

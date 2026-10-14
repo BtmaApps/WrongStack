@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -20,6 +20,7 @@ import type {
   MailboxSendInput,
 } from '../../src/coordination/mailbox-types.js';
 import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 import {
   type CredentialStoreLike,
   closeOpenedCredentialStores,
@@ -944,7 +945,7 @@ describe('mailbox HTTP router', () => {
       router.close();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1003,7 +1004,7 @@ describe('mailbox HTTP router', () => {
       router.close();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1063,7 +1064,7 @@ describe('mailbox HTTP router', () => {
       expect(response.text()).not.toContain('pending-at-close');
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1719,7 +1720,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(decision.actor.capabilities.has('mail.read.self')).toBe(true);
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1760,7 +1761,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(missing.status).toBe(401);
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1801,7 +1802,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.getAgentStatuses).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1846,7 +1847,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.getAgentStatuses).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1886,7 +1887,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.getAgentStatuses).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1937,7 +1938,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.query).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -1972,7 +1973,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.getAgentStatuses).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2031,7 +2032,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.ackMany).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2240,7 +2241,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.ackMany).toHaveBeenCalledTimes(1);
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2556,7 +2557,7 @@ describe('mailbox HTTP authorization helpers', () => {
     } finally {
       await mailbox.close();
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2618,7 +2619,7 @@ describe('mailbox HTTP authorization helpers', () => {
     } finally {
       await mailbox.close();
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2659,7 +2660,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.registerAgent).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2700,7 +2701,7 @@ describe('mailbox HTTP authorization helpers', () => {
       expect(stub.registerAgent).not.toHaveBeenCalled();
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -2758,7 +2759,7 @@ describe('mailbox HTTP authorization helpers', () => {
       );
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -3187,7 +3188,7 @@ describe('mailbox-http-router — heartbeat row recovery over HTTP', () => {
       });
     } finally {
       await mailbox.close();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 
@@ -3289,7 +3290,7 @@ describe('mailbox-http-router — heartbeat row recovery over HTTP', () => {
       expect(stub.heartbeat).toHaveBeenCalledTimes(1);
     } finally {
       await closeOpenedCredentialStores();
-      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      await removeProjectFixtureDirectory(dir, { maxRetries: 10, retryDelay: 50 });
     }
   }, 5_000);
 });

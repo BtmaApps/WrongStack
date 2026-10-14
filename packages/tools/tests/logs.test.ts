@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { logsTool } from '../src/logs.js';
 
 let tmpDir: string;
@@ -15,9 +16,7 @@ afterEach(async () => {
   // hold a lock on the dir when teardown runs, making rmdir throw EBUSY. Retry,
   // then ignore — a leaked temp dir on an ephemeral CI runner is harmless and
   // must not fail an otherwise-passing test.
-  await fs
-    .rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
-    .catch(() => {});
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 100 }).catch(() => {});
 });
 
 const makeCtx = () => ({ cwd: tmpDir, tools: [], projectRoot: tmpDir }) as any;

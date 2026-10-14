@@ -9,6 +9,7 @@ import {
   getBoard,
 } from '@wrongstack/kanban';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import {
   createProjectKanbanAssignHandler,
   createProjectKanbanTransitionHandler,
@@ -22,7 +23,7 @@ describe('HQ Kanban command IPC adapter', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+    await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 25 });
   });
 
   it('commits through the canonical Kanban domain transition', async () => {
