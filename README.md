@@ -123,79 +123,41 @@ See the [release history](CHANGELOG.md) for earlier releases.
 ## Why WrongStack
 
 - **It remembers your project.** **SAGE** keeps long-term memory in
-  SQLite/FTS5, anchored to real files, symbols, commands, and commits — and
-  re-verified as they change. Decisions, conventions, and root causes survive the
-  session that produced them.
-- **A fleet, not a lone agent.** A full specialist roster and smart dispatcher
-  fan out under a Director, each subagent isolated with its own budget and JSONL
-  transcript.
-- **The roster gets better here.** Each role turns useful outcomes into
-  skill-specific practice, ranks what actually works in *this* repo, and applies
-  it on the next matching task.
-- **A deep toolbox, no plugins required.** Edits, lint/format/typecheck/test,
-  execution, git, web, browser/E2E, and a SQLite codebase index with symbol and
-  call-graph navigation.
-- **Six surfaces, one brain.** A plain readline REPL, an Ink/React **TUI**
-  (`--tui`), the full **WebUI** (`--webui`), lightweight **SimpleUI**,
-  **Desktop** (`--desktop`), and the cross-machine **HQ** (`--hq`) — same engine,
-  same session, same memory underneath.
-- **HQ for the whole room.** Aggregate live sessions, agents, fleets, mailbox
-  state, cost, tools, Brain decisions, and worktrees across machines — then
-  steer, note, queue, or stop connected clients through their own guardrails.
-- **Agents that coordinate instead of collide.** One project-wide mailbox
-  links every client, session, branch, and linked worktree, with typed messages
-  and live presence.
-- **Set a goal, walk away.** `/goal` locks a contract and the eternal /
-  parallel engines grind until it is *verifiably* done — with the **Brain**
-  deciding risky calls by policy, denying them, or escalating to a human.
-- **Work tracking that resists lying.** Durable Kanban boards and typed tasks
-  with dependencies, lifecycle stages, and **atomic verification** gates that let
-  a card reach Done only when its criteria actually pass.
-- **Your diffs get reviewed.** **Chimera** critiques changed files with
-  severity-ranked `file:line` findings and a one-line fix each, and fixer agents
-  can follow up.
-- **Providers without lock-in.** Anthropic, OpenAI, Google, and a broad range
-  of OpenAI-compatible endpoints, refreshed from models.dev at boot.
-- **Local & custom endpoints.** One-command presets for **Ollama / vLLM / LM
-  Studio**, plus any custom `baseUrl` or **OmniRoute**-style gateway; run fully
-  on localhost.
-- **Sign in with an account.** ChatGPT plan API and legacy Codex, Claude,
-  GitHub Copilot, xAI/Grok, Kimi Code, Meta, OpenRouter, and Antigravity auth
-  run alongside API keys. Access and billing follow the selected provider's grant.
-- **Per-role model routing.** Assign different providers/models per role or
-  phase, with automatic **fallback chains** when a model is overloaded.
-- **Locked down where it counts.** Encrypted secrets and a permission policy
-  on every tool call, both always on. Project-root containment is opt-in
-  (`/settings` → Filesystem access); once you enable it, neither YOLO nor a
-  repo-committed config can turn it back off.
-- **A kernel you can actually read.** `Container · Pipeline · EventBus ·
-  RunController` — small enough to read in one sitting. Everything above it is
-  swappable.
+  SQLite/FTS5, anchored to files, symbols, commands and commits and re-verified
+  as they change.
+- **A fleet that coordinates.** A Director splits work across a specialist
+  roster, one project mailbox links every agent, client and worktree, and each
+  role learns the practice that works in *this* repo.
+- **Goals that end verified.** `/goal` loops until a locked contract passes,
+  the **Brain** rules on risky calls, and Kanban cards reach Done only when
+  their criteria pass.
+- **Six surfaces, one engine.** REPL, TUI, WebUI, SimpleUI, Desktop and the
+  cross-machine **HQ** share the same sessions and memory.
+- **Any model, including local ones.** API keys or subscription sign-in, a
+  models.dev catalog, Ollama / vLLM / LM Studio presets, and per-role routing
+  with fallback chains.
+- **Guarded where it counts.** Encrypted secrets and a permission policy on
+  every tool call; opt-in project-root containment that neither YOLO nor a
+  repo-committed config can turn off; **Chimera** reviews your diffs.
+
+The full list is under [Core capabilities](#core-capabilities).
 
 ---
 
 ## How WrongStack compares
 
-Most "AI coding" tools fall into one of two buckets: a **single-agent CLI** that
-edits files in one terminal, or an **orchestration kit** that shells out to a
-third-party agent CLI and coordinates it. WrongStack is neither — it's a complete
-agent written from scratch, so the whole stack is first-party and consistent.
+Most AI coding tools are either a single-agent CLI or an orchestration kit
+around someone else's agent CLI. WrongStack is a complete agent written from
+scratch:
 
 | | Wrapper / orchestration-only tools | **WrongStack** |
 |---|---|---|
-| **Core** | Coordinates an external agent CLI (Claude Code, etc.) | **Own compact kernel** — `Container · Pipeline · EventBus · RunController` |
-| **Providers** | Inherits whatever the wrapped tool supports | **Own transports** — multiple wire families + real SSE, catalog from models.dev |
-| **Tools** | Whatever the underlying CLI exposes | **First-party built-in tools** — edit, exec, search, browser/E2E, SQLite codebase index |
-| **Local-only** | Needs the upstream tool + network | **Runs entirely on localhost** — one-command Ollama / vLLM / LM Studio presets; tools, memory, and fleet stay on your machine |
-| **Memory** | Usually none, or bolted-on files | **SAGE** — SQLite/FTS5, code-anchored, auto-injected long-term memory |
-| **Multi-agent** | Orchestrates external processes | **Native fleet + Director** — specialist roster, isolated budgets, one mailbox |
-| **Surfaces** | One (a terminal) | **Six** — REPL, TUI, WebUI, SimpleUI, Desktop, HQ |
-| **Review** | Manual | **Chimera** auto-review + fixer agents on your diffs |
-| **Permissions** | Depends on the wrapped tool | **Per-tool policy on every call**, project-root containment YOLO can't override |
-
-The point isn't "more features" — it's that a from-scratch, standalone design lets
-memory, tools, providers, permissions, and the multi-agent runtime actually work
-*together* instead of being glued across process boundaries.
+| **Core** | Coordinates an external agent CLI | **Own kernel, provider transports and built-in tools** |
+| **Memory** | Usually none, or bolted-on files | **SAGE** — code-anchored SQLite/FTS5 memory, recalled every turn |
+| **Multi-agent** | Orchestrates external processes | **Native fleet + Director** with isolated budgets and one mailbox |
+| **Local-only** | Needs the upstream tool and network | **Runs on localhost** with Ollama / vLLM / LM Studio presets |
+| **Surfaces** | One terminal | **Six** — REPL, TUI, WebUI, SimpleUI, Desktop, HQ |
+| **Safety** | Depends on the wrapped tool | **Per-call permission policy** and Chimera review of your diffs |
 
 ---
 
