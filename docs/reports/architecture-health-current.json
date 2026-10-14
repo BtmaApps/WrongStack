@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:18:53.716Z",
+  "generatedAt": "2026-10-14T17:19:19.250Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4961,
-    "testFiles": 4357,
-    "sourceLines": 1100218,
+    "testFiles": 4359,
+    "sourceLines": 1100220,
     "workspaceEdges": 137,
     "moduleEdges": 16345,
     "nonCommandSlashImports": 0,
@@ -924,7 +924,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 297,
-      "testFiles": 285,
+      "testFiles": 287,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 285
+          "testFiles": 287
         }
       ]
     },
@@ -23603,6 +23603,18 @@
       },
       {
         "file": "packages/webui-server/tests/provider-keys.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-model-test-cancellation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-model-test-deadline.test.ts",
         "projects": [
           "root-node"
         ]

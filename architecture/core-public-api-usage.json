@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1410,
-      "typeOnly": 1243,
+      "files": 1412,
+      "typeOnly": 1245,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -22150,6 +22150,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/provider-keys-and-probe.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/provider-model-test-cancellation.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/provider-model-test-deadline.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

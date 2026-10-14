@@ -208,14 +208,16 @@ export async function runProviderModelTests(params: {
       continue;
     }
     try {
+      const requestSignal = AbortSignal.any([params.signal, AbortSignal.timeout(params.timeoutMs)]);
       const response = await params.provider.complete(
         {
           model: modelId,
           messages: [{ role: 'user', content: [{ type: 'text', text: 'Reply with exactly: OK' }] }],
           maxTokens: params.maxTokens,
         },
-        { signal: AbortSignal.any([params.signal, AbortSignal.timeout(params.timeoutMs)]) },
+        { signal: requestSignal },
       );
+      requestSignal.throwIfAborted();
       passed++;
       params.onResult({
         requestId: params.requestId,
