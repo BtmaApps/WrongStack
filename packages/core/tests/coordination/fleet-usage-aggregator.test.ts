@@ -120,6 +120,34 @@ describe('FleetUsageAggregator (M2 cost accuracy)', () => {
     expect(agg.snapshot().total.cost).toBeCloseTo(3.0, 6);
     expect(agg.snapshot().total.cacheRead).toBe(500_000);
   });
+
+  it('normalizes non-finite usage before accumulating later responses', () => {
+    const bus = new FleetBus();
+    const agg = new FleetUsageAggregator(bus, () => ({ input: 3, output: 15 }));
+    bus.emit({
+      subagentId: 's1',
+      ts: 1,
+      type: 'provider.response',
+      payload: {
+        usage: {
+          input: Number.POSITIVE_INFINITY,
+          output: Number.NaN,
+          cacheRead: Number.NEGATIVE_INFINITY,
+        },
+      },
+    });
+    bus.emit({
+      subagentId: 's1',
+      ts: 2,
+      type: 'provider.response',
+      payload: { usage: { input: 3, output: 7, cacheRead: 2 } },
+    });
+
+    const snap = agg.snapshot();
+    expect(snap.total).toMatchObject({ input: 3, output: 7, cacheRead: 2 });
+    expect(snap.perSubagent.s1).toMatchObject({ input: 3, output: 7, cacheRead: 2 });
+    expect(Number.isFinite(snap.total.cost)).toBe(true);
+  });
 });
 
 describe('FleetUsageAggregator — self-reported cost', () => {

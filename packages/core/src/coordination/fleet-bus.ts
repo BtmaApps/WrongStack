@@ -209,6 +209,10 @@ export interface SubagentUsageSnapshot {
   lastEventAt: number;
 }
 
+function finiteUsage(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
 /**
  * Aggregates provider.response + tool.executed events from the FleetBus
  * into a live `FleetUsage` snapshot. Costs are computed by the caller
@@ -328,14 +332,18 @@ export class FleetUsageAggregator {
     };
     const usage = p?.usage;
     if (!usage) return;
-    snap.input += usage.input ?? 0;
-    snap.output += usage.output ?? 0;
-    snap.cacheRead += usage.cacheRead ?? 0;
-    snap.cacheWrite += usage.cacheWrite ?? 0;
-    this.total.input += usage.input ?? 0;
-    this.total.output += usage.output ?? 0;
-    this.total.cacheRead += usage.cacheRead ?? 0;
-    this.total.cacheWrite += usage.cacheWrite ?? 0;
+    const input = finiteUsage(usage.input);
+    const output = finiteUsage(usage.output);
+    const cacheRead = finiteUsage(usage.cacheRead);
+    const cacheWrite = finiteUsage(usage.cacheWrite);
+    snap.input += input;
+    snap.output += output;
+    snap.cacheRead += cacheRead;
+    snap.cacheWrite += cacheWrite;
+    this.total.input += input;
+    this.total.output += output;
+    this.total.cacheRead += cacheRead;
+    this.total.cacheWrite += cacheWrite;
     const reported = p.costUsd;
     const price =
       typeof reported === 'number'
@@ -346,10 +354,10 @@ export class FleetUsageAggregator {
       this.total.cost += reported;
     } else if (price) {
       const delta =
-        ((usage.input ?? 0) / 1_000_000) * (price.input ?? 0) +
-        ((usage.output ?? 0) / 1_000_000) * (price.output ?? 0) +
-        ((usage.cacheRead ?? 0) / 1_000_000) * (price.cacheRead ?? 0) +
-        ((usage.cacheWrite ?? 0) / 1_000_000) * (price.cacheWrite ?? 0);
+        (input / 1_000_000) * (price.input ?? 0) +
+        (output / 1_000_000) * (price.output ?? 0) +
+        (cacheRead / 1_000_000) * (price.cacheRead ?? 0) +
+        (cacheWrite / 1_000_000) * (price.cacheWrite ?? 0);
       snap.cost += delta;
       this.total.cost += delta;
     }
