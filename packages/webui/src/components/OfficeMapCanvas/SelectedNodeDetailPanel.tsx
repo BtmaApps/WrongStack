@@ -6,15 +6,9 @@ import { cn } from '@/lib/utils';
 import type { AgentTranscriptEntry, MailboxMessage } from '@/stores';
 import { AgentTranscript } from '../AgentTranscript';
 import { SessionWatchPanel } from '../SessionWatchPanel';
+import { agentModelLabel } from './model-label.js';
 import { clampCtxPct } from './nodes.js';
-import {
-  fmtAgo,
-  fmtCompact,
-  fmtUptime,
-  type OfficeNodeData,
-  shortModel,
-  surfaceLabel,
-} from './utils.js';
+import { fmtAgo, fmtCompact, fmtUptime, type OfficeNodeData, surfaceLabel } from './utils.js';
 
 interface SelectedNodeDetailPanelProps {
   selectedNode: Node<OfficeNodeData>;
@@ -53,8 +47,8 @@ export function SelectedNodeDetailPanel({
   return (
     <div
       className={cn(
-        'absolute top-20 right-4 bg-background border border-border rounded-lg p-4 ws-dialog z-20',
-        d.kind === 'agent' ? 'w-[28rem] max-w-[calc(100%-2rem)]' : d.sessionId ? 'w-80' : 'w-64',
+        'absolute inset-x-2 top-14 max-h-[calc(100%-4rem)] overflow-y-auto bg-background border border-border rounded-lg p-4 ws-dialog z-20 sm:inset-x-auto sm:right-4 sm:top-20 sm:max-h-[calc(100%-6rem)]',
+        d.kind === 'agent' ? 'sm:w-[28rem]' : d.sessionId ? 'sm:w-80' : 'sm:w-64',
       )}
     >
       <div className="flex items-center justify-between mb-3">
@@ -102,7 +96,14 @@ export function SelectedNodeDetailPanel({
 
         {isAgent && (
           <>
-            {d.model && <DetailRow k="Model" v={shortModel(d.model)} accent="text-primary" />}
+            {agentModelLabel(d.provider, d.model) && (
+              <div className="flex flex-wrap justify-between gap-x-3 gap-y-1">
+                <span className="text-muted-foreground">Provider / Model</span>
+                <span className="min-w-0 break-all text-right font-mono text-primary">
+                  {agentModelLabel(d.provider, d.model)}
+                </span>
+              </div>
+            )}
             {d.currentTask && (
               <div className="pt-1">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">

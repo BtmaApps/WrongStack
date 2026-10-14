@@ -4,13 +4,13 @@ import { fmtCost, fmtTok } from '@/lib/agent-status';
 import { cn } from '@/lib/utils';
 import { useOfficeMapStore } from '@/stores';
 import type { SelectedAction } from '../AgentOfficeDetails.js';
+import { agentModelLabel } from '../OfficeMapCanvas/model-label.js';
 import {
   agentVisualRole,
   deskPersonality,
   deskWaitState,
   type OfficeAgentModel,
   relativeTime,
-  shortModelName,
 } from './model.js';
 import { AgentAvatar, EmptyParcel, MailParcel, ToolGlyph, ToolParcel } from './parcels.js';
 
@@ -165,9 +165,12 @@ export function AgentLane({
         <div className="agent-office__agent-meta">
           <span>{client.branch ? `⎇ ${client.branch}` : client.type.toUpperCase()}</span>
           <span>{t('activity:agentOffice.callsCount', { count: agent.toolCalls })}</span>
-          {agent.model && (
-            <span className="agent-office__model-chip" title={agent.model}>
-              {shortModelName(agent.model)}
+          {agentModelLabel(agent.provider, agent.model) && (
+            <span
+              className="agent-office__model-chip"
+              title={agentModelLabel(agent.provider, agent.model)}
+            >
+              {agentModelLabel(agent.provider, agent.model)}
             </span>
           )}
         </div>

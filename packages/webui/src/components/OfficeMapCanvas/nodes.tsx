@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { agentModelLabel } from './model-label.js';
 import type { ClientStatus } from './utils.js';
 import {
   compactFlowLabel,
@@ -375,9 +376,13 @@ function AgentNode({ data }: { data: OfficeNodeData }) {
           <div className="text-[11px] font-bold truncate" style={{ color }}>
             {data.label}
           </div>
-          {data.model && (
-            <div className="truncate text-[10px] text-muted-foreground">
-              {shortModel(data.model)}
+          {agentModelLabel(data.provider, data.model) && (
+            <div
+              className="truncate text-[10px] text-muted-foreground"
+              title={agentModelLabel(data.provider, data.model)}
+            >
+              {data.provider ? `${data.provider}/` : ''}
+              {shortModel(data.model) ?? '?'}
             </div>
           )}
         </div>

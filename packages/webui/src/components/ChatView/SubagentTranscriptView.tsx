@@ -92,6 +92,15 @@ export function SubagentTranscriptView({ agentId }: { agentId: string }): React.
         <span className="max-w-[9rem] shrink-0 truncate font-semibold text-foreground">
           {agent?.name ?? agentId}
         </span>
+        {(agent?.provider || agent?.model) && (
+          <span
+            className="max-w-[16rem] shrink-0 truncate font-mono text-[10px] text-muted-foreground"
+            title={`${agent.provider ?? '?'}/${agent.model ?? '?'}`}
+            data-testid="subagent-provider-model"
+          >
+            {agent.provider ?? '?'}/{agent.model ?? '?'}
+          </span>
+        )}
         {agent && (
           <span
             className={cn(

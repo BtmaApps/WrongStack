@@ -114,6 +114,22 @@ describe('subagent chat tabs', () => {
     expect(screen.getByRole('tab', { name: /Alpha/ }).getAttribute('aria-selected')).toBe('true');
   });
 
+  it('shows each subagent provider and model in its tab and chat history', () => {
+    const agent = { ...makeAgent('s1', { name: 'Alpha' }), provider: 'openai', model: 'gpt-6' };
+    useFleetStore.setState({
+      agents: new Map([
+        ['ldr', makeAgent('ldr', { name: 'Main' })],
+        ['s1', agent],
+      ]),
+      leaderId: 'ldr',
+    });
+
+    render(<AgentTabs />);
+    expect(screen.getByRole('tab', { name: /Alpha/ }).textContent).toContain('openai/gpt-6');
+    render(<SubagentTranscriptView agentId="s1" />);
+    expect(screen.getByTestId('subagent-provider-model').textContent).toBe('openai/gpt-6');
+  });
+
   it('collapses subagents beyond the inline budget into the +N overflow trigger', () => {
     const agents = new Map<string, SubagentView>([
       ['ldr', makeAgent('ldr', { name: 'Main' })],

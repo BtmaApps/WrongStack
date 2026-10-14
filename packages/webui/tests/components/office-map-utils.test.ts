@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { agentModelLabel } from '../../src/components/OfficeMapCanvas/model-label.js';
 import {
   agentFanPos,
   clientNodeType,
@@ -31,6 +32,12 @@ describe('compactFlowLabel', () => {
 });
 
 describe('OfficeMapCanvas utils', () => {
+  it('formats provider and model without repeating a provider prefix', () => {
+    expect(agentModelLabel('openai', 'gpt-6')).toBe('openai/gpt-6');
+    expect(agentModelLabel('openai', 'openai/gpt-6')).toBe('openai/gpt-6');
+    expect(agentModelLabel(undefined, 'claude-sonnet')).toBe('claude-sonnet');
+    expect(agentModelLabel(undefined, undefined)).toBeUndefined();
+  });
   describe('fmtCompact', () => {
     it('formats small numbers as-is', () => {
       expect(fmtCompact(0)).toBe('0');

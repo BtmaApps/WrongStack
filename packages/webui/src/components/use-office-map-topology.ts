@@ -253,6 +253,7 @@ export function useOfficeMapTopology({
             tokensIn: agent.tokensIn,
             tokensOut: agent.tokensOut,
             ctxPct: agent.ctxPct,
+            provider: agent.provider,
             model: agent.model,
             lastActivityAt: agent.lastActivityAt,
             color: OFFICE_COLOR.primary,

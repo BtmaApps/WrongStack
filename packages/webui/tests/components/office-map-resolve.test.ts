@@ -4,6 +4,38 @@ import type { LiveSession } from '../../src/stores/monitor-store.js';
 import type { SubagentView } from '../../src/stores/types.js';
 
 describe('resolveClients project roster', () => {
+  it('hides idle subagents while retaining the idle leader and active workers', () => {
+    const sessions: LiveSession[] = [
+      {
+        sessionId: 'session-a',
+        clientType: 'webui',
+        agents: [
+          { id: 'leader', name: 'Leader', status: 'idle' },
+          { id: 'stale', name: 'Stale worker', status: 'idle' },
+          { id: 'active', name: 'Active worker', status: 'running' },
+          { id: 'streaming', name: 'Streaming worker', status: 'streaming' },
+        ],
+      },
+    ];
+    const clients = resolveClients(
+      sessions,
+      new Map([
+        [
+          'local-idle',
+          fleetAgent({ id: 'local-idle', status: 'running', provider: 'openai', model: 'gpt-6' }),
+        ],
+      ]),
+    );
+    expect(clients[0]?.agents.map((agent) => agent.serverId)).toEqual([
+      'leader',
+      'active',
+      'streaming',
+      'local-idle',
+    ]);
+    expect(clients[0]?.agents[2]?.status).toBe('streaming');
+    expect(clients[0]?.agents[3]).toMatchObject({ provider: 'openai', model: 'gpt-6' });
+  });
+
   it('merges a mailbox identity into the matching live-session agent', () => {
     const sessions: LiveSession[] = [
       {

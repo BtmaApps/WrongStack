@@ -2,6 +2,7 @@ import { Coffee, Mail } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SelectedAction } from '../AgentOfficeDetails.js';
+import { agentModelLabel } from '../OfficeMapCanvas/model-label.js';
 import { AGENT_ROLE_ICONS, agentVisualRole, type OfficeAgentModel, relativeTime } from './model.js';
 
 /** Agents with no live work gather in the break room instead of occupying a desk. */
@@ -65,6 +66,11 @@ export function BreakRoom({
               <span className="agent-office__lounge-copy">
                 <strong>{agent.name}</strong>
                 <small>{agent.role ?? t('activity:agentOffice.agent')}</small>
+                {agentModelLabel(agent.provider, agent.model) && (
+                  <small title={agentModelLabel(agent.provider, agent.model)}>
+                    {agentModelLabel(agent.provider, agent.model)}
+                  </small>
+                )}
               </span>
               <span className="agent-office__lounge-meta">
                 {latestActivityAt !== undefined && (

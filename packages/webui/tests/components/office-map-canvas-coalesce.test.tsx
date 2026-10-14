@@ -1,10 +1,10 @@
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OfficeMapCanvas } from '../../src/components/OfficeMapCanvas';
-import type { VizEvent } from '../../src/stores/viz-store';
 import { useMonitorStore, useVizStore } from '../../src/stores';
+import type { VizEvent } from '../../src/stores/viz-store';
 
 /**
  * Regression guard for the viz-overlay coalescing path in OfficeMapCanvas.
@@ -37,6 +37,7 @@ vi.mock('@/i18n', () => ({
 const captured: {
   nodes: Array<{ id: string; data: Record<string, unknown> }>;
   edges: Array<{ id: string; data?: Record<string, unknown> }>;
+  onNodeClick?: ((event: React.MouseEvent, node: unknown) => void) | undefined;
 } = { nodes: [], edges: [] };
 
 // The canvas lists `fitView` in its build-effect deps; a fresh function per
@@ -45,9 +46,14 @@ const { fitViewFn } = vi.hoisted(() => ({ fitViewFn: vi.fn() }));
 
 vi.mock('@xyflow/react', () => ({
   ReactFlowProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  ReactFlow: (props: { nodes?: unknown[]; edges?: unknown[] }) => {
+  ReactFlow: (props: {
+    nodes?: unknown[];
+    edges?: unknown[];
+    onNodeClick?: typeof captured.onNodeClick;
+  }) => {
     captured.nodes = (props.nodes ?? []) as typeof captured.nodes;
     captured.edges = (props.edges ?? []) as typeof captured.edges;
+    captured.onNodeClick = props.onNodeClick;
     return <div data-testid="rf-surface" />;
   },
   useNodesState: <T,>(initial: T[]) => {
@@ -87,9 +93,9 @@ const LIVE_SESSION = {
   clientType: 'webui',
   status: 'active',
   agents: [
-    { id: 'a1', name: 'Alpha', status: 'idle' },
-    { id: 'a2', name: 'Beta', status: 'idle' },
-    { id: 'a3', name: 'Gamma', status: 'idle' },
+    { id: 'a1', name: 'Alpha', status: 'waiting_user' },
+    { id: 'a2', name: 'Beta', status: 'waiting_user' },
+    { id: 'a3', name: 'Gamma', status: 'waiting_user' },
   ],
 };
 
@@ -183,5 +189,47 @@ describe('OfficeMapCanvas viz-overlay coalescing', () => {
 
     expect(statusOf(A2)).toBe('active');
     expect(activityOf(A2)).toBe(firstActivity);
+  });
+
+  it('refreshes selected agent details and closes them when the agent disappears', async () => {
+    render(<OfficeMapCanvas />);
+    await act(async () => {});
+    act(() =>
+      captured.onNodeClick?.(
+        {} as React.MouseEvent,
+        captured.nodes.find((n) => n.id === A1),
+      ),
+    );
+    expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
+
+    act(() =>
+      useMonitorStore.setState({
+        liveSessions: [
+          {
+            ...LIVE_SESSION,
+            agents: LIVE_SESSION.agents.map((a) =>
+              a.id === 'a1' ? { ...a, name: 'Alpha updated', toolCalls: 7 } : a,
+            ),
+          },
+        ],
+      }),
+    );
+    await act(async () => {});
+    expect(screen.getAllByText('Alpha updated').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('7').length).toBeGreaterThan(0);
+
+    act(() =>
+      useMonitorStore.setState({
+        liveSessions: [
+          { ...LIVE_SESSION, agents: LIVE_SESSION.agents.filter((a) => a.id !== 'a1') },
+        ],
+      }),
+    );
+    await act(async () => {});
+    expect(screen.queryAllByText('Alpha updated')).toHaveLength(0);
+
+    act(() => useMonitorStore.setState({ liveSessions: [LIVE_SESSION] }));
+    await act(async () => {});
+    expect(screen.queryAllByText('Alpha')).toHaveLength(0);
   });
 });

@@ -108,7 +108,13 @@ export function useOfficeMapCanvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<OfficeNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [selectedNode, setSelectedNode] = useState<Node<OfficeNodeData> | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Resolve selection from the latest topology snapshot. A saved Node object
+  // leaves the detail panel showing stale counters/status after each refresh.
+  const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+  useEffect(() => {
+    if (selectedNodeId && !selectedNode) setSelectedNodeId(null);
+  }, [selectedNodeId, selectedNode]);
   // Expanded watch drawer — a full-height, wide overlay on the right of the
   // React-Flow canvas showing a selected agent/client's COMPLETE operation
   // stream (full history + composer), vs. the cramped popover preview.
@@ -573,11 +579,11 @@ export function useOfficeMapCanvas() {
   );
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    setSelectedNode(node as Node<OfficeNodeData>);
+    setSelectedNodeId(node.id);
   }, []);
 
   const onPaneClick = useCallback(() => {
-    setSelectedNode(null);
+    setSelectedNodeId(null);
   }, []);
 
   // Esc closes the expanded watch drawer first (leaving the node selected),

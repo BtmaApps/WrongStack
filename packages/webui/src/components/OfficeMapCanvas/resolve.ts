@@ -28,6 +28,7 @@ export interface ResolvedAgent {
   tokensIn: number;
   tokensOut: number;
   ctxPct?: number | undefined;
+  provider?: string | undefined;
   model?: string | undefined;
   lastActivityAt?: string | undefined;
   currentTool?: string | undefined;
@@ -110,6 +111,7 @@ function fleetAgentView(hostId: string, a: SubagentView): ResolvedAgent {
     tokensIn: a.tokensIn ?? 0,
     tokensOut: a.tokensOut ?? 0,
     ctxPct: a.ctxPct,
+    provider: a.provider,
     model: a.model,
     currentTool: a.currentTool,
     currentTask: a.description,
@@ -158,9 +160,15 @@ export function resolveClients(
     let anyRunning = false;
 
     for (const a of s.agents) {
-      rendered.add(a.id);
       const fleet = fleetAgents.get(a.id);
       const status = mapAgentStatus(fleet?.status ?? a.status);
+      // HQ downgrades stale worker telemetry to idle. Keep an idle leader as
+      // the session anchor, but do not turn expired workers into office desks.
+      if (a.id !== 'leader' && (fleet?.status ?? a.status) === 'idle') {
+        rendered.add(a.id);
+        continue;
+      }
+      rendered.add(a.id);
       if (status === 'active' || status === 'streaming') anyRunning = true;
       agents.push({
         officeId: `${clientId}__agent-${a.id}`,
@@ -173,6 +181,7 @@ export function resolveClients(
         tokensIn: fleet?.tokensIn ?? a.tokensIn ?? 0,
         tokensOut: fleet?.tokensOut ?? a.tokensOut ?? 0,
         ctxPct: fleet?.ctxPct ?? a.ctxPct,
+        provider: fleet?.provider,
         model: fleet?.model ?? a.model,
         lastActivityAt: a.lastActivityAt,
         currentTool: fleet?.currentTool ?? a.currentTool,

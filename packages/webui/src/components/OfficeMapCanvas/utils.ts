@@ -17,6 +17,7 @@ export interface OfficeNodeData extends Record<string, unknown> {
   tokensIn?: number;
   tokensOut?: number;
   ctxPct?: number;
+  provider?: string;
   model?: string;
   lastActivityAt?: string;
   lastSeenAt?: number;
@@ -238,6 +239,8 @@ export function mapAgentStatus(raw: string | undefined): ClientStatus {
     case 'running':
     case 'active':
       return 'active';
+    case 'streaming':
+      return 'streaming';
     case 'idle':
       return 'idle';
     case 'completed':
