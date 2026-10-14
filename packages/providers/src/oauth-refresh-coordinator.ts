@@ -45,10 +45,11 @@ export const DEFAULT_REFRESH_SKEW_MS = 60_000;
  * - `inFlight`: concurrent exchanges of one token share a single request.
  * - `rotations`: once a token has been exchanged, a later holder of the old
  *   token follows the chain to the tokens it produced instead of replaying it.
- *   Entries live until the access token they carry expires (bounded count).
+ *   Access-token expiry does not invalidate the refresh-key successor link;
+ *   retain those links until bounded-cache eviction, preferring expired tokens.
  */
 const MAX_SHARED_ROTATIONS = 64;
-const MAX_ROTATION_HOPS = 16;
+const MAX_ROTATION_HOPS = MAX_SHARED_ROTATIONS;
 
 interface SharedRotation {
   nextKey: string;
@@ -65,11 +66,10 @@ function sharedKey(label: string, refreshKey: string): string {
 
 function recordRotation(key: string, rotation: SharedRotation): void {
   const now = Date.now();
-  for (const [k, r] of sharedRotations) {
-    if (r.expiresAt <= now) sharedRotations.delete(k);
-  }
   while (sharedRotations.size >= MAX_SHARED_ROTATIONS) {
-    const oldest = sharedRotations.keys().next().value as string | undefined;
+    const oldest =
+      [...sharedRotations].find(([, r]) => r.expiresAt <= now)?.[0] ??
+      (sharedRotations.keys().next().value as string | undefined);
     if (oldest === undefined) break;
     sharedRotations.delete(oldest);
   }
@@ -277,7 +277,7 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
     let adopted: TTokens | undefined;
     for (let hop = 0; hop < MAX_ROTATION_HOPS; hop++) {
       const rotation = sharedRotations.get(sharedKey(this.label, refreshKey));
-      if (!rotation || rotation.expiresAt <= Date.now()) break;
+      if (!rotation) break;
       adopted = rotation.tokens as TTokens;
       refreshKey = rotation.nextKey;
     }
