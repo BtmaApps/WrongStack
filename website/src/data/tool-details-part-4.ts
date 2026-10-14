@@ -84,6 +84,12 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         type: 'integer',
         description: 'Max files to include if path is a directory (defaults to 20, max 50).',
       },
+      {
+        name: 'maxChars',
+        type: 'integer',
+        description:
+          'Character budget for a directory skeleton (defaults to 60000, max 200000). Files past it are listed, not cut.',
+      },
     ],
     notes: [
       'Prefer before reading large files in full when only contracts and structure are needed.',
