@@ -398,6 +398,51 @@ describe('useProviderEventBridge', () => {
       .map(([action]) => action)
       .find((action) => action.type === 'addEntry' && action.entry.kind === 'tool');
     expect(toolAction?.entry).toMatchObject({ name: 'Read src/a.ts', ok: true, output: 'line 1' });
+    expect(toolAction?.entry).not.toHaveProperty('copyOutput');
+    unmount();
+  });
+
+  it('inspects the whole result of a call run outside the conversation, not its preview', async () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const state = { messages: [], onChange: () => () => {} };
+    const agent = { ctx: { session: { id: 'session-1' }, todos: [], state } };
+    const { unmount } = renderHook(() => {
+      useProviderEventBridge({
+        events,
+        agent: agent as never,
+        dispatch,
+        streamingTextRef: useRef(''),
+        streamSegmentsRef: useRef<Array<{ kind: 'assistant' | 'thinking'; text: string }>>([]),
+        pendingDeltaRef: useRef(''),
+        flushTimerRef: useRef<ReturnType<typeof setTimeout> | null>(null),
+        sessionGenerationRef: useRef(1),
+        activeRunGenerationRef: useRef(1),
+        assistantCommittedThisRunRef: useRef(false),
+        setMemoryContextMonitor: vi.fn(),
+      });
+    });
+
+    await act(async () => {
+      events.emit('tool.executed', {
+        id: 'acp-tc2',
+        name: 'Read src/big.ts',
+        durationMs: 5,
+        ok: true,
+        output: 'head…',
+        fullOutput: 'head and the tail',
+        outsideConversation: true,
+      });
+      await Promise.resolve();
+    });
+
+    const toolAction = dispatch.mock.calls
+      .map(([action]) => action)
+      .find((action) => action.type === 'addEntry' && action.entry.kind === 'tool');
+    expect(toolAction?.entry).toMatchObject({
+      output: 'head…',
+      copyOutput: 'head and the tail',
+    });
     unmount();
   });
 

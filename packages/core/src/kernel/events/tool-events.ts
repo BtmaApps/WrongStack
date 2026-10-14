@@ -307,6 +307,12 @@ export interface ToolEventMap {
      */
     outsideConversation?: boolean | undefined;
     /**
+     * With `outsideConversation`: the result beyond the `output` preview, as
+     * the inspect/copy payload — no conversation tool_result holds it.
+     * Bounded by the emitter; absent when `output` is already the whole text.
+     */
+    fullOutput?: string | undefined;
+    /**
      * Legacy inline `--- SAGE: … (Memory Injector) ---` content split off
      * `output` before the preview cap. Current retrievals travel through
      * `memory.injector_run` and provider memory-evidence blocks instead.

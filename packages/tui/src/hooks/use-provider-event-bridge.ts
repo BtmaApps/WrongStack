@@ -276,7 +276,7 @@ export function useProviderEventBridge({
       // generic tool entry so history doesn't also show the big JSON blob.
       if (e.name !== 'delegate') {
         const sageStats = pendingSageStats.get(e.name);
-        const addToolEntry = (output: string | undefined): void => {
+        const addToolEntry = (output: string | undefined, copyOutput?: string): void => {
           const accessHint = networkAccessHint(e.name, e.ok, output);
           if (accessHint) dispatch({ type: 'addEntry', entry: { kind: 'warn', text: accessHint } });
           dispatch({
@@ -288,6 +288,7 @@ export function useProviderEventBridge({
               ok: e.ok,
               input: e.input,
               output,
+              ...(copyOutput !== undefined ? { copyOutput } : {}),
               // SAGE-injected memory travels beside the output preview so it
               // always renders as a memory block, never as tool text.
               ...(e.sage !== undefined ? { sageLines: e.sage } : {}),
@@ -312,7 +313,8 @@ export function useProviderEventBridge({
         if (e.outsideConversation) {
           // No tool_result will reach the conversation (an ACP leader ran
           // the call itself): waiting for one would never render the card.
-          addToolEntry(e.output);
+          // Its whole result rides beside the preview for inspect and copy.
+          addToolEntry(e.output, e.fullOutput);
         } else if (canonicalOutput !== undefined) {
           addToolEntry(canonicalOutput);
         } else if (e.id !== undefined && typeof state?.onChange === 'function') {

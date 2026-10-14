@@ -90,17 +90,44 @@ export class TextBlocks {
 
 /**
  * The card's output. No tool_result follows for these calls, so this is all a
- * surface shows: longer than the usual ~400-char event preview.
+ * surface shows inline: longer than the usual ~400-char event preview.
  */
 const OUTPUT_PREVIEW_CHARS = 4_000;
 
-function outputText(call: ACPCapturedToolCall): string | undefined {
+/**
+ * The inspect/copy payload when the preview cut the result: the whole text up
+ * to this bound. The agent read it into its own context; a surface retaining
+ * a whole huge result per card does not need to.
+ */
+const FULL_OUTPUT_CHARS = 256 * 1024;
+
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  let end = max;
+  const last = text.charCodeAt(end - 1);
+  if (last >= 0xd800 && last <= 0xdbff) end -= 1;
+  return `${text.slice(0, end)}…`;
+}
+
+interface CardOutput {
+  output: string;
+  fullOutput?: string | undefined;
+  outputBytes: number;
+}
+
+function cardOutput(call: ACPCapturedToolCall): CardOutput | undefined {
   const raw = call.rawOutput;
   const text =
     call.output ??
     (raw ? (typeof raw.output === 'string' ? raw.output : JSON.stringify(raw)) : undefined);
   if (text === undefined) return undefined;
-  return text.length > OUTPUT_PREVIEW_CHARS ? `${text.slice(0, OUTPUT_PREVIEW_CHARS)}…` : text;
+  const output = clip(text, OUTPUT_PREVIEW_CHARS);
+  return {
+    output,
+    ...(output !== text ? { fullOutput: clip(text, FULL_OUTPUT_CHARS) } : {}),
+    // The size of what the call returned, not of the preview.
+    outputBytes: Buffer.byteLength(text),
+  };
 }
 
 /**
@@ -135,7 +162,7 @@ export class ToolCardRelay {
     }
     if ((call.status === 'completed' || call.status === 'failed') && !this.settled.has(id)) {
       this.settled.add(id);
-      const output = outputText(call);
+      const output = cardOutput(call);
       this.events.emit('tool.executed', {
         sessionId: this.meta.sessionId,
         agentId: 'leader',
@@ -146,7 +173,7 @@ export class ToolCardRelay {
         settlement: call.status === 'completed' ? 'completed' : 'failed',
         input: call.rawInput,
         outsideConversation: true,
-        ...(output !== undefined ? { output, outputBytes: Buffer.byteLength(output) } : {}),
+        ...output,
       });
     }
   }
