@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:05:52.026Z",
+  "generatedAt": "2026-10-14T22:06:25.504Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4962,
-    "testFiles": 4360,
+    "testFiles": 4361,
     "sourceLines": 1100332,
     "workspaceEdges": 137,
     "moduleEdges": 16349,
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1122,
-      "testFiles": 972,
+      "testFiles": 973,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 972
+          "testFiles": 973
         }
       ]
     },
@@ -6671,6 +6671,12 @@
       },
       {
         "file": "packages/core/tests/coordination/delegate-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/delegation-rehydrate-dispose.test.ts",
         "projects": [
           "root-node"
         ]

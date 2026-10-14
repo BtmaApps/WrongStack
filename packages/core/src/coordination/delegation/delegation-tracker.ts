@@ -295,7 +295,7 @@ export class DelegationTracker implements DelegationLookupSource {
    *    re-queued from its `resultExcerpt`.
    */
   rehydrate(sessionId: string, events: readonly SessionEvent[]): number {
-    if (!sessionId || !Array.isArray(events)) return 0;
+    if (this.disposed || !sessionId || !Array.isArray(events)) return 0;
     const started = new Map<string, Extract<SessionEvent, { type: 'delegate_started' }>>();
     const completed = new Map<string, Extract<SessionEvent, { type: 'delegate_completed' }>>();
     const delivered = new Set<string>();
