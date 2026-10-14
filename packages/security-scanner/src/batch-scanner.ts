@@ -241,9 +241,8 @@ export class BatchScanner {
           remediation: string;
         }>;
 
-        const defaultFile = opts.files[0]
-          ? path.relative(opts.projectRoot, opts.files[0]).replace(/\\/g, '/')
-          : 'unknown';
+        // Non-empty: a batch whose files all failed to read returned above.
+        const defaultFile = path.relative(opts.projectRoot, opts.files[0]!).replace(/\\/g, '/');
         const scannedFiles = new Set(
           opts.files.map((file) =>
             path.relative(opts.projectRoot, path.resolve(file)).replace(/\\/g, '/'),
@@ -251,7 +250,9 @@ export class BatchScanner {
         );
         const validSeverities = ['critical', 'high', 'medium', 'low'] as const;
 
-        return (Array.isArray(parsed) ? parsed : [])
+        // extractJsonBlock(…, 'array') only yields a `[`-delimited block, so
+        // this parses to an array or throws into the catch below.
+        return parsed
           .filter(
             (item): item is NonNullable<typeof item> => typeof item === 'object' && item !== null,
           )

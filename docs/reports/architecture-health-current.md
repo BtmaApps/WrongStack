@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-14T16:16:20.929Z
+**Generated:** 2026-10-14T16:21:46.810Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4960 |
-| Production source lines | 1099910 |
-| Test files | 4348 |
+| Production source lines | 1099911 |
+| Test files | 4349 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16343 |
 | Non-command slash imports | 0 |
@@ -51,7 +51,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/sage | 146 | 129 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 45 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
-| @wrongstack/security-scanner | 21 | 31 | @wrongstack/core |
+| @wrongstack/security-scanner | 21 | 32 | @wrongstack/core |
 | @wrongstack/simpleui | 127 | 93 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 53 | 61 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 42 | @wrongstack/core, @wrongstack/primitives |

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T16:16:20.929Z",
+  "generatedAt": "2026-10-14T16:21:46.810Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4960,
-    "testFiles": 4348,
-    "sourceLines": 1099910,
+    "testFiles": 4349,
+    "sourceLines": 1099911,
     "workspaceEdges": 137,
     "moduleEdges": 16343,
     "nonCommandSlashImports": 0,
@@ -675,7 +675,7 @@
       "name": "@wrongstack/security-scanner",
       "dir": "packages/security-scanner",
       "sourceFiles": 21,
-      "testFiles": 31,
+      "testFiles": 32,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -688,7 +688,7 @@
         {
           "path": "packages/security-scanner/tsconfig.test.json",
           "error": null,
-          "testFiles": 31
+          "testFiles": 32
         }
       ]
     },
@@ -16073,6 +16073,12 @@
       },
       {
         "file": "packages/sdd/tests/vibe-protocol.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/security-scanner/tests/batch-scanner-finding-normalization.test.ts",
         "projects": [
           "root-node"
         ]
