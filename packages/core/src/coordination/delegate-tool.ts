@@ -263,6 +263,15 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
       try {
         const ready = await prepareDelegation(validated, runtime, { sessionId, mode });
         if (ready.kind === 'result') return ready.result;
+        // Activating the Director is async: an interrupt that landed meanwhile
+        // still gates the launch, or a background worker runs for nobody.
+        if (abortSignal?.aborted) {
+          return {
+            ok: false,
+            stopReason: 'aborted',
+            error: 'Delegation cancelled before spawn — the run was interrupted.',
+          };
+        }
         const prepared = ready.prepared;
         // What the leader runs at, for a worker nothing else picks an effort for.
         const ownEffort = snapshotConversationEffort(

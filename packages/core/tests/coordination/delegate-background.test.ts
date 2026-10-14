@@ -251,6 +251,52 @@ describe('delegate — background mode (default)', () => {
     expect(hub.take(SESSION)[0]).toMatchObject({ wake: true, payload: { ok: true } });
   });
 
+  it('an Esc that lands while the Director is activating still gates the launch', async () => {
+    const { director, runner } = gatedDirector();
+    const spawn = vi.spyOn(director, 'spawn');
+    let release!: () => void;
+    const activation = new Promise<void>((r) => {
+      release = r;
+    });
+    let entered!: () => void;
+    const activating = new Promise<void>((r) => {
+      entered = r;
+    });
+    const hub = new LeaderDeliveryHub();
+    const events = new EventBus();
+    const tracker = new DelegationTracker({ hub, events });
+    const tool = createDelegateTool({
+      host: {
+        isDirectorMode: () => false,
+        ensureDirector: async () => null,
+        promoteToDirector: async () => {
+          entered();
+          await activation;
+          return director;
+        },
+      },
+      roster: FLEET_ROSTER,
+      events,
+      tracker,
+    });
+    cleanups.push(
+      () => tracker.dispose(),
+      () => director.shutdown(),
+    );
+    const leaderRun = new AbortController();
+    const pending = tool.execute({ role: 'bug-hunter', task: 'audit', ...BOUNDARY }, CTX, {
+      signal: leaderRun.signal,
+    });
+    await activating;
+    leaderRun.abort('user pressed Esc');
+    release();
+
+    expect(await pending).toMatchObject({ ok: false, stopReason: 'aborted' });
+    expect(runner).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
+    expect(tracker.list()).toHaveLength(0);
+  });
+
   it('cancelSession aborts the worker and delivers a user-caused outcome with wake:false', async () => {
     const { director, gates } = gatedDirector();
     const { hub, tracker, tool } = setup(director);
