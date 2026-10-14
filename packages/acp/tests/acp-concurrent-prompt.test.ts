@@ -13,7 +13,10 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { waitForProcessExit } from '../../core/tests/helpers/project-server-harness.js';
+import {
+  removeProjectFixtureDirectory,
+  waitForProcessExit,
+} from '../../core/tests/helpers/project-server-harness.js';
 import { ACPSession } from '../src/client/acp-session.js';
 import { makeACPSubagentRunnerWithStop } from '../src/integration/acp-subagent-runner.js';
 
@@ -116,8 +119,10 @@ describe('ACPSession overlapping prompts', () => {
 describe('persistent ACP subagent runner', () => {
   let dir = '';
   afterEach(async () => {
-    // Windows can hold the exited agent's cwd for a moment.
-    if (dir) await fs.rm(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+    // Windows can hold the exited agent's cwd for a moment, longer under load.
+    // fs.rm's own maxRetries is no help: Bun ignores it on EBUSY and throws at
+    // once, so the harness helper does the retrying.
+    if (dir) await removeProjectFixtureDirectory(dir, { maxRetries: 20, retryDelay: 100 });
   });
 
   it('starts one agent for concurrent first calls, runs their turns in turn, and stops it', async () => {
