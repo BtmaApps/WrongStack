@@ -188,6 +188,23 @@ describe('worstProviderQuotaWindow', () => {
     expect(worst?.window.id).toBe('primary');
   });
 
+  it('skips a non-finite percent so a later finite window still wins', () => {
+    const worst = worstProviderQuotaWindow([
+      snapshot({
+        windows: [
+          { id: 'broken', usedPercent: Number.NaN },
+          { id: 'primary', usedPercent: 90 },
+        ],
+      }),
+    ]);
+    expect(worst?.window).toMatchObject({ id: 'primary', usedPercent: 90 });
+    expect(
+      worstProviderQuotaWindow([
+        snapshot({ windows: [{ id: 'broken', usedPercent: Number.POSITIVE_INFINITY }] }),
+      ]),
+    ).toBeUndefined();
+  });
+
   it('returns nothing when no provider has reported', () => {
     expect(worstProviderQuotaWindow()).toBeUndefined();
   });

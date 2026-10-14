@@ -344,6 +344,9 @@ export function worstProviderQuotaWindow(
   for (const snapshot of snapshots) {
     if (snapshot.via !== undefined) continue;
     for (const window of snapshot.windows) {
+      // F2026101031: NaN/Infinity never compare as greater, so a non-finite
+      // first window would hide every later finite reading.
+      if (!Number.isFinite(window.usedPercent)) continue;
       if (!best) {
         best = { snapshot, window };
         continue;
