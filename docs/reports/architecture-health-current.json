@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:19:19.250Z",
+  "generatedAt": "2026-10-14T17:19:47.107Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4961,
-    "testFiles": 4359,
-    "sourceLines": 1100220,
+    "testFiles": 4360,
+    "sourceLines": 1100228,
     "workspaceEdges": 137,
     "moduleEdges": 16345,
     "nonCommandSlashImports": 0,
@@ -924,7 +924,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 297,
-      "testFiles": 287,
+      "testFiles": 288,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 287
+          "testFiles": 288
         }
       ]
     },
@@ -23633,6 +23633,12 @@
       },
       {
         "file": "packages/webui-server/tests/provider-quota-refresh.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-quota-single-flight.test.ts",
         "projects": [
           "root-node"
         ]

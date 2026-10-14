@@ -75,6 +75,7 @@ async function readAccountQuota(
  */
 export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
   const lastRead = new Map<string, { at: number; vendor: AccountQuotaVendor; ok: boolean }>();
+  const inFlight = new Map<string, Promise<QuotaRefreshOutcome | undefined>>();
 
   async function readOne(
     providerId: string,
@@ -90,10 +91,17 @@ export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
     if (last && now - last.at < MIN_REFRESH_INTERVAL_MS) {
       return { providerId, vendor: last.vendor, ok: last.ok, throttled: true };
     }
-    const result = await readAccountQuota(providerId, cfg, apiKey, providers);
-    if (result === undefined) return undefined;
-    lastRead.set(providerId, { at: now, vendor: result.vendor, ok: result.ok });
-    return { providerId, vendor: result.vendor, ok: result.ok };
+    const existing = inFlight.get(providerId);
+    if (existing) return existing;
+    const pending = readAccountQuota(providerId, cfg, apiKey, providers)
+      .then((result) => {
+        if (result === undefined) return undefined;
+        lastRead.set(providerId, { at: now, vendor: result.vendor, ok: result.ok });
+        return { providerId, vendor: result.vendor, ok: result.ok };
+      })
+      .finally(() => inFlight.delete(providerId));
+    inFlight.set(providerId, pending);
+    return pending;
   }
 
   async function handleProviderQuotaRefresh(ws: WebSocket): Promise<void> {

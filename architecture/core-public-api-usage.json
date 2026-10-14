@@ -129,9 +129,9 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 54,
+      "files": 55,
       "typeOnly": 1,
-      "runtimeOrMixed": 53
+      "runtimeOrMixed": 54
     },
     "@wrongstack/core/registry": {
       "files": 156,
@@ -10120,6 +10120,12 @@
     {
       "specifier": "@wrongstack/core/quota",
       "file": "packages/webui-server/tests/provider-quota-refresh.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/webui-server/tests/provider-quota-single-flight.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
