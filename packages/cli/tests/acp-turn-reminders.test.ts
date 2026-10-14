@@ -18,7 +18,7 @@ describe('startAcpTurnReminders', () => {
   it('nudges an active ACP worker to call inbox when unread mail appears, without flooding it', async () => {
     vi.useFakeTimers();
     let unread = 0;
-    const steer = vi.fn(async () => 'injected' as const);
+    const steer = vi.fn(async (_text: string) => 'injected' as const);
     const read = vi.fn(async () => unread);
     const stop = startAcpTurnReminders({ steer, unreadCount: read, mailPollMs: 1_000 });
     await vi.advanceTimersByTimeAsync(1_000);
@@ -42,7 +42,7 @@ describe('startAcpTurnReminders', () => {
   it('returns an undelivered /btw note to the next ACP turn', async () => {
     vi.useFakeTimers();
     const context = { meta: {} };
-    const steer = vi.fn(async () => 'promptRequired' as const);
+    const steer = vi.fn(async (_text: string) => 'promptRequired' as const);
     const stop = startAcpTurnReminders({ context: context as never, steer, btwPollMs: 1_000 });
     setBtwNote(context as never, 'remember the review');
     await vi.advanceTimersByTimeAsync(1_000);
