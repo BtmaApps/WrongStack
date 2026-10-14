@@ -86,7 +86,7 @@ function pushVizEvent(event: { kind: VizEvent['kind']; source: string; label: st
 }
 
 // One live WebUI session hosting three desks. resolveClients maps this to
-// office nodes `client-4242__agent-<id>` with edges `client-4242->…`.
+// office nodes `client-<sessionId>__agent-<id>` with session-scoped edges.
 const LIVE_SESSION = {
   sessionId: '2026-08-29/sess_coalesce',
   pid: 4242,
@@ -99,9 +99,10 @@ const LIVE_SESSION = {
   ],
 };
 
-const A1 = 'client-4242__agent-a1';
-const A2 = 'client-4242__agent-a2';
-const A3 = 'client-4242__agent-a3';
+const CLIENT = `client-${LIVE_SESSION.sessionId}`;
+const A1 = `${CLIENT}__agent-a1`;
+const A2 = `${CLIENT}__agent-a2`;
+const A3 = `${CLIENT}__agent-a3`;
 
 function statusOf(nodeId: string): unknown {
   return captured.nodes.find((n) => n.id === nodeId)?.data.status;
@@ -159,7 +160,7 @@ describe('OfficeMapCanvas viz-overlay coalescing', () => {
 
     // The client→agent wire for a mid-burst desk is boosted too (the old
     // path dropped its edge intensity because the event never ran).
-    const edge = captured.edges.find((e) => e.id === `client-4242->${A2}`);
+    const edge = captured.edges.find((e) => e.id === `${CLIENT}->${A2}`);
     expect(edge?.data?.animated).toBe(true);
   });
 

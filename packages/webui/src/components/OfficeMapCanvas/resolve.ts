@@ -55,7 +55,7 @@ export interface FinishedFleetAgent {
 
 /** A resolved client (one live session) with its agents. */
 export interface ResolvedClient {
-  id: string; // `client-<pid|sessionId>`
+  id: string; // `client-<sessionId>`
   type: 'tui' | 'webui' | 'repl';
   label: string;
   sublabel: string;
@@ -155,7 +155,7 @@ export function resolveClients(
     // Office node ids must be unique across clients — two sessions can each
     // have an agent literally named "leader", which would otherwise collide on
     // `agent-leader` and render as a single node.
-    const clientId = `client-${s.pid ?? s.sessionId}`;
+    const clientId = `client-${s.sessionId}`;
     const agents: ResolvedAgent[] = [];
     let anyRunning = false;
 
