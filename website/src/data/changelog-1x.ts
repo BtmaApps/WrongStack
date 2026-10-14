@@ -16,6 +16,7 @@ export const changelog1x: ChangelogEntry[] = [
     highlights: [
       'ACP leaders and delegated workers get a task kickoff naming the project’s index, memory, mailbox and board services, and hear about new /btw notes and mail mid-turn',
       'The mailbox MCP server reads the actor’s own unread mail with an inbox action',
+      'WebUI subagent tabs, transcripts, the Office view and the office map show each agent’s full provider/model; the map stops drawing expired idle workers as desks and its detail panel follows live updates',
       'A delegate attempt whose signal is already aborted settles once, and a stale auto-wake turn no longer clears a newer turn’s in-flight flag',
       'The codebase index sends a bounded plain-text skeleton over MCP, and capped MCP replies with a UTF-8 BOM parse again',
       'WebUI quota reads share one request per provider; techstack fixes Elixir purls, Go replace paths, Swift pins and CVSS v2 scoring',

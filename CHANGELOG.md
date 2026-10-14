@@ -9,16 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 A follow-up release. ACP agents are pointed at the project's services when a
 task starts and told about new notes and mail mid-turn, the mailbox MCP server reads an actor's own
-inbox, and delegation, WebUI provider checks, MCP payloads and techstack
-lookups get correctness fixes.
+inbox, the WebUI names every agent's provider and model, and delegation, WebUI
+provider checks, MCP payloads and techstack lookups get correctness fixes.
 
 ### Added
 
 - **Project-service kickoff for ACP agents.** An ACP agent leading a session or working as a delegated worker gets a task kickoff that tells it to start with the project's index, memory, mailbox and board services. While its turn runs, it is reminded of new `/btw` notes and newly waiting mail.
 - **Mailbox inbox read.** The mailbox MCP server's read tool has an `inbox` action that returns the MCP actor's own unread mail.
 
+### Changed
+
+- **WebUI agent identity.** Subagent tabs, subagent transcripts, the Office view's lanes and break room, and the office map's nodes and detail panel show each agent's full provider/model instead of a shortened model name.
+
 ### Fixed
 
+- **WebUI office map.** Workers that HQ has marked idle after their telemetry expired are no longer drawn as desks; an idle leader still anchors its session. The detail panel follows the selected node through topology refreshes instead of showing a stale snapshot, and it fits narrow screens.
 - **Delegation.** A delegate attempt whose signal is already aborted settles once. A stale auto-wake turn can no longer clear a newer turn's in-flight flag.
 - **ACP.** Output that arrives in the same chunk as the ready marker is framed instead of dropped. Saved ACP leader sessions skip malformed records. An ACP tool call's whole result reaches the inspect view.
 - **WebUI server.** Concurrent quota reads for a provider share one in-flight request. A provider model test whose deadline fired after the reply fails instead of passing.

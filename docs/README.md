@@ -9,6 +9,7 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | You want to… | Start here |
 |---|---|
 | Start a first session and choose a surface | [getting-started.md](getting-started.md) |
+| Tour what WrongStack can do, capability by capability | [capabilities.md](capabilities.md) |
 | Understand how the system is wired | [architecture.md](architecture.md) — the maintained architecture overview |
 | Add a new tool, plugin, provider, or help module | [Author Guides](#author-guides) below |
 | Choose and use built-in tools | [Tool workflows](tools/README.md) |
