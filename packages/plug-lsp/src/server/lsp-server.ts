@@ -117,13 +117,13 @@ export class LSPServer {
         this.ctx.rootPath,
       );
     } catch (error) {
-      if (generation === this.lifecycleGeneration && this.state === 'starting') {
-        this.state = 'failed';
-        this.ctx.events.emit('lsp.server.crashed', {
-          name: this.name,
-          error: toErrorMessage(error),
-        });
-      }
+      // `safeSpawn` is synchronous and never reaches back into this server, so
+      // the ownership check above still holds: no shutdown can interleave.
+      this.state = 'failed';
+      this.ctx.events.emit('lsp.server.crashed', {
+        name: this.name,
+        error: toErrorMessage(error),
+      });
       throw error;
     }
     this.child = child;
