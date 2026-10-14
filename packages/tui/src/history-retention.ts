@@ -92,6 +92,46 @@ function retainTextWithinEntryBudget(
   return createEntry(`${value.slice(0, end)}${ENTRY_TRUNCATION_MARKER}`);
 }
 
+/** An over-budget tool card's input keeps at most this share of the entry budget. */
+const TOOL_INPUT_BUDGET_DIVISOR = 4;
+const TOOL_INPUT_STRING_CAP = 1024;
+
+function jsonBytes(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value) ?? '', 'utf8');
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+function clipLongStrings(value: unknown, depth: number): unknown {
+  if (typeof value === 'string') {
+    if (value.length <= TOOL_INPUT_STRING_CAP) return value;
+    let end = TOOL_INPUT_STRING_CAP;
+    const last = value.charCodeAt(end - 1);
+    if (last >= 0xd800 && last <= 0xdbff) end -= 1;
+    return `${value.slice(0, end)}… [+${value.length - end} chars truncated for TUI history]`;
+  }
+  if (depth >= 8 || value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map((item) => clipLongStrings(item, depth + 1));
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, clipLongStrings(item, depth + 1)]),
+  );
+}
+
+/**
+ * An over-budget tool card keeps its input for the card header and the
+ * inspect view: whole when it fits its share, else with each long string
+ * shortened (and marked), else dropped. Dropping it outright blanked INPUT on
+ * every card whose output alone crossed the budget — a large `read` lost its
+ * path.
+ */
+function boundedToolInput(input: unknown, maxBytes: number): unknown {
+  if (input === undefined || jsonBytes(input) <= maxBytes) return input;
+  const clipped = clipLongStrings(input, 0);
+  return jsonBytes(clipped) <= maxBytes ? clipped : undefined;
+}
+
 /**
  * Enforce the per-entry display budget before aggregate history retention.
  * Common text entries keep a readable prefix; unusual oversized structured
@@ -113,10 +153,14 @@ function retainTuiHistoryEntry(
       copyableEntry.name.length > 1024
         ? `${copyableEntry.name.slice(0, 1024)}…`
         : copyableEntry.name;
+    const input = boundedToolInput(
+      copyableEntry.input,
+      Math.floor(maxBytes / TOOL_INPUT_BUDGET_DIVISOR),
+    );
     return retainTextWithinEntryBudget(
       copyableEntry.output ?? '',
       maxBytes,
-      (text) => ({ ...copyableEntry, name, input: undefined, output: text }),
+      (text) => ({ ...copyableEntry, name, input, output: text }),
       copyableEntry,
     );
   }

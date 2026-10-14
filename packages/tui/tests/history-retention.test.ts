@@ -3,7 +3,7 @@ import { DEFAULT_MIN_IMPORTANCE, DEFAULT_MIN_SCORE, MIN_RELATION_STRENGTH } from
 import { describe, expect, it } from 'vitest';
 import { buildRestoredEntries, createInitialState } from '../src/app-initial-state.js';
 import { reducer } from '../src/app-reducer.js';
-import { copyableTextForEntry } from '../src/components/history/copy-icon.js';
+import { copyableTextForEntry, inspectTextForEntry } from '../src/components/history/copy-icon.js';
 import type { HistoryEntry } from '../src/components/history/types.js';
 import {
   retainTuiHistory,
@@ -170,6 +170,54 @@ describe('bounded TUI display history', () => {
     expect(entry).toMatchObject({ id: 9, kind: 'tool', copyOutput: fullOutput });
     expect(entry?.kind === 'tool' ? entry.output : '').toContain('truncated for TUI history');
     expect(copyableTextForEntry(entry!)).toBe(fullOutput);
+  });
+
+  it('keeps a small input on a tool card whose output alone crossed the budget', () => {
+    const fullOutput = 'line\n'.repeat(TUI_HISTORY_MAX_ENTRY_BYTES);
+    const retained = retainTuiHistory([
+      {
+        id: 10,
+        kind: 'tool',
+        name: 'read',
+        durationMs: 5,
+        ok: true,
+        input: { path: 'src/big.ts' },
+        output: fullOutput,
+      },
+    ]);
+
+    const entry = retained[0];
+    // The inspect view lost INPUT here: the whole input went with the output.
+    expect(entry).toMatchObject({ kind: 'tool', input: { path: 'src/big.ts' } });
+    expect(inspectTextForEntry(entry!)).toContain('INPUT\n{\n  "path": "src/big.ts"\n}');
+    expect(copyableTextForEntry(entry!)).toBe(fullOutput);
+  });
+
+  it('shortens the long strings of an oversized input instead of dropping it', () => {
+    const content = 'x'.repeat(TUI_HISTORY_MAX_ENTRY_BYTES * 2);
+    const retained = retainTuiHistory([
+      {
+        id: 11,
+        kind: 'tool',
+        name: 'Write src/huge.ts',
+        durationMs: 5,
+        ok: true,
+        input: { file_path: 'src/huge.ts', content },
+        output: 'ok',
+      },
+    ]);
+
+    const entry = retained[0];
+    const input = (entry?.kind === 'tool' ? entry.input : undefined) as
+      | { file_path: string; content: string }
+      | undefined;
+    expect(input?.file_path).toBe('src/huge.ts');
+    expect(input?.content.startsWith('x'.repeat(1024))).toBe(true);
+    expect(input?.content).toContain(`[+${content.length - 1024} chars truncated for TUI history]`);
+    expect(entry).toMatchObject({ kind: 'tool', output: 'ok' });
+    expect(Buffer.byteLength(JSON.stringify(entry), 'utf8')).toBeLessThanOrEqual(
+      TUI_HISTORY_MAX_ENTRY_BYTES,
+    );
   });
 
   it('drops oversized structured payloads to a bounded marker', () => {
