@@ -126,6 +126,7 @@ interface SessionWakeState {
   chain: number;
   /** A `startWakeTurn` call has not resolved and no run finished since. */
   inFlight: boolean;
+  wakeGeneration: number;
   capNotified: boolean;
   holdNotified: boolean;
 }
@@ -251,6 +252,7 @@ export class LeaderAutoWakeController {
     state.chain += 1;
     state.lastWakeAt = now;
     state.inFlight = true;
+    const generation = ++state.wakeGeneration;
     const deliveryIds = items.map((item) => item.deliveryId);
     const delegationIds = items.map((item) => item.payload.delegationId);
     try {
@@ -271,10 +273,10 @@ export class LeaderAutoWakeController {
     }
     started.then(
       () => {
-        state.inFlight = false;
+        if (state.wakeGeneration === generation) state.inFlight = false;
       },
       (err: unknown) => {
-        state.inFlight = false;
+        if (state.wakeGeneration === generation) state.inFlight = false;
         this.warn(`auto-wake turn failed for ${sessionId}: ${String(err)}`);
       },
     );
@@ -319,6 +321,7 @@ export class LeaderAutoWakeController {
         lastWakeAt: 0,
         chain: 0,
         inFlight: false,
+        wakeGeneration: 0,
         capNotified: false,
         holdNotified: false,
       };
