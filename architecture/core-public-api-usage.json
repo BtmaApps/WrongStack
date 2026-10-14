@@ -249,9 +249,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 19,
+      "files": 20,
       "typeOnly": 0,
-      "runtimeOrMixed": 19
+      "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 16,
@@ -27604,6 +27604,12 @@
     {
       "specifier": "@wrongstack/core/utils/error",
       "file": "packages/cli/src/webui-server-lifecycle.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/plug-lsp/src/server/lsp-server.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

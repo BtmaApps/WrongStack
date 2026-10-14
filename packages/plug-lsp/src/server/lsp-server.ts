@@ -1,6 +1,7 @@
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import type {
   CodeAction,
@@ -120,7 +121,7 @@ export class LSPServer {
         this.state = 'failed';
         this.ctx.events.emit('lsp.server.crashed', {
           name: this.name,
-          error: error instanceof Error ? error.message : String(error),
+          error: toErrorMessage(error),
         });
       }
       throw error;
