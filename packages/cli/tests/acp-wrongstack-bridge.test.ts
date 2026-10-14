@@ -5,6 +5,7 @@ import type { SubagentRunContext, TaskSpec } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import {
   bridgeNote,
+  bridgeTaskKickoff,
   installedBridgeAgents,
   onPath,
   wrongstackBridgeSetup,
@@ -92,6 +93,8 @@ describe('wrongstackBridgeSetup', () => {
   it('steers code navigation to the index over grep', () => {
     const note = bridgeNote(['codebase-index']);
     expect(note).toMatch(/Prefer it over grep\/glob/);
+    expect(note).toContain('Use wrongstack-index first for code navigation');
+    expect(note).not.toContain('Use your own tools for code and files');
     for (const tool of [
       'codebase_search',
       'codebase_incoming_calls',
@@ -101,6 +104,35 @@ describe('wrongstackBridgeSetup', () => {
     ]) {
       expect(note).toContain(tool);
     }
+  });
+
+  it('gives leader and worker the same project-service workflow', () => {
+    const leader = wrongstackBridgeSetup('claude-code', ROOT, undefined, 'leader')!(task, ctx);
+    const leaderNote = (leader.meta as { systemPrompt: { append: string } }).systemPrompt.append;
+    const workerNote = bridgeNote(['codebase-index', 'sage', 'mailbox', 'kanban']);
+    for (const note of [leaderNote, workerNote]) {
+      expect(note).toContain('Use wrongstack-index first for code navigation');
+      expect(note).toContain('mcp__wrongstack-index__codebase_context');
+      expect(note).toContain('mcp__wrongstack-sage__memory_search');
+      expect(note).toContain('mcp__wrongstack-mailbox__mailbox_read');
+      expect(note).toContain('mcp__wrongstack-kanban__kanban_read');
+      expect(note).toContain(
+        'Recall relevant decisions from wrongstack-sage before substantial work',
+      );
+      expect(note).toContain('Check wrongstack-mailbox for unread messages');
+      expect(note).toContain('Use wrongstack-kanban when work is tied to a board task');
+    }
+  });
+
+  it('adds task-local service guidance only for attached servers', () => {
+    const setup = wrongstackBridgeSetup('claude-code', ROOT, undefined)!(task, ctx);
+    expect(setup.promptPrefix).toContain('mcp__wrongstack-index__codebase_context');
+    expect(setup.promptPrefix).toContain('mcp__wrongstack-sage__memory_search');
+    expect(setup.promptPrefix).toContain('mcp__wrongstack-mailbox__mailbox_read');
+    expect(setup.promptPrefix).toContain('action "inbox"');
+    expect(setup.promptPrefix).toContain('mcp__wrongstack-kanban__kanban_read');
+    expect(bridgeTaskKickoff(['sage'])).not.toContain('wrongstack-index');
+    expect(bridgeTaskKickoff(['sage'])).not.toContain('wrongstack-mailbox');
   });
 
   it('appends the same note for every task and worker, so the prompt cache holds', () => {

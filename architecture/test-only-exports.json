@@ -156,6 +156,7 @@
     ],
     "packages/cli/src/fleet/acp-wrongstack-bridge.ts": [
       "bridgeNote",
+      "bridgeTaskKickoff",
       "wstackLaunch"
     ],
     "packages/cli/src/fleet/host-helpers.ts": [

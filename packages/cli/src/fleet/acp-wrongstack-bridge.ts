@@ -88,6 +88,61 @@ const SERVER_NOTES: Record<BridgeServer, (delegated: boolean) => string> = {
     'one when you are handed an unrecorded software request.',
 };
 
+function serviceWorkflow(servers: readonly BridgeServer[]): string[] {
+  return [
+    ...(servers.includes('codebase-index')
+      ? [
+          'Use wrongstack-index first for code navigation; use your file tools for edits, exact',
+          'literal searches, and verification. Start a code task with',
+          'mcp__wrongstack-index__codebase_context (task description); for a named symbol use',
+          'mcp__wrongstack-index__codebase_search. If the index lacks a result, fall back to your tools.',
+        ]
+      : []),
+    ...(servers.includes('sage')
+      ? [
+          'Recall relevant decisions from wrongstack-sage before substantial work; propose durable',
+          'findings to memory_candidates after verification. Start with',
+          'mcp__wrongstack-sage__memory_search using the task topic.',
+        ]
+      : []),
+    ...(servers.includes('mailbox')
+      ? [
+          'Check wrongstack-mailbox for unread messages when starting and during long work;',
+          'use mcp__wrongstack-mailbox__mailbox_read with action "inbox" to read your',
+          'messages. Send meaningful',
+          'progress or blockers and acknowledge messages you handle.',
+        ]
+      : []),
+    ...(servers.includes('kanban')
+      ? [
+          'Use wrongstack-kanban when work is tied to a board task; inspect its current state',
+          'with mcp__wrongstack-kanban__kanban_read and update it as work progresses.',
+        ]
+      : []),
+    'If a project service is unavailable, continue with available tools and report the gap.',
+  ];
+}
+
+/** A short task-local cue: the Claude adapter gives user-turn text more immediate weight. */
+export function bridgeTaskKickoff(servers: readonly BridgeServer[]): string {
+  return [
+    'Project-service kickoff for this task:',
+    ...(servers.includes('codebase-index')
+      ? ['First use mcp__wrongstack-index__codebase_context to locate relevant code.']
+      : []),
+    ...(servers.includes('sage')
+      ? ['Use mcp__wrongstack-sage__memory_search for prior project guidance.']
+      : []),
+    ...(servers.includes('mailbox')
+      ? ['Check mcp__wrongstack-mailbox__mailbox_read with action "inbox".']
+      : []),
+    ...(servers.includes('kanban')
+      ? ['If the task names a board card, inspect it with mcp__wrongstack-kanban__kanban_read.']
+      : []),
+    'Then use file and other tools as the task requires.',
+  ].join('\n');
+}
+
 function serverArgs(server: BridgeServer, projectRoot: string, ctx: SubagentRunContext): string[] {
   const actor = ctx.subagentId;
   const base = ['mcp', 'serve', server, `--project-root=${projectRoot}`];
@@ -139,8 +194,7 @@ export function bridgeNote(servers: readonly BridgeServer[], delegated = true): 
     "WrongStack's project services are available as MCP servers:",
     ...servers.map((s) => SERVER_NOTES[s](delegated)),
     '',
-    'Use your own tools for code and files; these servers are for coordination. If one is',
-    'unavailable, carry on without it.',
+    ...serviceWorkflow(servers),
     '',
     "WrongStack applies the user's rules to your edits and commands. A refused permission",
     'comes from them (a deny rule the user wrote, a history-rewriting git command, a',
@@ -161,6 +215,8 @@ export function leaderBridgeNote(servers: readonly BridgeServer[]): string {
     '',
     "WrongStack's project services are available as MCP servers:",
     ...servers.map((s) => SERVER_NOTES[s](false)),
+    '',
+    ...serviceWorkflow(servers),
     '',
     "WrongStack applies the user's rules to your edits and commands and asks the user when one",
     "needs approval. A refused permission is the user's decision or rule: do not retry it or",
@@ -238,6 +294,7 @@ export function wrongstackBridgeSetup(
   );
   if (servers.length === 0) return undefined;
   return (_task, ctx) => ({
+    promptPrefix: bridgeTaskKickoff(servers),
     mcpServers: servers.map((server): StdioServer => {
       const launch = wstackLaunch(serverArgs(server, projectRoot, ctx));
       return { name: SERVER_NAMES[server], ...launch, env: [] };

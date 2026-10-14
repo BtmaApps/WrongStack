@@ -49,6 +49,7 @@ vi.mock('@wrongstack/acp', () => ({
           ...acp.result,
         };
       },
+      canSteer: () => false,
       close: async () => {},
     }),
   },
@@ -312,7 +313,8 @@ describe("the ACP leader's context", () => {
       // its own session, so the turn is just the new message.
       await run();
       expect(acp.opened).toEqual(['new', 'sess_1']);
-      expect(acp.prompts[1]).toBe('next');
+      expect(acp.prompts[1]).not.toContain('<earlier-conversation>');
+      expect(acp.prompts[1]).toMatch(/\n\nnext$/);
     } finally {
       await rm(stateDir, { recursive: true, force: true });
     }

@@ -17,6 +17,7 @@
  * `@wrongstack/acp` is loaded on first use: it must stay off the boot graph.
  */
 import { type ACPProgressEvent, type ACPSession, findAgentDescriptor } from '@wrongstack/acp';
+import { type Context, consumeBtwNotes } from '@wrongstack/core/agent';
 import type {
   AgentContextUsage,
   Capabilities,
@@ -34,6 +35,7 @@ import { subjectForToolInput } from '@wrongstack/core/utils';
 import { isRestrictedMode } from '../boot/restricted-mode.js';
 import { wrongstackAcpPermissionPolicy } from '../fleet/acp-permission-bridge.js';
 import { recordAcpRateLimit } from '../fleet/acp-quota-reading.js';
+import { acpBtwBlock, startAcpTurnReminders } from '../fleet/acp-turn-reminders.js';
 import { wrongstackBridgeSetup } from '../fleet/acp-wrongstack-bridge.js';
 import { confirmThroughEvents } from './acp-leader-confirm.js';
 import { LeaderContext, publishLeaderContext } from './acp-leader-context.js';
@@ -91,6 +93,7 @@ interface LeaderSession {
   agentId: string;
   session: ACPSession;
   context: LeaderContext;
+  promptPrefix?: string | undefined;
   /** This session's fleet tools endpoint, when the leader has fleet tools. */
   fleet?: FleetEndpoint | undefined;
   /**
@@ -235,6 +238,14 @@ export class AcpLeaderProvider implements Provider {
     });
 
     yield { type: 'message_start', model: agentId };
+    const hostContext = acpLeaderHost()?.context(key) as Context | undefined;
+    const stopReminders =
+      leader.session.canSteer() && hostContext?.meta
+        ? startAcpTurnReminders({
+            context: hostContext,
+            steer: (text) => leader.session.steer(text),
+          })
+        : undefined;
     const turn = leader.session
       .prompt([acp.textContent(this.promptText(leader, req))], opts.signal, onProgress)
       .then(
@@ -260,6 +271,7 @@ export class AcpLeaderProvider implements Provider {
     try {
       yield* queue.drain();
     } finally {
+      stopReminders?.();
       await turn;
     }
   }
@@ -269,7 +281,11 @@ export class AcpLeaderProvider implements Provider {
     const latest = latestUserText(req.messages);
     const earlier = leader.joined ? undefined : earlierConversation(req.messages);
     leader.joined = true;
-    return earlier ? `${earlier}\n\n${latest}` : latest;
+    const prompt = earlier ? `${earlier}\n\n${latest}` : latest;
+    const context = acpLeaderHost()?.context(req.cache?.sessionId) as Context | undefined;
+    const notes = context?.meta ? consumeBtwNotes(context) : [];
+    const withNotes = notes.length > 0 ? `${prompt}\n\n${acpBtwBlock(notes)}` : prompt;
+    return leader.promptPrefix ? `${leader.promptPrefix}\n\n${withNotes}` : withNotes;
   }
 
   /**
@@ -465,6 +481,7 @@ export class AcpLeaderProvider implements Provider {
     const leaderCtx = {
       subagentId: 'leader',
       config: { id: 'leader', name: agentId, role: 'leader' },
+      sessionId: key,
     } as unknown as SubagentRunContext;
     const setup = wrongstackBridgeSetup(
       agentId,
@@ -522,36 +539,46 @@ export class AcpLeaderProvider implements Provider {
     const resumeSessionId = stateDir
       ? await readLeaderSession(stateDir, key, agentId).catch(() => undefined)
       : undefined;
-    const session = await acp.ACPSession.start({
-      command: cmd.command,
-      ...(cmd.args ? { args: cmd.args } : {}),
-      ...(cmd.env ? { env: cmd.env } : {}),
-      cwd: projectRoot,
-      projectRoot,
-      role: agentId,
-      ...(permissionPolicy ? { permissionPolicy } : {}),
-      ...(mcpServers.length > 0 ? { mcpServers } : {}),
-      ...(sessionMeta ? { sessionMeta } : {}),
-      // Claude asks before edits and commands only in `default`.
-      ...(permissionPolicy
-        ? { initialModeId: 'default', requireInitialMode: agentId === 'claude-code' }
-        : {}),
-      ...(resumeSessionId ? { resumeSessionId } : {}),
-    });
-    // Open it now: whether the agent continued its earlier session decides
-    // whether the first turn has to carry the earlier conversation.
+    let session: ACPSession | undefined;
     let opened: { sessionId: string; resumed: boolean };
     try {
+      session = await acp.ACPSession.start({
+        command: cmd.command,
+        ...(cmd.args ? { args: cmd.args } : {}),
+        ...(cmd.env ? { env: cmd.env } : {}),
+        cwd: projectRoot,
+        projectRoot,
+        role: agentId,
+        ...(permissionPolicy ? { permissionPolicy } : {}),
+        ...(mcpServers.length > 0 ? { mcpServers } : {}),
+        ...(sessionMeta ? { sessionMeta } : {}),
+        // Claude asks before edits and commands only in `default`.
+        ...(permissionPolicy
+          ? { initialModeId: 'default', requireInitialMode: agentId === 'claude-code' }
+          : {}),
+        ...(resumeSessionId ? { resumeSessionId } : {}),
+      });
+      // Open it now: whether the agent continued its earlier session decides
+      // whether the first turn has to carry the earlier conversation.
       opened = await session.openSession();
     } catch (err) {
-      void session.close().catch(() => undefined);
+      // An agent that never started (not installed, failed handshake) must not
+      // leave this session's fleet endpoint listening.
+      void session?.close().catch(() => undefined);
       void fleet?.close().catch(() => undefined);
       throw err;
     }
     if (stateDir) {
       void writeLeaderSession(stateDir, key, { agentId, agentSessionId: opened.sessionId });
     }
-    return { agentId, session, context: new LeaderContext(), fleet, joined: opened.resumed };
+    return {
+      agentId,
+      session,
+      context: new LeaderContext(),
+      fleet,
+      joined: opened.resumed,
+      ...(setup?.promptPrefix ? { promptPrefix: setup.promptPrefix } : {}),
+    };
   }
 
   /** Close every agent session (process shutdown). */

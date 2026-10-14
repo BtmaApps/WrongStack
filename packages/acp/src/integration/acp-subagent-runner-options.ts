@@ -90,6 +90,8 @@ export interface ACPSubagentRunnerOptions {
 export interface AcpSessionSetup {
   mcpServers?: McpServer[] | undefined;
   meta?: Record<string, unknown> | undefined;
+  /** Per-task guidance placed before the user's task in the ACP prompt turn. */
+  promptPrefix?: string | undefined;
   /** Replaces `permissionPolicy` for this session (e.g. bound to the delegating session). */
   permissionPolicy?: PermissionPolicy | undefined;
 }

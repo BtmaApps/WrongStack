@@ -181,8 +181,9 @@ export async function makeACPSubagentRunnerWithStop(
     ctx: SubagentRunContext,
   ): Promise<SubagentRunOutcome> => {
     let session: ACPSession;
+    let setup: AcpSessionSetup | undefined;
     try {
-      const setup = options.sessionSetup?.(task, ctx);
+      setup = options.sessionSetup?.(task, ctx);
       if (persistent) {
         shared ??= startSession(setup);
         const starting = shared;
@@ -220,7 +221,10 @@ export async function makeACPSubagentRunnerWithStop(
     let endLive: (() => void) | undefined;
     try {
       if (session.canSteer()) endLive = options.onTurnLive?.(ctx, task, (t) => session.steer(t));
-      const turn = () => session.prompt([textContent(task.description)], ctx.signal, onProgress);
+      const prompt = setup?.promptPrefix
+        ? `${setup.promptPrefix}\n\n${task.description}`
+        : task.description;
+      const turn = () => session.prompt([textContent(prompt)], ctx.signal, onProgress);
       const run = persistent ? turns.then(turn, turn) : turn();
       if (persistent) turns = run;
       result = await run;

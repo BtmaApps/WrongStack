@@ -8,10 +8,13 @@ import {
   makeACPSubagentRunner,
   resolveAcpAgentCommand,
 } from '@wrongstack/acp';
+import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
 import type { Config, SubagentRunContext, SubagentRunner, TaskSpec } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { registerAcpSteerInbox } from './acp-live-steer.js';
-import { wrongstackBridgeSetup } from './acp-wrongstack-bridge.js';
+import { startAcpTurnReminders } from './acp-turn-reminders.js';
+import { DEFAULT_BRIDGE_SERVERS, wrongstackBridgeSetup } from './acp-wrongstack-bridge.js';
 
 export type AcpLivePublisher = (
   ctx: SubagentRunContext,
@@ -66,6 +69,10 @@ export function buildAcpSubagentRunner(
   const bridgeSetup = options?.bridge
     ? wrongstackBridgeSetup(subagentId, options.bridge.projectRoot, options.bridge.config)
     : undefined;
+  const mailboxProjectRoot = options?.bridge?.projectRoot;
+  const mailboxEnabled =
+    bridgeSetup !== undefined &&
+    (options?.bridge?.config?.servers ?? DEFAULT_BRIDGE_SERVERS).includes('mailbox');
   const permissions = options?.permissions;
   const sessionSetup =
     bridgeSetup || permissions
@@ -86,6 +93,22 @@ export function buildAcpSubagentRunner(
     ...(options?.publishLive ? { publishLive: options.publishLive } : {}),
     ...(sessionSetup ? { sessionSetup } : {}),
     // The leader's `session_note` to a running worker joins its turn.
-    onTurnLive: (ctx, task, steer) => registerAcpSteerInbox(ctx, task, steer),
+    onTurnLive: (ctx, task, steer) => {
+      const stopNotes = registerAcpSteerInbox(ctx, task, steer);
+      const stopMail =
+        mailboxEnabled && mailboxProjectRoot
+          ? startAcpTurnReminders({
+              steer,
+              unreadCount: () =>
+                getSharedProjectMailbox(
+                  resolveProjectDir(mailboxProjectRoot, wstackGlobalRoot()),
+                ).unreadCount(ctx.subagentId, ctx.sessionId),
+            })
+          : undefined;
+      return () => {
+        stopNotes?.();
+        stopMail?.();
+      };
+    },
   });
 }

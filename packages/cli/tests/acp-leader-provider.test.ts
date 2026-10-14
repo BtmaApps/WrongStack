@@ -3,6 +3,7 @@
  * to one persistent agent session per conversation and stream back as text;
  * side requests and WrongStack subagents never reach the agent.
  */
+import { pendingBtwCount, setBtwNote } from '@wrongstack/core/agent';
 import { EventBus } from '@wrongstack/core/kernel';
 import type { Config, Provider, StreamEvent } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const acp = vi.hoisted(() => ({
   starts: [] as Array<Record<string, unknown>>,
   prompts: [] as string[],
+  steers: [] as string[],
   closes: [] as Array<{ graceMs?: number }>,
+  startError: undefined as Error | undefined,
   turn: undefined as
     | ((onProgress: (e: unknown) => void) => Promise<Record<string, unknown>>)
     | undefined,
@@ -29,6 +32,7 @@ vi.mock('@wrongstack/acp', () => ({
   ACPSession: {
     start: async (opts: Record<string, unknown>) => {
       acp.starts.push(opts);
+      if (acp.startError) throw acp.startError;
       return {
         openSession: async () => ({ sessionId: 'sess_1', resumed: false }),
         prompt: async (
@@ -47,6 +51,11 @@ vi.mock('@wrongstack/acp', () => ({
               hasText: true,
             }
           );
+        },
+        canSteer: () => true,
+        steer: async (text: string) => {
+          acp.steers.push(text);
+          return 'injected';
         },
         close: async (opts: { graceMs?: number } = {}) => {
           acp.closes.push(opts);
@@ -108,7 +117,9 @@ const CONFIG = { acp: { leader: { sideModel: 'zai/glm-5' } } } as unknown as Con
 beforeEach(() => {
   acp.starts.length = 0;
   acp.prompts.length = 0;
+  acp.steers.length = 0;
   acp.closes.length = 0;
+  acp.startError = undefined;
   acp.turn = undefined;
 });
 afterEach(() => bindAcpLeaderHost(undefined));
@@ -174,6 +185,69 @@ describe('the leader context window', () => {
 });
 
 describe('a leader turn', () => {
+  it('includes a pending /btw note in the next ACP prompt', async () => {
+    const context = { meta: {} };
+    setBtwNote(context as never, 'check the latest note');
+    bindAcpLeaderHost({
+      events: new EventBus(),
+      projectRoot: '/proj',
+      getConfig: () => CONFIG,
+      permission: () => ({ evaluate: async () => ({ permission: 'auto' }) }) as never,
+      context: () => context as never,
+      getTool: () => undefined,
+      runTool: async () => ({ content: '', isError: false }),
+    });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    await collect(provider.stream(leaderRequest('inspect this') as never, { signal: SIGNAL }));
+    expect(acp.prompts[0]).toContain('check the latest note');
+    expect(pendingBtwCount(context as never)).toBe(0);
+    await closeAcpLeaderSessions();
+  });
+
+  it('delivers a /btw note during an active ACP turn', async () => {
+    vi.useFakeTimers();
+    const context = { meta: {} };
+    bindAcpLeaderHost({
+      events: new EventBus(),
+      projectRoot: '/proj',
+      getConfig: () => CONFIG,
+      permission: () => ({ evaluate: async () => ({ permission: 'auto' }) }) as never,
+      context: () => context as never,
+      getTool: () => undefined,
+      runTool: async () => ({ content: '', isError: false }),
+    });
+    let finishTurn: ((result: Record<string, unknown>) => void) | undefined;
+    acp.turn = () =>
+      new Promise((resolve) => {
+        finishTurn = resolve;
+      });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    try {
+      const running = collect(
+        provider.stream(leaderRequest('inspect this') as never, { signal: SIGNAL }),
+      );
+      for (let attempt = 0; attempt < 30 && acp.prompts.length === 0; attempt++) {
+        await Promise.resolve();
+      }
+      expect(acp.prompts).toHaveLength(1);
+      setBtwNote(context as never, 'check the latest note');
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(acp.steers[0]).toContain('check the latest note');
+      finishTurn?.({
+        text: 'done',
+        stopReason: 'end_turn',
+        toolCalls: [],
+        diffs: [],
+        thoughts: '',
+        hasText: true,
+      });
+      await running;
+    } finally {
+      await closeAcpLeaderSessions();
+      vi.useRealTimers();
+    }
+  });
+
   it('streams the reply, relays tool cards, and keeps one agent session per conversation', async () => {
     const events = new EventBus();
     const cards: string[] = [];
@@ -241,7 +315,8 @@ describe('a leader turn', () => {
     // The agent joined a conversation under way: its first turn carries the
     // turns before it. After that only the newest user message is sent; the
     // agent keeps its own history.
-    expect(acp.prompts[0]).toBe(
+    expect(acp.prompts[0]).toContain('mcp__wrongstack-index__codebase_context');
+    expect(acp.prompts[0]).toContain(
       [
         '<earlier-conversation>',
         'The conversation in this session before you joined it, from WrongStack. Text only: tool',
@@ -254,7 +329,8 @@ describe('a leader turn', () => {
         'first',
       ].join('\n'),
     );
-    expect(acp.prompts[1]).toBe('second');
+    expect(acp.prompts[1]).toContain('mcp__wrongstack-sage__memory_search');
+    expect(acp.prompts[1]).toMatch(/\n\nsecond$/);
     expect(acp.starts).toHaveLength(1);
     expect(acp.starts[0]).toMatchObject({
       command: 'npx',
@@ -262,6 +338,9 @@ describe('a leader turn', () => {
       initialModeId: 'default',
       requireInitialMode: true,
     });
+    const mcpServers = (acp.starts[0]?.mcpServers ?? []) as Array<{ name: string; args: string[] }>;
+    const mailbox = mcpServers.find((server) => server.name === 'wrongstack-mailbox');
+    expect(mailbox?.args).toContain('--session-id=s1');
     const meta = acp.starts[0]?.sessionMeta as { systemPrompt: { append: string } } | undefined;
     expect(meta?.systemPrompt.append).toContain('You are the leader of a WrongStack session');
 
@@ -343,6 +422,46 @@ describe('the fleet endpoint for a leader', () => {
     });
     expect(evaluated).toEqual(['delegate']);
     await provider.closeAll();
+  });
+
+  it('stops listening when the agent never starts, on every retried turn', async () => {
+    bindAcpLeaderHost({
+      events: new EventBus(),
+      projectRoot: '/proj',
+      getConfig: () => CONFIG,
+      permission: () =>
+        ({ evaluate: async () => ({ permission: 'auto', source: 'default' }) }) as never,
+      context: () => ({}) as never,
+      getTool: (name) =>
+        name === 'delegate'
+          ? ({ name, description: 'hand off', inputSchema: { type: 'object' } } as never)
+          : undefined,
+      runTool: async () => ({ content: 'ok', isError: false }),
+    });
+    // The agent is not installed: spawning it fails before any session exists.
+    acp.startError = Object.assign(new Error('failed to spawn npx: ENOENT'), {
+      kind: 'spawn_failed',
+    });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    for (const text of ['a', 'b']) {
+      await expect(
+        collect(provider.stream(leaderRequest(text) as never, { signal: SIGNAL })),
+      ).rejects.toMatchObject({ kind: 'server' });
+    }
+    const urls = acp.starts.map(
+      (start) =>
+        (start.mcpServers as Array<{ name: string; url: string }>).find(
+          (s) => s.name === 'wrongstack-fleet',
+        )?.url,
+    );
+    expect(urls).toEqual([expect.any(String), expect.any(String)]);
+    await vi.waitFor(async () => {
+      for (const url of urls) {
+        await expect(
+          fetch(url as string, { method: 'POST', body: '{}', signal: AbortSignal.timeout(2_000) }),
+        ).rejects.toThrow();
+      }
+    });
   });
 });
 

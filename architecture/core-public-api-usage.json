@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 389,
+      "files": 393,
       "typeOnly": 305,
-      "runtimeOrMixed": 105
+      "runtimeOrMixed": 109
     },
     "@wrongstack/core/agent-catalog": {
       "files": 21,
@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 273,
+      "files": 274,
       "typeOnly": 106,
-      "runtimeOrMixed": 233
+      "runtimeOrMixed": 234
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 785,
+      "files": 786,
       "typeOnly": 70,
-      "runtimeOrMixed": 745
+      "runtimeOrMixed": 746
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -348,6 +348,12 @@
       "file": "packages/cli/src/acp-leader/acp-leader-host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -472,6 +478,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/execution.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/fleet/acp-turn-reminders.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -879,7 +891,19 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/tests/acp-leader-provider.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/tests/acp-server-agent.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/tests/acp-turn-reminders.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -3078,6 +3102,12 @@
       "file": "packages/cli/src/fleet/host-acp-runner.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/fleet/host-acp.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -23326,6 +23356,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/host-acp.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

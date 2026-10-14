@@ -599,6 +599,19 @@ describe('makeACPSubagentRunnerWithStop', () => {
     ]);
   });
 
+  it('places session task guidance before the worker task without replacing it', async () => {
+    const { runner } = await makeACPSubagentRunnerWithStop({
+      command: 'agent',
+      sessionSetup: () => ({ promptPrefix: 'Use project services first.' }),
+    });
+    await runner(TASK, makeCtx().ctx);
+    expect(hoisted.session?.prompt).toHaveBeenCalledWith(
+      [{ type: 'text', text: `Use project services first.\n\n${TASK.description}` }],
+      expect.any(AbortSignal),
+      expect.any(Function),
+    );
+  });
+
   it('does not fail the turn when publishLive throws', async () => {
     hoisted.progressEvent = { type: 'message', text: 'hi' };
     const { runner } = await makeACPSubagentRunnerWithStop({
