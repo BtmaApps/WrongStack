@@ -803,6 +803,45 @@ describe('ElixirAdapter', () => {
     }, dir);
   });
 
+  // `hex: :package` names the Hex package when it differs from the app name,
+  // and mix.lock records that package as the tuple's second element. The purl
+  // is the identity OSV matches on, so it must name the PACKAGE: the app alias
+  // purl'd a different (or nonexistent) Hex package.
+  it('purls a hex: aliased dep under its Hex package name', async () => {
+    const aliased = [
+      'defp deps do',
+      '  [',
+      '    {:phoenix, "~> 1.7.0"},',
+      '    {:my_json, "~> 1.4", hex: :jason},',
+      '    {:my_decimal, "2.1.1", hex: "decimal"},',
+      '  ]',
+      'end',
+    ].join('\n');
+    const lock = [
+      '%{',
+      '  "my_json": {:hex, :jason, "1.4.1", "c", [:mix], [], "hexpm", "d"},',
+      '  "phoenix": {:hex, :phoenix, "1.7.14", "e", [:mix], [], "hexpm", "f"},',
+      '}',
+    ].join('\n');
+    const locked = mkWorkspace('elixir', { 'mix.exs': aliased, 'mix.lock': lock });
+    await withCleanup(async () => {
+      const deps = await new ElixirAdapter().inventory(locked.ws, {});
+      expect(deps.find((d) => d.name === 'my_json')).toMatchObject({
+        locked: '1.4.1',
+        purl: 'pkg:hex/jason@1.4.1',
+      });
+      // Unlocked: the manifest's own `hex:` option (atom or string) names it.
+      expect(deps.find((d) => d.name === 'my_decimal')?.purl).toBe('pkg:hex/decimal@2.1.1');
+      // Control: an unaliased dep keeps its own name.
+      expect(deps.find((d) => d.name === 'phoenix')?.purl).toBe('pkg:hex/phoenix@1.7.14');
+    }, locked.dir);
+    const unlocked = mkWorkspace('elixir', { 'mix.exs': aliased });
+    await withCleanup(async () => {
+      const deps = await new ElixirAdapter().inventory(unlocked.ws, {});
+      expect(deps.find((d) => d.name === 'my_json')?.purl).toBe('pkg:hex/jason');
+    }, unlocked.dir);
+  });
+
   it('returns [] when no mix.exs is found', async () => {
     const { dir, ws } = mkWorkspace('elixir', {});
     await withCleanup(async () => {

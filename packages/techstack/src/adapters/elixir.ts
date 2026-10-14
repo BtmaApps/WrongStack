@@ -26,12 +26,14 @@ import { lockfileEvidence, manifestEvidence } from './paths.js';
 function parseMixExsDeps(content: string): Array<{
   name: string;
   version?: string | undefined;
+  hexPackage?: string | undefined;
   sourceType: 'registry' | 'git' | 'path';
   scope: DependencyScope;
 }> {
   const deps: Array<{
     name: string;
     version?: string | undefined;
+    hexPackage?: string | undefined;
     sourceType: 'registry' | 'git' | 'path';
     scope: DependencyScope;
   }> = [];
@@ -61,7 +63,10 @@ function parseMixExsDeps(content: string): Array<{
       envs.length > 0 && envs.every((env) => env === 'dev' || env === 'test')
         ? 'development'
         : 'runtime';
-    deps.push({ name, version, sourceType, scope });
+    // `hex: :package` names the Hex package when it differs from the app name.
+    const hexMatch = /\bhex:\s*(?::(\w+)|["']([^"']+)["'])/.exec(value);
+    const hexPackage = hexMatch?.[1] ?? hexMatch?.[2];
+    deps.push({ name, version, hexPackage, sourceType, scope });
   }
   return deps;
 }
@@ -84,12 +89,15 @@ function parseMixExsDeps(content: string): Array<{
  *
  * Only `:hex` entries carry a registry version; git/path sources in the lock
  * are skipped so they cannot masquerade as a resolved Hex release.
+ *
+ * The map is keyed by APP name; the tuple's second element is the Hex PACKAGE,
+ * which differs for a `hex: :package` alias and is the name the purl needs.
  */
-function parseMixLock(content: string): Map<string, string> {
-  const versions = new Map<string, string>();
-  const lockRegex = /["']([\w-]+)["']\s*(?::|=>)\s*\{:hex,\s*:[\w-]+,\s*["']([^"']+)["']/g;
+function parseMixLock(content: string): Map<string, { version: string; hexPackage: string }> {
+  const versions = new Map<string, { version: string; hexPackage: string }>();
+  const lockRegex = /["']([\w-]+)["']\s*(?::|=>)\s*\{:hex,\s*:([\w-]+),\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(lockRegex)) {
-    versions.set(match[1]!, match[2]!);
+    versions.set(match[1]!, { hexPackage: match[2]!, version: match[3]! });
   }
   return versions;
 }
@@ -118,7 +126,7 @@ export class ElixirAdapter implements EcosystemAdapter {
 
     // Parse lockfile
     const lockfilePath = workspace.lockfiles.find((l) => l.includes('mix.lock'));
-    let lockVersions = new Map<string, string>();
+    let lockVersions = new Map<string, { version: string; hexPackage: string }>();
     let lockEv: Evidence | undefined;
     if (lockfilePath) {
       try {
@@ -134,16 +142,20 @@ export class ElixirAdapter implements EcosystemAdapter {
       if (seen.has(dep.name)) continue;
       seen.add(dep.name);
 
-      const locked = lockVersions.get(dep.name);
+      const lockEntry = lockVersions.get(dep.name);
+      const locked = lockEntry?.version;
       // Without a lock pin only an exact `"1.4.1"` is a version; a requirement
       // (`~> 1.7.0`, `>= 1.14.0 and < 2.0.0`) is not, and leaked into the purl.
       const version =
         locked ?? (dep.version && /^\d[\w.+-]*$/.test(dep.version) ? dep.version : undefined);
+      // The purl names the Hex package, which a `hex:` alias renames; the app
+      // name purl'd an unrelated (or nonexistent) package OSV never matched.
+      const hexName = lockEntry?.hexPackage ?? dep.hexPackage ?? dep.name;
       const purl =
         dep.sourceType === 'registry' && version
-          ? buildPurl({ type: 'hex', name: dep.name, version })
+          ? buildPurl({ type: 'hex', name: hexName, version })
           : dep.sourceType === 'registry'
-            ? buildPurl({ type: 'hex', name: dep.name })
+            ? buildPurl({ type: 'hex', name: hexName })
             : undefined;
 
       const evidence: Evidence[] = [manifestEv];
