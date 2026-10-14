@@ -458,6 +458,7 @@ export class AcpLeaderProvider implements Provider {
       suggestedPattern,
       signal: request.signal,
       permission: host.permission(sessionId),
+      context: host.context(sessionId),
     });
   }
 

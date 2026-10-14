@@ -5,6 +5,7 @@
  * the WebUI pickers and built from the CLI's provider registry.
  */
 import { EventBus } from '@wrongstack/core/kernel';
+import { scopedApprovalPattern } from '@wrongstack/core/security';
 import type { Config, Tool } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -19,9 +20,14 @@ const { acpLeaderPickable, buildAcpLeaderProvider } = await import(
 );
 
 const TOOL = { name: 'edit' } as Tool;
+const CONTEXT = { cwd: '/proj', projectRoot: '/proj' } as never;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function ask(events: EventBus, opts: { signal?: AbortSignal; timeoutMs?: number } = {}) {
-  const permission = { trust: vi.fn(async () => {}), deny: vi.fn(async () => {}) };
+  const permission = {
+    trust: vi.fn(async (_rule: { tool: string; pattern: string; ttlMs?: number }) => {}),
+    deny: vi.fn(async () => {}),
+  };
   const answer = confirmThroughEvents({
     events,
     sessionId: 'tab-2',
@@ -31,6 +37,7 @@ function ask(events: EventBus, opts: { signal?: AbortSignal; timeoutMs?: number 
     suggestedPattern: 'a.ts',
     signal: opts.signal ?? new AbortController().signal,
     permission,
+    context: CONTEXT,
     ...(opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : {}),
   });
   return { answer, permission };
@@ -53,8 +60,24 @@ describe('asking about an ACP leader call on the TUI or WebUI', () => {
     const { answer, permission } = ask(events);
 
     await expect(answer).resolves.toBe(true);
-    expect(permission.trust).toHaveBeenCalledWith({ tool: 'edit', pattern: 'a.ts' });
+    expect(permission.trust).toHaveBeenCalledWith({ tool: 'edit', pattern: 'a.ts', ttlMs: DAY_MS });
     expect(resolved).toEqual(['toolu_1 always']);
+  });
+
+  it('keeps an "always" answer in the scope the user picked, for a day, like the leader prompt', async () => {
+    const events = new EventBus();
+    events.on('tool.confirm_needed', (e) => e.resolve('always-exact'));
+    const { answer, permission } = ask(events);
+    await expect(answer).resolves.toBe(true);
+    const rule = permission.trust.mock.calls[0]?.[0];
+    // Not the broad 'a.ts' path rule, and not a permanent one.
+    expect(rule?.ttlMs).toBe(DAY_MS);
+    expect(rule?.pattern).toBe(
+      scopedApprovalPattern('always-exact', TOOL, { path: 'a.ts' }, CONTEXT, 'a.ts'),
+    );
+    expect(rule?.pattern).not.toBe(
+      scopedApprovalPattern('always-exact', TOOL, { path: 'b.ts' }, CONTEXT, 'b.ts'),
+    );
   });
 
   it('refuses on no, remembers a deny, and refuses when nobody can answer', async () => {

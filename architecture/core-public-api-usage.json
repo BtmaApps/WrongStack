@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 199,
+      "files": 201,
       "typeOnly": 29,
-      "runtimeOrMixed": 172
+      "runtimeOrMixed": 174
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -11229,6 +11229,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/acp-leader/acp-leader-confirm.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/acp-server-agent.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11560,6 +11566,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/wiring/session.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/acp-leader-confirm.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

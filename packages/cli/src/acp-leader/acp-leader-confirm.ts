@@ -8,6 +8,7 @@
  */
 import { confirmObserverCount } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
+import { DEFAULT_ALWAYS_TRUST_TTL_MS, scopedApprovalPattern } from '@wrongstack/core/security';
 import type { PermissionPolicy, Tool } from '@wrongstack/core/types';
 
 export const ACP_CONFIRM_TIMEOUT_MS = 120_000;
@@ -24,6 +25,8 @@ export interface EventConfirmRequest {
   signal: AbortSignal;
   /** Where an "always" or "deny" answer is remembered, as for the leader's own tools. */
   permission?: Pick<PermissionPolicy, 'trust' | 'deny'> | undefined;
+  /** The context the policy evaluates the agent's calls in: an exact-input answer is keyed to it. */
+  context: Parameters<PermissionPolicy['evaluate']>[2];
   timeoutMs?: number | undefined;
 }
 
@@ -70,10 +73,23 @@ export async function confirmThroughEvents(req: EventConfirmRequest): Promise<bo
     });
   });
   if (answer === 'abort' || answer === 'no') return false;
-  const rule = { tool: req.tool.name, pattern: req.suggestedPattern };
   try {
-    if (answer === 'deny') await req.permission?.deny(rule);
-    else if (answer !== 'yes') await req.permission?.trust(rule);
+    if (answer === 'deny') {
+      await req.permission?.deny({ tool: req.tool.name, pattern: req.suggestedPattern });
+    } else if (answer !== 'yes') {
+      // As the leader's own prompt keeps it: the scope the user picked, for a day.
+      await req.permission?.trust({
+        tool: req.tool.name,
+        pattern: scopedApprovalPattern(
+          answer,
+          req.tool,
+          req.input,
+          req.context,
+          req.suggestedPattern,
+        ),
+        ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
+      });
+    }
   } catch {
     // Remembering the answer is best-effort; this call is decided either way.
   }
