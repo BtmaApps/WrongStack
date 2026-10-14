@@ -23,8 +23,7 @@ export function createCustomModelHandlers(ctx: ProviderServiceContext) {
         ctx.sendOperationResult(ws, false, `Unknown provider "${providerId}"`);
         return;
       }
-      if (!cfg.customModels) cfg.customModels = {};
-      cfg.customModels[modelId] = definition;
+      cfg.customModels = { ...cfg.customModels, [modelId]: definition };
       // ME-3 follow-up: keep the models[] allowlist in sync so a newly
       // added custom model is visible in pickers/providers.saved and an
       // existing one stays listed. Add when absent; never remove here

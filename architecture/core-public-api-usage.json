@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1412,
-      "typeOnly": 1245,
+      "files": 1413,
+      "typeOnly": 1246,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -22156,6 +22156,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/provider-custom-models-projection.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/provider-custom-models-reserved-ids.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
