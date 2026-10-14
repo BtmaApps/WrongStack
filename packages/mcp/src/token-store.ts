@@ -424,6 +424,12 @@ function validateEncryptedEntry(value: unknown): EncryptedAuthorizationEntry {
 }
 
 function normalizeStoredAuthorization(value: MCPStoredAuthorization): MCPStoredAuthorization {
+  if (
+    value.tokenSet.expiresAt !== undefined &&
+    (typeof value.tokenSet.expiresAt !== 'number' || !Number.isFinite(value.tokenSet.expiresAt))
+  ) {
+    throw new Error('MCP token store expiresAt must be a finite number');
+  }
   const serverName = boundedString(value.serverName, 'serverName', 256);
   const resource = canonicalMcpResource(value.resource);
   const authorizationServer = validateMcpAuthorizationServerMetadata(value.authorizationServer);

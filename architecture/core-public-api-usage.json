@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 201,
+      "files": 202,
       "typeOnly": 29,
-      "runtimeOrMixed": 174
+      "runtimeOrMixed": 175
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -11830,6 +11830,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/mcp/tests/authorization-manager.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/mcp/tests/token-store-expiry-validation.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

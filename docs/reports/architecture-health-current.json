@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:11:39.929Z",
+  "generatedAt": "2026-10-14T22:12:08.092Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4962,
-    "testFiles": 4364,
-    "sourceLines": 1100458,
+    "testFiles": 4365,
+    "sourceLines": 1100464,
     "workspaceEdges": 137,
     "moduleEdges": 16349,
     "nonCommandSlashImports": 0,
@@ -385,7 +385,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 63,
-      "testFiles": 72,
+      "testFiles": 73,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -398,7 +398,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 72
+          "testFiles": 73
         }
       ]
     },
@@ -12725,6 +12725,12 @@
       },
       {
         "file": "packages/mcp/tests/structured-output.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/token-store-expiry-validation.test.ts",
         "projects": [
           "root-node"
         ]
