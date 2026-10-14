@@ -557,6 +557,37 @@ describe('SelectiveCompactor', () => {
       expect(ctx.messages.some((m) => String(m.content).includes('old summary'))).toBe(true);
     });
 
+    it('merges overlapping collapsed ranges so the preserved tail survives', async () => {
+      const provider = makeFakeProvider([]);
+      const compactor = new SelectiveCompactor({ provider, preserveK: 1 });
+      const messages = [
+        makeMessage('user', 'old-0'),
+        makeMessage('assistant', 'old-1'),
+        makeMessage('user', 'old-2'),
+        makeMessage('assistant', 'old-3'),
+        makeMessage('user', 'old-4'),
+        makeMessage('assistant', 'old-5'),
+        makeMessage('user', 'current question'),
+        makeMessage('assistant', 'current answer'),
+      ];
+      const ctx = fakeContext(messages);
+
+      await (compactor as any).executePlan(ctx, {
+        kept: [],
+        collapsed: [
+          { from: 0, to: 4, summary: 'low' },
+          { from: 2, to: 5, summary: 'high' },
+        ],
+        reasoning: 'overlap',
+      });
+
+      expect(ctx.messages.some((m) => m.content === 'current question')).toBe(true);
+      expect(ctx.messages.some((m) => m.content === 'current answer')).toBe(true);
+      const summary = String(ctx.messages[0]?.content);
+      expect(summary).toContain('low');
+      expect(summary).toContain('high');
+    });
+
     it('carries compact tool evidence into an LLM-provided range summary', async () => {
       const provider = makeFakeProvider([]);
       const compactor = new SelectiveCompactor({ provider, preserveK: 1 });

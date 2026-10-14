@@ -32,6 +32,33 @@ import {
 } from './compaction-summary-cache.js';
 import { widenTailCut } from './compaction-tail.js';
 
+interface CollapsedRange {
+  from: number;
+  to: number;
+  summary?: string | undefined;
+}
+
+/**
+ * Overlapping collapsed ranges share indexes. Applying them with splice in
+ * descending order shifts the preserved tail into a later range. Merge first
+ * so each message is collapsed once and the tail stays outside every range.
+ */
+function mergeOverlappingCollapsed(ranges: readonly CollapsedRange[]): CollapsedRange[] {
+  const ascending = [...ranges].sort((a, b) => a.from - b.from || a.to - b.to);
+  const merged: CollapsedRange[] = [];
+  for (const range of ascending) {
+    const last = merged.at(-1);
+    if (last && range.from <= last.to) {
+      last.to = Math.max(last.to, range.to);
+      if (!last.summary || !range.summary) last.summary = undefined;
+      else if (range.summary !== last.summary) last.summary = `${last.summary}\n${range.summary}`;
+      continue;
+    }
+    merged.push({ ...range });
+  }
+  return merged.sort((a, b) => b.from - a.from);
+}
+
 /**
  * Options for SelectiveCompactor — the most configurable compactor.
  */
@@ -306,10 +333,11 @@ export class SelectiveCompactor implements Compactor {
       messages,
       findPreserveStart(messages, this.preserveK * 2),
     );
-    const sortedCollapsed = plan.collapsed
-      .map((range) => ({ ...range, to: Math.min(range.to, preserveStart - 1) }))
-      .filter((range) => range.from >= 0 && range.from <= range.to)
-      .sort((a, b) => b.from - a.from);
+    const sortedCollapsed = mergeOverlappingCollapsed(
+      plan.collapsed
+        .map((range) => ({ ...range, to: Math.min(range.to, preserveStart - 1) }))
+        .filter((range) => range.from >= 0 && range.from <= range.to),
+    );
 
     if (sortedCollapsed.length === 0) return true;
 
