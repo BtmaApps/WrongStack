@@ -198,16 +198,19 @@ describe('FS-P0.GATE — Compaction', () => {
   }
 
   it('never reaches resolved or ignored rows with the non-terminal cap', async () => {
-    // All three rows are older than the 10-day non-terminal cap, but the two
-    // terminal rows are still INSIDE their own 30d/14d windows. If the new cap
-    // leaked onto terminal statuses, both would be deleted here.
+    // The three non-terminal rows are past the 10-day non-terminal cap, but the
+    // two terminal rows are still INSIDE their own 30d/14d windows. If the new
+    // cap leaked onto terminal statuses, both would be deleted here.
+    // 11 days, not 10: the cap is strict (`age > cap`), and a row aged exactly
+    // 10 days only crosses it if a millisecond passes before `compact()` — a
+    // fast runner compacts in the same millisecond and keeps all three.
     await store.upsert(
       [
         finding('resolved-young', 'resolved', aged(20)),
         finding('ignored-young', 'ignored', aged(8)),
-        finding('active-old', 'active', aged(10)),
-        finding('triaged-old', 'triaged', aged(10)),
-        finding('in_progress-old', 'in_progress', aged(10)),
+        finding('active-old', 'active', aged(11)),
+        finding('triaged-old', 'triaged', aged(11)),
+        finding('in_progress-old', 'in_progress', aged(11)),
       ],
       ctx,
     );
