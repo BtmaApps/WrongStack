@@ -247,7 +247,11 @@ export class LSPServer {
         await this.connection
           .sendRequest('shutdown', null, 3000, ctrl.signal)
           .catch(() => undefined);
-        this.connection.sendNotification('exit', null);
+        try {
+          this.connection?.sendNotification('exit', null);
+        } catch {
+          // The child may have closed its transport while shutdown was pending.
+        }
       }
     } finally {
       this.connection?.close();

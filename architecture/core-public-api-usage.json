@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 371,
+      "files": 372,
       "typeOnly": 162,
-      "runtimeOrMixed": 230
+      "runtimeOrMixed": 231
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -8266,6 +8266,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/plug-lsp/tests/unit/lsp-server-resolved-command.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/plug-lsp/tests/unit/lsp-server-shutdown-exit.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
