@@ -99,6 +99,7 @@ export function createWebuiClientPresence(deps: WebuiClientPresenceDeps): WebuiC
 
   const register = async (): Promise<string | null> => {
     if (!deps.projectRoot) return null;
+    unregister();
     const registrationGeneration = ++generation;
     try {
       const projectRoot = deps.projectRoot;
