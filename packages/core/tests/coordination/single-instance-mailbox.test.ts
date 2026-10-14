@@ -269,6 +269,7 @@ describe('finalize', () => {
       generation: 3,
       spawnedAt: '2026-01-01T00:00:00.000Z',
     };
+    await writeLock(tmp, tentative);
     const finalized = await finalize(tmp, tentative, 9999);
     expect(finalized.port).toBe(9999);
     expect(finalized.url).toBe('http://127.0.0.1:9999');
@@ -278,6 +279,32 @@ describe('finalize', () => {
     expect(onDisk.url).toBe('http://127.0.0.1:9999');
     const token = await fs.readFile(path.join(tmp, MAILBOX_BRIDGE_TOKEN_FILENAME), 'utf-8');
     expect(token).toBe('abc');
+  });
+
+  it('rejects a stale owner without overwriting the current lock', async () => {
+    const stale: MailboxBridgeLock = {
+      pid: process.pid,
+      host: '127.0.0.1',
+      port: 0,
+      url: '',
+      token: 'stale-token',
+      generation: 1,
+      spawnedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const current = await writeLock(tmp, {
+      pid: process.pid,
+      token: ['winner', 'token'].join('-'),
+      generation: 2,
+    });
+
+    await expect(finalize(tmp, stale, 9999)).rejects.toThrow(/superseded/i);
+    const onDisk = JSON.parse(
+      await fs.readFile(path.join(tmp, MAILBOX_BRIDGE_LOCK_FILENAME), 'utf-8'),
+    ) as MailboxBridgeLock;
+    expect(onDisk).toEqual(current);
+    await expect(
+      fs.readFile(path.join(tmp, MAILBOX_BRIDGE_TOKEN_FILENAME), 'utf-8'),
+    ).rejects.toThrow();
   });
 });
 

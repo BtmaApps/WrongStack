@@ -39,9 +39,9 @@
  * `.mailbox.token` after a bridge restart (a stale token returns 401).
  */
 
+import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
-import { execFile } from 'node:child_process';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { isPidAlive } from '../utils/pid.js';
@@ -172,6 +172,19 @@ export async function finalize(
 ): Promise<MailboxBridgeLock> {
   const lockPath = path.join(projectDir, MAILBOX_BRIDGE_LOCK_FILENAME);
   const tokenPath = path.join(projectDir, MAILBOX_BRIDGE_TOKEN_FILENAME);
+  let current: MailboxBridgeLock;
+  try {
+    current = JSON.parse(await readLockRaw(lockPath)) as MailboxBridgeLock;
+  } catch (error) {
+    throw new Error('Mailbox bridge lock was superseded before finalize', { cause: error });
+  }
+  if (
+    current.pid !== tentative.pid ||
+    current.generation !== tentative.generation ||
+    current.token !== tentative.token
+  ) {
+    throw new Error('Mailbox bridge lock was superseded before finalize');
+  }
   const finalized: MailboxBridgeLock = {
     ...tentative,
     port: boundPort,
