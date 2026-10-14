@@ -84,7 +84,11 @@ function cvss31(vector: string): number | undefined {
 }
 
 function cvss20(vector: string): number | undefined {
-  const metrics = parseMetrics(vector, ['CVSS:2.0']);
+  // CVSS v2 defines no version header: OSV CVSS_V2 entries carry the bare
+  // vector (`AV:N/AC:L/Au:N/...`), which scored undefined and left a
+  // v2-only advisory at severity 'info'. Accept both spellings.
+  const headed = /^CVSS:/i.test(vector) ? vector : `CVSS:2.0/${vector}`;
+  const metrics = parseMetrics(headed, ['CVSS:2.0']);
   if (!metrics) return undefined;
   const av = AV2[metrics.get('AV') ?? ''];
   const ac = AC2[metrics.get('AC') ?? ''];

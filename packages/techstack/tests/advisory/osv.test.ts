@@ -133,6 +133,28 @@ describe('queryOsvBatch', () => {
     ]);
   });
 
+  it('bands an advisory scored only by a bare OSV CVSS_V2 vector', async () => {
+    requestWithRetry.mockResolvedValue(
+      ok([
+        {
+          vulns: [
+            { id: 'V2-BARE', severity: [{ type: 'CVSS_V2', score: 'AV:N/AC:L/Au:N/C:P/I:P/A:P' }] },
+            {
+              id: 'V2-HEADED',
+              severity: [{ type: 'CVSS_V2', score: 'CVSS:2.0/AV:L/AC:M/Au:N/C:N/I:P/A:C' }],
+            },
+          ],
+        },
+      ]),
+    );
+
+    const advisories = await queryOsvSingle('pkg:npm/legacy@1.0.0', { maxSeverityLookups: 0 });
+    expect(advisories.map(({ id, severity }) => [id, severity])).toEqual([
+      ['V2-BARE', 'high'],
+      ['V2-HEADED', 'medium'],
+    ]);
+  });
+
   it('throws on a non-200 response', async () => {
     requestWithRetry.mockResolvedValue({ statusCode: 503, headers: {}, body: 'down' });
     await expect(queryOsvSingle('pkg:npm/x@1.0.0')).rejects.toThrow('OSV API returned 503: down');

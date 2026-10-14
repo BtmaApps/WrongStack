@@ -54,6 +54,28 @@ describe('cvssBaseScore', () => {
     expect(cvssBaseScore('CVSS_V2', vector)).toBe(expected);
   });
 
+  /**
+   * CVSS v2 has no version header; OSV CVSS_V2 entries carry the bare vector
+   * (the schema's example is `AV:L/AC:M/Au:N/C:N/I:P/A:C`). Both spellings must
+   * score the same, and a v3 vector filed under CVSS_V2 must not.
+   */
+  it.each([
+    ['AV:N/AC:L/Au:N/C:P/I:P/A:P', 7.5],
+    ['AV:L/AC:M/Au:N/C:N/I:P/A:C', 5.4],
+    ['AV:A/AC:L/Au:S/C:N/I:C/A:C', 7.1],
+    ['AV:N/AC:L/Au:N/C:N/I:N/A:N', 0],
+  ])('scores the bare OSV CVSS_V2 vector %s like its CVSS:2.0 form', (vector, expected) => {
+    expect(cvssBaseScore('CVSS_V2', vector)).toBe(expected);
+    expect(cvssBaseScore('CVSS_V2', `CVSS:2.0/${vector}`)).toBe(expected);
+  });
+
+  it('rejects a v3 vector or an incomplete bare vector filed under CVSS_V2', () => {
+    expect(
+      cvssBaseScore('CVSS_V2', 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H'),
+    ).toBeUndefined();
+    expect(cvssBaseScore('CVSS_V2', 'AV:N/AC:L/Au:N')).toBeUndefined();
+  });
+
   it('returns undefined for malformed vectors, duplicate metric keys, and unknown types, while supporting CVSS:3.0', () => {
     expect(cvssBaseScore('CVSS_V3', 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H')).toBe(9.8);
     expect(
