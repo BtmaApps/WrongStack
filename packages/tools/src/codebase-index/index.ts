@@ -137,6 +137,7 @@ export {
   type TargetedTestInput,
   type TargetedTestOutput,
 } from './codebase-targeted-test-tool.js';
+export { extractDirectorySkeleton } from './directory-skeleton.js';
 // Project-root .gitignore matcher. Re-exported here so non-indexer
 // consumers (e.g. `@wrongstack/webui-server`'s file tree builder) can
 // import it from the submodule barrel without reaching into the deep
@@ -202,7 +203,6 @@ export type {
 } from './schema.js';
 export { SCHEMA_VERSION } from './schema.js';
 export {
-  extractDirectorySkeleton,
   extractFileSkeleton,
   type FileSkeletonResult,
   type SkeletonOptions,

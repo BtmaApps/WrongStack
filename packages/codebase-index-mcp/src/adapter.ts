@@ -293,7 +293,15 @@ export function createCodebaseIndexMcpToolHost(
           // The built-in tools THROW on failure (caught below). This guards a
           // payload from an older tool build that still degraded a failed
           // query to `indexStatus: 'error'` — an MCP client must see a failure.
-          return { content, isError: isDegradedFailure(content) };
+          if (isDegradedFailure(content)) return { content, isError: true };
+          // A tool's own model-facing text, as the in-process agent gets it.
+          // Without it codebase_skeleton went out as one-line JSON carrying
+          // every file's skeleton twice.
+          const serialize = builtin.serialize;
+          return {
+            content: typeof serialize === 'function' ? serialize(content, args) : content,
+            isError: false,
+          };
         }
 
         const base = {

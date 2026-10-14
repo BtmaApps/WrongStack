@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-14T15:48:52.010Z
+**Generated:** 2026-10-14T15:49:21.691Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4959 |
-| Production source lines | 1099739 |
+| Production source files | 4960 |
+| Production source lines | 1099851 |
 | Test files | 4348 |
 | Workspace dependency edges | 137 |
-| Relative module edges | 16339 |
+| Relative module edges | 16343 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 127 | 93 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 53 | 61 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 42 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 322 | 326 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 323 | 326 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 481 | 424 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 721 | 484 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -110,7 +110,6 @@ None.
 | 757 | `packages/tui/src/components/sidebar-panels-task.tsx` |
 | 757 | `packages/webui/src/components/ChimeraReviewsView.tsx` |
 | 756 | `packages/cli/src/execution.ts` |
-| 756 | `packages/tools/src/codebase-index/skeleton-extractor.ts` |
 | 756 | `packages/tools/src/process-registry-persistent.ts` |
 | 755 | `packages/kanban/src/verification/verification-context.ts` |
 | 755 | `packages/webui-hq/src/domain/fleet-topology.ts` |
@@ -133,6 +132,7 @@ None.
 | 740 | `packages/client/src/client.ts` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
 | 740 | `packages/webui/src/hooks/ws-handlers.ts` |
+| 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 
 ## Exports only tests reference
 

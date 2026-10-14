@@ -286,49 +286,122 @@ private:
     }
   });
 
-  it('serializes complete skeletons once while retaining every file metadata field', () => {
+  it('serializes as a summary line and the skeleton once, with its own line breaks', () => {
     const nestedSkeleton = `${'export interface Complete {}\n'.repeat(100)}tail-marker`;
     const output = {
       path: 'src',
       isDir: true,
       skeleton: nestedSkeleton,
       stats: {
-        originalLines: 100,
+        originalLines: 400,
         skeletonLines: 100,
-        tokenSavingsPercent: 0,
+        tokenSavingsPercent: 75,
         symbolCount: 100,
         fileCount: 1,
       },
       files: [
         {
-          file: 'src/complete.ts',
+          file: 'complete.ts',
           lang: 'ts' as const,
-          skeleton: nestedSkeleton,
           stats: {
-            originalLines: 100,
+            originalLines: 400,
             skeletonLines: 100,
-            tokenSavingsPercent: 0,
+            tokenSavingsPercent: 75,
             symbolCount: 100,
           },
         },
       ],
+      maxFiles: 20,
+      maxChars: 60_000,
     };
 
     expect(codebaseSkeletonTool.description).toMatch(/^Extract an AST-based skeleton/);
     expect(codebaseSkeletonTool.preserveFullOutput).toBe(true);
     const text = codebaseSkeletonTool.serialize?.(output, { path: 'src' }) ?? '';
     expect(text.match(/tail-marker/g)).toHaveLength(1);
-    const serialized = JSON.parse(text);
-    expect(serialized.skeleton).toBe(nestedSkeleton);
-    expect(serialized.stats).toEqual(output.stats);
-    expect(serialized.files).toEqual(
-      output.files.map(({ skeleton: _skeleton, ...metadata }) => metadata),
-    );
-    const withUnmergedSource = { ...output, skeleton: 'Different combined source' };
-    const preserved = JSON.parse(
-      codebaseSkeletonTool.serialize?.(withUnmergedSource, { path: 'src' }) ?? '',
-    );
-    expect(preserved.files[0].skeleton).toBe(nestedSkeleton);
+    const [summary, blank, ...body] = text.split('\n');
+    expect(summary).toBe('src · 1 files · 400 → 100 lines (75% saved) · 100 symbols');
+    expect(blank).toBe('');
+    expect(body.join('\n')).toBe(nestedSkeleton);
+  });
+
+  it('bounds a directory skeleton at a file boundary and names what it left out', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skel-budget-test-'));
+    // Each file's skeleton is well over a third of the budget: two fit, not three.
+    const decls = (tag: string) =>
+      Array.from(
+        { length: 60 },
+        (_, i) => `export interface ${tag}${i} { field${i}: string }`,
+      ).join('\n');
+    for (const tag of ['A', 'B', 'C', 'D']) {
+      await fs.writeFile(path.join(tempDir, `${tag.toLowerCase()}.ts`), decls(tag), 'utf8');
+    }
+
+    try {
+      const output = await codebaseSkeletonTool.execute(
+        { path: tempDir, maxChars: 5_000 },
+        { projectRoot: tempDir } as never,
+        dummyOpts,
+      );
+      const included = output.files?.map((f) => f.file) ?? [];
+      expect(included.length).toBeGreaterThan(0);
+      expect(included.length + (output.omittedFiles?.length ?? 0)).toBe(4);
+      expect(output.omittedFiles?.length).toBeGreaterThan(0);
+      expect(output.skeleton.length).toBeLessThanOrEqual(5_000);
+      // Whole files only: every included file's last declaration is present.
+      for (const file of included) {
+        const tag = file.replace('.ts', '').toUpperCase();
+        expect(output.skeleton).toContain(`${tag}59`);
+      }
+      for (const file of output.omittedFiles ?? []) {
+        expect(output.skeleton).not.toContain(`${file} (ts)`);
+      }
+      // The per-file entries no longer carry the skeleton a second time.
+      expect(output.files?.[0]).not.toHaveProperty('skeleton');
+      expect(output.files?.[0]).not.toHaveProperty('symbols');
+      const text = codebaseSkeletonTool.serialize?.(output, { path: tempDir }) ?? '';
+      expect(text).toContain(
+        `Left out ${output.omittedFiles?.length} file(s) to stay within 5000 chars`,
+      );
+      // Named as paths the tool accepts back, not relative to the directory.
+      const dir = tempDir.replace(/\\/g, '/');
+      expect(text).toContain(
+        (output.omittedFiles ?? []).map((file) => `${dir}/${file}`).join(', '),
+      );
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('says when the file limit hid more files, and not when it was exact', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skel-limit-test-'));
+    for (const name of ['a', 'b', 'c']) {
+      await fs.writeFile(path.join(tempDir, `${name}.ts`), `export const ${name} = 1;`, 'utf8');
+    }
+
+    try {
+      const capped = await codebaseSkeletonTool.execute(
+        { path: tempDir, maxFiles: 2 },
+        { projectRoot: tempDir } as never,
+        dummyOpts,
+      );
+      expect(capped.stats.fileCount).toBe(2);
+      expect(capped.moreFiles).toBe(true);
+      expect(codebaseSkeletonTool.serialize?.(capped, { path: tempDir })).toContain(
+        'Stopped at maxFiles=2',
+      );
+
+      const exact = await codebaseSkeletonTool.execute(
+        { path: tempDir, maxFiles: 3 },
+        { projectRoot: tempDir } as never,
+        dummyOpts,
+      );
+      expect(exact.stats.fileCount).toBe(3);
+      expect(exact.moreFiles).toBeUndefined();
+      expect(exact.omittedFiles).toBeUndefined();
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it('throws error for non-existent file or directory', async () => {

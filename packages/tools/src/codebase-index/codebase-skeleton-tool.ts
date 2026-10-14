@@ -7,17 +7,20 @@
  *   collapseImports?: boolean,// collapse import headers (default: false)
  *   exportsOnly?: boolean,    // filter to exported declarations (default: false)
  *   maxFiles?: number,        // max files to scan when path is a directory (default: 20)
+ *   maxChars?: number,        // directory skeleton budget, cut at a file boundary (default: 60k)
  * })
  *
  * Returns: { path, isDir, skeleton, stats: { originalLines, skeletonLines, tokenSavingsPercent, symbolCount } }
+ * Serialized for the model as a one-line summary followed by the skeleton text.
  */
 
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { safeResolveProjectPath } from '../_util.js';
+import { extractDirectorySkeleton } from './directory-skeleton.js';
 import {
-  extractDirectorySkeleton,
   extractFileSkeleton,
   type FileSkeletonResult,
   type SkeletonOptions,
@@ -28,7 +31,12 @@ export interface CodebaseSkeletonInput extends SkeletonOptions {
   path: string;
   /** Maximum number of files to process if `path` is a directory. Defaults to 20. */
   maxFiles?: number;
+  /** Character budget for a directory skeleton. Defaults to 60,000. */
+  maxChars?: number;
 }
+
+/** One directory file's place in the result; its skeleton is in `skeleton`. */
+export type CodebaseSkeletonFile = Pick<FileSkeletonResult, 'file' | 'lang' | 'stats'>;
 
 export interface CodebaseSkeletonOutput {
   path: string;
@@ -41,7 +49,56 @@ export interface CodebaseSkeletonOutput {
     symbolCount: number;
     fileCount?: number;
   };
-  files?: FileSkeletonResult[];
+  files?: CodebaseSkeletonFile[];
+  /** Directory files left out to stay within `maxChars`, directory-relative. */
+  omittedFiles?: string[];
+  /** The directory walk stopped at `maxFiles` with more files left. */
+  moreFiles?: boolean;
+  maxFiles?: number;
+  maxChars?: number;
+}
+
+const DEFAULT_MAX_CHARS = 60_000;
+const MAX_MAX_CHARS = 200_000;
+
+function boundedInt(value: unknown, fallback: number, min: number, max: number): number {
+  // Math.max/min propagate NaN, which made the directory walk stop at 0 files.
+  const requested = Number.isFinite(value) ? Math.trunc(value as number) : fallback;
+  return Math.min(Math.max(min, requested), max);
+}
+
+/**
+ * The model-facing text: a summary line, what a directory result left out,
+ * then the skeleton itself. Plain text keeps the skeleton's own line breaks,
+ * so a client that spills a large result to a file can still page through it.
+ */
+function renderSkeleton(output: CodebaseSkeletonOutput): string {
+  const { stats } = output;
+  const summary = [
+    output.path,
+    output.isDir ? `${stats.fileCount ?? 0} files` : undefined,
+    `${stats.originalLines} → ${stats.skeletonLines} lines (${stats.tokenSavingsPercent}% saved)`,
+    `${stats.symbolCount} symbols`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const notes: string[] = [];
+  if (output.omittedFiles && output.omittedFiles.length > 0) {
+    // As paths this tool accepts: the omitted list is directory-relative, and
+    // a bare `agent/x.ts` would resolve against the project root.
+    const dir = output.path.replace(/\\/g, '/').replace(/\/+$/, '');
+    const paths = output.omittedFiles.map((file) => `${dir}/${file}`);
+    notes.push(
+      `Left out ${paths.length} file(s) to stay within ${output.maxChars ?? DEFAULT_MAX_CHARS} chars; ` +
+        `call again on one of them or a narrower path: ${paths.join(', ')}`,
+    );
+  }
+  if (output.moreFiles) {
+    notes.push(
+      `Stopped at maxFiles=${output.maxFiles ?? ''}: the directory has more files. Narrow the path or raise maxFiles.`,
+    );
+  }
+  return [summary, ...notes, '', output.skeleton].join('\n');
 }
 
 export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonOutput> = {
@@ -62,8 +119,8 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
   mutating: false,
   capabilities: ['fs.read'],
   // A skeleton is structural source data: dropping its middle can hide declarations
-  // and make downstream analysis incorrect. The directory input is already bounded
-  // by maxFiles, so preserve the complete serialized result for the model.
+  // and make downstream analysis incorrect. A directory result is bounded at a file
+  // boundary by maxFiles and maxChars, so preserve it whole for the model.
   preserveFullOutput: true,
   timeoutMs: 30_000,
   inputSchema: {
@@ -91,20 +148,19 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
         minimum: 1,
         maximum: 50,
       },
+      maxChars: {
+        type: 'integer',
+        description:
+          'Character budget for a directory skeleton (defaults to 60000, max 200000). Files past it are listed, not cut.',
+        minimum: 2_000,
+        maximum: MAX_MAX_CHARS,
+      },
     },
     required: ['path'],
     additionalProperties: false,
   },
   serialize(output) {
-    // The combined skeleton already includes each file's complete source.
-    // Keep all file metadata, and retain any source not present in that block.
-    return JSON.stringify({
-      ...output,
-      files: output.files?.map(({ skeleton, ...metadata }) => ({
-        ...metadata,
-        ...(output.skeleton.includes(skeleton) ? {} : { skeleton }),
-      })),
-    });
+    return renderSkeleton(output);
   },
   async execute(input, ctx, execOpts) {
     const signal = execOpts?.signal ?? ctx?.signal;
@@ -135,12 +191,12 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
     };
 
     if (stat.isDirectory()) {
-      // Math.max/min propagate NaN, which made the directory walk stop at 0 files.
-      const requested = Number.isFinite(input.maxFiles) ? Math.trunc(input.maxFiles as number) : 20;
-      const maxFiles = Math.min(Math.max(1, requested), 50);
+      const maxFiles = boundedInt(input.maxFiles, 20, 1, 50);
+      const maxChars = boundedInt(input.maxChars, DEFAULT_MAX_CHARS, 2_000, MAX_MAX_CHARS);
       const dirResult = await extractDirectorySkeleton({
         dirPath: targetPath,
         maxFiles,
+        maxChars,
         options,
       });
 
@@ -160,7 +216,17 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
           symbolCount: totalSymbols,
           fileCount: dirResult.files.length,
         },
-        files: dirResult.files,
+        // Each file's skeleton and symbol ranges are already in `skeleton`
+        // (with inline line ranges): carrying them twice doubled the result.
+        files: dirResult.files.map(({ file, lang, stats }) => ({
+          file: path.relative(targetPath, file).replace(/\\/g, '/'),
+          lang,
+          stats,
+        })),
+        ...(dirResult.omittedFiles.length > 0 ? { omittedFiles: dirResult.omittedFiles } : {}),
+        ...(dirResult.moreFiles ? { moreFiles: true } : {}),
+        maxFiles,
+        maxChars,
       };
     }
 

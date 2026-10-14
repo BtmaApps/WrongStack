@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T15:48:52.010Z",
+  "generatedAt": "2026-10-14T15:49:21.691Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4959,
+    "sourceFiles": 4960,
     "testFiles": 4348,
-    "sourceLines": 1099739,
+    "sourceLines": 1099851,
     "workspaceEdges": 137,
-    "moduleEdges": 16339,
+    "moduleEdges": 16343,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -769,7 +769,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 322,
+      "sourceFiles": 323,
       "testFiles": 326,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -27521,11 +27521,6 @@
       "relativeImports": 43
     },
     {
-      "file": "packages/tools/src/codebase-index/skeleton-extractor.ts",
-      "lines": 756,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/tools/src/process-registry-persistent.ts",
       "lines": 756,
       "relativeImports": 1
@@ -27634,6 +27629,11 @@
       "file": "packages/webui/src/hooks/ws-handlers.ts",
       "lines": 740,
       "relativeImports": 12
+    },
+    {
+      "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
+      "lines": 740,
+      "relativeImports": 0
     }
   ],
   "testOnlyExports": [

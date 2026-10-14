@@ -27,7 +27,7 @@ describe('createCodebaseIndexMcpToolHost', () => {
   });
 
   it('answers who-calls and what-calls through the compact call-graph tools', async () => {
-    const executeTool = vi.fn().mockResolvedValue({ symbol: 'start', callSites: [] });
+    const executeTool = vi.fn().mockResolvedValue({ symbol: 'start', calls: [], total: 0 });
     const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
 
     for (const name of ['codebase_incoming_calls', 'codebase_outgoing_calls']) {
@@ -45,7 +45,11 @@ describe('createCodebaseIndexMcpToolHost', () => {
   });
 
   it('serves symbol source, outlines, impact and the repo map from the index tools', async () => {
-    const executeTool = vi.fn().mockResolvedValue({ ok: true });
+    const executeTool = vi.fn(async (tool: { name: string }) =>
+      tool.name === 'codebase-skeleton'
+        ? skeletonOutput('src', 'export function run(): void;')
+        : { ok: true },
+    );
     const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
 
     const calls: Array<[string, Record<string, unknown>]> = [
@@ -71,6 +75,28 @@ describe('createCodebaseIndexMcpToolHost', () => {
     await expect(host.callTool('codebase_skeleton', { path: ' ' })).resolves.toMatchObject({
       isError: true,
     });
+  });
+
+  it('sends a skeleton as its own text: line breaks kept, each file once', async () => {
+    const skeleton = [
+      '// ══ a.ts (ts) ══',
+      'export function run(): void;',
+      '',
+      '// ══ b.ts (ts) ══',
+      'export type B = 1;',
+    ].join('\n');
+    const executeTool = vi.fn().mockResolvedValue(skeletonOutput('src', skeleton));
+    const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
+
+    const result = await host.callTool('codebase_skeleton', { path: 'src' });
+
+    // It went out as one-line JSON with every file's skeleton repeated in `files`.
+    expect(result.isError).toBe(false);
+    expect(typeof result.content).toBe('string');
+    const text = result.content as string;
+    expect(text.split('\n')[0]).toBe('src · 2 files · 10 → 5 lines (50% saved) · 2 symbols');
+    expect(text.endsWith(`\n\n${skeleton}`)).toBe(true);
+    expect(text.match(/export function run/g)).toHaveLength(1);
   });
 
   it('executes canonical index tools with project and index directory context', async () => {
@@ -369,3 +395,32 @@ describe('createCodebaseIndexMcpServer', () => {
     await expect(pending).resolves.toContain('client stopped');
   });
 });
+
+function skeletonOutput(dir: string, skeleton: string) {
+  return {
+    path: dir,
+    isDir: true,
+    skeleton,
+    stats: {
+      originalLines: 10,
+      skeletonLines: 5,
+      tokenSavingsPercent: 50,
+      symbolCount: 2,
+      fileCount: 2,
+    },
+    files: [
+      {
+        file: 'a.ts',
+        lang: 'ts',
+        stats: { originalLines: 5, skeletonLines: 3, tokenSavingsPercent: 40, symbolCount: 1 },
+      },
+      {
+        file: 'b.ts',
+        lang: 'ts',
+        stats: { originalLines: 5, skeletonLines: 2, tokenSavingsPercent: 60, symbolCount: 1 },
+      },
+    ],
+    maxFiles: 20,
+    maxChars: 60_000,
+  };
+}

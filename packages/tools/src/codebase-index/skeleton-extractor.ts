@@ -6,10 +6,8 @@
  * token reduction for LLM context injection and repository understanding.
  */
 
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import type * as TS from '@typescript/typescript6';
-import { detectLang, isIndexablePath } from './languages.js';
+import { detectLang } from './languages.js';
 import type { SymbolLang } from './schema.js';
 import { parseTreeSitterAst, treeSitterDeclarationName } from './tree-sitter-parser.js';
 
@@ -661,95 +659,5 @@ export async function extractFileSkeleton(opts: {
       tokenSavingsPercent: Math.max(0, Math.round(savings * 10) / 10),
       symbolCount: extraction.symbolCount,
     },
-  };
-}
-
-/**
- * Extract skeletons for all indexable files under a directory.
- */
-export async function extractDirectorySkeleton(opts: {
-  dirPath: string;
-  maxFiles?: number;
-  options?: SkeletonOptions;
-}): Promise<{
-  files: FileSkeletonResult[];
-  combinedSkeleton: string;
-  totalOriginalLines: number;
-  totalSkeletonLines: number;
-  overallSavingsPercent: number;
-}> {
-  const maxFiles = opts.maxFiles ?? 30;
-  const filePaths: string[] = [];
-
-  async function scan(dir: string) {
-    if (filePaths.length >= maxFiles) return;
-    let entries: import('node:fs').Dirent[];
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    for (const entry of entries) {
-      if (filePaths.length >= maxFiles) break;
-      if (
-        entry.name.startsWith('.') ||
-        entry.name === 'node_modules' ||
-        entry.name === 'dist' ||
-        entry.name === 'build'
-      ) {
-        continue;
-      }
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await scan(fullPath);
-      } else if (entry.isFile() && isIndexablePath(fullPath)) {
-        filePaths.push(fullPath);
-      }
-    }
-  }
-
-  await scan(opts.dirPath);
-
-  const results: FileSkeletonResult[] = [];
-  let totalOrigChars = 0;
-  let totalSkelChars = 0;
-  let totalOrigLines = 0;
-  let totalSkelLines = 0;
-
-  const combinedParts: string[] = [];
-
-  for (const fp of filePaths) {
-    try {
-      const content = await fs.readFile(fp, 'utf8');
-      const res = await extractFileSkeleton({
-        file: fp,
-        content,
-        options: opts.options ?? {},
-      });
-      results.push(res);
-      totalOrigChars += content.length;
-      totalSkelChars += res.skeleton.length;
-      totalOrigLines += res.stats.originalLines;
-      totalSkelLines += res.stats.skeletonLines;
-
-      const rel = path.relative(opts.dirPath, fp).replace(/\\/g, '/');
-      combinedParts.push(
-        `// ═══════════════════ ${rel} (${res.lang}) ═══════════════════\n${res.skeleton}`,
-      );
-    } catch {
-      // Ignore unreadable files
-    }
-  }
-
-  const overallSavings =
-    totalOrigChars > 0 ? ((totalOrigChars - totalSkelChars) / totalOrigChars) * 100 : 0;
-
-  return {
-    files: results,
-    combinedSkeleton: combinedParts.join('\n\n'),
-    totalOriginalLines: totalOrigLines,
-    totalSkeletonLines: totalSkelLines,
-    overallSavingsPercent: Math.max(0, Math.round(overallSavings * 10) / 10),
   };
 }
