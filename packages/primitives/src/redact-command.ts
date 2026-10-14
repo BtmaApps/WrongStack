@@ -317,6 +317,12 @@ export function redactCommandArgs(
     // Preserve bare flags for the pair scan: text redaction can mistake
     // -password for a glued -p value and erase the flag's identity.
     if (typeof a === 'string' && BARE_SENSITIVE_SHORT_FLAG.test(a)) return a;
+    // argv already bounds the value, including any unquoted whitespace.
+    const attachedPassword =
+      typeof a === 'string' ? /^(-(?:password|p|a))(=)?(.+)$/is.exec(a) : null;
+    if (attachedPassword) {
+      return `${attachedPassword[1]}${attachedPassword[2] ?? ''}[REDACTED]`;
+    }
     const equals = typeof a === 'string' ? a.indexOf('=') : -1;
     // An argv value can contain unquoted whitespace; it is already one token.
     if (equals > 0 && BARE_SENSITIVE_LONG_FLAG.test(a.slice(0, equals))) {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:13:02.436Z",
+  "generatedAt": "2026-10-14T22:13:28.479Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4962,
-    "testFiles": 4367,
-    "sourceLines": 1100469,
+    "testFiles": 4368,
+    "sourceLines": 1100475,
     "workspaceEdges": 137,
     "moduleEdges": 16349,
     "nonCommandSlashImports": 0,
@@ -493,7 +493,7 @@
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
       "sourceFiles": 11,
-      "testFiles": 13,
+      "testFiles": 14,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -504,7 +504,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 13
+          "testFiles": 14
         }
       ]
     },
@@ -14117,6 +14117,12 @@
       },
       {
         "file": "packages/plugins/tests/workflow-read-stability.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/primitives/tests/redaction-attached-password-argv.test.ts",
         "projects": [
           "root-node"
         ]
