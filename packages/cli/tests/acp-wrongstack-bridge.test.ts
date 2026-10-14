@@ -54,6 +54,20 @@ describe('wrongstackBridgeSetup', () => {
     );
   });
 
+  it('applies to an agent listed by its registry id, as installedBridgeAgents offers it', () => {
+    const bridge = { agents: ['claude-acp'] };
+    const offered = installedBridgeAgents({ bridge }, (c) => c === 'claude');
+    expect(offered).toEqual(['claude-code']);
+    for (const agentId of offered) {
+      const setup = wrongstackBridgeSetup(agentId, ROOT, bridge);
+      expect(setup, agentId).toBeTypeOf('function');
+      expect(setup!(task, ctx).mcpServers).not.toHaveLength(0);
+    }
+    expect(wrongstackBridgeSetup('claude-acp', ROOT, bridge)).toBeTypeOf('function');
+    // A registry-id listing names that one agent, not every agent.
+    expect(wrongstackBridgeSetup('codex-cli', ROOT, bridge)).toBeUndefined();
+  });
+
   it('launches each default server through `wstack mcp serve` bound to the project', () => {
     const setup = wrongstackBridgeSetup('claude-code', ROOT, undefined)!(task, ctx);
     const servers = setup.mcpServers as { name: string; args: string[]; env: unknown[] }[];

@@ -287,8 +287,12 @@ export function wrongstackBridgeSetup(
   role: 'worker' | 'leader' = 'worker',
 ): ((task: TaskSpec, ctx: SubagentRunContext) => AcpSessionSetup) | undefined {
   const agents = config?.agents ?? DEFAULT_BRIDGE_AGENTS;
-  // `claude-code` is also reachable by its registry id, `claude-acp`.
-  if (!agents.some((a) => a === agentId || REGISTRY_ID_ALIASES[a] === agentId)) return undefined;
+  // `claude-code` is also reachable by its registry id, `claude-acp`, either
+  // way round: `installedBridgeAgents` offers a registry-id listing by its
+  // catalog id, and that is the id this is then asked about.
+  const listed = (a: string) =>
+    a === agentId || REGISTRY_ID_ALIASES[a] === agentId || REGISTRY_ID_ALIASES[agentId] === a;
+  if (!agents.some(listed)) return undefined;
   const servers = [...new Set(config?.servers ?? DEFAULT_BRIDGE_SERVERS)].filter(
     (s): s is BridgeServer => Object.hasOwn(SERVER_NAMES, s),
   );
