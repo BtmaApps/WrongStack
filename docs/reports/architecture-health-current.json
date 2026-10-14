@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:16:19.242Z",
+  "generatedAt": "2026-10-14T22:16:45.022Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4962,
-    "testFiles": 4372,
-    "sourceLines": 1100511,
+    "testFiles": 4373,
+    "sourceLines": 1100513,
     "workspaceEdges": 137,
     "moduleEdges": 16349,
     "nonCommandSlashImports": 0,
@@ -924,7 +924,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 297,
-      "testFiles": 291,
+      "testFiles": 292,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 291
+          "testFiles": 292
         }
       ]
     },
@@ -24359,6 +24359,12 @@
       },
       {
         "file": "packages/webui-server/tests/zero-coverage-contracts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/zip-entry-limit.test.ts",
         "projects": [
           "root-node"
         ]

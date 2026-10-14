@@ -66,6 +66,7 @@ export function readZipEntries(archive: Uint8Array): Map<string, Buffer> {
   const buffer = Buffer.from(archive);
   const result = new Map<string, Buffer>();
   let totalBytes = 0;
+  let entryCount = 0;
   let offset = 0;
   while (offset + 4 <= buffer.length && buffer.readUInt32LE(offset) === 0x04034b50) {
     if (offset + 30 > buffer.length) throw new Error('Truncated ZIP local header.');
@@ -75,7 +76,8 @@ export function readZipEntries(archive: Uint8Array): Map<string, Buffer> {
     if ((flags & 8) !== 0) throw new Error('ZIP data descriptors are not supported.');
     const compressedSize = buffer.readUInt32LE(offset + 18);
     const expectedSize = buffer.readUInt32LE(offset + 22);
-    if (result.size >= maxEntries) throw new Error('ZIP contains too many entries.');
+    if (entryCount >= maxEntries) throw new Error('ZIP contains too many entries.');
+    entryCount++;
     if (expectedSize > maxEntryBytes || totalBytes + expectedSize > maxTotalBytes) {
       throw new Error('ZIP expands beyond the configured size limit.');
     }
