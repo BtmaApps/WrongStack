@@ -162,7 +162,7 @@ const WATCH_SCHEMA: Record<string, unknown> = {
 
 const TOOL_DESCRIPTIONS: Record<MailboxMcpToolName, string> = {
   mailbox_read:
-    'Read the authoritative project Mailbox over IPC: query messages, count unread mail, inspect agents, clients, and daemon status.',
+    "Read the authoritative project Mailbox over IPC: inbox reads this MCP actor's unread messages, query filters messages, unread counts mail, and other actions inspect agents, clients, and daemon status.",
   mailbox_manage:
     'Send, acknowledge, soft-delete, restore, register, heartbeat, and deregister the configured external MCP actor. Requires --writable or --admin.',
   mailbox_admin:
@@ -251,6 +251,31 @@ async function executeRead(
       return { messages: await mailbox.query(queryFromArgs(args)) };
     case 'unread':
       return { unread: await mailbox.unreadCount(actor, sessionId) };
+    case 'inbox': {
+      const limit = queryFromArgs(args).limit ?? 20;
+      const targets = [actor, `@session:${sessionId}`];
+      const batches = await Promise.all(
+        targets.map((to) =>
+          mailbox.query({
+            to,
+            unreadBy: actor,
+            currentSessionId: sessionId,
+            limit,
+          }),
+        ),
+      );
+      const seen = new Set<string>();
+      const messages = batches
+        .flat()
+        .filter((message) => {
+          if (seen.has(message.id)) return false;
+          seen.add(message.id);
+          return true;
+        })
+        .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+        .slice(0, limit);
+      return { messages };
+    }
     case 'agents':
       return { agents: await mailbox.getAgentStatuses() };
     case 'online_agents':

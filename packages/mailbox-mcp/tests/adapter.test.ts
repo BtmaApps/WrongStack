@@ -35,6 +35,44 @@ function backend(overrides: Record<string, unknown> = {}): RemoteMailbox {
 }
 
 describe('request bounds', () => {
+  it('reads the configured actor inbox without requiring the agent to supply its identity', async () => {
+    const direct = { id: 'direct', timestamp: '2026-10-14T10:00:00Z' };
+    const broadcast = { id: 'broadcast', timestamp: '2026-10-14T11:00:00Z' };
+    const session = { id: 'session', type: 'btw', timestamp: '2026-10-14T12:00:00Z' };
+    const query = vi
+      .fn()
+      .mockImplementation(async ({ to }: { to: string }) =>
+        to === 'worker-1' ? [direct, broadcast] : [session, broadcast],
+      );
+    const host = createMailboxMcpToolHost(backend({ query }), new MailboxEventEmitter(), {
+      actor: 'worker-1',
+      sessionId: 'session-1',
+    });
+
+    const result = await host.callTool('mailbox_read', {
+      action: 'inbox',
+      to: 'another-agent',
+      limit: 2,
+    });
+    expect(result).toMatchObject({
+      isError: false,
+      content: { messages: [session, broadcast] },
+    });
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'worker-1',
+        unreadBy: 'worker-1',
+        currentSessionId: 'session-1',
+        limit: 2,
+      }),
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '@session:session-1', unreadBy: 'worker-1' }),
+    );
+    expect(query).not.toHaveBeenCalledWith(expect.objectContaining({ to: 'another-agent' }));
+  });
+
   // `inputSchema` is a description handed to the model, not a gate —
   // MCPServer does not validate it. Both bounds below therefore have to be
   // enforced in adapter code, and both were not.

@@ -1,6 +1,7 @@
 export const MAILBOX_READ_ACTIONS = [
   'query',
   'unread',
+  'inbox',
   'agents',
   'online_agents',
   'clients',
