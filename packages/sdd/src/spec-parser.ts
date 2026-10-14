@@ -8,7 +8,10 @@ import type {
 
 export class SpecParser {
   parse(content: string): Specification {
-    const lines = content.split('\n');
+    // Split on every line ending: a CRLF spec left `\r` on each line, and the
+    // fence matcher's `(.*)$` cannot cross it — fenced code then parsed as
+    // requirements and a `##` inside the fence ended the section early.
+    const lines = content.split(/\r\n?|\n/);
     const sections = this.extractSections(lines);
     const requirements = this.extractRequirements(lines);
     const now = Date.now();

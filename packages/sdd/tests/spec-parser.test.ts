@@ -384,4 +384,48 @@ Req 3`);
       expect(parser).toBeDefined();
     });
   });
+
+  describe('fenced code and line endings', () => {
+    const spec = [
+      '# Payments',
+      '',
+      '## Overview',
+      'Card payments.',
+      '',
+      '## Requirements',
+      '- [functional] [high] Charge a saved card',
+      '```ts',
+      'const charge = await stripe.charges.create({ amount });',
+      '## not a heading',
+      '```',
+      '- [security] Never log the card number',
+      '',
+      '## Acceptance Criteria',
+      'Charges succeed.',
+      '',
+    ].join('\n');
+    const requirements = (text: string) =>
+      new SpecParser()
+        .parse(text)
+        .requirements.map((r) => ({ type: r.type, priority: r.priority, text: r.description }));
+
+    it('does not parse fenced code inside Requirements as requirements', () => {
+      expect(requirements(spec)).toEqual([
+        { type: 'functional', priority: 'high', text: '-   Charge a saved card' },
+        { type: 'security', priority: 'medium', text: '-  Never log the card number' },
+      ]);
+    });
+
+    it.each([
+      ['CRLF', '\r\n'],
+      ['bare CR', '\r'],
+    ])('reads a %s spec exactly like the LF one', (_label, eol) => {
+      const converted = spec.replaceAll('\n', eol);
+      expect(requirements(converted)).toEqual(requirements(spec));
+      const parsed = new SpecParser().parse(converted);
+      expect(parsed.title).toBe('Payments');
+      expect(parsed.overview).toBe('Card payments.');
+      for (const section of parsed.sections) expect(section.content).not.toContain('\r');
+    });
+  });
 });
