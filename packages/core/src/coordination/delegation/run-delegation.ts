@@ -472,7 +472,10 @@ async function awaitDelegateAttempt(
       const onAbort = () => finish({ __aborted: true });
       abortSignal.addEventListener('abort', onAbort, { once: true });
       offAbort = () => abortSignal.removeEventListener('abort', onAbort);
-      if (abortSignal.aborted) onAbort();
+      if (abortSignal.aborted) {
+        onAbort();
+        return;
+      }
     }
     arm();
     const observeTask = (director as OwnershipPorts).observeTask;

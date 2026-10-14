@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:17:47.601Z",
+  "generatedAt": "2026-10-14T17:18:27.664Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4961,
-    "testFiles": 4354,
-    "sourceLines": 1100185,
+    "testFiles": 4355,
+    "sourceLines": 1100188,
     "workspaceEdges": 137,
     "moduleEdges": 16345,
     "nonCommandSlashImports": 0,
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1122,
-      "testFiles": 971,
+      "testFiles": 972,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 971
+          "testFiles": 972
         }
       ]
     },
@@ -6629,6 +6629,12 @@
       },
       {
         "file": "packages/core/tests/coordination/define-subagent-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/delegate-abort-settlement.test.ts",
         "projects": [
           "root-node"
         ]
