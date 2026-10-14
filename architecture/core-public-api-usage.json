@@ -89,9 +89,9 @@
       "runtimeOrMixed": 55
     },
     "@wrongstack/core/kernel": {
-      "files": 369,
+      "files": 371,
       "typeOnly": 162,
-      "runtimeOrMixed": 228
+      "runtimeOrMixed": 230
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1409,
-      "typeOnly": 1242,
+      "files": 1410,
+      "typeOnly": 1243,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -8211,6 +8211,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/plug-lsp/tests/integration/lsp-server-synchronous-startup-failure.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/plug-lsp/tests/integration/plugin-entry.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8266,6 +8272,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/plug-lsp/tests/unit/lsp-server-start-shutdown-guard.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/plug-lsp/tests/unit/lsp-server-startup-ownership.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17350,6 +17362,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/tests/integration/lsp-server-direct.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/tests/integration/lsp-server-synchronous-startup-failure.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

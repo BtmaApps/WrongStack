@@ -65,6 +65,7 @@ export class LSPServer {
   private child: ChildProcessWithoutNullStreams | null = null;
   private connection: Connection | null = null;
   private processReachedReady = false;
+  private lifecycleGeneration = 0;
   private stderrRing: string[] = [];
 
   constructor(
@@ -99,17 +100,31 @@ export class LSPServer {
       return;
     }
     this.state = 'starting';
+    const generation = ++this.lifecycleGeneration;
     this.clearDiagnostics();
     this.processReachedReady = false;
     this.ctx.events.emit('lsp.server.starting', { name: this.name, command: this.config.command });
     const command = await resolveSpawnCommand(this.config.command, this.ctx.rootPath);
     // A shutdown requested while the command was being resolved wins; spawning
     // now would start a process nothing will ever stop.
-    if ((this.state as ServerState) !== 'starting') return;
-    const child = safeSpawn(
-      command === this.config.command ? this.config : { ...this.config, command },
-      this.ctx.rootPath,
-    );
+    if (generation !== this.lifecycleGeneration || (this.state as ServerState) !== 'starting')
+      return;
+    let child: ChildProcessWithoutNullStreams;
+    try {
+      child = safeSpawn(
+        command === this.config.command ? this.config : { ...this.config, command },
+        this.ctx.rootPath,
+      );
+    } catch (error) {
+      if (generation === this.lifecycleGeneration && this.state === 'starting') {
+        this.state = 'failed';
+        this.ctx.events.emit('lsp.server.crashed', {
+          name: this.name,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
     this.child = child;
     child.stderr.on('data', (chunk: Buffer) => this.captureStderr(chunk));
     child.on('exit', (code, sig) => {
@@ -148,7 +163,8 @@ export class LSPServer {
       this.processReachedReady = false;
     });
 
-    this.connection = new Connection(child.stdin, child.stdout);
+    const connection = new Connection(child.stdin, child.stdout);
+    this.connection = connection;
     this.connection.onNotification('textDocument/publishDiagnostics', (params) => {
       if (this.child !== child) return;
       if (this.state !== 'ready' && this.state !== 'initializing') return;
@@ -178,9 +194,9 @@ export class LSPServer {
     this.state = 'initializing';
     const startup = startupFailure(child);
     try {
-      this.capabilities = await Promise.race([
+      const capabilities = await Promise.race([
         initializeServer(
-          this.connection,
+          connection,
           this.config,
           this.ctx.rootPath,
           this.config.startupTimeoutMs ?? 15_000,
@@ -189,6 +205,18 @@ export class LSPServer {
         startup.promise,
       ]);
       startup.cancel();
+      if (
+        generation !== this.lifecycleGeneration ||
+        this.child !== child ||
+        this.connection !== connection ||
+        (this.state as ServerState) !== 'initializing'
+      ) {
+        throw new LSPError(
+          LSPErrorCode.ServerNotReady,
+          `Server "${this.name}" stopped during startup`,
+        );
+      }
+      this.capabilities = capabilities;
       this.state = 'ready';
       this.processReachedReady = true;
       this.ctx.events.emit('lsp.server.ready', {
@@ -197,9 +225,10 @@ export class LSPServer {
       });
     } catch (err) {
       startup.cancel();
+      if (generation !== this.lifecycleGeneration || this.child !== child) throw err;
       this.state = 'failed';
       this.clearDiagnostics();
-      this.connection?.close();
+      connection.close();
       treeKill(child);
       this.processReachedReady = false;
       throw err;
@@ -208,6 +237,7 @@ export class LSPServer {
 
   async shutdown(): Promise<void> {
     if (this.state === 'exited' || this.state === 'disabled') return;
+    this.lifecycleGeneration++;
     this.state = 'shutting_down';
     this.clearDiagnostics();
     try {

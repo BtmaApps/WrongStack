@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:18:27.664Z",
+  "generatedAt": "2026-10-14T17:18:53.716Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4961,
-    "testFiles": 4355,
-    "sourceLines": 1100188,
+    "testFiles": 4357,
+    "sourceLines": 1100218,
     "workspaceEdges": 137,
     "moduleEdges": 16345,
     "nonCommandSlashImports": 0,
@@ -425,7 +425,7 @@
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
       "sourceFiles": 52,
-      "testFiles": 53,
+      "testFiles": 55,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -439,7 +439,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 53
+          "testFiles": 55
         }
       ]
     },
@@ -12964,6 +12964,12 @@
         ]
       },
       {
+        "file": "packages/plug-lsp/tests/integration/lsp-server-synchronous-startup-failure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plug-lsp/tests/integration/plugin-entry.test.ts",
         "projects": [
           "root-node"
@@ -13115,6 +13121,12 @@
       },
       {
         "file": "packages/plug-lsp/tests/unit/lsp-server-start-shutdown-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plug-lsp/tests/unit/lsp-server-startup-ownership.test.ts",
         "projects": [
           "root-node"
         ]
