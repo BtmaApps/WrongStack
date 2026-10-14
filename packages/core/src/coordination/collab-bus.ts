@@ -105,28 +105,32 @@ export class CollaborationBus {
   async waitForResume(timeoutMs: number): Promise<boolean> {
     if (!this.isPaused()) return true;
     if (!this.pausePromise) return true;
+    const pausePromise = this.pausePromise;
     if (timeoutMs === 0) {
       // Unbounded — caller is responsible for cancellation.
-      await this.pausePromise;
+      await pausePromise;
       return true;
     }
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<'timeout'>((resolve) => {
-      timer = setTimeout(() => resolve('timeout'), timeoutMs);
+    const timeoutPromise = new Promise<'timeout' | 'resumed'>((resolve) => {
+      timer = setTimeout(
+        () => resolve(this.pausePromise === pausePromise ? 'timeout' : 'resumed'),
+        timeoutMs,
+      );
     });
     // pausePromise is created with a void executor that only ever resolves
     // (via pauseResolve), never rejects — the .catch() is technically redundant
     // but silences the TypeScript promise rejection warning and documents the
     // intentional no-reject guarantee.
-    const resumedPromise = this.pausePromise
+    const resumedPromise = pausePromise
       .then(() => 'resumed' as const)
       .catch(() => 'resumed' as const);
     const winner = await Promise.race([resumedPromise, timeoutPromise]);
     if (timer) clearTimeout(timer);
     if (winner === 'timeout') {
-      // Auto-resume to unblock the agent loop. The middleware logs this;
-      // the UI surfaces it as "pause expired".
-      this.resume();
+      // Auto-resume only the pause generation this wait belongs to. A stale
+      // timeout must not clear a newer pause requested after this one resumed.
+      if (this.pausePromise === pausePromise) this.resume();
       return false;
     }
     return true;

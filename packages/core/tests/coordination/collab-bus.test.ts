@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ToolCallPipelinePayload } from '../../src/core/agent-types.js';
 import {
   CollaborationBus,
   collabInjectMiddleware,
   collabPauseMiddleware,
 } from '../../src/index.js';
-import type { ToolCallPipelinePayload } from '../../src/core/agent-types.js';
 import { Pipeline } from '../../src/kernel/index.js';
 
 describe('CollaborationBus', () => {
@@ -98,6 +98,25 @@ describe('CollaborationBus', () => {
     const c = bus.waitForResume(1_000);
     bus.resume();
     expect(await Promise.all([a, b, c])).toEqual([true, true, true]);
+  });
+
+  it('does not let a stale timeout resume a newer pause generation', async () => {
+    vi.useFakeTimers();
+    try {
+      const bus = new CollaborationBus();
+      bus.requestPause('first-controller');
+      const firstWait = bus.waitForResume(100);
+
+      bus.resume();
+      bus.requestPause('second-controller');
+      vi.advanceTimersByTime(100);
+
+      await expect(firstWait).resolves.toBe(true);
+      expect(bus.isPaused()).toBe(true);
+      expect(bus.getState().pausedBy).toBe('second-controller');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
