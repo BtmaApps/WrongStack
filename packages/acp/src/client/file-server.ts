@@ -330,11 +330,14 @@ function mapFsError(err: unknown, p: string): FsError {
  * Synchronous realpath that falls back to the input on failure (root may be
  * a fresh directory that hasn't been statted yet). The constructor needs the
  * canonical root before any async call so per-request resolveInside has a
- * stable comparison target.
+ * stable comparison target. It must be the native realpath, like the
+ * per-request `fs.promises.realpath`: the JS `realpathSync` keeps a Windows
+ * 8.3 short name (`PROVE-~1`) that the native one expands, so every file
+ * under a short-name root compared as outside it.
  */
 function safeRealpathSync(p: string): string {
   try {
-    return realpathSync(p);
+    return realpathSync.native(p);
   } catch {
     return p;
   }
