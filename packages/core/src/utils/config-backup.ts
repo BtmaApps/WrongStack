@@ -56,15 +56,28 @@ export async function backupConfigFile(filePath: string, paths: ConfigBackupPath
     return; // ENOENT or other error — no current content to back up
   }
 
-  const now = new Date();
-  const ts = now.toISOString().replace(/[:.]/g, '-').replace(/Z$/, '');
+  let backupTime = Date.now();
   const slug = configSlug(filePath, paths.globalRoot);
   const backupDir = configHistoryDir(paths.globalRoot);
-  const backupFile = path.join(backupDir, `${slug}-${ts}.json`);
 
   try {
     await fs.mkdir(backupDir, { recursive: true });
-    await fs.writeFile(backupFile, currentContent, { mode: 0o600, encoding: 'utf8' });
+    for (;;) {
+      const ts = new Date(backupTime).toISOString().replace(/[:.]/g, '-').replace(/Z$/, '');
+      const backupFile = path.join(backupDir, `${slug}-${ts}.json`);
+      try {
+        await fs.writeFile(backupFile, currentContent, {
+          mode: 0o600,
+          encoding: 'utf8',
+          flag: 'wx',
+        });
+        return;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+        // Keep the recovery reader's timestamp grammar without replacing a snapshot.
+        backupTime++;
+      }
+    }
   } catch {
     // best-effort — never block the config write for a backup failure
   }
