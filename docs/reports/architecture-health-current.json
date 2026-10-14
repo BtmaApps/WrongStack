@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T16:21:46.810Z",
+  "generatedAt": "2026-10-14T17:12:18.858Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4960,
-    "testFiles": 4349,
-    "sourceLines": 1099911,
+    "sourceFiles": 4961,
+    "testFiles": 4360,
+    "sourceLines": 1100228,
     "workspaceEdges": 137,
-    "moduleEdges": 16343,
+    "moduleEdges": 16345,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 973
+    "testOnlyExports": 974
   },
   "errors": [],
   "packageCycles": [],
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 634,
-      "testFiles": 627,
+      "sourceFiles": 635,
+      "testFiles": 629,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 627
+          "testFiles": 629
         }
       ]
     },
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1122,
-      "testFiles": 970,
+      "testFiles": 972,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 970
+          "testFiles": 972
         }
       ]
     },
@@ -406,7 +406,7 @@
       "name": "@wrongstack/persistence",
       "dir": "packages/persistence",
       "sourceFiles": 9,
-      "testFiles": 20,
+      "testFiles": 21,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -417,7 +417,7 @@
         {
           "path": "packages/persistence/tsconfig.test.json",
           "error": null,
-          "testFiles": 20
+          "testFiles": 21
         }
       ]
     },
@@ -425,7 +425,7 @@
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
       "sourceFiles": 52,
-      "testFiles": 53,
+      "testFiles": 55,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -439,7 +439,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 53
+          "testFiles": 55
         }
       ]
     },
@@ -512,7 +512,7 @@
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
       "sourceFiles": 131,
-      "testFiles": 113,
+      "testFiles": 114,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -525,7 +525,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 113
+          "testFiles": 114
         }
       ]
     },
@@ -924,7 +924,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 297,
-      "testFiles": 285,
+      "testFiles": 288,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 285
+          "testFiles": 288
         }
       ]
     },
@@ -2020,6 +2020,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/acp-leader-resume-records.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/acp-leader-tool-cards.test.ts",
         "projects": [
           "root-node"
@@ -2063,6 +2069,12 @@
       },
       {
         "file": "packages/cli/tests/acp-server-agent.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-turn-reminders.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6622,6 +6634,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/delegate-abort-settlement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/delegate-background.test.ts",
         "projects": [
           "root-node"
@@ -6923,6 +6941,12 @@
       },
       {
         "file": "packages/core/tests/coordination/large-answer-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/leader-auto-wake-startup-generation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12832,6 +12856,12 @@
         ]
       },
       {
+        "file": "packages/persistence/tests/ipc-secret-partial-write.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/persistence/tests/ipc-secret-transient-read.test.ts",
         "projects": [
           "root-node"
@@ -12929,6 +12959,12 @@
       },
       {
         "file": "packages/plug-lsp/tests/integration/lsp-server-direct.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plug-lsp/tests/integration/lsp-server-synchronous-startup-failure.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13085,6 +13121,12 @@
       },
       {
         "file": "packages/plug-lsp/tests/unit/lsp-server-start-shutdown-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plug-lsp/tests/unit/lsp-server-startup-ownership.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14405,6 +14447,12 @@
       },
       {
         "file": "packages/providers/tests/oauth-refresh-coordinator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/oauth-refresh-expired-rotation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23560,6 +23608,18 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/provider-model-test-cancellation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-model-test-deadline.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/provider-model-test.test.ts",
         "projects": [
           "root-node"
@@ -23573,6 +23633,12 @@
       },
       {
         "file": "packages/webui-server/tests/provider-quota-refresh.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-quota-single-flight.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27946,6 +28012,10 @@
     {
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
       "name": "bridgeNote"
+    },
+    {
+      "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",
+      "name": "bridgeTaskKickoff"
     },
     {
       "file": "packages/cli/src/fleet/acp-wrongstack-bridge.ts",

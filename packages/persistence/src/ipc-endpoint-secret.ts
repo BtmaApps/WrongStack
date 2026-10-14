@@ -63,11 +63,18 @@ function createSecret(file: string): string | null | undefined {
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const tmp = `${file}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
-    fs.writeFileSync(tmp, `${randomBytes(32).toString('hex')}\n`, { mode: 0o600, flag: 'wx' });
+    const fd = fs.openSync(tmp, 'wx', 0o600);
     try {
-      fs.linkSync(tmp, file);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+      try {
+        fs.writeFileSync(fd, `${randomBytes(32).toString('hex')}\n`);
+      } finally {
+        fs.closeSync(fd);
+      }
+      try {
+        fs.linkSync(tmp, file);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+      }
     } finally {
       fs.rmSync(tmp, { force: true });
     }
