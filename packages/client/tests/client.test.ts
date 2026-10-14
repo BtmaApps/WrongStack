@@ -25,6 +25,8 @@ class FakeServer {
   readonly received: Frame[] = [];
   socket: ServerSocket | undefined;
   epoch = 'e1';
+  /** Frames written in the same TCP write as the next `session.start`. */
+  burst: Frame[] = [];
   /** Sessions with a run in flight, for `session.run_state`. */
   readonly running = new Set<string>();
   private readonly log = new Map<string, Frame[]>();
@@ -72,10 +74,16 @@ class FakeServer {
         if (index >= 0) fake.waiting.splice(index, 1)[0]?.resolve(frame);
       });
       if (opts.announce !== false) {
+        // Corked, the announcement and the burst reach the client in one read,
+        // so its socket delivers them back to back in the same task.
+        const raw = (socket as unknown as { _socket: import('node:net').Socket })._socket;
+        raw.cork();
         fake.emit({
           type: 'session.start',
           payload: { sessionId: 'sess_1', provider: 'p', model: 'm', eventEpoch: fake.epoch },
         });
+        for (const frame of fake.burst.splice(0)) fake.emit(frame);
+        process.nextTick(() => raw.uncork());
       }
     });
     return fake;
@@ -343,6 +351,40 @@ describe('WrongStackClient', () => {
       decision: 'no',
     });
     expect(asked).toEqual(['read', 'bash']);
+  });
+
+  it('keeps the frames that arrive in the same read as session.start', async () => {
+    const confirmNeeded = (id: string): Frame => ({
+      type: 'tool.confirm_needed',
+      payload: { id, toolName: 'read', input: {}, suggestedPattern: 'read', sessionId: 'sess_1' },
+    });
+    server = await FakeServer.start();
+    server.burst = [confirmNeeded('c1')];
+    const asked: string[] = [];
+    client = await WrongStackClient.connect({
+      url: server.url,
+      WebSocket: WsWebSocket,
+      reconnect: { initialDelayMs: 50 },
+      onConfirm: (request) => {
+        asked.push(request.id);
+        return 'yes';
+      },
+    });
+    const answered = () =>
+      server?.received.filter((f) => f.type === 'tool.confirm_result').map((f) => f.payload?.id);
+    await expect.poll(answered).toEqual(['c1']);
+
+    // The reconnect's announcement carries frames along with it too.
+    const states: string[] = [];
+    client.onStateChange((state) => states.push(state));
+    const other: unknown[] = [];
+    client.on('custom.thing', (payload) => other.push(payload));
+    server.burst = [confirmNeeded('c2'), { type: 'custom.thing', payload: { n: 1 } }];
+    server.drop();
+    await expect.poll(() => states).toEqual(['reconnecting', 'open']);
+    await expect.poll(answered).toEqual(['c1', 'c2']);
+    expect(asked).toEqual(['c1', 'c2']);
+    expect(other).toEqual([{ n: 1 }]);
   });
 
   it('lists, opens and resumes sessions', async () => {

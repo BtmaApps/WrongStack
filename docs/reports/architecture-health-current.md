@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-13T22:43:40.286Z
+**Generated:** 2026-10-14T07:21:30.315Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4959 |
-| Production source lines | 1099636 |
+| Production source lines | 1099646 |
 | Test files | 4347 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16339 |
@@ -130,9 +130,9 @@ None.
 | 746 | `packages/webui-server/src/server/backend-services.ts` |
 | 744 | `packages/tools/src/grep.ts` |
 | 741 | `packages/webui/src/components/TaskActivityTimeline.tsx` |
+| 740 | `packages/client/src/client.ts` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
 | 740 | `packages/webui/src/hooks/ws-handlers.ts` |
-| 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 
 ## Exports only tests reference
 

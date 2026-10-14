@@ -355,11 +355,15 @@ export class WrongStackClient {
 
   /**
    * Open a socket; returns its `session.start` and the frames that came
-   * before it. A changed epoch means the server restarted: runs in flight
-   * died with it.
+   * before it or in the same read. A changed epoch means the server
+   * restarted: runs in flight died with it.
    */
   private async open(): Promise<{ start: SessionInfo; early: Frame[] }> {
     const number = this.socketNumber + 1;
+    // Frames read in the same chunk as `session.start` are routed before the
+    // await below resumes and installs this socket; held here, in order, they
+    // join `early` instead of failing the socket-number check and vanishing.
+    let late: Frame[] | undefined = [];
     const opened = await openSocket(
       this.Ctor,
       {
@@ -369,7 +373,8 @@ export class WrongStackClient {
       },
       {
         frame: (frame) => {
-          if (number === this.socketNumber) this.receive(frame);
+          if (late) late.push(frame);
+          else if (number === this.socketNumber) this.receive(frame);
         },
         close: (event) => {
           if (number === this.socketNumber) this.handleClose(event);
@@ -378,6 +383,8 @@ export class WrongStackClient {
     );
     this.socket = opened.socket;
     this.socketNumber = number;
+    const early = [...opened.early, ...late];
+    late = undefined;
     const start = opened.start;
     const restarted =
       this.epoch !== undefined && start.eventEpoch !== undefined && start.eventEpoch !== this.epoch;
@@ -393,7 +400,7 @@ export class WrongStackClient {
         }),
       );
     }
-    return { start, early: opened.early };
+    return { start, early };
   }
 
   private adopt(info: SessionInfo): SessionInfo {
