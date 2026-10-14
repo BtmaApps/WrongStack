@@ -238,6 +238,56 @@ describe('SwiftAdapter', () => {
     });
   });
 
+  // A v1 Package.resolved pin carries `package`, the deprecated DISPLAY name,
+  // and SwiftPM derives the identity from `repositoryURL`. Keyed by name, a pin
+  // whose name differs from its repository (`Firebase` / firebase-ios-sdk.git)
+  // never met its manifest row: the direct dependency lost its locked version
+  // and the pin came back as a second, transitive `firebase` row.
+  it('keys v1 Package.resolved pins by their repositoryURL identity, not the display name', async () => {
+    const { root, workspace } = fixture(
+      'swift',
+      {
+        'Package.swift': [
+          '.package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "10.0.0"),',
+          '.package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.0"),',
+        ].join('\n'),
+        'Package.resolved': JSON.stringify({
+          object: {
+            pins: [
+              {
+                package: 'Firebase',
+                repositoryURL: 'https://github.com/firebase/firebase-ios-sdk.git',
+                state: { branch: null, revision: 'f1', version: '10.18.0' },
+              },
+              {
+                package: 'swift-argument-parser',
+                repositoryURL: 'https://github.com/apple/swift-argument-parser',
+                state: { branch: null, revision: 'a1', version: '1.3.0' },
+              },
+              {
+                package: 'SwiftProtobuf',
+                repositoryURL: 'https://github.com/apple/swift-protobuf.git',
+                state: { branch: null, revision: 'p1', version: '1.25.2' },
+              },
+            ],
+          },
+          version: 1,
+        }),
+      },
+      ['Package.swift'],
+      ['Package.resolved'],
+    );
+    const deps = await swiftAdapter.inventory(workspace, {
+      projectRoot: root,
+      includeTransitive: true,
+    });
+    expect(deps.map((dep) => [dep.name, dep.direct, dep.locked])).toEqual([
+      ['firebase-ios-sdk', true, '10.18.0'],
+      ['swift-argument-parser', true, '1.3.0'],
+      ['swift-protobuf', false, '1.25.2'],
+    ]);
+  });
+
   it('parses static-member requirements (.upToNextMajor/.exact) as direct dependencies', async () => {
     const { root, workspace } = fixture(
       'swift',

@@ -70,11 +70,15 @@ function parsePackageResolved(
       object?: { pins?: ResolvedPin[] };
     };
     for (const pin of json.pins ?? json.object?.pins ?? []) {
+      // A v1 pin's `package` is the deprecated display name (`Firebase` for
+      // firebase-ios-sdk.git); SwiftPM derives its identity from repositoryURL,
+      // as the manifest rows do. Keyed by name, such a pin never met its direct
+      // row and came back as a second, transitive row.
       const identity = (
         pin.identity ??
-        pin.package ??
         (pin.location ? identityFromLocation(pin.location) : undefined) ??
-        (pin.repositoryURL ? identityFromLocation(pin.repositoryURL) : undefined)
+        (pin.repositoryURL ? identityFromLocation(pin.repositoryURL) : undefined) ??
+        pin.package
       )?.toLowerCase();
       if (identity)
         pins.set(identity, {
