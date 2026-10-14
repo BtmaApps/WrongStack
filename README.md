@@ -113,7 +113,6 @@ See the [release history](CHANGELOG.md) for earlier releases.
 - [Core capabilities](#core-capabilities)
 - [Configuration](#configuration)
 - [Architecture](#architecture)
-- [Packages](#packages)
 - [Status](#status)
 - [Docs](#docs)
 - [License](#license)
@@ -165,8 +164,7 @@ scratch:
 
 - **Standalone binary:** nothing — the executable carries its own runtime
   (Windows x64/arm64, macOS x64/arm64, Linux x64/arm64 incl. musl)
-- **Bun install and development:** Bun ≥ 1.4.3; see the [Bun workflow](docs/bun.md)
-- **Node package consumers:** Node.js ≥ 22.19.0 remains supported
+- **Development from source:** Bun ≥ 1.4.3; see the [Bun workflow](docs/bun.md)
 
 ---
 
@@ -175,7 +173,7 @@ scratch:
 ### Standalone binary (recommended)
 
 One executable per platform with the runtime, every surface and all bundled
-assets inside — no Node.js, npm or `node_modules`:
+assets inside — nothing else to install:
 
 ```bash
 # macOS / Linux
@@ -203,16 +201,8 @@ grammars, the WebUI/HQ/SimpleUI frontends) once into
 Not available in the binary: the WebUI terminal panel (needs the native
 `node-pty` addon), the Electron desktop shell, and the browser tool unless
 Playwright is installed separately. The HQ systemd installer (`wstack hq
-service install`) manages an npm install; run `wstack hq` under your own
+service install`) does not support the binary; run `wstack hq` under your own
 service manager instead.
-
-### npm (legacy)
-
-The npm packages (`wrongstack`, `@wrongstack/cli`) are legacy and no longer the
-way to install WrongStack — GitHub Releases is the only supported channel. If
-you installed through npm, pnpm, yarn or bun before, just run the installer
-above: it finds those globals and uninstalls them (asking first on a terminal)
-so they cannot shadow the binary.
 
 The TUI is lazy-loaded behind `--tui`, so plain-REPL users pay no React/Ink cost
 at startup. The browser UI, HQ, and Desktop shell are available through their
@@ -405,34 +395,6 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ---
 
-## Packages
-
-| Package | Purpose |
-|---------|---------|
-| `@wrongstack/core` | Kernel, agent, types, registries, plugin contract |
-| `@wrongstack/runtime` | Default runtime implementations + host composition |
-| `@wrongstack/providers` | Anthropic/OpenAI/OpenAI-compatible/Google adapters + SSE |
-| `@wrongstack/tools` | Built-in tools (incl. browser/E2E + SQLite codebase index) |
-| `@wrongstack/mcp` | MCP server registry + reconnection logic |
-| `@wrongstack/acp` | Agent Client Protocol client + agent support |
-| `@wrongstack/bench` | Benchmark harness (Aider polyglot + SWE-bench Verified) |
-| `@wrongstack/kanban` | Task-board primitives: queues, recovery, cost guardrails |
-| `@wrongstack/sage` · `@wrongstack/persistence` | Project-local memory/anchors and shared persistence primitives |
-| `@wrongstack/codebase-index-mcp` · `@wrongstack/kanban-mcp` · `@wrongstack/mailbox-mcp` · `@wrongstack/sage-mcp` | Project-service MCP servers with explicit capability tiers |
-| `@wrongstack/requirement-intake` · `@wrongstack/requirement-intake-mcp` | Source-annotated requirement records and their project-scoped MCP surface |
-| `@wrongstack/sdd` | Spec-Driven Development stores, trackers, workflow helpers |
-| `@wrongstack/governance` · `@wrongstack/security-scanner` · `@wrongstack/techstack` | Workflow policy, security scanning, and dependency intelligence |
-| `@wrongstack/cli` | REPL, subcommands, slash commands, terminal renderer |
-| `@wrongstack/tui` | Ink-based TUI (lazy-loaded behind `--tui`) |
-| `@wrongstack/webui` · `@wrongstack/webui-server` · `@wrongstack/webui-hq` · `@wrongstack/simpleui` | Browser UIs, shared backend, and HQ dashboard |
-| `@wrongstack/desktop` | Electron desktop shell |
-| `@wrongstack/plug-lsp` · `@wrongstack/telegram` | LSP and Telegram plugins |
-| `@wrongstack/wrongtrace` | Client adapter for the optional WrongTrace daemon (file locks, health, friction, atlas) — HTTP/IPC/MCP, no-op when absent |
-| `@wrongstack/plugins` | Official plugin collection via subpath exports |
-| `wrongstack` | Published CLI app entry (`wrongstack` / `wstack`) |
-
----
-
 ## Status
 
 - **v1.1.4** — current repository version; semver from 1.0.0 onward
@@ -440,7 +402,6 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`
 - CI, dependency audit and Pages deployment are manually dispatched; pushes do not run them
-- Node 22.19+ only, ESM-only, no CommonJS bundles
 - Threat model: [`SECURITY.md`](SECURITY.md)
 
 ---
