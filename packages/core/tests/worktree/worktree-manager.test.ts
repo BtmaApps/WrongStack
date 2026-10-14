@@ -1390,6 +1390,66 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       await fs.rm(base, { recursive: true, force: true });
     }
   }, 120_000);
+
+  it('merge refuses an unreadable worktree status before checkout', async () => {
+    const calls: string[][] = [];
+    const { run } = stubRunner((args) => {
+      calls.push(args);
+      if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'status' && !args.includes('--untracked-files=no')) {
+        return { code: 128, stdout: '', stderr: 'fatal: not a git repository' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const h = await wm.allocate('owner', { slugHint: 'wt-status' });
+    calls.length = 0;
+    const merged = await wm.merge(h);
+    expect(merged.ok).toBe(false);
+    expect(merged.stderr).toContain('could not read worktree status');
+    expect(calls.some((args) => args[0] === 'checkout')).toBe(false);
+    expect(h.status).toBe('failed');
+  });
+
+  it('merge refuses an unreadable base status before checkout', async () => {
+    const calls: string[][] = [];
+    const { run } = stubRunner((args) => {
+      calls.push(args);
+      if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'status' && args.includes('--untracked-files=no')) {
+        return { code: 128, stdout: '', stderr: 'fatal: unable to read index' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const h = await wm.allocate('owner', { slugHint: 'base-status' });
+    calls.length = 0;
+    const merged = await wm.merge(h);
+    expect(merged.ok).toBe(false);
+    expect(merged.stderr).toContain('could not read working tree status');
+    expect(calls.some((args) => args[0] === 'checkout')).toBe(false);
+    expect(h.status).toBe('failed');
+  });
+
+  it('revertCommits refuses an unreadable status before checkout', async () => {
+    const calls: string[][] = [];
+    const { run } = stubRunner((args) => {
+      calls.push(args);
+      if (args[0] === 'status') {
+        return { code: 128, stdout: '', stderr: 'fatal: not a git repository' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const reverted = await wm.revertCommits('main', ['a'.repeat(40)]);
+    expect(reverted).toEqual({
+      ok: false,
+      reverted: 0,
+      reason: 'could not read working tree status — commit or stash first',
+    });
+    expect(calls.some((args) => args[0] === 'checkout')).toBe(false);
+    expect(calls.some((args) => args.includes('revert'))).toBe(false);
+  });
 });
 
 describe('parseConflictPaths', () => {

@@ -213,7 +213,14 @@ export class WorktreeManager extends WorktreeManagerCore {
     // no-op and the caller's release() would then force-remove the only copy.
     // Fail instead: a failed handle is kept on disk by release().
     const pending = await this.runGit(['status', '--porcelain'], handle.dir);
-    if (pending.code === 0 && pending.stdout.trim().length > 0) {
+    // F2026101028: a failed status is not a clean tree. Unreadable checkout
+    // state must fail closed, or release() can delete the only copy.
+    if (pending.code !== 0) {
+      const reason = 'could not read worktree status — kept for review';
+      this.fail(handle, reason, 'merge');
+      return { ok: false, stderr: reason };
+    }
+    if (pending.stdout.trim().length > 0) {
       const reason = `worktree ${handle.branch} has uncommitted changes — kept for review`;
       this.fail(handle, reason, 'merge');
       return { ok: false, stderr: reason };
@@ -223,6 +230,13 @@ export class WorktreeManager extends WorktreeManagerCore {
       ['status', '--porcelain', '--untracked-files=no'],
       this.projectRoot,
     );
+    // F2026101029: same fail-closed rule as mergeBranch(). Empty stdout with a
+    // non-zero status is an unread index, not a clean base.
+    if (status.code !== 0) {
+      const reason = 'could not read working tree status — commit or stash first';
+      this.fail(handle, reason, 'merge');
+      return { ok: false, stderr: reason };
+    }
     if (status.stdout.trim().length > 0) {
       const reason = 'working tree has uncommitted changes — commit or stash first';
       this.fail(handle, reason, 'merge');

@@ -192,6 +192,14 @@ export abstract class WorktreeManagerCore {
     if (shas.length === 0) return { ok: true, reverted: 0, reason: 'nothing to revert' };
 
     const status = await this.runGit(['status', '--porcelain'], this.projectRoot);
+    // F2026101030: match revertBaseTo(). A non-zero status is not a clean tree.
+    if (status.code !== 0) {
+      return {
+        ok: false,
+        reverted: 0,
+        reason: 'could not read working tree status — commit or stash first',
+      };
+    }
     if (status.stdout.trim().length > 0) {
       return {
         ok: false,
