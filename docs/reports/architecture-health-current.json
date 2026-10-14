@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:16:17.965Z",
+  "generatedAt": "2026-10-14T17:16:43.884Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4960,
-    "testFiles": 4351,
-    "sourceLines": 1099964,
+    "testFiles": 4352,
+    "sourceLines": 1099972,
     "workspaceEdges": 137,
     "moduleEdges": 16343,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 634,
-      "testFiles": 627,
+      "testFiles": 628,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 627
+          "testFiles": 628
         }
       ]
     },
@@ -2015,6 +2015,12 @@
       },
       {
         "file": "packages/cli/tests/acp-leader-provider.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/acp-leader-resume-records.test.ts",
         "projects": [
           "root-node"
         ]

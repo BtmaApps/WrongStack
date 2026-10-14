@@ -23,9 +23,17 @@ type Records = Record<string, LeaderSessionRecord>;
 async function readRecords(stateDir: string): Promise<Records> {
   try {
     const parsed = JSON.parse(await readFile(path.join(stateDir, FILE), 'utf8')) as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Records)
-      : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([, record]) =>
+          record &&
+          typeof record === 'object' &&
+          typeof record.agentId === 'string' &&
+          typeof record.agentSessionId === 'string' &&
+          typeof record.updatedAt === 'string',
+      ),
+    );
   } catch {
     return {};
   }
