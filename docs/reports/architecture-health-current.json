@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:14:26.171Z",
+  "generatedAt": "2026-10-14T22:14:54.324Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4962,
     "testFiles": 4369,
-    "sourceLines": 1100504,
+    "sourceLines": 1100507,
     "workspaceEdges": 137,
     "moduleEdges": 16349,
     "nonCommandSlashImports": 0,
@@ -27527,6 +27527,11 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "lines": 769,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/webui-server/src/server/session-handlers.ts",
       "lines": 768,
       "relativeImports": 10
@@ -27540,11 +27545,6 @@
       "file": "packages/tools/src/todo.ts",
       "lines": 766,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
-      "lines": 766,
-      "relativeImports": 10
     },
     {
       "file": "packages/webui/src/components/MessageBubble/index.tsx",

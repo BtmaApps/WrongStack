@@ -307,10 +307,13 @@ export function useProviderEventBridge({
             name: e.name,
           });
         };
-        const canonicalOutput = e.outsideConversation
-          ? undefined
-          : fullToolResultFromState(agent, e.id);
-        if (e.outsideConversation) {
+        // A call a `tool_script` program made (id `<parent>~<n>`, core's
+        // runNestedToolCall) hands its result back to the script, so no
+        // tool_result with its id ever reaches the conversation either.
+        const nestedCall = e.id !== undefined && /~\d+$/.test(e.id);
+        const canonicalOutput =
+          e.outsideConversation || nestedCall ? undefined : fullToolResultFromState(agent, e.id);
+        if (e.outsideConversation || nestedCall) {
           // No tool_result will reach the conversation (an ACP leader ran
           // the call itself): waiting for one would never render the card.
           // Its whole result rides beside the preview for inspect and copy.

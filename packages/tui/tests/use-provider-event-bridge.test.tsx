@@ -402,6 +402,49 @@ describe('useProviderEventBridge', () => {
     unmount();
   });
 
+  it('renders a tool_script nested call at once: its result goes back to the script', async () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const state = { messages: [], onChange: () => () => {} };
+    const agent = { ctx: { session: { id: 'session-1' }, todos: [], state } };
+    const { unmount } = renderHook(() => {
+      useProviderEventBridge({
+        events,
+        agent: agent as never,
+        dispatch,
+        streamingTextRef: useRef(''),
+        streamSegmentsRef: useRef<Array<{ kind: 'assistant' | 'thinking'; text: string }>>([]),
+        pendingDeltaRef: useRef(''),
+        flushTimerRef: useRef<ReturnType<typeof setTimeout> | null>(null),
+        sessionGenerationRef: useRef(1),
+        activeRunGenerationRef: useRef(1),
+        assistantCommittedThisRunRef: useRef(false),
+        setMemoryContextMonitor: vi.fn(),
+      });
+    });
+
+    await act(async () => {
+      events.emit('tool.executed', {
+        id: 'toolu_script~0',
+        name: 'read',
+        durationMs: 3,
+        ok: true,
+        output: 'export const a = 1;',
+      });
+      await Promise.resolve();
+    });
+
+    const actions = dispatch.mock.calls.map(([action]) => action);
+    const toolAction = actions.find(
+      (action) => action.type === 'addEntry' && action.entry.kind === 'tool',
+    );
+    expect(toolAction?.entry).toMatchObject({ name: 'read', output: 'export const a = 1;' });
+    expect(actions).toContainEqual(
+      expect.objectContaining({ type: 'toolStreamClear', toolUseId: 'toolu_script~0' }),
+    );
+    unmount();
+  });
+
   it('inspects the whole result of a call run outside the conversation, not its preview', async () => {
     const events = new EventBus();
     const dispatch = vi.fn();

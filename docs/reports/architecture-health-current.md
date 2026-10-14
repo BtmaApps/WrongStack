@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-14T22:14:26.171Z
+**Generated:** 2026-10-14T22:14:54.324Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4962 |
-| Production source lines | 1100504 |
+| Production source lines | 1100507 |
 | Test files | 4369 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16349 |
@@ -86,10 +86,10 @@ None.
 | 796 | `packages/webui/src/components/ProviderTestView.tsx` |
 | 779 | `packages/core/src/utils/tool-output-renderers.ts` |
 | 774 | `packages/core/src/session-catalog/session-registry.ts` |
+| 769 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 768 | `packages/webui-server/src/server/session-handlers.ts` |
 | 767 | `packages/plugin-sdk/src/runtime/index.ts` |
 | 766 | `packages/tools/src/todo.ts` |
-| 766 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 766 | `packages/webui/src/components/MessageBubble/index.tsx` |
 | 764 | `packages/cli/src/subcommands/handlers/hq.ts` |
 | 763 | `packages/tools/src/codebase-index/toolchain-scripts.ts` |
