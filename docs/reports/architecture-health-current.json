@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T17:46:31.419Z",
+  "generatedAt": "2026-10-14T18:15:46.118Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4961,
+    "sourceFiles": 4962,
     "testFiles": 4360,
-    "sourceLines": 1100229,
+    "sourceLines": 1100295,
     "workspaceEdges": 137,
-    "moduleEdges": 16345,
+    "moduleEdges": 16349,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 974
+    "testOnlyExports": 975
   },
   "errors": [],
   "packageCycles": [],
@@ -847,7 +847,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 721,
+      "sourceFiles": 722,
       "testFiles": 484,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -30948,6 +30948,10 @@
     {
       "file": "packages/webui-server/src/server/terminal-ws-handler.ts",
       "name": "resolveTerminalShell"
+    },
+    {
+      "file": "packages/webui/src/components/AgentOfficeView/model.ts",
+      "name": "shortModelName"
     },
     {
       "file": "packages/webui/src/components/AgentsPage.tsx",

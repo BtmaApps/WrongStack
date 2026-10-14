@@ -74,6 +74,12 @@ describe('SAGE project-server client event-loop residency', () => {
     child.stdout?.on('data', (chunk) => {
       stdout += chunk;
     });
+    // A child that dies at startup exits non-zero before the retry loop runs;
+    // its stderr is the only record of why.
+    let stderr = '';
+    child.stderr?.on('data', (chunk) => {
+      stderr += chunk;
+    });
 
     const exit = await new Promise<{ code: number | null }>((resolve) => {
       child.once('exit', (code) => resolve({ code }));
@@ -83,6 +89,6 @@ describe('SAGE project-server client event-loop residency', () => {
     // milliseconds; with a ref'd one it runs the full election deadline and
     // exits only after `connect` rejects.
     expect(stdout).not.toContain('IDLE_BEFORE_SETTLED');
-    expect(exit.code).toBe(0);
+    expect(exit.code, stderr).toBe(0);
   }, 45_000);
 });

@@ -1727,6 +1727,9 @@
     "packages/webui-server/src/server/terminal-ws-handler.ts": [
       "resolveTerminalShell"
     ],
+    "packages/webui/src/components/AgentOfficeView/model.ts": [
+      "shortModelName"
+    ],
     "packages/webui/src/components/AgentsPage.tsx": [
       "getIterations",
       "getLastEventAt"
