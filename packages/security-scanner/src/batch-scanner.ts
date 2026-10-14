@@ -306,6 +306,16 @@ export class BatchScanner {
           timestamp: new Date().toISOString(),
         }),
       );
+      // A batch the model never analysed is not a clean one: report it in the
+      // scan's errors, as an unreadable file is. A cancelled scan is not a failure.
+      if (!opts.abortController.signal.aborted) {
+        const names = opts.files.map((file) =>
+          path.relative(opts.projectRoot, file).replace(/\\/g, '/'),
+        );
+        opts.scanStats?.errors.push(
+          `LLM analysis failed for ${names.join(', ')}: ${toErrorMessage(err)}`,
+        );
+      }
       return [];
     }
   }
