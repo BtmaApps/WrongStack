@@ -63,6 +63,23 @@ describe('host providers in the WebUI pickers', () => {
     });
   });
 
+  it('never shadows a saved acp record when provider.models is asked for it', async () => {
+    // The user's own provider happens to use the id "acp". `providers.saved`
+    // already drops the host entry for that id, so `provider.models` must agree
+    // — otherwise the two frames describe the same id with two different
+    // providers and the picker offers ACP agents under a non-ACP row.
+    const { ops, sent } = operations({
+      acp: { type: 'openai', models: ['mine'] } as ProviderConfig,
+    });
+    await ops.handleProviderModels(WS, 'acp');
+    const frame = sent[0] as { type: string; payload?: { models?: Array<{ id: string }> } };
+    const ids = frame.payload?.models?.map((model) => model.id) ?? [];
+    expect(ids).not.toContain('claude-code');
+    // No models registry is supplied here, so the saved record falls through to
+    // the registry guard instead of being answered from the host list.
+    expect(frame.type).toBe('key.operation_result');
+  });
+
   it('keeps acp in the list a broadcast sends, and never shadows a saved acp record', () => {
     const { ops, broadcast } = operations({});
     ops.broadcastSaved({ acp: { type: 'openai', models: ['x'] } as ProviderConfig });

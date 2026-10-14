@@ -195,24 +195,35 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
     providerId: string,
     options: { includeDisabled?: boolean | undefined } = {},
   ): Promise<void> {
-    const hosted = hostProviderModels(ctx.deps.hostProviders?.(), providerId);
-    if (hosted) {
-      ctx.sendMessage(ws, {
-        type: 'provider.models',
-        payload: { provider: providerId, models: hosted },
-      });
-      return;
-    }
-    if (!ctx.deps.modelsRegistry) {
-      ctx.sendOperationResult(ws, false, 'Models registry not available');
-      return;
-    }
+    // A host provider must never shadow a saved record of the same id — the
+    // rule `withHostProviders` applies to the `providers.saved` frame. Consult
+    // the host only when nothing is saved under this id; otherwise the two
+    // frames disagree about one provider: the list shows the user's saved
+    // record while `provider.models` answers with the host's ACP agents, so the
+    // picker offers models that belong to a different provider than the row it
+    // came from. `Object.hasOwn`, not a bracket truthiness check: `providerId`
+    // is client-supplied and an Object.prototype key (`constructor`, `toString`)
+    // would otherwise read as a saved record and wrongly suppress the host.
     try {
-      const saved = await ctx.loadConfigProviders();
+      const savedProviders = await ctx.loadConfigProviders();
+      const hosted = Object.hasOwn(savedProviders, providerId)
+        ? undefined
+        : hostProviderModels(ctx.deps.hostProviders?.(), providerId);
+      if (hosted) {
+        ctx.sendMessage(ws, {
+          type: 'provider.models',
+          payload: { provider: providerId, models: hosted },
+        });
+        return;
+      }
+      if (!ctx.deps.modelsRegistry) {
+        ctx.sendOperationResult(ws, false, 'Models registry not available');
+        return;
+      }
       const enriched = await resolveEnrichedModels(
         ctx.deps.modelsRegistry,
         providerId,
-        saved[providerId],
+        savedProviders[providerId],
       );
       ctx.sendMessage(ws, {
         type: 'provider.models',
