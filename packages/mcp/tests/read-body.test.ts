@@ -90,4 +90,32 @@ describe('readBodyCapped', () => {
       '12345',
     );
   });
+
+  describe('decodes the same text as Response#text()', () => {
+    const json = '{"jsonrpc":"2.0","id":1,"result":{"ok":true}}';
+    const encode = (text: string) => new TextEncoder().encode(text);
+
+    it('drops a leading UTF-8 BOM, so a BOM-prefixed JSON reply still parses', async () => {
+      const bom = new Uint8Array([0xef, 0xbb, 0xbf, ...encode(json)]);
+      const expected = await new Response(bom).text();
+      const capped = await readBodyCapped(new Response(bom));
+      expect(capped).toBe(expected);
+      expect(JSON.parse(capped)).toEqual({ jsonrpc: '2.0', id: 1, result: { ok: true } });
+    });
+
+    it('joins a multi-byte character split across stream chunks', async () => {
+      const bytes = encode('tool: 🧪 ok');
+      const split = bytes.indexOf(0xf0) + 2; // inside the 4-byte emoji
+      const res = {
+        body: streamOf([bytes.slice(0, split), bytes.slice(split)]),
+        text: async () => 'unused',
+      };
+      expect(await readBodyCapped(res)).toBe('tool: 🧪 ok');
+    });
+
+    it('replaces malformed UTF-8 exactly as res.text() does', async () => {
+      const bytes = new Uint8Array([0x6f, 0x6b, 0xff, 0xc3, 0x28]);
+      expect(await readBodyCapped(new Response(bytes))).toBe(await new Response(bytes).text());
+    });
+  });
 });

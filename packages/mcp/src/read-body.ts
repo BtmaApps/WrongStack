@@ -65,5 +65,9 @@ export async function readBodyCapped(
   } finally {
     reader.releaseLock?.();
   }
-  return Buffer.concat(chunks).toString('utf8');
+  // Decode exactly as `res.text()` does (WHATWG UTF-8, which drops a leading
+  // BOM): this replaces `res.text()`/`res.json()` on every capped path, and
+  // `Buffer#toString` kept the BOM, so a BOM-prefixed JSON reply stopped
+  // parsing.
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
