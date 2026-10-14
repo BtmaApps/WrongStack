@@ -53,8 +53,12 @@ function parseList(value: string): string[] {
  * authored by us (bundled) or trusted project owners, so we keep it small
  * rather than pulling in a full YAML dependency.
  */
-function parseKitFrontmatter(raw: string): KitFrontmatter {
+function parseKitFrontmatter(source: string): KitFrontmatter {
   const out: KitFrontmatter = { tags: [], stacks: [], themes: [] };
+  // Read the file the way `stripFrontmatter` reads its body: a CRLF or
+  // BOM-prefixed KIT.md (a Windows editor, core.autocrlf) left `\r` before
+  // every `$`, so no key matched and the kit was dropped as nameless.
+  const raw = source.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '');
   if (!raw.startsWith('---')) return out;
   const end = raw.indexOf('\n---', 4);
   if (end === -1) return out;

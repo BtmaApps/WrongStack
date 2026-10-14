@@ -99,6 +99,40 @@ describe('DefaultDesignKitLoader', () => {
     }
   });
 
+  it.each([
+    ['CRLF', (text: string) => text.replaceAll('\n', '\r\n')],
+    ['a BOM', (text: string) => `\uFEFF${text}`],
+    ['a BOM and CRLF', (text: string) => `\uFEFF${text.replaceAll('\n', '\r\n')}`],
+  ])('reads a KIT.md saved with %s like an LF one', async (_label, encode) => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-kit-eol-'));
+    const projectDir = path.join(tmp, 'project');
+    try {
+      await fs.mkdir(path.join(projectDir, 'eol-kit'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, 'eol-kit', 'KIT.md'),
+        encode(
+          '---\nid: eol-kit\nname: EOL Kit\naesthetic: calm\nstacks: [web]\ntags:\n  - quiet\n  - dense\nbestFor: windows\n---\n\n# Body\n',
+        ),
+      );
+      const loader = new DefaultDesignKitLoader({
+        inProjectDir: projectDir,
+        globalDir: path.join(tmp, 'missing'),
+        bundledDir: undefined,
+      });
+      expect(await loader.listSkipped()).toEqual([]);
+      expect(await loader.find('eol-kit')).toMatchObject({
+        name: 'EOL Kit',
+        aesthetic: 'calm',
+        stacks: ['web'],
+        tags: ['quiet', 'dense'],
+        bestFor: 'windows',
+        source: 'project',
+      });
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
   it('still defaults stacks to all five when `stacks:` is omitted entirely', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-kit-nostacks-'));
     const projectDir = path.join(tmp, 'project');
