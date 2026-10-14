@@ -344,6 +344,36 @@ describe('ClientTransport', () => {
     await expect(p).resolves.toBeUndefined();
   });
 
+  it('delivers frames that share the marker chunk without merging them into the next chunk', async () => {
+    const child = new FakeChild();
+    spawnMock.fn.mockReturnValue(child);
+    const transport = new ClientTransport({ command: 'agent' });
+    const seen: unknown[] = [];
+    transport.onMessage((m) => seen.push(m.method));
+    const p = transport.start();
+    await vi.waitFor(() => expect(spawnMock.fn).toHaveBeenCalled());
+    child.stdout.emit('data', '[wstack-acp]\n{"method":"first"}\n{"method":"sec');
+    await p;
+    expect(seen).toEqual(['first']);
+    child.stdout.emit('data', 'ond"}\n{"method":"third"}\n');
+    expect(seen).toEqual(['first', 'second', 'third']);
+  });
+
+  it('queues a frame from the marker chunk for read() when nothing observes it', async () => {
+    const child = new FakeChild();
+    spawnMock.fn.mockReturnValue(child);
+    const transport = new ClientTransport({ command: 'agent' });
+    const p = transport.start();
+    await vi.waitFor(() => expect(spawnMock.fn).toHaveBeenCalled());
+    child.stdout.emit('data', 'noise[wstack-acp]\n{"method":"early"}\n');
+    await p;
+    const next = await Promise.race([
+      transport.read(),
+      new Promise((resolve) => setTimeout(() => resolve('read() still pending'), 50)),
+    ]);
+    expect(next).toEqual({ method: 'early' });
+  });
+
   it('start is idempotent once a child exists', async () => {
     const { transport } = await startedTransport();
     await transport.start(); // should return immediately, no second spawn

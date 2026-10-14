@@ -517,9 +517,15 @@ export class ClientTransport implements ACPClientTransport {
         }
         const idx = this.buffer.indexOf('[wstack-acp]\n');
         if (idx !== -1) {
-          this.buffer = this.buffer.slice(idx + '[wstack-acp]\n'.length);
+          const rest = this.buffer.slice(idx + '[wstack-acp]\n'.length);
+          this.buffer = '';
           child.stdout.removeListener('data', waitForMarker);
           onReady();
+          // Frames that shared the marker's chunk go through the same framing
+          // as later chunks. Left raw in `buffer`, a complete line broke
+          // takeLines' newline-free pending tail: it was never delivered, and
+          // the next chunk merged into it and failed to parse with it.
+          if (rest) this.onChildData(rest);
         }
       };
 
