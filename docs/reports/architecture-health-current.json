@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:06:25.504Z",
+  "generatedAt": "2026-10-14T22:06:58.185Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4962,
-    "testFiles": 4361,
-    "sourceLines": 1100332,
+    "testFiles": 4362,
+    "sourceLines": 1100335,
     "workspaceEdges": 137,
     "moduleEdges": 16349,
     "nonCommandSlashImports": 0,
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1122,
-      "testFiles": 973,
+      "testFiles": 974,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 973
+          "testFiles": 974
         }
       ]
     },
@@ -6755,6 +6755,12 @@
       },
       {
         "file": "packages/core/tests/coordination/director-idle-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/director-input-helpers.test.ts",
         "projects": [
           "root-node"
         ]

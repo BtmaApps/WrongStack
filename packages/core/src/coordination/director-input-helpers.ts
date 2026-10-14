@@ -9,7 +9,10 @@ import type { SubagentConfig } from '../types/multi-agent.js';
  */
 export function stringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  const strings = value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  const strings = value
+    .filter((v): v is string => typeof v === 'string')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
   return strings.length > 0 ? strings : undefined;
 }
 
