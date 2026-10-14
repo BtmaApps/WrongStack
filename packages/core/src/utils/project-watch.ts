@@ -32,6 +32,14 @@ interface Subscriber {
   onError?: ((error: unknown) => void) | undefined;
 }
 
+function reportSubscriberError(subscriber: Subscriber, error: unknown): void {
+  try {
+    subscriber.onError?.(error);
+  } catch {
+    // An observer's error handler must not interrupt the other subscribers.
+  }
+}
+
 interface WatchEntry {
   watcher: fs.FSWatcher;
   subscribers: Set<Subscriber>;
@@ -85,7 +93,7 @@ export function watchProjectTree(
           try {
             sub.listener(event);
           } catch (error) {
-            sub.onError?.(error);
+            reportSubscriberError(sub, error);
           }
         }
       },
@@ -99,7 +107,7 @@ export function watchProjectTree(
       // A watcher that errored is closed by Node — mark the entry dead so the
       // next acquire creates a fresh one instead of reusing a corpse.
       retire();
-      for (const sub of subscribers) sub.onError?.(error);
+      for (const sub of subscribers) reportSubscriberError(sub, error);
     });
     // Watchers can also close without first emitting `error` (for example when
     // the watched tree disappears). Never leave that closed handle reusable.
@@ -115,7 +123,7 @@ export function watchProjectTree(
       const error = Object.assign(new Error(`watched root was removed: ${path.resolve(root)}`), {
         code: 'ENOENT',
       });
-      for (const sub of subscribers) sub.onError?.(error);
+      for (const sub of subscribers) reportSubscriberError(sub, error);
     };
     registry.set(key, created);
     entry = created;
