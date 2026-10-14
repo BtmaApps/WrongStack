@@ -143,6 +143,32 @@ export const PATTERNS: Pattern[] = [
   { type: 'mysql_uri', regex: /mysql:\/\/[^\s"'`]+/g, anchor: 'mysql://' },
   { type: 'redis_uri', regex: /redis:\/\/[^\s"'`]+/g, anchor: 'redis://' },
   {
+    type: 'url_query_credential',
+    // URLs in upstream errors often echo OAuth/API credentials in query
+    // parameters. Match the delimiter and value together so the generic
+    // replacement cannot leave the credential behind. Query parameter names
+    // are case-sensitive; these are the standard lowercase spellings plus the
+    // canonical AWS signed-URL forms.
+    regex:
+      /[?&](?:access[_-]?token|api[_-]?key|auth(?:orization)?|token|secret|password|key|sig(?:nature)?|X-Amz-(?:Signature|Credential))=[^&#\s"'`]{8,512}/g,
+    anchor: [
+      'access_token=',
+      'access-token=',
+      'api_key=',
+      'api-key=',
+      'auth=',
+      'authorization=',
+      'token=',
+      'secret=',
+      'password=',
+      'key=',
+      'sig=',
+      'signature=',
+      'X-Amz-Signature=',
+      'X-Amz-Credential=',
+    ],
+  },
+  {
     type: 'url_credentials',
     // The password of any other `scheme://user:password@host` — a git remote
     // carrying a token, a proxy URL. Runs in its own pass AFTER the combined

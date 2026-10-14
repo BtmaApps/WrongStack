@@ -64,6 +64,17 @@ describe('scrubErrorDetail', () => {
     expect(out).toContain('upstream rejected');
   });
 
+  it('redacts credential-bearing URL query parameters', () => {
+    const secret = `opaque-${'q'.repeat(32)}`;
+    const out = scrubErrorDetail(
+      new Error(
+        `upstream rejected https://api.example.test/callback?access_token=${secret}&mode=sync`,
+      ),
+    );
+    expect(out).not.toContain(secret);
+    expect(out).toContain('upstream rejected');
+  });
+
   it('rewrites the home directory to ~ so the OS account name does not leak', () => {
     const home = homedir();
     const out = scrubErrorDetail(new Error(`cannot read ${home}/projects/app/config.json`));
