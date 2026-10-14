@@ -55,31 +55,34 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.2
+### What's new in 1.1.4
 
-- **Lossless edits:** file-editing tools and LSP workspace edits refuse
-  non-UTF-8 files instead of corrupting their non-ASCII bytes.
-- **No silent overwrites:** plan, task, annotation and goal stores leave a file
-  they cannot parse in place instead of writing over it.
-- **Secrets stay local:** credential-bearing lines are dropped from REPL and
-  synced history, and cloud config sync redacts MCP and provider URLs.
-- **Terminal safety refusals:** OpenAI safety-classifier refusals are not
-  retried or rerouted and do not count against provider health.
+- **ACP agents use the project's services:** an ACP agent leading a session or
+  working as a delegated worker is told at the start of each task to use the
+  project's index, memory, mailbox and board, and is told about new `/btw`
+  notes and mail while its turn runs.
+- **Mailbox inbox over MCP:** the mailbox MCP server reads the actor's own
+  unread mail with one `inbox` action.
+- **Correctness fixes:** delegation abort and auto-wake races, ACP output
+  framing, shared WebUI quota reads, bounded index skeletons over MCP,
+  BOM-prefixed MCP replies, and techstack Elixir, Go and Swift lookups.
 
-Highlights from **1.1.1**, the previous release:
+Highlights from **1.1.3**, the previous release:
 
-- **Local dev servers in one step:** [`/browser allow loopback`](docs/slash/browser.md)
-  approves every localhost port for the project. `/browser` and `/network` also
-  work in the WebUI composer, and `localhost` connects on Windows when the dev
-  server listens only on `127.0.0.1`.
-- **ChatGPT quota:** `openai-chatgpt` accounts show plan and app quota in
-  [`/openai-quota`](docs/slash/openai-quota.md) and the WebUI quota panel.
-- **Longer bug hunts:** the WebUI allows up to ten [bug-hunt](docs/proof-driven-bug-hunter.md)
-  rounds, and Skill Companion stays out of the hunt.
-- **Techstack fixes:** stable-version detection, aborted registry lookups,
-  Ruby manifests and multi-instance snapshot diffs are corrected.
+- **Claude Code as leader:** `wstack --provider acp --model claude-code` or
+  [`/model acp/claude-code`](docs/slash/model.md) makes an installed ACP agent the
+  session's leader, in the TUI or a WebUI tab. It can run WrongStack's workers,
+  and resuming the session continues its own conversation.
+- **Delegated Claude workers:** `delegate` hands tasks to an installed Claude
+  Code worker that gets the project's MCP servers, answers to WrongStack's
+  permission rules and shows its subscription quota.
+- **Claude sign-in removed:** the `anthropic-oauth` login, which only worked by
+  presenting WrongStack as Claude Code, is gone; use an Anthropic API key or ACP.
 
-1.1.0 added [request residency](docs/slash/context.md), last-request cache
+1.1.2 made file edits lossless, kept stores from overwriting files they cannot
+parse, kept secrets out of history and sync and made safety refusals terminal;
+1.1.1 added [`/browser allow loopback`](docs/slash/browser.md) and ChatGPT
+quota readings; 1.1.0 added [request residency](docs/slash/context.md), last-request cache
 readouts and leaner tool-error context; 1.0.37 added Bun-first development, browser setup, `codebase-read-symbol` and the
 [Skill Companion](docs/skills-suggestion.md); 1.0.36 added phase-aware leader
 effort, per-worker effort routing and audit-driven hardening; 1.0.35 hardened
@@ -300,7 +303,7 @@ Full flag reference: [CLI reference → Updating](docs/cli-reference.md#updating
 # First run — interactive auth/setup, then a launch menu on a TTY
 wstack
 
-# Sign in with a ChatGPT/Codex or Claude subscription
+# Add an API key or sign in with a ChatGPT/Codex subscription
 wstack auth
 
 # Skip the picker and pin a provider/model
@@ -751,7 +754,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.2** — current repository version; semver from 1.0.0 onward
+- **v1.1.4** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

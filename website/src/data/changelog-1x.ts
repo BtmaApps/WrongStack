@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.3 → 1.0.0).
+// Changelog — 1.x era (1.1.4 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -9,14 +9,28 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.4',
+    date: '2026-10-14',
+    tagline: 'ACP agents steered to project services, a mailbox inbox read and race fixes',
+    latest: true,
+    highlights: [
+      'ACP leaders and delegated workers get a task kickoff naming the project’s index, memory, mailbox and board services, and hear about new /btw notes and mail mid-turn',
+      'The mailbox MCP server reads the actor’s own unread mail with an inbox action',
+      'A delegate attempt whose signal is already aborted settles once, and a stale auto-wake turn no longer clears a newer turn’s in-flight flag',
+      'The codebase index sends a bounded plain-text skeleton over MCP, and capped MCP replies with a UTF-8 BOM parse again',
+      'WebUI quota reads share one request per provider; techstack fixes Elixir purls, Go replace paths, Swift pins and CVSS v2 scoring',
+    ],
+  },
+  {
     version: '1.1.3',
     date: '2026-10-13',
     tagline: 'ACP tab leaders, conversation resume and provider-reported context usage',
-    latest: true,
     highlights: [
       'An ACP agent such as Claude Code can lead a WebUI tab, and resumed sessions continue the ACP leader’s own conversation',
       'ACP leader fleet calls belong to their own tab and run once approved; ACP workers retain their own budget instead of internal worker caps',
       'ACP leader context bars show the agent’s own context, and the context timeline separates provider-reported cache reads and writes',
+      'Delegated Claude Code workers get the project’s MCP servers, answer to WrongStack’s permission rules and report their subscription quota',
+      'The Claude subscription sign-in (anthropic-oauth) is removed; a saved one fails with an auth error pointing at an Anthropic API key',
     ],
   },
   {

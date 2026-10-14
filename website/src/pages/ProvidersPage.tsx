@@ -256,9 +256,9 @@ export function ProvidersPage() {
               ],
               [
                 Sparkles,
-                'Claude Pro / Max',
-                'Vendor OAuth flow with encrypted refresh token storage.',
-                'wstack auth login claude',
+                'Claude Code over ACP',
+                'An installed Claude Code leads the session or works as a delegated worker, on its own sign-in.',
+                'wstack --provider acp --model claude-code',
               ],
               [
                 Sparkles,

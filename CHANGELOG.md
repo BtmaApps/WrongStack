@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] — 2026-10-14
+
+A follow-up release. ACP agents are pointed at the project's services when a
+task starts and told about new notes and mail mid-turn, the mailbox MCP server reads an actor's own
+inbox, and delegation, WebUI provider checks, MCP payloads and techstack
+lookups get correctness fixes.
+
+### Added
+
+- **Project-service kickoff for ACP agents.** An ACP agent leading a session or working as a delegated worker gets a task kickoff that tells it to start with the project's index, memory, mailbox and board services. While its turn runs, it is reminded of new `/btw` notes and newly waiting mail.
+- **Mailbox inbox read.** The mailbox MCP server's read tool has an `inbox` action that returns the MCP actor's own unread mail.
+
+### Fixed
+
+- **Delegation.** A delegate attempt whose signal is already aborted settles once. A stale auto-wake turn can no longer clear a newer turn's in-flight flag.
+- **ACP.** Output that arrives in the same chunk as the ready marker is framed instead of dropped. Saved ACP leader sessions skip malformed records. An ACP tool call's whole result reaches the inspect view.
+- **WebUI server.** Concurrent quota reads for a provider share one in-flight request. A provider model test whose deadline fired after the reply fails instead of passing.
+- **MCP payloads.** The codebase index sends a bounded plain-text skeleton over MCP instead of a JSON dump that exceeded client output caps. Capped MCP HTTP response bodies are decoded like `Response#text()`, so a BOM-prefixed JSON reply parses again.
+- **Techstack.** Elixir dependencies use their Hex package name in purls, Go `replace` paths are unquoted, v1 `Package.resolved` pins are keyed by URL identity and bare CVSS v2 vectors from OSV are scored.
+- **Security scanner.** Named scan targets such as `**/Gemfile` and `**/requirements*.txt` are gathered by their glob instead of a bare extension, so a Gemfile is read and unrelated `.txt` files are not sent to the model.
+- **Smaller fixes.** OAuth rotation links survive past the access token's expiry. The IPC secret temp file is closed before it is linked into place. Only the current LSP startup owns server state. Stale Telegram poll-lock takeovers are serialized. SDD specs and design-kit frontmatter with CRLF, bare CR or a BOM parse like LF. `@wrongstack/client` keeps frames that arrive in the same read as `session.start`. A TUI tool card keeps a bounded copy of its input when it crosses the history budget.
+
+## [1.1.3] — 2026-10-13
+
+An ACP release. An installed ACP agent such as Claude Code can lead a session
+or a WebUI tab, delegated Claude workers answer to WrongStack's permission
+rules, and the Claude subscription sign-in is removed.
+
+### Added
+
+- **ACP leader.** `wstack --provider acp --model claude-code`, `/model acp/claude-code` or the WebUI provider picker make an installed ACP agent the session's leader. It can run WrongStack's workers through a loopback `wrongstack-fleet` MCP endpoint, its context bar shows the agent's own context, and a resumed session continues the agent's own conversation. See the [design](docs/plans/acp-leader-mode.md).
+- **Delegated Claude workers.** `delegate` can hand a task to an installed Claude Code worker and steer it live. The worker receives the project's MCP servers (served by `wstack mcp serve <name>`), with the codebase index attached first.
+- **Worker quota.** A delegated Claude worker's subscription windows appear in `/provider-quota`, the WebUI quota page and the status chip. A spent quota stops delegation with its reset time instead of failing as a generic tool error.
+- **MCP reads for external agents.** Kanban list reads take a `limit`, a `stats` action returns whole-project totals in one small payload, and the codebase index MCP exposes call-graph, symbol, skeleton, impact and repo-map queries.
+- **F3 agents panel.** The TUI agents panel fits common terminal sizes, shows each agent's task and keeps finished agents and failures readable.
+
+### Changed
+
+- **Claude sign-in removed.** The `anthropic-oauth` login only worked by presenting WrongStack as Claude Code, so it is gone. A saved `anthropic-oauth` provider still loads, but every request fails with a non-retryable `auth` error that points at an Anthropic API key; stored tokens are never read.
+- **Release pipeline.** CI no longer publishes to npm. Packages are published locally with `bun run release`, and a read-only job verifies that the tagged version is live.
+- **`/model` in the TUI.** `/model <provider>/<model>` switches at once; bare `/model` still opens the picker, which now lists ACP agents.
+
+### Fixed
+
+- **ACP worker safety.** Delegated workers start in the agent's ask-first mode, and each permission request is decided by WrongStack's subagent policy. Requests the policy cannot check are refused, and MCP tools are checked under their own names.
+- **ACP turns.** A worker's prompt turn ends after ten minutes of silence instead of a fixed five-minute deadline, and `session/cancel` stops the agent when it does. ACP workers keep their own budget instead of internal worker caps.
+- **Fail closed.** Input history and prompt usage stores refuse an unparseable file during a locked read-modify-write. Kanban board pruning never deletes a board whose timestamps cannot be parsed. Copilot device flow validates its expiry and poll interval.
+- **Smaller fixes.** The secret scrubber catches Stripe restricted keys, PyPI tokens and `aws configure set` secrets. The dead-code fixer keeps removals parse-stable under ASI. Submitting a change for review waits for its vote to start. The WebUI context timeline splits bars by provider-reported cache reads and writes.
+
 ## [1.1.2] — 2026-10-13
 
 A hardening release. File-editing tools refuse to rewrite files they cannot

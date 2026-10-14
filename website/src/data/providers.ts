@@ -163,12 +163,6 @@ export const oauthProviders: OAuthProvider[] = [
     command: 'wstack auth login chatgpt',
   },
   {
-    id: 'anthropic-oauth',
-    name: 'Claude Pro / Max',
-    description: 'Vendor OAuth flow with an encrypted, self-refreshing token in the local vault.',
-    command: 'wstack auth login claude',
-  },
-  {
     id: 'github-copilot',
     name: 'GitHub Copilot',
     description:
