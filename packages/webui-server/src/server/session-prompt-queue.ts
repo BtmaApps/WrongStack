@@ -409,6 +409,10 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
         addedAt: Date.now(),
         blocks: await queuedPromptBlocks(text, images),
       };
+      // Another add can fill the last slot while attachments are being prepared.
+      if (items.length >= QUEUE_MAX_ITEMS) {
+        return { ok: false, reason: `The queue is full (${QUEUE_MAX_ITEMS} prompts).` };
+      }
       const itemBytes = bytesOf(toPersisted(item));
       if (itemBytes > QUEUE_MAX_ITEM_BYTES) {
         return { ok: false, reason: 'This prompt is too large to queue.' };
