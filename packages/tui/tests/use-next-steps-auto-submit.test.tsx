@@ -41,6 +41,68 @@ describe('useNextStepsAutoSubmit', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it.each([false, true])(
+    'steers a repeated suggestion once, then parks until reset (yolo=%s)',
+    async (yolo) => {
+      let status: 'idle' | 'running' = 'idle';
+      const runBlocks = vi.fn(async (_blocks: Array<{ type: string; text?: string }>) => undefined);
+      const dispatch = vi.fn();
+      const { result, rerender } = renderHook(() =>
+        useNextStepsAutoSubmit({
+          state: createTestState({ status }),
+          autonomyLive: 'auto',
+          agent: { ctx: { todos: [] } } as never,
+          getAutonomy: () => 'auto',
+          getSettings: () => ({ delayMs: 0, autoProceedMaxIterations: 0 }) as never,
+          getSuggestions: () => ['Continue the verification'],
+          getAutoSuggestions: () => ['Continue the verification'],
+          getYolo: () => yolo,
+          setSuggestions: vi.fn(),
+          autonomyNextPrompt: undefined,
+          dispatch,
+          clearDraft: vi.fn(),
+          runBlocksRef: { current: runBlocks },
+        }),
+      );
+      const tick = async () =>
+        act(async () => {
+          await vi.advanceTimersByTimeAsync(500);
+        });
+      const nextTurn = async () => {
+        status = 'running';
+        rerender();
+        status = 'idle';
+        rerender();
+        await tick();
+      };
+
+      await tick();
+      expect(runBlocks).toHaveBeenCalledTimes(1);
+      expect(runBlocks.mock.calls[0]?.[0][0]?.text).toBe('Continue the verification');
+      await nextTurn();
+      expect(runBlocks).toHaveBeenCalledTimes(2);
+      expect(runBlocks.mock.calls[1]?.[0][0]?.text).toContain(
+        'Do not repeat the previous response',
+      );
+      await nextTurn();
+      expect(runBlocks).toHaveBeenCalledTimes(2);
+      expect(dispatch.mock.calls.filter(([action]) => action.entry?.kind === 'warn')).toHaveLength(
+        1,
+      );
+      await nextTurn();
+      expect(result.current.nextStepsAutoSubmitCountdown).toBeNull();
+      expect(dispatch.mock.calls.filter(([action]) => action.entry?.kind === 'warn')).toHaveLength(
+        1,
+      );
+
+      // The existing manual-submit path resets both refs.
+      result.current.autoSubmitCapWarnedRef.current = false;
+      result.current.autoSubmitLoopGuardRef.current.reset();
+      await nextTurn();
+      expect(runBlocks).toHaveBeenCalledTimes(3);
+    },
+  );
+
   it('stays parked while a resumed session holds auto-proceed', async () => {
     // The bug this pins: `/resume` restores the session's todo board, and an
     // open todo is grounded work as far as `selectAutoProceedCandidate` is

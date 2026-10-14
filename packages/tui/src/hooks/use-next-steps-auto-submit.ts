@@ -7,6 +7,7 @@ import {
   generateAdvancementPrompt,
   MAX_ADVANCEMENT_ATTEMPTS,
   matchTodoIdFromPrompt,
+  REPEATED_SUGGESTION_STEER,
 } from '@wrongstack/tools/auto-proceed-loop-guard';
 import { todoTool } from '@wrongstack/tools/todo';
 import {
@@ -269,6 +270,11 @@ export function useNextStepsAutoSubmit({
       return;
     }
 
+    // Both a cap and a repetition halt wait for manual input. In particular,
+    // the YOLO suggestion store can retain the halted item after clearing
+    // visible suggestions; do not keep re-arming countdowns and warnings.
+    if (autoSubmitCapWarnedRef.current) return;
+
     const suggestions = getSuggestions?.() ?? [];
     const isYolo = getYolo?.() ?? false;
     // Filter out todos that the continuation tracker has marked skipped
@@ -410,12 +416,14 @@ export function useNextStepsAutoSubmit({
           // avoids stopping the auto-proceed loop when there's still
           // unfinished work. Only when no more todos remain do we halt.
           //
-          // Suggestion-sourced prompts keep strict halt-on-first-repeat:
-          // those ARE model echoes.
+          // Give model suggestions one explicit recovery turn too. Provider
+          // failures retain their separate single-retry policy.
           const repetition =
             source === 'todo'
               ? autoSubmitLoopGuardRef.current.recordGrounded(suggestion)
-              : autoSubmitLoopGuardRef.current.record(suggestion);
+              : source === 'failed-run'
+                ? autoSubmitLoopGuardRef.current.record(suggestion)
+                : autoSubmitLoopGuardRef.current.recordSuggestion(suggestion);
           if (repetition.shouldHalt) {
             // Tracks whether we identified the stalled todo but could not
             // advance (all others done/skipped), vs. failing to match the
@@ -518,6 +526,7 @@ export function useNextStepsAutoSubmit({
               }
             }
             // ── All paths exhausted: halt normally ──────────────────
+            autoSubmitCapWarnedRef.current = true;
             setSuggestions?.([]);
             const truncatedForMessage =
               suggestion.length > 100 ? `${suggestion.slice(0, 97)}…` : suggestion;
@@ -528,7 +537,7 @@ export function useNextStepsAutoSubmit({
                   ? stalledMatchFailed
                     ? 'the stalled prompt could not be matched to any todo on the board'
                     : 'No more open todos to advance to'
-                  : `the same prompt was fed ${repetition.runLength} times in a row`;
+                  : 'the same next step returned after a recovery turn; this repeat was not submitted';
             dispatch({
               type: 'addEntry',
               entry: {
@@ -543,7 +552,7 @@ export function useNextStepsAutoSubmit({
             autoSubmitStreakRef.current += 1;
             const steered = 'action' in repetition && repetition.action === 'steer';
             const promptToFeed = steered
-              ? `${suggestion}\n\n${GROUNDED_NO_PROGRESS_STEER}`
+              ? `${suggestion}\n\n${source === 'todo' ? GROUNDED_NO_PROGRESS_STEER : REPEATED_SUGGESTION_STEER}`
               : suggestion;
             // Trigger submit — input field is cleared after submission completes
             // (see clearDraft in finally block below). Do not pre-populate the

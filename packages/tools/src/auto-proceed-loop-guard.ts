@@ -109,6 +109,14 @@ export const GROUNDED_NO_PROGRESS_STEER = [
   'Then continue the work. If you are blocked, state exactly what is blocking you instead of repeating the same turn.',
 ].join('\n');
 
+/** One recovery turn for a repeated model-suggested continuation. */
+export const REPEATED_SUGGESTION_STEER = [
+  'NOTE: The same next-step suggestion appeared again. Do not repeat the previous response.',
+  'Check what the previous turn accomplished before acting. If this step is already finished, verify the result and choose the next unfinished step.',
+  'If work remains, take a concrete next action and report new evidence. If blocked, explain the blocker instead of suggesting this same step again.',
+  'Update the todo board if present, and only suggest remaining actionable work.',
+].join('\n');
+
 export type GroundedRepetitionAction = 'feed' | 'steer' | 'halt';
 
 export interface GroundedRepetitionSignal extends RepetitionSignal {
@@ -141,6 +149,8 @@ export interface AutoProceedLoopGuard {
    * different prompt is recorded (board moved) or on {@link reset}.
    */
   recordGrounded(prompt: string): GroundedRepetitionSignal;
+  /** Give a repeated model suggestion one recovery turn before halting. */
+  recordSuggestion(prompt: string): GroundedRepetitionSignal;
   /**
    * Drop the history. Call this on any manual user input so a fresh run
    * starts with no memory of the prior cycle.
@@ -442,5 +452,5 @@ export function createAutoProceedLoopGuard(options: LoopGuardOptions = {}): Auto
     return buffer.length;
   }
 
-  return { record, recordGrounded, reset, history, size };
+  return { record, recordGrounded, recordSuggestion: recordGrounded, reset, history, size };
 }
