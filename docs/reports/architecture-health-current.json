@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T09:54:33.650Z",
+  "generatedAt": "2026-10-14T10:17:09.989Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4959,
-    "testFiles": 4347,
-    "sourceLines": 1099647,
+    "testFiles": 4348,
+    "sourceLines": 1099689,
     "workspaceEdges": 137,
     "moduleEdges": 16339,
     "nonCommandSlashImports": 0,
@@ -748,7 +748,7 @@
       "name": "@wrongstack/telegram",
       "dir": "packages/telegram",
       "sourceFiles": 27,
-      "testFiles": 41,
+      "testFiles": 42,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -762,7 +762,7 @@
         {
           "path": "packages/telegram/tsconfig.test.json",
           "error": null,
-          "testFiles": 41
+          "testFiles": 42
         }
       ]
     },
@@ -17339,6 +17339,12 @@
       },
       {
         "file": "packages/telegram/tests/unit/outbox-html-escape.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/telegram/tests/unit/poll-lock-takeover-race.test.ts",
         "projects": [
           "root-node"
         ]

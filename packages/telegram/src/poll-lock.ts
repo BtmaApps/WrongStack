@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Logger } from '@wrongstack/core/types';
 import { isPidAlive, wstackGlobalRoot } from '@wrongstack/core/utils';
@@ -104,23 +104,42 @@ export class PollLock {
     if (fresh === undefined) return false;
     if (fresh && !this.isStale(fresh)) return false;
 
-    // Take over stale lock atomically via temp file + rename (never blind unlink).
-    const tmp = `${this.lockPath}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+    // One takeover at a time. Without this, a contender that judged the lock
+    // stale before another one's rename could rename over that winner after
+    // it had already verified itself — both would then hold the lock and poll
+    // the same token until the loser's next heartbeat noticed.
+    const guard = `${this.lockPath}.takeover`;
+    if (!this.enterTakeover(guard)) return false;
     try {
-      writeFileSync(tmp, JSON.stringify(payload));
-      renameSync(tmp, this.lockPath);
-    } catch {
-      try {
-        unlinkSync(tmp);
-      } catch {
-        // Temp cleanup is best-effort.
-      }
-      return false;
-    }
+      // Re-check inside the guard: a contender may have taken over since.
+      const current = this.readLock();
+      if (current === undefined) return false;
+      if (current && !this.isStale(current)) return false;
 
-    // Verify this instance actually won the rename race.
-    if (this.readLock()?.id !== this.id) {
-      return false;
+      // Take over stale lock atomically via temp file + rename (never blind unlink).
+      const tmp = `${this.lockPath}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+      try {
+        writeFileSync(tmp, JSON.stringify(payload));
+        renameSync(tmp, this.lockPath);
+      } catch {
+        try {
+          unlinkSync(tmp);
+        } catch {
+          // Temp cleanup is best-effort.
+        }
+        return false;
+      }
+
+      // Verify this instance actually won the rename race.
+      if (this.readLock()?.id !== this.id) {
+        return false;
+      }
+    } finally {
+      try {
+        unlinkSync(guard);
+      } catch {
+        // Best effort: a leftover guard is cleared once it is older than staleMs.
+      }
     }
 
     this._held = true;
@@ -143,6 +162,29 @@ export class PollLock {
   // ------------------------------------------------------------------
   // Internals
   // ------------------------------------------------------------------
+
+  /**
+   * Claim the takeover guard. Contention reports the same codes as the lock's
+   * own exclusive create (EEXIST on POSIX; EPERM/EACCES/EBUSY on Windows). A
+   * guard older than the stale window belongs to a contender that died inside
+   * a takeover that takes milliseconds: clear it so the next attempt proceeds.
+   */
+  private enterTakeover(guard: string): boolean {
+    try {
+      writeFileSync(guard, this.id, { flag: 'wx' });
+      return true;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'EEXIST' || code === 'EPERM' || code === 'EACCES' || code === 'EBUSY') {
+        try {
+          if (Date.now() - statSync(guard).mtimeMs > this.staleMs) unlinkSync(guard);
+        } catch {
+          // Gone or unreadable: the next attempt decides.
+        }
+      }
+      return false;
+    }
+  }
 
   private startHeartbeat(): void {
     this.stopHeartbeat();

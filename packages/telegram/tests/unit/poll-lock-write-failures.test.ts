@@ -4,7 +4,12 @@ import * as path from 'node:path';
 import type { Logger } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const failures = vi.hoisted(() => ({ exclusive: false as boolean | 'EPERM', rename: false }));
+const failures = vi.hoisted(() => ({
+  exclusive: false as boolean | 'EPERM',
+  /** When set, only this path's exclusive create fails (not the takeover guard). */
+  exclusivePath: '',
+  rename: false,
+}));
 
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
@@ -14,6 +19,7 @@ vi.mock('node:fs', async (importOriginal) => {
       const options = args[2];
       if (
         failures.exclusive &&
+        (!failures.exclusivePath || String(args[0]) === failures.exclusivePath) &&
         typeof options === 'object' &&
         options !== null &&
         'flag' in options &&
@@ -39,6 +45,7 @@ let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'poll-lock-write-failure-'));
   failures.exclusive = false;
+  failures.exclusivePath = '';
   failures.rename = false;
 });
 
@@ -63,7 +70,10 @@ describe('PollLock write failures', () => {
         heartbeatAt: 1,
       }),
     );
+    // The lock file's own exclusive create reports Windows contention; the
+    // takeover guard beside it is created normally.
     failures.exclusive = 'EPERM';
+    failures.exclusivePath = lockPath;
     const lock = new PollLock(lockPath);
     expect(lock.tryAcquire()).toBe(true);
     expect(lock.held).toBe(true);
