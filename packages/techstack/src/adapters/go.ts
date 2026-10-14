@@ -131,11 +131,13 @@ function parseGoReplacements(content: string): Map<string, GoReplacement> {
       continue;
     }
     const candidate = inBlock ? line : line.startsWith('replace ') ? line.slice(8).trim() : '';
-    const match = candidate.match(/^(\S+)(?:\s+(v\S+))?\s+=>\s+(\S+)(?:\s+(v\S+))?/);
-    if (!match) continue;
-    const modulePath = match[1];
-    const target = match[3];
-    if (!modulePath || !target) continue;
+    const match = candidate.match(
+      /^("[^"]+"|\S+)(?:\s+(v\S+))?\s+=>\s+("[^"]+"|\S+)(?:\s+(v\S+))?/,
+    );
+    if (!match?.[1] || !match[3]) continue;
+    // Quotes delimit Go path tokens; they are not part of the module identity.
+    const modulePath = unquoteGo(match[1]);
+    const target = unquoteGo(match[3]);
     const local =
       target.startsWith('.') || target.startsWith('/') || /^[A-Za-z]:[\\/]/.test(target);
     // A version on the left replaces ONLY that version (keyed `path@version`);

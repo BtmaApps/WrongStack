@@ -105,6 +105,60 @@ describe('GoAdapter', () => {
     }
   });
 
+  it.each([
+    'replace "example.com/original" => example.com/fork v1.2.0',
+    'replace example.com/original => "example.com/fork" v1.2.0',
+    'replace "example.com/original" v1.0.0 => "example.com/fork" v1.2.0',
+    'replace (\n  "example.com/original" => "example.com/fork" v1.2.0\n)',
+  ])('uses the replacement identity for quoted paths: %s', async (directive) => {
+    const { dir, ws } = mkWorkspace({
+      'go.mod': `module example.com/app\nrequire example.com/original v1.0.0\n${directive}\n`,
+    });
+    try {
+      const deps = await new GoAdapter().inventory(ws, {});
+      expect(deps).toHaveLength(1);
+      expect(deps[0]).toMatchObject({
+        name: 'example.com/original',
+        requested: '1.0.0',
+        locked: '1.2.0',
+        sourceType: 'registry',
+        purl: 'pkg:golang/example.com/fork@1.2.0',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.each(['"../local"', '"../local module"'])(
+    'classifies a quoted local replacement as a path: %s',
+    async (target) => {
+      const { dir, ws } = mkWorkspace({
+        'go.mod': `module example.com/app\nrequire example.com/original v1.0.0\nreplace example.com/original => ${target}\n`,
+      });
+      try {
+        const deps = await new GoAdapter().inventory(ws, {});
+        expect(deps[0]?.sourceType).toBe('path');
+        expect(deps[0]?.purl).toBeUndefined();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('does not apply a quoted version-specific replacement to another version', async () => {
+    const { dir, ws } = mkWorkspace({
+      'go.mod':
+        'module example.com/app\nrequire example.com/original v1.0.0\nreplace "example.com/original" v1.1.0 => "example.com/fork" v1.2.0\n',
+    });
+    try {
+      const deps = await new GoAdapter().inventory(ws, {});
+      expect(deps[0]?.locked).toBe('1.0.0');
+      expect(deps[0]?.purl).toBe('pkg:golang/example.com/original@1.0.0');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('skips own module', async () => {
     const { dir, ws } = mkWorkspace({ 'go.mod': GOMOD });
     try {
