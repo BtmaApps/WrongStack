@@ -159,6 +159,28 @@ describe('sandbox streaming enforcement (plan 28 — choke point covers executeS
     expect(events.length).toBe(2);
     expect(getSandboxAuditLog().some((r) => r.kind === 'sandbox.expansion_outcome')).toBe(true);
   });
+
+  it('denies a stream-only tool before its first event', async () => {
+    let ran = false;
+    const tool = {
+      name: 'exec',
+      description: 'stub',
+      permission: 'confirm',
+      mutating: false,
+      inputSchema: { type: 'object' },
+      async *executeStream() {
+        ran = true;
+        yield { type: 'final' as const, output: { v: 1 } };
+      },
+    } as unknown as Tool<{ v: number }, { v: number }>;
+    const gen = createSandboxExecWrapper({ backend: denyBackend })(tool).executeStream?.(
+      { v: 1 },
+      undefined as never,
+      { signal: new AbortController().signal } as never,
+    ) as AsyncGenerator<unknown>;
+    await expect(gen.next()).rejects.toThrow(SandboxDeniedError);
+    expect(ran).toBe(false);
+  });
 });
 
 describe('createPolicySandboxApprover (plan 28 T6)', () => {

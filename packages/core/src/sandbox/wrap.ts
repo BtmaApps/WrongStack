@@ -188,10 +188,13 @@ export function createSandboxExecWrapper(
 
   return <I, O>(tool: Tool<I, O>): Tool<I, O> => {
     const rawExecute = tool.execute;
-    if (!rawExecute) return tool;
-    const wrapped: Tool<I, O> = {
-      ...tool,
-      execute: async (input, ctx, opts) => {
+    const rawExecuteStream = tool.executeStream;
+    // F2026101032: a stream-only tool has no execute. Returning it unchanged
+    // let executeStream skip enforcement. Same rule as createSandboxMcpGate.
+    if (!rawExecute && !rawExecuteStream) return tool;
+    const wrapped: Tool<I, O> = { ...tool };
+    if (rawExecute) {
+      wrapped.execute = async (input, ctx, opts) => {
         const cfg = resolveSandboxConfigForAgent(
           (ctx as { agentId?: string } | undefined)?.agentId,
         );
@@ -224,9 +227,8 @@ export function createSandboxExecWrapper(
           }
         }
         return rawExecute.call(tool, input, ctx, opts);
-      },
-    };
-    const rawExecuteStream = tool.executeStream;
+      };
+    }
     if (rawExecuteStream) {
       wrapped.executeStream = async function* (input: I, ctx: unknown, opts: unknown) {
         const cfg = resolveSandboxConfigForAgent(
