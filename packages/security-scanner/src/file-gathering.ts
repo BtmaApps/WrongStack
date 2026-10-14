@@ -1,7 +1,7 @@
-import { DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 import { open, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import { DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 
 export const DEFAULT_EXCLUDE_PATTERNS = [...DEFAULT_WALK_IGNORE_DIRS];
 
@@ -69,6 +69,13 @@ export async function readFileHead(filePath: string, maxChars: number): Promise<
 export interface GatherFilesOptions {
   root: string;
   extensions: string[];
+  /**
+   * Globs matched against the root-relative path, for targets an extension
+   * cannot express (a `Gemfile`, `requirements*.txt` in any directory). A file
+   * is gathered when its extension OR one of these matches; with neither
+   * given, every file is gathered.
+   */
+  includePatterns?: string[] | undefined;
   maxDepth: number;
   excludePatterns?: string[] | undefined;
   excludeHidden?: boolean | undefined;
@@ -199,6 +206,8 @@ export async function gatherFiles(options: GatherFilesOptions): Promise<string[]
         }),
     ),
   ];
+  const includeMatchers = (options.includePatterns ?? []).map(getGlobRegex);
+  const unrestricted = extensions.length === 0 && includeMatchers.length === 0;
   const files: string[] = [];
 
   async function visit(directory: string, currentDepth: number): Promise<void> {
@@ -236,14 +245,15 @@ export async function gatherFiles(options: GatherFilesOptions): Promise<string[]
             continue;
           }
           if (
-            extensions.length === 0 ||
+            unrestricted ||
             extensions.some((extension) => {
               const lowerName = entry.name.toLowerCase();
               return (
                 lowerName.endsWith(extension) ||
                 (extension === '.env' && lowerName.startsWith('.env'))
               );
-            })
+            }) ||
+            includeMatchers.some((matcher) => matcher.test(relativeFilePath))
           ) {
             files.push(fullPath);
           }

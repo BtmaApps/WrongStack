@@ -73,19 +73,24 @@ export class BatchScanner {
       '.cs',
       '.rs',
     ];
-    const extensions: string[] = Array.from(
-      new Set(
-        targetFiles.flatMap((p: string) => {
-          const stripped = p.replace(/\*+$/, '');
-          const match = stripped.match(/\.[a-z0-9]+$/i);
-          return match ? [match[0].toLowerCase()] : [];
-        }),
-      ),
-    );
+    // Only a `*.ext` last segment is an extension. A named target keeps its
+    // glob: reducing `**/requirements*.txt` or `**/CMakeLists.txt` to `.txt`
+    // sent every text file to the model, and `**/Gemfile` (no extension) was
+    // never read. An all-wildcard segment (`**/*`, `src/**`) narrows nothing.
+    const extensions = new Set<string>();
+    const includePatterns = new Set<string>();
+    for (const target of targetFiles) {
+      const normalized = target.replace(/\\/g, '/');
+      const baseName = normalized.slice(normalized.lastIndexOf('/') + 1);
+      if (/^\*\.[a-z0-9]+$/i.test(baseName)) extensions.add(baseName.slice(1).toLowerCase());
+      else if (/[^*?]/.test(baseName)) includePatterns.add(normalized);
+    }
+    const restricted = extensions.size > 0 || includePatterns.size > 0;
     const maxDepth = options.depth === 'quick' ? 2 : options.depth === 'deep' ? 20 : 5;
     const files = await gatherFiles({
       root: options.projectRoot,
-      extensions: extensions.length > 0 ? extensions : fallbackExtensions,
+      extensions: restricted ? [...extensions] : fallbackExtensions,
+      includePatterns: [...includePatterns],
       maxDepth,
       excludePatterns: [...(options.excludePatterns ?? DEFAULT_EXCLUDE_PATTERNS)],
       excludeHidden: true,

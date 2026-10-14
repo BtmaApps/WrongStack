@@ -11,6 +11,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { BatchScanner } from '../src/batch-scanner.js';
+import { gatherFiles } from '../src/file-gathering.js';
 import { SecurityScannerOrchestrator } from '../src/orchestrator.js';
 import { SecurityScanner } from '../src/scanner.js';
 import { defaultSkillGenerator, SkillGenerator } from '../src/skill-generator.js';
@@ -103,6 +105,80 @@ describe('security scan target files', () => {
       'app/server.py': 'import os',
     });
     expect(await scanned(dir)).toEqual(['app/server.py', 'package.json', 'requirements.txt']);
+  });
+
+  // A named target was reduced to its trailing extension: `**/Gemfile` has
+  // none so it was never read, and `**/requirements*.txt` became `.txt`, which
+  // sent every text file in the tree to the model.
+  it('reads named targets by their glob, not by their extension', async () => {
+    const ruby = await project({
+      Gemfile: "source 'https://rubygems.org'",
+      'app/user.rb': 'class User; end',
+    });
+    expect(await scanned(ruby)).toEqual(['Gemfile', 'app/user.rb']);
+    await fs.rm(ruby, { recursive: true, force: true });
+
+    const python = await project({
+      'requirements.txt': 'flask==3.0.0',
+      'requirements-dev.txt': 'pytest==8.0.0',
+      'app/server.py': 'import os',
+      '.env.local': 'TOKEN=x',
+      'LICENSE.txt': 'MIT',
+      'data/corpus.txt': 'customer notes',
+    });
+    expect(await scanned(python)).toEqual([
+      '.env.local',
+      'app/server.py',
+      'requirements-dev.txt',
+      'requirements.txt',
+    ]);
+  });
+
+  it('falls back to source extensions when every target is a bare wildcard', async () => {
+    const dir = await project({ 'a.ts': 'export {};', 'b.py': 'x = 1', 'logo.png': 'PNG' });
+    const { provider, seen } = recordingProvider('[]');
+    await new BatchScanner().runBatchScan({
+      provider: provider as never,
+      model: 'm',
+      projectRoot: dir,
+      skill: { patterns: [], metadata: { targetFiles: ['**/*', 'src/**'] } } as never,
+      techStack: { stack: 'unknown' } as never,
+      depth: 'standard',
+      llmBatchSize: undefined,
+      fileConcurrency: undefined,
+      abortController: new AbortController(),
+    });
+    expect([...seen].sort()).toEqual(['a.ts', 'b.py']);
+  });
+
+  it('gathers include-pattern matches alongside extension matches', async () => {
+    const dir = await project({
+      Gemfile: '',
+      'nested/Gemfile': '',
+      'nested/notes.txt': '',
+      'lib/a.rb': '',
+    });
+    const rel = (files: string[]) => files.map((f) => path.relative(dir, f).replace(/\\/g, '/'));
+    expect(
+      rel(
+        await gatherFiles({
+          root: dir,
+          extensions: [],
+          includePatterns: ['**/Gemfile'],
+          maxDepth: 5,
+        }),
+      ).sort(),
+    ).toEqual(['Gemfile', 'nested/Gemfile']);
+    expect(
+      rel(
+        await gatherFiles({
+          root: dir,
+          extensions: ['.rb'],
+          includePatterns: ['Gemfile'],
+          maxDepth: 5,
+        }),
+      ).sort(),
+    ).toEqual(['Gemfile', 'lib/a.rb']);
   });
 
   it('keeps the stack list under a model-written target list', async () => {
