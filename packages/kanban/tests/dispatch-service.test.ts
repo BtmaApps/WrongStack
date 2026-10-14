@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import {
   addTask,
   cancelKanbanDispatch,
@@ -21,7 +22,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 const COLS = [

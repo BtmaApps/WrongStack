@@ -7,6 +7,7 @@ import { validateManagedTaskTransition } from '../src/manager/lifecycle.js';
 import { classifyTaskForQueue } from '../src/manager/task-classifier.js';
 import { writeBoard } from '../src/storage.js';
 import type { KanbanBoard, KanbanTask } from '../src/types.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import {
   addTask,
   assignTask,
@@ -43,7 +44,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 const DETAILS = {

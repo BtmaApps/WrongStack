@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { compareTasksForWork } from '../src/manager/_internal.js';
 import type { KanbanTask } from '../src/types.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import {
   addTask,
   assignTask,
@@ -20,7 +21,7 @@ beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kanban-phase4-'));
 });
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 const COLS = [

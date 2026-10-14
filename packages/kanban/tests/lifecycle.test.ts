@@ -25,6 +25,7 @@ import type {
   KanbanTask,
   KanbanVerificationReport,
 } from '../src/types.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import {
   addTask,
   createBoard,
@@ -42,7 +43,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 function nowIso(): string {

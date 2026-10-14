@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeBoard } from '../src/storage.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import { createBoard, getBoard, pruneSessionBoards } from './helpers/session-manager.js';
 
 let tmpDir: string;
@@ -11,7 +12,7 @@ beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kanban-prune-'));
 });
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 // Helper: create a board with kind + retention, then set its updatedAt to the past.

@@ -21,6 +21,7 @@ import {
   MAX_FRAME_CHARS,
   onData,
 } from '../src/server/project-server.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 
 // Emitted at the dist ROOT, not under dist/server/: `client.ts` is bundled
 // into dist/index.js, so its `new URL('./project-server.js', import.meta.url)`
@@ -146,7 +147,7 @@ describe('kanban project server lifecycle', { retry: 1 }, () => {
       expect(code, why(child)).toBe(0);
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill();
-      await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 25 });
     }
   });
 
@@ -161,7 +162,7 @@ describe('kanban project server lifecycle', { retry: 1 }, () => {
       expect(code, why(child)).toBe(0);
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill();
-      await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 25 });
     }
   });
 
@@ -177,7 +178,7 @@ describe('kanban project server lifecycle', { retry: 1 }, () => {
       expect(code, why(child)).toBe(0);
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill();
-      await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 25 });
     }
   });
 
@@ -206,7 +207,7 @@ describe('kanban project server lifecycle', { retry: 1 }, () => {
       // for a brief moment after the daemon's DatabaseSync.close() returns,
       // so the recursive rm can hit EBUSY. maxRetries lets node retry the
       // unlink with the standard 25ms backoff until the OS releases the map.
-      await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+      await removeProjectFixtureDirectory(projectRoot, { maxRetries: 5, retryDelay: 25 });
     }
   });
 });

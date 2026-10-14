@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { boardPassesKindFilter, resolveKindFilter } from '../src/manager/board-kind-filter.js';
 import type { KanbanBoard } from '../src/types.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import {
   addTask,
   createBoard,
@@ -18,7 +19,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 // ── Type-level: normalizeBoard infers kind ───────────────────────────

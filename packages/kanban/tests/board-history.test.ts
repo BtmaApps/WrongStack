@@ -8,6 +8,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readBoardHistory } from '../src/storage.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 import {
   adoptManagedLifecycle,
   createBoard,
@@ -24,7 +25,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  await removeProjectFixtureDirectory(tmpDir, { maxRetries: 5, retryDelay: 25 });
 });
 
 describe('board history', () => {

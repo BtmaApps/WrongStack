@@ -7,6 +7,7 @@ import * as commandRunner from '../src/exec-command.js';
 import { gradeLocalManifest } from '../src/graders/local-manifest-grader.js';
 import { createLocalManifestSuite, type LocalTaskMeta } from '../src/suites/local-manifest.js';
 import type { BenchTask } from '../src/types.js';
+import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 
 const tempDirs: string[] = [];
 
@@ -20,7 +21,7 @@ afterEach(async () => {
     tempDirs
       .splice(0)
       .map((dir) =>
-        fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }).catch(() => {}),
+        removeProjectFixtureDirectory(dir, { maxRetries: 5, retryDelay: 50 }).catch(() => {}),
       ),
   );
 });
