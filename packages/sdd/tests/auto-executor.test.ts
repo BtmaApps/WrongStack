@@ -268,6 +268,21 @@ describe('AutoExecutor', () => {
     );
   });
 
+  it('reports the critical path in canonical dependency-first order', async () => {
+    const graph = makeGraph([makeNode('a'), makeNode('b')], [{ from: 'a', to: 'b' }]);
+    await store.saveGraph(graph);
+    await tracker.loadGraph(graph.id);
+    const executor = new AutoExecutor({
+      tracker,
+      events,
+      executeTask: async () => ({ success: true }),
+    });
+
+    const summary = await executor.execute(graph, makeSpec());
+
+    expect(summary.criticalPath).toEqual(['a', 'b']);
+  });
+
   it('retries thrown errors and provides dependency context', async () => {
     const a = makeNode('a', { priority: 'low' });
     const b = makeNode('b', { priority: 'critical' });

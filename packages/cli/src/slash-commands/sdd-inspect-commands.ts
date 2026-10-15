@@ -1,4 +1,4 @@
-import type { SlashCommand, SpecRequirement, TaskGraph } from '@wrongstack/core/types';
+import type { SlashCommand, SpecRequirement } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
 import {
   analyzeCriticalPath,
@@ -338,7 +338,7 @@ export async function runSddInspectCommand(inputs: {
           return { message: 'Could not load task graph.' };
         }
 
-        const analysis = analyzeCriticalPath(dependentFirstView(graph));
+        const analysis = analyzeCriticalPath(graph);
         return { message: formatCriticalPathAnalysis(graph, analysis) };
       } catch {
         return { message: 'Could not analyze critical path.' };
@@ -346,13 +346,4 @@ export async function runSddInspectCommand(inputs: {
     }
   }
   throw new Error('Unhandled delegated case');
-}
-
-function dependentFirstView(graph: TaskGraph): TaskGraph {
-  return {
-    ...graph,
-    edges: graph.edges.map((edge) =>
-      edge.type === 'depends_on' ? { ...edge, from: edge.to, to: edge.from } : edge,
-    ),
-  };
 }

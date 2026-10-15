@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { TaskTracker } from '@wrongstack/core/tasking';
 import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
 import { describe, expect, it } from 'vitest';
@@ -36,10 +38,18 @@ function makeGraph(opts: {
     title: 'Test',
     nodes,
     edges,
-    rootNodes: opts.nodes.filter((n) => !opts.edges?.some((e) => e.from === n.id)).map((n) => n.id),
+    rootNodes: opts.nodes.filter((n) => !opts.edges?.some((e) => e.to === n.id)).map((n) => n.id),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
+}
+
+function loadWebuiUxGraph(): TaskGraph {
+  const file = resolve(import.meta.dirname, '../../../docs/specs/webui-ux-improvements.task-graph.json');
+  const parsed = JSON.parse(readFileSync(file, 'utf8')) as Omit<TaskGraph, 'nodes'> & {
+    nodes: [string, TaskNode][];
+  };
+  return { ...parsed, nodes: new Map(parsed.nodes) };
 }
 
 describe('Critical Path Analysis', () => {
@@ -63,7 +73,7 @@ describe('Critical Path Analysis', () => {
   it('identifies blocked tasks', () => {
     const graph = makeGraph({
       nodes: [makeNode('a'), makeNode('b')],
-      edges: [{ from: 'b', to: 'a' }], // b depends on a
+      edges: [{ from: 'a', to: 'b' }], // a is the dependency; b is the dependent
     });
     const result = analyzeCriticalPath(graph);
     expect(result.readyTasks).toContain('a');
@@ -74,9 +84,9 @@ describe('Critical Path Analysis', () => {
     const graph = makeGraph({
       nodes: [makeNode('a'), makeNode('b'), makeNode('c'), makeNode('d')],
       edges: [
-        { from: 'b', to: 'a' },
-        { from: 'c', to: 'a' },
-        { from: 'd', to: 'a' },
+        { from: 'a', to: 'b' },
+        { from: 'a', to: 'c' },
+        { from: 'a', to: 'd' },
       ],
     });
     const result = analyzeCriticalPath(graph);
@@ -95,10 +105,10 @@ describe('Critical Path Analysis', () => {
         makeNode('dep-2'),
       ],
       edges: [
-        { from: 'minor-blocker', to: 'done' },
-        { from: 'dep-1', to: 'minor-blocker' }, // minor-blocker blocks 1 active task (severity 20)
-        { from: 'dep-1', to: 'major-blocker' },
-        { from: 'dep-2', to: 'major-blocker' }, // major-blocker blocks 2 active tasks (severity 40)
+        { from: 'done', to: 'minor-blocker' },
+        { from: 'minor-blocker', to: 'dep-1' }, // minor-blocker blocks 1 active task (severity 20)
+        { from: 'major-blocker', to: 'dep-1' },
+        { from: 'major-blocker', to: 'dep-2' }, // major-blocker blocks 2 active tasks (severity 40)
       ],
     });
     const result = analyzeCriticalPath(graph);
@@ -119,8 +129,8 @@ describe('Critical Path Analysis', () => {
         makeNode('zero-leaf', { estimateHours: 0 }),
       ],
       edges: [
-        { from: 'zero-mid', to: 'zero-root' },
-        { from: 'zero-leaf', to: 'zero-mid' },
+        { from: 'zero-root', to: 'zero-mid' },
+        { from: 'zero-mid', to: 'zero-leaf' },
       ],
     });
     const result = analyzeCriticalPath(graph);
@@ -131,7 +141,7 @@ describe('Critical Path Analysis', () => {
   it('computes parallel groups', () => {
     const graph = makeGraph({
       nodes: [makeNode('a'), makeNode('b'), makeNode('c')],
-      edges: [{ from: 'c', to: 'a' }], // c depends on a, b is independent
+      edges: [{ from: 'a', to: 'c' }], // a is the dependency; c is the dependent, b is independent
     });
     const result = analyzeCriticalPath(graph);
     // Group 1: a, b (both have no blockers)
@@ -150,8 +160,8 @@ describe('Critical Path Analysis', () => {
         makeNode('ui', { status: 'pending' }),
       ],
       edges: [
-        { from: 'api', to: 'setup' },
-        { from: 'ui', to: 'setup' },
+        { from: 'setup', to: 'api' },
+        { from: 'setup', to: 'ui' },
       ],
     });
     const result = analyzeCriticalPath(graph);
@@ -176,8 +186,8 @@ describe('Critical Path Analysis', () => {
         makeNode('c', { estimateHours: 1 }),
       ],
       edges: [
-        { from: 'b', to: 'a' },
-        { from: 'c', to: 'b' },
+        { from: 'a', to: 'b' },
+        { from: 'b', to: 'c' },
       ],
     });
     const result = analyzeCriticalPath(graph);
@@ -188,7 +198,7 @@ describe('Critical Path Analysis', () => {
   it('marks a task ready when every blocker is completed', () => {
     const graph = makeGraph({
       nodes: [makeNode('a', { status: 'completed' }), makeNode('b')],
-      edges: [{ from: 'b', to: 'a' }],
+      edges: [{ from: 'a', to: 'b' }],
     });
     const result = analyzeCriticalPath(graph);
     expect(result.readyTasks).toContain('b');
@@ -219,11 +229,28 @@ describe('Critical Path Analysis', () => {
       { id: 'related', from: 'a', to: 'b', type: 'related_to' },
       { id: 'dangling-task', from: 'missing', to: 'a', type: 'depends_on' },
       { id: 'dangling-blocker', from: 'b', to: 'absent', type: 'depends_on' },
-      { id: 'second-blocker', from: 'b', to: 'c', type: 'depends_on' },
+      { id: 'second-blocker', from: 'c', to: 'b', type: 'depends_on' },
     );
     const result = analyzeCriticalPath(graph);
-    expect(result.bottlenecks.find((item) => item.taskId === 'a')?.blockedHours).toBe(0);
+    expect(result.bottlenecks.find((item) => item.taskId === 'c')?.blockedHours).toBe(0);
     expect(result.totalHours).toBeGreaterThanOrEqual(0);
+  });
+
+  it('uses canonical dependency-to-dependent edges for the WebUI UX graph', () => {
+    const result = analyzeCriticalPath(loadWebuiUxGraph());
+
+    expect(result.readyTasks.sort()).toEqual(['WUX-S0.1', 'WUX-S0.2']);
+    expect(result.criticalPath).toEqual([
+      'WUX-S0.1',
+      'WUX-S1.1',
+      'WUX-S1.2',
+      'WUX-S4.2',
+      'WUX-S5.2',
+    ]);
+    expect(result.executionOrder.indexOf('WUX-S0.1')).toBeLessThan(
+      result.executionOrder.indexOf('WUX-S1.1'),
+    );
+    expect(result.parallelGroups[0]?.sort()).toEqual(['WUX-S0.1', 'WUX-S0.2']);
   });
 });
 

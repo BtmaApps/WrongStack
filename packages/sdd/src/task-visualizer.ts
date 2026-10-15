@@ -50,19 +50,19 @@ export function renderTaskGraph(
   lines.push(renderProgress(progress));
   lines.push('');
 
-  // Build adjacency for display
-  const childrenMap = new Map<string, string[]>();
+  // Build adjacency for display. Canonical depends_on direction is
+  // dependency (from) → dependent (to).
+  const blockersMap = new Map<string, string[]>();
   const dependentsMap = new Map<string, string[]>();
   for (const edge of graph.edges) {
     if (edge.type === 'depends_on') {
-      // edge.from depends on edge.to → edge.to is a blocker
-      const deps = childrenMap.get(edge.from) ?? [];
-      deps.push(edge.to);
-      childrenMap.set(edge.from, deps);
-      if (graph.nodes.has(edge.from)) {
-        const dependents = dependentsMap.get(edge.to) ?? [];
-        dependents.push(edge.from);
-        dependentsMap.set(edge.to, dependents);
+      const blockers = blockersMap.get(edge.to) ?? [];
+      blockers.push(edge.from);
+      blockersMap.set(edge.to, blockers);
+      if (graph.nodes.has(edge.to)) {
+        const dependents = dependentsMap.get(edge.from) ?? [];
+        dependents.push(edge.to);
+        dependentsMap.set(edge.from, dependents);
       }
     }
   }
@@ -76,18 +76,18 @@ export function renderTaskGraph(
     rootNodes.length > 0
       ? rootNodes
       : Array.from(graph.nodes.keys()).filter((id) => {
-          const deps = childrenMap.get(id);
-          return !deps || deps.length === 0;
+          const blockers = blockersMap.get(id);
+          return !blockers || blockers.length === 0;
         });
 
   for (const rootId of startNodes) {
-    renderNode(graph, rootId, lines, rendered, childrenMap, dependentsMap, compact, '');
+    renderNode(graph, rootId, lines, rendered, blockersMap, dependentsMap, compact, '');
   }
 
   // Render any orphan nodes
   for (const [id] of graph.nodes) {
     if (!rendered.has(id)) {
-      renderNode(graph, id, lines, rendered, childrenMap, dependentsMap, compact, '');
+      renderNode(graph, id, lines, rendered, blockersMap, dependentsMap, compact, '');
     }
   }
 
@@ -103,7 +103,7 @@ function renderNode(
   nodeId: string,
   lines: string[],
   rendered: Set<string>,
-  childrenMap: Map<string, string[]>,
+  blockersMap: Map<string, string[]>,
   dependentsMap: Map<string, string[]>,
   compact: boolean,
   prefix: string,
@@ -118,7 +118,7 @@ function renderNode(
   const typeIcon = TYPE_ICON[node.type];
   const title = compact ? truncate(node.title, 40) : node.title;
 
-  const blockedBy = childrenMap.get(nodeId) ?? [];
+  const blockedBy = blockersMap.get(nodeId) ?? [];
   const depsStr =
     blockedBy.length > 0
       ? ` ← [${blockedBy.map((d) => graph.nodes.get(d)?.title?.slice(0, 12) ?? '?').join(', ')}]`
@@ -137,7 +137,7 @@ function renderNode(
   const dependents = dependentsMap.get(nodeId) ?? [];
 
   for (const depId of dependents) {
-    renderNode(graph, depId, lines, rendered, childrenMap, dependentsMap, compact, prefix + '  ');
+    renderNode(graph, depId, lines, rendered, blockersMap, dependentsMap, compact, prefix + '  ');
   }
 }
 

@@ -184,9 +184,9 @@
       "runtimeOrMixed": 140
     },
     "@wrongstack/core/tasking": {
-      "files": 34,
+      "files": 33,
       "typeOnly": 12,
-      "runtimeOrMixed": 22
+      "runtimeOrMixed": 21
     },
     "@wrongstack/core/tools": {
       "files": 9,
@@ -219,8 +219,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types/spec.js": {
-      "files": 6,
-      "typeOnly": 5,
+      "files": 7,
+      "typeOnly": 6,
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/types/task-graph.js": {
@@ -13761,12 +13761,6 @@
     },
     {
       "specifier": "@wrongstack/core/tasking",
-      "file": "packages/sdd/src/critical-path.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/tasking",
       "file": "packages/sdd/src/graph-split.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -22618,6 +22612,12 @@
     {
       "specifier": "@wrongstack/core/types/spec.js",
       "file": "packages/sdd/tests/task-generator.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types/spec.js",
+      "file": "packages/sdd/tests/task-visualizer.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

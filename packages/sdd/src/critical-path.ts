@@ -1,4 +1,3 @@
-import { topologicalSort } from '@wrongstack/core/tasking';
 import type { TaskGraph } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
 /**
@@ -38,20 +37,19 @@ export interface BottleneckTask {
  */
 export function analyzeCriticalPath(graph: TaskGraph): CriticalPathAnalysis {
   const nodes = Array.from(graph.nodes.values());
-  const topoOrder = topologicalSort(graph);
+  const topoOrder = dependencyFirstOrder(graph);
 
-  // Build adjacency: blocker → blocked tasks
+  // Canonical depends_on direction: dependency (from) → dependent (to).
   const blockedByMap = new Map<string, Set<string>>();
   const blocksMap = new Map<string, Set<string>>();
 
   for (const edge of graph.edges) {
     if (edge.type === 'depends_on') {
-      // edge.from depends on edge.to
-      if (!blockedByMap.has(edge.from)) blockedByMap.set(edge.from, new Set());
-      blockedByMap.get(edge.from)?.add(edge.to);
+      if (!blockedByMap.has(edge.to)) blockedByMap.set(edge.to, new Set());
+      blockedByMap.get(edge.to)?.add(edge.from);
 
-      if (!blocksMap.has(edge.to)) blocksMap.set(edge.to, new Set());
-      blocksMap.get(edge.to)?.add(edge.from);
+      if (!blocksMap.has(edge.from)) blocksMap.set(edge.from, new Set());
+      blocksMap.get(edge.from)?.add(edge.to);
     }
   }
 
@@ -103,8 +101,8 @@ export function analyzeCriticalPath(graph: TaskGraph): CriticalPathAnalysis {
 
   bottlenecks.sort((a, b) => b.severity - a.severity);
 
-  // Compute critical path (longest path by estimated hours)
-  const criticalPath = computeCriticalPath(graph, topoOrder, blockedByMap);
+  // Compute critical path (longest dependency → dependent path by estimated hours).
+  const criticalPath = computeCriticalPath(graph, blocksMap);
 
   // Total hours on critical path
   const totalHours = criticalPath.reduce((sum, id) => {
@@ -129,6 +127,44 @@ export function analyzeCriticalPath(graph: TaskGraph): CriticalPathAnalysis {
     readyTasks,
     blockedTasks,
   };
+}
+
+/**
+ * Return a dependency-first order for every graph node. Valid DAGs are fully
+ * ordered; cycle members are appended deterministically so the analysis stays
+ * bounded for diagnostic callers that have not run the execution-integrity gate.
+ */
+function dependencyFirstOrder(graph: TaskGraph): string[] {
+  const ids = Array.from(graph.nodes.keys());
+  const indegree = new Map(ids.map((id) => [id, 0]));
+  const outgoing = new Map<string, string[]>();
+
+  for (const edge of graph.edges) {
+    if (edge.type !== 'depends_on') continue;
+    if (!graph.nodes.has(edge.from) || !graph.nodes.has(edge.to)) continue;
+    indegree.set(edge.to, indegree.get(edge.to)! + 1);
+    const dependents = outgoing.get(edge.from);
+    if (dependents) dependents.push(edge.to);
+    else outgoing.set(edge.from, [edge.to]);
+  }
+
+  const ready = ids.filter((id) => indegree.get(id) === 0);
+  const order: string[] = [];
+  for (let cursor = 0; cursor < ready.length; cursor++) {
+    const id = ready[cursor]!;
+    order.push(id);
+    for (const dependent of outgoing.get(id) ?? []) {
+      const next = indegree.get(dependent)! - 1;
+      indegree.set(dependent, next);
+      if (next === 0) ready.push(dependent);
+    }
+  }
+
+  const ordered = new Set(order);
+  for (const id of ids) {
+    if (!ordered.has(id)) order.push(id);
+  }
+  return order;
 }
 
 /**
@@ -162,8 +198,7 @@ function getTransitiveBlocked(
  */
 function computeCriticalPath(
   graph: TaskGraph,
-  _topoOrder: string[],
-  blockedByMap: Map<string, Set<string>>,
+  blocksMap: Map<string, Set<string>>,
 ): string[] {
   // Use all nodes in the graph, not just topo-reachable ones
   const allIds = Array.from(graph.nodes.keys());
@@ -178,16 +213,8 @@ function computeCriticalPath(
     prev.set(id, null);
   }
 
-  // Build reverse map: blocker → tasks it blocks
-  const blocksMap = new Map<string, Set<string>>();
-  for (const [taskId, blockers] of blockedByMap) {
-    for (const blockerId of blockers) {
-      if (!blocksMap.has(blockerId)) blocksMap.set(blockerId, new Set());
-      blocksMap.get(blockerId)?.add(taskId);
-    }
-  }
-
-  // Relax edges repeatedly (Bellman-Ford style) since topoOrder may be incomplete.
+  // Relax edges repeatedly (Bellman-Ford style) so diagnostic analysis stays
+  // bounded even when a caller supplies a cyclic graph.
   // Run N-1 iterations to handle longest path in DAG.
   const n = allIds.length;
   for (let i = 0; i < n - 1; i++) {
