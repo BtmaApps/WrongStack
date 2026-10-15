@@ -122,8 +122,12 @@ export class BatchScanner {
         scanStats: batchStats,
       });
       scanStats.readCount += batchStats.readCount;
-      if (options.abortController.signal.aborted) break;
+      // Keep the completed batch's findings: the abort check below stops the
+      // NEXT batch, but discarding work the model already produced (while its
+      // reads stay counted in scannedFiles) made a cancelled scan report a
+      // scanned file with no findings.
       findings.push(...batchFindings);
+      if (options.abortController.signal.aborted) break;
     }
 
     // Sort by severity

@@ -47,3 +47,40 @@ it('adds no error when the scan was cancelled', async () => {
   }, abortController);
   expect(result.errors).toEqual([]);
 });
+
+it('keeps a completed batch\u2019s findings when the cancel lands before the push', async () => {
+  // Regression: the abort check ran before findings.push, so a batch the model
+  // had already analysed was discarded while its reads stayed counted in
+  // scannedFiles \u2014 a cancelled scan reported a scanned file with no findings.
+  const abortController = new AbortController();
+  let calls = 0;
+  const result = await scan(async () => {
+    calls += 1;
+    if (calls === 1) {
+      // The batch completes, then the cancel lands before runBatchScan's push.
+      abortController.abort();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify([
+              {
+                file: 'app.ts',
+                line: 1,
+                severity: 'high',
+                category: 'secrets',
+                title: 't',
+                description: 'd',
+                remediation: 'r',
+              },
+            ]),
+          },
+        ],
+      };
+    }
+    throw new Error('must not be called');
+  }, abortController);
+  expect(result.findings.map((f) => f.file)).toEqual(['app.ts']);
+  expect(result.scannedFiles).toBe(1);
+  expect(result.errors).toEqual([]);
+});
