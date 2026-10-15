@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1416,
-      "typeOnly": 1249,
+      "files": 1417,
+      "typeOnly": 1250,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -16097,6 +16097,12 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/acp-server-agent.test.ts",
       "typeOnly": 2,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/acp-wrongstack-bridge-index-cli.test.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {

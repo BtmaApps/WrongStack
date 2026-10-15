@@ -1798,7 +1798,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 85,
-      "sourceLines": 16615
+      "sourceLines": 16622
     },
     {
       "directory": "typesafe",

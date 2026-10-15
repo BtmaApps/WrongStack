@@ -7,7 +7,9 @@
  * session therefore gets:
  *   - the project's MCP servers, each launched as `wstack mcp serve <name>`
  *     with an explicit `--project-root` (works in the standalone binary, and
- *     attaches only to this project's running owner);
+ *     attaches only to this project's running owner) — except the codebase
+ *     index under `acp.bridge.indexSurface: 'cli'`, which the worker reaches
+ *     through `wstack tools run codebase-*` from its own shell instead;
  *   - a short note appended to the agent's own system prompt, through the
  *     `_meta.systemPrompt.append` extension the Claude ACP adapter reads.
  *
@@ -50,6 +52,67 @@ export function wstackLaunch(
   return { command: 'wstack', args };
 }
 
+/**
+ * The worker's shell command for `wstack tools`, built from the same launcher
+ * as the MCP servers so it reaches this exact install. Stable for a given
+ * install, which keeps the system-prompt note cache-friendly across workers.
+ * Windows paths use forward slashes: the agent's shell is usually Git Bash,
+ * where an unquoted backslash is an escape.
+ */
+export function wstackToolsCommand(
+  entry: string | undefined = process.argv[1],
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const launch = wstackLaunch(['tools'], entry);
+  return [launch.command, ...launch.args].map((word) => shellWord(word, platform)).join(' ');
+}
+
+function shellWord(word: string, platform: NodeJS.Platform): string {
+  const w = platform === 'win32' ? word.replace(/\\/g, '/') : word;
+  return /^[A-Za-z0-9_./:@=+-]+$/.test(w) ? w : `"${w.replace(/(["\\$`])/g, '\\$1')}"`;
+}
+
+/** The note for the index reached through `wstack tools` instead of an MCP server. */
+function cliIndexNote(cmd: string): string[] {
+  return [
+    `- \`${cmd} run <tool> -- --<field> <value>\` (run through your shell): a prebuilt, ranked`,
+    '  symbol index of this repository, caught up with the disk on every call. Prefer it over',
+    '  grep/glob and whole-file reads for code navigation: codebase-context --query "<task>"',
+    '  (files relevant to a task), codebase-search --query <name> (where something is defined),',
+    '  codebase-incoming-calls / codebase-outgoing-calls --symbol <name> (callers, callees),',
+    "  codebase-read-symbol --file <path> --symbol <name> (one symbol's source),",
+    '  codebase-skeleton --path <file-or-dir> (an outline), codebase-impact-analysis --symbol',
+    `  <name> (what a change affects). \`${cmd} describe <tool>\` lists a tool's fields;`,
+    `  \`${cmd} batch\` runs several JSONL calls ({"tool":…,"input":…}) in one process.`,
+    '  Use grep for literal text such as strings, comments and config values.',
+  ];
+}
+
+/** Service notes: the MCP servers, then the index's CLI surface when it is on. */
+function serviceNotes(
+  servers: readonly BridgeServer[],
+  delegated: boolean,
+  indexCli: string | undefined,
+): string[] {
+  const viaCli = indexCli !== undefined && servers.includes('codebase-index');
+  const mcp = viaCli ? servers.filter((s) => s !== 'codebase-index') : servers;
+  return [
+    ...(mcp.length > 0
+      ? [
+          "WrongStack's project services are available as MCP servers:",
+          ...mcp.map((s) => SERVER_NOTES[s](delegated)),
+        ]
+      : []),
+    ...(viaCli
+      ? [
+          ...(mcp.length > 0 ? [''] : []),
+          "WrongStack's codebase index is available through its CLI:",
+          ...cliIndexNote(indexCli),
+        ]
+      : []),
+  ];
+}
+
 const SERVER_NAMES: Record<BridgeServer, string> = {
   sage: 'wrongstack-sage',
   mailbox: 'wrongstack-mailbox',
@@ -88,15 +151,23 @@ const SERVER_NOTES: Record<BridgeServer, (delegated: boolean) => string> = {
     'one when you are handed an unrecorded software request.',
 };
 
-function serviceWorkflow(servers: readonly BridgeServer[]): string[] {
+function serviceWorkflow(servers: readonly BridgeServer[], indexCli?: string): string[] {
   return [
     ...(servers.includes('codebase-index')
-      ? [
-          'Use wrongstack-index first for code navigation; use your file tools for edits, exact',
-          'literal searches, and verification. Start a code task with',
-          'mcp__wrongstack-index__codebase_context (task description); for a named symbol use',
-          'mcp__wrongstack-index__codebase_search. If the index lacks a result, fall back to your tools.',
-        ]
+      ? indexCli !== undefined
+        ? [
+            'Use the WrongStack index first for code navigation; use your file tools for edits,',
+            'exact literal searches, and verification. Start a code task with',
+            `${indexCli} run codebase-context -- --query "<the task in a few words>"; for a named`,
+            `symbol use ${indexCli} run codebase-search -- --query <name>. If the index lacks a`,
+            'result, fall back to your tools.',
+          ]
+        : [
+            'Use wrongstack-index first for code navigation; use your file tools for edits, exact',
+            'literal searches, and verification. Start a code task with',
+            'mcp__wrongstack-index__codebase_context (task description); for a named symbol use',
+            'mcp__wrongstack-index__codebase_search. If the index lacks a result, fall back to your tools.',
+          ]
       : []),
     ...(servers.includes('sage')
       ? [
@@ -124,11 +195,15 @@ function serviceWorkflow(servers: readonly BridgeServer[]): string[] {
 }
 
 /** A short task-local cue: the Claude adapter gives user-turn text more immediate weight. */
-export function bridgeTaskKickoff(servers: readonly BridgeServer[]): string {
+export function bridgeTaskKickoff(servers: readonly BridgeServer[], indexCli?: string): string {
   return [
     'Project-service kickoff for this task:',
     ...(servers.includes('codebase-index')
-      ? ['First use mcp__wrongstack-index__codebase_context to locate relevant code.']
+      ? [
+          indexCli !== undefined
+            ? `First run ${indexCli} run codebase-context -- --query "<the task>" to locate relevant code.`
+            : 'First use mcp__wrongstack-index__codebase_context to locate relevant code.',
+        ]
       : []),
     ...(servers.includes('sage')
       ? ['Use mcp__wrongstack-sage__memory_search for prior project guidance.']
@@ -178,7 +253,11 @@ function serverArgs(server: BridgeServer, projectRoot: string, ctx: SubagentRunC
  * (measured: $0.21 per one-line task, against $0.008 with a stable prompt).
  * Per-worker identity lives in the MCP servers' arguments instead.
  */
-export function bridgeNote(servers: readonly BridgeServer[], delegated = true): string {
+export function bridgeNote(
+  servers: readonly BridgeServer[],
+  delegated = true,
+  indexCli?: string,
+): string {
   return [
     'You are working as a delegated worker inside a WrongStack project.',
     'WrongStack is the orchestrator the user runs: it sent you this task and receives your',
@@ -191,10 +270,9 @@ export function bridgeNote(servers: readonly BridgeServer[], delegated = true): 
         ]
       : []),
     '',
-    "WrongStack's project services are available as MCP servers:",
-    ...servers.map((s) => SERVER_NOTES[s](delegated)),
+    ...serviceNotes(servers, delegated, indexCli),
     '',
-    ...serviceWorkflow(servers),
+    ...serviceWorkflow(servers, indexCli),
     '',
     "WrongStack applies the user's rules to your edits and commands. A refused permission",
     'comes from them (a deny rule the user wrote, a history-rewriting git command, a',
@@ -208,15 +286,14 @@ export function bridgeNote(servers: readonly BridgeServer[], delegated = true): 
  * through WrongStack, so it answers them directly and ends a turn the way
  * WrongStack's own leader does, with next steps the user can send back.
  */
-export function leaderBridgeNote(servers: readonly BridgeServer[]): string {
+export function leaderBridgeNote(servers: readonly BridgeServer[], indexCli?: string): string {
   return [
     'You are the leader of a WrongStack session. The user talks to you through WrongStack',
     '(its terminal UI or web UI), which shows your replies, your tool calls and their results.',
     '',
-    "WrongStack's project services are available as MCP servers:",
-    ...servers.map((s) => SERVER_NOTES[s](false)),
+    ...serviceNotes(servers, false, indexCli),
     '',
-    ...serviceWorkflow(servers),
+    ...serviceWorkflow(servers, indexCli),
     '',
     "WrongStack applies the user's rules to your edits and commands and asks the user when one",
     "needs approval. A refused permission is the user's decision or rule: do not retry it or",
@@ -297,9 +374,17 @@ export function wrongstackBridgeSetup(
     (s): s is BridgeServer => Object.hasOwn(SERVER_NAMES, s),
   );
   if (servers.length === 0) return undefined;
+  // `indexSurface: 'cli'` swaps the index MCP server for `wstack tools`: no
+  // schemas loaded up front, and every call catches the index up with the
+  // worker's own edits (the MCP server needs `--watch` for that).
+  const indexCli =
+    config?.indexSurface === 'cli' && servers.includes('codebase-index')
+      ? wstackToolsCommand()
+      : undefined;
+  const attached = indexCli ? servers.filter((s) => s !== 'codebase-index') : servers;
   return (_task, ctx) => ({
-    promptPrefix: bridgeTaskKickoff(servers),
-    mcpServers: servers.map((server): StdioServer => {
+    promptPrefix: bridgeTaskKickoff(servers, indexCli),
+    mcpServers: attached.map((server): StdioServer => {
       const launch = wstackLaunch(serverArgs(server, projectRoot, ctx));
       return { name: SERVER_NAMES[server], ...launch, env: [] };
     }),
@@ -308,8 +393,8 @@ export function wrongstackBridgeSetup(
         // `@session` only reaches someone when a WrongStack session delegated the task.
         append:
           role === 'leader'
-            ? leaderBridgeNote(servers)
-            : bridgeNote(servers, ctx.sessionId !== undefined),
+            ? leaderBridgeNote(servers, indexCli)
+            : bridgeNote(servers, ctx.sessionId !== undefined, indexCli),
       },
     },
   });

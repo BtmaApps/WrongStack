@@ -157,7 +157,8 @@
     "packages/cli/src/fleet/acp-wrongstack-bridge.ts": [
       "bridgeNote",
       "bridgeTaskKickoff",
-      "wstackLaunch"
+      "wstackLaunch",
+      "wstackToolsCommand"
     ],
     "packages/cli/src/fleet/host-helpers.ts": [
       "DEFAULT_SUBAGENT_HIDDEN_TOOLS",

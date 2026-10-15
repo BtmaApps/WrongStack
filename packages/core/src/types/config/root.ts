@@ -147,6 +147,13 @@ export interface Config {
       agents?: string[];
       /** Project MCP servers to attach. Default `['sage', 'mailbox', 'kanban']`. */
       servers?: Array<'sage' | 'mailbox' | 'kanban' | 'codebase-index' | 'requirement-intake'>;
+      /**
+       * How the worker reaches the codebase index when `codebase-index` is in
+       * `servers`: `mcp` (default) attaches it as an MCP server; `cli` attaches
+       * no server and teaches the worker `wstack tools run codebase-*` through
+       * its shell instead (schemas fetched on demand, not loaded up front).
+       */
+      indexSurface?: 'mcp' | 'cli';
     };
     /**
      * An ACP agent as the session's leader (`--provider acp --model claude-code`).

@@ -155,6 +155,21 @@ config):
 `"agents": []` or `"servers": []` turns it off. Agents that do not read the `_meta` extension still
 get the MCP servers.
 
+`"indexSurface": "cli"` (default `"mcp"`) gives the worker the codebase index through its shell
+instead of an MCP server: no `wrongstack-index` server is attached, and the note teaches
+`<wstack> tools run codebase-context -- --query "…"` (and the other `codebase-*` tools), with the
+command built from the same install that launches the MCP servers. Nothing is loaded up front —
+`wstack tools describe` fetches a schema when needed — and every call catches the index up with
+the worker's own edits. Measured on this repository (≈ chars/4): MCP mode puts ≈ 1,700 tokens of
+index note, always-loaded schemas and server instructions in front of the worker; CLI mode ≈ 920
+(the note only). The other servers stay MCP either way.
+
+That up-front saving does not make it cheaper overall. In a live comparison (2026-10-15, three
+read-only code questions, one real Claude worker each) the CLI mode took more turns, and every turn
+re-reads the cached context: $2.08 against $1.67 for MCP (about 25% more), with the worker
+reaching for the index less often. Keep the default `mcp` for Claude workers; `cli` is there for
+agents that do better with a shell surface, or to compare.
+
 ### Delegating from a session
 
 When a bridged agent is installed (its CLI is on PATH, or `acp.agents` configures it), the
