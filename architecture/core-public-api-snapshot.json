@@ -1601,8 +1601,8 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 237,
-      "sourceLines": 61688
+      "sourceFiles": 238,
+      "sourceLines": 61733
     },
     {
       "directory": "core",

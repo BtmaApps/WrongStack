@@ -9,6 +9,7 @@ import type {
 } from '../types/multi-agent.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { WorktreeHandle, WorktreeManager } from '../worktree/worktree-manager.js';
+import { isExternalAgentProvider } from './external-agent-provider.js';
 
 export type FleetWorktreePolicy = NonNullable<FleetConfig['worktrees']>;
 
@@ -103,7 +104,7 @@ const MUTATING_CAPABILITIES = new Set<string>([
 ]);
 
 export function subagentNeedsWorktree(config: SubagentConfig): boolean {
-  if (config.provider === 'acp') return false;
+  if (isExternalAgentProvider(config.provider)) return false;
   if (config.tools?.some((tool) => MUTATING_TOOL_NAMES.has(tool))) return true;
   if (config.allowedCapabilities?.some((cap) => MUTATING_CAPABILITIES.has(cap))) return true;
   return !config.tools && !config.allowedCapabilities;

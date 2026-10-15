@@ -141,7 +141,11 @@ export class ToolCardRelay {
 
   constructor(
     private readonly events: EventBus | undefined,
-    private readonly meta: { sessionId?: string | undefined; model: string },
+    private readonly meta: {
+      sessionId?: string | undefined;
+      model: string;
+      provider?: string | undefined;
+    },
   ) {}
 
   update(call: ACPCapturedToolCall): void {
@@ -156,7 +160,7 @@ export class ToolCardRelay {
         name,
         id,
         input: call.rawInput,
-        provider: 'acp',
+        provider: this.meta.provider ?? 'acp',
         model: this.meta.model,
       });
     }

@@ -22,6 +22,7 @@ export interface AcpLeaderHostOptions {
   stateDir?: string | undefined;
   getConfig(): Config;
   getTool(name: string): Tool | undefined;
+  listTools?(): Tool[];
   confirmAwaiter?: ConfirmAwaiter | undefined;
 }
 
@@ -36,6 +37,7 @@ export function createAcpLeaderHost(opts: AcpLeaderHostOptions): AcpLeaderHost {
     permission: (sessionId) => agentFor(sessionId).permission,
     context: (sessionId) => agentFor(sessionId).ctx,
     getTool: opts.getTool,
+    ...(opts.listTools ? { listTools: opts.listTools } : {}),
     runTool: async (name, input, run = {}) => {
       const agent = agentFor(run.sessionId);
       const use = { type: 'tool_use' as const, id: `acp_fleet_${randomUUID()}`, name, input };

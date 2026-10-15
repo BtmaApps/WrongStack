@@ -4,6 +4,7 @@ import type { Config, SubagentRunContext, SubagentRunner, TaskSpec } from '@wron
 import { expectDefined } from '@wrongstack/core/utils';
 import { runWithQuotaHold } from './acp-quota-hold.js';
 import type { MultiAgentHost } from './host.js';
+import { WRONGFORGE_AGENT_ID } from './wrongforge-client.js';
 /**
  * Routing runner — dispatches tasks to standard or ACP runner based on provider.
  */
@@ -15,6 +16,14 @@ export function buildRoutingRunner(config: Config, host: MultiAgentHost): Subage
 
   return async (task: TaskSpec, ctx: SubagentRunContext) => {
     const subCfg = ctx.config;
+    // `provider: "wrongforge"` + a model the machine's WrongForge serves: its
+    // task runner, the same one `acp` + name `wrongforge` reaches.
+    if (subCfg.provider === WRONGFORGE_AGENT_ID) {
+      return runWithQuotaHold(WRONGFORGE_AGENT_ID, async () => {
+        const runner = await host.buildACPRunner(WRONGFORGE_AGENT_ID);
+        return runner(task, ctx);
+      });
+    }
     if (subCfg.provider === 'acp') {
       const cacheKey = subCfg.role ?? subCfg.name ?? expectDefined(subCfg.id);
       // A spent agent is not started again until its quota resets.

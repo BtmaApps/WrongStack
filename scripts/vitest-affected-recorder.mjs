@@ -14,7 +14,7 @@
  *
  * The cache is written by this reporter and consumed by
  * `scripts/test-affected.mjs`. It is a LOCAL iteration aid: CI and
- * `pnpm release:check` always run the full suite, which is what makes the one
+ * `bun run release:check` always run the full suite, which is what makes the one
  * unavoidable blind spot (a test that reads a fixture at runtime without
  * importing it) acceptable.
  */

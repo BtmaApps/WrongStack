@@ -94,7 +94,7 @@ pnpm --filter @wrongstack/webui test:coverage
 pnpm test:e2e
 
 # Full release gate
-pnpm release:check
+bun run release:check
 ```
 
 ## Adding E2E Tests

@@ -17,6 +17,10 @@ import {
   ACP_LEADER_PROVIDER_ID,
   createAcpLeaderProviderFactory,
 } from '../acp-leader/acp-leader-provider.js';
+import {
+  createWrongForgeLeaderProviderFactory,
+  WRONGFORGE_LEADER_PROVIDER_ID,
+} from '../wrongforge-leader/wrongforge-leader-provider.js';
 import { buildProviderForId, resolveProviderCfgWithProxy } from './provider-runtime.js';
 
 interface ProviderSetupResult {
@@ -54,17 +58,30 @@ export async function setupProvider(params: {
   // never in the catalog: its "model" is the agent id.
   const savedProviderCfg = config.providers?.[config.provider];
   const acpLeader = config.provider === ACP_LEADER_PROVIDER_ID;
-  let resolvedProvider: ResolvedProvider | undefined = acpLeader
+  // The machine's WrongForge as the leader: its models are what it serves
+  // (`/v1/info`), not a catalog entry.
+  const wrongForgeLeader = config.provider === WRONGFORGE_LEADER_PROVIDER_ID;
+  let resolvedProvider: ResolvedProvider | undefined = wrongForgeLeader
     ? {
-        id: ACP_LEADER_PROVIDER_ID,
-        name: 'ACP agent',
+        id: WRONGFORGE_LEADER_PROVIDER_ID,
+        name: 'WrongForge',
         family: 'openai-compatible',
         apiBase: undefined,
         envVars: [],
         models: [{ id: config.model, name: config.model }],
         npm: undefined,
       }
-    : await modelsRegistry.getProvider(config.provider).catch(() => undefined);
+    : acpLeader
+      ? {
+          id: ACP_LEADER_PROVIDER_ID,
+          name: 'ACP agent',
+          family: 'openai-compatible',
+          apiBase: undefined,
+          envVars: [],
+          models: [{ id: config.model, name: config.model }],
+          npm: undefined,
+        }
+      : await modelsRegistry.getProvider(config.provider).catch(() => undefined);
   if (!resolvedProvider && savedProviderCfg?.type && savedProviderCfg.type !== config.provider) {
     resolvedProvider = await modelsRegistry
       .getProvider(savedProviderCfg.type)
@@ -143,6 +160,15 @@ export async function setupProvider(params: {
   // way a `/model` switch builds one.
   providerRegistry.register(
     createAcpLeaderProviderFactory({
+      bootConfig: config,
+      buildProvider: (providerId, live) =>
+        buildProviderForId({ config: live, providerRegistry, logger }, providerId),
+    }),
+  );
+  // The machine's WrongForge as the leader (`--provider wrongforge --model <id>`).
+  // Inert unless named.
+  providerRegistry.register(
+    createWrongForgeLeaderProviderFactory({
       bootConfig: config,
       buildProvider: (providerId, live) =>
         buildProviderForId({ config: live, providerRegistry, logger }, providerId),

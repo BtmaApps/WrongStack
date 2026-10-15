@@ -59,6 +59,8 @@ export interface ToolGatewayHttpOptions {
   /** Allow `callback.url` to name a non-loopback host. Default false. */
   allowRemoteCallbacks?: boolean | undefined;
   maxConcurrentCalls?: number | undefined;
+  /** Do not keep the process alive for this server (an in-process side service). */
+  unref?: boolean | undefined;
   log?: ((message: string) => void) | undefined;
   /** Injectable for tests. */
   fetchImpl?: typeof fetch | undefined;
@@ -252,6 +254,7 @@ export function serveToolGatewayHttp(opts: ToolGatewayHttpOptions): Promise<Tool
     server.once('error', reject);
     server.listen(opts.port ?? 0, host, () => {
       server.removeListener('error', reject);
+      if (opts.unref) server.unref();
       const port = (server.address() as AddressInfo).port;
       const shown = host === '::1' ? '[::1]' : host;
       resolve({

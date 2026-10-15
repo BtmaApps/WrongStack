@@ -38,6 +38,7 @@ import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { subscribeBrainDecisionLog } from '../boot/brain-decision-log.js';
 import { installedBridgeAgents } from '../fleet/acp-wrongstack-bridge.js';
 import { createSubagentWrongTraceHookRunner } from '../fleet/subagent-hook-runner.js';
+import { wrongForgeDelegateEntry } from '../fleet/wrongforge-runner.js';
 import { MultiAgentHost } from '../multi-agent.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
 import { persistConfigSetting } from '../settings-menu.js';
@@ -531,6 +532,8 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
     /* rehydration is best-effort; resume itself already succeeded */
   }
 
+  // The machine's WrongForge, when set up: offered to the leader with the models it serves.
+  const wrongForge = wrongForgeDelegateEntry();
   // Delegate tool — Director Mode is permanently on.
   toolRegistry.register(
     createDelegateTool({
@@ -561,7 +564,13 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
             logger: container.safeResolve(TOKENS.Logger),
           }),
       }),
-      externalAgents: installedBridgeAgents(config.acp),
+      externalAgents: [
+        ...installedBridgeAgents(config.acp),
+        ...(wrongForge ? [wrongForge.agent] : []),
+      ],
+      ...(wrongForge?.models
+        ? { externalAgentModels: { [wrongForge.agent]: wrongForge.models } }
+        : {}),
     }),
   );
   toolRegistry.exposeToProvider('delegate');

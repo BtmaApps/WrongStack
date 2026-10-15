@@ -128,8 +128,11 @@ function knownCapabilities(): string {
  * still require a confirmation this surface cannot answer, exactly as before —
  * this change removes a latent bypass without widening anything.
  */
-export function yoloServePolicy(): AutoApprovePermissionPolicy {
-  return new AutoApprovePermissionPolicy(Object.values(ToolCapabilities));
+export function yoloServePolicy(yoloPlus?: () => boolean): AutoApprovePermissionPolicy {
+  return new AutoApprovePermissionPolicy(
+    Object.values(ToolCapabilities),
+    yoloPlus ? { yoloPlus } : undefined,
+  );
 }
 
 /**
@@ -330,6 +333,12 @@ export interface ToolGatewayOptions {
   /** Grant every capability; the subagent locks still refuse. */
   yolo: boolean;
   /**
+   * Under `yolo`: whether the user's YOLO+ is on right now (destructive kinds
+   * then pass; the locked ones never do). An in-process worker gateway reads
+   * the live config; the CLI surfaces leave it unset.
+   */
+  yoloPlus?: (() => boolean) | undefined;
+  /**
    * Capabilities granted on top of the read-only default (`--allow`), each
    * validated by {@link parseCapabilityGrants}. Ignored under `yolo`.
    */
@@ -411,7 +420,7 @@ export async function createToolGateway(options: ToolGatewayOptions): Promise<To
     ? Object.values(ToolCapabilities)
     : [...new Set([...READ_ONLY_CAPABILITIES, ...grants])];
   const permissionPolicy: PermissionPolicy = options.yolo
-    ? yoloServePolicy()
+    ? yoloServePolicy(options.yoloPlus)
     : new AutoApprovePermissionPolicy(capabilities);
   const executor = new ToolExecutor(registry, {
     permissionPolicy,

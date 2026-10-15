@@ -11,6 +11,7 @@ import {
 } from '@wrongstack/core/utils';
 import { isSetupProvider } from '@wrongstack/providers';
 import { ACP_LEADER_PROVIDER_ID } from './acp-leader/acp-leader-host.js';
+import { WRONGFORGE_AGENT_ID } from './fleet/wrongforge-client.js';
 
 import type { ReadlineInputReader } from './input-reader.js';
 
@@ -56,6 +57,9 @@ export async function validateSavedProviderModel(
   // An ACP agent as the leader: no catalog entry and no key — the agent signs
   // itself in. A missing agent surfaces on the first turn, by name.
   if (providerId === ACP_LEADER_PROVIDER_ID) return { ok: true };
+  // WrongForge as the leader: no catalog entry, its own key file. An unserved
+  // model or a stopped server surfaces on the first turn, by name.
+  if (providerId === WRONGFORGE_AGENT_ID) return { ok: true };
 
   const saved = config.providers?.[providerId];
   const lookupId = saved?.type && saved.type !== providerId ? saved.type : providerId;

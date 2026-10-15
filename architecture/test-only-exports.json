@@ -73,9 +73,7 @@
       "versionCoverage"
     ],
     "packages/cli/src/acp-leader/acp-leader-provider.ts": [
-      "AcpLeaderProvider",
-      "isLeaderTurn",
-      "leaderSideModel"
+      "AcpLeaderProvider"
     ],
     "packages/cli/src/acp-mcp-servers.ts": [
       "acpMcpServerToConfig"
@@ -386,6 +384,9 @@
     ],
     "packages/cli/src/wiring/wrongtrace-telemetry.ts": [
       "buildWrongTraceTelemetryReport"
+    ],
+    "packages/cli/src/wrongforge-leader/wrongforge-leader-provider.ts": [
+      "WrongForgeLeaderProvider"
     ],
     "packages/codebase-index-mcp/src/main.ts": [
       "resolveIndexProjectRoot"

@@ -19,7 +19,7 @@ commands the LLM should observe, use the `exec` tool instead.
 **Examples:**
 
 ```
-/dev pnpm release:check
+/dev bun run release:check
 /dev git diff --stat
 /dev ls -la src/
 /dev cat CHANGELOG.md | head -20
@@ -28,7 +28,7 @@ commands the LLM should observe, use the `exec` tool instead.
 ## Output format
 
 ```
-$ pnpm release:check  OK  2341ms
+$ bun run release:check  OK  2341ms
 ──
 > wrongstack@0.118.1 release:check
 > pnpm typecheck && pnpm test && pnpm build

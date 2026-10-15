@@ -12,6 +12,7 @@ import {
   SHADOW_AGENT_SKILLS,
   TOOLS,
 } from './agents/index.js';
+import { isExternalAgentProvider } from './external-agent-provider.js';
 
 function defineAgent(
   id: string,
@@ -311,7 +312,7 @@ const GENERIC_SUBAGENT_BUDGET: FleetRosterBudget = {
 export function applyRosterBudget(cfg: SubagentConfig): SubagentConfig {
   // External agents own their model/tool loop and usage policy. Internal role
   // ceilings do not describe an ACP turn; only inherit an inactivity guard.
-  if (cfg.provider === 'acp') {
+  if (isExternalAgentProvider(cfg.provider)) {
     return { ...cfg, idleTimeoutMs: cfg.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS };
   }
   // First try role-specific budget; fall back to generic for name-only delegates.

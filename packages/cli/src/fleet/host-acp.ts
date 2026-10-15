@@ -15,6 +15,11 @@ import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { registerAcpSteerInbox } from './acp-live-steer.js';
 import { startAcpTurnReminders } from './acp-turn-reminders.js';
 import { DEFAULT_BRIDGE_SERVERS, wrongstackBridgeSetup } from './acp-wrongstack-bridge.js';
+import {
+  makeWrongForgeRunner,
+  WRONGFORGE_AGENT_ID,
+  type WrongForgeGatewaySpec,
+} from './wrongforge-runner.js';
 
 export type AcpLivePublisher = (
   ctx: SubagentRunContext,
@@ -43,6 +48,8 @@ export interface BuildAcpSubagentRunnerOptions {
    * user runs the agent in on their own.
    */
   permissions?: ((ctx: SubagentRunContext) => AcpPermissionPolicy) | undefined;
+  /** WrongStack tools a WrongForge worker may call back (see wrongforge-gateway.ts). */
+  wrongforgeGateway?: (() => Promise<WrongForgeGatewaySpec | undefined>) | undefined;
 }
 
 /**
@@ -54,6 +61,17 @@ export function buildAcpSubagentRunner(
   subagentId: string,
   options?: BuildAcpSubagentRunnerOptions,
 ): Promise<SubagentRunner> {
+  // WrongForge is an HTTP worker (its own server, task API), not an ACP child
+  // process; it shares the external-agent route so `provider: "acp"` reaches it.
+  if (subagentId === WRONGFORGE_AGENT_ID && !options?.overrides?.[WRONGFORGE_AGENT_ID]) {
+    return Promise.resolve(
+      makeWrongForgeRunner({
+        projectRoot: options?.projectRoot ?? process.cwd(),
+        ...(options?.wrongforgeGateway ? { gateway: options.wrongforgeGateway } : {}),
+        ...(options?.publishLive ? { publishLive: options.publishLive } : {}),
+      }),
+    );
+  }
   const cmd = resolveAcpAgentCommand(subagentId, options?.overrides, options?.live);
   if (!cmd) {
     throw new ToolValidationError({

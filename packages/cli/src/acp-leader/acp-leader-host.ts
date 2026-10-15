@@ -30,6 +30,8 @@ export interface AcpLeaderHost {
   /** That agent's context, which the policy reads (files already read, the session). */
   context(sessionId?: string): Parameters<PermissionPolicy['evaluate']>[2];
   getTool(name: string): Tool | undefined;
+  /** Every tool the leader has (the WrongForge leader offers them over its gateway). */
+  listTools?(): Tool[];
   /**
    * Run one of the leader's tools as the leader would — the executor and
    * context of the agent running `sessionId`, so permissions, hooks, events

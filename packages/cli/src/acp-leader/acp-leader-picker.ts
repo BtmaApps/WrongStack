@@ -36,10 +36,13 @@ export function acpLeaderPickable(config: Config | undefined): PickableHostProvi
   ];
 }
 
+/** Leader providers whose factory lives in the CLI's registry, not in providers' own. */
+const HOST_BUILT_LEADERS: ReadonlySet<string> = new Set([ACP_LEADER_PROVIDER_ID, 'wrongforge']);
+
 /**
- * Build the ACP leader from the host's provider registry, where its factory
- * is registered; undefined for every other provider, which the WebUI builds
- * as before.
+ * Build a host-registered leader (the ACP leader, WrongForge) from the host's
+ * provider registry, where its factory is registered; undefined for every
+ * other provider, which the WebUI builds as before.
  */
 export function buildAcpLeaderProvider(
   registry: Pick<ProviderRegistry, 'has' | 'create'> | undefined,
@@ -47,6 +50,6 @@ export function buildAcpLeaderProvider(
   config: ProviderConfig,
 ): Provider | undefined {
   const type = config.type ?? providerId;
-  if (type !== ACP_LEADER_PROVIDER_ID || !registry?.has(type)) return undefined;
+  if (!HOST_BUILT_LEADERS.has(type) || !registry?.has(type)) return undefined;
   return registry.create({ ...config, type: providerId }, type);
 }

@@ -7,6 +7,7 @@ import {
 } from '@wrongstack/webui-server';
 import { acpLeaderPickable } from '../acp-leader/acp-leader-picker.js';
 import type { CliWebUIOptions } from '../webui-server-options.js';
+import { wrongForgeLeaderPickable } from '../wrongforge-leader/wrongforge-leader-picker.js';
 import { startWebuiCredentialWatcher } from './credential-watcher.js';
 import { createProviderConfigStore } from './provider-config.js';
 import type { WebuiTransport } from './transport.js';
@@ -29,7 +30,8 @@ export function createEmbeddedProviderPlane(input: {
     getDisabledProviders: () => opts.appConfig?.disabledProviders ?? [],
     // `acp` with the installed ACP agents: an agent such as Claude Code can
     // lead a tab like a model (see docs/slash/acp.md).
-    hostProviders: () => acpLeaderPickable(opts.appConfig),
+    // `wrongforge` with the models the machine's WrongForge serves.
+    hostProviders: () => [...acpLeaderPickable(opts.appConfig), ...wrongForgeLeaderPickable()],
     send,
     broadcast,
     log: (m) => console.log(m),

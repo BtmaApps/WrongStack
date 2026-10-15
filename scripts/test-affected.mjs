@@ -28,7 +28,7 @@
  * The one blind spot: a test that reads a fixture at RUNTIME without importing
  * it has no graph edge to that fixture, so editing the fixture alone will not
  * mark the test dirty. That is why this is a local iteration aid and not a
- * gate — CI and `pnpm release:check` always run everything. `--all` forces a
+ * gate — CI and `bun run release:check` always run everything. `--all` forces a
  * full run and re-seeds the cache.
  *
  * Usage:

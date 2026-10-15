@@ -6,6 +6,7 @@ import type {
   TaskSpec,
 } from '../types/multi-agent.js';
 import { classifySubagentError } from './coordinator/error-classifier.js';
+import { isExternalAgentProvider } from './external-agent-provider.js';
 import type { SubagentEntry } from './multi-agent-queue-helpers.js';
 import { executeSubagentWithTimeout } from './multi-agent-timeout.js';
 import type { SubagentBudget } from './subagent-budget.js';
@@ -33,7 +34,9 @@ export function createSubagentTaskBudget(params: CreateSubagentBudgetParams): Su
   const { subagentConfig, subagentId, sessionOf, applyRosterBudget } = params;
   // The coordinator's defaults are for its own workers. ACP workers run an
   // external loop; keep their explicit limits and ACP inactivity default.
-  const defaultBudget = subagentConfig.provider === 'acp' ? undefined : params.defaultBudget;
+  const defaultBudget = isExternalAgentProvider(subagentConfig.provider)
+    ? undefined
+    : params.defaultBudget;
   const rawMaxIterations = subagentConfig.maxIterations;
   const rawMaxToolCalls = subagentConfig.maxToolCalls;
   const rawMaxTokens = subagentConfig.maxTokens;

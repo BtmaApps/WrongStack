@@ -379,7 +379,7 @@ export function buildDevCommand(opts: SlashCommandContext): SlashCommand {
       '  /dev <shell command>    Run a command from the chat input.',
       '',
       'Examples:',
-      '  /dev pnpm release:check',
+      '  /dev bun run release:check',
       '  /dev git diff --stat',
       '  /dev ls -la src/',
       '',
@@ -394,7 +394,7 @@ export function buildDevCommand(opts: SlashCommandContext): SlashCommand {
       const cmd = args.trim();
       if (!cmd) {
         return {
-          message: `${color.yellow('Usage:')} /dev <shell command>\n\nExamples:\n  /dev pnpm release:check\n  /dev git diff --stat`,
+          message: `${color.yellow('Usage:')} /dev <shell command>\n\nExamples:\n  /dev bun run release:check\n  /dev git diff --stat`,
         };
       }
 

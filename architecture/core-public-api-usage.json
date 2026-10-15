@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 393,
+      "files": 394,
       "typeOnly": 305,
-      "runtimeOrMixed": 109
+      "runtimeOrMixed": 110
     },
     "@wrongstack/core/agent-catalog": {
       "files": 21,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 56
     },
     "@wrongstack/core/kernel": {
-      "files": 372,
+      "files": 373,
       "typeOnly": 162,
-      "runtimeOrMixed": 231
+      "runtimeOrMixed": 232
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -134,8 +134,8 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/registry": {
-      "files": 162,
-      "typeOnly": 69,
+      "files": 163,
+      "typeOnly": 70,
       "runtimeOrMixed": 96
     },
     "@wrongstack/core/replay": {
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1420,
-      "typeOnly": 1253,
-      "runtimeOrMixed": 423
+      "files": 1426,
+      "typeOnly": 1259,
+      "runtimeOrMixed": 425
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 793,
+      "files": 798,
       "typeOnly": 70,
-      "runtimeOrMixed": 754
+      "runtimeOrMixed": 759
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -888,6 +888,12 @@
       "file": "packages/cli/src/wiring/slash-commands.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-provider.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -7995,6 +8001,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-provider.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/core/tests/architecture/core-public-api-snapshot-sync.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
@@ -10236,6 +10248,12 @@
       "file": "packages/cli/src/fleet/host.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/src/fleet/wrongforge-gateway.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -14733,6 +14751,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/wrongforge-gateway.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/wrongforge-runner.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/goal-host-prompts.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16065,6 +16095,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-gateway.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-provider.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/acp-leader-confirm.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16432,6 +16474,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/subagent-session-audit.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/wrongforge-runner.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16998,6 +17046,12 @@
       "file": "packages/cli/tests/wiring/vector-memory-setup.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-provider.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -23547,6 +23601,24 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/wrongforge-client.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/wrongforge-info.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/fleet/wrongforge-runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/goal-commands.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24982,6 +25054,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/worktree-command-host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-gateway.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-provider.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

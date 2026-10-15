@@ -23,6 +23,7 @@ import { ToolValidationError } from '../../types/errors.js';
 import type { SubagentConfig } from '../../types/multi-agent.js';
 import type { Director } from '../director.js';
 import { readLeaderEffort } from '../director-spawn-model.js';
+import { isExternalAgentProvider } from '../external-agent-provider.js';
 import { applyRosterBudget, FLEET_ROSTER_BUDGETS } from '../fleet.js';
 import {
   composeBoundedTaskDescription,
@@ -263,7 +264,7 @@ export async function prepareDelegation(
   // generous roster/generic budget DOWN to the host's await window. The host
   // await is heartbeat-based, so the subagent's own (auto-extending) budget is
   // the real ceiling.
-  if (cfg.provider === 'acp') {
+  if (isExternalAgentProvider(cfg.provider)) {
     // Waiting for a delegation is distinct from limiting the external turn.
     // Do not convert the host wait window into a 30s child cap. A supplied
     // task deadline is honored exactly, without the internal worker buffer.
@@ -307,12 +308,11 @@ export function instantiateRosterConfig(
     // ACP only uses a supplied deadline. Internal workers without an explicit
     // host wait use the role's tuned budget; with one, the buffer logic below
     // derives a slightly shorter child budget.
-    timeoutMs:
-      base.provider === 'acp'
-        ? (requestedTimeoutMs ?? base.timeoutMs)
-        : requestedTimeoutMs === undefined
-          ? (rosterTimeoutMs ?? defaultTimeoutMs)
-          : undefined,
+    timeoutMs: isExternalAgentProvider(base.provider)
+      ? (requestedTimeoutMs ?? base.timeoutMs)
+      : requestedTimeoutMs === undefined
+        ? (rosterTimeoutMs ?? defaultTimeoutMs)
+        : undefined,
     // Fresh id per spawn so parallel or repeated delegates can share a role.
     id: `${role}-${randomUUID().slice(0, 8)}`,
   };

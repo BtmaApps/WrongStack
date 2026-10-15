@@ -157,6 +157,29 @@ describe('createDelegateTool', () => {
     expect(providerText(withClaude).length).toBeLessThanOrEqual(768);
   });
 
+  it('names the models an external agent serves on `model`, within the wire budget', () => {
+    const modelText = (tool: Tool) =>
+      String(
+        (tool.inputSchema as { properties: { model: { description: string } } }).properties.model
+          .description,
+      );
+    const tool = createDelegateTool({
+      host: buildHost(null),
+      externalAgents: ['claude-code', 'wrongforge'],
+      externalAgentModels: {
+        wrongforge: { models: ['m-small', 'm-big'], default: 'm-small' },
+      },
+    });
+    expect(modelText(tool)).toContain(
+      'For `wrongforge` (provider "wrongforge"): one of m-small, m-big (default m-small)',
+    );
+    expect(modelText(tool)).not.toContain('claude-code');
+    expect(modelText(tool).length).toBeLessThanOrEqual(768);
+    expect(modelText(createDelegateTool({ host: buildHost(null) }))).toBe(
+      'Model id within the provider. Defaults to host model.',
+    );
+  });
+
   it('prompts on every call (part a) and exposes the name as subject (part b)', () => {
     const tool = createDelegateTool({ host: buildHost(null) });
     expect(tool.permission).toBe('confirm');

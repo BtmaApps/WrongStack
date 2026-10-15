@@ -468,6 +468,7 @@ export async function setupLifecycleAndPlugins(
       stateDir: wpaths.projectDir,
       getConfig: () => configStore.get(),
       getTool: (name) => toolRegistry.get(name),
+      listTools: () => toolRegistry.list(),
       confirmAwaiter,
     }),
   );

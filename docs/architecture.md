@@ -363,7 +363,7 @@ agent loop depend on a specific telemetry vendor. Chronicle converts important
 runtime events into durable, queryable project history; secret scrubbing occurs
 before persistence-oriented adapters receive event content.
 
-The workspace release path validates more than compilation. pnpm release:check
+The workspace release path validates more than compilation. `bun run release:check`
 runs dependency audit, build, provider/plugin catalogue checks, package
 contracts, build lineage, architecture snapshot/health checks, test inventory,
 skip/type baselines, native terminal checks, i18n, typecheck, and coverage.

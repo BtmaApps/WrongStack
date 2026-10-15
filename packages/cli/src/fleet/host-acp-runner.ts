@@ -59,6 +59,17 @@ export function acpCommandOpts(this: HostAcpRunnerHost): BuildAcpSubagentRunnerO
             ?.info(`acp worker ${ctx.subagentId}: refused ${call.tool} — ${reason}`),
       });
     },
+    wrongforgeGateway: async () => {
+      const { sharedWrongForgeGateway } = await import('./wrongforge-gateway.js');
+      const logger = this.deps.container.safeResolve(TOKENS.Logger);
+      return sharedWrongForgeGateway({
+        projectRoot: this.deps.projectRoot,
+        registry: this.deps.toolRegistry,
+        config: this.deps.configStore.get(),
+        yoloPlus: () => this.deps.configStore.get().autonomy?.yoloPlus === true,
+        log: (message) => logger?.debug(`wrongforge gateway: ${message}`),
+      });
+    },
     publishLive: (ctx, task, event) => {
       if (event.type === 'rate_limit') {
         // Keyed by agent (claude-code), like the delegation that names it.

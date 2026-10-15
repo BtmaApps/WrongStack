@@ -289,6 +289,28 @@ describe('release scripts (WS-040)', () => {
     expect(localIds).not.toContain("'audit'");
     expect(localIds).not.toContain('test:e2e');
   });
+
+  it('uses the Bun command in active release-facing guidance', () => {
+    const canonical = 'bun run release:check';
+    const legacy = ['pnpm release', ':check'].join('');
+    const releaseFacingFiles = [
+      'docs/architecture.md',
+      'docs/release-process.md',
+      'docs/slash/dev.md',
+      'packages/cli/src/slash-commands/dev.ts',
+      'packages/sage/tests/retrieval-coverage.test.ts',
+      'packages/webui/TESTING.md',
+      'scripts/release-check-matrix.mjs',
+      'scripts/test-affected.mjs',
+      'scripts/vitest-affected-recorder.mjs',
+    ];
+
+    for (const file of releaseFacingFiles) {
+      const text = readFileSync(join(repoRoot, file), 'utf8');
+      expect(text, file).toContain(canonical);
+      expect(text, file).not.toContain(legacy);
+    }
+  });
 });
 
 describe('website CI and Pages verification', () => {

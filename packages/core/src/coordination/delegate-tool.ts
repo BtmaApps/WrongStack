@@ -84,6 +84,14 @@ export interface CreateDelegateToolOptions {
    * Named in the `provider` description so the leader knows they exist.
    */
   externalAgents?: readonly string[] | undefined;
+  /**
+   * External agents among {@link externalAgents} that run the model the
+   * leader names: the ids they serve (as the agent itself reported them) and
+   * their default. Named in the description so the leader can pick one.
+   */
+  externalAgentModels?:
+    | Readonly<Record<string, { models: readonly string[]; default?: string | undefined }>>
+    | undefined;
 }
 
 function externalAgentsNote(agents: readonly string[] | undefined): string {
@@ -92,10 +100,23 @@ function externalAgentsNote(agents: readonly string[] | undefined): string {
     ` "acp" with \`name\` set to an installed external coding agent (${agents.join(', ')})` +
     ' hands it the task: it works with its own model, tools and sign-in, reaches this' +
     " project's memory, mailbox, board and code index, and its final reply comes back to" +
-    ' you. Leave `model`/`tier` unset for it. ACP workers have a separate budget:' +
+    ' you. Leave `tier` unset for it, and `model` too unless `model` lists it.' +
+    ' ACP workers have a separate budget:' +
     ' no default wall-clock, iteration, tool-call, token or cost cap; they stop after' +
     ' 10 minutes without activity. Set task limits explicitly only when needed.'
   );
+}
+
+/** External agents that run the model the leader names, with the ids they serve. */
+function externalModelsNote(models: CreateDelegateToolOptions['externalAgentModels']): string {
+  return Object.entries(models ?? {})
+    .filter(([, m]) => m.models.length > 0)
+    .map(
+      ([agent, m]) =>
+        ` For \`${agent}\` (provider "${agent}"): one of ${m.models.join(', ')}` +
+        `${m.default ? ` (default ${m.default})` : ''}; a cheaper one for mechanical work, a stronger one for hard work.`,
+    )
+    .join('');
 }
 
 const BACKGROUND_NOTE =
@@ -173,7 +194,9 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
       },
       model: {
         type: 'string',
-        description: 'Model id within the provider. Defaults to host model.',
+        description:
+          'Model id within the provider. Defaults to host model.' +
+          externalModelsNote(opts.externalAgentModels),
       },
       tier: {
         type: 'string',

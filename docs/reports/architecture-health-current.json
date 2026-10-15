@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-15T16:49:24.926Z",
+  "generatedAt": "2026-10-15T19:05:11.158Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,21 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4969,
-    "testFiles": 4384,
-    "sourceLines": 1102502,
+    "sourceFiles": 4977,
+    "testFiles": 4386,
+    "sourceLines": 1104313,
     "workspaceEdges": 137,
-    "moduleEdges": 16364,
+    "moduleEdges": 16400,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 5,
+    "typeModuleCycles": 6,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 973
+    "testOnlyExports": 972
   },
-  "errors": [],
+  "errors": [
+    "1 unexcepted module cycle(s)"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -151,8 +153,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 640,
-      "testFiles": 636,
+      "sourceFiles": 647,
+      "testFiles": 638,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +198,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 636
+          "testFiles": 638
         }
       ]
     },
@@ -247,7 +249,7 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1122,
+      "sourceFiles": 1123,
       "testFiles": 976,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -1013,6 +1015,13 @@
       {
         "kind": "type-module-cycle",
         "members": [
+          "packages/cli/src/fleet/wrongforge-client.ts",
+          "packages/cli/src/fleet/wrongforge-info.ts"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
           "packages/core/src/coordination/agents/agent-prompts.ts",
           "packages/core/src/coordination/agents/index.ts",
           "packages/core/src/coordination/agents/phase1-discovery.ts",
@@ -1091,7 +1100,15 @@
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-29"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/cli/src/fleet/wrongforge-client.ts",
+          "packages/cli/src/fleet/wrongforge-info.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -2999,6 +3016,12 @@
       },
       {
         "file": "packages/cli/tests/fleet/supervisor-session-addressing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/fleet/wrongforge-runner.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5735,6 +5758,12 @@
       },
       {
         "file": "packages/cli/tests/worktree-sessions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-provider.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28006,14 +28035,6 @@
       "name": "AcpLeaderProvider"
     },
     {
-      "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
-      "name": "isLeaderTurn"
-    },
-    {
-      "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
-      "name": "leaderSideModel"
-    },
-    {
       "file": "packages/cli/src/acp-mcp-servers.ts",
       "name": "acpMcpServerToConfig"
     },
@@ -28620,6 +28641,10 @@
     {
       "file": "packages/cli/src/wiring/wrongtrace-telemetry.ts",
       "name": "buildWrongTraceTelemetryReport"
+    },
+    {
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-provider.ts",
+      "name": "WrongForgeLeaderProvider"
     },
     {
       "file": "packages/codebase-index-mcp/src/main.ts",

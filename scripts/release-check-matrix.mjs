@@ -3,7 +3,7 @@
  *
  * Why this exists
  * ---------------
- * `pnpm release:check` used to be a single `&&` chain: the first failing
+ * `bun run release:check` used to be a single `&&` chain: the first failing
  * gate aborted everything after it, so one broken gate blinded the release
  * to every later problem — fixing gate 3 meant discovering gate 9's failure
  * only after another full 20-minute re-run. This runner executes EVERY
@@ -29,7 +29,7 @@
  *   --list            print the gate plan (id, command, prereq) and exit
  *   --only a,b,...    run only the named gate ids (comma separated)
  *   --tail N          failure-tail length in the report (default 25)
- *   --profile name    `release` (default, `pnpm release:check`), `release-fast`
+ *   --profile name    `release` (default, `bun run release:check`), `release-fast`
  *                     (`pnpm release:fast` — every release gate except coverage
  *                     and audit, both of which CI runs on the same commit), or
  *                     `local`
@@ -37,7 +37,7 @@
  *                     subset that is practical on a laptop: lint, build,
  *                     typecheck, tests, and the snapshot/architecture gates.
  *                     It omits coverage (45m), e2e (Playwright), and audit
- *                     (network). Run `pnpm release:check` for the full matrix.
+ *                     (network). Run `bun run release:check` for the full matrix.
  *
  * The runner deliberately does not parse or interpret gate output — it only
  * propagates exit codes. Gate semantics stay owned by each gate script.

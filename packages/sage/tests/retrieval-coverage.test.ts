@@ -107,7 +107,7 @@ describe('query relevance completion coverage', () => {
     const anchoredByTerms = memoryQueryRelevance(
       sage({
         anchors: [
-          { type: 'command', command: 'pnpm release:check' },
+          { type: 'command', command: 'bun run release:check' },
           { type: 'command', command: 'pnpm typecheck' },
         ],
       }),

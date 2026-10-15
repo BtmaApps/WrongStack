@@ -9,6 +9,7 @@ import {
 } from '../types/provider.js';
 import type { JSONSchema } from '../types/tool.js';
 import { conversationEffort } from '../utils/leader-effort-override.js';
+import { isExternalAgentProvider } from './external-agent-provider.js';
 import type { ModelMatrixSource } from './model-matrix.js';
 import { resolveModelMatrixResolution, roleNeedsIndependentReviewModel } from './model-matrix.js';
 import type { ResolvedTierTarget } from './model-tier.js';
@@ -306,7 +307,7 @@ export function resolveDirectorSpawnModel(
  */
 /** True when the spawn runs an external ACP agent (Claude Code, Codex CLI, …). */
 export function isExternalAgentSpawn(config: SubagentConfig): boolean {
-  return config.provider === 'acp';
+  return isExternalAgentProvider(config.provider);
 }
 
 export function isHumanPinnedSpawn(config: SubagentConfig): boolean {

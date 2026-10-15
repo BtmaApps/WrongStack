@@ -101,7 +101,7 @@ that implements it is `scripts/binary/entry.mjs`. Two rules for new code:
 A broad correctness sweep run before anything goes to npm:
 
 ```bash
-pnpm release:check
+bun run release:check
 # ↪ pnpm audit --audit-level=moderate
 #   pnpm build
 #   node scripts/check-tools-package-smoke.mjs
@@ -138,7 +138,7 @@ current checkout.
 
 ## Narrow plugin guard — `prepublishOnly` / `test:guard`
 
-The root manifest maps `prepublishOnly` to `pnpm test:guard`. It is useful when the root package lifecycle is invoked or when run explicitly, but it must not be described as a guaranteed hook for every recursively published child package: the public workspace package manifests do not each declare it. The full `pnpm release:check` remains the actual repository-wide gate.
+The root manifest maps `prepublishOnly` to `pnpm test:guard`. It is useful when the root package lifecycle is invoked or when run explicitly, but it must not be described as a guaranteed hook for every recursively published child package: the public workspace package manifests do not each declare it. The full `bun run release:check` remains the actual repository-wide gate.
 
 ```bash
 pnpm prepublishOnly
@@ -166,7 +166,7 @@ machine and the full suite is much larger than this three-file selection.
 |---------|-----------|
 | `pnpm release` | `release:check`, then recursive public publish |
 | `pnpm release:dry` | Recursive publish dry-run only; run `release:check` separately |
-| `pnpm release:check` | Full repository release gate, no publication |
+| `bun run release:check` | Full repository release gate, no publication |
 | `pnpm test:guard` / `pnpm prepublishOnly` | Three focused plugin tests only |
 | `pnpm test` | Root Vitest suite, then the WebUI package test script |
 | Tag push (`v*.*.*`) | Verify the tag/SHA; build and smoke standalone plus Desktop assets; create the GitHub Release; run the separately gated npm pack/publish path |
@@ -217,7 +217,7 @@ baseline; new ones should match the same shape.
 | Guaranteed for each recursively published child | N/A | ❌ — child manifests do not declare this hook |
 
 Do not bypass `pnpm release` on the assumption that a recursive publish will
-run the root hook. For dry runs, use `pnpm release:check && pnpm release:dry`.
+run the root hook. For dry runs, use `bun run release:check && pnpm release:dry`.
 For a real release, `pnpm release` encodes the required ordering.
 
 ## Cross-references

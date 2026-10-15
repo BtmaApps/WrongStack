@@ -15,6 +15,7 @@ import { createGovernanceShadowBridge } from './boot/governance-shadow-bridge.js
 import { createGovernanceTraceContext } from './boot/governance-trace-context.js';
 import { refreshRuntimeModelCatalog } from './context-limit.js';
 import { installedBridgeAgents } from './fleet/acp-wrongstack-bridge.js';
+import { WRONGFORGE_AGENT_ID, wrongForgeModels } from './fleet/wrongforge-runner.js';
 import { buildPickableProviders } from './provider-helpers.js';
 
 export const WRONGSTACK_GOVERNANCE_ENV = 'WRONGSTACK_GOVERNANCE';
@@ -225,16 +226,30 @@ export function createPickableProvidersLoader(args: {
     // ACP agents installed here can lead the session (`acp / claude-code`).
     // They are not in the models.dev catalog, so the catalog list never has them.
     const agents = installedBridgeAgents(config.acp);
-    return agents.length > 0 && !providers.some((p) => p.id === ACP_LEADER_PROVIDER_ID)
+    const withAcp =
+      agents.length > 0 && !providers.some((p) => p.id === ACP_LEADER_PROVIDER_ID)
+        ? [
+            ...providers,
+            {
+              id: ACP_LEADER_PROVIDER_ID,
+              family: 'acp',
+              models: agents,
+              modelsLabel: 'ACP agent as leader',
+            },
+          ]
+        : providers;
+    // The machine's WrongForge, when one is set up: the models it serves.
+    const forge = await wrongForgeModels();
+    return forge && !withAcp.some((p) => p.id === WRONGFORGE_AGENT_ID)
       ? [
-          ...providers,
+          ...withAcp,
           {
-            id: ACP_LEADER_PROVIDER_ID,
-            family: 'acp',
-            models: agents,
-            modelsLabel: 'ACP agent as leader',
+            id: WRONGFORGE_AGENT_ID,
+            family: 'wrongforge',
+            models: forge.models,
+            modelsLabel: 'WrongForge as leader',
           },
         ]
-      : providers;
+      : withAcp;
   };
 }
