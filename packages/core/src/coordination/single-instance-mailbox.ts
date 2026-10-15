@@ -204,7 +204,11 @@ export async function finalize(
  * files IF this process is still the recorded owner (generation match).
  *
  * If the generation doesn't match, another acquire() has already
- * superseded us — we must NOT delete their lock.
+ * superseded us — we must NOT delete their lock. Even after the
+ * generation check passes, the lock path is CLAIMED with an atomic
+ * rename and ownership re-verified on the private copy before anything
+ * is deleted, so a takeover that lands mid-cleanup keeps both of its
+ * files (see release/claimedLockIsOurs/tokenStillOurs).
  */
 export async function release(projectDir: string, generation: number): Promise<void> {
   const lockPath = path.join(projectDir, MAILBOX_BRIDGE_LOCK_FILENAME);
@@ -214,12 +218,76 @@ export async function release(projectDir: string, generation: number): Promise<v
     const parsed = JSON.parse(raw) as MailboxBridgeLock;
     if (parsed.generation !== generation) return; // not ours
     if (parsed.pid !== process.pid) return; // not ours
-    /* v8 ignore next -- best-effort cleanup: a vanished lock at shutdown is fine */
-    await fsp.unlink(lockPath).catch(() => undefined);
-    /* v8 ignore next -- best-effort cleanup: token may already be gone */
-    await fsp.unlink(tokenPath).catch(() => undefined);
+    // Claim the lock path atomically before deleting anything. rename(2) is
+    // atomic on both platforms, so whatever sits at lockPath moves to a
+    // private name; if it is (still) ours we delete our own copy, and if a
+    // takeover completed in the meantime we restore theirs untouched. A
+    // check-then-unlink by path cannot do this: the takeover of a wedged
+    // bridge (pid alive, /healthz failing) can complete in the gap between
+    // any in-process verification and the unlink syscall, and the loser
+    // would delete the new owner's lock.
+    const claimed = `${lockPath}.release.${process.pid}.${randomBytes(4).toString('hex')}`;
+    await fsp.rename(lockPath, claimed);
+    const owned = await claimedLockIsOurs(claimed, generation);
+    if (owned) {
+      /* v8 ignore next -- best-effort cleanup: a vanished lock at shutdown is fine */
+      await fsp.unlink(claimed).catch(() => undefined);
+      // Same claim-verify dance for the token: a takeover that lands
+      // between any check and the unlink syscall must not lose the new
+      // owner's bearer.
+      const claimedToken = `${tokenPath}.release.${process.pid}.${randomBytes(4).toString('hex')}`;
+      try {
+        await fsp.rename(tokenPath, claimedToken);
+        if (await claimedTokenIsOurs(claimedToken, parsed.token)) {
+          await fsp.unlink(claimedToken).catch(() => undefined);
+        } else {
+          try {
+            await fsp.rename(claimedToken, tokenPath);
+          } catch {
+            await fsp.unlink(claimedToken).catch(() => undefined);
+          }
+        }
+      } catch {
+        // Token already gone — fine.
+      }
+    } else {
+      // Not ours — put the new owner's lock back. If the restore target
+      // appeared underneath us, fail closed: leave the newer file alone and
+      // drop our stale copy.
+      try {
+        await fsp.rename(claimed, lockPath);
+      } catch {
+        await fsp.unlink(claimed).catch(() => undefined);
+      }
+    }
   } catch {
     // Lock already gone — fine.
+  }
+}
+
+/**
+ * True iff the private claimed copy still carries the given generation
+ * owned by this process. Any read/parse error fails closed ("not ours" —
+ * restore, do not delete).
+ */
+async function claimedLockIsOurs(claimedPath: string, generation: number): Promise<boolean> {
+  try {
+    const parsed = JSON.parse(await readLockRaw(claimedPath)) as MailboxBridgeLock;
+    return parsed.generation === generation && parsed.pid === process.pid;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True iff the token file on disk still contains exactly `token`. Any
+ * read error fails closed ("not ours" — do not delete).
+ */
+async function claimedTokenIsOurs(claimedTokenPath: string, token: string): Promise<boolean> {
+  try {
+    return (await fsp.readFile(claimedTokenPath, 'utf-8')) === token;
+  } catch {
+    return false;
   }
 }
 

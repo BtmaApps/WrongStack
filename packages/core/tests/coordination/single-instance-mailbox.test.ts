@@ -350,6 +350,44 @@ describe('release', () => {
   it('is a no-op when no lock file exists', async () => {
     await expect(release(tmp, 1)).resolves.toBeUndefined();
   });
+
+  it("keeps a newer owner's files when a takeover completes mid-cleanup", async () => {
+    // A dying owner whose /healthz probe failed can be taken over while it
+    // shuts down. The takeover's final lock + token landing between this
+    // cleanup's ownership check and its unlink must not lose either file.
+    await writeLock(tmp, { pid: process.pid, generation: 1, token: 'old-owner-token' });
+    await fs.writeFile(path.join(tmp, MAILBOX_BRIDGE_TOKEN_FILENAME), 'old-owner-token');
+    const realUnlink = fs.unlink.bind(fs);
+    let takeoverDone = false;
+    const unlinkSpy = vi.spyOn(fs, 'unlink').mockImplementation((async (
+      p: string,
+    ): Promise<void> => {
+      if (!takeoverDone) {
+        takeoverDone = true;
+        // The new owner's completed takeover: final lock + token on disk.
+        await writeLock(tmp, { pid: 424242, generation: 2, token: 'new-owner-token' });
+        await fs.writeFile(path.join(tmp, MAILBOX_BRIDGE_TOKEN_FILENAME), 'new-owner-token');
+      }
+      return realUnlink(p);
+    }) as never);
+    try {
+      await release(tmp, 1);
+    } finally {
+      unlinkSpy.mockRestore();
+    }
+    const onDisk = JSON.parse(
+      await fs.readFile(path.join(tmp, MAILBOX_BRIDGE_LOCK_FILENAME), 'utf-8'),
+    ) as MailboxBridgeLock;
+    expect(onDisk).toMatchObject({ pid: 424242, generation: 2, token: 'new-owner-token' });
+    await expect(fs.readFile(path.join(tmp, MAILBOX_BRIDGE_TOKEN_FILENAME), 'utf-8')).resolves.toBe(
+      'new-owner-token',
+    );
+    // No claimed-copy garbage left behind.
+    await expect(fs.readdir(tmp)).resolves.toEqual(
+      expect.arrayContaining([MAILBOX_BRIDGE_LOCK_FILENAME, MAILBOX_BRIDGE_TOKEN_FILENAME]),
+    );
+    expect((await fs.readdir(tmp)).length).toBe(2);
+  });
 });
 
 describe('readLiveLock', () => {
