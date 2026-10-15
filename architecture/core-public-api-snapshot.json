@@ -1784,7 +1784,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core tasking subpath",
       "sourceFiles": 3,
-      "sourceLines": 657
+      "sourceLines": 680
     },
     {
       "directory": "tools",

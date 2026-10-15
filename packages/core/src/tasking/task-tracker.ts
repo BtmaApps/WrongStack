@@ -14,6 +14,8 @@ export interface TaskStore {
   loadGraph(id: string): Promise<TaskGraph | null>;
   listGraphs(): Promise<{ id: string; title: string; updatedAt: number }[]>;
   deleteGraph(id: string): Promise<void>;
+  /** Wait for queued writes before the owner deletes or replaces the store. */
+  flush?(): Promise<void>;
 }
 
 export interface TaskTrackerOptions {
@@ -51,6 +53,7 @@ export class TaskTracker {
   private graph: TaskGraph | null = null;
   private transitions: TaskTransition[] = [];
   private listeners: TaskTrackerListener[] = [];
+  private pendingPersists = new Set<Promise<void>>();
   /**
    * Re-entrancy guard for status cascades: true while an auto-block /
    * auto-unblock cascade is running. Listener-driven mutations during a
@@ -540,26 +543,46 @@ export class TaskTracker {
     }
   }
 
+  /** Wait until every fire-and-forget graph save owned by this tracker settles. */
+  async flushPersistence(): Promise<void> {
+    while (this.pendingPersists.size > 0) {
+      await Promise.all([...this.pendingPersists]);
+    }
+  }
+
   /**
    * Fire-and-forget persistence with attached error handler.
    * Synchronous mutators (addNode/addEdge/updateNodeStatus) use this to
-   * avoid forcing an async cascade through every caller; if the store
-   * is missing or throwing, the error is surfaced via onPersistError.
+   * avoid forcing an async cascade through every caller; teardown can join
+   * the tracked promises through flushPersistence().
    */
   private persist(): void {
     if (!this.graph) return;
-    this.opts.store.saveGraph(this.graph).catch((err) => {
-      this.opts.onPersistError
-        ? this.opts.onPersistError(err)
-        : console.warn(
-            JSON.stringify({
-              level: 'warn',
-              event: 'task_tracker.save_graph_failed',
-              message: toErrorMessage(err),
-              timestamp: new Date().toISOString(),
-            }),
-          );
-    });
+
+    let save: Promise<void>;
+    try {
+      save = this.opts.store.saveGraph(this.graph);
+    } catch (err) {
+      this.reportPersistError(err);
+      return;
+    }
+
+    const tracked = save.catch((err) => this.reportPersistError(err));
+    this.pendingPersists.add(tracked);
+    void tracked.finally(() => this.pendingPersists.delete(tracked));
+  }
+
+  private reportPersistError(err: unknown): void {
+    this.opts.onPersistError
+      ? this.opts.onPersistError(err)
+      : console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'task_tracker.save_graph_failed',
+            message: toErrorMessage(err),
+            timestamp: new Date().toISOString(),
+          }),
+        );
   }
 }
 

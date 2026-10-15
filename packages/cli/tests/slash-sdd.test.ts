@@ -677,8 +677,9 @@ describe('buildSddCommand with an active spec/tasks session', () => {
       })
       .toBe(true);
 
-    // Simulate a replacement CLI process: in-memory state is gone, project
-    // session + graph artifacts remain.
+    // Simulate a replacement CLI process: drain queued writes before dropping
+    // the old store, then clear in-memory state while preserving graph artifacts.
+    await sddState.flushTaskWrites();
     sddState.setBuilder(null);
     sddState.clearTaskState();
     const resumed = await build().run('resume');
@@ -686,6 +687,37 @@ describe('buildSddCommand with an active spec/tasks session', () => {
     expect(resumed?.message).toContain('SDD Session Resumed');
     expect(resumed?.message).toContain('Tasks: 0/1 completed');
     expect(getTaskProgress()).toMatchObject({ total: 1, completed: 0 });
+  });
+
+  it('waits for pending task-store writes before cancelling and deleting artifacts', async () => {
+    await createTestSddSession('FlushCancel', tmp);
+    const order: string[] = [];
+    let releaseFlush!: () => void;
+    const flushGate = new Promise<void>((resolve) => {
+      releaseFlush = resolve;
+    });
+    sddState.setTaskStore({
+      flush: async () => {
+        order.push('flush:start');
+        await flushGate;
+        order.push('flush:end');
+      },
+    } as never);
+
+    const cancelling = build({
+      onSddDestroy: async () => {
+        order.push('destroy');
+        return { deleted: ['task-graphs'], worktreesRemoved: 0 };
+      },
+    }).run('cancel');
+    await new Promise((resolve) => setImmediate(resolve));
+    try {
+      expect(order).toEqual(['flush:start']);
+    } finally {
+      releaseFlush();
+    }
+    await cancelling;
+    expect(order).toEqual(['flush:start', 'flush:end', 'destroy']);
   });
 
   it('trySaveImplementationPlan returns false if not in implementation phase', async () => {

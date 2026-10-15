@@ -120,6 +120,11 @@ export class TaskGraphStore implements TaskStore {
     return this.save(graph);
   }
 
+  /** Wait until every queued graph/index mutation has settled. */
+  flush(): Promise<void> {
+    return this.writeChain;
+  }
+
   loadGraph(id: string): Promise<TaskGraph | null> {
     return this.load(id);
   }

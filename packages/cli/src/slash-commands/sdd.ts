@@ -192,6 +192,7 @@ export function buildSddCommand(opts: SlashCommandContext): SlashCommand {
           }
           // `/sdd destroy --revert` also reverts merged commits before wiping.
           const revertMerged = restArgs.some((a) => a === '--revert' || a === '--rollback');
+          await sddState.flushTaskWrites();
           const res = await opts.onSddDestroy({ revertMerged });
           // Mirror /sdd cancel's in-memory cleanup so the session is fully gone.
           const builder = sddState.getBuilder();

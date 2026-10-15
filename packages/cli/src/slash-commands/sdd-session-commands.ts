@@ -73,7 +73,8 @@ export async function runSddSessionCommand(inputs: {
         }
       }
 
-      // Reset task state from previous session
+      // Reset task state from previous session only after its queued graph writes settle.
+      await sddState.flushTaskWrites();
       sddState.clearTaskState();
       sddState.setTaskStore(new TaskGraphStore({ baseDir: opts.paths.projectTaskGraphs }));
 
@@ -202,6 +203,10 @@ export async function runSddSessionCommand(inputs: {
     }
 
     case 'cancel': {
+      // TaskTracker mutations persist in the background. Drain the owning store
+      // before onSddDestroy or the fallback path removes its task-graph directory.
+      await sddState.flushTaskWrites();
+
       // Cancel now fully tears down: stop any live parallel run, clean its
       // worktrees, and delete every on-disk artifact (specs / task-graphs /
       // session / boards). Falls back to the old fs deletes when the host

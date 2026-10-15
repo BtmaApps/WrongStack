@@ -67,6 +67,12 @@ export class SDDState {
     return this.versioning;
   }
 
+  /** Drain fire-and-forget tracker writes before deleting or replacing the store. */
+  async flushTaskWrites(): Promise<void> {
+    await this.taskTracker?.flushPersistence();
+    await this.taskStore?.flush?.();
+  }
+
   clearTaskState(): void {
     this.taskStore = null;
     this.taskTracker = null;

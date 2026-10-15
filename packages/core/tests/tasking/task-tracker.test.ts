@@ -68,6 +68,28 @@ describe('TaskTracker — graph lifecycle', () => {
     expect(t2.getNode('nonexistent')).toBeUndefined();
     expect(t2.getAllNodes()).toEqual([]);
   });
+
+  it('flushPersistence waits for fire-and-forget saves owned by the tracker', async () => {
+    const store = makeStore();
+    const t = await withGraph(makeTracker(store));
+    let releaseSave!: () => void;
+    const saveGate = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    store.saveGraph = vi.fn(() => saveGate);
+
+    t.addNode(makeNode());
+    let flushed = false;
+    const flushing = t.flushPersistence().then(() => {
+      flushed = true;
+    });
+    await Promise.resolve();
+    expect(flushed).toBe(false);
+
+    releaseSave();
+    await flushing;
+    expect(flushed).toBe(true);
+  });
 });
 
 describe('TaskTracker — addNode', () => {
@@ -403,12 +425,12 @@ describe('TaskTracker — persist error handling', () => {
     const t = new TaskTracker({ store, onPersistError: (e) => errors.push(e) });
     // createGraph succeeds (shouldFail is false)
     await t.createGraph('spec-1', 'Test');
-    // Now make persist fail — addNode uses fire-and-forget persist()
+    // Now make persist fail — addNode uses fire-and-forget persist(). The
+    // lifecycle join must settle after reporting the failure, not reject or hang.
     shouldFail = true;
     t.addNode(makeNode());
-    // Wait for the microtask to settle
-    await new Promise((r) => setTimeout(r, 10));
-    expect(errors.length).toBeGreaterThan(0);
+    await expect(t.flushPersistence()).resolves.toBeUndefined();
+    expect(errors).toHaveLength(1);
   });
 
   it('createGraph propagates store errors directly', async () => {
