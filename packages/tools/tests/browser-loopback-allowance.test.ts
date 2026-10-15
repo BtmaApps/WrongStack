@@ -129,11 +129,11 @@ describe('policy file refresh', () => {
     await mkdir(dir, { recursive: true });
     await writeFile(
       join(dir, 'browser-policy.json'),
-      JSON.stringify({ privateOrigins: ['http://localhost:4000'] }),
+      JSON.stringify({ privateOrigins: ['http://127.0.0.1:41789'] }),
     );
     const refreshed = browserPrivateOrigins(root);
     expect(refreshed).toBe(live);
-    expect(live).toEqual(['http://localhost:4000']);
+    expect(live).toEqual(['http://127.0.0.1:41789']);
   });
 
   it('keeps an in-process allowance without re-reading on every call', async () => {
