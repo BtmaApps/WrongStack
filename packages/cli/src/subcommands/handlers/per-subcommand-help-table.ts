@@ -52,7 +52,7 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       {
         name: 'serve',
         description:
-          'Run the wstack MCP server; --resources/--prompts explicitly expose selected files.',
+          'Run the wstack MCP server (read-only; --allow <caps> or --yolo widens); --resources/--prompts expose selected files.',
       },
       {
         name: 'serve <mailbox|kanban|codebase-index|requirement-intake|sage>',
@@ -342,13 +342,33 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
   },
   tools: {
     name: 'tools',
-    title: 'wstack tools — list registered tools',
+    title: 'wstack tools — list registered tools, or call one from outside a session',
     description:
-      'List every tool the agent can invoke, with its owner ' +
-      '(built-in / plugin) and permission level. Useful for auditing ' +
-      'what a session can do, especially after installing a new plugin.',
-    usage: 'wstack tools',
-    seeAlso: 'wstack skills (list skills; tools + skills are the two extension surfaces)',
+      'Bare: list every registered tool with owner and permission. list/describe/run/batch: ' +
+      'call built-in tools from any script or external agent. Read-only unless --allow <caps> ' +
+      '(e.g. fs.write) or --yolo. Exit: 0 ok, 1 failed, 2 bad input, 3 not exposed/denied, 4 needs confirmation.',
+    usage:
+      'wstack tools [list|describe <tool>|run <tool> [--input <json|@file|stdin>] [-- --<field> <value>]|batch|agent-guide] [--json] [--allow <caps>|--yolo]',
+    subcommands: [
+      { name: 'list', description: 'Tools callable from outside a session, one line each.' },
+      { name: 'describe <tool>', description: 'Description, capabilities and input JSON schema.' },
+      {
+        name: 'run <tool>',
+        description:
+          '--input <json>|@file.json|bare (stdin); schema fields after --: -- --path a.ts --limit 5.',
+      },
+      {
+        name: 'batch',
+        description:
+          'JSONL calls ({"tool","input","id"}) on stdin or --input @f; one result line each.',
+      },
+      {
+        name: 'agent-guide',
+        description:
+          "A short Markdown guide for an agent's instruction file (AGENTS.md, CLAUDE.md).",
+      },
+    ],
+    seeAlso: 'wstack mcp serve (the same tools over MCP), wstack skills',
   },
   skills: {
     name: 'skills',

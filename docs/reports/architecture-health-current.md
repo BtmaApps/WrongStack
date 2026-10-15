@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-14T22:18:19.961Z
+**Generated:** 2026-10-15T09:59:54.107Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4962 |
-| Production source lines | 1100524 |
-| Test files | 4374 |
+| Production source files | 4965 |
+| Production source lines | 1101529 |
+| Test files | 4377 |
 | Workspace dependency edges | 137 |
-| Relative module edges | 16349 |
+| Relative module edges | 16354 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -29,7 +29,7 @@ PASS — no blocking architecture-health errors.
 |---|---:|---:|---|
 | @wrongstack/acp | 50 | 58 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
-| @wrongstack/cli | 635 | 629 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/cli | 638 | 632 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1122 | 976 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
@@ -121,6 +121,7 @@ None.
 | 751 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 750 | `packages/core/src/utils/context-evidence.ts` |
 | 748 | `packages/cli/src/boot/tui-session-resume.ts` |
+| 748 | `packages/cli/src/subcommands/handlers/per-subcommand-help-table.ts` |
 | 748 | `packages/core/src/types/config/skills-fleet-brain.ts` |
 | 747 | `packages/core/src/core/fallback-model.ts` |
 | 747 | `packages/tools/src/bash-stream.ts` |
@@ -132,11 +133,10 @@ None.
 | 740 | `packages/client/src/client.ts` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
 | 740 | `packages/webui/src/hooks/ws-handlers.ts` |
-| 740 | `packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts` |
 
 ## Exports only tests reference
 
-- 975 runtime exports are referenced by tests and by no other production file.
+- 976 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

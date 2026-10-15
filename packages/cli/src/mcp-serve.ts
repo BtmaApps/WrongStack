@@ -2,30 +2,16 @@
  * `wstack mcp serve` — run WrongStack itself as an MCP server over stdio.
  *
  * Exposes the built-in tool registry to any MCP client (Claude Desktop, another
- * agent, an IDE). stdout is the JSON-RPC channel — every status/log line goes to
- * stderr. By default a safe `AutoApprovePermissionPolicy` is used: read-only
+ * agent, an IDE) through the shared tool gateway (`tool-gateway.ts`). stdout is
+ * the JSON-RPC channel — every status/log line goes to stderr. By default a safe `AutoApprovePermissionPolicy` is used: read-only
  * tools are exposed, while shell/write/edit and dangerous-capability tools are
- * withheld. `--yolo` exposes everything; `--tools a,b,c` restricts the set.
+ * withheld. `--allow <caps>` grants named capabilities on top, `--yolo` grants
+ * every capability; `--tools a,b,c` restricts the set.
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Context } from '@wrongstack/core/agent';
-import { ToolExecutor } from '@wrongstack/core/execution';
-import { ToolRegistry } from '@wrongstack/core/registry';
-import {
-  AutoApprovePermissionPolicy,
-  DefaultSecretScrubber,
-  ToolCapabilities,
-} from '@wrongstack/core/security';
-import type {
-  PermissionPolicy,
-  Provider,
-  SessionWriter,
-  TokenCounter,
-  Tool,
-} from '@wrongstack/core/types';
-import { normalizeTokenSavingTier } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   DEFAULT_MCP_INSERTION_MAX_BYTES,
   MCPServer,
@@ -35,42 +21,12 @@ import {
   serveHttp,
   serveStdio,
 } from '@wrongstack/mcp';
-import { registerBuiltinToolTier } from '@wrongstack/tools/tool-tier';
-import { wireKanbanPorts } from '@wrongstack/runtime';
 import type { SubcommandDeps } from './subcommands/contracts.js';
-
-/**
- * `--yolo` for `mcp serve`: widen the CAPABILITY allowlist, keep every guard.
- *
- * This replaced an `AllowAllPermissionPolicy extends AutoApprovePermissionPolicy`
- * whose `evaluate()` returned `{ permission: 'auto' }` unconditionally. That
- * override skipped the whole base implementation — the sensitive-read denial,
- * the leader deny rules, the destructive-command classifier, the agent-state
- * write guard, and `LOCKED_DESTRUCTIVE_KINDS`. It was the only place in the
- * codebase where `agent-state` and `credential-bind` could be un-gated, so a
- * third-party MCP client could have written `hooks` into config.json (boot-time
- * RCE) or `auto: true` into trust.json.
- *
- * It did not actually get there — but only by accident, and the accident is the
- * reason this is a rewrite rather than a patch. The override returned
- * `source: 'default'` where the base class returns `source: 'yolo'`, so
- * `ToolExecutor.capabilityDowngraded` re-armed and forced `confirm`; `mcp serve`
- * has no confirmAwaiter, so the call hard-errored. Changing that one string
- * literal to `'yolo'` — which reads as a trivial consistency cleanup — would
- * have made the bypass live. Safety must not rest on a string nobody knows is
- * load-bearing.
- *
- * Granting every capability is what `--yolo` actually means, and it is what
- * lets `ToolExecutor` trust an `auto` instead of downgrading it (see the
- * `dangerousNotAllowed` reasoning in `auto-approve-policy.ts`). The destructive
- * classifier is deliberately NOT relaxed: `yoloConfirmKinds` is left at its
- * default, which gates every destructive kind. Destructive calls therefore
- * still require a confirmation this surface cannot answer, exactly as before —
- * this change removes a latent bypass without widening anything.
- */
-export function yoloServePolicy(): AutoApprovePermissionPolicy {
-  return new AutoApprovePermissionPolicy(Object.values(ToolCapabilities));
-}
+import {
+  createToolGateway,
+  parseCapabilityGrants,
+  resolveGatewayRegistry,
+} from './tool-gateway.js';
 
 /**
  * Resolve the `--tools` whitelist for `mcp serve`.
@@ -250,85 +206,6 @@ function isTextMime(mimeType: string): boolean {
   );
 }
 
-/**
- * Whether the file tools are confined to the project root for `mcp serve`.
- *
- * `mcp serve` is the one surface where the file tools are driven by a REMOTE
- * caller, so an unset config must inherit containment rather than invert it —
- * an unset value here previously became `false`, which short-circuited
- * `ensureInsideRoot` and let `tools/call read` return `~/.ssh/id_rsa`.
- *
- * This lives in one exported function rather than as a literal repeated at each
- * call site so the invariant is testable and a third call site cannot quietly
- * reintroduce the wrong default. Only a trusted user config can opt out:
- * `tools.restrictToProjectRoot` is on the in-project denylist, so a
- * checked-out repository cannot reach it.
- */
-export function resolveServeFsRestriction(config: {
-  tools?: { restrictToProjectRoot?: boolean | undefined } | undefined;
-}): boolean {
-  return config.tools?.restrictToProjectRoot ?? true;
-}
-
-/** Minimal run context — tools read cwd/projectRoot/signal; provider/session are stubs. */
-export function makeServeContext(
-  cwd: string,
-  projectRoot: string,
-  signal: AbortSignal,
-  restrictFsToRoot = true,
-): Context {
-  const provider = {
-    id: 'mcp-serve',
-    capabilities: { maxContext: 0 },
-    complete: async () => {
-      throw new Error('no model provider in `mcp serve` mode');
-    },
-    stream: () => {
-      throw new Error('no model provider in `mcp serve` mode');
-    },
-  } as never as Provider;
-  const session = { append: async () => {} } as never as SessionWriter;
-  const tokenCounter = {
-    account: () => {},
-    total: () => ({ input: 0, output: 0 }),
-    estimateCost: () => ({ total: 0 }),
-  } as never as TokenCounter;
-  return new Context({
-    systemPrompt: [],
-    provider,
-    session,
-    signal,
-    tokenCounter,
-    cwd,
-    projectRoot,
-    allowOutsideProjectRoot: !restrictFsToRoot,
-    model: 'mcp-serve',
-    tools: [],
-  });
-}
-
-/**
- * Compute the set of tools an MCP-serve session exposes: a tool is included
- * only if it passes the whitelist (when set) AND the permission policy returns
- * `auto`. With `AutoApprovePermissionPolicy` this withholds shell/write/edit and
- * dangerous-capability tools; with the `--yolo` policy everything passes.
- * Exported for testing — the live path calls it inside `serveMcpStdio`.
- */
-export async function selectExposedTools(
-  registry: ToolRegistry,
-  ctx: Context,
-  policy: PermissionPolicy,
-  whitelist: Set<string> | null,
-): Promise<Tool[]> {
-  const allowed: Tool[] = [];
-  for (const tool of registry.list()) {
-    if (whitelist && !whitelist.has(tool.name)) continue;
-    const decision = await policy.evaluate(tool, {}, ctx);
-    if (decision.permission === 'auto') allowed.push(tool);
-  }
-  return allowed;
-}
-
 export async function serveMcpStdio(
   deps: SubcommandDeps,
   positional?: readonly string[],
@@ -355,45 +232,24 @@ export async function serveMcpStdio(
     return 1;
   }
 
-  // Reuse the subcommand's pre-populated registry; fall back to a fresh one.
-  wireKanbanPorts();
-  let registry = deps.toolRegistry as ToolRegistry | undefined;
-  if (!registry) {
-    registry = new ToolRegistry();
-    registerBuiltinToolTier({
-      registry,
-      tier: normalizeTokenSavingTier(deps.config.features.tokenSavingMode),
-    });
+  let allow: string[];
+  try {
+    allow = parseCapabilityGrants(flags['allow']);
+  } catch (err) {
+    log(`wrongstack MCP server: ${toErrorMessage(err)}`);
+    return 1;
   }
 
-  const controller = new AbortController();
-  // This context is only used while deciding which tools to expose. Tool calls
-  // must receive a fresh Context below: Context carries mutable per-run state
-  // such as workingDir and file tracking, which must never bleed between MCP
-  // clients or concurrent requests.
-  const selectionCtx = makeServeContext(
-    deps.cwd,
-    deps.projectRoot,
-    controller.signal,
-    resolveServeFsRestriction(deps.config),
-  );
-  const permissionPolicy: PermissionPolicy = yolo
-    ? yoloServePolicy()
-    : new AutoApprovePermissionPolicy();
-  const executor = new ToolExecutor(registry, {
-    permissionPolicy,
-    secretScrubber: new DefaultSecretScrubber(),
-    maxToolTimeoutMs: deps.config.tools?.maxToolTimeoutMs ?? 300_000,
-    perIterationOutputCapBytes: 1_000_000,
-    // Kanban tracks work; it does not gate it. Off unless the operator opts in.
-    // See wiring/pipeline.ts for why all four hosts must agree.
-    requireKanbanGovernance: deps.config.tools?.kanbanGovernance ?? false,
+  const gateway = await createToolGateway({
+    registry: resolveGatewayRegistry(deps.toolRegistry, deps.config),
+    config: deps.config,
+    cwd: deps.cwd,
+    projectRoot: deps.projectRoot,
+    yolo,
+    allow,
+    whitelist,
   });
-
-  // Pre-compute the exposed set so tools/list and tools/call agree, and so a
-  // withheld tool can never be invoked even if a client guesses its name.
-  const allowed = await selectExposedTools(registry, selectionCtx, permissionPolicy, whitelist);
-  const allowedNames = new Set(allowed.map((t) => t.name));
+  const allowed = gateway.tools;
 
   if (allowed.length === 0) {
     log(
@@ -402,7 +258,6 @@ export async function serveMcpStdio(
     );
   }
 
-  let counter = 0;
   const host: MCPServerToolHost = {
     listTools: () =>
       allowed.map((t) => ({
@@ -411,33 +266,17 @@ export async function serveMcpStdio(
         inputSchema: (t.inputSchema as Record<string, unknown>) ?? { type: 'object' },
       })),
     callTool: async (name, callArgs) => {
-      if (!allowedNames.has(name)) {
+      const outcome = await gateway.call(name, callArgs);
+      if (outcome.kind === 'not_exposed') {
         return { content: `Tool "${name}" is not exposed by this server`, isError: true };
       }
-      const use = {
-        type: 'tool_use' as const,
-        id: `srv_${++counter}`,
-        name,
-        input: callArgs,
-      };
-      // `sequential` applies only within this one-item batch. It does not
-      // serialize requests from other MCP clients, while the fresh Context
-      // prevents their mutable run state from being shared.
-      const requestCtx = makeServeContext(
-        deps.cwd,
-        deps.projectRoot,
-        controller.signal,
-        resolveServeFsRestriction(deps.config),
-      );
-      const batch = await executor.executeBatch([use], requestCtx, 'sequential');
-      const result = batch.outputs[0]?.result;
-      if (!result || result.type === 'tool_confirm_pending') {
+      if (outcome.kind === 'confirm_required') {
         return {
           content: `Tool "${name}" requires interactive confirmation, which is unavailable over MCP`,
           isError: true,
         };
       }
-      return { content: result.content, isError: Boolean(result.is_error) };
+      return { content: outcome.content, isError: outcome.isError };
     },
   };
 
@@ -448,7 +287,12 @@ export async function serveMcpStdio(
     logger: { warn: (m) => log(`[mcp-serve] ${m}`) },
   });
 
-  const mode = yolo ? 'yolo: all tools' : 'safe: read-only tools';
+  const mode =
+    gateway.mode === 'yolo'
+      ? 'yolo: all tools'
+      : gateway.mode === 'granted'
+        ? `granted: ${gateway.capabilities.join(', ')}`
+        : 'safe: read-only tools';
 
   // HTTP transport — network-reachable. Loopback by default; non-loopback
   // requires a token (enforced in serveHttp).
@@ -499,7 +343,7 @@ export async function serveMcpStdio(
       process.once('SIGTERM', stop);
     });
     await handle.close();
-    controller.abort();
+    await gateway.close();
     return 0;
   }
 
@@ -510,6 +354,6 @@ export async function serveMcpStdio(
 
   const handle = serveStdio(server);
   await handle.done;
-  controller.abort();
+  await gateway.close();
   return 0;
 }

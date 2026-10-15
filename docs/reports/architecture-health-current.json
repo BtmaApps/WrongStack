@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T22:18:19.961Z",
+  "generatedAt": "2026-10-15T09:59:54.107Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4962,
-    "testFiles": 4374,
-    "sourceLines": 1100524,
+    "sourceFiles": 4965,
+    "testFiles": 4377,
+    "sourceLines": 1101529,
     "workspaceEdges": 137,
-    "moduleEdges": 16349,
+    "moduleEdges": 16354,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 975
+    "testOnlyExports": 976
   },
   "errors": [],
   "packageCycles": [],
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 635,
-      "testFiles": 629,
+      "sourceFiles": 638,
+      "testFiles": 632,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 629
+          "testFiles": 632
         }
       ]
     },
@@ -5255,6 +5255,24 @@
       },
       {
         "file": "packages/cli/tests/tool-restriction-flags.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tools-cli-grants-batch.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tools-cli-index-freshness.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tools-cli.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27732,6 +27750,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/cli/src/subcommands/handlers/per-subcommand-help-table.ts",
+      "lines": 748,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/core/src/types/config/skills-fleet-brain.ts",
       "lines": 748,
       "relativeImports": 2
@@ -27785,11 +27808,6 @@
       "file": "packages/webui/src/hooks/ws-handlers.ts",
       "lines": 740,
       "relativeImports": 12
-    },
-    {
-      "file": "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts",
-      "lines": 740,
-      "relativeImports": 0
     }
   ],
   "testOnlyExports": [
@@ -28171,27 +28189,11 @@
     },
     {
       "file": "packages/cli/src/mcp-serve.ts",
-      "name": "makeServeContext"
-    },
-    {
-      "file": "packages/cli/src/mcp-serve.ts",
       "name": "parseToolsFlag"
     },
     {
       "file": "packages/cli/src/mcp-serve.ts",
-      "name": "resolveServeFsRestriction"
-    },
-    {
-      "file": "packages/cli/src/mcp-serve.ts",
       "name": "resolveServeHttpPort"
-    },
-    {
-      "file": "packages/cli/src/mcp-serve.ts",
-      "name": "selectExposedTools"
-    },
-    {
-      "file": "packages/cli/src/mcp-serve.ts",
-      "name": "yoloServePolicy"
     },
     {
       "file": "packages/cli/src/next-task-predictor.ts",
@@ -28424,6 +28426,26 @@
     {
       "file": "packages/cli/src/terminal-format.ts",
       "name": "terminalFormattingEnabled"
+    },
+    {
+      "file": "packages/cli/src/tool-gateway.ts",
+      "name": "makeServeContext"
+    },
+    {
+      "file": "packages/cli/src/tool-gateway.ts",
+      "name": "readsCodebaseIndex"
+    },
+    {
+      "file": "packages/cli/src/tool-gateway.ts",
+      "name": "resolveServeFsRestriction"
+    },
+    {
+      "file": "packages/cli/src/tool-gateway.ts",
+      "name": "selectExposedTools"
+    },
+    {
+      "file": "packages/cli/src/tool-gateway.ts",
+      "name": "yoloServePolicy"
     },
     {
       "file": "packages/cli/src/tuneup.ts",

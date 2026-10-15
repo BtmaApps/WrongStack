@@ -246,7 +246,6 @@ describe('PerSubcommandHelp shape (data contract)', () => {
       'diag',
       'init',
       'version',
-      'tools',
       'skills',
       'projects',
       'usage',

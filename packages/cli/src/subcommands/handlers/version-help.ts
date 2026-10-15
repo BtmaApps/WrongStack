@@ -69,6 +69,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['wstack sage sync', 'Keep project SAGE memory synchronized through HQ'],
       ['wstack plugin', 'Plugins: list, install, enable, disable, remove'],
       ['wstack tools | skills', 'List registered tools / discovered skills'],
+      ['wstack tools run <tool>', 'Call a built-in tool from a script or external agent'],
       ['wstack typesafe', 'TypeSafe account: status, login, test'],
       ['wstack update', 'Self-update (--check-only)'],
     ]),

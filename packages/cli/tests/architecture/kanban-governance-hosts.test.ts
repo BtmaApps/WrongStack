@@ -39,7 +39,8 @@ const PACKAGES = path.join(repositoryRoot, 'packages');
 const HOSTS = [
   'cli/acp-server-agent.ts',
   'cli/fleet/host-subagent-factory.ts',
-  'cli/mcp-serve.ts',
+  // Shared by `wstack mcp serve` and `wstack tools run`.
+  'cli/tool-gateway.ts',
   'cli/wiring/pipeline.ts',
   'runtime/fleet/light-subagent-factory.ts',
   'webui-server/server/backend-services.ts',

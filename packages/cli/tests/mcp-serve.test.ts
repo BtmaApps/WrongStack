@@ -3,18 +3,17 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import { AutoApprovePermissionPolicy } from '@wrongstack/core/security';
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { PermissionPolicy, Tool } from '@wrongstack/core/types';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { builtinToolsPack } from '@wrongstack/tools';
 import { afterEach, describe, expect, it } from 'vitest';
+import { loadSelectedMcpServeContent, parseToolsFlag } from '../src/mcp-serve.js';
 import {
-  loadSelectedMcpServeContent,
   makeServeContext,
-  parseToolsFlag,
   resolveServeFsRestriction,
   selectExposedTools,
   yoloServePolicy,
-} from '../src/mcp-serve.js';
+} from '../src/tool-gateway.js';
 
 function registry(): ToolRegistry {
   const r = new ToolRegistry();

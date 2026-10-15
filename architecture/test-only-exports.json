@@ -198,12 +198,8 @@
     ],
     "packages/cli/src/mcp-serve.ts": [
       "loadSelectedMcpServeContent",
-      "makeServeContext",
       "parseToolsFlag",
-      "resolveServeFsRestriction",
-      "resolveServeHttpPort",
-      "selectExposedTools",
-      "yoloServePolicy"
+      "resolveServeHttpPort"
     ],
     "packages/cli/src/next-task-predictor.ts": [
       "buildPredictionPrompt",
@@ -326,6 +322,13 @@
     ],
     "packages/cli/src/terminal-format.ts": [
       "terminalFormattingEnabled"
+    ],
+    "packages/cli/src/tool-gateway.ts": [
+      "makeServeContext",
+      "readsCodebaseIndex",
+      "resolveServeFsRestriction",
+      "selectExposedTools",
+      "yoloServePolicy"
     ],
     "packages/cli/src/tuneup.ts": [
       "checkAutonomy",

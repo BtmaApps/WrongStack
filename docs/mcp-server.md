@@ -19,6 +19,11 @@ wstack mcp serve --http --host 0.0.0.0 --token SECRET  # LAN, token required
 
 Over stdio, stdout is the JSON-RPC channel; all status/log output goes to stderr.
 
+The same tools are also callable without MCP, one shell command per call:
+`wstack tools run <tool>` / `wstack tools batch`, with schemas fetched on demand by
+`wstack tools describe` — see [tools-skills.md](./subcommands/tools-skills.md). Both surfaces share
+one gateway, so they expose the same tools under the same policy.
+
 ### Project servers: `wstack mcp serve <name>`
 
 The narrower project servers below run from `wstack` itself:
@@ -157,6 +162,7 @@ tools to an external client.
 | Flag | Effect |
 |---|---|
 | _(none)_ | Read-only tools only (safe default). |
+| `--allow cap,...` | Grant named capabilities on top of the read-only default, e.g. `--allow fs.write`. An unknown capability is an error. |
 | `--yolo` / `--allow-all` | Expose every built-in tool, including `bash`, `write`, `edit`, `exec`, `install`. |
 | `--tools a,b,c` | Restrict to a comma-separated whitelist (intersected with the policy above). |
 | `--resources path,...` | Expose only these explicitly selected local files via MCP resources. |

@@ -1,7 +1,12 @@
 import { color } from '@wrongstack/core/utils';
 import type { SubcommandHandler } from '../contracts.js';
 
-export const toolsCmd: SubcommandHandler = async (_args, deps) => {
+export const toolsCmd: SubcommandHandler = async (args, deps) => {
+  const verb = args[0] ?? '';
+  if (['list', 'describe', 'run', 'batch', 'agent-guide'].includes(verb)) {
+    const { runToolsCli } = await import('./tools-cli.js');
+    return runToolsCli(verb, args.slice(1), deps);
+  }
   const reg = deps.toolRegistry;
   if (!reg) return 0;
   for (const { tool, owner } of reg.listWithOwner())

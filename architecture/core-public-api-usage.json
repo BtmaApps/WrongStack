@@ -134,9 +134,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/registry": {
-      "files": 156,
-      "typeOnly": 67,
-      "runtimeOrMixed": 92
+      "files": 160,
+      "typeOnly": 68,
+      "runtimeOrMixed": 95
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1413,
-      "typeOnly": 1246,
+      "files": 1415,
+      "typeOnly": 1248,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 786,
+      "files": 791,
       "typeOnly": 70,
-      "runtimeOrMixed": 746
+      "runtimeOrMixed": 751
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -525,12 +525,6 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
-      "file": "packages/cli/src/mcp-serve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/next-task-predictor.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -714,6 +708,12 @@
       "file": "packages/cli/src/subcommands/handlers/permissions.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/tool-gateway.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -4725,12 +4725,6 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
-      "file": "packages/cli/src/mcp-serve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/repl-options.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
@@ -4780,6 +4774,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/tool-gateway.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10233,12 +10233,6 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
-      "file": "packages/cli/src/mcp-serve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/src/repl-options.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -10260,6 +10254,18 @@
       "file": "packages/cli/src/subcommands/contracts.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/src/subcommands/handlers/tools-cli.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/src/tool-gateway.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -10588,6 +10594,24 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/theme-preset-end-to-end.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/tools-cli-grants-batch.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/tools-cli-index-freshness.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/tools-cli.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11397,12 +11421,6 @@
     },
     {
       "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/mcp-serve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/permission-prompt-mirror.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11530,6 +11548,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/subcommands/handlers/providers-models-custom.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/tool-gateway.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -14739,12 +14763,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/cli/src/mcp-serve.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/permission-prompt-mirror.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15615,6 +15633,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/tools-cli-args.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/tools-cli.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15624,6 +15654,12 @@
       "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/tool-gateway.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -23523,6 +23559,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/mcp-serve.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/next-task-predictor.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24591,6 +24633,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/tools-cli-args.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/tools-cli.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/tools-skills.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24634,6 +24688,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/theme.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/tool-gateway.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -25204,6 +25264,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/system-prompt-menu.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/tools-cli-grants-batch.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
