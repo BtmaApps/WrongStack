@@ -7,6 +7,9 @@ vi.mock('node:fs', () => ({
 
 const { existsSync, readFileSync } = await import('node:fs');
 const migrationPlannerPlugin = (await import('../src/migration-planner')).default;
+const { resolveMigrationPlanInput } = await import(
+  '../src/migration-planner/migration-plan-input.js'
+);
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -335,20 +338,13 @@ describe('migration-planner plugin', () => {
   it('admits alias-only payloads through the tool inputSchema', () => {
     // Regression: the schema only declared the canonical fields, so
     // schema-validated hosts rejected alias-only calls before the
-    // executor's normalization could run.
+    // executor's normalization could run. The schema stays descriptive
+    // (aliases declared, nothing required) and the executor resolves the
+    // aliases and enforces the field groups.
     const api = makeApi();
     migrationPlannerPlugin.setup(api as never);
     const registered = api.tools.register.mock.calls
-      .map(
-        ([t]) =>
-          t as {
-            name: string;
-            inputSchema?: {
-              properties?: Record<string, unknown>;
-              allOf?: Array<{ anyOf?: Array<{ required?: string[] }> }>;
-            };
-          },
-      )
+      .map(([t]) => t as { name: string; inputSchema?: { properties?: Record<string, unknown> } })
       .find((t) => t.name === 'migration_plan');
     expect(registered).toBeDefined();
     const schema = registered!.inputSchema!;
@@ -368,15 +364,37 @@ describe('migration-planner plugin', () => {
       expect(schema.properties?.[alias]).toBeDefined();
     }
 
-    const groups = (schema.allOf ?? []).map((g) => (g.anyOf ?? []).map((b) => b.required ?? []));
-    expect(groups.length).toBe(3);
-    const satisfies = (group: string[][], payload: string[]) =>
-      group.some((req) => req.every((k) => payload.includes(k)));
-    expect(satisfies(groups[0]!, ['package'])).toBe(true);
-    expect(satisfies(groups[1]!, ['from'])).toBe(true);
-    expect(satisfies(groups[2]!, ['to'])).toBe(true);
-    // A payload missing an entire group still fails every branch.
-    expect(satisfies(groups[0]!, ['from', 'to'])).toBe(false);
+    // Alias-only payloads reach the executor and resolve to canonical fields.
+    const resolved = resolveMigrationPlanInput({
+      package: 'left-pad',
+      from: '1.0.0',
+      to: '2.0.0',
+    } as never);
+    expect(resolved.packageName).toBe('left-pad');
+    expect(resolved.fromVersion).toBe('1.0.0');
+    expect(resolved.toVersion).toBe('2.0.0');
+    // A payload missing an entire group is rejected by the executor.
+    expect(() =>
+      resolveMigrationPlanInput({ package: 'left-pad', from: '1.0.0' } as never),
+    ).toThrow(/packageName, fromVersion, and toVersion are required/);
+  });
+
+  it('keeps oneOf/allOf/anyOf out of every registered tool schema', () => {
+    // Claude-bound wires serve inputSchema verbatim (the WrongForge leader
+    // gateway lists the whole registry), and Anthropic-family endpoints reject
+    // top-level combinators — one offender fails every leader turn. Mirrors
+    // packages/tools/tests/builtin-tiers.test.ts for this plugin's tools.
+    const api = makeApi();
+    migrationPlannerPlugin.setup(api as never);
+    const offenders = api.tools.register.mock.calls
+      .map(([t]) => t as { name: string; inputSchema?: Record<string, unknown> })
+      .filter(
+        (t) =>
+          t.inputSchema !== undefined &&
+          ('oneOf' in t.inputSchema || 'allOf' in t.inputSchema || 'anyOf' in t.inputSchema),
+      )
+      .map((t) => t.name);
+    expect(offenders).toEqual([]);
   });
 
   it('keeps the deterministic plan when optional LLM JSON is invalid', async () => {

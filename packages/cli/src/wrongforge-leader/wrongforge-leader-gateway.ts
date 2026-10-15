@@ -14,7 +14,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Tool } from '@wrongstack/core/types';
-import { subjectForToolInput } from '@wrongstack/core/utils';
+import { compactToolDefinitionForWire, subjectForToolInput } from '@wrongstack/core/utils';
 import { confirmThroughEvents } from '../acp-leader/acp-leader-confirm.js';
 import type { AcpLeaderHost } from '../acp-leader/acp-leader-host.js';
 import type { WrongForgeGatewaySpec } from '../fleet/wrongforge-client.js';
@@ -80,6 +80,19 @@ export async function startLeaderGateway(
   const tools = (host.listTools?.() ?? []).filter((t) => !NOT_OFFERED.has(t.name));
   if (tools.length === 0) return undefined;
   const byName = new Map(tools.map((t) => [t.name, t]));
+  // Schemas on this listing reach Claude through WrongForge: serve the same
+  // wire-normalized form every provider converter applies — top-level
+  // combinators flattened (Anthropic-family endpoints reject them at the
+  // input_schema root) and description prose inside the provider budgets.
+  // `runTool` still executes the real tool, whose original schema remains
+  // the runtime validator.
+  const wireTools = tools.map((t) =>
+    compactToolDefinitionForWire({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema ?? { type: 'object' },
+    }),
+  );
   const token = randomBytes(24).toString('hex');
   const expected = Buffer.from(`Bearer ${token}`);
   const authorized = (req: http.IncomingMessage) => {
@@ -100,10 +113,10 @@ export async function startLeaderGateway(
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (req.method === 'GET' && url.pathname === '/v1/tools') {
       return send(res, 200, {
-        tools: tools.map((t) => ({
-          name: t.name,
-          description: t.description,
-          input_schema: t.inputSchema ?? { type: 'object' },
+        tools: wireTools.map(({ name, description, inputSchema }) => ({
+          name,
+          description,
+          input_schema: inputSchema,
         })),
       });
     }

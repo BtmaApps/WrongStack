@@ -36,6 +36,33 @@ const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@
 const CURSOR_TO = /\x1b\[[0-9;]*[Hf]/g;
 const SOFT_BREAK = '\u0000';
 
+/** A complete CSI / OSC / two-character escape sequence, anchored. */
+const COMPLETE_SEQUENCE =
+  /^(?:\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_])$/;
+
+/**
+ * Frames are cut at PTY/socket boundaries, which can fall inside an escape
+ * sequence (`…\x1b[32` | `m…`): stripped per chunk, the raw bytes would read
+ * as text and the completing `m` of the next frame would print. The longest
+ * suffix that can still grow into a sequence is held back for the next frame
+ * instead. A complete sequence never contains ESC, so the last ESC decides.
+ */
+const MAX_HELD_SEQUENCE = 256;
+const heldSequence = new Map<string, string>();
+
+function trailingPartialSequence(text: string): string {
+  const start = text.lastIndexOf('\x1b');
+  if (start === -1) return '';
+  const suffix = text.slice(start);
+  if (COMPLETE_SEQUENCE.test(suffix)) return '';
+  const canStillComplete =
+    suffix === '\x1b' ||
+    suffix.startsWith('\x1b]') ||
+    (suffix.startsWith('\x1b[') && /^[0-9;?]*[ -/]*$/.test(suffix.slice(2)));
+  if (!canStillComplete || suffix.length > MAX_HELD_SEQUENCE) return '';
+  return suffix;
+}
+
 /** `tail` with `chunk` appended, as plain lines; the last line may still be growing. */
 function appendTail(tail: readonly string[], chunk: string, keep = TERMINAL_PEEK_LINES): string[] {
   const text = chunk.replace(CURSOR_TO, SOFT_BREAK).replace(ANSI, '');
@@ -85,7 +112,10 @@ export const useTerminalStripStore = create<TerminalStripState>()((set) => ({
     })),
   requestFocus: (id) =>
     set((state) => ({ focusRequest: { id, nonce: (state.focusRequest?.nonce ?? 0) + 1 } })),
-  clear: () => set({ terminals: [], focusRequest: null }),
+  clear: () => {
+    heldSequence.clear();
+    set({ terminals: [], focusRequest: null });
+  },
 }));
 
 /**
@@ -106,7 +136,13 @@ export function noteTerminalOutput(id: string, data: string): void {
     const at = Date.now();
     for (const [terminalId, chunk] of pending) {
       const known = store.terminals.find((t) => t.id === terminalId);
-      if (known) store.appendOutput(terminalId, appendTail(known.tail, chunk), at);
+      if (!known) continue;
+      const text = (heldSequence.get(terminalId) ?? '') + chunk;
+      heldSequence.delete(terminalId);
+      const partial = trailingPartialSequence(text);
+      if (partial) heldSequence.set(terminalId, partial);
+      const body = partial ? text.slice(0, -partial.length) : text;
+      store.appendOutput(terminalId, appendTail(known.tail, body), at);
     }
     pending.clear();
   }, FLUSH_MS);

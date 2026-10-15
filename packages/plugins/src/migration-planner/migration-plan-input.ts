@@ -50,46 +50,14 @@ export const MIGRATION_PLAN_INPUT_SCHEMA = {
     use_ai: { type: 'boolean', description: 'Alias for use_llm.' },
     useAi: { type: 'boolean', description: 'Alias for use_llm.' },
   },
-  // One name from each required field group must be sufficient for
-  // raw-schema validation. Note: the tool-wire flattener strips
-  // top-level combinators (docs/tool-author-guide.md), so wire-level
-  // guidance loses these required markers by design — the executor
-  // remains the authoritative validator and reports missing canonical
-  // fields with a clear error.
-  allOf: [
-    {
-      anyOf: [
-        { required: ['packageName'] },
-        { required: ['package'] },
-        { required: ['pkg'] },
-        { required: ['name'] },
-        { required: ['package_name'] },
-        { required: ['dependency'] },
-        { required: ['dep'] },
-        { required: ['module'] },
-      ],
-    },
-    {
-      anyOf: [
-        { required: ['fromVersion'] },
-        { required: ['from'] },
-        { required: ['from_version'] },
-        { required: ['currentVersion'] },
-        { required: ['since'] },
-        { required: ['start'] },
-      ],
-    },
-    {
-      anyOf: [
-        { required: ['toVersion'] },
-        { required: ['to'] },
-        { required: ['to_version'] },
-        { required: ['targetVersion'] },
-        { required: ['until'] },
-        { required: ['end'] },
-      ],
-    },
-  ],
+  // No top-level oneOf/allOf/anyOf: Anthropic-family endpoints reject a tool
+  // whose input_schema carries a combinator at the root, and some Claude-bound
+  // wires serve inputSchema verbatim (the WrongForge leader gateway lists the
+  // whole registry; one offender fails every leader turn). The provider-wire
+  // compactor strips a top-level combinator anyway, so it would carry no
+  // information there either. `resolveMigrationPlanInput` remains the
+  // authoritative validator: a payload missing a whole field group is
+  // rejected there with a clear error.
 };
 
 /** Canonical migration_plan fields (a type literal so it casts to a record of aliases). */

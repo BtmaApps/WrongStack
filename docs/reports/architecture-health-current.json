@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-15T19:50:59.942Z",
+  "generatedAt": "2026-10-15T20:52:56.876Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4977,
-    "testFiles": 4386,
-    "sourceLines": 1104325,
+    "testFiles": 4387,
+    "sourceLines": 1104373,
     "workspaceEdges": 137,
     "moduleEdges": 16399,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 647,
-      "testFiles": 638,
+      "testFiles": 639,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 638
+          "testFiles": 639
         }
       ]
     },
@@ -5741,6 +5741,12 @@
       },
       {
         "file": "packages/cli/tests/worktree-sessions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-gateway.test.ts",
         "projects": [
           "root-node"
         ]

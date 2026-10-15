@@ -220,6 +220,37 @@ export async function* followTask(
   }
 }
 
+/**
+ * The terminal task record, with the same dropped-connection tolerance as
+ * `followTask`: the task is already finished, so one transient failure of
+ * this fetch must not turn completed work into a failed delegation (the
+ * caller would re-run it). Throws WfAborted when `signal` fires.
+ */
+export async function terminalTaskRecord(
+  call: WfCall,
+  taskId: string,
+  signal: AbortSignal,
+  opts: { retryDelayMs?: number | undefined } = {},
+): Promise<WfTaskRecord> {
+  let failures = 0;
+  for (;;) {
+    try {
+      return (
+        await call<{ task: WfTaskRecord }>(
+          'GET',
+          `/v1/tasks/${encodeURIComponent(taskId)}`,
+          undefined,
+          signal,
+        )
+      ).task;
+    } catch (err) {
+      if (signal.aborted || err instanceof WfAborted) throw new WfAborted();
+      if (++failures >= MAX_POLL_FAILURES) throw err;
+      await sleep(opts.retryDelayMs ?? 2_000, signal);
+    }
+  }
+}
+
 /** Ask WrongForge to stop a task; best effort. */
 export function cancelTask(call: WfCall, taskId: string, reason: string): void {
   void call('POST', `/v1/tasks/${encodeURIComponent(taskId)}/cancel`, { reason }).catch(

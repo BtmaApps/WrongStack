@@ -51,10 +51,13 @@ function fakeWrongForge(script: {
   models?: string[];
   /** Polls answered as `queued` (silent, behind other work) before the task runs. */
   queuedPolls?: number;
+  /** Answer the FIRST terminal-record GET with 503 (transient; undici never retries a status). */
+  failRecordGetOnce?: boolean;
 }) {
   const submitted: Record<string, unknown>[] = [];
   const cancels: string[] = [];
   let queuedLeft = script.queuedPolls ?? 0;
+  let recordGets = 0;
   let task: FakeTask | undefined;
   const server = http.createServer((req, res) => {
     const send = (status: number, body: unknown) => {
@@ -127,6 +130,10 @@ function fakeWrongForge(script: {
         }
         return respond();
       }
+      // The terminal-record GET.
+      recordGets += 1;
+      if (script.failRecordGetOnce && recordGets === 1)
+        return send(503, { error: { code: 'unavailable', message: 'restart in progress' } });
       return send(200, { task });
     });
   });
@@ -134,6 +141,7 @@ function fakeWrongForge(script: {
     url: string;
     submitted: typeof submitted;
     cancels: string[];
+    recordGets: () => number;
     close: () => Promise<void>;
   }>((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -142,6 +150,7 @@ function fakeWrongForge(script: {
         url: `http://127.0.0.1:${port}`,
         submitted,
         cancels,
+        recordGets: () => recordGets,
         close: () => new Promise((done) => server.close(() => done())),
       });
     });
@@ -303,6 +312,24 @@ describe('WrongForge runner', () => {
     // 3 silent queued polls + the task.queued event itself.
     expect(markActivity).toHaveBeenCalledTimes(4);
     expect(live[0]).toMatchObject({ type: 'thought', text: expect.stringContaining('capacity') });
+  });
+
+  it('returns a finished task when its final record fetch fails once transiently', async () => {
+    const wf = await fakeWrongForge({
+      final: { result: { text: 'done', steps: 1, tool_calls: 0 } },
+      failRecordGetOnce: true,
+    });
+    servers.push(wf);
+    const runner = makeWrongForgeRunner({
+      projectRoot: '/proj',
+      endpoint: () => ({ url: wf.url, apiKey: KEY }),
+      retryDelayMs: 1,
+    });
+    // The events long-polls tolerate dropped connections; the final record
+    // fetch of the same finished task must tolerate them too — a completed
+    // delegation must not come back as a retryable bridge failure.
+    await expect(runner(task, ctx().c)).resolves.toMatchObject({ result: 'done' });
+    expect(wf.recordGets()).toBe(2);
   });
 
   it('turns a failed task into a structured error with the matching kind', async () => {

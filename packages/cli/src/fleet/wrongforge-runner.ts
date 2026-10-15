@@ -31,6 +31,7 @@ import {
   followTask,
   resolveWrongForgeEndpoint,
   safeWfId,
+  terminalTaskRecord,
   toProgress,
   WfAborted,
   WfHttpError,
@@ -233,9 +234,9 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
           stepTexts.push('');
         }
       }
-      record = (
-        await call<{ task: WfTaskRecord }>('GET', `/v1/tasks/${encodeURIComponent(record.id)}`)
-      ).task;
+      record = await terminalTaskRecord(call, record.id, ctx.signal, {
+        retryDelayMs: options.retryDelayMs,
+      });
     } catch (err) {
       throw toSubagentError(err, ctx.signal);
     } finally {

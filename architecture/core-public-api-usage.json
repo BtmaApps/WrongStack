@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1426,
-      "typeOnly": 1259,
+      "files": 1427,
+      "typeOnly": 1260,
       "runtimeOrMixed": 425
     },
     "@wrongstack/core/types/limits": {
@@ -17044,6 +17044,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/wiring/vector-memory-setup.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-gateway.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

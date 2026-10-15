@@ -27,6 +27,18 @@ describe('the output a terminal reports', () => {
     vi.advanceTimersByTime(300);
     return useTerminalStripStore.getState().terminals[0]?.tail;
   };
+  /** Like tailAfter, but each frame reaches its own flush window — the PTY
+   *  boundary where an escape sequence can be cut. Frames folded into a
+   *  single window never exercise the cross-frame hold. */
+  const tailAfterFrames = (...chunks: string[]) => {
+    let tail: string[] | undefined;
+    for (const chunk of chunks) {
+      noteTerminalOutput('t', chunk);
+      vi.advanceTimersByTime(300);
+      tail = useTerminalStripStore.getState().terminals[0]?.tail;
+    }
+    return tail;
+  };
 
   it('keeps plain text lines across frames, dropping escape sequences and redraws', () => {
     expect(
@@ -43,6 +55,18 @@ describe('the output a terminal reports', () => {
         '\x1b[?25l(c) Microsoft Corporation. All rights reserved.\x1b[3;1HD:\\proj>\x1b[4;1H\x1b[5;1Hping',
       ),
     ).toEqual(['(c) Microsoft Corporation. All rights reserved.', 'D:\\proj>', 'ping']);
+  });
+
+  it('holds an escape sequence split across frames together instead of leaking its bytes', () => {
+    expect(tailAfterFrames('PS> \x1b[32', 'mbuilding...\r\n')).toEqual(['PS> building...', '']);
+  });
+
+  it('completes a cursor move split across frames as a row break', () => {
+    expect(tailAfterFrames('a\x1b[3', ';1Hb\n')).toEqual(['a', 'b', '']);
+  });
+
+  it('holds a lone escape at the end of a frame instead of showing it', () => {
+    expect(tailAfterFrames('ok\x1b')).toEqual(['ok']);
   });
 
   it('keeps only the last lines for the peek', () => {

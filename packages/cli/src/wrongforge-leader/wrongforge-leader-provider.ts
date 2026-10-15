@@ -49,6 +49,7 @@ import {
   followTask,
   resolveWrongForgeEndpoint,
   safeWfId,
+  terminalTaskRecord,
   toProgress,
   WfAborted,
   type WfCall,
@@ -399,9 +400,7 @@ export class WrongForgeLeaderProvider implements Provider {
           });
         }
       }
-      const done = (
-        await call<{ task: WfTaskRecord }>('GET', `/v1/tasks/${encodeURIComponent(task.id)}`)
-      ).task;
+      const done = await terminalTaskRecord(call, task.id, opts.signal);
       blocks.close();
       const failure = taskError(done, this.id);
       if (failure) throw failure;

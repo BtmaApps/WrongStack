@@ -17,6 +17,8 @@ const MODELS = ['claude-a-1', 'claude-b-2'];
 interface Scripted {
   events: Array<{ type: string; data: Record<string, unknown> }>;
   result: Record<string, unknown>;
+  /** Answer the FIRST terminal-record GET with 503 (transient; undici never retries a status). */
+  failRecordGetOnce?: boolean | undefined;
 }
 
 /** WrongForge's task API, enough for the leader: info, tasks (async + wait), sessions, events. */
@@ -24,6 +26,7 @@ async function fakeWrongForge(script: Scripted) {
   const submitted: Record<string, unknown>[] = [];
   const sessions = new Set<string>();
   let lastId = '';
+  let recordGets = 0;
   const server = http.createServer((req, res) => {
     const send = (status: number, body: unknown) => {
       res.writeHead(status, { 'content-type': 'application/json' });
@@ -69,6 +72,9 @@ async function fakeWrongForge(script: Scripted) {
         });
       }
       if (url.pathname === `/v1/tasks/${lastId}`) {
+        recordGets += 1;
+        if (script.failRecordGetOnce && recordGets === 1)
+          return send(503, { error: { code: 'unavailable', message: 'restart in progress' } });
         return send(200, { task: { id: lastId, status: 'completed', result: script.result } });
       }
       return send(404, { error: {} });
@@ -238,6 +244,35 @@ describe('WrongForge as the leader', () => {
     expect(wf.submitted[0]).toMatchObject({ builtin_tools: [], max_steps: 1, wait: true });
     expect(wf.submitted[0]).not.toHaveProperty('session_id');
     expect(String(wf.submitted[0]?.['prompt'])).toContain('Title it.');
+  });
+  it('returns the turn when the final record fetch fails once transiently', async () => {
+    const wf = await fakeWrongForge({
+      events: [{ type: 'agent.text', data: { text: 'Done.' } }],
+      result: {
+        text: 'Done.',
+        steps: 1,
+        tool_calls: 0,
+        usage: { input_tokens: 3, output_tokens: 4 },
+      },
+      failRecordGetOnce: true,
+    });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    const { host } = fakeHost();
+    bindAcpLeaderHost(host);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+    // The events long-polls tolerate dropped connections; the final record
+    // fetch of the finished turn must tolerate them too.
+    const events = await drain(
+      provider.stream(req('go'), { signal: new AbortController().signal }),
+    );
+    expect(events.at(-1)).toMatchObject({
+      type: 'message_stop',
+      usage: { input: 3, output: 4 },
+    });
   });
 });
 
