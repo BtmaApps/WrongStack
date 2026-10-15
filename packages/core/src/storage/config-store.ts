@@ -62,11 +62,21 @@ export class DefaultConfigStore implements ConfigStore {
     // the caller passes a fully-formed sub-object. That matches the JSON
     // config user mental model (replace `tools.maxIterations` by passing
     // the whole `tools` block, or by patching `extensions.<name>`).
-    const next = deepFreeze(structuredClone({ ...this.current, ...scrubbed })) as Readonly<Config>;
+    return this.publish({ ...this.current, ...scrubbed }, 'update');
+  }
 
+  replace(next: Config): Readonly<Config> {
+    // Unlike update(), replacement receives the canonical loader output,
+    // including current environment overrides. Do not strip ephemeral fields:
+    // this snapshot is never persisted by ConfigStore.
+    return this.publish(next, 'replace');
+  }
+
+  private publish(nextConfig: Config, operation: 'update' | 'replace'): Readonly<Config> {
+    const next = deepFreeze(structuredClone(nextConfig)) as Readonly<Config>;
     if (next.version !== 1) {
       throw new ConfigError({
-        message: `ConfigStore.update: version must remain 1, got ${String(next.version)}`,
+        message: `ConfigStore.${operation}: version must remain 1, got ${String(next.version)}`,
         code: ERROR_CODES.CONFIG_INVALID,
         context: { field: 'version', actual: next.version },
       });

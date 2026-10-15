@@ -4,7 +4,9 @@
  * lifecycle/plugins and the provider runtime.
  */
 import { createEventUserInputAwaiter, isUnattendedAutonomy } from '@wrongstack/core/agent';
+import { flagsToConfigPatch } from '@wrongstack/core/infrastructure';
 import { TOKENS } from '@wrongstack/core/kernel';
+import { DefaultConfigLoader } from '@wrongstack/core/storage';
 import { writeErr } from '@wrongstack/core/utils';
 import { setProxyTransitionLogger } from '@wrongstack/core/wiring/proxy-rewrite';
 import { resolveModeAndCapabilities } from './boot/system-prompt.js';
@@ -319,6 +321,7 @@ export async function bootCliRuntime(cliCtx: CliContext, state: CliConfigState) 
   // probe here ensures `active` is correct before the singleton is read.
   await awaitFirstWrongProxyProbe();
 
+  const liveConfigLoader = new DefaultConfigLoader({ paths: wpaths, vault, logger });
   const {
     buildProviderForId,
     buildProviderForModel,
@@ -326,6 +329,11 @@ export async function bootCliRuntime(cliCtx: CliContext, state: CliConfigState) 
     reloadProviderConfig,
   } = setupProviderRuntime({
     config: state.config,
+    loadConfig: () =>
+      liveConfigLoader.load({
+        cliFlags: flagsToConfigPatch(cliCtx.flags),
+        skipIdentityValidation: true,
+      }),
     onConfigUpdate: (newConfig) => {
       state.config = newConfig;
     },

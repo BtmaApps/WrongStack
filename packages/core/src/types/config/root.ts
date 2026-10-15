@@ -432,6 +432,11 @@ export interface ConfigStore {
    * any registered invariants (currently: version must stay 1).
    */
   update(partial: Partial<Config>): Readonly<Config>;
+  /**
+   * Atomically replace the complete live snapshot. Used by config-file hot
+   * reload so keys deleted on disk are deleted in memory too.
+   */
+  replace(next: Config): Readonly<Config>;
   /** Subscribe to changes. Returns an unsubscribe function. */
   watch(cb: (next: Readonly<Config>, prev: Readonly<Config>) => void): () => void;
 }

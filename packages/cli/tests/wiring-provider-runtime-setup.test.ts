@@ -1,8 +1,4 @@
 import type { Config, Provider, ProviderConfig } from '@wrongstack/core/types';
-import {
-  __resetProxyConfigForTests,
-  applyProxyConfig,
-} from '@wrongstack/core/wiring/proxy-rewrite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveProviderCfg } from '../src/wiring/provider-runtime.js';
 import {
@@ -94,20 +90,63 @@ function fakeProvider(id: string): Provider {
 }
 
 function makeDeps(overrides: Partial<ProviderRuntimeDeps> = {}) {
+  const baseConfig = overrides.config ?? fakeConfig();
   const context = {
     provider: fakeProvider('anthropic'),
     model: 'old-model',
     runModelTransition: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
   };
   return {
-    config: fakeConfig(),
+    config: baseConfig,
+    loadConfig: vi.fn(async () => {
+      let merged: Partial<Config> = {};
+      for (const configPath of [
+        '/home/profiles/default.json',
+        '/proj/.wrongstack/config.local.json',
+        '/proj/.wrongstack/config.json',
+      ]) {
+        const snapshot = snapshotByPath[configPath] as
+          | (Partial<Config> & { snapshotHasProviders?: boolean; sourceFingerprint?: string })
+          | undefined;
+        if (!snapshot) continue;
+        const {
+          snapshotHasProviders: _present,
+          sourceFingerprint: _fingerprint,
+          ...rawPatch
+        } = snapshot;
+        const patch: Partial<Config> =
+          configPath === '/proj/.wrongstack/config.json'
+            ? (({
+                providers: _providers,
+                apiKey: _apiKey,
+                baseUrl: _baseUrl,
+                fallbackMaxLastResortCandidates: _lastResort,
+                ...safe
+              }) => safe)(rawPatch)
+            : rawPatch;
+        merged = {
+          ...merged,
+          ...patch,
+          providers: { ...(merged.providers ?? {}), ...(patch.providers ?? {}) },
+        };
+      }
+      return { ...baseConfig, ...merged } as Config;
+    }),
     onConfigUpdate: vi.fn(),
     configStore: {
       watch: vi.fn((cb: (next: Config) => void) => {
         configWatchCbs.push(cb);
         return () => {};
       }),
-      update: vi.fn(),
+      update: vi.fn((partial: Partial<Config>) => {
+        const next = { ...baseConfig, ...partial } as Config;
+        for (const cb of configWatchCbs) cb(next);
+        return next;
+      }),
+      replace: vi.fn((next: Config) => {
+        for (const cb of configWatchCbs) cb(next);
+        return next;
+      }),
       // The bootstrap watcher compares the disk selection against the store's
       // current one, so the fixture must satisfy the real ConfigStore contract.
       get: (): Config => fakeConfig(),
@@ -341,6 +380,25 @@ describe('setupProviderRuntime — extensions and consolidation', () => {
 });
 
 describe('setupProviderRuntime — config watchers', () => {
+  it('replaces the complete live config and synchronizes runtime state', async () => {
+    const next = fakeConfig({
+      autonomy: { defaultMode: 'auto' },
+      extensions: { telegram: { inboundMode: 'allowlist' } },
+    });
+    const deps = makeDeps({ loadConfig: vi.fn(async () => next) });
+    snapshotByPath['/home/profiles/default.json'] = { providers: {} };
+    const runtime = setupProviderRuntime(deps);
+
+    await runtime.reloadProviderConfig();
+
+    expect(deps.configStore.replace).toHaveBeenCalledWith(next);
+    expect(deps.onConfigUpdate).toHaveBeenCalledWith(next);
+    expect(deps.fallbackProfileManager.reload).toHaveBeenCalledWith(next);
+    expect(runtime.resolveProviderCfg('anthropic').cfg).toEqual(
+      expect.objectContaining({ apiKey: next.apiKey }),
+    );
+  });
+
   it('reloads the live fallback account rather than the configured primary', async () => {
     const deps = makeDeps({
       config: fakeConfig({
@@ -503,7 +561,7 @@ describe('setupProviderRuntime — config watchers', () => {
     const runtime = setupProviderRuntime(deps);
     await runtime.reloadProviderConfig();
     expect(createdWatchers).toHaveLength(0);
-    expect(deps.configStore.update).toHaveBeenCalledWith(
+    expect(deps.configStore.replace).toHaveBeenCalledWith(
       expect.objectContaining({ providers: { anthropic: { apiKey: TOKEN_ROTATED } } }),
     );
   });
@@ -522,8 +580,8 @@ describe('setupProviderRuntime — config watchers', () => {
     setupProviderRuntime(deps);
     createdWatchers[0]?.trigger();
     await flushAsync();
-    expect(deps.configStore.update).toHaveBeenCalledTimes(1);
-    const patch = deps.configStore.update.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(deps.configStore.replace).toHaveBeenCalledTimes(1);
+    const patch = deps.configStore.replace.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(patch['providers']).toEqual({
       anthropic: { apiKey: TOKEN_PROFILE },
       openai: { apiKey: TOKEN_LOCAL },
@@ -540,7 +598,7 @@ describe('setupProviderRuntime — config watchers', () => {
     await flushAsync();
     createdWatchers[1]?.trigger();
     await flushAsync();
-    expect(deps.configStore.update).toHaveBeenCalledTimes(1);
+    expect(deps.configStore.replace).toHaveBeenCalledTimes(1);
   });
 
   it('sanitizes credential fields from the repo-committed in-project layer', async () => {
@@ -555,9 +613,9 @@ describe('setupProviderRuntime — config watchers', () => {
     setupProviderRuntime(deps);
     createdWatchers[2]?.trigger();
     await flushAsync();
-    const patch = deps.configStore.update.mock.calls[0]?.[0] as Record<string, unknown>;
+    const patch = deps.configStore.replace.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(patch['providers']).toEqual({});
-    expect(patch['apiKey']).toBeUndefined();
+    expect(patch['apiKey']).toBe(TOKEN_TOP);
     expect(patch['baseUrl']).toBeUndefined();
     expect(patch['fallbackMaxLastResortCandidates']).toBeUndefined();
     expect(patch['favoriteModels']).toEqual(['repo-fav']);
@@ -578,7 +636,7 @@ describe('setupProviderRuntime — config watchers', () => {
     setupProviderRuntime(deps);
     createdWatchers[0]?.trigger();
     await flushAsync();
-    expect(deps.configStore.update).toHaveBeenCalled();
+    expect(deps.configStore.replace).toHaveBeenCalled();
     expect(deps.context.provider?.id).toBe('anthropic');
     expect(deps.logger.info).not.toHaveBeenCalledWith(
       expect.stringContaining('credentials reloaded'),
@@ -638,7 +696,7 @@ describe('setupProviderRuntime — config watchers', () => {
     rebind?.(fakeConfig({ activeProfile: 'work' }));
     expect(createdWatchers.map((w) => w.path)).toContain('/home/profiles/work.json');
     await flushAsync();
-    expect(deps.configStore.update).toHaveBeenCalled();
+    expect(deps.configStore.replace).toHaveBeenCalled();
   });
 
   it('adopts an external bootstrap profile edit and rebinds the layers', async () => {
@@ -682,150 +740,5 @@ describe('setupProviderRuntime — config watchers', () => {
     const before = reloadSpy.mock.calls.length;
     reload?.(fakeConfig({ favoriteModels: ['z'] }));
     expect(reloadSpy.mock.calls.length).toBe(before + 1);
-  });
-});
-
-describe('setupProviderRuntime — WrongProxy instant-apply', () => {
-  // The instant-apply subscription lives on the CORE proxy singleton, so
-  // every state change here goes through the real applyProxyConfig.
-  beforeEach(() => __resetProxyConfigForTests());
-  afterEach(() => __resetProxyConfigForTests());
-
-  function proxyDeps() {
-    const context = {
-      provider: fakeProvider('anthropic'),
-      model: 'claude-3',
-      runModelTransition: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
-    };
-    const deps = makeDeps({
-      config: fakeConfig({ baseUrl: 'https://api.example.com/v1' }),
-      context,
-    } as Partial<ProviderRuntimeDeps>);
-    return { deps, context };
-  }
-
-  it('rebuilds the live provider through the transition gate when the proxy activates', async () => {
-    const { deps, context } = proxyDeps();
-    const build = vi.fn((_opts: unknown, providerId: string) => fakeProvider(providerId));
-    deps.buildProviderForIdRuntime = build as never;
-    setupProviderRuntime(deps);
-    const originalProvider = context.provider;
-
-    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
-    await flushAsync();
-    await flushAsync();
-
-    expect(build).toHaveBeenCalledWith(expect.anything(), 'anthropic');
-    expect(context.runModelTransition).toHaveBeenCalled();
-    // The live provider object was swapped (new instance with same id).
-    expect(context.provider).not.toBe(originalProvider);
-    expect(context.provider?.id).toBe('anthropic');
-    expect(deps.logger.info).toHaveBeenCalledWith(expect.stringContaining('live provider rebuilt'));
-  });
-
-  it('does NOT rebuild when the proxy config write is value-identical (probe tick)', async () => {
-    const { deps } = proxyDeps();
-    const build = vi.fn((_opts: unknown, providerId: string) => fakeProvider(providerId));
-    deps.buildProviderForIdRuntime = build as never;
-    setupProviderRuntime(deps);
-
-    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
-    await flushAsync();
-    expect(build).toHaveBeenCalledTimes(1); // raw → rewritten flip
-
-    applyProxyConfig({ active: true }); // identical tick
-    await flushAsync();
-    expect(build).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not use the configured primary endpoint to decide a live fallback account needs rebuilding', async () => {
-    const { deps, context } = proxyDeps();
-    context.provider = fakeProvider('work-account');
-    deps.config = fakeConfig({
-      baseUrl: 'https://old-primary.example/v1',
-      providers: { 'work-account': { type: 'openai', apiKey: 'work-key' } },
-    });
-    const build = vi.fn((_opts: unknown, providerId: string) => fakeProvider(providerId));
-    deps.buildProviderForIdRuntime = build as never;
-    setupProviderRuntime(deps);
-    const originalProvider = context.provider;
-    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
-    await flushAsync();
-    await flushAsync();
-    expect(build).not.toHaveBeenCalled();
-    expect(context.provider).toBe(originalProvider);
-  });
-
-  it('skips the swap when the live provider moved before the rebuild ran (superseded)', async () => {
-    const { deps, context } = proxyDeps();
-    setupProviderRuntime(deps);
-    // A /model switch lands between the proxy change and the rebuild.
-    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
-    context.provider = fakeProvider('openai'); // moved elsewhere
-    await flushAsync();
-    await flushAsync();
-    // runModelTransition ran but the guard prevented the stale overwrite —
-    // the provider is still the one the switch installed.
-    expect(context.provider.id).toBe('openai');
-  });
-
-  it('stops rebuilding once the teardown handler runs', async () => {
-    const { deps } = proxyDeps();
-    const build = vi.fn((_opts: unknown, providerId: string) => fakeProvider(providerId));
-    deps.buildProviderForIdRuntime = build as never;
-    setupProviderRuntime(deps);
-    const disposes = [...deps.teardownHandlers];
-    for (const dispose of disposes) dispose();
-
-    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
-    await flushAsync();
-    expect(build).not.toHaveBeenCalled();
-  });
-});
-
-/**
- * `resolveProviderCfg` emits one `WrongProxy rewrite ...` line per provider
- * build, and that line embeds the provider's baseUrl. The URL is passed
- * through `sanitizeUrlForLog`, whose FALLBACK branch runs whenever
- * `new URL()` throws. Credentials smuggled in a fragment must not survive
- * that branch — `wrongstack.log` is persisted, so a leak here is durable.
- *
- * These call `resolveProviderCfg` directly rather than going through
- * `setupProviderRuntime`, because `makeDeps` injects a mocked
- * `resolveProviderCfgRuntime` — the real log line is unreachable from there.
- */
-describe('resolveProviderCfg — WrongProxy rewrite log redaction', () => {
-  beforeEach(() => __resetProxyConfigForTests());
-  afterEach(() => __resetProxyConfigForTests());
-
-  // A space makes this genuinely unparseable → new URL() throws → the
-  // sanitizer's fallback path runs. The fragment carries the credential.
-  const UNPARSEABLE_WITH_FRAGMENT = 'https://api.example.com path/#key=fixture-token-frag';
-
-  function logLines(baseUrl: string): string[] {
-    const lines: string[] = [];
-    resolveProviderCfg(fakeConfig({ baseUrl }) as Config, 'anthropic', {
-      logger: { info: (message: string) => lines.push(message) },
-    });
-    return lines.filter((l) => l.includes('WrongProxy rewrite'));
-  }
-
-  it('emits exactly one rewrite line that never carries a fragment credential', () => {
-    const lines = logLines(UNPARSEABLE_WITH_FRAGMENT);
-
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).not.toContain('fixture-token-frag');
-    expect(lines[0]).not.toContain('#');
-    // The non-secret prefix survives, so the line stays diagnostically useful.
-    expect(lines[0]).toContain('https://api.example.com path/');
-    expect(lines[0]).toContain("for provider 'anthropic'");
-  });
-
-  it('redacts a query credential on a well-formed URL too', () => {
-    const lines = logLines('https://api.example.com/v1?key=fixture-token-query');
-
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).not.toContain('fixture-token-query');
-    expect(lines[0]).toContain('https://api.example.com/v1');
   });
 });

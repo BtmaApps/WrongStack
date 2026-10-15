@@ -423,5 +423,6 @@ export async function startWebUI(
     vectorMemoryStore,
     getDisposeVectorMirror: () => disposeVectorMirror,
     globalConfigPath,
+    configPaths: wpaths,
   });
 }

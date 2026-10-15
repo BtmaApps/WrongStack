@@ -1,3 +1,4 @@
+import { DefaultConfigLoader } from '@wrongstack/core/storage';
 import { startSharedHeapWatchdog } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import type { createAgentServices } from './backend-services.js';
@@ -58,6 +59,7 @@ export interface StandaloneWebuiWiringInput {
   vectorMemoryStore: ShutdownOptions['vectorMemoryStore'];
   getDisposeVectorMirror: () => (() => void) | undefined;
   globalConfigPath: string;
+  configPaths: import('@wrongstack/core/utils').WstackPaths;
 }
 
 /**
@@ -100,6 +102,7 @@ export function wireStandaloneWebuiRuntime(input: StandaloneWebuiWiringInput): v
     vectorMemoryStore,
     getDisposeVectorMirror,
     globalConfigPath,
+    configPaths,
   } = input;
   const { context, events, promptsCtx, tokenCounter, mcpRegistry, sessionIdentity } = preContext;
   const {
@@ -116,8 +119,10 @@ export function wireStandaloneWebuiRuntime(input: StandaloneWebuiWiringInput): v
     brainMonitor,
   } = agentServices;
 
+  const liveConfigLoader = new DefaultConfigLoader({ paths: configPaths, vault, logger });
   const credentialWatcherClose = setupWebuiCredentialWatcher({
     watchConfigPath: profileConfigPath,
+    loadConfig: () => liveConfigLoader.load({ skipIdentityValidation: true }),
     vault,
     logger,
     state,

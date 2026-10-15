@@ -7,9 +7,11 @@
  * provider panel), a *running* session would otherwise keep using the
  * boot-time key until restart.
  *
- * This watcher closes that gap: it tails the global `config.json`, re-reads
- * and decrypts its `providers` map on change, and hands a fresh snapshot to
- * the caller, who updates in-memory config and rebuilds the active provider.
+ * This watcher closes that gap: it tails a config file and emits whenever any
+ * field changes. The callback receives the decrypted provider/routing subset
+ * plus an opaque full-file fingerprint; hosts then re-run the canonical config
+ * loader, replace the complete live Config snapshot, and rebuild the active
+ * provider only when its construction inputs changed.
  *
  * It mirrors {@link module:hq/auth-store.watchHqAuthFile}:
  * - Watches the *directory* (not the file) so atomic tmp+rename writes
@@ -18,10 +20,10 @@
  * - Reads leniently — a missing/corrupt/torn file yields a warning, never a
  *   throw, and the watcher stays live for the next valid write.
  *
- * A `lastSerialized` guard suppresses the callback when the on-disk providers
- * map is byte-for-byte identical to the last one we surfaced. This makes the
- * watcher a no-op for self-induced writes (e.g. the same process's `/model`
- * switch or a WebUI key save), so there is no rebuild storm.
+ * A `lastSerialized` guard suppresses callbacks when the complete on-disk
+ * document is identical to the last one surfaced. Rewrites that only change
+ * formatting may still cause a harmless reload; semantic changes never wait
+ * for a restart.
  *
  * `fs.watch` is best-effort across platforms; on some network filesystems
  * events may not fire and the operator must restart to pick up changes.
@@ -45,6 +47,12 @@ import { normalizeInlineProviderModels } from './config-loader/inline-provider-m
  */
 export interface ProviderConfigSnapshot {
   providers: Record<string, ProviderConfig>;
+  /**
+   * Opaque full-file fingerprint. It makes the watcher fire for changes outside
+   * the historical credential/routing subset; consumers can then reload the
+   * canonical full Config without exposing raw config values here.
+   */
+  sourceFingerprint?: string;
   /** True when the config file actually had a `providers` key. The watcher
    *  callback uses this to avoid clearing in-memory providers during hot-reload
    *  when the profile config file simply doesn't define any — without this
@@ -140,6 +148,7 @@ export async function readProviderSnapshot(
   const snapshot: ProviderConfigSnapshot = {
     providers: decrypted.providers ?? {},
     snapshotHasProviders: decrypted.providers !== undefined,
+    sourceFingerprint: JSON.stringify(parsed),
   };
   if (typeof decrypted.apiKey === 'string') snapshot.apiKey = decrypted.apiKey;
   if (typeof decrypted.baseUrl === 'string') snapshot.baseUrl = decrypted.baseUrl;
@@ -178,6 +187,7 @@ export async function readProviderSnapshot(
 /** Stable serialization for the no-op guard (key order independent). */
 function serializeSnapshot(s: ProviderConfigSnapshot): string {
   return JSON.stringify({
+    sourceFingerprint: s.sourceFingerprint ?? null,
     providers: s.providers,
     apiKey: s.apiKey ?? null,
     baseUrl: s.baseUrl ?? null,

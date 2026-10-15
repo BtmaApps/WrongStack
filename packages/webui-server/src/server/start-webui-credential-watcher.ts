@@ -1,5 +1,5 @@
 import { watchProviderConfig } from '@wrongstack/core/storage';
-import type { ProviderConfig } from '@wrongstack/core/types';
+import type { Config, ProviderConfig } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { makeProviderFromConfig, unavailableProviderCredentials } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
@@ -42,70 +42,60 @@ export function setupWebuiCredentialWatcher(options: {
   state: WebuiMutableState;
   deps: WebuiDeps;
   clients: Map<WebSocket, ConnectedClient>;
+  /** Canonical layered config reload; omitted only by legacy/test hosts. */
+  loadConfig?: (() => Promise<Config>) | undefined;
   updateAutoCompactionMaxContext: (provider: WebuiDeps['provider']) => Promise<void>;
 }): (() => void) | undefined {
   if (process.env['WRONGSTACK_DISABLE_CONFIG_WATCH'] === '1') {
     return undefined;
   }
-  const { watchConfigPath, vault, logger, state, deps, clients, updateAutoCompactionMaxContext } =
-    options;
+  const {
+    watchConfigPath,
+    vault,
+    logger,
+    state,
+    deps,
+    clients,
+    loadConfig,
+    updateAutoCompactionMaxContext,
+  } = options;
   let lastActiveCfg = activeProviderConfigKey(state.getConfig(), deps.context.provider.id);
   let lastUiLocale: string | undefined = state.getConfig().uiLocale;
   const credentialWatcher = watchProviderConfig(
     watchConfigPath,
     vault,
-    (snapshot) => {
+    async (snapshot) => {
       const previousProvider = deps.context.provider;
       const beforeConfig = state.getConfig();
-      const removedAccount =
-        snapshot.snapshotHasProviders &&
-        Object.hasOwn(beforeConfig.providers ?? {}, previousProvider.id) &&
-        !Object.hasOwn(snapshot.providers, previousProvider.id);
-      // Refresh in-memory config + store so panels and the next switch read fresh.
-      state.setConfig(
-        patchConfig(state.getConfig(), {
-          providers: snapshot.providers,
-          ...(snapshot.apiKey !== undefined ? { apiKey: snapshot.apiKey } : {}),
-          ...(snapshot.baseUrl !== undefined ? { baseUrl: snapshot.baseUrl } : {}),
-          fallbackBridge: snapshot.fallbackBridge ?? '',
-        }),
-      );
-      deps.configStore.update({
+      const fallbackConfig = patchConfig(beforeConfig, {
         providers: snapshot.providers,
         ...(snapshot.apiKey !== undefined ? { apiKey: snapshot.apiKey } : {}),
         ...(snapshot.baseUrl !== undefined ? { baseUrl: snapshot.baseUrl } : {}),
-        ...(snapshot.fallbackModels !== undefined
-          ? { fallbackModels: snapshot.fallbackModels }
-          : {}),
-        fallbackBridge: snapshot.fallbackBridge ?? '',
-        ...(snapshot.fallbackProfiles !== undefined
-          ? { fallbackProfiles: snapshot.fallbackProfiles }
-          : {}),
-        ...(snapshot.favoriteModels !== undefined
-          ? { favoriteModels: snapshot.favoriteModels }
-          : {}),
-        ...(snapshot.disabledModels !== undefined
-          ? { disabledModels: snapshot.disabledModels }
-          : {}),
-        ...(snapshot.disabledProviders !== undefined
-          ? { disabledProviders: snapshot.disabledProviders }
-          : {}),
-        ...(snapshot.favoriteModelsOnly !== undefined
-          ? { favoriteModelsOnly: snapshot.favoriteModelsOnly }
-          : {}),
-        ...(snapshot.modelMatrix !== undefined ? { modelMatrix: snapshot.modelMatrix } : {}),
-        ...(snapshot.fallbackAuto !== undefined ? { fallbackAuto: snapshot.fallbackAuto } : {}),
-      } as never);
+      });
+      // Standalone WebUI follows the same contract as the CLI host: any file
+      // change re-runs the canonical layered loader, then atomically swaps the
+      // complete Config so deleted and newly-added fields apply immediately.
+      let nextConfig: Config;
+      try {
+        nextConfig = loadConfig ? await loadConfig() : fallbackConfig;
+      } catch (error) {
+        logger.warn(`Config hot-reload failed: ${toErrorMessage(error)}`);
+        return;
+      }
+      const removedAccount =
+        Object.hasOwn(beforeConfig.providers ?? {}, previousProvider.id) &&
+        !Object.hasOwn(nextConfig.providers ?? {}, previousProvider.id);
+      state.setConfig(nextConfig);
+      deps.configStore.replace(nextConfig);
       broadcast(clients, {
         type: 'providers.saved',
-        payload: { providers: projectSavedProviders(snapshot.providers) },
+        payload: { providers: projectSavedProviders(nextConfig.providers ?? {}) },
       } as WSServerMessage);
-
       // Display language live-propagation: when config.uiLocale changes in
       // another process, seed context.meta + broadcast prefs.updated so every
       // connected client re-renders in the new language (handlePrefsUpdated →
       // useLocalPrefs → i18n.changeLanguage).
-      const newUi = snapshot.uiLocale;
+      const newUi = nextConfig.uiLocale;
       if (newUi !== lastUiLocale) {
         lastUiLocale = newUi;
         if (newUi) {
@@ -115,15 +105,15 @@ export function setupWebuiCredentialWatcher(options: {
       }
 
       const activeId = deps.context.provider.id;
-      const newCfgStr = activeProviderConfigKey(snapshot, activeId);
+      const newCfgStr = activeProviderConfigKey(nextConfig, activeId);
       if (newCfgStr === lastActiveCfg && !removedAccount) return;
       lastActiveCfg = newCfgStr;
       try {
         if (removedAccount) throw new Error('Auth profile was removed');
-        const providerCfg: ProviderConfig = snapshot.providers[activeId] ?? {
+        const providerCfg: ProviderConfig = nextConfig.providers?.[activeId] ?? {
           type: activeId,
-          ...(snapshot.apiKey !== undefined ? { apiKey: snapshot.apiKey } : {}),
-          ...(snapshot.baseUrl !== undefined ? { baseUrl: snapshot.baseUrl } : {}),
+          ...(nextConfig.apiKey !== undefined ? { apiKey: nextConfig.apiKey } : {}),
+          ...(nextConfig.baseUrl !== undefined ? { baseUrl: nextConfig.baseUrl } : {}),
         };
         const factoryType = providerCfg.type ?? activeId;
         // WrongProxy / WrongTrace: keep the hot-reloaded provider on the proxy

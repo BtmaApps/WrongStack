@@ -130,6 +130,22 @@ describe('DefaultConfigStore', () => {
     expect(() => store.update({ version: 2 as never })).toThrow(/version must remain 1/);
   });
 
+  it('replace removes fields deleted from the complete snapshot', () => {
+    const store = new DefaultConfigStore({
+      ...baseConfig,
+      extensions: { stale: { enabled: true } },
+    });
+    const watcher = vi.fn();
+    store.watch(watcher);
+
+    const next = store.replace({ ...baseConfig, model: 'fresh-model' });
+
+    expect(next.model).toBe('fresh-model');
+    expect(next.extensions).toBeUndefined();
+    expect(watcher).toHaveBeenCalledOnce();
+    expect(Object.isFrozen(next)).toBe(true);
+  });
+
   it('update merging preserves untouched fields', () => {
     const store = new DefaultConfigStore({
       ...baseConfig,

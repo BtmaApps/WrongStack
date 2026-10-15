@@ -78,6 +78,11 @@ class MemoryConfigStore implements ConfigStore {
     for (const listener of this.listeners) listener(this.config);
     return this.config;
   }
+  replace(next: Config): Config {
+    this.config = next;
+    for (const listener of this.listeners) listener(this.config);
+    return this.config;
+  }
   subscribe(listener: (config: Config) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

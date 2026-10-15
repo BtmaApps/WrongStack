@@ -36,6 +36,12 @@ function createConfigStore(themePreset?: ThemeName): {
       notify(previous);
       return config;
     },
+    replace: (next) => {
+      const previous = config;
+      config = next;
+      notify(previous);
+      return config;
+    },
     watch: (callback) => {
       watchers.add(callback);
       return () => watchers.delete(callback);

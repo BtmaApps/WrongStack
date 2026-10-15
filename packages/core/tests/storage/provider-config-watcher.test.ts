@@ -109,7 +109,7 @@ describe('watchProviderConfig', () => {
     expect(snapshots.at(-1)!.providers.openai?.apiKey).toBe('sk-secret-xyz');
   });
 
-  it('does not fire when the providers slice is unchanged', async () => {
+  it('fires when any config field changes even if providers are unchanged', async () => {
     const { configPath, vault } = await makeFixture();
     const content = {
       version: 1,
@@ -123,14 +123,13 @@ describe('watchProviderConfig', () => {
     });
     closers.push(close);
     await vi.waitFor(() => fsSync.existsSync(configPath));
-    // Give the seed read time to record lastSerialized.
+    // Give the seed read time to record the full-file fingerprint.
     await new Promise((r) => setTimeout(r, 60));
 
-    // Re-write identical providers (a non-provider field changes — must be ignored).
     await writeConfig(configPath, { ...content, model: 'changed' });
-    await new Promise((r) => setTimeout(r, 200));
 
-    expect(snapshots).toHaveLength(0);
+    await vi.waitFor(() => expect(snapshots).toHaveLength(1), { timeout: 2000 });
+    expect(snapshots[0]?.providers.anthropic?.apiKey).toBe('k1');
   });
 
   it('is lenient on corrupt JSON and recovers on the next valid write', async () => {

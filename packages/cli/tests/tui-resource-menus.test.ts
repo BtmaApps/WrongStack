@@ -20,6 +20,7 @@ function configStore(config: Partial<Config>): ConfigStore {
     getSection: (key) => value[key] as never,
     getExtension: () => ({}),
     update: () => value,
+    replace: () => value,
     watch: () => () => {},
   };
 }

@@ -21,7 +21,6 @@ import { createProxyInstantApply } from '@wrongstack/core/wiring/proxy-rewrite';
 import { unavailableProviderCredentials, withCatalogCapabilities } from '@wrongstack/providers';
 import { getSageService } from '@wrongstack/sage';
 import { ACP_LEADER_PROVIDER_ID } from '../acp-leader/acp-leader-provider.js';
-import { patchConfig } from '../utils.js';
 import { createFallbackGate } from './fallback-gate.js';
 import { resolveRawProviderConnection } from './provider-runtime.js';
 
@@ -38,7 +37,9 @@ type AnyObj = any;
 
 export interface ProviderRuntimeDeps {
   config: Config;
-  /** Called whenever the function patches config, so the caller stays in sync. */
+  /** Re-run the canonical layered config loader for file-triggered hot reload. */
+  loadConfig: () => Promise<Config>;
+  /** Called whenever the live ConfigStore changes, so the caller stays in sync. */
   onConfigUpdate: (config: Config) => void;
   configStore: AnyObj;
   /** Shared live fallback profile manager from the runtime container. */
@@ -106,6 +107,7 @@ interface ProviderRuntimeResult {
 export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntimeResult {
   const {
     config: initialConfig,
+    loadConfig,
     onConfigUpdate,
     configStore,
     fallbackProfileManager,
@@ -136,22 +138,18 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
 
   // ── Keep the shared fallback manager on the live config ────────────────
   // The manager owns an immutable snapshot and answers EVERY fallback-chain
-  // question (leader, subagents, one-shot). `sync()` was its only reload
-  // point, and `sync()` runs on a provider/model switch or a config-FILE
-  // change — so a `ConfigStore.update` alone (which is how `/fallback add`,
-  // `/fallback profile use`, and the WebUI settings path publish a change)
-  // left the manager on a stale snapshot. With the file watcher disabled
-  // (`WRONGSTACK_DISABLE_CONFIG_WATCH=1`) it never reloaded at all, despite
-  // the documented promise that "the chain is recomputed from live config
-  // every turn". Subscribing here closes both gaps and costs one snapshot
-  // swap per config update.
+  // question (leader, subagents, one-shot). ConfigStore is the single live
+  // mutation boundary: every in-process update and full file replacement
+  // synchronizes `cfg`, the fallback manager, and the host state here.
   //
   // `configStore.get()` carries credentials (`update` only strips fields the
   // PATCH marks env-sourced, never previously-merged ones), so reloading from
   // it cannot blank out `checkProvider`'s key detection.
   teardownHandlers.push(
     configStore.watch((next: Config) => {
-      fallbackProfileManager.reload(next);
+      // Every config mutation — TUI, WebUI, slash command, plugin or file
+      // watcher — must update the runtime's canonical snapshot immediately.
+      sync(next);
     }),
   );
 
@@ -243,8 +241,9 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
       try {
         statusTracker?.unblock(providerId, modelId);
         const nextProvider = await buildProviderForModel(providerId, modelId);
+        // ConfigStore notifications synchronously update `cfg` through the
+        // subscription above; do not maintain a second mutation path here.
         configStore.update({ provider: providerId, model: modelId });
-        sync(patchConfig(cfg, { provider: providerId, model: modelId }));
         const from = context.provider
           ? { providerId: context.provider.id, model: context.model }
           : undefined;
@@ -470,54 +469,30 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
     let previousSnapshotSerialized: string | undefined;
     let failedReloadId: string | undefined;
     const reloadFromDisk = async (): Promise<void> => {
+      // Validate the watched layers leniently first. A torn/corrupt write must
+      // not replace the live runtime with defaults while an atomic save settles.
       const merged = await readMergedSnapshot();
       if (!merged) return;
-      // An array replacer filters nested provider ids and credential fields,
-      // making distinct configs serialize as the same `{ providers: {} }`.
-      const serialized = serializeProviderRuntimeSnapshot(merged);
+
+      // Re-run the canonical loader instead of maintaining a second whitelist
+      // here. This applies every Config field with the same precedence,
+      // validation, env overrides and in-project trust policy as startup.
+      const nextConfig = await loadConfig();
+      const serialized = serializeProviderRuntimeSnapshot(nextConfig);
       const observedProvider = context.provider;
       const activeId = observedProvider?.id ?? cfg.provider;
       if (serialized === previousSnapshotSerialized && failedReloadId !== activeId) return;
       previousSnapshotSerialized = serialized;
 
-      // Build the full patch from the merged snapshot.
-      // CREDENTIALS: only propagate when present (they come from the vault).
-      // ROUTING FIELDS: ALWAYS propagate, using `undefined` when absent from
-      // every layer, so deleted fields are explicitly cleared in ConfigStore
-      // rather than preserved from the previous state (fixes
-      // stale-deleted-settings). Both `patchConfig` (object spread) and
-      // `ConfigStore.update` (spread + structuredClone) keep an explicitly
-      // assigned `undefined`, so the key really is cleared.
-      //
-      // This used to write `null`, which cleared the field just as well but
-      // produced a value the `Config` type forbids (`string[] | undefined`).
-      // `FallbackProfileManager.resolveCandidates` then hit `null.length` and
-      // threw INSIDE the fallback chain resolver — the TypeError replaced the
-      // 429 that triggered the hop, so no fallback was ever attempted for any
-      // user who had not set an explicit `fallbackModels` list. The resolver is
-      // hardened against non-arrays too (see `asRefList`), but the patch must
-      // not manufacture out-of-type values in the first place.
-      const mergedPatch: Record<string, unknown> = {
-        providers: merged.providers,
-      };
-      if (merged.apiKey !== undefined) mergedPatch.apiKey = merged.apiKey;
-      if (merged.baseUrl !== undefined) mergedPatch.baseUrl = merged.baseUrl;
-      for (const key of ROUTING_FIELDS) {
-        mergedPatch[key] = (merged as unknown as Record<string, unknown>)[key];
-      }
-
-      // Snapshot credential state before applying, so we can detect
-      // credential-only changes below (routing-only edits skip provider rebuild).
+      // Snapshot credential state before replacement so only credential
+      // changes rebuild the provider; every other field still reaches all
+      // ConfigStore subscribers immediately.
       const before = JSON.stringify(resolveProviderCfg(activeId).cfg);
       const removedAccount =
-        merged.snapshotHasProviders &&
         Object.hasOwn(cfg.providers ?? {}, activeId) &&
-        !Object.hasOwn(merged.providers, activeId);
+        !Object.hasOwn(nextConfig.providers ?? {}, activeId);
 
-      // Apply the merged patch to both cfg and ConfigStore.
-      sync(patchConfig(cfg, mergedPatch));
-      configStore.update(mergedPatch);
-
+      configStore.replace(nextConfig);
       // Only rebuild the active provider if its credential config changed.
       // Routing-only edits (fallbackProfiles, modelMatrix, etc.) reach
       // ConfigStore above but never need a provider rebuild.
