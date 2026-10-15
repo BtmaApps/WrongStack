@@ -1,7 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { browserBlockedOrigin } from '../../src/components/MessageBubble/BrowserOriginApproval.js';
 import { ToolLedgerCard } from '../../src/components/MessageBubble/ToolLedgerCard.js';
 import type { ChatMessage } from '../../src/stores/types.js';
+
+const ws = vi.hoisted(() => ({
+  send: vi.fn(() => true),
+  withSession: vi.fn((payload: Record<string, unknown>) => ({
+    ...payload,
+    sessionId: 'session-1',
+  })),
+}));
+
+vi.mock('../../src/lib/ws-client.js', () => ({ getWSClient: () => ws }));
 
 const message: ChatMessage = {
   id: 'tool-1',
@@ -18,6 +29,11 @@ const message: ChatMessage = {
 };
 
 describe('<ToolLedgerCard />', () => {
+  beforeEach(() => {
+    ws.send.mockClear();
+    ws.withSession.mockClear();
+  });
+
   it.each(['tool_script', 'tool_use'])(
     'shows ToolFlow identity and measured output for %s',
     (route) => {
@@ -75,5 +91,42 @@ describe('<ToolLedgerCard />', () => {
 
     rerender(<ToolLedgerCard message={{ ...message, toolResult: undefined }} />);
     expect(screen.getByText('Running')).toBeTruthy();
+  });
+
+  it('offers the blocked browser origin and sends the project approval through the host', () => {
+    const origin = 'http://127.0.0.1:41789';
+    const toolResult = `browser: blocked private target. Allow this project origin with /browser allow ${origin}`;
+    render(
+      <ToolLedgerCard
+        message={{ ...message, toolName: 'browser_open', toolResult, isError: true }}
+      />,
+    );
+
+    expect(browserBlockedOrigin('browser_open', toolResult, true)).toBe(origin);
+    fireEvent.click(screen.getByRole('button', { name: 'Allow access' }));
+
+    expect(ws.withSession).toHaveBeenCalledWith({ args: `allow ${origin}` });
+    expect(ws.send).toHaveBeenCalledWith({
+      type: 'browser.policy',
+      payload: { args: `allow ${origin}`, sessionId: 'session-1' },
+    });
+    expect(screen.getByText('In Progress')).toBeTruthy();
+  });
+
+  it('does not expose approvals for non-browser errors or read-only transcripts', () => {
+    const origin = 'http://127.0.0.1:41789';
+    const toolResult = `browser: blocked private target. Allow this project origin with /browser allow ${origin}`;
+    const { rerender } = render(
+      <ToolLedgerCard message={{ ...message, toolResult, isError: true }} />,
+    );
+    expect(screen.queryByRole('button', { name: 'Allow access' })).toBeNull();
+
+    rerender(
+      <ToolLedgerCard
+        message={{ ...message, toolName: 'browser_navigate', toolResult, isError: true }}
+        readOnly
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Allow access' })).toBeNull();
   });
 });

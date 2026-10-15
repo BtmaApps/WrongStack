@@ -13,6 +13,7 @@
     "remove": "Remove",
     "discard": "Discard",
     "add": "Add",
+    "allow": "Allow access",
     "edit": "Edit",
     "rename": "Rename",
     "retry": "Retry",

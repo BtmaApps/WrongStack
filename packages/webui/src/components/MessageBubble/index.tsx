@@ -319,7 +319,7 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         {isTool ? (
-          <ToolLedgerCard message={message} />
+          <ToolLedgerCard message={message} readOnly={readOnly} />
         ) : (
           <div
             className={cn(

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/stores';
 import { diffFromToolInput, ToolDiffView } from '../DiffView';
 import { ToolResult } from '../ToolResult';
+import { BrowserOriginApproval, browserBlockedOrigin } from './BrowserOriginApproval.js';
 import { CopyButton } from './CopyButton.js';
 import { GeneratedImagePreview } from './GeneratedImagePreview.js';
 import { ToolCallOverview } from './ToolCallOverview.js';
@@ -46,7 +47,13 @@ const DOT_COLOR: Record<Status, string> = {
  * footer. Sharp corners by design — the identity is the rail + hairline, not
  * rounding. Replaces the old two-part "chevron button + gray box" layout.
  */
-export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { message: ChatMessage }) {
+export const ToolLedgerCard = memo(function ToolLedgerCard({
+  message,
+  readOnly = false,
+}: {
+  message: ChatMessage;
+  readOnly?: boolean | undefined;
+}) {
   const { t } = useAppTranslation();
   const [expanded, setExpanded] = useState(false);
   const status = statusOf(message);
@@ -60,6 +67,7 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
   // fall back to '' so the icon/summary helpers (which want a plain string)
   // stay happy on the rare untyped tool event.
   const toolName = message.toolName ?? '';
+  const blockedOrigin = browserBlockedOrigin(toolName, message.toolResult, message.isError);
   const { Icon: ToolIcon, color: toolColor } = getToolVisual(toolName);
   const tooltip = getToolTooltip(toolName);
 
@@ -203,6 +211,8 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
           {message.toolResult.split('\n')[0]}
         </div>
       )}
+
+      {blockedOrigin && !readOnly && <BrowserOriginApproval origin={blockedOrigin} />}
 
       {/* ── Expanded body ──────────────────────────────────────────────── */}
       {expanded && (
