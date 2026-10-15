@@ -29,13 +29,13 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     }
     return actual.rename(from, to);
   };
-  const stat: typeof actual.stat = (p, ...rest) => {
+  const stat = (p: Parameters<typeof actual.stat>[0]) => {
     if (statFailure.on && String(p).endsWith('queue.json')) {
       return Promise.reject(
         Object.assign(new Error('Injected queue read failure'), { code: 'EIO' }),
-      ) as never;
+      );
     }
-    return (actual.stat as typeof actual.stat)(p, ...(rest as []));
+    return actual.stat(p);
   };
   return { ...actual, default: { ...actual, rename, stat }, rename, stat };
 });

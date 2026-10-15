@@ -7,6 +7,7 @@ import {
   selectFleetSummary,
   selectSortedAgentList,
   useFleetStore,
+  useUIStore,
 } from '../../src/stores/index.js';
 import {
   SESSION_DEFAULT_LANE_ID,
@@ -63,6 +64,7 @@ describe('AgentsPanel data routing', () => {
     // `isLeader` flag, but a stale pointer must never be able to re-crown a
     // previous test's leader if that ever changes back.
     useFleetStore.setState({ agents: new Map(), leaderId: undefined });
+    useUIStore.setState({ subagentChatFocusId: null, currentView: 'chat' });
   });
 
   it('selectFleetSummary returns zeros for empty fleet', () => {
@@ -130,6 +132,29 @@ describe('AgentsPanel data routing', () => {
 
     expect(screen.getByRole('tree')).toBeDefined();
     expect(screen.getAllByText('Alpha')).toHaveLength(2);
+  });
+
+  it('uses the secondary sidebar tree to switch between leader and subagent chats', () => {
+    const agents = new Map();
+    agents.set('leader', makeAgent('leader', { name: 'Main', isLeader: true }));
+    agents.set('worker', makeAgent('worker', { name: 'Researcher', status: 'running' }));
+    useFleetStore.setState({ agents, leaderId: 'leader' });
+    useUIStore.setState({ currentView: 'kanban' });
+
+    render(<AgentsPanel />);
+
+    fireEvent.click(screen.getByRole('treeitem', { name: /Researcher/i }));
+    expect(useUIStore.getState().subagentChatFocusId).toBe('worker');
+    expect(useUIStore.getState().currentView).toBe('chat');
+    expect(
+      screen.getByRole('treeitem', { name: /Researcher/i }).getAttribute('aria-selected'),
+    ).toBe('true');
+
+    fireEvent.click(screen.getByRole('treeitem', { name: /Main/i }));
+    expect(useUIStore.getState().subagentChatFocusId).toBeNull();
+    expect(screen.getByRole('treeitem', { name: /Main/i }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
   });
 
   it('keeps completed agents inspectable in the tree', () => {

@@ -2,7 +2,8 @@
  * AgentsPanel — live fleet roster for the side panel.
  *
  * Running agents sort first in a session-scoped leader → workers tree.
- * Selecting a row reveals its existing detail actions below the tree.
+ * Selecting a row opens that agent's transcript in the chat workspace while
+ * the roster remains available as the secondary navigation menu.
  */
 
 import { Bot, LayoutGrid, ListFilter, Trash2 } from 'lucide-react';
@@ -14,7 +15,7 @@ import { FleetSummaryBar } from '@/components/agents/FleetSummaryBar';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { cn } from '@/lib/utils';
-import { openMainView, showPanel } from '@/lib/view-navigation';
+import { openMainView } from '@/lib/view-navigation';
 import {
   selectSortedAgentList,
   useActiveSessionId,
@@ -60,6 +61,7 @@ export function AgentsPanel() {
   // `selectLeaderName` name whichever session promoted a leader last.
   const leaderId = useSessionLeaderId(currentSessionId ?? undefined);
   const leaderName = useFleetStore((s) => (leaderId ? s.agents.get(leaderId)?.name : undefined));
+  const focusedSubagentId = useUIStore((s) => s.subagentChatFocusId);
   const { t } = useAppTranslation();
 
   const [filter, setFilter] = useState<AgentFilter>('all');
@@ -104,25 +106,21 @@ export function AgentsPanel() {
 
   const hasFinished = sessionFleetList.some((a) => a.status !== 'running');
 
-  const openFleetInspector = useCallback(
-    (agentId?: string) => {
-      if (agentId) {
-        useUIStore.getState().setSubagentChatFocus(agentId, currentSessionId ?? undefined);
-        showPanel('chat');
-      } else {
-        openMainView('roster');
-      }
+  const openAgentChat = useCallback(
+    (agentId: string) => {
+      setExpandedAgentId(agentId);
+      useUIStore
+        .getState()
+        .setSubagentChatFocus(agentId === leaderId ? null : agentId, currentSessionId ?? undefined);
+      useUIStore.getState().setCurrentView('chat');
     },
-    [currentSessionId],
+    [currentSessionId, leaderId],
   );
-
-  const toggleAgent = useCallback((id: string) => {
-    setExpandedAgentId((prev) => (prev === id ? null : id));
-  }, []);
 
   // ── Empty states ──────────────────────────────────────────────────
   // Both states read the SESSION roster — the global one counts other tabs'
   // agents, which inflated this panel's stats and mis-fired its empty states.
+  const selectedAgentId = focusedSubagentId ?? leaderId;
   const selectedAgent = expandedAgentId
     ? filteredList.find((agent) => agent.id === expandedAgentId)
     : undefined;
@@ -216,8 +214,8 @@ export function AgentsPanel() {
           key={currentSessionId ?? AGENTS_PANEL_NO_SESSION}
           agents={filteredList}
           leaderId={leaderId}
-          selectedAgentId={expandedAgentId}
-          onSelectAgent={(agent) => toggleAgent(agent.id)}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={(agent) => openAgentChat(agent.id)}
           ariaLabel={t('activity:agentsPanel.agentRoster')}
         />
         {selectedAgent ? (
@@ -225,7 +223,7 @@ export function AgentsPanel() {
             <AgentDetailSection
               agent={selectedAgent}
               isExpanded
-              onOpenInspector={() => openFleetInspector(selectedAgent.id)}
+              onOpenInspector={() => openAgentChat(selectedAgent.id)}
             />
           </div>
         ) : null}
@@ -233,7 +231,7 @@ export function AgentsPanel() {
       <div className="shrink-0 border-t border-border/70 bg-card/75 px-3 py-2">
         <button
           type="button"
-          onClick={() => openFleetInspector()}
+          onClick={() => openMainView('roster')}
           className="w-full flex items-center justify-center gap-1.5 h-7 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <LayoutGrid className="h-3 w-3" />

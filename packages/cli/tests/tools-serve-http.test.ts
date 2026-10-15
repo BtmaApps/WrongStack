@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { createServer, type IncomingMessage } from 'node:http';
+import { createServer, type IncomingMessage, request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -86,6 +86,33 @@ function req(
   });
 }
 
+function rawGet(
+  url: string,
+  pathname: string,
+  token: string | null = TOKEN,
+): Promise<{ status: number; body: string }> {
+  const target = new URL(url);
+  return new Promise((resolve, reject) => {
+    const client = request(
+      {
+        host: target.hostname,
+        port: target.port,
+        method: 'GET',
+        path: pathname,
+        headers: token === null ? {} : { authorization: `Bearer ${token}` },
+      },
+      (response) => {
+        let body = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => (body += chunk));
+        response.on('end', () => resolve({ status: response.statusCode ?? 0, body }));
+      },
+    );
+    client.on('error', reject);
+    client.end();
+  });
+}
+
 describe('wstack tools serve — REST tool gateway', () => {
   it('refuses to start without a real token', async () => {
     const reg = registry();
@@ -110,6 +137,16 @@ describe('wstack tools serve — REST tool gateway', () => {
     expect((await req(`${url}v1/tools`, { token: null })).status).toBe(401);
     expect((await req(`${url}v1/tools`, { token: 'wrong-token-0123456789abc' })).status).toBe(401);
     expect((await req(`${url}v1/tools`)).status).toBe(200);
+  });
+
+  it('rejects malformed percent-encoding as a client error without breaking valid paths', async () => {
+    const { url } = await start();
+    expect((await rawGet(url, '/v1/unknown')).status).toBe(404);
+    expect((await rawGet(url, '/v1/tools/%ZZ', null)).status).toBe(401);
+
+    const malformed = await rawGet(url, '/v1/tools/%ZZ');
+    expect(malformed.status).toBe(400);
+    expect(JSON.parse(malformed.body)).toEqual({ ok: false, error: 'invalid_path_encoding' });
   });
 
   it('lists tools with schemas, keeps process-bound tools and withholds session-bound ones', async () => {

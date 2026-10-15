@@ -4,7 +4,6 @@ import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import { ChatView } from './ChatView';
-import { AgentTabs } from './ChatView/AgentTabs';
 import { ErrorBoundary } from './ErrorBoundary';
 import { defaultOnCloseToChat, MainViewSlot } from './MainViewSlot';
 import { PanelSuspense } from './PanelSuspense';
@@ -25,7 +24,6 @@ import { PanelSuspense } from './PanelSuspense';
  * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-17.
  */
 export function ViewRouter({
-  sessionId,
   desktopShell,
 }: {
   sessionId: string | null;
@@ -45,23 +43,10 @@ export function ViewRouter({
     if (terminalOpen) setTerminalMounted(true);
   }, [terminalOpen]);
 
-  const hasSession = sessionId;
   const onCloseToChat = defaultOnCloseToChat;
 
   return (
     <>
-      {/* The AGENTS switcher belongs to the chat surface. It stays mounted
-          across view changes, preserving its session state. Workspace
-          controls live in the Session side panel. */}
-      {hasSession && (
-        <div
-          className={cn('flex flex-col', currentView !== 'chat' && 'ws-view-parked')}
-          {...(currentView !== 'chat' ? { inert: true, 'aria-hidden': true } : {})}
-        >
-          <AgentTabs />
-        </div>
-      )}
-
       {/* Chat is MOUNTED FOR THE LIFETIME OF THE SESSION and parked when
           another view is in front — never unmounted. It owns a virtualized
           transcript, a scroll position, an unsent composer draft and the live

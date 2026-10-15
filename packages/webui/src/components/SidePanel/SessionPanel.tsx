@@ -7,6 +7,7 @@
  * refine, sound). Rarely-touched configuration stays in Settings.
  */
 import {
+  Bot,
   Cpu,
   Crosshair,
   Download,
@@ -45,6 +46,7 @@ import {
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { describeSessionActivity, isTabBusy } from '@/stores/session-tab-store';
 import { useSystemPromptStore } from '@/stores/system-prompt-store';
+import { AgentTabs } from '../ChatView/AgentTabs';
 import { fmtTok } from '../ChatView/utils';
 import { downloadChatAsMarkdown } from '../CommandPalette';
 import { confirmModal } from '../ConfirmModal';
@@ -518,6 +520,12 @@ export function SessionPanel() {
       content: fullChrome ? actionsSection : calmActionsSection,
     },
     {
+      id: 'agents',
+      label: t('activity:nav.agents'),
+      icon: <Bot size={12} />,
+      content: <AgentTabs />,
+    },
+    {
       id: 'workspace',
       label: t('activity:sessionLayout.workspace'),
       icon: <PanelsTopLeft size={12} />,
@@ -602,6 +610,7 @@ export function SessionPanel() {
   const defaultOrder = fullChrome
     ? [
         'actions',
+        'agents',
         'workspace',
         'stats',
         'quota',
@@ -613,6 +622,7 @@ export function SessionPanel() {
       ]
     : [
         'actions',
+        'agents',
         'workspace',
         'plan',
         'pinned',

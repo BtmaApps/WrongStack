@@ -37,23 +37,21 @@ describe('chat keep-alive', () => {
     expect(src).toMatch(/currentView !== 'chat' \? \{ inert: true/);
   });
 
-  it('keeps AGENTS mounted above chat and places workspace controls in Session', () => {
+  it('keeps agent navigation out of the top tabs and in the movable session sidebar', () => {
     const src = read('components/ViewRouter.tsx');
     const sessionPanel = read('components/SidePanel/SessionPanel.tsx');
     const sidePanel = read('components/SidePanel/index.tsx');
-    const agentTabsIndex = src.indexOf('<AgentTabs />');
-    const chatParkIndex = src.indexOf("currentView !== 'chat' && 'ws-view-parked'");
-    const chatViewIndex = src.indexOf('<ChatView />');
+    const agentsPanel = read('components/SidePanel/AgentsPanel.tsx');
 
     expect(src).not.toContain('<WorkspaceDock />');
+    expect(src).not.toContain('<AgentTabs />');
+    expect(src).not.toContain("from './ChatView/AgentTabs'");
     expect(sessionPanel).toContain('<WorkspaceDock />');
+    expect(sessionPanel).toContain('<AgentTabs />');
     expect(sidePanel).toContain("activeActivity === 'chat' && <SessionPanel />");
-    expect(agentTabsIndex).toBeGreaterThan(-1);
-    expect(chatParkIndex).toBeGreaterThan(-1);
-    expect(chatViewIndex).toBeGreaterThan(-1);
-    // AGENTS stays parked with the chat surface and above the transcript.
-    expect(chatParkIndex).toBeLessThan(agentTabsIndex);
-    expect(agentTabsIndex).toBeLessThan(chatViewIndex);
+    expect(sidePanel).toContain("activeActivity === 'agents'");
+    expect(agentsPanel).toContain('<AgentTree');
+    expect(agentsPanel).toContain("setCurrentView('chat')");
   });
 
   it('keeps the workspace dock inspector available outside chat', () => {

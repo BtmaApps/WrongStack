@@ -66,6 +66,37 @@ describe('AgentTree', () => {
     expect(screen.queryByText('openai/openai/gpt-5.4')).toBeNull();
   });
 
+  it('wraps long agent identity and status details instead of clipping or overlapping them', () => {
+    const longName = 'agent-with-an-extremely-long-unbroken-name-that-needs-to-wrap';
+    const route = 'provider-with-a-long-name/model-with-an-equally-long-unbroken-name';
+
+    render(
+      <AgentTree
+        agents={[
+          agent(longName, {
+            provider: 'provider-with-a-long-name',
+            model: 'model-with-an-equally-long-unbroken-name',
+            status: 'stopped',
+          }),
+        ]}
+        onSelectAgent={() => undefined}
+        ariaLabel="Session agents"
+      />,
+    );
+
+    const item = screen.getByRole('treeitem');
+    const name = screen.getByText(longName);
+    const model = screen.getByText(route);
+    const status = screen.getByText('activity:fleet.statusStopped');
+
+    expect(item.className).toContain('grid-cols-[1.75rem_minmax(0,1fr)]');
+    expect(name.className).toContain('[overflow-wrap:anywhere]');
+    expect(name.className).not.toContain('truncate');
+    expect(name.parentElement?.className).toContain('flex-wrap');
+    expect(model.className).toContain('[overflow-wrap:anywhere]');
+    expect(status.className).not.toContain('ml-auto');
+  });
+
   it('uses roving focus and tree arrow keys before activating with Enter', () => {
     const onSelectAgent = vi.fn();
     const leader = agent('Leader', { isLeader: true });

@@ -104,11 +104,16 @@ export function serveToolGatewayHttp(opts: ToolGatewayHttpOptions): Promise<Tool
     if (!hostHeaderIsAcceptable(req, host))
       return send(res, 403, { ok: false, error: 'untrusted_host_header' });
     const url = new URL(req.url ?? '/', 'http://local');
-    const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
-
     if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
     if (!bearerTokenMatches(req.headers.authorization, opts.token)) {
       return send(res, 401, { ok: false, error: 'unauthorized' });
+    }
+
+    let parts: string[];
+    try {
+      parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    } catch {
+      return send(res, 400, { ok: false, error: 'invalid_path_encoding' });
     }
 
     if (parts[0] !== 'v1' || parts[1] !== 'tools')

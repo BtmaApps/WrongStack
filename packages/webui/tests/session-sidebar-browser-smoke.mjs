@@ -87,6 +87,13 @@ try {
   await expect(page.getByRole('button', { name: 'Back to session' })).toBeVisible();
   await page.getByRole('button', { name: 'Back to session' }).click();
   await expect(page.getByTestId('current-view')).toContainText('chat');
+  const agents = page.getByRole('button', { name: 'Agents', exact: true });
+  await expect(agents).toBeVisible();
+  await expect(page.getByTestId('agent-tabs')).toBeVisible();
+  await agents.click();
+  await expect(page.getByTestId('agent-tabs')).toBeHidden();
+  await agents.click();
+  await expect(page.getByTestId('agent-tabs')).toBeVisible();
   const fold = page.getByRole('button', { name: 'Quick actions', exact: true });
   await fold.click();
   await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeHidden();
@@ -99,21 +106,21 @@ try {
   await page
     .getByRole('button', { name: 'Drag Quick actions' })
     .dragTo(page.locator('[data-session-section="stats"]'));
-  assert.deepEqual((await order()).slice(0, 3), ['workspace', 'stats', 'actions']);
+  assert.deepEqual((await order()).slice(0, 4), ['agents', 'workspace', 'stats', 'actions']);
   await page
     .getByRole('button', { name: 'Drag Quick actions' })
     .dragTo(page.locator('[data-session-section="workspace"]'));
-  assert.equal((await order())[0], 'actions');
+  assert.deepEqual((await order()).slice(0, 3), ['agents', 'actions', 'workspace']);
   await page.getByRole('button', { name: 'Drag Session', exact: true }).focus();
   await page.keyboard.press('ArrowUp');
-  assert.deepEqual((await order()).slice(0, 3), ['actions', 'stats', 'workspace']);
+  assert.deepEqual((await order()).slice(0, 4), ['agents', 'actions', 'stats', 'workspace']);
   await page.getByRole('button', { name: 'Session', exact: true }).click();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Session', exact: true })).toHaveAttribute(
     'aria-expanded',
     'false',
   );
-  assert.deepEqual((await order()).slice(0, 3), ['actions', 'stats', 'workspace']);
+  assert.deepEqual((await order()).slice(0, 4), ['agents', 'actions', 'stats', 'workspace']);
   await page.screenshot({ path: path.join(out, 'desktop-light.png') });
   await page.evaluate(() => window.setSidebarSmokeTheme('dark'));
   await expect(page.locator('html')).toHaveClass(/dark/);
@@ -122,7 +129,7 @@ try {
   await page.screenshot({ path: path.join(out, 'desktop-dark.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Move Workspace up' }).tap();
-  assert.deepEqual((await order()).slice(0, 3), ['actions', 'workspace', 'stats']);
+  assert.deepEqual((await order()).slice(0, 4), ['agents', 'actions', 'workspace', 'stats']);
   await page.screenshot({ path: path.join(out, 'mobile.png') });
   await story.tap();
   await expect(page.getByRole('dialog')).toBeHidden();
@@ -136,6 +143,7 @@ try {
     checks: [
       'fixed Story',
       'Story/session navigation',
+      'Agents visibility and collapse',
       'collapse',
       'native drag in both directions',
       'keyboard reorder',

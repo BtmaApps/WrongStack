@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export const SESSION_PANEL_SECTIONS = [
   'actions',
+  'agents',
   'workspace',
   'stats',
   'quota',

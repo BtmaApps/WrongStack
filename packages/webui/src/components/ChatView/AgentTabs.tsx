@@ -1,22 +1,15 @@
 /**
- * AgentTabs — leader/subagent switcher above the chat transcript.
+ * AgentTabs — vertical leader/subagent switcher for the narrow session sidebar.
  *
- * Renders only when the fleet roster is non-empty (the leader is part of
- * it). The Leader tab restores the normal chat; each subagent tab swaps
- * the transcript pane for that agent's full history rendered chat-style
+ * The Leader row restores the normal chat; each subagent row swaps the
+ * transcript pane for that agent's full history rendered chat-style
  * (SubagentTranscriptView) and hides the input area. Selection lives in
  * ui-store (`subagentChatFocusId`) so any surface — roster cards, agent
  * detail sections — can jump straight into an agent's chat view.
  */
 
-import { Bot, Check, CheckCircle2, ChevronDown, Crown, Loader2, Square, X } from 'lucide-react';
+import { Bot, CheckCircle2, Crown, Loader2, Square, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { HueChip } from '@/components/ui/hue-chip';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
@@ -41,14 +34,6 @@ const TAB_LED: Record<SubagentView['status'], { led: string; pulse: boolean }> =
   timeout: { led: 'bg-warning', pulse: false },
   stopped: { led: 'bg-muted-foreground', pulse: false },
 };
-
-/**
- * Inline tab budget before the rest of the roster collapses into the
- * overflow dropdown. Three subagent tabs + the leader tab + the AGENTS
- * label leave the session summary pill (Stop/Waiting) room even with
- * worst-case 10rem-wide names, so the bar never overflows.
- */
-const MAX_INLINE_SUBAGENTS = 3;
 
 function SubagentTabButton({
   agent,
@@ -85,17 +70,17 @@ function SubagentTabButton({
         onOpen();
       }}
       className={cn(
-        'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
+        'flex min-h-8 w-full min-w-0 items-center gap-2 border px-2 py-1.5 text-left text-[11px] font-medium transition-colors',
         active
-          ? 'bg-primary/15 text-foreground border-primary/30 shadow-xs'
-          : 'text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground',
+          ? 'border-primary/40 bg-primary/15 text-foreground shadow-xs'
+          : 'border-border/60 bg-card/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
       )}
     >
       <span
         className={cn('led shrink-0', meta.led, meta.pulse && 'led-pulse')}
         aria-hidden="true"
       />
-      <span className="max-w-[10rem] truncate">{agent.name}</span>
+      <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{agent.name}</span>
       {onRemove && (
         <button
           type="button"
@@ -140,14 +125,6 @@ export function AgentTabs() {
 
   const runningSubs = subagents.filter((a) => a.status === 'running').length;
   const finishedSubs = subagents.length - runningSubs;
-
-  // Collapsed roster: first MAX_INLINE_SUBAGENTS stay as tabs, the rest live
-  // behind the "+N" overflow dropdown so the bar never pushes the Stop /
-  // summary pill out of view.
-  const inlineSubs = subagents.slice(0, MAX_INLINE_SUBAGENTS);
-  const overflowSubs = subagents.slice(MAX_INLINE_SUBAGENTS);
-  const overflowFocusActive = overflowSubs.some((a) => a.id === focusId);
-  const anyOverflowRunning = overflowSubs.some((a) => a.status === 'running');
   const openAgent = (id: string) => {
     setFocus(id, currentSessionId);
     useUIStore.getState().setCurrentView('chat');
@@ -156,18 +133,25 @@ export function AgentTabs() {
 
   return (
     <div
-      role="tablist"
-      aria-label={t('activity:agents.tabsLabel')}
       data-testid="agent-tabs"
-      className="flex shrink-0 items-center justify-between gap-2 overflow-x-auto overscroll-x-contain px-3 py-1 border-b border-border/40 bg-muted/20 text-xs no-scrollbar"
+      className="flex min-w-0 shrink-0 flex-col gap-2 border-b border-border/40 bg-muted/20 p-2 text-xs"
     >
-      <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
-          <Bot className="h-3 w-3 text-primary" /> AGENTS
-          <span className="rounded bg-muted/60 px-1 font-mono text-[9px] text-muted-foreground">
-            {agents.length}
-          </span>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="flex min-w-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Bot className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
+          <span>AGENTS</span>
         </span>
+        <span className="bg-muted/60 px-1 font-mono text-[9px] text-muted-foreground">
+          {agents.length}
+        </span>
+      </div>
+
+      <div
+        role="tablist"
+        aria-label={t('activity:agents.tabsLabel')}
+        aria-orientation="vertical"
+        className="flex min-w-0 flex-col gap-1"
+      >
         <button
           type="button"
           role="tab"
@@ -177,114 +161,37 @@ export function AgentTabs() {
             useUIStore.getState().setCurrentView('chat');
           }}
           className={cn(
-            'flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
+            'flex min-h-8 w-full min-w-0 items-center gap-2 border px-2 py-1.5 text-left text-[11px] font-medium transition-colors',
             focusId == null
-              ? 'bg-primary/15 text-foreground border-primary/30 shadow-xs'
-              : 'text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground',
+              ? 'border-primary/40 bg-primary/15 text-foreground shadow-xs'
+              : 'border-border/60 bg-card/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
           )}
         >
-          <Crown className="h-3 w-3 shrink-0 text-warning" />
-          <span className="max-w-[10rem] truncate">
+          <Crown className="h-3 w-3 shrink-0 text-warning" aria-hidden="true" />
+          <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
             {leaderName ?? t('activity:agents.leaderTab')}
           </span>
         </button>
-        {inlineSubs.map((a) => (
+
+        {subagents.map((agent) => (
           <SubagentTabButton
-            key={a.id}
-            agent={a}
-            active={focusId === a.id}
-            onOpen={() => openAgent(a.id)}
-            onRemove={a.status !== 'running' ? () => removeAgent(a.id) : undefined}
-            removeLabel={closeLabel(a.name)}
+            key={agent.id}
+            agent={agent}
+            active={focusId === agent.id}
+            onOpen={() => openAgent(agent.id)}
+            onRemove={agent.status !== 'running' ? () => removeAgent(agent.id) : undefined}
+            removeLabel={closeLabel(agent.name)}
           />
         ))}
-        {overflowSubs.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                data-testid="agent-tabs-overflow"
-                title={t('activity:agents.moreTabsTitle', { n: overflowSubs.length })}
-                aria-label={t('activity:agents.moreTabsTitle', { n: overflowSubs.length })}
-                className={cn(
-                  'flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
-                  overflowFocusActive
-                    ? 'bg-primary/15 text-foreground border-primary/30 shadow-xs'
-                    : 'text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground',
-                )}
-              >
-                <span
-                  className={cn(
-                    'led shrink-0',
-                    anyOverflowRunning ? 'bg-success led-pulse' : 'bg-muted-foreground',
-                  )}
-                  aria-hidden="true"
-                />
-                <span className="font-mono">+{overflowSubs.length}</span>
-                <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-72 w-60 overflow-y-auto">
-              {overflowSubs.map((a) => {
-                const meta = TAB_LED[a.status] ?? TAB_LED.stopped;
-                const active = focusId === a.id;
-                return (
-                  <DropdownMenuItem
-                    key={a.id}
-                    data-testid="agent-tabs-overflow-item"
-                    title={a.description ? taskBriefPreview(a.description, 180) : a.name}
-                    onSelect={() => openAgent(a.id)}
-                  >
-                    <span
-                      className={cn('led shrink-0', meta.led, meta.pulse && 'led-pulse')}
-                      aria-hidden="true"
-                    />
-                    <span className="max-w-[12rem] flex-1 truncate">{a.name}</span>
-                    {active && (
-                      <Check className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
-                    )}
-                    {a.status !== 'running' && (
-                      // biome-ignore lint/a11y/useSemanticElements: nested in a <button>/menu item; a real <button> here is invalid HTML.
-                      <span
-                        role="button"
-                        tabIndex={-1}
-                        data-testid="agent-tab-close"
-                        aria-label={closeLabel(a.name)}
-                        title={closeLabel(a.name)}
-                        onClick={(e) => {
-                          // Keep the menu open so several finished agents can
-                          // be dismissed in one pass; stopPropagation also
-                          // keeps the click from selecting the item.
-                          e.stopPropagation();
-                          removeAgent(a.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key !== 'Enter' && e.key !== ' ') return;
-                          e.preventDefault();
-                          e.stopPropagation();
-                          removeAgent(a.id);
-                        }}
-                        className="flex shrink-0 items-center rounded-sm p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/15 hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" aria-hidden="true" />
-                      </span>
-                    )}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
       </div>
 
-      {/* Session & Fleet Summary Pill */}
-      <div className="flex shrink-0 items-center gap-2 pl-2 border-l border-border/30">
+      <div className="flex min-w-0 flex-col gap-1.5 border border-border/50 bg-card/40 p-2">
         {isLoading ? (
-          <div className="inline-flex items-center gap-1">
+          <>
             <HueChip
               tone="primary"
               icon={<Loader2 className="h-2.5 w-2.5 animate-spin" />}
-              className="text-[10px] font-medium border border-primary/20"
+              className="w-full justify-center border border-primary/20 text-[10px] font-medium"
             >
               <span>Processing...</span>
             </HueChip>
@@ -296,27 +203,28 @@ export function AgentTabs() {
               }}
               title={t('chat:input.abortTitle', 'Stop/Abort')}
               aria-label={t('chat:input.abortTitle', 'Stop/Abort')}
-              className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 px-1.5 py-0.5 rounded border border-destructive/20 transition-colors"
+              className="inline-flex min-h-7 w-full items-center justify-center gap-1 border border-destructive/20 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
             >
-              <Square className="h-2 w-2 fill-current" />
+              <Square className="h-2 w-2 fill-current" aria-hidden="true" />
               <span>Stop</span>
             </button>
-          </div>
+          </>
         ) : (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border/40">
-            <CheckCircle2 className="h-2.5 w-2.5 text-success" />
+          <span className="inline-flex min-h-7 w-full items-center justify-center gap-1 border border-border/40 bg-muted/40 px-2 py-1 text-center text-[10px] font-medium text-muted-foreground">
+            <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-success" aria-hidden="true" />
             <span>{t('activity:agents.waitingNextPrompt')}</span>
           </span>
         )}
-        {subagents.length > 0 && (
-          <span className="text-[10px] font-mono text-muted-foreground hidden md:inline">
+
+        {subagents.length > 0 ? (
+          <span className="block w-full text-center font-mono text-[10px] text-muted-foreground">
             {runningSubs > 0 ? (
-              <span className="text-success font-semibold">{runningSubs} active</span>
+              <span className="font-semibold text-success">{runningSubs} active</span>
             ) : null}
             {runningSubs > 0 && finishedSubs > 0 ? ' · ' : null}
             {finishedSubs > 0 ? <span>{finishedSubs} finished</span> : null}
           </span>
-        )}
+        ) : null}
       </div>
     </div>
   );

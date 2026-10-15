@@ -153,7 +153,7 @@ export function AgentTree({
         onClick={() => onSelectAgent(agent)}
         onKeyDown={(event) => handleKeyDown(event, agent)}
         className={cn(
-          'group flex min-h-11 min-w-0 cursor-pointer items-center gap-2 border border-transparent px-2 py-1.5 outline-none transition-colors',
+          'group grid min-h-11 min-w-0 cursor-pointer grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 border border-transparent px-2 py-1.5 outline-none transition-colors',
           'hover:border-border hover:bg-muted/45 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
           selected && 'border-primary/40 bg-primary/10',
         )}
@@ -170,9 +170,12 @@ export function AgentTree({
           />
         </span>
 
-        <span className="min-w-0 flex-1">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-[11px] font-semibold text-foreground" title={agent.name}>
+        <span className="min-w-0">
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <span
+              className="min-w-0 max-w-full break-words text-[11px] font-semibold leading-tight text-foreground [overflow-wrap:anywhere]"
+              title={agent.name}
+            >
               {agent.name}
             </span>
             {isLeader ? (
@@ -180,13 +183,13 @@ export function AgentTree({
                 {t('activity:fleet.leader')}
               </span>
             ) : null}
-            <span className="ml-auto shrink-0 text-[9px] text-muted-foreground">
+            <span className="shrink-0 text-[9px] text-muted-foreground">
               {t(status.labelKey)}
             </span>
           </span>
           <span
             className={cn(
-              'mt-0.5 block break-words font-mono text-[10px] leading-tight',
+              'mt-0.5 block min-w-0 break-words font-mono text-[10px] leading-tight [overflow-wrap:anywhere]',
               route ? 'text-muted-foreground' : 'italic text-muted-foreground/70',
             )}
             title={route}

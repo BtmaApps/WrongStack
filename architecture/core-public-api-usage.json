@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1419,
-      "typeOnly": 1252,
+      "files": 1420,
+      "typeOnly": 1253,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -219,8 +219,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types/spec.js": {
-      "files": 7,
-      "typeOnly": 6,
+      "files": 6,
+      "typeOnly": 5,
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/types/task-graph.js": {
@@ -19593,6 +19593,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/sdd/tests/task-visualizer.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/sdd/tests/vibe-protocol-wiring.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -22612,12 +22618,6 @@
     {
       "specifier": "@wrongstack/core/types/spec.js",
       "file": "packages/sdd/tests/task-generator.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/types/spec.js",
-      "file": "packages/sdd/tests/task-visualizer.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

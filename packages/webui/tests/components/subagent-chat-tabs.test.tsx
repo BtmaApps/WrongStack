@@ -132,40 +132,24 @@ describe('subagent chat tabs', () => {
     expect(screen.getByTestId('subagent-provider-model').textContent).toBe('openai/gpt-6');
   });
 
-  it('collapses subagents beyond the inline budget into the +N overflow trigger', () => {
-    const overflowAgent = {
-      ...makeAgent('s4'),
-      provider: 'anthropic',
-      model: 'claude-sonnet',
-    };
+  it('renders every agent as a full-width row in the vertical roster', () => {
     const agents = new Map<string, SubagentView>([
       ['ldr', makeAgent('ldr', { name: 'Main' })],
-      ...['s1', 's2', 's3'].map((id) => [id, makeAgent(id)] as const),
-      ['s4', overflowAgent],
-      ['s5', makeAgent('s5')],
+      ...['s1', 's2', 's3', 's4', 's5'].map((id) => [id, makeAgent(id)] as const),
     ]);
     useFleetStore.setState({ agents, leaderId: 'ldr' });
 
     render(<AgentTabs />);
 
-    // Leader + the first 3 subagents stay inline as tabs; the remaining 2
-    // live behind the "+2" overflow trigger so the bar cannot overflow into
-    // the Stop/summary cluster.
-    expect(screen.getAllByRole('tab')).toHaveLength(4);
-    const trigger = screen.getByTestId('agent-tabs-overflow');
-    expect(trigger.textContent).toContain('+2');
-
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-    for (const item of screen.getAllByTestId('agent-tabs-overflow-item')) {
-      expect(item.textContent).not.toContain('anthropic/claude-sonnet');
+    const tablist = screen.getByRole('tablist');
+    const tabs = screen.getAllByRole('tab');
+    expect(tablist.getAttribute('aria-orientation')).toBe('vertical');
+    expect(tablist.className).toContain('flex-col');
+    expect(tabs).toHaveLength(6);
+    for (const tab of tabs) {
+      expect(tab.className).toContain('w-full');
     }
-
-    // Focusing an agent that lives in the overflow keeps it visible: the
-    // trigger takes the active styling while collapsed.
-    act(() => {
-      useUIStore.setState({ subagentChatFocusId: 's4' });
-    });
-    expect(trigger.getAttribute('class')).toContain('bg-primary/15');
+    expect(screen.queryByTestId('agent-tabs-overflow')).toBeNull();
   });
 
   it('offers a close affordance on finished agent tabs only, and removing clears the roster entry', () => {
@@ -253,7 +237,7 @@ describe('subagent chat tabs', () => {
     expect(useUIStore.getState().subagentChatFocusId).toBe('s1');
   });
 
-  it('keeps the bar structural with a large fleet: inline budget, +9 trigger, summary pill intact', () => {
+  it('keeps every agent reachable in a large vertical roster with the summary below it', () => {
     const agents = new Map<string, SubagentView>([
       ['ldr', makeAgent('ldr', { name: 'Main' })],
       ...['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11', 's12'].map(
@@ -264,11 +248,8 @@ describe('subagent chat tabs', () => {
 
     render(<AgentTabs />);
 
-    // The collapse is what keeps the bar from overflowing: leader + 3 tabs,
-    // the rest behind "+9", and the right-hand Stop/summary cluster still
-    // present in the same bar (it must never be pushed out of view).
-    expect(screen.getAllByRole('tab')).toHaveLength(4);
-    expect(screen.getByTestId('agent-tabs-overflow').textContent).toContain('+9');
+    expect(screen.getAllByRole('tab')).toHaveLength(13);
+    expect(screen.queryByTestId('agent-tabs-overflow')).toBeNull();
     expect(screen.getByText(/Waiting for next prompt/i)).toBeTruthy();
   });
 
