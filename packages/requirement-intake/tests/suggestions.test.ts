@@ -62,6 +62,15 @@ describe('validateLlmSuggestionOutput', () => {
     expect(normalized.suggestedPriority).toBe('critical');
   });
 
+  it('normalizes known priorities written in conventional LLM casing', () => {
+    expect(validateLlmSuggestionOutput({ suggested_priority: 'High' }).suggestedPriority).toBe(
+      'high',
+    );
+    expect(validateLlmSuggestionOutput({ suggested_priority: 'CRITICAL' }).suggestedPriority).toBe(
+      'critical',
+    );
+  });
+
   it('trims strings during validation', () => {
     const normalized = validateLlmSuggestionOutput({ suggested_title: '  Reset password  ' });
     expect(normalized.suggestedTitle).toBe('Reset password');

@@ -10,11 +10,16 @@
  * leader's own. Same REST shape as `wstack tools serve`, which is what
  * WrongForge's task `gateway` speaks.
  */
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Tool } from '@wrongstack/core/types';
-import { compactToolDefinitionForWire, subjectForToolInput } from '@wrongstack/core/utils';
+import {
+  compactToolDefinitionForWire,
+  subjectForToolInput,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
+import { timingSafeTokenEqual } from '@wrongstack/primitives';
 import { confirmThroughEvents } from '../acp-leader/acp-leader-confirm.js';
 import type { AcpLeaderHost } from '../acp-leader/acp-leader-host.js';
 import type { WrongForgeGatewaySpec } from '../fleet/wrongforge-client.js';
@@ -94,11 +99,9 @@ export async function startLeaderGateway(
     }),
   );
   const token = randomBytes(24).toString('hex');
-  const expected = Buffer.from(`Bearer ${token}`);
-  const authorized = (req: http.IncomingMessage) => {
-    const got = Buffer.from(req.headers.authorization ?? '');
-    return got.length === expected.length && timingSafeEqual(got, expected);
-  };
+  const expected = `Bearer ${token}`;
+  const authorized = (req: http.IncomingMessage) =>
+    timingSafeTokenEqual(req.headers.authorization, expected);
   const send = (res: http.ServerResponse, status: number, body: unknown) => {
     const text = JSON.stringify(body);
     res.writeHead(status, {
@@ -158,7 +161,7 @@ export async function startLeaderGateway(
               ok: false,
               tool: name,
               error: 'tool_failed',
-              message: err instanceof Error ? err.message : String(err),
+              message: toErrorMessage(err),
             }),
         );
     });

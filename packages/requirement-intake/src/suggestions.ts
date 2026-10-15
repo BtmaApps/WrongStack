@@ -105,11 +105,14 @@ export function validateLlmSuggestionOutput(raw: unknown): NormalizedLlmSuggesti
   const requestType = value.suggested_request_type
     ? normalizeRequestType(value.suggested_request_type)
     : undefined;
-  const priority = value.suggested_priority
-    ? (INTAKE_PRIORITIES as readonly string[]).includes(value.suggested_priority)
-      ? (value.suggested_priority as IntakePriority)
-      : undefined
-    : undefined;
+  // Known priorities in non-canonical case are normalized (same convention as
+  // normalizeRequestType and the answer-path/apply-proposal priority checks);
+  // only truly unknown values are dropped.
+  const priorityCandidate = value.suggested_priority?.toLowerCase();
+  const priority =
+    priorityCandidate && (INTAKE_PRIORITIES as readonly string[]).includes(priorityCandidate)
+      ? (priorityCandidate as IntakePriority)
+      : undefined;
   return {
     suggestedTitle: value.suggested_title,
     normalizedSummary: value.normalized_summary,
