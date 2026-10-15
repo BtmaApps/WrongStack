@@ -57,7 +57,7 @@ describe('runWebUI redaction', () => {
     });
     const started = await waitForMessage('tool.started');
     expect(JSON.stringify(started.payload)).not.toContain(openAiKey);
-    expect(JSON.stringify(started.payload)).toContain('[REDACTED:openai_key]');
+    expect(JSON.stringify(started.payload)).toContain('[REDACTED:url_query_credential]');
 
     events.emit('tool.executed', {
       id: 'tool-1',

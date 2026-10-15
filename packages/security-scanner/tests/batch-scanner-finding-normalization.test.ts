@@ -106,7 +106,7 @@ describe('batch scanner finding normalization', () => {
     expect(result.findings.map((f) => f.title)).toEqual(['Real']);
   });
 
-  it('stops after the batch during which the scan was aborted, discarding its findings', async () => {
+  it('stops after the completed batch during which the scan was aborted and keeps its findings', async () => {
     const dir = await project({ 'a.ts': 'eval(a);', 'b.ts': 'eval(b);' });
     const abortController = new AbortController();
     const complete = vi.fn(async () => {
@@ -115,7 +115,12 @@ describe('batch scanner finding normalization', () => {
     });
     const result = await scan(dir, complete, { llmBatchSize: 1, abortController });
     expect(complete).toHaveBeenCalledOnce();
-    expect(result.findings).toEqual([]);
+    expect(result.findings).toEqual([
+      expect.objectContaining({
+        file: 'a.ts',
+        title: 'A',
+      }),
+    ]);
     expect(result.scannedFiles).toBe(1);
   });
 });
