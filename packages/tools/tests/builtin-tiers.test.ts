@@ -19,6 +19,16 @@ describe('builtin codebase tool priority', () => {
     expect([...classified].sort()).toEqual(builtinTools.map((tool) => tool.name).sort());
   });
 
+  it('keeps oneOf/allOf/anyOf out of every top-level input schema', () => {
+    // Anthropic's Messages API rejects a tool whose input_schema carries a
+    // combinator at the top level, and a WrongForge (Claude-bound) turn sends
+    // the whole registry: one offender fails every task with a 500.
+    const offenders = builtinTools
+      .filter((tool) => tool.inputSchema.oneOf || tool.inputSchema.allOf || tool.inputSchema.anyOf)
+      .map((tool) => tool.name);
+    expect(offenders).toEqual([]);
+  });
+
   it('keeps the complete index lifecycle in Tier 1 instead of optional Tier 3', () => {
     const tier1Names = TIER1_TOOLS.map((tool) => tool.name);
     const tier3Names = TIER3_TOOLS.map((tool) => tool.name);

@@ -24,22 +24,26 @@ export const presentArtifactTool: Tool<PresentArtifactInput, ArtifactPresentatio
     'Present an existing project text file, raster image, unified diff, or an owned live browser session. Graphical surfaces use read-only previews or their file viewer. The request is scoped to the current session and does not change contents.',
   usageHint:
     'Use a project-relative path (text/diff up to 2 MB, raster images up to 4 MB), or browserSessionId from browser_open, and an optional title. Call once per result. This requests presentation; it does not prove display. HTML/SVG are source, never executable previews.',
+  // No top-level oneOf/allOf/anyOf: Anthropic-bound surfaces (the WrongForge
+  // gateway) reject those outright. "path or browserSessionId" is enforced by
+  // execute() and stated in the property descriptions instead.
   inputSchema: {
     type: 'object',
     additionalProperties: false,
-    oneOf: [{ required: ['path'] }, { required: ['browserSessionId'] }],
     properties: {
       browserSessionId: {
         type: 'string',
         minLength: 1,
         maxLength: 128,
-        description: 'Existing live browser session opened by this agent in this conversation.',
+        description:
+          'Existing live browser session opened by this agent in this conversation. Required unless path is given.',
       },
       path: {
         type: 'string',
         minLength: 1,
         maxLength: 4096,
-        description: 'Existing file relative to the project root.',
+        description:
+          'Existing file relative to the project root. Required unless browserSessionId is given.',
       },
       title: {
         type: 'string',

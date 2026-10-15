@@ -10,7 +10,15 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
-import type { WrongForgeEndpoint } from './wrongforge-client.js';
+
+/**
+ * Where WrongForge answers. Structural, so this module stays a leaf:
+ * wrongforge-client.ts imports from here, never the other way round.
+ */
+interface WrongForgeEndpoint {
+  url: string;
+  apiKey: string;
+}
 
 export interface WrongForgeInfo {
   models: string[];

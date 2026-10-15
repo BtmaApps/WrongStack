@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-15T19:05:11.158Z",
+  "generatedAt": "2026-10-15T19:50:59.942Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,19 +14,17 @@
     "packages": 37,
     "sourceFiles": 4977,
     "testFiles": 4386,
-    "sourceLines": 1104313,
+    "sourceLines": 1104325,
     "workspaceEdges": 137,
-    "moduleEdges": 16400,
+    "moduleEdges": 16399,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 6,
+    "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 972
   },
-  "errors": [
-    "1 unexcepted module cycle(s)"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -1015,13 +1013,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/cli/src/fleet/wrongforge-client.ts",
-          "packages/cli/src/fleet/wrongforge-info.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/core/src/coordination/agents/agent-prompts.ts",
           "packages/core/src/coordination/agents/index.ts",
           "packages/core/src/coordination/agents/phase1-discovery.ts",
@@ -1100,15 +1091,7 @@
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-29"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/cli/src/fleet/wrongforge-client.ts",
-          "packages/cli/src/fleet/wrongforge-info.ts"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [
