@@ -1,0 +1,526 @@
+{
+  "id": "webui-ux-improvements-graph-v1",
+  "specId": "webui-ux-improvements-v1",
+  "requiredRequirementIds": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "R12"
+  ],
+  "title": "WebUI UX Improvements implementation task graph",
+  "nodes": [
+    [
+      "WUX-S0.1",
+      {
+        "id": "WUX-S0.1",
+        "title": "Establish the WebUI UX browser baseline",
+        "description": "Reuse existing browser-smoke conventions to cover the viewport, theme, locale, and motion matrix; assert overflow, focus, target sizing, console health, and the four primary journeys. Record current failures as baseline evidence before product edits.\n\nAcceptance Criteria:\n- Baseline scenarios run deterministically without production credentials or external network.\n- Coverage includes 320x720, 390x844, 768x900, and 1366x900.\n- The harness detects horizontal overflow, lost focus, undersized mobile primary targets, console errors, and unhandled rejections.\n\nVerification:\n- bun packages/webui/tests/ux-shell-browser-smoke.mjs",
+        "type": "test",
+        "priority": "critical",
+        "status": "pending",
+        "tags": ["webui", "ux", "browser", "baseline", "sprint-0"],
+        "specRequirementId": "R11",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 0,
+          "phase": "evidence",
+          "requirementIds": ["R11", "R12"],
+          "expectedFiles": [
+            "packages/webui/tests/ux-shell-browser-smoke.mjs",
+            "packages/webui/tests/helpers/ux-shell-fixture.mjs"
+          ],
+          "verificationCommand": "bun packages/webui/tests/ux-shell-browser-smoke.mjs"
+        }
+      }
+    ],
+    [
+      "WUX-S0.2",
+      {
+        "id": "WUX-S0.2",
+        "title": "Add privacy-preserving UX performance measures",
+        "description": "Implement safe Performance API wrappers and instrument first-composer readiness, prompt-submit feedback, view-open feedback, transcript restore, and palette-search result boundaries without storing user content or transmitting measurements.\n\nAcceptance Criteria:\n- Unsupported Performance APIs degrade to no-op.\n- Measures contain no prompt, path, credential, session title, or message content.\n- Measurements are bounded and produce no network or persistent-storage writes.\n\nVerification:\n- bun --cwd packages/webui --bun run vitest run tests/lib/ux-performance.test.ts",
+        "type": "feature",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "ux", "performance", "privacy", "sprint-0"],
+        "specRequirementId": "R10",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 0,
+          "phase": "evidence",
+          "requirementIds": ["R10", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/lib/ux-performance.ts",
+            "packages/webui/tests/lib/ux-performance.test.ts",
+            "packages/webui/src/components/MainViewSlot.tsx",
+            "packages/webui/src/components/ChatInput/use-chat-submit.ts",
+            "packages/webui/src/components/ChatView/index.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/lib/ux-performance.test.ts"
+        }
+      }
+    ],
+    [
+      "WUX-S1.1",
+      {
+        "id": "WUX-S1.1",
+        "title": "Refactor WelcomeScreen into a task-first empty state",
+        "description": "Move primary task entry ahead of advanced launchers, connect localized starter prompts through the existing draft insertion path, and preserve Bug Hunter, Performance Run, provider setup, and solo-session contracts.\n\nAcceptance Criteria:\n- Three starters cover understanding, debugging, and implementation.\n- Starter selection focuses and populates the composer without sending or silently replacing a non-empty draft.\n- Existing Bug Hunter and Performance Run regression suites remain green.\n\nVerification:\n- Run the focused task-starter, bug-hunter, and performance-ratchet component tests.",
+        "type": "feature",
+        "priority": "critical",
+        "status": "pending",
+        "tags": ["webui", "ux", "welcome", "first-run", "sprint-1"],
+        "specRequirementId": "R1",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 1,
+          "phase": "first-task",
+          "requirementIds": ["R1", "R8", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/components/WelcomeScreen.tsx",
+            "packages/webui/src/components/WelcomeScreen/ProjectSummary.tsx",
+            "packages/webui/src/components/WelcomeScreen/TaskStarters.tsx",
+            "packages/webui/src/components/WelcomeScreen/AdvancedLaunchers.tsx",
+            "packages/webui/tests/components/welcome-screen-task-starters.test.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/components/welcome-screen-task-starters.test.tsx tests/components/welcome-screen-bug-hunter.test.tsx tests/components/welcome-screen-perf-ratchet.test.tsx"
+        }
+      }
+    ],
+    [
+      "WUX-S1.2",
+      {
+        "id": "WUX-S1.2",
+        "title": "Gate the first send instead of page render",
+        "description": "Remove render-time first-run opening and implement a session-scoped pending-submit state machine covering confirm, cancel, reconnect, unmount, and session switch while preserving new-session picker semantics.\n\nAcceptance Criteria:\n- An unchosen first send emits no user-message frame before confirmation.\n- Confirmation resumes exactly once.\n- Cancellation preserves text, attachments, file references, and focus.\n- Session switch or unmount discards pending intent without sending.\n\nVerification:\n- Run first-run gate, system-prompt dialog, and draft-restore component tests.",
+        "type": "refactor",
+        "priority": "critical",
+        "status": "pending",
+        "tags": ["webui", "ux", "composer", "system-prompt", "sprint-1"],
+        "specRequirementId": "R2",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 1,
+          "phase": "first-task",
+          "requirementIds": ["R2", "R9", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/App.tsx",
+            "packages/webui/src/hooks/useFirstRunPromptGate.ts",
+            "packages/webui/src/components/SystemPromptDialog.tsx",
+            "packages/webui/src/components/ChatInput/use-chat-submit.ts",
+            "packages/webui/src/stores/system-prompt-store.ts",
+            "packages/webui/tests/components/chat-input-first-run-gate.test.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/components/chat-input-first-run-gate.test.tsx tests/components/system-prompt-dialog.test.tsx tests/components/chat-input-submit-draft-restore.test.ts"
+        }
+      }
+    ],
+    [
+      "WUX-S2.1",
+      {
+        "id": "WUX-S2.1",
+        "title": "Introduce the typed workbench catalog",
+        "description": "Centralize panel and standalone-view navigation metadata without moving lazy render metadata or weakening View and registry exhaustiveness checks. Activity Bar, Tools Launcher, mobile navigation, and palette view entries consume the catalog.\n\nAcceptance Criteria:\n- Every standalone navigable view appears exactly once.\n- Setup, parked, internal, and drill-down views are explicitly excluded.\n- VIEW_REGISTRY_STRICT retains its literal satisfies guard.\n- Tools Launcher coverage remains complete.\n\nVerification:\n- Run workbench-catalog, Activity Bar, and view-navigation tests.",
+        "type": "refactor",
+        "priority": "critical",
+        "status": "pending",
+        "tags": ["webui", "navigation", "catalog", "typescript", "sprint-2"],
+        "specRequirementId": "R3",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 2,
+          "phase": "discovery",
+          "requirementIds": ["R3", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/lib/workbench-catalog.tsx",
+            "packages/webui/src/components/activity-bar/activity-bar-items.tsx",
+            "packages/webui/src/components/activity-bar/tools-launcher.tsx",
+            "packages/webui/src/components/CommandPalette/index.tsx",
+            "packages/webui/src/components/view-registry.ts",
+            "packages/webui/src/stores/ui-store-types.ts",
+            "packages/webui/tests/lib/workbench-catalog.test.ts"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/lib/workbench-catalog.test.ts tests/components/activity-bar-calm.test.tsx tests/components/activity-bar-responsive.test.ts tests/lib/view-navigation.test.ts"
+        }
+      }
+    ],
+    [
+      "WUX-S2.2",
+      {
+        "id": "WUX-S2.2",
+        "title": "Add deterministic palette ranking and bounded recents",
+        "description": "Replace substring-only ordering with pure ranked matching, active-context boosts, bounded item-ID recents, and stable tie-breaking while preserving combobox behavior.\n\nAcceptance Criteria:\n- Exact, prefix, and multi-token matches rank deterministically.\n- Context and recent-use boosts do not override stronger exact matches.\n- Recent IDs are capped at 10 and removed IDs are ignored.\n- aria-activedescendant always resolves to the selected option.\n\nVerification:\n- Run palette ranking and combobox tests.",
+        "type": "feature",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "command-palette", "search", "accessibility", "sprint-2"],
+        "specRequirementId": "R4",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 2,
+          "phase": "discovery",
+          "requirementIds": ["R4", "R8", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/components/CommandPalette/rank-items.ts",
+            "packages/webui/src/components/CommandPalette/palette-history.ts",
+            "packages/webui/src/components/CommandPalette/index.tsx",
+            "packages/webui/tests/components/command-palette-ranking.test.ts"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/components/command-palette-ranking.test.ts tests/components/command-palette-combobox.test.tsx"
+        }
+      }
+    ],
+    [
+      "WUX-S2.3",
+      {
+        "id": "WUX-S2.3",
+        "title": "Enable safe shortcuts for new profiles",
+        "description": "Enable the approved safe shortcut set for new profiles only, preserve persisted user choices, and verify editing-surface suppression and modal Escape precedence.\n\nAcceptance Criteria:\n- New profiles can open the palette with Ctrl+K.\n- Persisted keyboardShortcuts false remains false.\n- Single-key shortcuts do not fire in input, textarea, Monaco, or contenteditable surfaces.\n- Dialog Escape handling precedes run-abort handling.\n\nVerification:\n- Run global shortcut and shortcut-section tests.",
+        "type": "feature",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "keyboard", "shortcuts", "preferences", "sprint-2"],
+        "specRequirementId": "R5",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 2,
+          "phase": "discovery",
+          "requirementIds": ["R5", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/stores/local-prefs-defaults.ts",
+            "packages/webui/src/stores/local-prefs.ts",
+            "packages/webui/src/hooks/useGlobalKeyboardShortcuts.ts",
+            "packages/webui/src/components/ShortcutsOverlay.tsx",
+            "packages/webui/src/components/SettingsPanel/DisplaySection.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/hooks/use-global-keyboard-shortcuts.test.tsx tests/lib/global-shortcuts-section.test.ts"
+        }
+      }
+    ],
+    [
+      "WUX-S3.1",
+      {
+        "id": "WUX-S3.1",
+        "title": "Replace the mobile rail with a workbench menu",
+        "description": "Hide the desktop Activity Bar below the shared breakpoint and expose all panel and standalone-view destinations through an accessible, catalog-driven mobile menu while preserving panel coupling and draft state.\n\nAcceptance Criteria:\n- Desktop Activity Bar is absent below 768px and unchanged above it.\n- All required destinations are reachable.\n- Menu targets are at least 44px high.\n- Focus is trapped and restored correctly.\n- 320px and 390px journeys have no horizontal document overflow.\n\nVerification:\n- Run mobile menu and viewport unit tests, then the UX browser smoke.",
+        "type": "feature",
+        "priority": "critical",
+        "status": "pending",
+        "tags": ["webui", "mobile", "navigation", "accessibility", "sprint-3"],
+        "specRequirementId": "R6",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 3,
+          "phase": "mobile-input",
+          "requirementIds": ["R6", "R8", "R11", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/components/MobileWorkbenchMenu.tsx",
+            "packages/webui/src/App.tsx",
+            "packages/webui/src/components/WorkbenchTopbar.tsx",
+            "packages/webui/src/hooks/useViewport.ts",
+            "packages/webui/src/lib/workbench-catalog.tsx",
+            "packages/webui/tests/components/mobile-workbench-menu.test.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/components/mobile-workbench-menu.test.tsx tests/hooks/useViewport.test.ts"
+        }
+      }
+    ],
+    [
+      "WUX-S3.2",
+      {
+        "id": "WUX-S3.2",
+        "title": "Add non-drag Activity Bar customization",
+        "description": "Provide native Move Up, Move Down, and Reset controls with focus retention, boundary disabling, locked-item semantics, immediate preview, persistence, and corrupt-value recovery. Pointer drag may remain as a desktop accelerator.\n\nAcceptance Criteria:\n- Keyboard-only and touch-equivalent interactions can reorder every movable entry.\n- Invalid directions are disabled.\n- Locked entries expose an accessible explanation and cannot move.\n- Focus follows the moved item; persistence and Reset are verified.\n\nVerification:\n- Run Activity Bar reorder and Calm-mode tests.",
+        "type": "feature",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "activity-bar", "keyboard", "accessibility", "sprint-3"],
+        "specRequirementId": "R7",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 3,
+          "phase": "mobile-input",
+          "requirementIds": ["R7", "R9", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/components/activity-bar/ActivityBarCustomizeDialog.tsx",
+            "packages/webui/src/components/activity-bar/index.tsx",
+            "packages/webui/src/components/activity-bar/tools-launcher.tsx",
+            "packages/webui/tests/components/activity-bar-reorder.test.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/components/activity-bar-reorder.test.tsx tests/components/activity-bar-calm.test.tsx"
+        }
+      }
+    ],
+    [
+      "WUX-S4.1",
+      {
+        "id": "WUX-S4.1",
+        "title": "Complete visible-copy localization and strengthen the leak gate",
+        "description": "Move remaining visible runtime copy to locale catalogs, use plural rules, and strengthen the existing English-leak gate only enough to cover currently missed literal forms without broad exemptions.\n\nAcceptance Criteria:\n- Chat, unread, restore, iteration, health, and readiness copy use catalog keys.\n- Seven locale catalogs retain identical shape.\n- Product names, protocol values, logs, and file paths are not translated.\n- No new English-leak exemption is added.\n\nVerification:\n- Run English-leak, catalog-integrity, and chat localization tests.",
+        "type": "refactor",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "i18n", "localization", "quality", "sprint-4"],
+        "specRequirementId": "R8",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 4,
+          "phase": "communication",
+          "requirementIds": ["R8", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/components/ChatView/index.tsx",
+            "packages/webui/src/components/ChatView/SubagentTranscriptView.tsx",
+            "packages/webui/src/components/CheckpointTimeline.tsx",
+            "packages/webui/src/components/FleetPanel.tsx",
+            "packages/webui/src/components/SystemHealthChip.tsx",
+            "packages/webui/src/components/WorkbenchTopbar.tsx",
+            "packages/webui/src/components/KanbanWorkbench.tsx",
+            "packages/webui/src/components/UserInputDialog.tsx",
+            "packages/webui/src/i18n/locales/*/activity.json"
+          ],
+          "verificationCommand": "bun --cwd packages/webui --bun run vitest run tests/lib/english-leak-boundaries.test.ts tests/i18n/catalog-integrity.test.ts tests/components/chat-view-localization.test.tsx"
+        }
+      }
+    ],
+    [
+      "WUX-S4.2",
+      {
+        "id": "WUX-S4.2",
+        "title": "Standardize asynchronous status feedback",
+        "description": "Audit duplicate live regions, align status and alert semantics, add completion announcements where busy text merely disappears, and retain reduced-motion equivalence.\n\nAcceptance Criteria:\n- Actions expected to exceed 100ms provide timely accepted or busy feedback.\n- Success and progress use polite semantics; time-sensitive failures use alerts.\n- Streaming text is not announced per token.\n- The same event is not announced twice without a documented reason.\n\nVerification:\n- Run the full WebUI component test suite and the UX browser smoke.",
+        "type": "refactor",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "accessibility", "status", "feedback", "sprint-4"],
+        "specRequirementId": "R9",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 4,
+          "phase": "communication",
+          "requirementIds": ["R9", "R10", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/components/PanelSuspense.tsx",
+            "packages/webui/src/components/Toaster.tsx",
+            "packages/webui/src/components/ChatView/index.tsx",
+            "packages/webui/src/components/CommandPalette/index.tsx",
+            "packages/webui/src/components/ConnectionBanner.tsx"
+          ],
+          "verificationCommand": "bun --cwd packages/webui run test"
+        }
+      }
+    ],
+    [
+      "WUX-S5.1",
+      {
+        "id": "WUX-S5.1",
+        "title": "Establish and enforce UX performance budgets",
+        "description": "Convert the Sprint 0 baseline into tolerant regression budgets for submit feedback, view shell feedback, palette ranking, transcript restore, and long-transcript interaction.\n\nAcceptance Criteria:\n- Budgets compare matched fixtures and avoid CI-flaky precision.\n- Material regressions fail while incidental variance remains tolerated.\n- Browser smokes execute sequentially.\n\nVerification:\n- Run UX shell and page-scroll browser smokes sequentially.",
+        "type": "test",
+        "priority": "high",
+        "status": "pending",
+        "tags": ["webui", "performance", "browser", "budget", "sprint-5"],
+        "specRequirementId": "R10",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 5,
+          "phase": "gate",
+          "requirementIds": ["R10", "R11", "R12"],
+          "expectedFiles": [
+            "packages/webui/src/lib/ux-performance.ts",
+            "packages/webui/tests/ux-shell-browser-smoke.mjs",
+            "packages/webui/tests/page-scroll-browser-smoke.mjs"
+          ],
+          "verificationCommand": "bun packages/webui/tests/ux-shell-browser-smoke.mjs",
+          "verificationCommands": [
+            "bun packages/webui/tests/ux-shell-browser-smoke.mjs",
+            "bun packages/webui/tests/page-scroll-browser-smoke.mjs"
+          ]
+        }
+      }
+    ],
+    [
+      "WUX-S5.2",
+      {
+        "id": "WUX-S5.2",
+        "title": "Run the final WebUI UX acceptance gate",
+        "description": "Execute the complete verification matrix, review the final diff, check file lengths, and classify any environment limitation as unverified rather than passed.\n\nAcceptance Criteria:\n- Every requirement R1-R12 has direct test or browser evidence.\n- No Critical or High accessibility or journey blocker remains in scope.\n- Typecheck, full WebUI tests, lint, build, source-policy gates, and browser smokes pass.\n- Changed hand-maintained files stay at or below 800 lines.\n\nVerification:\n- Run the full command set from the specification Verification Plan.",
+        "type": "test",
+        "priority": "critical",
+        "status": "pending",
+        "tags": ["webui", "ux", "acceptance", "quality-gate", "sprint-5"],
+        "specRequirementId": "R12",
+        "createdAt": 1792022400000,
+        "updatedAt": 1792022400000,
+        "metadata": {
+          "sprint": 5,
+          "phase": "gate",
+          "requirementIds": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8",
+            "R9",
+            "R10",
+            "R11",
+            "R12"
+          ],
+          "expectedFiles": [],
+          "verificationCommand": "bun --cwd packages/webui run test",
+          "verificationCommands": [
+            "bun --cwd packages/webui run typecheck",
+            "bun --cwd packages/webui run test",
+            "bun run lint",
+            "bun --cwd packages/webui run build",
+            "bun packages/webui/tests/ux-shell-browser-smoke.mjs",
+            "bun packages/webui/tests/page-scroll-browser-smoke.mjs",
+            "bun packages/webui/tests/mailbox-compose-browser-smoke.mjs"
+          ],
+          "requiredReviewers": ["critic"]
+        }
+      }
+    ]
+  ],
+  "edges": [
+    {
+      "id": "wux-s0dot1-s1dot1",
+      "from": "WUX-S0.1",
+      "to": "WUX-S1.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s1dot1-s1dot2",
+      "from": "WUX-S1.1",
+      "to": "WUX-S1.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s0dot1-s2dot1",
+      "from": "WUX-S0.1",
+      "to": "WUX-S2.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s2dot1-s2dot2",
+      "from": "WUX-S2.1",
+      "to": "WUX-S2.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s0dot1-s2dot3",
+      "from": "WUX-S0.1",
+      "to": "WUX-S2.3",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s2dot1-s3dot1",
+      "from": "WUX-S2.1",
+      "to": "WUX-S3.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s2dot1-s3dot2",
+      "from": "WUX-S2.1",
+      "to": "WUX-S3.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s0dot1-s4dot1",
+      "from": "WUX-S0.1",
+      "to": "WUX-S4.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s0dot2-s4dot2",
+      "from": "WUX-S0.2",
+      "to": "WUX-S4.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s1dot2-s4dot2",
+      "from": "WUX-S1.2",
+      "to": "WUX-S4.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s0dot2-s5dot1",
+      "from": "WUX-S0.2",
+      "to": "WUX-S5.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s1dot2-s5dot1",
+      "from": "WUX-S1.2",
+      "to": "WUX-S5.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s2dot2-s5dot1",
+      "from": "WUX-S2.2",
+      "to": "WUX-S5.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s3dot1-s5dot1",
+      "from": "WUX-S3.1",
+      "to": "WUX-S5.1",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s2dot3-s5dot2",
+      "from": "WUX-S2.3",
+      "to": "WUX-S5.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s3dot2-s5dot2",
+      "from": "WUX-S3.2",
+      "to": "WUX-S5.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s4dot1-s5dot2",
+      "from": "WUX-S4.1",
+      "to": "WUX-S5.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s4dot2-s5dot2",
+      "from": "WUX-S4.2",
+      "to": "WUX-S5.2",
+      "type": "depends_on"
+    },
+    {
+      "id": "wux-s5dot1-s5dot2",
+      "from": "WUX-S5.1",
+      "to": "WUX-S5.2",
+      "type": "depends_on"
+    }
+  ],
+  "rootNodes": ["WUX-S0.1", "WUX-S0.2"],
+  "createdAt": 1792022400000,
+  "updatedAt": 1792022400000
+}
