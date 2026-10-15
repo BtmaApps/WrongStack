@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-15T13:50:32.858Z
+**Generated:** 2026-10-15T13:51:02.599Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4968 |
-| Production source lines | 1102492 |
-| Test files | 4383 |
+| Production source files | 4969 |
+| Production source lines | 1102592 |
+| Test files | 4384 |
 | Workspace dependency edges | 137 |
-| Relative module edges | 16363 |
+| Relative module edges | 16364 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 323 | 326 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 481 | 424 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 723 | 485 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 724 | 486 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 124 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 297 | 293 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -121,6 +121,7 @@ None.
 | 752 | `packages/kanban/src/storage.ts` |
 | 751 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 750 | `packages/core/src/utils/context-evidence.ts` |
+| 750 | `packages/webui/src/components/InspectorPanel.tsx` |
 | 748 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 748 | `packages/core/src/types/config/skills-fleet-brain.ts` |
 | 747 | `packages/core/src/core/fallback-model.ts` |
@@ -132,7 +133,6 @@ None.
 | 741 | `packages/webui/src/components/TaskActivityTimeline.tsx` |
 | 740 | `packages/client/src/client.ts` |
 | 740 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
-| 740 | `packages/webui/src/hooks/ws-handlers.ts` |
 
 ## Exports only tests reference
 

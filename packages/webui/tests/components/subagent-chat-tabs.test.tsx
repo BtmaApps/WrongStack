@@ -114,7 +114,7 @@ describe('subagent chat tabs', () => {
     expect(screen.getByRole('tab', { name: /Alpha/ }).getAttribute('aria-selected')).toBe('true');
   });
 
-  it('shows each subagent provider and model in its tab and chat history', () => {
+  it('keeps provider and model metadata out of agent tabs while preserving transcript details', () => {
     const agent = { ...makeAgent('s1', { name: 'Alpha' }), provider: 'openai', model: 'gpt-6' };
     useFleetStore.setState({
       agents: new Map([
@@ -125,15 +125,24 @@ describe('subagent chat tabs', () => {
     });
 
     render(<AgentTabs />);
-    expect(screen.getByRole('tab', { name: /Alpha/ }).textContent).toContain('openai/gpt-6');
+    expect(screen.getByRole('tab', { name: /Alpha/ }).textContent).not.toContain('openai/gpt-6');
+    expect(screen.queryByText('openai/gpt-6')).toBeNull();
+
     render(<SubagentTranscriptView agentId="s1" />);
     expect(screen.getByTestId('subagent-provider-model').textContent).toBe('openai/gpt-6');
   });
 
   it('collapses subagents beyond the inline budget into the +N overflow trigger', () => {
+    const overflowAgent = {
+      ...makeAgent('s4'),
+      provider: 'anthropic',
+      model: 'claude-sonnet',
+    };
     const agents = new Map<string, SubagentView>([
       ['ldr', makeAgent('ldr', { name: 'Main' })],
-      ...['s1', 's2', 's3', 's4', 's5'].map((id) => [id, makeAgent(id)] as const),
+      ...['s1', 's2', 's3'].map((id) => [id, makeAgent(id)] as const),
+      ['s4', overflowAgent],
+      ['s5', makeAgent('s5')],
     ]);
     useFleetStore.setState({ agents, leaderId: 'ldr' });
 
@@ -145,6 +154,11 @@ describe('subagent chat tabs', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(4);
     const trigger = screen.getByTestId('agent-tabs-overflow');
     expect(trigger.textContent).toContain('+2');
+
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    for (const item of screen.getAllByTestId('agent-tabs-overflow-item')) {
+      expect(item.textContent).not.toContain('anthropic/claude-sonnet');
+    }
 
     // Focusing an agent that lives in the overflow keeps it visible: the
     // trigger takes the active styling while collapsed.

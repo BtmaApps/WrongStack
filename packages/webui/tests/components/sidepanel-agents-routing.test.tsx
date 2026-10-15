@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { AgentsPanel } from '../../src/components/SidePanel/AgentsPanel.js';
 import { DEFAULT_LANE_ID, useChatLanes } from '../../src/stores/chat-lanes.js';
@@ -128,7 +128,22 @@ describe('AgentsPanel data routing', () => {
 
     render(<AgentsPanel />);
 
+    expect(screen.getByRole('tree')).toBeDefined();
     expect(screen.getAllByText('Alpha')).toHaveLength(2);
+  });
+
+  it('keeps completed agents inspectable in the tree', () => {
+    const agents = new Map();
+    agents.set(
+      'done',
+      makeAgent('done', { name: 'Completed worker', status: 'completed', isLeader: true }),
+    );
+    useFleetStore.setState({ agents, leaderId: 'done' });
+
+    render(<AgentsPanel />);
+
+    expect(screen.getByRole('tree')).toBeDefined();
+    expect(screen.getByRole('treeitem', { name: /Completed worker/i })).toBeDefined();
   });
 
   it('keeps filter chrome separate between session tabs', async () => {

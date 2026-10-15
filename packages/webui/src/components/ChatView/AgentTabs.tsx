@@ -96,14 +96,6 @@ function SubagentTabButton({
         aria-hidden="true"
       />
       <span className="max-w-[10rem] truncate">{agent.name}</span>
-      {(agent.provider || agent.model) && (
-        <span
-          className="max-w-[12rem] truncate font-mono text-[9px] text-muted-foreground"
-          title={`${agent.provider ?? '?'}/${agent.model ?? '?'}`}
-        >
-          {agent.provider ?? '?'}/{agent.model ?? '?'}
-        </span>
-      )}
       {onRemove && (
         <button
           type="button"
@@ -248,14 +240,6 @@ export function AgentTabs() {
                       aria-hidden="true"
                     />
                     <span className="max-w-[12rem] flex-1 truncate">{a.name}</span>
-                    {(a.provider || a.model) && (
-                      <span
-                        className="max-w-[10rem] truncate font-mono text-[9px] text-muted-foreground"
-                        title={`${a.provider ?? '?'}/${a.model ?? '?'}`}
-                      >
-                        {a.provider ?? '?'}/{a.model ?? '?'}
-                      </span>
-                    )}
                     {active && (
                       <Check className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
                     )}

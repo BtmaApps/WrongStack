@@ -160,6 +160,7 @@ describe('Agents surface under calm chrome', () => {
   it('gives the fleet tab the status filter and clear-finished', () => {
     render(<InspectorPanel />);
     expect(screen.getByTestId('inspector-fleet-toolbar')).toBeDefined();
+    expect(screen.getByRole('tree')).toBeDefined();
     expect(screen.getByText('agent-done')).toBeDefined();
 
     fireEvent.click(screen.getByText('activity:agents.filterRunning'));
@@ -178,7 +179,10 @@ describe('Agents surface under calm chrome', () => {
     useLocalPrefs.setState({ chromeLevel: 'full' });
     render(<InspectorPanel />);
     expect(screen.queryByTestId('inspector-fleet-toolbar')).toBeNull();
-    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    expect(screen.queryByRole('tree')).toBeNull();
+    act(() => {
+      useLocalPrefs.setState({ chromeLevel: 'calm' });
+    });
   });
 
   it('the top-bar Agents trigger opens and closes the inspector, not the left panel', () => {

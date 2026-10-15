@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { openAgentsSurface } from '@/components/activity-bar/nav';
+import { AgentTree } from '@/components/agents/AgentTree';
 import { EventTimeline, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui';
 import { FleetAgentRow } from '@/components/ui/fleet-agent-row';
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
@@ -635,15 +636,25 @@ function FleetTabContent({
         )
       ) : (
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
-          {shownList.map((agent) => (
-            <FleetAgentRow
-              key={agent.id}
-              agent={agent}
-              isSelected={selectedAgentId === agent.id}
-              isLeader={agent.id === leaderId}
-              onClick={() => onSelectAgent(agent)}
+          {fullChrome ? (
+            shownList.map((agent) => (
+              <FleetAgentRow
+                key={agent.id}
+                agent={agent}
+                isSelected={selectedAgentId === agent.id}
+                isLeader={agent.id === leaderId}
+                onClick={() => onSelectAgent(agent)}
+              />
+            ))
+          ) : (
+            <AgentTree
+              agents={shownList}
+              leaderId={leaderId}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={onSelectAgent}
+              ariaLabel={t('activity:agentsPanel.agentRoster')}
             />
-          ))}
+          )}
         </div>
       )}
 

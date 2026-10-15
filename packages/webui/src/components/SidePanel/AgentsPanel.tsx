@@ -1,14 +1,15 @@
 /**
  * AgentsPanel — live fleet roster for the side panel.
  *
- * Running agents sort first; clicking a row opens the full AgentDetail
- * overlay (the old FlowSidebar wired the overlay but never the click).
+ * Running agents sort first in a session-scoped leader → workers tree.
+ * Selecting a row reveals its existing detail actions below the tree.
  */
 
-import { Bot, CheckCircle2, LayoutGrid, ListFilter, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Bot, LayoutGrid, ListFilter, Trash2 } from 'lucide-react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { AgentRosterCard } from '@/components/agents/AgentRosterCard';
+import { AgentDetailSection } from '@/components/agents/AgentDetailSection';
+import { AgentTree } from '@/components/agents/AgentTree';
 import { FleetSummaryBar } from '@/components/agents/FleetSummaryBar';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
@@ -27,8 +28,6 @@ type AgentFilter = 'all' | 'running' | 'completed' | 'failed';
 type AgentsPanelChrome = {
   filter: AgentFilter;
   expandedAgentId: string | null;
-  focusedIndex: number;
-  showHint: boolean;
 };
 
 const AGENTS_PANEL_NO_SESSION = '__no_session__';
@@ -65,9 +64,6 @@ export function AgentsPanel() {
 
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
-  const rosterRef = useRef<HTMLDivElement>(null);
-  const [showHint, setShowHint] = useState(true);
   const chromeKey = currentSessionId ?? AGENTS_PANEL_NO_SESSION;
   const chromeKeyRef = useRef(chromeKey);
 
@@ -77,23 +73,17 @@ export function AgentsPanel() {
       agentsPanelChromeBySession.set(chromeKeyRef.current, {
         filter,
         expandedAgentId,
-        focusedIndex,
-        showHint,
       });
     }
     const next = agentsPanelChromeBySession.get(chromeKey) ?? {
       filter: 'all',
       expandedAgentId: null,
-      focusedIndex: -1,
-      showHint: true,
     };
     disposedAgentPanelSessions.delete(chromeKey);
     chromeKeyRef.current = chromeKey;
     setFilter(next.filter);
     setExpandedAgentId(next.expandedAgentId);
-    setFocusedIndex(next.focusedIndex);
-    setShowHint(next.showHint);
-  }, [chromeKey, expandedAgentId, filter, focusedIndex, showHint]);
+  }, [chromeKey, expandedAgentId, filter]);
 
   const sessionFleetList = useMemo(
     () => fleetList.filter((a) => agentBelongsToSession(a.sessionId, currentSessionId)),
@@ -130,68 +120,12 @@ export function AgentsPanel() {
     setExpandedAgentId((prev) => (prev === id ? null : id));
   }, []);
 
-  // ── Keyboard navigation ─────────────────────────────────────────
-  const handleRosterKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const page = filteredList;
-      if (page.length === 0) return;
-
-      switch (e.key) {
-        case 'ArrowDown': {
-          e.preventDefault();
-          setFocusedIndex((prev) => {
-            const next = Math.min(prev + 1, page.length - 1);
-            setShowHint(false);
-            return next;
-          });
-          break;
-        }
-        case 'ArrowUp': {
-          e.preventDefault();
-          setFocusedIndex((prev) => {
-            const next = Math.max(prev - 1, 0);
-            setShowHint(false);
-            return next;
-          });
-          break;
-        }
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          if (focusedIndex >= 0 && focusedIndex < page.length) {
-            toggleAgent(page[focusedIndex]!.id);
-          }
-          break;
-        case 'Escape':
-          e.preventDefault();
-          if (expandedAgentId) {
-            setExpandedAgentId(null);
-          }
-          break;
-      }
-    },
-    [filteredList, focusedIndex, toggleAgent, expandedAgentId],
-  );
-
-  // Focus the card element when focusedIndex changes.
-  useEffect(() => {
-    if (focusedIndex >= 0 && rosterRef.current) {
-      const cards = rosterRef.current.querySelectorAll('[data-agent-card]');
-      const el = cards[focusedIndex] as HTMLElement | undefined;
-      el?.focus();
-    }
-  }, [focusedIndex]);
-
-  useEffect(() => {
-    if (focusedIndex >= filteredList.length) setFocusedIndex(-1);
-  }, [filteredList.length, focusedIndex]);
-
   // ── Empty states ──────────────────────────────────────────────────
-  // Three distinct states: no agents ever, filtered out, all finished.
-  // All read the SESSION roster — the global one counts other tabs' agents,
-  // which inflated this panel's stats and mis-fired its empty states.
-  const allFinished =
-    sessionFleetList.length > 0 && sessionFleetList.every((a) => a.status !== 'running');
+  // Both states read the SESSION roster — the global one counts other tabs'
+  // agents, which inflated this panel's stats and mis-fired its empty states.
+  const selectedAgent = expandedAgentId
+    ? filteredList.find((agent) => agent.id === expandedAgentId)
+    : undefined;
   const toolbar = (
     <div className="flex shrink-0 items-center gap-1 border-b border-border/70 px-2 py-1">
       {FILTER_OPTIONS.map((opt) => (
@@ -271,78 +205,30 @@ export function AgentsPanel() {
     );
   }
 
-  if (allFinished && filter === 'all') {
-    return (
-      <>
-        <FleetSummaryBar sessionId={currentSessionId ?? undefined} leaderName={leaderName} />
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-[hsl(var(--surface-2)/0.35)] p-3">
-          <div className="ws-surface flex max-w-[15rem] flex-col items-center gap-3 rounded-xl p-5 text-center text-muted-foreground">
-            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-success/10 text-success">
-              <CheckCircle2 className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {t('activity:agents.emptyFinishedTitle')}
-              </p>
-              <p className="mt-1 text-xs">{t('activity:agents.emptyFinishedHint')}</p>
-              <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
-                {t('activity:agents.emptyFinishedStats', {
-                  completed: sessionFleetList.filter((a) => a.status === 'completed').length,
-                  failed: sessionFleetList.filter(
-                    (a) => a.status === 'failed' || a.status === 'timeout',
-                  ).length,
-                })}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="shrink-0 border-t border-border/70 bg-card/75 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => clearFinishedAgents(currentSessionId)}
-            className="w-full flex items-center justify-center gap-1.5 h-7 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <Trash2 className="h-3 w-3" />
-            {t('activity:agents.clearFinished')}
-          </button>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       <FleetSummaryBar sessionId={currentSessionId ?? undefined} leaderName={leaderName} />
       {toolbar}
 
-      {/* Agent roster */}
-      <div
-        ref={rosterRef}
-        role="listbox"
-        aria-label={t('activity:agentsPanel.agentRoster')}
-        aria-activedescendant={
-          focusedIndex >= 0 ? `agent-card-${filteredList[focusedIndex]?.id}` : undefined
-        }
-        tabIndex={0}
-        onKeyDown={handleRosterKeyDown}
-        className="min-h-0 min-w-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.35)] p-2"
-      >
-        {showHint && focusedIndex === -1 && (
-          <div className="text-[9px] text-muted-foreground/60 text-center py-1 italic select-none">
-            {t('activity:agents.rosterHint')}
+      {/* Session-scoped leader → workers tree. */}
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.35)] p-2">
+        <AgentTree
+          key={currentSessionId ?? AGENTS_PANEL_NO_SESSION}
+          agents={filteredList}
+          leaderId={leaderId}
+          selectedAgentId={expandedAgentId}
+          onSelectAgent={(agent) => toggleAgent(agent.id)}
+          ariaLabel={t('activity:agentsPanel.agentRoster')}
+        />
+        {selectedAgent ? (
+          <div className="mt-2 border border-border/70 bg-card/60 pt-2">
+            <AgentDetailSection
+              agent={selectedAgent}
+              isExpanded
+              onOpenInspector={() => openFleetInspector(selectedAgent.id)}
+            />
           </div>
-        )}
-        {filteredList.map((a) => (
-          <AgentRosterCard
-            key={a.id}
-            agent={a}
-            isLeader={a.id === leaderId}
-            isExpanded={expandedAgentId === a.id}
-            isFocused={focusedIndex >= 0 && filteredList[focusedIndex]?.id === a.id}
-            onToggle={() => toggleAgent(a.id)}
-            onOpenInspector={() => openFleetInspector(a.id)}
-          />
-        ))}
+        ) : null}
       </div>
       <div className="shrink-0 border-t border-border/70 bg-card/75 px-3 py-2">
         <button
