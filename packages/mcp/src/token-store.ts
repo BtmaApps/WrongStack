@@ -257,12 +257,17 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
     signal?: AbortSignal | undefined,
   ): Promise<MCPStoredAuthorization | undefined> {
     if (!this.refreshPromise) {
-      // The refresh is shared by concurrent requests. It must not inherit one
-      // caller's signal: cancelling that request must not abort other callers
-      // that are awaiting the same token rotation.
-      this.refreshPromise = this.refreshInner(state).finally(() => {
+      const inFlight = this.refreshInner(state).finally(() => {
         this.refreshPromise = undefined;
       });
+      // The shared promise must always carry a handler: a caller whose signal
+      // is already aborted never attaches one (awaitWithAbort rejects
+      // immediately), and a transient refresh failure — the path that
+      // deliberately rethrows — would then surface as an unhandled rejection
+      // and take the host process down. Real callers still observe the failure
+      // through their own awaitWithAbort handlers below.
+      void inFlight.catch(() => undefined);
+      this.refreshPromise = inFlight;
     }
     return awaitWithAbort(this.refreshPromise, signal);
   }

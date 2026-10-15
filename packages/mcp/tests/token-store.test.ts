@@ -616,6 +616,57 @@ describe('MCP refreshing authorization provider', () => {
         await endpoint.close();
       }
     });
+
+    // Regression: a caller whose signal is already aborted never attached a
+    // handler to the shared refresh promise (awaitWithAbort's fast path
+    // rejects immediately), so a transient token-endpoint failure rejected
+    // the background refresh unhandled and took the host process down.
+    it('keeps a transient refresh failure handled when the caller signal is already aborted', async () => {
+      const fixture = await createFixture();
+      const endpoint = await tokenEndpoint(async () => ({ status: 503 }));
+      const value = expiringAuthorization(endpoint.origin);
+      await fixture.store.save(value);
+      const provider = new MCPRefreshingAuthorizationProvider({
+        serverName: value.serverName,
+        resource: value.resource,
+        store: fixture.store,
+      });
+      // Observe the background refresh's completion deterministically.
+      const refreshInner = vi.spyOn(
+        provider as never as {
+          refreshInner: (state: MCPStoredAuthorization) => Promise<MCPStoredAuthorization>;
+        },
+        'refreshInner',
+      );
+      const controller = new AbortController();
+      controller.abort();
+      const unhandled: unknown[] = [];
+      const onUnhandled = (err: unknown): void => {
+        unhandled.push(err);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      try {
+        await expect(
+          provider.getAccessToken({
+            serverName: value.serverName,
+            resource: value.resource,
+            signal: controller.signal,
+          }),
+        ).rejects.toThrow(/abort/i);
+        // Wait for the shared refresh to actually fail…
+        const firstRefresh = refreshInner.mock.results[0]?.value;
+        await firstRefresh?.catch(() => undefined);
+        // …then let the rejection surface if nothing handles it.
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(unhandled).toEqual([]);
+        expect(endpoint.calls()).toBeGreaterThanOrEqual(1);
+      } finally {
+        process.off('unhandledRejection', onUnhandled);
+        refreshInner.mockRestore();
+        await endpoint.close();
+      }
+    });
   });
 
   it('returns a future token without refreshing it', async () => {
