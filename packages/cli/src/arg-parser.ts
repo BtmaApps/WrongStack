@@ -119,6 +119,8 @@ export const BOOLEAN_FLAGS = new Set([
   // boolean at every call site, and leaving it out let it consume the next
   // positional — on a command whose whole purpose is to NOT delete.
   'dry-run',
+  // `wstack tools serve --allow-remote-callbacks`: a switch, never a value.
+  'allow-remote-callbacks',
   // Subcommand booleans. A boolean flag missing from this set makes `parseArgs`
   // swallow the FOLLOWING positional as its value (`rewind --all sess123` lost
   // the session id, `export --no-tools out.md` lost the output path), on top of

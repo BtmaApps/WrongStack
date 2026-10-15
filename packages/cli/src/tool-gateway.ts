@@ -277,16 +277,42 @@ const INDEX_READING_TOOL_NAMES: ReadonlySet<string> = new Set([
   'codebase-stats',
 ]);
 
+/** A remote-agent server starts at most one index catch-up per this window. */
+const REMOTE_CATCH_UP_INTERVAL_MS = 1_000;
+
 /** Whether a one-shot call to this tool first catches the index up with the disk. */
 export function readsCodebaseIndex(name: string): boolean {
   return INDEX_READING_TOOL_NAMES.has(name);
 }
 
 /** Why a one-shot caller cannot use this tool, or undefined when it can. */
-export function oneShotWithholdReason(name: string): 'session' | 'process' | undefined {
+function oneShotWithholdReason(name: string): 'session' | 'process' | undefined {
   if (SESSION_BOUND_TOOL_NAMES.has(name)) return 'session';
   if (PROCESS_BOUND_TOOL_NAMES.has(name)) return 'process';
   return undefined;
+}
+
+/**
+ * Why `name` is not callable through `gateway`, in words a caller can act on —
+ * one text for every surface (`wstack tools run`, `wstack tools serve`), since
+ * the flags it names are the same on both.
+ */
+export function withheldReason(gateway: ToolGateway, registry: ToolRegistry, name: string): string {
+  const bound = gateway.withheldBy(name);
+  if (bound === 'session') {
+    return `Tool "${name}" only works inside an agent session and is not exposed here.`;
+  }
+  if (bound === 'process') {
+    return `Tool "${name}" keeps its state in a long-lived process; use \`wstack mcp serve\` or \`wstack tools serve\` for it.`;
+  }
+  const tool = registry.get(name);
+  if (!tool) return `Unknown tool "${name}". List the exposed tools first.`;
+  const missing = (tool.capabilities ?? []).filter((c) => !gateway.capabilities.includes(c));
+  return gateway.mode === 'yolo' || missing.length === 0
+    ? `Tool "${name}" is withheld by policy.`
+    : `Tool "${name}" is withheld: it needs ${missing.join(', ')}. ` +
+        `Pass --allow ${missing.join(',')} (or --yolo for every capability); deleting outside ` +
+        'the project, git-history and download-and-run commands stay refused.';
 }
 
 export interface ToolGatewayOptions {
@@ -317,7 +343,16 @@ export interface ToolGatewayOptions {
    */
   oneShot?: boolean | undefined;
   /**
-   * One-shot only: bring the index up to date with the disk before an
+   * A long-lived server whose caller edits the tree with its own tools
+   * (`wstack tools serve`, called by an external agent): withhold the
+   * session-bound tools (process-bound ones work in a long-lived process), and
+   * catch the index up before EVERY index-reading call — the caller's edits
+   * are invisible to WrongStack, so "once per process" would go stale.
+   * Concurrent calls share one catch-up; at most one starts per second.
+   */
+  remoteAgent?: boolean | undefined;
+  /**
+   * One-shot / remote-agent: bring the index up to date with the disk before an
    * index-reading call ({@link readsCodebaseIndex}) — once per process, and
    * again after any mutating call. Incremental by mtime (~0.3s on an
    * unchanged 11k-file repo). Defaults to the real catch-up; injectable for tests.
@@ -345,10 +380,23 @@ export interface ToolGateway {
   readonly mode: 'safe' | 'granted' | 'yolo';
   /** The capability allowlist the policy evaluates against. */
   readonly capabilities: readonly string[];
+  /** The root the file tools are confined to; per-call `cwd` must lie inside it. */
+  readonly projectRoot: string;
   /** Exposed tools, in registry order. `list` and `call` always agree. */
   readonly tools: readonly Tool[];
   get(name: string): Tool | undefined;
-  call(name: string, input: Record<string, unknown>): Promise<ToolGatewayCallResult>;
+  /** Whether this surface withholds `name` for living in a session / the serving process. */
+  withheldBy(name: string): 'session' | 'process' | undefined;
+  /**
+   * `options.cwd`: this call's working directory (relative paths, shell
+   * commands). The caller validates it against {@link projectRoot}; the
+   * file tools stay confined to the root either way.
+   */
+  call(
+    name: string,
+    input: Record<string, unknown>,
+    options?: { cwd?: string | undefined },
+  ): Promise<ToolGatewayCallResult>;
   /** Abort in-flight calls and disconnect from the project daemons. */
   close(): Promise<void>;
 }
@@ -388,9 +436,13 @@ export async function createToolGateway(options: ToolGatewayOptions): Promise<To
     permissionPolicy,
     options.whitelist,
   );
-  const tools = options.oneShot
-    ? selected.filter((t) => oneShotWithholdReason(t.name) === undefined)
-    : selected;
+  const withheld = (name: string): boolean => {
+    const reason = oneShotWithholdReason(name);
+    if (options.oneShot) return reason !== undefined;
+    if (options.remoteAgent) return reason === 'session';
+    return false;
+  };
+  const tools = selected.filter((t) => !withheld(t.name));
   const byName = new Map(tools.map((t) => [t.name, t]));
 
   const catchUpIndex =
@@ -401,32 +453,53 @@ export async function createToolGateway(options: ToolGatewayOptions): Promise<To
   // One-shot callers edit the tree between calls without WrongStack seeing it;
   // `indexCurrent` is reset by every mutating call made through this gateway.
   let indexCurrent = false;
+  let lastCatchUpAt = 0;
+  let catchUpInFlight: Promise<void> | undefined;
+  const runCatchUp = async (): Promise<void> => {
+    try {
+      await catchUpIndex(projectRoot, controller.signal);
+    } catch (err) {
+      // Answer from the index as it is rather than not at all; the query
+      // itself reports a daemon that is truly unavailable.
+      options.onWarning?.(`codebase index catch-up failed: ${toErrorMessage(err)}`);
+    } finally {
+      indexCurrent = true;
+      lastCatchUpAt = Date.now();
+      catchUpInFlight = undefined;
+    }
+  };
+  const indexNeedsCatchUp = (): boolean => {
+    if (options.oneShot) return !indexCurrent;
+    if (options.remoteAgent) return Date.now() - lastCatchUpAt >= REMOTE_CATCH_UP_INTERVAL_MS;
+    return false;
+  };
 
   let counter = 0;
   return {
     mode,
     capabilities,
+    projectRoot,
     tools,
     get: (name) => byName.get(name),
-    async call(name, input) {
+    withheldBy: (name) => (withheld(name) ? oneShotWithholdReason(name) : undefined),
+    async call(name, input, callOptions) {
       const tool = byName.get(name);
       if (!tool) return { kind: 'not_exposed' };
-      if (options.oneShot && !indexCurrent && readsCodebaseIndex(name)) {
-        try {
-          await catchUpIndex(projectRoot, controller.signal);
-        } catch (err) {
-          // Answer from the index as it is rather than not at all; the query
-          // itself reports a daemon that is truly unavailable.
-          options.onWarning?.(`codebase index catch-up failed: ${toErrorMessage(err)}`);
-        }
-        indexCurrent = true;
+      if (readsCodebaseIndex(name) && (catchUpInFlight || indexNeedsCatchUp())) {
+        catchUpInFlight ??= runCatchUp();
+        await catchUpInFlight;
       }
       if (tool.mutating) indexCurrent = false;
       const use = { type: 'tool_use' as const, id: `srv_${++counter}`, name, input };
       // `sequential` applies only within this one-item batch. It does not
       // serialize requests from other callers, while the fresh Context
       // prevents their mutable run state from being shared.
-      const requestCtx = makeServeContext(cwd, projectRoot, controller.signal, restrictFsToRoot);
+      const requestCtx = makeServeContext(
+        callOptions?.cwd ?? cwd,
+        projectRoot,
+        controller.signal,
+        restrictFsToRoot,
+      );
       const batch = await executor.executeBatch([use], requestCtx, 'sequential');
       const output = batch.outputs[0];
       const result = output?.result;

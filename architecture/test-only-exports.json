@@ -198,9 +198,7 @@
       "hasRegisteredQuickTunnelConnection"
     ],
     "packages/cli/src/mcp-serve.ts": [
-      "loadSelectedMcpServeContent",
-      "parseToolsFlag",
-      "resolveServeHttpPort"
+      "loadSelectedMcpServeContent"
     ],
     "packages/cli/src/next-task-predictor.ts": [
       "buildPredictionPrompt",
@@ -809,10 +807,6 @@
       "INVALID_REQUEST",
       "MAX_REPORTED_SCHEMA_ERRORS",
       "METHOD_NOT_FOUND"
-    ],
-    "packages/mcp/src/server-http.ts": [
-      "hostHeaderIsAcceptable",
-      "originIsAcceptable"
     ],
     "packages/mcp/src/test-helpers/mock-server.ts": [
       "MockMCPServer"

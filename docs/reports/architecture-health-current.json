@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-15T13:38:09.019Z",
+  "generatedAt": "2026-10-15T13:39:03.491Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4965,
-    "testFiles": 4379,
-    "sourceLines": 1101634,
+    "sourceFiles": 4967,
+    "testFiles": 4380,
+    "sourceLines": 1102222,
     "workspaceEdges": 137,
-    "moduleEdges": 16353,
+    "moduleEdges": 16361,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 977
+    "testOnlyExports": 973
   },
   "errors": [],
   "packageCycles": [],
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 638,
-      "testFiles": 634,
+      "sourceFiles": 640,
+      "testFiles": 635,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 634
+          "testFiles": 635
         }
       ]
     },
@@ -5279,6 +5279,12 @@
       },
       {
         "file": "packages/cli/tests/tools-cli.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tools-serve-http.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27727,6 +27733,11 @@
       "relativeImports": 8
     },
     {
+      "file": "packages/cli/src/subcommands/handlers/per-subcommand-help-table.ts",
+      "lines": 753,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/tools/src/session-kanban.ts",
       "lines": 753,
       "relativeImports": 7
@@ -27760,11 +27771,6 @@
       "file": "packages/cli/src/boot/tui-session-resume.ts",
       "lines": 748,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/cli/src/subcommands/handlers/per-subcommand-help-table.ts",
-      "lines": 748,
-      "relativeImports": 1
     },
     {
       "file": "packages/core/src/types/config/skills-fleet-brain.ts",
@@ -28202,14 +28208,6 @@
     {
       "file": "packages/cli/src/mcp-serve.ts",
       "name": "loadSelectedMcpServeContent"
-    },
-    {
-      "file": "packages/cli/src/mcp-serve.ts",
-      "name": "parseToolsFlag"
-    },
-    {
-      "file": "packages/cli/src/mcp-serve.ts",
-      "name": "resolveServeHttpPort"
     },
     {
       "file": "packages/cli/src/next-task-predictor.ts",
@@ -29418,14 +29416,6 @@
     {
       "file": "packages/mcp/src/server-dispatch.ts",
       "name": "METHOD_NOT_FOUND"
-    },
-    {
-      "file": "packages/mcp/src/server-http.ts",
-      "name": "hostHeaderIsAcceptable"
-    },
-    {
-      "file": "packages/mcp/src/server-http.ts",
-      "name": "originIsAcceptable"
     },
     {
       "file": "packages/mcp/src/test-helpers/mock-server.ts",

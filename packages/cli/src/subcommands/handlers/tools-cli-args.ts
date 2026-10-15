@@ -12,6 +12,13 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 
 export class ToolsCliUsageError extends Error {}
 
+/** Where `wstack tools` writes and reads — injectable for tests. */
+export interface ToolsCliIo {
+  stdout(text: string): void;
+  stderr(text: string): void;
+  readStdin(): Promise<string>;
+}
+
 /** Upper bound for `--input` from stdin or `@file` — tool calls, not a payload upload. */
 export const TOOLS_CLI_MAX_INPUT_BYTES = 8 * 1024 * 1024;
 

@@ -134,9 +134,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/registry": {
-      "files": 160,
-      "typeOnly": 68,
-      "runtimeOrMixed": 95
+      "files": 162,
+      "typeOnly": 69,
+      "runtimeOrMixed": 96
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1417,
-      "typeOnly": 1250,
+      "files": 1418,
+      "typeOnly": 1251,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 791,
+      "files": 793,
       "typeOnly": 70,
-      "runtimeOrMixed": 752
+      "runtimeOrMixed": 754
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -10269,6 +10269,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/src/tool-gateway-http.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/src/tool-gateway.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10618,6 +10624,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/tools-cli.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/tools-serve-http.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -15670,6 +15682,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/tool-gateway-http.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -24675,6 +24693,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/tools-serve.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/tools-skills.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24718,6 +24742,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/theme.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/tool-gateway-http.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

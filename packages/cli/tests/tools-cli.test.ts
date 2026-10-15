@@ -6,7 +6,7 @@ import { builtinToolsPack } from '@wrongstack/tools';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/arg-parser.js';
 import { runToolsCli, type ToolsCliIo } from '../src/subcommands/handlers/tools-cli.js';
-import { createToolGateway, oneShotWithholdReason } from '../src/tool-gateway.js';
+import { createToolGateway } from '../src/tool-gateway.js';
 
 /** The exit codes are the machine contract — pinned as literals, not imported. */
 const TOOLS_CLI_EXIT = { ok: 0, toolFailed: 1, usage: 2, notExposed: 3, confirmRequired: 4 };
@@ -66,12 +66,23 @@ async function wstackTools(argv: string[], io: ToolsCliIo): Promise<number> {
 }
 
 describe('tool gateway', () => {
-  it('withholds exactly these session-bound built-ins (a rename must not re-expose one)', () => {
-    const sessionBound = registry()
+  it('withholds exactly these session-bound built-ins (a rename must not re-expose one)', async () => {
+    const reg = registry();
+    const gateway = await createToolGateway({
+      registry: reg,
+      config: { tools: {} },
+      cwd: root,
+      projectRoot: root,
+      yolo: true,
+      whitelist: null,
+      oneShot: true,
+    });
+    const sessionBound = reg
       .list()
       .map((t) => t.name)
-      .filter((name) => oneShotWithholdReason(name) === 'session')
+      .filter((name) => gateway.withheldBy(name) === 'session')
       .sort();
+    await gateway.close();
     expect(sessionBound).toEqual(
       [
         'clarify',

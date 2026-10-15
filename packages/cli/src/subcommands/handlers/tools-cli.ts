@@ -20,10 +20,10 @@ import type { Tool, ToolSettlement } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   createToolGateway,
-  oneShotWithholdReason,
   parseCapabilityGrants,
   resolveGatewayRegistry,
   type ToolGateway,
+  withheldReason,
 } from '../../tool-gateway.js';
 import type { SubcommandDeps } from '../contracts.js';
 import {
@@ -33,6 +33,7 @@ import {
   readInputText,
   readStream,
   TOOLS_CLI_MAX_INPUT_BYTES,
+  type ToolsCliIo,
   ToolsCliUsageError,
 } from './tools-cli-args.js';
 
@@ -44,11 +45,7 @@ const TOOLS_CLI_EXIT = {
   confirmRequired: 4,
 } as const;
 
-export interface ToolsCliIo {
-  stdout(text: string): void;
-  stderr(text: string): void;
-  readStdin(): Promise<string>;
-}
+export type { ToolsCliIo } from './tools-cli-args.js';
 
 const processIo: ToolsCliIo = {
   stdout: (text) => process.stdout.write(text),
@@ -78,6 +75,10 @@ export async function runToolsCli(
   deps: SubcommandDeps,
   io: ToolsCliIo = processIo,
 ): Promise<number> {
+  if (verb === 'serve') {
+    const { serveToolsCommand } = await import('./tools-serve.js');
+    return serveToolsCommand(args, deps, io);
+  }
   const flags = deps.flags ?? {};
   const json = flags['json'] === true;
   let allow: string[];
@@ -359,25 +360,12 @@ function exitCodeFor(settlement: ToolSettlement, isError: boolean): number {
 }
 
 function notExposed(gateway: ToolGateway, registry: ToolRegistry, name: string): CallOutcome {
-  const bound = oneShotWithholdReason(name);
-  const tool = registry.get(name);
-  let reason: string;
-  if (bound === 'session') {
-    reason = `Tool "${name}" only works inside an agent session and is not exposed here.`;
-  } else if (bound === 'process') {
-    reason = `Tool "${name}" keeps its state in a long-lived process; use \`wstack mcp serve\` for it.`;
-  } else if (!tool) {
-    reason = `Unknown tool "${name}". Run \`wstack tools list\`.`;
-  } else {
-    const missing = (tool.capabilities ?? []).filter((c) => !gateway.capabilities.includes(c));
-    reason =
-      gateway.mode === 'yolo' || missing.length === 0
-        ? `Tool "${name}" is withheld by policy.`
-        : `Tool "${name}" is withheld: it needs ${missing.join(', ')}. ` +
-          `Pass --allow ${missing.join(',')} (or --yolo for every capability); deleting outside ` +
-          'the project, git-history and download-and-run commands stay refused.';
-  }
-  return failure(name, 'not_exposed', reason, TOOLS_CLI_EXIT.notExposed);
+  return failure(
+    name,
+    'not_exposed',
+    withheldReason(gateway, registry, name),
+    TOOLS_CLI_EXIT.notExposed,
+  );
 }
 
 function failure(tool: string, error: string, message: string, code: number): CallOutcome {

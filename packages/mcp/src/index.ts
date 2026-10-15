@@ -145,6 +145,12 @@ export {
 } from './protocol.js';
 export { MCPRegistry, type MCPRegistryCatalog, type MCPRegistryOptions } from './registry.js';
 export {
+  // HTTP transport guards, shared with `wstack tools serve` so both tool-executing
+  // HTTP surfaces refuse the same cross-origin, rebinding and unauthenticated calls.
+  bearerTokenMatches,
+  hostHeaderIsAcceptable,
+  isJsonContentType,
+  isLoopbackHost,
   MCPServer,
   type MCPServerCallResult,
   type MCPServerLogger,
@@ -153,6 +159,7 @@ export {
   type MCPServerResource,
   type MCPServerTool,
   type MCPServerToolHost,
+  originIsAcceptable,
   type ServeHttpHandle,
   type ServeHttpOptions,
   type ServeStdioHandle,

@@ -367,6 +367,11 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
         description:
           "A short Markdown guide for an agent's instruction file (AGENTS.md, CLAUDE.md).",
       },
+      {
+        name: 'serve',
+        description:
+          'REST for an external agent: GET /v1/tools, POST /v1/tools/<name>/call; --port 0, token required.',
+      },
     ],
     seeAlso: 'wstack mcp serve (the same tools over MCP), wstack skills',
   },

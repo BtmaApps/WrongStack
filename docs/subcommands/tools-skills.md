@@ -52,6 +52,41 @@ Measured on this repository (≈ chars/4): `agent-guide` is ≈ 520 tokens, agai
 `tools/list` that `wstack mcp serve` hands an MCP client up front; one `describe` is ≈ 370 tokens
 and is paid only when asked.
 
+## `wstack tools serve` — the same tools over REST
+
+For an external agent that wants WrongStack's tools as its own: it lists them once, registers each
+as a local tool whose `execute` POSTs here, and hands its model the response body.
+
+```sh
+wstack tools serve --port 0 [--allow fs.write | --yolo] [--tools read,grep] [--allow-remote-callbacks]
+# first stdout line: {"url":"http://127.0.0.1:50570/","token":"…","mode":"safe","tools":22}
+```
+
+| Route | Answer |
+|---|---|
+| `GET /health` (no auth) | `{ "ok": true }` |
+| `GET /v1/tools` | `{ mode, capabilities, tools: [{ name, description, input_schema, capabilities, mutating }] }` |
+| `GET /v1/tools/<name>` | one tool, or `404 { ok:false, error:"not_exposed", message }` naming the grant it needs |
+| `POST /v1/tools/<name>/call` `{ input, call_id?, workdir?, callback? }` | `200 { call_id, tool, ok, settlement, duration_ms, content }` |
+
+- A tool outcome — success, tool error, invalid input, policy refusal — is HTTP 200 with `ok` and
+  `settlement`: to the calling model it is a tool result. Transport problems use 400 / 401 / 403 /
+  404 / 413 (4 MiB) / 415 (JSON only) / 429 (16 calls at once).
+- `workdir` (WrongForge sends its task's) becomes that call's working directory when it lies inside
+  the served project after resolving symlinks; outside it, or missing, the call is refused with
+  `400 bad_workdir`. Without it, relative paths resolve against the project root.
+- WrongForge's built-in gateway client works as is with `list_path: "/v1/tools"` and
+  `call_path: "/v1/tools/{name}/call"`.
+- `callback: { url, token? }` answers `202 { call_id, status: "accepted" }` and POSTs the same result
+  body to `url` (loopback only unless `--allow-remote-callbacks`; one attempt, 30 s).
+- A bearer token is always required (`WRONGSTACK_TOOLS_TOKEN`, or generated and printed once);
+  loopback bind by default; the same Origin / Host guards as `wstack mcp serve --http`.
+- Session-bound tools are withheld; process-bound ones (the `browser_*` suite, when registered)
+  stay, since the server is a long-lived process. Every index-reading call first catches the index up with the disk, because the caller edits the tree
+  with its own tools. Tools run in the server's project root, confined to it.
+- Closing the HTTP connection does not stop a running tool; it ends at its own timeout
+  (`tools.maxToolTimeoutMs`, default 300 s). Use a callback for long tools such as `test`.
+
 ## `wstack skills`
 
 Lists all available skills across all scopes.
