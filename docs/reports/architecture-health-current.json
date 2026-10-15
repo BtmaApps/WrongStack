@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-15T13:39:35.987Z",
+  "generatedAt": "2026-10-15T13:40:02.625Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4967,
-    "testFiles": 4382,
-    "sourceLines": 1102241,
+    "testFiles": 4383,
+    "sourceLines": 1102264,
     "workspaceEdges": 137,
     "moduleEdges": 16361,
     "nonCommandSlashImports": 0,
@@ -924,7 +924,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 297,
-      "testFiles": 292,
+      "testFiles": 293,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +950,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 292
+          "testFiles": 293
         }
       ]
     },
@@ -23645,6 +23645,12 @@
       },
       {
         "file": "packages/webui-server/tests/protocol-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-catalog-prototype-ids.test.ts",
         "projects": [
           "root-node"
         ]

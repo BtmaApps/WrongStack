@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1418,
-      "typeOnly": 1251,
+      "files": 1419,
+      "typeOnly": 1252,
       "runtimeOrMixed": 423
     },
     "@wrongstack/core/types/limits": {
@@ -22228,6 +22228,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/prompts-handlers.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/provider-catalog-prototype-ids.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

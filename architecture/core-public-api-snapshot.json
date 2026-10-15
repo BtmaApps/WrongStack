@@ -1672,7 +1672,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 17,
-      "sourceLines": 4057
+      "sourceLines": 4066
     },
     {
       "directory": "notifications",
@@ -1791,7 +1791,7 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 24,
-      "sourceLines": 4813
+      "sourceLines": 4819
     },
     {
       "directory": "types",

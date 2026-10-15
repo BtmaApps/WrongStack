@@ -27,7 +27,13 @@ export async function storeProviderKey(
   // `apiKeys` to it threw "object is not extensible" — every key set for an
   // already-configured provider failed. A missing provider is auto-created
   // with a best-guess type; users can configure details later.
-  const entry: Record<string, unknown> = { ...(providers[providerId] ?? { type: providerId }) };
+  // Own-key read: `providers` is a plain object, so `providerId` naming an
+  // `Object.prototype` member (`toString`, `constructor`, `__proto__`) made the
+  // inherited value read as an existing entry — truthy, but not a provider
+  // record — which skipped the `{ type }` fallback below and stored a typeless
+  // provider the factory then could not build.
+  const stored = Object.hasOwn(providers, providerId) ? providers[providerId] : undefined;
+  const entry: Record<string, unknown> = { ...(stored ?? { type: providerId }) };
   const existingKeys = Array.isArray(entry.apiKeys)
     ? [...(entry.apiKeys as Array<Record<string, unknown>>)]
     : [];

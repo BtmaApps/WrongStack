@@ -536,7 +536,16 @@ export class DefaultModelsRegistry implements ModelsRegistry {
 
   async getProvider(id: string): Promise<ResolvedProvider | undefined> {
     const payload = await this.load();
-    const p = payload[id];
+    // Own-key read. `payload` is an ordinary object (JSON-derived catalog plus
+    // merged overlays), so a bare `payload[id]` resolves inherited members for
+    // ids like `toString`, `valueOf`, `constructor` or `__proto__` — an id that
+    // names no catalog entry at all. `resolveProvider` then turns that
+    // prototype value into a truthy `ResolvedProvider` (`name: 'toString'`,
+    // empty models), so every existence-gated caller (`if (await
+    // getProvider(id))`, `getModel`, `suggestModel`, the WebUI model picker
+    // reaching this through a client-supplied `provider.models` id) accepts a
+    // provider that does not exist.
+    const p = Object.hasOwn(payload, id) ? payload[id] : undefined;
     return p ? this.resolveProvider(p) : undefined;
   }
 

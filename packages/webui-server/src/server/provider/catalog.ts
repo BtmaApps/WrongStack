@@ -34,7 +34,15 @@ async function resolveEnrichedModels(
     config?.apiKeys?.find((key) => key.label === config.activeKey) ?? config?.apiKeys?.[0];
   const accountOwned = active?.authMethod === 'oauth';
   const siblingCatalogKey = config?.family ?? providerId;
-  const siblingId = SIBLING_CATALOG[siblingCatalogKey];
+  // Own-key read: `providerId` arrives from a client frame, so an inherited
+  // Object member (`toString`, `constructor`, `valueOf`) must not read as a
+  // catalog alias — a bare bracket lookup returns the prototype value, which
+  // the line below then hands to `modelsRegistry.getProvider()` as a provider
+  // id. Same rule `handleProviderModels` applies to the host gate, and the
+  // `Object.hasOwn` convention used for every other untrusted key.
+  const siblingId = Object.hasOwn(SIBLING_CATALOG, siblingCatalogKey)
+    ? SIBLING_CATALOG[siblingCatalogKey]
+    : undefined;
   const sibling =
     siblingId && siblingId !== providerId
       ? await modelsRegistry.getProvider(siblingId).catch(() => undefined)

@@ -103,6 +103,36 @@ describe('DefaultModelsRegistry', () => {
     expect(providers.map((p) => p.id).sort()).toEqual(['anthropic', 'google', 'mistral']);
   });
 
+  it.each(['toString', 'valueOf', 'constructor', 'hasOwnProperty', '__proto__'])(
+    'resolves the absent id "%s" to undefined instead of an inherited member',
+    async (id) => {
+      // Regression: `getProvider` read `payload[id]` with a bare bracket
+      // lookup. `payload` is an ordinary object, so a prototype key named no
+      // catalog entry at all and `resolveProvider` turned the inherited value
+      // into a truthy provider (`name: 'toString'`, empty models) — so every
+      // existence-gated caller accepted a provider that does not exist,
+      // including a client-supplied id reaching this through `provider.models`.
+      const reg = new DefaultModelsRegistry({ cacheFile, seed: SAMPLE });
+      expect(await reg.getProvider(id)).toBeUndefined();
+      expect(await reg.getModel(id, 'anthropic-test-model')).toBeUndefined();
+      expect(await reg.suggestModel(id)).toBeUndefined();
+    },
+  );
+
+  it('still resolves a catalog entry whose id is a prototype key', async () => {
+    // The own-key guard must not over-block: an id that really is in the
+    // catalog resolves even when it shadows an Object.prototype member.
+    const reg = new DefaultModelsRegistry({
+      cacheFile,
+      seed: {
+        toString: { id: 'toString', name: 'Literal toString provider', models: {} },
+      } satisfies ModelsDevPayload,
+    });
+    const provider = await reg.getProvider('toString');
+    expect(provider?.id).toBe('toString');
+    expect(provider?.name).toBe('Literal toString provider');
+  });
+
   it('classifies providers into families', async () => {
     const reg = new DefaultModelsRegistry({ cacheFile, seed: SAMPLE });
     const a = await reg.getProvider('anthropic');
