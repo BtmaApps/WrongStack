@@ -54,16 +54,27 @@ export function handleProviderCatalogMessage(
   return;
 }
 
-/** `providers.saved` — request model lists for saved providers not fetched yet. */
+/** `providers.saved` — invalidate and re-fetch model lists after auth changes. */
 export function handleProvidersSavedMessage(
   message: ServerMessage,
   deps: MessageHandlerDeps,
 ): void {
-  const { activeModelRef, requestedModelsRef, requestProviderModels } = deps;
+  const { activeModelRef, requestedModelsRef, requestProviderModels, setModels } = deps;
   const payload = message.payload ?? {};
+  const savedIds = parseSavedProviderIds(payload);
+  const liveIds = new Set(savedIds);
+  const currentProvider = activeModelRef.current?.provider;
+  if (currentProvider) liveIds.add(currentProvider);
+
+  // providers.saved is broadcast after every auth mutation, including OAuth
+  // model discovery. A provider id can stay identical while its model list
+  // changes, so the one-shot request guard must be invalidated explicitly.
+  for (const id of liveIds) requestedModelsRef.current.delete(id);
+  setModels({});
+
   for (const id of providersNeedingModels({
-    savedIds: parseSavedProviderIds(payload),
-    currentProvider: activeModelRef.current?.provider,
+    savedIds,
+    currentProvider,
     alreadyRequested: requestedModelsRef.current,
   })) {
     requestProviderModels(id);

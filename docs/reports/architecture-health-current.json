@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-15T13:39:03.491Z",
+  "generatedAt": "2026-10-15T13:39:35.987Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4967,
-    "testFiles": 4380,
-    "sourceLines": 1102222,
+    "testFiles": 4382,
+    "sourceLines": 1102241,
     "workspaceEdges": 137,
     "moduleEdges": 16361,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 640,
-      "testFiles": 635,
+      "testFiles": 636,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 635
+          "testFiles": 636
         }
       ]
     },
@@ -696,7 +696,7 @@
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
       "sourceFiles": 127,
-      "testFiles": 93,
+      "testFiles": 94,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -717,7 +717,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 93
+          "testFiles": 94
         }
       ]
     },
@@ -2519,6 +2519,12 @@
       },
       {
         "file": "packages/cli/tests/cli-eternal-flag.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/cli-execute-builder-provider-picker-wiring.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16565,6 +16571,12 @@
       },
       {
         "file": "packages/simpleui/tests/markdown-link-attributes.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/message-handler-catalog-auth-refresh.test.ts",
         "projects": [
           "root-node"
         ]

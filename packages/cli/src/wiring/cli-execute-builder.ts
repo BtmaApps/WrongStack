@@ -282,7 +282,10 @@ export async function runCliExecution(params: {
         getPickableProviders: createPickableProvidersLoader({
           modelsRegistry,
           logger,
-          getConfig: () => config,
+          // Auth can mutate providers in-process or through another surface.
+          // Read the live store after the credential watcher has merged the
+          // change; the `config` parameter is only the boot-time snapshot.
+          getConfig: () => configStore.get(),
         }),
         switchProviderAndModel,
         onModelContextResolved: (providerId, modelId, maxContext) => {

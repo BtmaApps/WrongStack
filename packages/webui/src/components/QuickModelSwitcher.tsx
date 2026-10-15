@@ -133,7 +133,12 @@ export function QuickModelSwitcher() {
     const client = getWSClient(wsUrl);
     const offSaved = client.on('providers.saved', (msg: WSServerMessage) => {
       const p = msg.payload as { providers: SavedProvider[] };
-      setSaved(p.providers ?? []);
+      const profiles = p.providers ?? [];
+      // A providers.saved broadcast follows every auth mutation. Invalidate
+      // every cached list rather than keying only on provider id: OAuth and
+      // local discovery can change a provider's models without changing its id.
+      setModelsByProvider({});
+      setSaved(profiles);
     });
     const offModels = client.on('provider.models', (msg: WSServerMessage) => {
       const p = msg.payload as { provider: string; models: CatalogModel[] };

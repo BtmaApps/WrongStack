@@ -183,6 +183,19 @@ describe('catalogue loading', () => {
     expect(listProviderModels.mock.calls.filter((c) => c[0] === 'openai')).toHaveLength(1);
   });
 
+  it('re-fetches models when auth updates an existing provider id', async () => {
+    render(<QuickModelSwitcher />);
+    act(() => useUIStore.getState().setModelSwitcherOpen(true));
+    emit('providers.saved', { providers: [provider('openai')] });
+    await waitFor(() => expect(listProviderModels).toHaveBeenCalledWith('openai'));
+    emit('provider.models', { provider: 'openai', models: [model('gpt-old')] });
+    listProviderModels.mockClear();
+
+    emit('providers.saved', { providers: [provider('openai')] });
+
+    await waitFor(() => expect(listProviderModels).toHaveBeenCalledWith('openai'));
+  });
+
   it('tolerates a saved-providers frame with no list', async () => {
     render(<QuickModelSwitcher />);
     act(() => useUIStore.getState().setModelSwitcherOpen(true));
