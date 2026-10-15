@@ -60,6 +60,20 @@ export class WorktreeManager extends WorktreeManagerCore {
     }
 
     const baseBranch = opts.baseBranch ?? (await this.detectBaseBranch());
+    // A concurrent allocate() for the same owner can be in flight: its
+    // base-branch detection above is an await, so both calls can pass the
+    // reuse check before either registers its handle. Re-check now — minting
+    // a second checkout and branch would orphan the first one (its dir and
+    // branch on disk, absent from `handles`, invisible to release()).
+    const claimed = this.handles.get(ownerId);
+    if (
+      claimed &&
+      (claimed.status === 'allocating' ||
+        claimed.status === 'active' ||
+        claimed.status === 'committing')
+    ) {
+      return claimed;
+    }
 
     const handle: WorktreeHandle = {
       id: slug,

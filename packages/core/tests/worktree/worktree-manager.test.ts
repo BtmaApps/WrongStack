@@ -797,6 +797,43 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
     }
   }, 120_000);
 
+  it('gated concurrent allocate() for one owner shares a single checkout', async () => {
+    // Regression: the reuse guard ran before the base-branch detection await,
+    // so two concurrent allocate() calls for the same owner both passed it
+    // and each minted its own worktree + branch — the first checkout/branch
+    // orphaned on disk and invisible to release(). The guard re-runs after
+    // the await, so the second caller adopts the in-flight handle.
+    const calls: Array<{ args: string[]; cwd: string }> = [];
+    let parked: (() => void) | undefined;
+    const wm = new WorktreeManager({
+      projectRoot: PROJ,
+      run: async (args, cwd): Promise<RunResult> => {
+        calls.push({ args, cwd });
+        if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref' && !parked) {
+          // Park the first caller inside base-branch detection until the test
+          // confirms the second call is in flight.
+          await new Promise<void>((resolve) => {
+            parked = resolve;
+          });
+        }
+        return { code: 0, stdout: 'main', stderr: '' };
+      },
+    });
+    const first = wm.allocate('owner', { slugHint: 'gated' });
+    await new Promise((r) => setImmediate(r));
+    expect(parked).toBeTypeOf('function');
+    const second = wm.allocate('owner', { slugHint: 'gated' });
+    await new Promise((r) => setImmediate(r));
+    parked?.();
+    const [h1, h2] = await Promise.all([first, second]);
+
+    expect(h1.id).toBe(h2.id);
+    const adds = calls.filter((c) => c.args[0] === 'worktree' && c.args[1] === 'add');
+    expect(adds).toHaveLength(1);
+    expect(wm.list()).toHaveLength(1);
+    expect(wm.get('owner')?.status).toBe('active');
+  });
+
   it('commitAll on a clean tree returns committed:false', async () => {
     const base = await makeRepo();
     try {
