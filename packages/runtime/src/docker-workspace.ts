@@ -190,6 +190,15 @@ export async function runDockerWorkspace(
     if (!isCredentialEnvName(name))
       throw new Error(`Environment variable cannot be forwarded: ${name}`);
   }
+  const forwardedEnv = {
+    ...Object.fromEntries(
+      envNames.flatMap((name) => {
+        const value = process.env[name];
+        return value === undefined ? [] : [[name, value]];
+      }),
+    ),
+    ...options.env,
+  };
   if (options.network !== undefined && options.network !== 'bridge' && options.network !== 'none')
     throw new Error('Unsupported Docker network');
   options.signal?.throwIfAborted();
@@ -217,7 +226,7 @@ export async function runDockerWorkspace(
       signal: options.signal,
       timeoutMs: duration,
       onOutput,
-      env: options.env,
+      env: forwardedEnv,
     });
     options.signal?.throwIfAborted();
     if (result.code !== 0)
@@ -389,7 +398,7 @@ export async function runDockerWorkspace(
     }
     const execution = await runner(
       ['exec', '--workdir', '/workspace', name, options.command, ...(options.args ?? [])],
-      { signal: options.signal, timeoutMs, onOutput: options.onOutput, env: options.env },
+      { signal: options.signal, timeoutMs, onOutput: options.onOutput, env: forwardedEnv },
     );
     options.signal?.throwIfAborted();
     const patch = await run(

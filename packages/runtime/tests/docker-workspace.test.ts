@@ -6,6 +6,7 @@ import { type DockerCommandRunner, runDockerWorkspace } from '../src/docker-work
 
 const dirs: string[] = [];
 afterEach(async () => {
+  vi.unstubAllEnvs();
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 async function fixture() {
@@ -96,6 +97,27 @@ describe('Docker workspace ownership', () => {
     });
     expect(result.patch).toContain('diff --git');
     expect(await readFile(path.join(dir, 'original.txt'), 'utf8')).toBe('unchanged');
+  });
+  it('forwards only explicitly selected host environment values to Docker', async () => {
+    vi.stubEnv('BUGHUNT_SELECTED_TOKEN', 'selected-value');
+    vi.stubEnv('BUGHUNT_UNSELECTED_TOKEN', 'must-not-leak');
+    const { dir, runner } = await fixture();
+    let createEnv: Readonly<Record<string, string>> | undefined;
+    const wrapped: DockerCommandRunner = async (args, opts) => {
+      if (args[0] === 'create') createEnv = opts.env;
+      return runner(args, opts);
+    };
+
+    await runDockerWorkspace({
+      projectRoot: dir,
+      image: 'trusted:1',
+      command: 'wstack',
+      envNames: ['BUGHUNT_SELECTED_TOKEN'],
+      runner: wrapped,
+    });
+
+    expect(createEnv?.BUGHUNT_SELECTED_TOKEN).toBe('selected-value');
+    expect(createEnv?.BUGHUNT_UNSELECTED_TOKEN).toBeUndefined();
   });
   it('does not remove a container whose ownership probe fails', async () => {
     const { dir, runner, calls } = await fixture();
