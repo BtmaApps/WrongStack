@@ -8,11 +8,22 @@ const mocks = vi.hoisted(() => ({
   getActiveBuilder: vi.fn(),
   getTaskGraphId: vi.fn(),
   installedBridgeAgents: vi.fn((): string[] => []),
+  wrongForgeModels: vi.fn(
+    async (): Promise<{ models: string[]; default?: string } | undefined> => undefined,
+  ),
 }));
 
 vi.mock('../src/fleet/acp-wrongstack-bridge.js', () => ({
   installedBridgeAgents: mocks.installedBridgeAgents,
 }));
+
+vi.mock('../src/fleet/wrongforge-runner.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/fleet/wrongforge-runner.js')>();
+  // The real wrongForgeModels reads the machine (~/.wrongforge key, a live
+  // server, the info cache), which would leak this host's WrongForge into
+  // assertions about the provider list.
+  return { ...actual, wrongForgeModels: mocks.wrongForgeModels };
+});
 
 vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
@@ -128,5 +139,41 @@ describe('cli-main helpers', () => {
       { id: 'zai', family: 'openai', models: ['glm-5'] },
       { id: 'acp', family: 'acp', models: ['claude-code'], modelsLabel: 'ACP agent as leader' },
     ]);
+  });
+
+  it("offers the machine's WrongForge as the `wrongforge` provider after the catalog and ACP entries", async () => {
+    mocks.buildPickableProviders.mockReturnValue([
+      { id: 'zai', family: 'openai', models: ['glm-5'] },
+    ]);
+    mocks.installedBridgeAgents.mockReturnValueOnce(['claude-code']);
+    mocks.wrongForgeModels.mockReturnValueOnce(
+      Promise.resolve({ models: ['claude-sonnet-5-5'], default: 'claude-sonnet-5-5' }),
+    );
+    const loader = createPickableProvidersLoader({
+      modelsRegistry: {} as never,
+      logger: {} as never,
+      getConfig: () => ({ acp: {} }) as never,
+    });
+    await expect(loader()).resolves.toEqual([
+      { id: 'zai', family: 'openai', models: ['glm-5'] },
+      { id: 'acp', family: 'acp', models: ['claude-code'], modelsLabel: 'ACP agent as leader' },
+      {
+        id: 'wrongforge',
+        family: 'wrongforge',
+        models: ['claude-sonnet-5-5'],
+        modelsLabel: 'WrongForge as leader',
+      },
+    ]);
+  });
+
+  it('keeps the catalog list when the machine has no WrongForge', async () => {
+    mocks.buildPickableProviders.mockReturnValue([{ id: 'provider' }]);
+    const loader = createPickableProvidersLoader({
+      modelsRegistry: {} as never,
+      logger: {} as never,
+      getConfig: () => ({}) as never,
+    });
+    await expect(loader()).resolves.toEqual([{ id: 'provider' }]);
+    expect(mocks.wrongForgeModels).toHaveBeenCalled();
   });
 });

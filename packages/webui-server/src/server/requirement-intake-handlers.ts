@@ -122,8 +122,22 @@ async function readJsonBody(
     });
     req.on('end', () => {
       if (failed) return;
+      if (data.trim().length === 0) {
+        resolve({});
+        return;
+      }
       try {
-        resolve(data.trim().length === 0 ? {} : (JSON.parse(data) as Record<string, unknown>));
+        const parsed: unknown = JSON.parse(data);
+        // A parsed `null` is indistinguishable from the fail() sentinel that
+        // every handler reads as "error response already sent", so a null or
+        // primitive body would hang the connection without any response.
+        // Enforce the declared Record contract; arrays stay accepted (they
+        // always were) and non-objects are rejected as malformed bodies.
+        if (parsed === null || typeof parsed !== 'object') {
+          fail('Request body must be a JSON object');
+          return;
+        }
+        resolve(parsed as Record<string, unknown>);
       } catch {
         fail('Request body is not valid JSON');
       }

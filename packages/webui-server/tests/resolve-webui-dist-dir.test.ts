@@ -32,21 +32,35 @@ vi.mock('../src/server/frontend-static-serve.js', async (importOriginal) => ({
  */
 vi.mock('node:module', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:module')>();
+  const intercepted = (id: string): void => {
+    if (id === '@wrongstack/webui') {
+      throw Object.assign(new Error(`Cannot find module '${id}'`), {
+        code: 'MODULE_NOT_FOUND',
+      });
+    }
+  };
   return {
     ...actual,
     default: actual,
     createRequire: (from: string | URL) => {
       const real = actual.createRequire(from);
-      return {
-        resolve: (id: string) => {
-          if (id === '@wrongstack/webui') {
-            throw Object.assign(new Error(`Cannot find module '${id}'`), {
-              code: 'MODULE_NOT_FOUND',
-            });
-          }
-          return real.resolve(id);
-        },
-      };
+      // The mocked createRequire must return a CALLABLE require. CJS interop
+      // of transitive dependencies (e.g. the `ws` package doing
+      // require('events')) invokes the result as a function, so a bare
+      // `{ resolve }` object breaks the whole server-runtime import graph
+      // with "__require is not a function". Only the one specifier is
+      // intercepted — as a call and via .resolve — everything else
+      // delegates to the real resolver so the rest of the graph works.
+      const requireFn = ((id: string) => {
+        intercepted(id);
+        return real(id);
+      }) as NodeRequire;
+      requireFn.resolve = ((id: string, options?: { paths?: string[] }) => {
+        intercepted(id);
+        return real.resolve(id, options);
+      }) as typeof real.resolve;
+      requireFn.resolve.paths = (request: string) => real.resolve.paths(request);
+      return requireFn;
     },
   };
 });

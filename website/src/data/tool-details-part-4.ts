@@ -429,12 +429,14 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
       {
         name: 'browserSessionId',
         type: 'string',
-        description: 'Existing live browser session opened by this agent in this conversation.',
+        description:
+          'Existing live browser session opened by this agent in this conversation. Required unless path is given.',
       },
       {
         name: 'path',
         type: 'string',
-        description: 'Existing file relative to the project root.',
+        description:
+          'Existing file relative to the project root. Required unless browserSessionId is given.',
       },
       {
         name: 'title',
