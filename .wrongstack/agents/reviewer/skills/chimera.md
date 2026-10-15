@@ -1,22 +1,21 @@
-## Value contracts
+## Browser policy
 
-- For `spec.model ?? fallback`, verify blank normalization to `undefined` via trim + `|| undefined`, as in `resolveRefinerTargetSpecs` in `packages/core/src/execution/refiner-target.ts`; `??` does not catch empty strings.
-- In never-throws provider wrappers, require try/catch around `onError` inside notification; observer throws must neither escape nor trigger duplicate `provider_error` notifications.
+- In `packages/tools/src/browser/tools.ts`, treat `browserPrivateOrigins(root)` from `./policy.js` as the merged source for project `/browser allow` origins and `WRONGSTACK_BROWSER_PRIVATE_ORIGINS`.
+- Before assessing “takes effect immediately in existing sessions” in `docs/browser-automation.md`, trace whether the sibling slash command or `BrowserSessionManager` in `packages/tools/src/browser/manager.ts` refreshes `managerFor`’s per-root cached snapshot; `tools.ts` alone is insufficient.
+- Accept `timeoutMs` with `managesOwnTimeout: true` for browser tools as the established multi-minute subprocess convention used by `packages/tools/src/exec.ts`, `bash.ts`, and `pwsh.ts`.
 
-## SessionEvent rollouts
+## Dependencies and exports
 
-- Grep new event literals such as `enhance_usage` repo-wide; verify one writer per surface and one fold per consumer. Check types in `packages/core/src/types/session-events.ts`, writers in `packages/tui/src/submit-prompt-refinement.ts` and `packages/webui-server/src/server/model-operations.ts`, and folds in `session-summary-tracker.ts`, `session-store/summary-builder.ts`, and `session-store/load-session-data.ts`. Require mutually exclusive full-replay and legacy `else if` branches within each load path; do not mistake sibling surface writers for duplicate folds.
+- For dependency removal from `package.json`, attribute surviving lockfile references by their owning importer block, never line proximity. Confirm that importer’s dependency set against the relevant package, using siblings such as select/separator/tabs. pnpm removes fully unused resolutions, while references owned by another package are legitimate.
+- Treat `pnpm-workspace.yaml` `overrides:` as authoritative. Root `package.json` top-level `overrides` is inert under pnpm unless expressed as `pnpm.overrides`. Pair same-day release floors with `minimumReleaseAgeExclude` under `minimumReleaseAge`.
+- Before removing an entry from `architecture/test-only-exports.json`, grep the symbol repo-wide for static imports. Dynamic access such as `linuxGuard.getBlockedKillMessage(...)` in `packages/tools/tests/bash-kill-guard-targets.test.ts` does not make the export statically imported, so allowlist removal can be required bookkeeping.
+- Before crediting `treeKill` from `@wrongstack/core/utils/tree-kill`, inspect both its source export and `packages/core/package.json` `exports`; if either remains unread, identify it as remaining work rather than issuing an unqualified verdict.
 
-## Imports and parsing
+## Timers and event rollouts
 
-- Before crediting `treeKill` from `@wrongstack/core/utils/tree-kill`, check the source export signature and `packages/core/package.json` `exports`. If forced to conclude without reading either, name the unread anchor in remaining work rather than issue an unqualified clean verdict.
-- Verify synthetic-line round-trips: `splitTableFormDependency` in `packages/techstack/src/adapters/rust.ts` rewrites `[section.key]` into `"key" = { … }`. Check quote handling, comment stripping, and bracket depth in `parseTomlKeyValue` in `packages/techstack/src/adapters/parse-utils.ts`; quoted-key stripping makes this rewrite safe.
+- Require env-configured `setTimeout`/`setInterval` durations to follow `Number.isFinite(x) && x >= min ? Math.min(x, 2_147_483_647) : DEFAULT`. Node converts larger delays to 1 ms. Compare `mailbox-project-server*.ts`, `session-catalog/project-server.ts`, `kanban/src/server/project-server.ts`, `sage/src/project-server.ts`, and `tools/src/codebase-index/project-server.ts`.
+- For new `SessionEvent` literals such as `enhance_usage`, grep repo-wide and verify one writer per surface and one fold per consumer. Check `packages/core/src/types/session-events.ts`, `packages/tui/src/submit-prompt-refinement.ts`, `packages/webui-server/src/server/model-operations.ts`, `session-summary-tracker.ts`, `session-store/summary-builder.ts`, and `session-store/load-session-data.ts`; full-replay and legacy branches must be mutually exclusive.
 
-## Dependency overrides
+## Output
 
-- Use `pnpm-workspace.yaml` `overrides:` as authoritative; root `package.json` top-level `overrides` is inert under pnpm, unlike `pnpm.overrides`. For same-day release floors, verify matching `minimumReleaseAgeExclude` under `minimumReleaseAge` to avoid `pnpm install` resolution failures.
-
-## Adaptation and rollback
-
-- For side-request reuse of `adaptDocumentsForModel` in `packages/core/src/utils/document-blocks.ts`, including `packages/core/src/core/next-steps-required.ts`, compare capability predicates against the main path, not comments. Verify idempotence and return of the original input array when unchanged.
-- When `undoDeadCodeFix(root, res.backupId!)` follows `applyDeadCodeFixes` with `rolledBack: true`, while sibling tests require `listDeadCodeBackups(root)` to return to baseline, inspect conditional backup retention in `packages/tools/src/dead-code/fix.ts`’s second-half apply/rollback/undo region before judging either test.
+- Return `{"findings": []}` only after these project-specific checks pass.
