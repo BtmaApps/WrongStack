@@ -389,6 +389,13 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
         return;
       }
       await persist(sessionId);
+    } catch (err) {
+      // A queue read failure must not escape this function: QueueStore.read()
+      // throws rather than reporting an empty queue, and every real call site
+      // is fire-and-forget (after a turn ends, after an add, after queue.get)
+      // — the rejection would take the host process down. The prompts stay on
+      // disk untouched and the next drain retries the read.
+      deps.warn?.(`queued prompts for ${sessionId} not drained: ${toErrorMessage(err)}`);
     } finally {
       draining.delete(sessionId);
     }

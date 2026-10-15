@@ -18,6 +18,7 @@ import {
 } from '../src/server/session-prompt-queue.js';
 
 const commitFailure = vi.hoisted(() => ({ target: undefined as string | undefined }));
+const statFailure = vi.hoisted(() => ({ on: false }));
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
   const rename: typeof actual.rename = (from, to) => {
@@ -28,7 +29,15 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     }
     return actual.rename(from, to);
   };
-  return { ...actual, default: { ...actual, rename }, rename };
+  const stat: typeof actual.stat = (p, ...rest) => {
+    if (statFailure.on && String(p).endsWith('queue.json')) {
+      return Promise.reject(
+        Object.assign(new Error('Injected queue read failure'), { code: 'EIO' }),
+      ) as never;
+    }
+    return (actual.stat as typeof actual.stat)(p, ...(rest as []));
+  };
+  return { ...actual, default: { ...actual, rename, stat }, rename, stat };
 });
 
 type Outbound = { type: string; payload: unknown };
@@ -36,6 +45,7 @@ type Outbound = { type: string; payload: unknown };
 const dirs: string[] = [];
 afterEach(async () => {
   commitFailure.target = undefined;
+  statFailure.on = false;
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 
@@ -165,6 +175,50 @@ describe('createSessionPromptQueue', () => {
         (i) => i.text,
       ),
     ).toEqual(['front', 'second']);
+  });
+
+  it('a queue read failure during a fire-and-forget drain warns instead of rejecting', async () => {
+    // Regression: QueueStore.read() throws on a filesystem failure (a failed
+    // read must not be mistaken for an empty queue, or the in-memory state
+    // persists over it). drain() let that rejection escape, and every real
+    // call site is fire-and-forget (after each turn ends, after an add,
+    // after queue.get) — the unhandled rejection took the host process down.
+    const dir = await tempDir();
+    const warns: string[] = [];
+    const started: QueuedPrompt[] = [];
+    const queue = createSessionPromptQueue({
+      sessionsDir: dir,
+      isBusy: () => false,
+      startTurn: async (_sid, prompt) => {
+        started.push(prompt);
+        return true;
+      },
+      broadcast: () => {},
+      warn: (m) => warns.push(m),
+    });
+
+    statFailure.on = true;
+    const rejections: unknown[] = [];
+    const onUnhandled = (err: unknown): void => {
+      rejections.push(err);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    void queue.drain(SESSION); // first touch of the file: read fails with EIO
+    await flush();
+    await flush();
+    process.off('unhandledRejection', onUnhandled);
+
+    expect(rejections).toEqual([]);
+    expect(warns).toHaveLength(1);
+    expect(warns[0]).toMatch(/not drained/);
+    expect(started).toEqual([]);
+
+    // The draining slot was released and nothing was cached: once the read
+    // recovers, the next add loads from disk and the prompt runs.
+    statFailure.on = false;
+    await queue.add(SESSION, { text: 'late' });
+    await flush();
+    expect(started.map((p) => p.text)).toEqual(['late']);
   });
 
   it('removes and clears, publishing the list each time', async () => {
