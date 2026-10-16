@@ -262,7 +262,7 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
  * cost. Setting either to a falsy value wins over the other's truthy value, so
  * `logContent: false` in the profile still wins.
  */
-function logContentWanted(account: TypeSafeConfig, env: NodeJS.ProcessEnv): boolean {
+export function logContentWanted(account: TypeSafeConfig, env: NodeJS.ProcessEnv): boolean {
   const override = env['WRONGSTACK_JEV_LOG_CONTENT']?.trim();
   if (override !== undefined) return /^(1|true|yes|on)$/i.test(override);
   return account.logContent === true;

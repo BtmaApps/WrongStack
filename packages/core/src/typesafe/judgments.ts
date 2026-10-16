@@ -36,7 +36,7 @@ import type { TypeSafeJudgmentsConfig } from '../types/config/typesafe.js';
 import type { TypeSafeClient } from './client.js';
 import { type WarnSink, warnOnce } from './notify.js';
 import { typeSafeAllowed, typeSafePolicyScope } from './policy.js';
-import { resolveTypeSafeAccount, type TypeSafeAccountReady } from './resolve.js';
+import { logContentWanted, resolveTypeSafeAccount, type TypeSafeAccountReady } from './resolve.js';
 import { TYPESAFE_ROUTES } from './route.js';
 
 export type TypeSafeJudgmentFeature = keyof TypeSafeJudgmentsConfig;
@@ -109,6 +109,9 @@ export function resolveTypeSafeJudge(deps: ResolveTypeSafeJudgeDeps): TypeSafeJu
     probe.model,
     String(deps.config.typesafe?.requestTimeoutMs ?? ''),
     String(deps.config.typesafe?.authFailureLimit ?? ''),
+    // Baked into the client's activity observer at build time, so a toggle
+    // must not keep serving the client built under the old setting.
+    String(logContentWanted(deps.config.typesafe ?? {}, env)),
     createHash('sha256').update(apiKey).digest('hex').slice(0, 16),
   ].join('\0');
 
