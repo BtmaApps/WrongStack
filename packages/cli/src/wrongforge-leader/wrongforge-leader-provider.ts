@@ -34,7 +34,11 @@ import { ProviderError, type ProviderErrorKind } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { publishLeaderContext } from '../acp-leader/acp-leader-context.js';
 import { acpLeaderHost, trackAcpLeader } from '../acp-leader/acp-leader-host.js';
-import { isLeaderTurn, leaderSideModel } from '../acp-leader/acp-leader-provider.js';
+import {
+  explicitLeaderSideModel,
+  isLeaderTurn,
+  leaderSideModel,
+} from '../acp-leader/acp-leader-provider.js';
 import { externalSkillDirective, externalSkillLoader } from '../acp-leader/acp-leader-skills.js';
 import {
   earlierConversation,
@@ -263,20 +267,28 @@ export class WrongForgeLeaderProvider implements Provider {
     return choice.id;
   }
 
-  /** A configured side model, when the user named one. */
-  private sideProvider(): { provider: Provider; model: string } | undefined {
-    const ref = leaderSideModel(this.config());
+  /**
+   * A side model for a turn WrongForge does not lead. `explicitOnly` (a side
+   * request through `complete()`) takes only the model the user named in
+   * `acp.leader.sideModel`: WrongForge answers those itself (`oneShot`), and
+   * handing them to `fallbackModels[0]` let that model take over the session.
+   * A worker's turn may still fall back to the fallback chain, since `oneShot`
+   * would leave it without tools.
+   */
+  private sideProvider(explicitOnly = false): { provider: Provider; model: string } | undefined {
+    const config = this.config();
+    const ref = explicitOnly ? explicitLeaderSideModel(config) : leaderSideModel(config);
     if (!ref || ref.provider === this.id) return undefined;
     let provider = this.sideProviders.get(ref.provider);
     if (!provider) {
-      provider = this.opts.buildProvider(ref.provider, this.config());
+      provider = this.opts.buildProvider(ref.provider, config);
       if (provider) this.sideProviders.set(ref.provider, provider);
     }
     return provider ? { provider, model: ref.model } : undefined;
   }
 
   async complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {
-    const side = this.sideProvider();
+    const side = this.sideProvider(true);
     if (side) return side.provider.complete({ ...req, model: side.model }, opts);
     return this.oneShot(req, opts.signal);
   }

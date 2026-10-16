@@ -358,6 +358,26 @@ describe('setupProvider', () => {
     return { capabilities: caps } as never;
   }
 
+  // #411 / #410: the catalog has no `wrongforge` entry, so the overlay used to
+  // replace the leader's own capabilities with the unsupported-family
+  // defaults (`streaming: false`). The loop then called complete() — the
+  // one-shot, tool-less side path — for every leader turn.
+  it.each([
+    ['wrongforge', 'claude-sonnet-5-5'],
+    ['acp', 'claude-code'],
+  ])('keeps the %s leader its own capabilities at boot', async (providerId, model) => {
+    buildProviderFactoriesFromRegistry.mockResolvedValue([]);
+    const modelsRegistry = fakeModelsRegistry({ getModel: vi.fn().mockResolvedValue(undefined) });
+
+    const { provider } = await setupProvider({
+      config: fakeConfig({ provider: providerId, model }),
+      modelsRegistry,
+      logger: fakeLogger(),
+    });
+
+    expect(provider.capabilities).toMatchObject({ streaming: true, keepsOwnContext: true });
+  });
+
   it('overwrites the provider family baseline with catalog-resolved maxOutput', async () => {
     // makeProviderFromConfig returns a stub whose `capabilities` carries
     // only the family default (no maxOutput). setupProvider must reach

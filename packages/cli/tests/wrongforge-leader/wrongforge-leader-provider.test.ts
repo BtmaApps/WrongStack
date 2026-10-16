@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
-import type { Config, Request, StreamEvent, Tool } from '@wrongstack/core/types';
+import type { Config, Provider, Request, StreamEvent, Tool } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { type AcpLeaderHost, bindAcpLeaderHost } from '../../src/acp-leader/acp-leader-host.js';
@@ -303,6 +303,50 @@ describe('WrongForge as the leader', () => {
     expect(wf.submitted[0]).not.toHaveProperty('session_id');
     expect(String(wf.submitted[0]?.['prompt'])).toContain('Title it.');
   });
+  it('keeps side requests on WrongForge instead of the first fallback model (#410)', async () => {
+    const wf = await fakeWrongForge({ events: [], result: { text: '', steps: 0, tool_calls: 0 } });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    const buildProvider = vi.fn(() => undefined);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: { fallbackModels: ['evren/deepseek-v4.1-flash'] } as unknown as Config,
+      buildProvider,
+    });
+    await provider.complete(
+      { model: 'claude-a-1', messages: [{ role: 'user', content: 'hello' }] },
+      { signal: new AbortController().signal },
+    );
+    expect(buildProvider).not.toHaveBeenCalled();
+    expect(wf.submitted[0]).toMatchObject({ builtin_tools: [], max_steps: 1 });
+  });
+
+  it('sends side requests to the side model the user named', async () => {
+    const sideComplete = vi.fn(async () => ({
+      model: 'side-model',
+      content: [{ type: 'text' as const, text: 'from side' }],
+      stopReason: 'end_turn' as const,
+      usage: { input: 0, output: 0 },
+    }));
+    const buildProvider = vi.fn(() => ({ complete: sideComplete }) as unknown as Provider);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {
+        acp: { leader: { sideModel: 'other/side-model' } },
+        fallbackModels: ['evren/deepseek-v4.1-flash'],
+      } as unknown as Config,
+      buildProvider,
+    });
+    const res = await provider.complete(
+      { model: 'claude-a-1', messages: [{ role: 'user', content: 'hello' }] },
+      { signal: new AbortController().signal },
+    );
+    expect(buildProvider).toHaveBeenCalledWith('other', expect.anything());
+    expect(sideComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'side-model' }),
+      expect.anything(),
+    );
+    expect(res.content).toEqual([{ type: 'text', text: 'from side' }]);
+  });
+
   it('returns the turn when the final record fetch fails once transiently', async () => {
     const wf = await fakeWrongForge({
       events: [{ type: 'agent.text', data: { text: 'Done.' } }],

@@ -128,9 +128,20 @@ function parseSideModel(ref: string | undefined): { provider: string; model: str
   return { provider, model: ref.slice(slash + 1) };
 }
 
+/**
+ * The side model the user set for an agent leader (`acp.leader.sideModel`),
+ * without falling back to the fallback chain: a leader that can answer side
+ * requests itself (WrongForge) must not hand them to `fallbackModels[0]`.
+ */
+export function explicitLeaderSideModel(
+  config: Config,
+): { provider: string; model: string } | undefined {
+  return parseSideModel(config.acp?.leader?.sideModel);
+}
+
 export function leaderSideModel(config: Config): { provider: string; model: string } | undefined {
   return (
-    parseSideModel(config.acp?.leader?.sideModel) ??
+    explicitLeaderSideModel(config) ??
     parseSideModel(config.fallbackBridge) ??
     parseSideModel(config.fallbackModels?.[0])
   );

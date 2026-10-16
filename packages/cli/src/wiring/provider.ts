@@ -237,7 +237,12 @@ export async function setupProvider(params: {
   // inside are swallowed inside the helper — the family default stands
   // and the per-request output-limit lookup installed above still resolves
   // the ceiling from the catalog.
-  if (config.features.modelsRegistry && !acpLeader) {
+  // An agent leader (ACP, WrongForge) has no catalog entry: the overlay would
+  // replace its own capabilities with the unsupported-family defaults
+  // (`streaming: false`), and the loop would call `complete()` — WrongForge's
+  // one-shot, tool-less side path — for every leader turn. The `/model`
+  // switch skips it the same way (provider-runtime-setup.ts).
+  if (config.features.modelsRegistry && !acpLeader && !wrongForgeLeader) {
     provider = await withCatalogCapabilities(
       modelsRegistry,
       config.provider,
