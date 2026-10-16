@@ -277,9 +277,12 @@ describe('SddInterviewDriver', () => {
     const graphId = a.driver.getGraph()?.id;
     const firstTaskId = a.driver.getGraph()?.nodes.keys().next().value as string;
     a.driver.getTracker()?.updateNodeStatus(firstTaskId, 'completed', 'before process restart');
-    await expect
-      .poll(async () => (await a.graphStore.load(graphId!))?.nodes.get(firstTaskId)?.status)
-      .toBe('completed');
+    // updateNodeStatus enqueues its fire-and-forget save synchronously; join it
+    // instead of polling — expect.poll's 1 s default timeout covers the FIRST
+    // load() call too, and under suite load that queued lock+atomic-write+index
+    // update alone overran it ("expect.poll() function didn't resolve in time").
+    await a.driver.getTracker()?.flushPersistence();
+    expect((await a.graphStore.load(graphId!))?.nodes.get(firstTaskId)?.status).toBe('completed');
 
     // Fresh driver over the same session + graph store → resumes.
     const b = new SddInterviewDriver({
