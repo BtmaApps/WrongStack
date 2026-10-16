@@ -55,34 +55,35 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.4
+### What's new in 1.1.5
 
-- **ACP agents use the project's services:** an ACP agent leading a session or
-  working as a delegated worker is told at the start of each task to use the
-  project's index, memory, mailbox and board, and is told about new `/btw`
-  notes and mail while its turn runs.
+- **Built-in tools without MCP:** [`wstack tools list|describe|run|batch`](docs/subcommands/tools-skills.md)
+  calls WrongStack's tools from the shell, and `wstack tools serve` exposes
+  them over token-guarded loopback HTTP to other agents.
+- **WrongForge leader and worker:** a local WrongForge server can lead a session
+  (`/model wrongforge/<model>`) or take delegated tasks, working through the
+  session's own tools so WrongStack's rules apply.
+- **WebUI agent tree:** the fleet appears as a leader-and-workers tree in the
+  session sidebar, the agents panel and the inspector, and a browser call
+  blocked by the private-origin policy offers an "Allow access" action.
+- **Safety and correctness fixes:** sandboxed stream-only tools, URL and argv
+  credential redaction, Docker environment allowlisting, WebUI queue and ZIP
+  limits, MCP body caps, ACP permission scope, worktree, mailbox and SDD races,
+  and whole-config hot reload.
+
+Highlights from **1.1.4**, the previous release:
+
+- **ACP agents use the project's services:** an ACP leader or delegated worker
+  is told to use the project's index, memory, mailbox and board, and hears
+  about new `/btw` notes and mail while its turn runs.
 - **Mailbox inbox over MCP:** the mailbox MCP server reads the actor's own
   unread mail with one `inbox` action.
 - **Clearer WebUI agent identity:** subagent tabs, transcripts, the Office view
-  and the office map show each agent's full provider/model. The office map no
-  longer draws expired idle workers as desks, and its detail panel follows live
-  updates and fits narrow screens.
-- **Correctness fixes:** delegation abort and auto-wake races, ACP output
-  framing, shared WebUI quota reads, bounded index skeletons over MCP,
-  BOM-prefixed MCP replies, and techstack Elixir, Go and Swift lookups.
+  and the office map show each agent's full provider/model.
 
-Highlights from **1.1.3**, the previous release:
-
-- **Claude Code as leader:** `wstack --provider acp --model claude-code` or
-  [`/model acp/claude-code`](docs/slash/model.md) makes an installed ACP agent the
-  session's leader, in the TUI or a WebUI tab. It can run WrongStack's workers,
-  and resuming the session continues its own conversation.
-- **Delegated Claude workers:** `delegate` hands tasks to an installed Claude
-  Code worker that gets the project's MCP servers, answers to WrongStack's
-  permission rules and shows its subscription quota.
-- **Claude sign-in removed:** the `anthropic-oauth` login, which only worked by
-  presenting WrongStack as Claude Code, is gone; use an Anthropic API key or ACP.
-
+1.1.3 made an installed ACP agent such as Claude Code a session leader
+([`/model acp/claude-code`](docs/slash/model.md)), added delegated Claude
+workers and removed the Claude sign-in;
 1.1.2 made file edits lossless, kept stores from overwriting files they cannot
 parse, kept secrets out of history and sync and made safety refusals terminal;
 1.1.1 added [`/browser allow loopback`](docs/slash/browser.md) and ChatGPT
@@ -397,7 +398,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.4** — current repository version; semver from 1.0.0 onward
+- **v1.1.5** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

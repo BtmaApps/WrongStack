@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] — 2026-10-16
+
+A tool-gateway release. Built-in tools can be called from the shell or over
+loopback HTTP without MCP, a local WrongForge server can lead a session or take
+delegated tasks, the WebUI shows the fleet as an agent tree in the session
+sidebar, and a broad round of safety and correctness fixes lands.
+
+### Added
+
+- **`wstack tools` gateway.** `wstack tools list|describe|run|batch` calls WrongStack's built-in tools from the shell without MCP, through the same gateway as `wstack mcp serve`. `wstack tools serve` exposes that gateway over loopback HTTP behind a required bearer token and the same Origin/Host guards as `wstack mcp serve --http`. See [`wstack tools`](docs/subcommands/tools-skills.md).
+- **WrongForge leader and worker.** A local WrongForge server can lead a session (`--provider wrongforge --model <model>` or `/model wrongforge/<model>`) or take delegated tasks. Its edits, commands, board and memory calls go through the session's own tools over a per-session gateway, so WrongStack's rules apply to them, and its usage appears in [`/provider-quota`](docs/slash/provider-quota.md).
+- **ACP index over the CLI.** With `acp.bridge.indexSurface: "cli"`, a bridged ACP worker reaches the codebase index through `wstack tools` in its shell instead of an MCP server. See [ACP](docs/slash/acp.md).
+- **WebUI agent tree.** The fleet appears as a leader-and-workers tree in the calm inspector, the agents panel and the session sidebar, which now switches between the leader's and each subagent's chat in place of the tabs above it. Finished agents stay inspectable, and the tree is keyboard navigable.
+- **Browser access from the WebUI.** A browser tool call blocked by the private-origin policy offers an "Allow access" action that records the project approval.
+
+### Changed
+
+- **Config hot reload.** Provider and credential changes reload the whole config through the canonical loader and `ConfigStore.replace`, so a WrongProxy switch rebuilds the live provider at once. TUI, WebUI and SimpleUI provider and model pickers refresh after an auth change.
+
+### Fixed
+
+- **Safety.** The sandbox applies to stream-only tools. Credential redaction covers URL query parameters and attached `-p`/`-a`/`-password` argv values. Only explicitly selected host environment values reach the Docker workspace. A security-scan batch the model never analysed is reported as an error, and an aborted scan keeps the findings of batches that completed.
+- **WebUI server.** Queue capacity is rechecked after a prompt's attachments are prepared, and a queued-prompt read failure no longer rejects the drain. ZIP limits count duplicate entries. The previous presence registration is released before registering again. `provider.models` answers from a saved record before a host provider with the same id, custom models with reserved ids are stored as own keys, and `Object.prototype` names are never read as provider ids. Office-map clients are keyed by session id, so sessions sharing a process stay apart. Requirement intake rejects non-object JSON bodies, and editing an answer no longer withdraws list items the create request supplied.
+- **MCP.** A response stream is cancelled once it passes the body cap. A stored token whose expiry is not a finite number is rejected. A shared OAuth refresh rejection stays handled when no caller awaits it.
+- **ACP.** The WrongStack bridge applies to an agent listed by its registry id. An "always" answer to the ACP leader stays in the scope the user picked and lasts a day. The file-server root is canonicalized with the native realpath, like each request.
+- **Delegation and fleet.** An interrupt that lands while the Director activates gates the launch. A disposed tracker drops journal rehydration. Non-finite usage counts as zero so later responses still add up, and a non-finite quota window no longer hides a later finite one. A stale collab pause timeout cannot resume a newer pause.
+- **Worktrees and mailbox.** An unreadable git status counts as dirty before merge and revert, and concurrent allocations share one checkout. The mailbox bridge lock is claimed with a rename and is never finalized after another owner has superseded it.
+- **SDD.** Queued task-graph writes drain before cancel, destroy or a new session removes the store. The critical path and task tree read `depends_on` edges dependency-first.
+- **TUI.** A `tool_script` nested call renders without waiting for its `tool_result`. A repeated next-step suggestion gets one recovery turn, then stays halted.
+- **Smaller fixes.** Config backups taken in the same millisecond no longer overwrite each other. A throwing project-watch `onError` cannot starve the other subscribers. Compaction merges overlapping collapsed ranges so the preserved tail survives. LSP shutdown tolerates a transport that closed meanwhile. Director string-array inputs are trimmed. The WebUI terminal keeps escape sequences that span frames. The tool gateway answers malformed percent-encoding with a client error.
+
 ## [1.1.4] — 2026-10-14
 
 A follow-up release. ACP agents are pointed at the project's services when a

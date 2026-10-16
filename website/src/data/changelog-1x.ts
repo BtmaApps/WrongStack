@@ -3,7 +3,7 @@
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
-// The 1.1.5 entry summarizes committed fixes through its release bump (9d911e4e0).
+// The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
@@ -11,15 +11,16 @@ import type { ChangelogEntry } from './changelog-types';
 export const changelog1x: ChangelogEntry[] = [
   {
     version: '1.1.5',
-    date: '2026-10-15',
-    tagline: 'Session identity, queue limits and safer tool execution',
+    date: '2026-10-16',
+    tagline: 'Built-in tools without MCP, WrongForge as leader or worker and a WebUI agent tree',
     latest: true,
     highlights: [
-      'The WebUI office map keys clients by session ID so sessions sharing a process stay separate, and saved provider model records take precedence over a host provider with the same ID',
-      'The WebUI server rechecks queue capacity after preparing attachments, counts duplicate ZIP entries toward the entry limit and releases the previous presence registration before registering again',
-      'Sandbox enforcement covers stream-only tools, credential redaction covers URL query parameters and attached password arguments, and unanalysed security-scan batches report an error',
-      'MCP response streams are cancelled when they exceed the body cap, stored tokens with non-finite expiry values are rejected, and LSP shutdown tolerates an already closed transport',
-      'Config backups never overwrite another backup from the same millisecond, a throwing project-watch error handler cannot starve other subscribers, and compaction merges overlapping collapsed ranges to preserve the tail',
+      'wstack tools list|describe|run|batch calls built-in tools from the shell without MCP, and wstack tools serve exposes them over token-guarded loopback HTTP',
+      'A local WrongForge server can lead a session or take delegated tasks, with its edits, commands, board and memory calls going through the session’s own tools',
+      'The WebUI shows the fleet as a leader-and-workers tree in the session sidebar, agents panel and inspector, and a browser call blocked by the private-origin policy offers an Allow access action',
+      'Sandbox enforcement covers stream-only tools, credential redaction covers URL query parameters and attached password arguments, and only selected host environment values reach the Docker workspace',
+      'The WebUI server rechecks queue capacity after preparing attachments, counts duplicate ZIP entries and keeps sessions sharing a process apart on the office map',
+      'MCP response streams stop at the body cap, ACP “always” answers keep their scope for a day, and worktree, mailbox, SDD and delegation races are closed',
     ],
   },
   {
