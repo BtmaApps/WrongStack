@@ -32,16 +32,11 @@ interface HqServerShutdownParams {
 }
 
 export function createHqServerShutdown(params: HqServerShutdownParams): () => Promise<void> {
-  let closed = false;
+  let closing: Promise<void> | undefined;
 
-  return () =>
-    new Promise<void>((res) => {
-      if (closed) {
-        res();
-        return;
-      }
-      closed = true;
-
+  return () => {
+    if (closing) return closing;
+    closing = new Promise<void>((res) => {
       clearInterval(params.cleanupTimer);
       clearInterval(params.browserHeartbeatTimer);
       clearInterval(params.timeseriesFlushTimer);
@@ -71,7 +66,7 @@ export function createHqServerShutdown(params: HqServerShutdownParams): () => Pr
         params.mailboxManager.mailboxGateways.clear();
         params.mailboxManager.mailboxGatewayLastUsed.clear();
 
-        void Promise.all([
+        void Promise.allSettled([
           ...mailboxCloses,
           // Chimera/race: flush the login-attempt store INSIDE the awaited
           // shutdown set — the old fire-and-forget `void flush()` let close()
@@ -89,4 +84,6 @@ export function createHqServerShutdown(params: HqServerShutdownParams): () => Pr
           .finally(() => res());
       });
     });
+    return closing;
+  };
 }

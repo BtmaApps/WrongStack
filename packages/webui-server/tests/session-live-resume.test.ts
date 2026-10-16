@@ -37,6 +37,14 @@ function harness(options?: {
   /** Journal contents `store.load()` hands back, per session id. */
   stored?: Record<string, { messages: unknown[]; events: unknown[] }>;
   loadAgentSessions?: (ids: readonly string[]) => Promise<unknown[]>;
+  /** Test hook: force the resume's activation step to fail. */
+  onSessionSwapped?: () => Promise<void>;
+  /** Test hook: observe the ownership claim the resume takes. */
+  claimSession?: () => Promise<() => Promise<void>>;
+  /** Test hook: make the agent lookup throw for one session id. */
+  failGetAgentFor?: string;
+  /** Test hook: fired when the journal the resume opened is closed. */
+  onResumeWriterClose?: () => void;
 }) {
   const bootWriter = writer('sess_boot');
   const contexts = new Map<string, Record<string, unknown>>();
@@ -91,8 +99,14 @@ function harness(options?: {
         ) => {
           resumeCalls.push(id);
           onLoadProgress?.({ loadedBytes: 512, totalBytes: 1024 });
+          const resumedWriter = writer(id, '2026-07-25T10:00:00.000Z');
           return {
-            writer: writer(id, '2026-07-25T10:00:00.000Z'),
+            writer: {
+              ...resumedWriter,
+              close: async () => {
+                options?.onResumeWriterClose?.();
+              },
+            },
             data: { messages: [], events: [], usage: undefined },
           };
         },
@@ -103,11 +117,19 @@ function harness(options?: {
       : {}),
     isSessionLive: (id) => contexts.has(id),
     isRunActive: (id) => id === 'sess_running',
-    getAgent: (id) => ({ ctx: contexts.get(id ?? '') ?? rootCtx }) as never,
+    getAgent: (id) => {
+      if (options?.failGetAgentFor !== undefined && id === options.failGetAgentFor) {
+        throw new Error('agent registry could not build the session context');
+      }
+      return { ctx: contexts.get(id ?? '') ?? rootCtx } as never;
+    },
     setSessionStartedAt,
     sessionStartPayload: async (overrides) => ({ ...overrides }) as never,
     sendMessage: (_ws, message) => sent.push(message),
     broadcastMessage: (message) => sent.push(message),
+    // Test hooks last so they win over the defaults above.
+    ...(options?.onSessionSwapped ? { onSessionSwapped: options.onSessionSwapped } : {}),
+    ...(options?.claimSession ? { claimSession: async () => options.claimSession!() } : {}),
   });
 
   return { handlers, resumeCalls, sent, setSessionStartedAt, currentId: () => current.id };
@@ -837,5 +859,60 @@ describe('a resumed live session comes back whole', () => {
     expect(payload['replayMessages']).toBeUndefined();
     expect(payload['replayMarkers']).toBeUndefined();
     expect(payload['agentSessions']).toBeUndefined();
+  });
+});
+
+describe('a resume that fails after it claimed the session', () => {
+  /**
+   * The claim (`claimSession`) and the journal (`store.resume`) are both taken
+   * before `activateSession`, and `activateSession` is what installs the writer
+   * as the runtime's session. It can throw — the agent it builds, the todo
+   * sidecar it rebinds, the identity/HQ activation it ends with. Marking the
+   * resume "activated" before that ran meant the catch skipped its rollback:
+   * the reservation stayed held and the FileSessionWriter the resume opened was
+   * never closed.
+   */
+  it('rolls the claim back and closes the journal it opened', async () => {
+    const closed: string[] = [];
+    let rolledBack = 0;
+    const h = harness({
+      // Fail the activation before it installs the writer.
+      failGetAgentFor: 'sess_cold',
+      claimSession: async () => async () => {
+        rolledBack++;
+      },
+      onResumeWriterClose: () => closed.push('sess_cold'),
+    });
+
+    await h.handlers.resumeSession(ws, { type: 'session.resume', payload: { id: 'sess_cold' } });
+
+    const res = h.sent.find((m) => m.type === 'key.operation_result');
+    expect((res?.payload as { success?: boolean } | undefined)?.success).toBe(false);
+    expect(rolledBack).toBe(1);
+    expect(closed).toEqual(['sess_cold']);
+    // The tab was never moved off the session it was already on.
+    expect(h.currentId()).toBe('sess_boot');
+  });
+
+  it('rolls the claim back but never closes a journal the runtime already adopted', async () => {
+    const closed: string[] = [];
+    let rolledBack = 0;
+    const h = harness({
+      // Fail the activation at its LAST step, after setSession.
+      onSessionSwapped: async () => {
+        throw new Error('identity activation failed');
+      },
+      claimSession: async () => async () => {
+        rolledBack++;
+      },
+      onResumeWriterClose: () => closed.push('sess_cold'),
+    });
+
+    await h.handlers.resumeSession(ws, { type: 'session.resume', payload: { id: 'sess_cold' } });
+
+    expect(rolledBack).toBe(1);
+    // The writer IS the runtime's current session now; closing it would pull
+    // the file handle out from under it.
+    expect(closed).toEqual([]);
   });
 });

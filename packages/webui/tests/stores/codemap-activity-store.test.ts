@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   extractActivitiesFromMessage,
-  useCodemapActivityStore,
   type FileActivity,
+  useCodemapActivityStore,
 } from '../../src/stores/codemap-activity-store';
 import type { WSServerMessage } from '../../src/types';
 
@@ -280,6 +280,62 @@ describe('codemap-activity-store', () => {
         expect.objectContaining({ added: 2, removed: 1, before: 'old line', after: 'new line' }),
       );
       expect(patch.summary).toBe('apply_patch +2 −1');
+    });
+
+    it('counts adjacent header-shaped content inside a hunk', () => {
+      // A removed `--- rule one` followed by an added `+++ rule two` INSIDE the
+      // hunk body is content, not the file header — the same rule core's
+      // countUnifiedDiffLines enforces (see unified-diff-count.test.ts).
+      const patch = [
+        '--- a/notes.md',
+        '+++ b/notes.md',
+        '@@ -1,3 +1,3 @@',
+        ' keep',
+        '--- rule one',
+        '+++ rule two',
+        ' tail',
+      ].join('\n');
+      const activity = extractActivitiesFromMessage(
+        makeMsg('tool.started', {
+          id: 'patch-inhunk',
+          name: 'patch',
+          input: { patch },
+          fileTargets: [{ filePath: 'notes.md', operation: 'edit' }],
+        }),
+      )[0]!;
+      expect(activity.change).toEqual(
+        expect.objectContaining({
+          added: 1,
+          removed: 1,
+          before: '-- rule one',
+          after: '++ rule two',
+        }),
+      );
+      expect(activity.summary).toBe('patch +1 −1');
+    });
+
+    it('still skips the next file header after a hunk in a multi-file patch', () => {
+      const patch = [
+        '--- a/one.txt',
+        '+++ b/one.txt',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+        '--- a/two.txt',
+        '+++ b/two.txt',
+        '@@ -1 +1 @@',
+        '-x',
+        '+y',
+      ].join('\n');
+      const activity = extractActivitiesFromMessage(
+        makeMsg('tool.started', {
+          id: 'patch-multi',
+          name: 'patch',
+          input: { patch },
+          fileTargets: [{ filePath: 'one.txt', operation: 'edit' }],
+        }),
+      )[0]!;
+      expect(activity.change).toEqual(expect.objectContaining({ added: 2, removed: 2 }));
     });
 
     it('extracts file paths from provider.response tool_use blocks', () => {

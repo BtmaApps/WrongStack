@@ -24,6 +24,7 @@ interface Scripted {
 /** WrongForge's task API, enough for the leader: info, tasks (async + wait), sessions, events. */
 async function fakeWrongForge(script: Scripted) {
   const submitted: Record<string, unknown>[] = [];
+  const cancels: string[] = [];
   const sessions = new Set<string>();
   let lastId = '';
   let recordGets = 0;
@@ -53,6 +54,11 @@ async function fakeWrongForge(script: Scripted) {
           ...(body['wait'] ? { result: { text: 'side answer', steps: 1, tool_calls: 0 } } : {}),
         };
         return send(body['wait'] ? 200 : 202, { task });
+      }
+      const c = /^\/v1\/tasks\/([^/]+)\/cancel$/.exec(url.pathname);
+      if (req.method === 'POST' && c) {
+        cancels.push(decodeURIComponent(c[1] ?? ''));
+        return send(200, { ok: true });
       }
       const s = /^\/v1\/sessions\/([^/]+)$/.exec(url.pathname);
       if (s) {
@@ -85,6 +91,7 @@ async function fakeWrongForge(script: Scripted) {
   return {
     url: `http://127.0.0.1:${port}`,
     submitted,
+    cancels,
     close: () => new Promise<void>((r) => server.close(() => r())),
   };
 }
@@ -231,6 +238,34 @@ describe('WrongForge as the leader', () => {
     expect(wf.submitted[1]).toMatchObject({ session_id: 'wsl-S1', prompt: 'and now this' });
   });
 
+  it("rewrites a required-skills marker to name the gateway's skill tool", async () => {
+    const wf = await fakeWrongForge({
+      events: [],
+      result: { text: 'ok', steps: 1, tool_calls: 0 },
+    });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    const tool = (name: string) =>
+      ({ name, description: name, inputSchema: { type: 'object' } }) as unknown as Tool;
+    const { host } = fakeHost({ listTools: () => [tool('skill'), tool('edit')] });
+    bindAcpLeaderHost(host);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+
+    await drain(
+      provider.stream(req('Hunt one bug.\n<!-- wrongstack:required-skills bug-hunter -->'), {
+        signal: new AbortController().signal,
+      }),
+    );
+
+    const prompt = String(wf.submitted[0]?.['prompt']);
+    expect(prompt).not.toContain('<!--');
+    expect(prompt).toContain("This task's playbook skills: bug-hunter.");
+    expect(prompt).toContain('`wstack_skill`');
+  });
+
   it('refuses a model WrongForge does not serve before sending anything', async () => {
     const wf = await fakeWrongForge({ events: [], result: { text: '', steps: 0, tool_calls: 0 } });
     closers.push(wf.close);
@@ -296,6 +331,76 @@ describe('WrongForge as the leader', () => {
       type: 'message_stop',
       usage: { input: 3, output: 4 },
     });
+  });
+
+  it('cancels the task on WrongForge when the turn signal is aborted on task creation', async () => {
+    const wf = await fakeWrongForge({
+      events: [],
+      result: { text: 'hang', steps: 1, tool_calls: 0 },
+    });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    const { host } = fakeHost();
+    bindAcpLeaderHost(host);
+
+    const ac = new AbortController();
+    const customFetch: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      if (String(input).includes('/v1/tasks') && !String(input).includes('/cancel')) {
+        const text = await res.text();
+        ac.abort();
+        return new Response(text, { status: res.status, headers: res.headers });
+      }
+      return res;
+    };
+
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+      fetchImpl: customFetch,
+    });
+
+    await expect(
+      drain(provider.stream(req('abort immediately'), { signal: ac.signal })),
+    ).rejects.toThrow();
+    await vi.waitFor(() => expect(wf.cancels).toHaveLength(1));
+  });
+
+  it('retries gateway startup on subsequent turns if initial attempt failed', async () => {
+    const wf = await fakeWrongForge({
+      events: [],
+      result: { text: 'ok', steps: 1, tool_calls: 0 },
+    });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+
+    let toolListFail = true;
+    const tool = (name: string) =>
+      ({ name, description: name, inputSchema: { type: 'object' } }) as unknown as Tool;
+
+    const { host } = fakeHost({
+      listTools: () => {
+        if (toolListFail) throw new Error('transient tool list failure');
+        return [tool('edit')];
+      },
+    });
+    bindAcpLeaderHost(host);
+
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+
+    // Turn 1 fails starting gateway transiently
+    await drain(provider.stream(req('turn 1'), { signal: new AbortController().signal }));
+    expect(wf.submitted[0]?.['gateway']).toBeUndefined();
+
+    // Turn 2 succeeds starting gateway
+    toolListFail = false;
+    await drain(provider.stream(req('turn 2'), { signal: new AbortController().signal }));
+    expect(wf.submitted[1]?.['gateway']).toBeDefined();
+
+    await provider.closeAll();
   });
 });
 

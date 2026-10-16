@@ -35,6 +35,7 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 import { publishLeaderContext } from '../acp-leader/acp-leader-context.js';
 import { acpLeaderHost, trackAcpLeader } from '../acp-leader/acp-leader-host.js';
 import { isLeaderTurn, leaderSideModel } from '../acp-leader/acp-leader-provider.js';
+import { externalSkillDirective, externalSkillLoader } from '../acp-leader/acp-leader-skills.js';
 import {
   earlierConversation,
   latestUserText,
@@ -104,7 +105,7 @@ const CAPABILITIES: Capabilities = {
 interface LeaderSession {
   /** The WrongForge session this WrongStack session runs in. */
   wfSessionId: string;
-  gateway?: Promise<LeaderGateway | undefined>;
+  gateway?: Promise<LeaderGateway | undefined> | undefined;
   /** WrongForge already has this conversation (its session existed, or a turn ran). */
   joined?: boolean;
   context?: AgentContextUsage | undefined;
@@ -348,8 +349,16 @@ export class WrongForgeLeaderProvider implements Provider {
     try {
       info = await this.info(call, opts.signal);
       model = this.model(req.model, info);
-      if (host) leader.gateway ??= startLeaderGateway(host, key).catch(() => undefined);
+      if (host && !leader.gateway) {
+        leader.gateway = startLeaderGateway(host, key).catch(() => {
+          leader.gateway = undefined;
+          return undefined;
+        });
+      }
       gateway = await leader.gateway;
+      if (!gateway) {
+        leader.gateway = undefined;
+      }
       joinedBefore = leader.joined ?? (await this.wfSessionExists(call, leader, opts.signal));
     } catch (err) {
       throw providerError(err, this.id);
@@ -376,7 +385,7 @@ export class WrongForgeLeaderProvider implements Provider {
         'POST',
         '/v1/tasks',
         {
-          prompt: this.promptText(req, joinedBefore),
+          prompt: this.promptText(req, joinedBefore, gateway),
           session_id: leader.wfSessionId,
           workdir: host?.projectRoot ?? process.cwd(),
           ...(model ? { model } : {}),
@@ -392,6 +401,10 @@ export class WrongForgeLeaderProvider implements Provider {
       );
       taskId = task.id;
       leader.joined = true;
+      if (opts.signal.aborted) {
+        cancelTask(call, taskId, 'interrupted in WrongStack');
+        throw new WfAborted();
+      }
       for await (const ev of followTask(call, task.id, opts.signal)) {
         if (ev.type === 'task.heartbeat' || ev.type === 'step.finished') {
           void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
@@ -447,8 +460,11 @@ export class WrongForgeLeaderProvider implements Provider {
   }
 
   /** The turn's prompt; WrongForge joining a conversation under way gets the turns before it. */
-  private promptText(req: Request, joined: boolean): string {
-    const latest = latestUserText(req.messages);
+  private promptText(req: Request, joined: boolean, gateway: LeaderGateway | undefined): string {
+    const latest = externalSkillDirective(
+      latestUserText(req.messages),
+      gateway ? externalSkillLoader(gateway.tools, gateway.spec.name_prefix ?? '') : undefined,
+    );
     const earlier = joined ? undefined : earlierConversation(req.messages);
     const prompt = earlier ? `${earlier}\n\n${latest}` : latest;
     const context = acpLeaderHost()?.context(req.cache?.sessionId) as Context | undefined;

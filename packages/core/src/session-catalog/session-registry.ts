@@ -434,7 +434,9 @@ export class SessionRegistry {
         // activity stopped several minutes ago (the common shadow-agent ghost).
         const agents = Array.isArray(entry.agents) ? entry.agents : [];
         const liveAgents = agents.filter((agent) => {
+          if (agent === null || typeof agent !== 'object' || Array.isArray(agent)) return false;
           if (agent.id === 'leader') return true;
+          if (typeof agent.lastActivityAt !== 'string') return false;
           const lastActivityAt = Date.parse(agent.lastActivityAt);
           return Number.isFinite(lastActivityAt) && now - lastActivityAt <= AGENT_STALE_MS;
         });

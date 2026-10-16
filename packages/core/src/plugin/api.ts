@@ -171,6 +171,17 @@ export class DefaultPluginAPI implements PluginAPI {
     const tr = init.toolRegistry;
     const isOfficial = init.official === true;
     const capabilities = init.capabilities;
+    // "core" is the registries' owner for built-ins: the tool registry's
+    // `--restricted` exemption and the slash registry's built-in tier both key
+    // on it. A plugin's owner is its self-chosen name, so a non-official plugin
+    // may not register anything as "core".
+    const assertNotCoreOwner = (kind: string, name: string): void => {
+      if (!isOfficial && owner === 'core') {
+        throw new Error(
+          `Plugin "${owner}" may not register ${kind} "${name}" — "core" is reserved for built-ins.`,
+        );
+      }
+    };
     // Trust tiers for the tool registry, mirroring the slash-command registry:
     // only first-party ("official") plugins (and core) may mutate a tool they
     // do not own. An external plugin can register, wrap, and unregister its OWN
@@ -179,6 +190,11 @@ export class DefaultPluginAPI implements PluginAPI {
     // the host from the load source — never self-declared. (`register` is
     // already collision-safe: it throws on a duplicate name, so an external
     // plugin cannot shadow a built-in by re-registering it.)
+    // Tool names this plugin itself registered. The owner string alone cannot
+    // prove ownership: it is the plugin's self-chosen name, and the registry
+    // owns built-ins as "core", Sage tools as "sage" and MCP tools as
+    // "mcp:<server>" — a plugin named after one of those would own them all.
+    const toolNamesIRegistered = new Set<string>();
     const assertCanMutateTool = (name: string, op: string): void => {
       if (isOfficial) return;
       const currentOwner = tr.ownerOf(name);
@@ -188,7 +204,8 @@ export class DefaultPluginAPI implements PluginAPI {
       // solely registered and (re)wrapped is "plugin" or "plugin+plugin".
       // The plugin owns the tool only if EVERY segment is itself — so a core
       // tool ("core") or one another plugin touched ("core+plugin") is denied.
-      const ownedSolelyByMe = currentOwner.split('+').every((seg) => seg === owner);
+      const ownedSolelyByMe =
+        toolNamesIRegistered.has(name) && currentOwner.split('+').every((seg) => seg === owner);
       if (ownedSolelyByMe) return;
 
       // 2026-06-13: Capability-based mutation check for non-official plugins
@@ -210,7 +227,9 @@ export class DefaultPluginAPI implements PluginAPI {
     this.tools = {
       register: (t: Tool) => {
         this.assertActive();
+        assertNotCoreOwner('tool', t.name);
         this.ownRegistration(tr.registerScoped(t, owner));
+        toolNamesIRegistered.add(t.name);
         // When a host restricts the direct provider surface (token-saving
         // tiers, `features.tokenSavingMode !== 'off'`), plugin-registered
         // tools must still reach the LLM — otherwise plugins load and their
@@ -223,6 +242,7 @@ export class DefaultPluginAPI implements PluginAPI {
       unregister: (name: string) => {
         this.assertActive();
         assertCanMutateTool(name, 'unregister');
+        toolNamesIRegistered.delete(name);
         return tr.unregister(name);
       },
       wrap: (name: string, wrapper: ToolWrapper) => {
@@ -372,6 +392,7 @@ export class DefaultPluginAPI implements PluginAPI {
       ? {
           register: (cmd, opts) => {
             this.assertActive();
+            assertNotCoreOwner('slash command', cmd.name);
             this.ownRegistration(scr.registerScoped(cmd, owner, { official, bare: opts?.bare }));
             // The registry always indexes a plugin command under its
             // `owner:name` namespaced form and may also index its bare name.

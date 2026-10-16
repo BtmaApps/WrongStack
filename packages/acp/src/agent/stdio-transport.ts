@@ -70,6 +70,8 @@ export class StdioTransport implements AgentServerTransport {
   private readonly handlers = new Set<(msg: ACPMessage) => void>();
   private readonly claimHandlers = new Set<(msg: ACPMessage) => boolean>();
   private closed = false;
+  /** stdin ended: queued requests are still read and answered, then read() ends. */
+  private inputEnded = false;
   private resolveRead: ((msg: ACPMessage | null) => void) | null = null;
   private messageQueue: QueuedMessage[] = [];
   private queuedChars = 0;
@@ -115,7 +117,7 @@ export class StdioTransport implements AgentServerTransport {
       this.queuedChars = Math.max(0, this.queuedChars - queued.chars);
       return Promise.resolve(queued.message);
     }
-    if (this.closed) return Promise.resolve(null);
+    if (this.closed || this.inputEnded) return Promise.resolve(null);
     return new Promise((resolve) => {
       this.resolveRead = resolve;
     });
@@ -256,8 +258,18 @@ export class StdioTransport implements AgentServerTransport {
     }
   }
 
+  /**
+   * End of input is not the end of the connection: requests that already
+   * arrived stay queued for read(), and their replies (and those of prompts
+   * still running) are still written. The agent closes the transport once
+   * read() has drained the queue and reported the end.
+   */
   private handleClose(): void {
-    this.close();
+    this.inputEnded = true;
+    this.stdin.off('data', this.onStdinData);
+    this.stdin.off('end', this.onStdinEnd);
+    this.resolveRead?.(null);
+    this.resolveRead = null;
   }
 
   private failAll(err: Error): void {

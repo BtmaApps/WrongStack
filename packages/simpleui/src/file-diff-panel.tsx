@@ -22,15 +22,46 @@ function diffLines(diff: string): { kind: 'add' | 'remove' | 'context' | 'hunk';
   if (start === -1) return [{ kind: 'context', text: diff }];
   const lines: { kind: 'add' | 'remove' | 'context' | 'hunk'; text: string }[] = [];
   const raw = diff.slice(start).replace(/\r\n/g, '\n').split('\n');
+  // A `--- `/`+++ ` pair is a file header only OUTSIDE a hunk body: the
+  // hunk-declared line counts tell it apart from header-shaped content such
+  // as a removed `--- rule one` followed by an added `+++ rule two`. The
+  // same rule core's countUnifiedDiffLines enforces (and the counter in
+  // timeline-model already implements).
+  let oldRemaining = 0;
+  let newRemaining = 0;
   for (let i = 0; i < raw.length; i++) {
     const line = raw[i]!;
-    if (line.startsWith('@@')) lines.push({ kind: 'hunk', text: line });
-    else if (isDiffFileHeader(raw, i)) {
+    if (line.startsWith('@@')) {
+      lines.push({ kind: 'hunk', text: line });
+      const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+      oldRemaining = hunk ? Number(hunk[1] ?? 1) : 0;
+      newRemaining = hunk ? Number(hunk[2] ?? 1) : 0;
+      continue;
+    }
+    if (line.startsWith('diff --git ')) {
+      lines.push({ kind: 'context', text: line });
+      oldRemaining = 0;
+      newRemaining = 0;
+      continue;
+    }
+    if (oldRemaining <= 0 && newRemaining <= 0 && isDiffFileHeader(raw, i)) {
       lines.push({ kind: 'context', text: line }, { kind: 'context', text: raw[i + 1]! });
       i++;
-    } else if (line.startsWith('+')) lines.push({ kind: 'add', text: line });
-    else if (line.startsWith('-')) lines.push({ kind: 'remove', text: line });
-    else lines.push({ kind: 'context', text: line });
+      continue;
+    }
+    if (line.startsWith('+')) {
+      lines.push({ kind: 'add', text: line });
+      newRemaining -= 1;
+    } else if (line.startsWith('-')) {
+      lines.push({ kind: 'remove', text: line });
+      oldRemaining -= 1;
+    } else {
+      lines.push({ kind: 'context', text: line });
+      if (line.startsWith(' ')) {
+        oldRemaining -= 1;
+        newRemaining -= 1;
+      }
+    }
   }
   return lines;
 }

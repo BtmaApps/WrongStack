@@ -446,6 +446,13 @@ export async function resumeSession(
         );
         warn(`could not restore ${targetProviderId}/${targetModel}`, err);
       }
+    } else if (targetProviderId && targetProviderId !== currentProviderId) {
+      // No switch callback, so the saved provider cannot be instantiated.
+      // Applying only its model would pair that model with the live provider.
+      warn(
+        'could not restore saved route without a provider switch',
+        `${targetProviderId}/${targetModel}`,
+      );
     } else if (targetModel !== agent.ctx.model) {
       agent.ctx.model = targetModel;
     }

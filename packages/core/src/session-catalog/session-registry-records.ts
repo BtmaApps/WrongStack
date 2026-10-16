@@ -31,7 +31,11 @@ export function parseRegistry(raw: string): Record<string, SessionRegistryEntry>
       // such as `__proto__` as ordinary own properties and avoids inherited
       // names being mistaken for registered sessions.
       const registry = emptyRegistry();
-      for (const [id, entry] of Object.entries(parsed)) registry[id] = entry;
+      for (const [id, entry] of Object.entries(parsed)) {
+        if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+          registry[id] = entry;
+        }
+      }
       return registry;
     }
   } catch {

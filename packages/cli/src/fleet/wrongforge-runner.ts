@@ -216,6 +216,7 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
 
     const cancel = () => cancelTask(call, record.id, 'cancelled by WrongStack');
     ctx.signal.addEventListener('abort', cancel, { once: true });
+    if (ctx.signal.aborted) cancel();
     const publish = (event: ACPProgressEvent) => {
       try {
         options.publishLive?.(ctx, task, event);
@@ -231,6 +232,9 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
       }
     };
 
+    // `result.text` glues every step's text together with no separator; the
+    // events keep the steps apart (a tool call ends one), so build it here.
+    const stepTexts: string[] = [''];
     try {
       for await (const ev of followTask(call, record.id, ctx.signal, {
         retryDelayMs: options.retryDelayMs,
@@ -246,6 +250,11 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
           void reportWrongForgeQuota({ endpoint: ep, fetchImpl: options.fetchImpl });
         }
         for (const progress of toProgress(ev)) publish(progress);
+        if (ev.type === 'agent.text' && typeof ev.data['text'] === 'string') {
+          stepTexts[stepTexts.length - 1] += ev.data['text'];
+        } else if (ev.type === 'tool.started' && stepTexts[stepTexts.length - 1]?.trim()) {
+          stepTexts.push('');
+        }
       }
       record = await terminalTaskRecord(call, record.id, ctx.signal, {
         retryDelayMs: options.retryDelayMs,
@@ -274,7 +283,12 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
     if (!result || (!result.text.trim() && result.tool_calls === 0)) {
       throw subagentError('empty_response', 'WrongForge finished with no text and no tool calls');
     }
-    return { result: result.text, iterations: result.steps, toolCalls: result.tool_calls };
+    const text =
+      stepTexts
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .join('\n\n') || result.text;
+    return { result: text, iterations: result.steps, toolCalls: result.tool_calls };
   };
 }
 

@@ -446,6 +446,30 @@ describe('DefaultPluginAPI', () => {
     expect(api.slashCommands.get('p:plugcmd')).toBeUndefined();
   });
 
+  it('does not give an external plugin named "core" the built-in slash tier', async () => {
+    // The registry treats owner "core" as a built-in: bare names, and the right
+    // to unregister built-ins. A plugin's owner is its self-chosen name.
+    const { SlashCommandRegistry } = await import('../../src/index.js');
+    const scr = new SlashCommandRegistry();
+    scr.register({ name: 'permissions', description: 'builtin', run: async () => ({}) });
+    const api = new DefaultPluginAPI({
+      ownerName: 'core',
+      container: new Container(),
+      events: new EventBus(),
+      pipelines: {} as never,
+      toolRegistry: new ToolRegistry(),
+      providerRegistry: new ProviderRegistry(),
+      config: baseConfig,
+      log: new DefaultLogger({ level: 'error' }),
+      slashCommandRegistry: scr,
+    });
+    expect(() =>
+      api.slashCommands.register({ name: 'permissions', description: 'p', run: async () => ({}) }),
+    ).toThrow(/"core" is reserved for built-ins/);
+    expect(() => api.slashCommands.unregister('permissions')).toThrow(/may not unregister/);
+    expect(scr.get('permissions')?.description).toBe('builtin');
+  });
+
   it('slashCommands view forwards an official plugin namespaced-only registration', async () => {
     const { SlashCommandRegistry } = await import('../../src/index.js');
     const scr = new SlashCommandRegistry();
@@ -631,7 +655,6 @@ describe('DefaultPluginAPI', () => {
 
   it('allows plugin to wrap its own tool regardless of capabilities', () => {
     const tr = new ToolRegistry();
-    tr.register(toolWithCaps('my-tool', ['fs.write']), 'plugin-x');
     const api = new DefaultPluginAPI({
       ownerName: 'plugin-x',
       container: new Container(),
@@ -643,9 +666,53 @@ describe('DefaultPluginAPI', () => {
       log: new DefaultLogger({ level: 'error' }),
       capabilities: { toolMutateCapabilities: ['fs.read'] },
     });
+    api.tools.register(toolWithCaps('my-tool', ['fs.write']));
     expect(() =>
       api.tools.wrap('my-tool', (t) => ({ ...t, description: 'wrapped' })),
     ).not.toThrow();
+  });
+
+  it('does not let a plugin named after a host owner mutate that owner’s tools', () => {
+    // The owner string is the plugin's self-chosen name: built-ins are owned
+    // by "core", so naming a plugin "core" must not unlock wrapping them.
+    const tr = new ToolRegistry();
+    tr.register({ ...toolWithCaps('bash', ['shell.arbitrary']), permission: 'confirm' }, 'core');
+    const api = new DefaultPluginAPI({
+      ownerName: 'core',
+      container: new Container(),
+      events: new EventBus(),
+      pipelines: {} as never,
+      toolRegistry: tr,
+      providerRegistry: new ProviderRegistry(),
+      config: baseConfig,
+      log: new DefaultLogger({ level: 'error' }),
+    });
+    expect(() => api.tools.wrap('bash', (t) => ({ ...t, permission: 'auto' }))).toThrow(
+      /may not wrap tool "bash"/,
+    );
+    expect(() => api.tools.unregister('bash')).toThrow(/may not unregister tool "bash"/);
+    expect(tr.get('bash')?.permission).toBe('confirm');
+    expect(tr.ownerOf('bash')).toBe('core');
+  });
+
+  it('does not let an external plugin register tools as "core" (would pass --restricted)', () => {
+    // `--restricted` admits capability-less tools only when core owns them.
+    const tr = new ToolRegistry();
+    tr.setSessionRestriction({ requireDeclaredCapabilities: true });
+    const api = new DefaultPluginAPI({
+      ownerName: 'core',
+      container: new Container(),
+      events: new EventBus(),
+      pipelines: {} as never,
+      toolRegistry: tr,
+      providerRegistry: new ProviderRegistry(),
+      config: baseConfig,
+      log: new DefaultLogger({ level: 'error' }),
+    });
+    expect(() => api.tools.register(toolWithCaps('run_anything', []))).toThrow(
+      /"core" is reserved for built-ins/,
+    );
+    expect(tr.listForProvider().some((t) => t.name === 'run_anything')).toBe(false);
   });
 
   it('denies non-official plugin to unregister tool without matching capability', () => {

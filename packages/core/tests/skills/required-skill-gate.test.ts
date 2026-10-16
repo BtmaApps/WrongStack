@@ -7,6 +7,7 @@ import {
   parseRequiredSkillsMarker,
   pendingRequiredSkills,
   REQUIRED_SKILLS_META_KEY,
+  readRequiredSkillsState,
   restoreRequiredSkillsFromEvents,
 } from '../../src/skills/required-skill-gate.js';
 import type { ToolUseBlock } from '../../src/types/blocks.js';
@@ -34,6 +35,14 @@ describe('required-skill marker', () => {
     expect(parseRequiredSkillsMarker('Load $bug-hunter first.')).toBeUndefined();
     expect(parseRequiredSkillsMarker('<!-- wrongstack:required-skills   -->')).toBeUndefined();
     expect(parseRequiredSkillsMarker('<!-- wrongstack-bug-hunt scope="" -->')).toBeUndefined();
+  });
+
+  it('parses across multiple markers and skips empty prefix markers', () => {
+    expect(
+      parseRequiredSkillsMarker(
+        '<!-- wrongstack:required-skills -->\n<!-- wrongstack:required-skills bug-hunter -->\nSome text\n<!-- wrongstack:required-skills testing -->',
+      ),
+    ).toEqual(['bug-hunter', 'testing']);
   });
 });
 
@@ -165,6 +174,19 @@ describe('required-skill state against the transcript', () => {
     const compacted = { meta: {} as Record<string, unknown>, messages: [] as Message[] };
     restoreRequiredSkillsFromEvents(compacted, events);
     expect(pendingRequiredSkills(compacted)).toEqual(['bug-hunter']);
+  });
+
+  it('clears unavailable status when a skill is loaded and restores gating after compaction', () => {
+    const ctx = loadedCtx([skillCall('s1', 'bug-hunter'), skillResult('s1')]);
+    markRequiredSkillUnavailable(ctx, 'bug-hunter');
+    expect(pendingRequiredSkills(ctx)).toEqual([]);
+
+    markRequiredSkillLoaded(ctx, 'bug-hunter', 's1');
+    expect(readRequiredSkillsState(ctx)?.unavailable).toEqual([]);
+    expect(pendingRequiredSkills(ctx)).toEqual([]);
+
+    ctx.messages = [{ role: 'system', content: '[prior_turns_digest: ...]' }];
+    expect(pendingRequiredSkills(ctx)).toEqual(['bug-hunter']);
   });
 });
 

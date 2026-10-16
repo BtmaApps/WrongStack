@@ -461,7 +461,9 @@ export class CloudSync {
                 ? withoutSecretLines(rawContent)
                 : rawContent;
           entries.push({ path: `data/${cat}`, content, mode: '100644' });
-          hashes.push(`${cat}\0${content}`);
+          // The rev is of the local file, as hashLocalCategories reads it — not
+          // of the projected/scrubbed upload, or no push would ever read as synced.
+          hashes.push(`${cat}\0${rawContent}`);
         }
       } catch (err) {
         // Only a MISSING category is absent. buildPushTree turns every absent

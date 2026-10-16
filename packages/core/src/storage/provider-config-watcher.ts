@@ -116,7 +116,12 @@ export async function readProviderSnapshot(
   }
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    const value: unknown = JSON.parse(raw);
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      warn?.(`Config at ${configPath} must be a JSON object`);
+      return undefined;
+    }
+    parsed = value as Record<string, unknown>;
   } catch (err) {
     // A torn read mid-rename can surface as invalid JSON; treat as transient.
     warn?.(`Config at ${configPath} is not valid JSON: ${(err as Error).message}`);
@@ -227,6 +232,7 @@ export function watchProviderConfig(
   const base = path.basename(configPath);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+  let readGeneration = 0;
   let lastSerialized: string | undefined;
 
   // Seed the guard with current on-disk content so the first *change* fires
@@ -249,12 +255,13 @@ export function watchProviderConfig(
 
   const trigger = (): void => {
     if (closed) return;
+    const generation = ++readGeneration;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = undefined;
       void readProviderSnapshot(configPath, vault, warn).then(
         (next) => {
-          if (closed || !next) return;
+          if (closed || generation !== readGeneration || !next) return;
           const serialized = serializeSnapshot(next);
           if (serialized === lastSerialized) return; // no-op / self-write
           lastSerialized = serialized;

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCompactSkillBodiesText,
   buildFullSkillBodiesText,
+  buildFullSkillBodiesTextCached,
   buildProgressiveSkillManifestText,
+  newSkillFragmentCache,
 } from '../../src/core/system-prompt-skill-bodies.js';
 import { SKILL_LIMITS } from '../../src/skills/limits.js';
 import type { SkillLoader, SkillManifest } from '../../src/types/skill.js';
@@ -127,5 +129,105 @@ describe('foreign-skill provenance labeling (Phase 4)', () => {
     expect(out).toContain('`claude-skill` [foreign skill: claude-user]');
     expect(out).toContain('`native-skill` |');
     expect(out).not.toContain('`native-skill` [foreign');
+  });
+});
+
+/** Loader whose bodies can be swapped between builds, mimicking an edit. */
+function mutableLoader(names: string[]): {
+  loader: SkillLoader;
+  setBody: (body: string) => void;
+} {
+  let body = 'BODY';
+  const manifest = (name: string): SkillManifest => ({
+    name,
+    description: 'd',
+    path: `/${name}/SKILL.md`,
+    source: 'bundled',
+  });
+  const loader: SkillLoader = {
+    list: async () => names.map(manifest),
+    listEntries: async () => [],
+    find: async (name: string) => (names.includes(name) ? manifest(name) : undefined),
+    manifestText: async () => '',
+    // Returns the live string instance, like the real loader's stamped body
+    // cache: same instance while unchanged, a NEW string after a re-read.
+    readBody: async () => body,
+    readSaveBody: async () => body,
+    invalidateCache: () => undefined,
+  } as unknown as SkillLoader;
+  return {
+    loader,
+    setBody: (next: string) => {
+      body = next;
+    },
+  };
+}
+
+describe('buildFullSkillBodiesTextCached fragment cache', () => {
+  it('matches the uncached builder on cold and warm calls', async () => {
+    const loader = fakeLoader(['aaa', 'bbb'], 'BODY');
+    const uncached = await buildFullSkillBodiesText(loader, 100_000);
+    const first = await buildFullSkillBodiesTextCached(loader, 100_000);
+    const second = await buildFullSkillBodiesTextCached(loader, 100_000, [], first.cache);
+    expect(first.text).toBe(uncached);
+    expect(second.text).toBe(uncached);
+  });
+
+  it('re-renders a skill after its body changes (freshness contract)', async () => {
+    const { loader, setBody } = mutableLoader(['aaa']);
+    const cache = newSkillFragmentCache();
+    const v1 = await buildFullSkillBodiesTextCached(loader, 100_000, [], cache);
+    expect(v1.text).toContain('BODY');
+    setBody('BODY-V2 edited further');
+    const v2 = await buildFullSkillBodiesTextCached(loader, 100_000, [], cache);
+    expect(v2.text).toContain('BODY-V2');
+    expect(v2.text).not.toContain('\n\nBODY\n');
+  });
+
+  it('gates a cached fragment against tool references each turn', async () => {
+    const { loader, setBody } = mutableLoader(['aaa']);
+    const cache = newSkillFragmentCache();
+    const ok = await buildFullSkillBodiesTextCached(loader, 100_000, [], cache);
+    expect(ok.text).toContain('## Skill: aaa');
+    setBody('Call `ghost_tool` before continuing.');
+    const gated = await buildFullSkillBodiesTextCached(loader, 100_000, [], cache);
+    expect(gated.text).toBe('');
+  });
+
+  it('follows tool-catalog admission changes without re-reading bodies', async () => {
+    const { loader, setBody } = mutableLoader(['aaa']);
+    setBody('Use `mailbox` to reach fleet peers.');
+    const cache = newSkillFragmentCache();
+    const admitted = await buildFullSkillBodiesTextCached(loader, 100_000, ['mailbox'], cache);
+    expect(admitted.text).toContain('## Skill: aaa');
+    const rejected = await buildFullSkillBodiesTextCached(loader, 100_000, [], cache);
+    expect(rejected.text).toBe('');
+    const restored = await buildFullSkillBodiesTextCached(loader, 100_000, ['mailbox'], cache);
+    expect(restored.text).toBe(admitted.text);
+  });
+
+  it('skips a skill whose readBody rejects and renders the rest', async () => {
+    const names = ['aaa', 'bbb'];
+    const manifest = (name: string): SkillManifest => ({
+      name,
+      description: 'd',
+      path: `/${name}/SKILL.md`,
+      source: 'bundled',
+    });
+    const loader: SkillLoader = {
+      list: async () => names.map(manifest),
+      listEntries: async () => [],
+      find: async (name: string) => (names.includes(name) ? manifest(name) : undefined),
+      manifestText: async () => '',
+      readBody: async (name: string) => {
+        if (name === 'bbb') throw new Error('vanished mid-turn');
+        return 'BODY';
+      },
+      readSaveBody: async () => 'BODY',
+      invalidateCache: () => undefined,
+    } as unknown as SkillLoader;
+    const out = await buildFullSkillBodiesText(loader, 100_000);
+    expect(out).toContain('## Skill: aaa');
+    expect(out).not.toContain('## Skill: bbb');
   });
 });

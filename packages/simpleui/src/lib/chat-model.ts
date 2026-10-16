@@ -299,5 +299,12 @@ export function updateSubagents(
     const status = typeof payload['status'] === 'string' ? payload['status'] : 'completed';
     return upsert(agents, id, { status, task: undefined });
   }
-  return upsert(agents, id, {});
+  // Telemetry-only kinds (`tool_executed`, `iteration_summary`, `ctx_pct`,
+  // `budget_warning`, `budget_extended`) are not lifecycle events: creating a
+  // tab for them invented a phantom `idle` row — opaque raw-id name, wrong
+  // status — whenever one arrived before the agent's `spawned` frame (page
+  // refresh or reconnect mid-delegation). Recognized agents are unaffected:
+  // an empty patch changed nothing observable, so an unknown kind now leaves
+  // the roster untouched.
+  return agents;
 }

@@ -1,7 +1,12 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { hqTokenVerifier, readHqAuthFile } from '@wrongstack/core/hq';
+import {
+  hqTokenVerifier,
+  mintHqToken,
+  mutateHqAuthFile,
+  readHqAuthFile,
+} from '@wrongstack/core/hq';
 import type { ContentBlock, TextBlock } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hqCmd } from '../src/subcommands/handlers/hq.js';
@@ -243,6 +248,24 @@ describe('wstack hq — token revoke', () => {
     expect(code).toBe(1);
     const err = deps.renderer.captured.err.join('');
     expect(err).toContain('No browser token found');
+  });
+
+  it('refuses an ambiguous id prefix instead of reporting a revoke it did not do', async () => {
+    // Two tokens share the prefix: revoking "abcd" must not claim success while
+    // both stay valid (nor write a revoke audit record).
+    await mutateHqAuthFile(dataDir, (current) => ({
+      ...current,
+      browserTokens: ['abcd-1111', 'abcd-2222'].map((id) => ({ ...mintHqToken({}), id })),
+    }));
+    const deps = makeDeps();
+    const code = await hqCmd(['token', 'revoke', 'abcd'], deps);
+    expect(code).toBe(1);
+    expect(deps.renderer.captured.out.join('')).not.toContain('Revoked');
+    expect(deps.renderer.captured.err.join('')).toContain('matches 2 browser tokens');
+    const after = await readHqAuthFile(dataDir);
+    expect(after.browserTokens?.map((t) => t.id)).toEqual(['abcd-1111', 'abcd-2222']);
+    const audit = await fs.readFile(path.join(dataDir, 'auth-audit.jsonl'), 'utf8').catch(() => '');
+    expect(audit).not.toContain('"kind":"revoke"');
   });
 
   it('exits 1 with usage when revoke has no id argument', async () => {

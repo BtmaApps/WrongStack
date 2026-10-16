@@ -424,6 +424,29 @@ describe('the fleet endpoint for a leader', () => {
     await provider.closeAll();
   });
 
+  it("rewrites a required-skills marker to name the fleet server's skill tool", async () => {
+    bindAcpLeaderHost({
+      events: new EventBus(),
+      projectRoot: '/proj',
+      getConfig: () => CONFIG,
+      permission: () =>
+        ({ evaluate: async () => ({ permission: 'auto', source: 'default' }) }) as never,
+      context: () => ({}) as never,
+      getTool: (name) =>
+        name === 'skill'
+          ? ({ name, description: 'load a skill', inputSchema: { type: 'object' } } as never)
+          : undefined,
+      runTool: async () => ({ content: 'ok', isError: false }),
+    });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    const hunt = 'Hunt one bug.\n<!-- wrongstack:required-skills bug-hunter testing -->';
+    await collect(provider.stream(leaderRequest(hunt) as never, { signal: SIGNAL }));
+    expect(acp.prompts[0]).not.toContain('<!--');
+    expect(acp.prompts[0]).toContain("This task's playbook skills: bug-hunter, testing.");
+    expect(acp.prompts[0]).toContain('`mcp__wrongstack-fleet__skill`');
+    await provider.closeAll();
+  });
+
   it('stops listening when the agent never starts, on every retried turn', async () => {
     bindAcpLeaderHost({
       events: new EventBus(),
@@ -462,6 +485,48 @@ describe('the fleet endpoint for a leader', () => {
         ).rejects.toThrow();
       }
     });
+  });
+
+  it('clears session fleetGrants on drop so dropped sessions do not leak grants into new sessions', async () => {
+    const provider = new AcpLeaderProvider({
+      bootConfig: CONFIG,
+      buildProvider: () => undefined,
+    });
+    const tool = { name: 'delegate', description: 'delegate', inputSchema: { type: 'object' } };
+    const input = { task: 'sensitive' };
+
+    let askCount = 0;
+    (provider as unknown as { ask: () => Promise<boolean> }).ask = async () => {
+      askCount++;
+      return true;
+    };
+
+    // User confirms in session 's-leak'
+    await (
+      provider as unknown as {
+        confirm: (s: string, t: unknown, i: unknown, r: unknown) => Promise<boolean>;
+      }
+    ).confirm('s-leak', tool, input, { toolCallId: '1', signal: SIGNAL });
+
+    // Session is dropped
+    (
+      provider as unknown as {
+        drop: (k: string, l: unknown) => void;
+      }
+    ).drop('s-leak', {
+      session: { close: async () => {} },
+      fleet: undefined,
+    });
+
+    // New session on 's-leak' must ask user again rather than auto-approving
+    askCount = 0;
+    await (
+      provider as unknown as {
+        approveFleetCall: (s: string, t: unknown, i: unknown) => Promise<boolean>;
+      }
+    ).approveFleetCall('s-leak', tool, input);
+
+    expect(askCount).toBe(1);
   });
 });
 

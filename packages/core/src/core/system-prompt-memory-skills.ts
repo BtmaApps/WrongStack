@@ -16,8 +16,9 @@ import type { Tool } from '../types/tool.js';
 import { agentsFingerprint, shortSessionId } from './system-prompt-blocks.js';
 import {
   buildCompactSkillBodiesText,
-  buildFullSkillBodiesText,
+  buildFullSkillBodiesTextCached,
   buildProgressiveSkillManifestText,
+  type SkillFragmentCache,
 } from './system-prompt-skill-bodies.js';
 
 /** Rendered peer snapshot, cached by content fingerprint. */
@@ -96,17 +97,27 @@ export interface MemorySkillsContext {
   lastBuildTools: Tool[] | undefined;
   catalogTools: Tool[] | undefined;
   skillBodyCache: string | undefined;
+  /**
+   * Cross-turn Active-Skills fragment cache (see
+   * `buildFullSkillBodiesTextCached`). Fragment validity is keyed by the raw
+   * body string reference, so the SkillLoader's per-read stat stays the
+   * freshness authority across turns.
+   */
+  skillFragments?: SkillFragmentCache | undefined;
 }
 
 /**
  * Returns the section text plus the (possibly refreshed) skill-body cache; the
  * caller stores the cache back on the builder.
  */
-export async function buildMemoryAndSkills(
-  mem: MemorySkillsContext,
-): Promise<{ text: string; skillBodyCache: string | undefined }> {
+export async function buildMemoryAndSkills(mem: MemorySkillsContext): Promise<{
+  text: string;
+  skillBodyCache: string | undefined;
+  skillFragments: SkillFragmentCache | undefined;
+}> {
   const parts: string[] = [];
   let skillBodyCache = mem.skillBodyCache;
+  let skillFragments = mem.skillFragments;
   // Memory injection count per tier: off=5, minimal=3, light=3, medium=5, aggressive=3
   const memoryCount =
     mem.tier === 'minimal' || mem.tier === 'light' || mem.tier === 'aggressive' ? 3 : 5;
@@ -174,11 +185,14 @@ export async function buildMemoryAndSkills(
         mem.catalogTools?.map((tool) => tool.name) ?? [],
       );
     } else {
-      skillBodyCache = await buildFullSkillBodiesText(
+      const built = await buildFullSkillBodiesTextCached(
         mem.skillLoader,
         mem.skillEagerMaxChars,
         mem.catalogTools?.map((tool) => tool.name) ?? [],
+        mem.skillFragments,
       );
+      skillFragments = built.cache;
+      skillBodyCache = built.text;
     }
   }
   if (skillBodyCache) {
@@ -190,5 +204,5 @@ export async function buildMemoryAndSkills(
         `When a skill suggests changes beyond the assigned task, note the observation in your report instead of acting on it.\n\n${skillBodyCache}`,
     );
   }
-  return { text: parts.join('\n\n'), skillBodyCache };
+  return { text: parts.join('\n\n'), skillBodyCache, skillFragments };
 }

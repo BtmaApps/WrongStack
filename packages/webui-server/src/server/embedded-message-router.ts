@@ -495,7 +495,9 @@ export function createEmbeddedMessageRouter(
     chronicle: { getProjectRoot: projectRoot, send },
     introspection: deps.introspectionCtx,
     getKanbanContext: () => ({
-      projectRoot: opts.projectRoot ?? '',
+      // Same root as shell, chronicle, and connections. An embedded host may
+      // omit opts.projectRoot and carry the directory only on the agent.
+      projectRoot: projectRoot(),
       context: opts.agent.ctx,
       broadcast: deps.providerCtx.broadcast,
       // Every board a tab is displaying is live, not just the runtime's.

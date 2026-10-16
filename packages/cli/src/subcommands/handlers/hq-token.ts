@@ -293,6 +293,7 @@ async function tokenRevoke(args: string[], deps: SubcommandDeps): Promise<number
   const dataDir = resolveDataDir(deps);
   const tokenField = scope === 'client' ? 'clientTokens' : 'browserTokens';
   let revoked: HqToken | undefined;
+  let ambiguous: HqToken[] = [];
   try {
     await mutateHqAuthFile(
       dataDir,
@@ -302,12 +303,15 @@ async function tokenRevoke(args: string[], deps: SubcommandDeps): Promise<number
         // supplied prefix. The full id is long; users usually paste the
         // first 8 chars.
         const matches = tokens.filter((t) => t.id.startsWith(idPrefix));
+        ambiguous = [];
         if (matches.length === 0) {
           revoked = undefined;
           return current;
         }
         if (matches.length > 1) {
-          revoked = matches[0]; // caller will surface ambiguity below
+          // Revoke nothing: the prefix does not say which token to revoke.
+          revoked = undefined;
+          ambiguous = matches;
           return current;
         }
         revoked = matches[0];
@@ -323,6 +327,12 @@ async function tokenRevoke(args: string[], deps: SubcommandDeps): Promise<number
     return 1;
   }
 
+  if (ambiguous.length > 0) {
+    deps.renderer.writeError(
+      `Id-prefix "${idPrefix}" matches ${ambiguous.length} ${scope} tokens (${ambiguous.map((t) => t.id).join(', ')}); nothing revoked. Use a longer prefix.\n`,
+    );
+    return 1;
+  }
   if (!revoked) {
     deps.renderer.writeError(`No ${scope} token found matching id-prefix "${idPrefix}".\n`);
     return 1;

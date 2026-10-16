@@ -138,18 +138,37 @@ interface SuggestLexicalAdjacentInput {
   ftsSession: { clause: string; params: string[] };
   /** Same audience/anchor filters as the primary query — suggestions must honor them too. */
   jsFilters: Array<(memory: Sage) => boolean>;
+  /**
+   * Same WebUI discovery policy as the primary query: exclude ALL
+   * `scope: 'session'` rows (owned AND legacy unowned). The primary query drops
+   * them from `hits` and `totalCandidates`; suggestions are result rows too, so
+   * omitting it here surfaced session-scoped memories the policy had just hidden.
+   */
+  excludeSessionScoped: boolean;
 }
 
 /**
  * Design-doc v1 suggestions: lexical adjacency. When the primary query found
  * nothing (or 'always' is requested), re-run the same filters (kinds, scopes,
- * importance, freshness, paths, session, audience/anchor) with an OR-expanded
+ * importance, freshness, paths, session, the `excludeSessionScoped` visibility
+ * policy, audience/anchor) with an OR-expanded
  * FTS expression so memories sharing any query term surface as neighbors.
  * Graph-adjacency BFS is the documented v2 method (deferred). Sorted by the
  * same ranking policy as `hits` and scored with the same absolute formula.
  */
 export function suggestLexicalAdjacent(input: SuggestLexicalAdjacentInput): SearchHit[] {
-  const { host, query, matchExpr, limit, hits, statuses, ranking, ftsSession, jsFilters } = input;
+  const {
+    host,
+    query,
+    matchExpr,
+    limit,
+    hits,
+    statuses,
+    ranking,
+    ftsSession,
+    jsFilters,
+    excludeSessionScoped,
+  } = input;
   if (!matchExpr) return []; // filters-only query: no lexical neighborhood
   const terms = ftsPrefixTerms(query.text ?? '');
   if (terms.length < 2) return []; // a single term has no meaningful OR expansion
@@ -180,6 +199,12 @@ export function suggestLexicalAdjacent(input: SuggestLexicalAdjacentInput): Sear
   if (ftsSession.clause) {
     clauses.push(ftsSession.clause.replace(/^\s*AND\s+/i, ''));
     params.push(...ftsSession.params);
+  }
+  if (excludeSessionScoped) {
+    // WebUI discovery policy — mirrors the primary query so a session-scoped row
+    // can never re-enter through the suggestion channel.
+    clauses.push('m.scope != ?');
+    params.push('session');
   }
 
   const whereSql = ' WHERE ' + clauses.join(' AND ');

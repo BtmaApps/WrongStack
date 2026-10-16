@@ -24,6 +24,12 @@
  * A marker can only add a restriction, and a skill the runtime cannot provide
  * is released by the failed load, so a marker naming a missing skill cannot
  * lock the session.
+ *
+ * The gate only binds a model whose loop WrongStack runs. An agent provider
+ * that keeps its own context (ACP or WrongForge leader) loads skills with its
+ * own tools and calls WrongStack's through a gateway that never writes to
+ * `ctx.messages`; the executor does not gate it (tool-executor.ts), and the
+ * marker stays an instruction there.
  */
 
 import type { ContentBlock, ToolUseBlock } from '../types/blocks.js';
@@ -36,7 +42,7 @@ export const REQUIRED_SKILLS_META_KEY = 'requiredSkills';
 /** The tool whose deliveries satisfy the gate. */
 export const REQUIRED_SKILLS_LOADER_TOOL = 'skill';
 
-const MARKER = /<!--\s*wrongstack:required-skills\s+([\s\S]*?)-->/;
+const MARKER = /<!--\s*wrongstack:required-skills\s+([\s\S]*?)-->/g;
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_REQUIRED_SKILLS = 16;
 
@@ -59,18 +65,20 @@ type MetaHolder =
 
 /** The skills a message's marker requires, or `undefined` when it has none. */
 export function parseRequiredSkillsMarker(text: string): string[] | undefined {
-  const match = MARKER.exec(text);
-  if (!match) return undefined;
-  const names = [
-    ...new Set(
-      (match[1] ?? '')
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((name) => SKILL_NAME.test(name)),
-    ),
-  ].slice(0, MAX_REQUIRED_SKILLS);
-  return names.length > 0 ? names : undefined;
+  const matches = text.matchAll(MARKER);
+  const collected: string[] = [];
+  for (const match of matches) {
+    const raw = match[1] ?? '';
+    const parts = raw.trim().toLowerCase().split(/\s+/);
+    for (const part of parts) {
+      if (SKILL_NAME.test(part) && !collected.includes(part)) {
+        collected.push(part);
+        if (collected.length >= MAX_REQUIRED_SKILLS) break;
+      }
+    }
+    if (collected.length >= MAX_REQUIRED_SKILLS) break;
+  }
+  return collected.length > 0 ? collected : undefined;
 }
 
 export function readRequiredSkillsState(ctx: MetaHolder): RequiredSkillsState | undefined {
@@ -112,7 +120,8 @@ export function markRequiredSkillLoaded(ctx: MetaHolder, name: string, toolUseId
   if (toolUseId) deliveries[normalized] = toolUseId;
   else delete deliveries[normalized];
   const loaded = state.loaded.includes(normalized) ? state.loaded : [...state.loaded, normalized];
-  writeState(ctx, { ...state, loaded, deliveries });
+  const unavailable = state.unavailable.filter((u) => u !== normalized);
+  writeState(ctx, { ...state, loaded, unavailable, deliveries });
 }
 
 /** The `skill` tool could not provide this skill (not found, or unavailable here). */

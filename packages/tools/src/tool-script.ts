@@ -91,7 +91,8 @@ class ToolScriptError extends Error {}
 
 interface RunState {
   vm: QuickJSContext;
-  calls: Array<{ name: string; ok: boolean }>;
+  /** `done` once the call settled; a call not done is still running. */
+  calls: Array<{ name: string; ok: boolean; done: boolean }>;
   logs: string[];
   logChars: number;
   /** Console output past the memory guard that was not kept. */
@@ -107,7 +108,7 @@ function callSummary(calls: RunState['calls']): string {
   if (calls.length === 0) return 'no tool calls';
   const counts = new Map<string, number>();
   for (const call of calls) counts.set(call.name, (counts.get(call.name) ?? 0) + 1);
-  const failed = calls.filter((call) => !call.ok).length;
+  const failed = calls.filter((call) => call.done && !call.ok).length;
   const parts = [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
   return `${calls.length} tool call${calls.length === 1 ? '' : 's'}: ${parts.join(', ')}${failed ? ` (${failed} failed)` : ''}`;
 }
@@ -299,7 +300,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
         if (opts.signal.aborted) stop('the run was stopped');
         queueMicrotask(() => settle(false, `The script was stopped: ${state.stopped}.`));
       } else {
-        const record = { name, ok: false };
+        const record = { name, ok: false, done: false };
         state.calls.push(record);
         callIndex += 1;
         caller({
@@ -310,6 +311,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
           ...(resultFormat ? { resultFormat } : {}),
         }).then(
           (result) => {
+            record.done = true;
             state.toolResultBytes += new TextEncoder().encode(result.content).length;
             record.ok = !result.isError;
             if (resultFormat && !result.isError && !Object.hasOwn(result, 'data')) {
@@ -326,7 +328,10 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
               );
             }
           },
-          (err: unknown) => settle(false, err instanceof Error ? err.message : String(err)),
+          (err: unknown) => {
+            record.done = true;
+            settle(false, err instanceof Error ? err.message : String(err));
+          },
         );
       }
       return deferred.handle;
@@ -453,7 +458,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
       if (onAbort) opts.signal.removeEventListener('abort', onAbort);
 
       if (outcome === 'cut') {
-        const running = state.calls.length - [...state.calls].filter((c) => c.ok).length;
+        const running = state.calls.filter((c) => !c.done).length;
         throw new ToolScriptError(
           `The script was stopped: ${state.stopped}. ${callSummary(state.calls)}${running > 0 ? '; calls already started keep running' : ''}.`,
         );

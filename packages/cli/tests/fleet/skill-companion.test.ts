@@ -171,6 +171,32 @@ describe('Skill Companion', () => {
     await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
   });
 
+  it('stays out of a session an agent leads (ACP, WrongForge) and returns after it', async () => {
+    const h = harness();
+    h.run('Redesign the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.finish(PICK);
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+    const led = h.ctx as unknown as { provider?: unknown };
+    led.provider = { capabilities: { keepsOwnContext: true } };
+
+    h.run('Now redesign the profile page as well');
+    // No hold left behind for an agent the executor never holds.
+    expect(readSkillCompanionState(h.ctx)).toBeUndefined();
+    expect(h.terminate).toHaveBeenCalledWith('worker');
+    h.events.emit('tool.executed', {
+      sessionId: 'S1',
+      name: 'edit',
+      ok: true,
+      input: { path: 'src/profile.tsx' },
+    } as never);
+    expect(h.assignInternal).toHaveBeenCalledTimes(1);
+
+    led.provider = { capabilities: {} };
+    h.run('Back on a WrongStack model: redesign the billing page');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
+  });
+
   it('judges a new turn with a tool-less resident and arms a one-time hold', async () => {
     const h = harness();
     h.run('Redesign the settings page with secret-fixture tokens');

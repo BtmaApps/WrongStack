@@ -3,6 +3,7 @@ export {
   type RunResult,
   type UserInputPayload,
 } from './agent.js';
+export { keepsOwnContext } from './agent-owned-context.js';
 export {
   type AgentInit,
   type AgentInput,

@@ -1,3 +1,7 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createBoard } from '@wrongstack/kanban';
 import { describe, expect, it, vi } from 'vitest';
 import { WebSocket } from '../src/ws-runtime.js';
 
@@ -534,5 +538,40 @@ describe('createEmbeddedMessageRouter — runtime choices land on the asking tab
 
     expect(background.ctx.meta['mode']).toBe('focus');
     expect(leader.ctx.meta['mode']).toBeUndefined();
+  });
+});
+
+describe('createEmbeddedMessageRouter — kanban project root', () => {
+  it('lists the agent project when opts.projectRoot is omitted', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'test';
+    process.env.VITEST = 'true';
+    const root = await mkdtemp(path.join(tmpdir(), 'ws-embedded-kanban-'));
+    try {
+      const board = await createBoard(root, { title: 'Embedded root' });
+      const d = makeDeps();
+      d.opts = {
+        agent: d.opts.agent,
+        profileConfigPath: d.opts.profileConfigPath,
+      };
+      d.opts.agent.ctx.projectRoot = root;
+      const frames: Array<{
+        type?: string;
+        payload?: { success?: boolean; data?: Array<{ id?: string }> };
+      }> = [];
+      const ws = mockWs();
+      ws.send = vi.fn((data: string) => {
+        frames.push(JSON.parse(data));
+      });
+      const router = createEmbeddedMessageRouter(d);
+      await router(ws, null, { type: 'kanban.list', payload: {} } as never);
+      const listed = frames.find((frame) => frame.type === 'kanban.list');
+      expect(listed?.payload?.success).toBe(true);
+      expect(listed?.payload?.data?.map((item) => item.id)).toContain(board.id);
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

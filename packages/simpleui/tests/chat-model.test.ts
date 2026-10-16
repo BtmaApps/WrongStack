@@ -334,6 +334,38 @@ describe('SimpleUI subagent projection', () => {
     const agents = [{ id: 'worker-1', name: 'FIXER', status: 'idle' }];
     expect(updateSubagents(agents, { kind: 'removed', subagentId: 'worker-1' })).toEqual([]);
   });
+
+  it('does not invent tabs from telemetry-only subagent events', () => {
+    // The server forwards tool_executed / iteration_summary / ctx_pct /
+    // budget_* frames with real subagentIds. They are not lifecycle events:
+    // before the agent's `spawned` frame arrives (page refresh, reconnect)
+    // they must not materialize a phantom `idle` row with an opaque raw-id
+    // name — especially not for an agent these events prove is running.
+    let agents = updateSubagents([], {
+      kind: 'iteration_summary',
+      subagentId: 'sub-agent-9',
+      iteration: 3,
+      partialText: 'Fixing the parser…',
+    });
+    expect(agents).toEqual([]);
+    agents = updateSubagents(agents, {
+      kind: 'ctx_pct',
+      subagentId: 'sub-agent-9',
+      load: 42,
+    });
+    expect(agents).toEqual([]);
+
+    // Boundary: an already-tracked agent stays untouched by telemetry frames
+    // (no status flip, no field patch).
+    const tracked = updateSubagents([], {
+      kind: 'task_started',
+      subagentId: 'sub-1',
+      description: 'Fix auth',
+    });
+    expect(
+      updateSubagents(tracked, { kind: 'tool_executed', subagentId: 'sub-1', ok: true }),
+    ).toEqual(tracked);
+  });
 });
 
 describe('SimpleUI assistant metadata projection', () => {

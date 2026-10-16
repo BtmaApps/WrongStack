@@ -392,6 +392,7 @@ export function executeUnifiedSearch(
       ranking,
       ftsSession,
       jsFilters,
+      excludeSessionScoped,
     });
   }
 

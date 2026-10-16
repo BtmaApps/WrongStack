@@ -61,3 +61,51 @@ describe('FileDiffPanel exclusive-surface rule', () => {
     expect(container.querySelector('.diff-panel')).not.toBeNull();
   });
 });
+
+describe('FileDiffPanel diff classification — header-shaped content inside hunks', () => {
+  const MARKDOWN_EDIT_DIFF = [
+    '@@ -1,3 +1,3 @@',
+    ' keep',
+    '--- rule one',
+    '+++ rule two',
+    ' tail',
+  ].join('\n');
+
+  const lineTexts = (container: HTMLElement, kind: string): string[] =>
+    [...container.querySelectorAll(`.diff-line-${kind}`)].map(
+      (el) => el.textContent?.replace(/\n$/, '') ?? '',
+    );
+
+  it('renders an in-hunk header-shaped content pair as remove/add, not context', () => {
+    // A removed `--- rule one` followed by an added `+++ rule two` INSIDE the
+    // hunk body is content, not the file header — the same rule core's
+    // countUnifiedDiffLines enforces (see unified-diff-count.test.ts).
+    const container = mount({
+      files: [{ path: 'notes.md', diff: MARKDOWN_EDIT_DIFF }],
+      onClose: () => {},
+    });
+    expect(lineTexts(container, 'remove')).toContain('--- rule one');
+    expect(lineTexts(container, 'add')).toContain('+++ rule two');
+    expect(lineTexts(container, 'context')).not.toContain('--- rule one');
+    expect(lineTexts(container, 'context')).not.toContain('+++ rule two');
+  });
+
+  it('still renders real file headers between hunks as context', () => {
+    const diff = [
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+      '--- a/two.txt',
+      '+++ b/two.txt',
+      '@@ -1 +1 @@',
+      '-x',
+      '+y',
+    ].join('\n');
+    const container = mount({ files: [{ path: 'multi.txt', diff }], onClose: () => {} });
+    expect(lineTexts(container, 'context')).toEqual(
+      expect.arrayContaining(['--- a/two.txt', '+++ b/two.txt']),
+    );
+    expect(lineTexts(container, 'remove')).toEqual(expect.arrayContaining(['-old', '-x']));
+    expect(lineTexts(container, 'add')).toEqual(expect.arrayContaining(['+new', '+y']));
+  });
+});

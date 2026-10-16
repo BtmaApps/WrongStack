@@ -71,6 +71,11 @@ export function createSessionResumeHandler(
         }
         let rollbackClaim: (() => Promise<void>) | undefined;
         let activated = false;
+        // The journal `store.resume` opens BEFORE `activateSession` adopts it
+        // as the runtime's active writer. If the activation throws, nothing
+        // else holds a reference to close it, so it must be closed here.
+        let resumeWriterId: string | undefined;
+        let closeResumedWriter: (() => Promise<void>) | undefined;
         try {
           const current = ctx.getSession();
           const store = ctx.getSessionStore();
@@ -157,6 +162,8 @@ export function createSessionResumeHandler(
           const resumed = await store.resume(canonicalId, (progress) => {
             sendResumeProgress(ws, canonicalId, 'open_journal', progress);
           });
+          resumeWriterId = resumed.writer.id;
+          closeResumedWriter = () => resumed.writer.close();
           if (!ctx.hasSession) {
             await ctx.context.flushConversationJournal?.().catch(() => undefined);
             await finalizeSession(current);
@@ -172,7 +179,6 @@ export function createSessionResumeHandler(
               ctx.context.traceId,
               resumed.writer.id,
             ).catch(() => null)) ?? [];
-          activated = true;
           sendResumeProgress(ws, resumed.writer.id, 'swap_writer', {
             loadedBytes: 1,
             totalBytes: 1,
@@ -184,6 +190,13 @@ export function createSessionResumeHandler(
             restoredTodos,
             projectLastRequestTokens(resumed.data.events),
           );
+          // Only NOW has the resume actually taken the session: activateSession
+          // is what installs the writer as the runtime's current session, and it
+          // can throw (agent construction, the todo-sidecar rebind, the
+          // identity/HQ activation it ends with). Marking it activated before
+          // that ran meant any such throw skipped the catch's rollback, leaving
+          // the reservation held and the journal `store.resume` opened dangling.
+          activated = true;
           const resumedContext = ctx.getAgent?.(resumed.writer.id)?.ctx ?? ctx.context;
           restoreSessionSubagentPolicy(
             resumedContext,
@@ -249,7 +262,17 @@ export function createSessionResumeHandler(
           }
           result(ws, true, `Resumed session ${id}`);
         } catch (err) {
-          if (!activated) await rollbackClaim?.().catch(() => undefined);
+          if (!activated) {
+            await rollbackClaim?.().catch(() => undefined);
+            // `store.resume` opened this journal; activateSession is the only
+            // thing that installs it. When the runtime did not adopt it, close
+            // it — otherwise the file handle leaks for the life of the process.
+            // (The id check is exact: activateSession sets the runtime's session
+            // to the resumed writer, so a surviving id means it was installed.)
+            if (closeResumedWriter && ctx.getSession().id !== resumeWriterId) {
+              await closeResumedWriter().catch(() => undefined);
+            }
+          }
           result(ws, false, errMessage(err));
           try {
             const list = await ctx.getSessionStore().list(200);

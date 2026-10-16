@@ -26,7 +26,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
-import type { Context } from '@wrongstack/core/agent';
+import { type Context, keepsOwnContext } from '@wrongstack/core/agent';
 import type { Director } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import {
@@ -160,7 +160,14 @@ export class HostSkillCompanion {
         if (!sessionId || event.ctx.meta?.['agentRole']) return;
         // Proof-driven hunts already load their four-skill pipeline. Retire
         // this session's picker before any turn, todo or edit can re-probe it.
-        if (isProofDrivenBugHuntRequest(event.inputText ?? '')) {
+        // An agent leading the session (ACP, WrongForge) picks its own skills
+        // and is never held for a recommendation (tool-executor.ts), so a
+        // probe would only spend a side model on a note it cannot act on.
+        // The picker comes back with the first turn a WrongStack model runs.
+        if (
+          keepsOwnContext(event.ctx.provider) ||
+          isProofDrivenBugHuntRequest(event.inputText ?? '')
+        ) {
           this.release(sessionId);
           if (event.ctx.meta) delete event.ctx.meta[SKILL_COMPANION_META_KEY];
           return;

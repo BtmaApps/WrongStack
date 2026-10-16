@@ -262,6 +262,22 @@ describe('StdioTransport', () => {
     expect(await p).toBeNull();
   });
 
+  it('stdin "end" still reads and answers the requests that arrived before it', async () => {
+    // A client that writes its requests and then closes stdin gets every reply.
+    const t = new StdioTransport();
+    stdin.emit('data', '{"method":"initialize","id":1}\n{"method":"session/new","id":2}\n');
+    stdin.emit('end');
+    expect(await t.read()).toEqual({ method: 'initialize', id: 1 });
+    await t.send({ method: 'reply', id: 1 });
+    expect(await t.read()).toEqual({ method: 'session/new', id: 2 });
+    expect(await t.read()).toBeNull();
+    await t.send({ method: 'reply', id: 2 });
+    expect(stdout.written).toHaveLength(2);
+    t.close();
+    await t.send({ method: 'reply', id: 3 });
+    expect(stdout.written).toHaveLength(2);
+  });
+
   it('stdin "error" logs and closes', async () => {
     const t = new StdioTransport();
     const p = t.read();

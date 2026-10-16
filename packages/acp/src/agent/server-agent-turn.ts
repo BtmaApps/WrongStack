@@ -264,12 +264,15 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
 
   const turn = async (
     input: Parameters<RunTurn>[0],
-    emit: Parameters<RunTurn>[1],
+    publish: Parameters<RunTurn>[1],
     api?: Parameters<RunTurn>[2],
   ): Promise<RunTurnResult> => {
     const token = Symbol(input.sessionId);
     liveTurns.set(input.sessionId, token);
     const alive = (): boolean => liveTurns.get(input.sessionId) === token;
+    const emit: Parameters<RunTurn>[1] = (update) => {
+      if (alive()) publish(update);
+    };
     // Lazily create an agent for this session on the first turn.
     let agent = agents.get(input.sessionId);
     if (!agent) {
@@ -366,6 +369,7 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
     try {
       const userInput = promptToAgentInput(input.prompt);
       const result = await agent.run(userInput, { signal: turnAbort.signal });
+      if (!alive()) return { stopReason: 'cancelled' };
 
       // Stream the agent's final text back
       const text = extractText(result);
@@ -445,7 +449,7 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
     } finally {
       if (alive()) liveTurns.delete(input.sessionId);
       clearTimeout(timer);
-      timeouts.delete(input.sessionId);
+      if (timeouts.get(input.sessionId) === timer) timeouts.delete(input.sessionId);
       input.signal.removeEventListener('abort', onParentAbort);
       for (const u of unsub) u();
       if (notifier && notifiers.get(input.sessionId) === notifier) {

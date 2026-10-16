@@ -303,6 +303,33 @@ describe('tool_script', () => {
     expect(h.ctx.meta.toolScriptRunning).toBeUndefined();
   });
 
+  it('reports a cut-short call still in flight as running, not failed', async () => {
+    // A write still running must not read as failed: the model would repeat it.
+    const h = harness((call) =>
+      (call.input as { n: number }).n === 1
+        ? Promise.resolve({ content: 'no such file', isError: true })
+        : new Promise(() => {}),
+    );
+    const message = await h
+      .run(
+        `try { await tools.read({ n: 1 }); } catch {} tools.read({ n: 2 }); await new Promise(() => {});`,
+        { timeout_ms: 200 },
+      )
+      .catch((err: Error) => err.message);
+    expect(message).toContain(
+      '2 tool calls: read ×2 (1 failed); calls already started keep running',
+    );
+
+    const settled = harness(async () => ({ content: 'no such file', isError: true }));
+    const onlyFailed = await settled
+      .run(`try { await tools.read({ n: 1 }); } catch {} await new Promise(() => {});`, {
+        timeout_ms: 200,
+      })
+      .catch((err: Error) => err.message);
+    expect(onlyFailed).toContain('1 tool call: read (1 failed).');
+    expect(onlyFailed).not.toContain('keep running');
+  });
+
   it('starts no calls for an already-aborted run', async () => {
     const h = harness(echo);
     const controller = new AbortController();

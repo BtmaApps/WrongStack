@@ -128,12 +128,14 @@ export class InputHistoryStore {
   /** Truncate the file to an empty entry list (used by /clear). */
   async clear(): Promise<void> {
     await ensureDir(path.dirname(this.file));
-    const payload: InputHistoryFile = {
-      version: 1,
-      updatedAt: new Date().toISOString(),
-      entries: [],
-    };
-    await atomicWrite(this.file, JSON.stringify(payload, null, 2));
+    await withFileLock(this.file, async () => {
+      const payload: InputHistoryFile = {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        entries: [],
+      };
+      await atomicWrite(this.file, JSON.stringify(payload, null, 2));
+    });
   }
 
   /**

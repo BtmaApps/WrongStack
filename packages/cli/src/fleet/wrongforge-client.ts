@@ -379,6 +379,7 @@ export function wfTokens(usage: NonNullable<WfTaskRecord['result']>['usage']): {
 }
 
 export function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const t = setTimeout(done, ms);
     function done() {

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { areSubagentsAllowed } from '../coordination/session-subagent-policy.js';
+import { keepsOwnContext } from '../core/agent-owned-context.js';
 import type { Context } from '../core/context.js';
 import { queueDirectoryInstructions } from '../core/project-instructions.js';
 import { spanSessionAttributes } from '../core/span-session.js';
@@ -142,7 +143,15 @@ export class ToolExecutor extends ToolExecutorCore {
 
       // A run that declared required skills changes nothing until they are
       // loaded. Without a loader registered they could never be, so no gate.
-      if (tool.mutating && this.registry.get(REQUIRED_SKILLS_LOADER_TOOL)) {
+      // Neither skill gate applies while an agent that keeps its own context
+      // (an ACP or WrongForge leader) runs the session: it loads skills with
+      // its own tools, and its calls through the gateway never enter
+      // ctx.messages, so the host could not see a load and would lock it out.
+      if (
+        tool.mutating &&
+        this.registry.get(REQUIRED_SKILLS_LOADER_TOOL) &&
+        !keepsOwnContext(ctx.provider)
+      ) {
         const pendingSkills = pendingRequiredSkills(ctx);
         if (pendingSkills.length > 0) {
           const result = deniedResult(use, requiredSkillsDeniedMessage(pendingSkills));

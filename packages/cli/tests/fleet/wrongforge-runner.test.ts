@@ -251,7 +251,9 @@ describe('WrongForge runner', () => {
       ],
       final: {
         result: {
-          text: 'Fixed.',
+          // The service's own result.text glues every step's text with no
+          // separator; the runner must assemble from events instead.
+          text: 'Two bugs.Fixed.',
           steps: 3,
           tool_calls: 1,
           usage: {
@@ -281,8 +283,8 @@ describe('WrongForge runner', () => {
 
     const out = await runner(task, c);
 
-    // Only the terminal answer is the delegated result; intermediate text stays live.
-    expect(out).toEqual({ result: 'Fixed.', iterations: 3, toolCalls: 1 });
+    // Steps stay apart; the glued result.text must never be the delegated reply.
+    expect(out).toEqual({ result: 'Two bugs.\n\nFixed.', iterations: 3, toolCalls: 1 });
     const sent = wf.submitted[0] ?? {};
     expect(sent['workdir']).toBe('/proj');
     expect(sent['prompt']).toBe('fix the failing test');
@@ -438,6 +440,29 @@ describe('WrongForge runner', () => {
     const run = runner(task, ctx(ac.signal).c);
     await vi.waitFor(() => expect(wf.submitted).toHaveLength(1));
     ac.abort();
+    await expect(run).rejects.toMatchObject({ kind: 'aborted_by_parent' });
+    await vi.waitFor(() => expect(wf.cancels).toHaveLength(1));
+  });
+
+  it('cancels the WrongForge task even when the delegating side is already aborted on task creation', async () => {
+    const wf = await fakeWrongForge({ hang: true });
+    servers.push(wf);
+    const ac = new AbortController();
+    const customFetch: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      if (String(input).includes('/v1/tasks') && !String(input).includes('/cancel')) {
+        const text = await res.text();
+        ac.abort();
+        return new Response(text, { status: res.status, headers: res.headers });
+      }
+      return res;
+    };
+    const runner = makeWrongForgeRunner({
+      projectRoot: '/p',
+      endpoint: () => ({ url: wf.url, apiKey: KEY }),
+      fetchImpl: customFetch,
+    });
+    const run = runner(task, ctx(ac.signal).c);
     await expect(run).rejects.toMatchObject({ kind: 'aborted_by_parent' });
     await vi.waitFor(() => expect(wf.cancels).toHaveLength(1));
   });

@@ -83,6 +83,26 @@ describe('DefaultSystemPromptBuilder', () => {
     expect(withoutTools[0]?.text?.length ?? 0).toBeLessThan(withTools[0]?.text?.length ?? 0);
   });
 
+  it('re-renders the memoized leader-after-task block when the tool set changes', async () => {
+    const b = new DefaultSystemPromptBuilder({ todayIso: '2026-05-13' });
+    const without = await b.build({
+      cwd: tmp,
+      projectRoot: tmp,
+      tools: [mkTool('kanban')],
+    });
+    expect(without[3]?.text).not.toContain('`nextsteps` tool');
+
+    // Same builder instance: the memoized leader render must invalidate on
+    // the new tool set and advertise the tool route again.
+    const withNext = await b.build({
+      cwd: tmp,
+      projectRoot: tmp,
+      tools: [mkTool('kanban'), mkTool('nextsteps')],
+    });
+    expect(withNext[3]?.text).toContain('`nextsteps` tool');
+    expect(withNext[3]?.text).toContain('wins');
+  });
+
   it('directs Pro sessions to a local lazy Kanban tool before MCP', async () => {
     const direct = [mkTool('tool_search'), mkTool('tool_use')];
     const builder = new DefaultSystemPromptBuilder({ todayIso: '2026-05-13' });

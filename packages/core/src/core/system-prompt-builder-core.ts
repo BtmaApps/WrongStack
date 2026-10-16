@@ -25,6 +25,7 @@ import { RootInstructionsCache, UserInstructionsCache } from './project-instruct
 import type { DefaultSystemPromptBuilderOptions } from './system-prompt-builder-options.js';
 import { buildEnvironment } from './system-prompt-environment.js';
 import { buildMemoryAndSkills, renderOnlineAgents } from './system-prompt-memory-skills.js';
+import type { SkillFragmentCache } from './system-prompt-skill-bodies.js';
 import { type ActivePlanCache, readActivePlanBlock } from './system-prompt-plan.js';
 import {
   systemPromptPresetCacheKey,
@@ -99,6 +100,14 @@ export abstract class SystemPromptBuilderCore {
   protected skillCache?: string | undefined;
   /** Cached full skill bodies (after frontmatter), built once per session. */
   protected skillBodyCache?: string | undefined;
+  /**
+   * Cross-turn rendered-fragment cache for the eager Active Skills text (see
+   * `buildFullSkillBodiesTextCached`). Fragment validity is keyed by the raw
+   * body string reference, so the SkillLoader's per-read stat stays the
+   * freshness authority: an edited body re-reads as a new string and
+   * re-renders, an unchanged corpus reuses the rendered fragments.
+   */
+  protected skillFragments?: SkillFragmentCache | undefined;
   /** Tools from last build — used for memory relevance scoring. */
   protected _lastBuildTools?: Tool[] | undefined;
   /** Full executable catalog used to capability-gate progressive skills. */
@@ -134,6 +143,22 @@ export abstract class SystemPromptBuilderCore {
    * change".
    */
   protected _identityCache?:
+    | {
+        toolsRef: readonly Tool[];
+        tier: string;
+        subagent: boolean;
+        instructions: InstructionBundle;
+        text: string;
+      }
+    | undefined;
+  /**
+   * Cached rendered leader-after-task block, keyed exactly like
+   * `_identityCache`: the render is deterministic given the instruction
+   * bundle, tool set, tier, and role, and the markdown template passes
+   * otherwise re-run on every turn (measured ~2.1 ms/turn — the largest
+   * single per-turn section; PERF_LOG.md 2026-10-16 core-r3 profile).
+   */
+  protected _leaderCache?:
     | {
         toolsRef: readonly Tool[];
         tier: string;
@@ -387,8 +412,10 @@ export abstract class SystemPromptBuilderCore {
       lastBuildTools: this._lastBuildTools,
       catalogTools: this._lastCatalogTools,
       skillBodyCache: this.skillBodyCache,
+      skillFragments: this.skillFragments,
     });
     this.skillBodyCache = result.skillBodyCache;
+    this.skillFragments = result.skillFragments;
     return result.text;
   }
 

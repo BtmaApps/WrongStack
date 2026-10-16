@@ -30,6 +30,7 @@ export class LoginAttemptStore {
   private store = new Map<string, LoginAttemptEntry>();
   private writeTimer: ReturnType<typeof setTimeout> | undefined;
   private dirty = false;
+  private writeTail: Promise<void> = Promise.resolve();
   private readonly filePath: string;
   private readonly debounceMs: number;
   private readonly retentionMs: number;
@@ -189,9 +190,7 @@ export class LoginAttemptStore {
       clearTimeout(this.writeTimer);
       this.writeTimer = undefined;
     }
-    if (this.dirty) {
-      await this.writeToDisk();
-    }
+    await this.writeToDisk();
   }
 
   private scheduleWrite(): void {
@@ -204,7 +203,15 @@ export class LoginAttemptStore {
     this.writeTimer.unref?.();
   }
 
-  private async writeToDisk(): Promise<void> {
+  private writeToDisk(): Promise<void> {
+    const pending = this.writeTail.then(() => {
+      return this.dirty ? this.writeSnapshotToDisk() : undefined;
+    });
+    this.writeTail = pending.catch(() => undefined);
+    return pending;
+  }
+
+  private async writeSnapshotToDisk(): Promise<void> {
     this.dirty = false;
     const now = Date.now();
     // Prune stale entries before writing.

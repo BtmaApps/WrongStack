@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.1.5",
+  "packageVersion": "1.1.6",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -154,6 +154,7 @@
         "export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';",
         "export { formatModelRef, type ModelRef, normalizeModelRef, parseModelRef, } from './model-ref.js';",
         "export { isSealedAgent, SEALED_AGENT_META_KEY, sealedSubagentRefusal } from './sealed-agent.js';",
+        "export { keepsOwnContext } from './agent-owned-context.js';",
         "export { markUserInputObserver, userInputObserverCount } from './user-input-observers.js';",
         "export { providerToolsForVariant, SCOUT_DIRECT_TOOL_NAMES } from './scout-tool-surface.js';",
         "export { readUserInstructions, type UserInstructionsDocument, userInstructionsFile, writeUserInstructions, } from './project-instructions.js';",
@@ -1609,7 +1610,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 81,
-      "sourceLines": 16436
+      "sourceLines": 16586
     },
     {
       "directory": "design",
@@ -1623,7 +1624,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 94,
-      "sourceLines": 22889
+      "sourceLines": 22898
     },
     {
       "directory": "extension",
@@ -1700,7 +1701,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
       "sourceFiles": 10,
-      "sourceLines": 2765
+      "sourceLines": 2786
     },
     {
       "directory": "plugins",
@@ -1756,14 +1757,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 20,
-      "sourceLines": 5521
+      "sourceLines": 5527
     },
     {
       "directory": "skills",
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
       "sourceFiles": 26,
-      "sourceLines": 5258
+      "sourceLines": 5267
     },
     {
       "directory": "statusline",
@@ -1777,7 +1778,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 118,
-      "sourceLines": 26167
+      "sourceLines": 26178
     },
     {
       "directory": "tasking",

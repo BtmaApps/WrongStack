@@ -10,6 +10,7 @@
  * views and report back like any delegation.
  */
 import { randomBytes } from 'node:crypto';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { MCPServer, serveHttp } from '@wrongstack/mcp';
 import type { AcpLeaderHost } from './acp-leader-host.js';
 
@@ -29,6 +30,9 @@ export const FLEET_TOOLS: readonly string[] = [
   'fleet_status',
   'session_note',
   'terminate_subagent',
+  // Not a fleet tool, but it too must run in this process: WrongStack's
+  // skills (a /bughunt playbook) reach the agent only through it.
+  'skill',
 ];
 
 const MCP_PREFIX = `mcp__${FLEET_SERVER_NAME}__`;
@@ -75,7 +79,11 @@ export async function startFleetEndpoint(
         if (!offered.has(name)) {
           return { content: `Tool "${name}" is not offered here`, isError: true };
         }
-        return run ? host.runTool(name, args, run) : host.runTool(name, args);
+        try {
+          return await (run ? host.runTool(name, args, run) : host.runTool(name, args));
+        } catch (err) {
+          return { content: `Failed to execute ${name}: ${toErrorMessage(err)}`, isError: true };
+        }
       },
     },
   });
@@ -108,5 +116,11 @@ export function fleetNote(tools: readonly string[]): string {
     ...(has('roll_up') ? ['- roll_up: the full result of finished tasks.'] : []),
     ...(has('session_note') ? ['- session_note: steer a running worker.'] : []),
     ...(has('terminate_subagent') ? ['- terminate_subagent: stop a worker.'] : []),
+    ...(has('skill')
+      ? [
+          "- skill: load one of WrongStack's skills by name (follow nextOffset to the last page);",
+          '  a task that names WrongStack skills means these.',
+        ]
+      : []),
   ].join('\n');
 }

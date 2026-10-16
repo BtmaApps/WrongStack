@@ -43,15 +43,46 @@ export function countDiffLines(diff: string): { added: number; removed: number }
   if (start === -1) return null;
   let added = 0;
   let removed = 0;
+  // A `--- `/`+++ ` pair is a file header only OUTSIDE a hunk body: the
+  // hunk-declared line counts tell it apart from header-shaped content such
+  // as a removed `--- rule one` followed by an added `+++ rule two`. The
+  // same rule core's countUnifiedDiffLines enforces (and the WebUI codemap
+  // extractor already implements).
   const lines = diff.slice(start).split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    if (isDiffFileHeader(lines, i)) {
-      i++;
+  let oldRemaining = 0;
+  let newRemaining = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    if (line.startsWith('@@')) {
+      const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+      oldRemaining = hunk ? Number(hunk[1] ?? 1) : 0;
+      newRemaining = hunk ? Number(hunk[2] ?? 1) : 0;
       continue;
     }
-    const line = lines[i]!;
-    if (line.startsWith('+')) added++;
-    else if (line.startsWith('-')) removed++;
+    if (line.startsWith('diff --git ')) {
+      oldRemaining = 0;
+      newRemaining = 0;
+      continue;
+    }
+    if (
+      oldRemaining <= 0 &&
+      newRemaining <= 0 &&
+      line.startsWith('--- ') &&
+      lines[index + 1]?.startsWith('+++ ')
+    ) {
+      index += 1;
+      continue;
+    }
+    if (line.startsWith('+')) {
+      added += 1;
+      newRemaining -= 1;
+    } else if (line.startsWith('-')) {
+      removed += 1;
+      oldRemaining -= 1;
+    } else if (line.startsWith(' ')) {
+      oldRemaining -= 1;
+      newRemaining -= 1;
+    }
   }
   return { added, removed };
 }

@@ -141,41 +141,117 @@ export async function buildProgressiveSkillManifestText(
   }
 }
 
-export async function buildFullSkillBodiesText(
+/**
+ * Rendered Active-Skills entry for one skill, reusable across prompt builds.
+ *
+ * `bodyRef` is the JS string reference of the raw body the fragment was
+ * rendered from. The loader's `readBody` returns the SAME string instance
+ * from its `mtime:size`-stamped body cache until the file actually changes
+ * on disk, so reference equality is an exact, allocation-free content check:
+ * a body re-read after an edit always arrives as a new string, forcing a
+ * re-render, while an unchanged body reuses the fragment without re-running
+ * `stripFrontmatter`, the tool-reference regex, or the fence. The per-turn
+ * `readBody` call — and with it the loader's stat freshness check — still
+ * happens; only the pure string work is memoized.
+ */
+export interface SkillFragment {
+  bodyRef: string;
+  /** Rendered `## Skill: …` entry: header, provenance tag, fenced body. */
+  entry: string;
+  /** Tool references extracted from the trimmed body at render time. */
+  bodyToolRefs: string[];
+  source: SkillManifest['source'];
+  originTool?: string | undefined;
+}
+
+/** Cross-turn fragment store owned by the prompt builder. */
+export interface SkillFragmentCache {
+  readonly fragments: Map<string, SkillFragment>;
+}
+
+export function newSkillFragmentCache(): SkillFragmentCache {
+  return { fragments: new Map() };
+}
+
+export interface SkillBodiesTextResult {
+  text: string;
+  cache: SkillFragmentCache;
+}
+
+/**
+ * {@link buildFullSkillBodiesText} with a cross-turn fragment cache. Same
+ * output, same admission rules, same freshness behaviour; only the per-skill
+ * rendering work is skipped while the body string is unchanged. The cache is
+ * taken as an argument and handed back — the module convention shared with
+ * `renderOnlineAgents` — so the caller stores it and passes it on the next
+ * build instead of this module holding state.
+ */
+export async function buildFullSkillBodiesTextCached(
   loader: SkillLoader,
   budget: number = SKILL_LIMITS.EAGER_DEFAULT_MAX_CHARS,
   availableToolNames: readonly string[] = [],
-): Promise<string> {
+  cache: SkillFragmentCache = newSkillFragmentCache(),
+): Promise<SkillBodiesTextResult> {
   try {
     const skills = await loader.list();
-    if (skills.length === 0) return '';
+    if (skills.length === 0) return { text: '', cache };
+    // Prefetch every gated candidate's body concurrently — the same idiom
+    // `scanDirectory` uses for readdir — then await each promise at its
+    // ORIGINAL loop position below. Every skill still gets its own `readBody`
+    // call (and with it the loader's per-read mtime:size freshness stat), the
+    // output stays in catalog order, and a rejected read maps to `undefined`
+    // exactly where the sequential catch used to skip the skill.
+    const candidates = skills.filter(
+      (s) =>
+        !isSkillHiddenFromPrompt(s.audience) &&
+        missingRuntimeCapabilities(s.requiredCapabilities, availableToolNames).length === 0 &&
+        missingRequiredRuntimeTools(s.requiredTools, availableToolNames).length === 0,
+    );
+    const pending = new Map(
+      candidates.map((s) => [
+        s.name,
+        loader.readBody(s.name).then(
+          (body) => body,
+          () => undefined,
+        ),
+      ]),
+    );
     const bodies: string[] = [];
     const overflow: string[] = [];
     let used = 0;
     let routerAdmitted = false;
-    for (const s of skills) {
-      if (isSkillHiddenFromPrompt(s.audience)) continue;
-      if (
-        missingRuntimeCapabilities(s.requiredCapabilities, availableToolNames).length > 0 ||
-        missingRequiredRuntimeTools(s.requiredTools, availableToolNames).length > 0
-      ) {
-        continue;
-      }
+    for (const s of candidates) {
       try {
-        const raw = await loader.readBody(s.name);
-        const trimmed = stripFrontmatter(raw).trim();
-        if (!trimmed) continue;
+        const raw = await pending.get(s.name);
+        if (raw === undefined) continue;
+        let fragment = cache.fragments.get(s.name);
         if (
-          missingRequiredRuntimeTools(runtimeToolReferencesFromText(trimmed), availableToolNames)
-            .length > 0
+          !fragment ||
+          fragment.bodyRef !== raw ||
+          fragment.source !== s.source ||
+          fragment.originTool !== s.originTool
         ) {
+          const trimmed = stripFrontmatter(raw).trim();
+          if (!trimmed) {
+            cache.fragments.delete(s.name);
+            continue;
+          }
+          fragment = {
+            bodyRef: raw,
+            entry: `## Skill: ${s.name}${foreignProvenanceTag(s.source, s.originTool)}\n\n${fenceIfUntrusted(s.source, s.name, capSkillBody(trimmed), s.originTool)}`,
+            bodyToolRefs: runtimeToolReferencesFromText(trimmed),
+            source: s.source,
+            originTool: s.originTool,
+          };
+          cache.fragments.set(s.name, fragment);
+        }
+        if (missingRequiredRuntimeTools(fragment.bodyToolRefs, availableToolNames).length > 0) {
           continue;
         }
-        const entry = `## Skill: ${s.name}${foreignProvenanceTag(s.source, s.originTool)}\n\n${fenceIfUntrusted(s.source, s.name, capSkillBody(trimmed), s.originTool)}`;
         routerAdmitted ||= s.name === 'skill-router' && s.source === 'bundled';
-        if (used + entry.length <= budget) {
-          bodies.push(entry);
-          used += entry.length;
+        if (used + fragment.entry.length <= budget) {
+          bodies.push(fragment.entry);
+          used += fragment.entry.length;
         } else {
           overflow.push(`- ${s.name}`);
         }
@@ -191,12 +267,21 @@ export async function buildFullSkillBodiesText(
           : '## Other available skills (not injected — load with the `skill` tool)';
       out += `${out ? '\n\n---\n\n' : ''}${note}\n${overflow.join('\n')}`;
     }
-    return routerAdmitted
+    const text = routerAdmitted
       ? [...bundledRoutingGuidance(skills, availableToolNames), '', out].join('\n')
       : out;
+    return { text, cache };
   } catch {
-    return '';
+    return { text: '', cache };
   }
+}
+
+export async function buildFullSkillBodiesText(
+  loader: SkillLoader,
+  budget: number = SKILL_LIMITS.EAGER_DEFAULT_MAX_CHARS,
+  availableToolNames: readonly string[] = [],
+): Promise<string> {
+  return (await buildFullSkillBodiesTextCached(loader, budget, availableToolNames)).text;
 }
 
 export async function buildCompactSkillBodiesText(

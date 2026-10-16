@@ -49,6 +49,7 @@ import {
 } from './acp-leader-fleet.js';
 import { ACP_LEADER_PROVIDER_ID, acpLeaderHost, trackAcpLeader } from './acp-leader-host.js';
 import { readLeaderSession, writeLeaderSession } from './acp-leader-resume.js';
+import { externalSkillDirective, externalSkillLoader } from './acp-leader-skills.js';
 import {
   agentTurnError,
   earlierConversation,
@@ -278,7 +279,10 @@ export class AcpLeaderProvider implements Provider {
 
   /** The turn's prompt; an agent joining a conversation under way gets the turns before it. */
   private promptText(leader: LeaderSession, req: Request): string {
-    const latest = latestUserText(req.messages);
+    const latest = externalSkillDirective(
+      latestUserText(req.messages),
+      externalSkillLoader(leader.fleet?.tools, `mcp__${FLEET_SERVER_NAME}__`),
+    );
     const earlier = leader.joined ? undefined : earlierConversation(req.messages);
     leader.joined = true;
     const prompt = earlier ? `${earlier}\n\n${latest}` : latest;
@@ -367,8 +371,22 @@ export class AcpLeaderProvider implements Provider {
     return this.acp;
   }
 
+  private dropFleetGrants(sessionId: string): void {
+    for (const grantKey of this.fleetGrants.keys()) {
+      try {
+        const parsed = JSON.parse(grantKey) as unknown;
+        if (Array.isArray(parsed) && parsed[0] === sessionId) {
+          this.fleetGrants.delete(grantKey);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   private drop(key: string, leader: LeaderSession): void {
     this.sessions.delete(key);
+    this.dropFleetGrants(key);
     void leader.session.close().catch(() => {});
     void leader.fleet?.close().catch(() => {});
   }
@@ -586,6 +604,7 @@ export class AcpLeaderProvider implements Provider {
   async closeAll(): Promise<void> {
     const all = [...this.sessions.values()];
     this.sessions.clear();
+    this.fleetGrants.clear();
     await Promise.all(
       all.map((p) =>
         p

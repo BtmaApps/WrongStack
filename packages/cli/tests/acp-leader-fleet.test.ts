@@ -105,8 +105,25 @@ describe('fleet endpoint', () => {
     }
   });
 
+  it("offers WrongStack's skill tool, so a playbook the task names can be loaded", async () => {
+    const runTool = vi.fn(async () => ({ content: 'skill body', isError: false }));
+    const endpoint = await startFleetEndpoint(host(['skill', 'read'], runTool));
+    try {
+      expect(endpoint?.tools).toEqual(['skill']);
+      await rpc(endpoint!.url, endpoint!.token, 'tools/call', {
+        name: 'skill',
+        arguments: { name: 'bug-hunter' },
+      });
+      expect(runTool).toHaveBeenCalledWith('skill', { name: 'bug-hunter' });
+      expect(fleetNote(endpoint!.tools)).toContain("- skill: load one of WrongStack's skills");
+    } finally {
+      await endpoint?.close();
+    }
+  });
+
   it('maps a fleet MCP tool name back to the leader tool, and nothing else', () => {
     expect(fleetToolName(`mcp__${FLEET_SERVER_NAME}__delegate`)).toBe('delegate');
+    expect(fleetToolName(`mcp__${FLEET_SERVER_NAME}__skill`)).toBe('skill');
     expect(fleetToolName(`mcp__${FLEET_SERVER_NAME}__bash`)).toBeUndefined();
     expect(fleetToolName('mcp__wrongstack-index__codebase_search')).toBeUndefined();
   });
@@ -117,5 +134,27 @@ describe('fleet endpoint', () => {
     expect(note).toContain('fleet_status');
     expect(note).not.toContain('- delegate');
     expect(fleetNote(['delegate'])).toContain('[DELEGATION RESULT]');
+  });
+
+  it('catches runTool exceptions and returns an isError tool result instead of a JSON-RPC error', async () => {
+    const runTool = vi.fn(async () => {
+      throw new Error('worker failed unexpectedly');
+    });
+    const endpoint = await startFleetEndpoint(host(['delegate'], runTool));
+    try {
+      const call = await rpc(endpoint!.url, endpoint!.token, 'tools/call', {
+        name: 'delegate',
+        arguments: {},
+      });
+      expect(call.body).toMatchObject({
+        result: {
+          content: [{ type: 'text', text: expect.stringContaining('worker failed unexpectedly') }],
+          isError: true,
+        },
+      });
+      expect(call.body?.error).toBeUndefined();
+    } finally {
+      await endpoint?.close();
+    }
   });
 });

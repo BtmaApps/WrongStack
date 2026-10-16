@@ -102,20 +102,60 @@ function extractChange(input: Record<string, unknown>): ActivityChange | undefin
   }
   const patch = typeof input['patch'] === 'string' ? input['patch'] : undefined;
   if (patch) {
+    // A `--- `/`+++ ` pair is a file header only OUTSIDE a hunk body: the
+    // hunk-declared line counts tell it apart from header-shaped content such
+    // as a removed `--- rule one` followed by an added `+++ rule two`. The
+    // same rule core's countUnifiedDiffLines enforces.
     const lines = patch.split(/\r?\n/);
-    // Only a `--- ` line directly followed by `+++ ` is a file header; a
-    // removed `-- comment` (`--- comment`) or an added `++i` (`+++i`) is content.
-    const isHeader = (index: number): boolean =>
-      (lines[index]?.startsWith('--- ') && lines[index + 1]?.startsWith('+++ ')) ||
-      (lines[index]?.startsWith('+++ ') && lines[index - 1]?.startsWith('--- ')) ||
-      false;
-    const addedLines = lines.filter((line, index) => line.startsWith('+') && !isHeader(index));
-    const removedLines = lines.filter((line, index) => line.startsWith('-') && !isHeader(index));
+    let added = 0;
+    let removed = 0;
+    let before: string | undefined;
+    let after: string | undefined;
+    let sawHunk = false;
+    let oldRemaining = 0;
+    let newRemaining = 0;
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index] ?? '';
+      if (line.startsWith('@@')) {
+        sawHunk = true;
+        const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+        oldRemaining = hunk ? Number(hunk[1] ?? 1) : 0;
+        newRemaining = hunk ? Number(hunk[2] ?? 1) : 0;
+        continue;
+      }
+      if (line.startsWith('diff --git ')) {
+        oldRemaining = 0;
+        newRemaining = 0;
+        continue;
+      }
+      if (!sawHunk) continue;
+      if (
+        oldRemaining <= 0 &&
+        newRemaining <= 0 &&
+        line.startsWith('--- ') &&
+        lines[index + 1]?.startsWith('+++ ')
+      ) {
+        index += 1;
+        continue;
+      }
+      if (line.startsWith('+')) {
+        added += 1;
+        newRemaining -= 1;
+        after ??= line.slice(1);
+      } else if (line.startsWith('-')) {
+        removed += 1;
+        oldRemaining -= 1;
+        before ??= line.slice(1);
+      } else if (line.startsWith(' ')) {
+        oldRemaining -= 1;
+        newRemaining -= 1;
+      }
+    }
     return {
-      added: addedLines.length,
-      removed: removedLines.length,
-      ...(removedLines[0] ? { before: compactChangeText(removedLines[0].slice(1)) } : {}),
-      ...(addedLines[0] ? { after: compactChangeText(addedLines[0].slice(1)) } : {}),
+      added,
+      removed,
+      ...(before !== undefined ? { before: compactChangeText(before) } : {}),
+      ...(after !== undefined ? { after: compactChangeText(after) } : {}),
     };
   }
   const content = typeof input['content'] === 'string' ? input['content'] : undefined;

@@ -103,6 +103,17 @@ function unquote(value: string): string {
 }
 
 /**
+ * A `link:`/`file:`/`workspace:`/`portal:` version is a reference to a LOCAL
+ * package, not a released version. The sibling pnpm/yarn/bun parsers all refuse
+ * to record one; npm did not, so a local `file:` dependency was recorded as the
+ * resolved version `file:../x` (and, through the empty clean-version, as a
+ * fabricated `pkg:npm/<name>` registry instance).
+ */
+function isLocalSpec(value: string): boolean {
+  return /^(?:link|file|workspace|portal):/.test(value);
+}
+
+/**
  * Parse package-lock.json (npm) to extract resolved versions.
  */
 export function parseNpmLockVersions(lockContent: string): {
@@ -131,10 +142,11 @@ export function parseNpmLockVersions(lockContent: string): {
     const deps = lock.dependencies ?? {};
     for (const [name, info] of Object.entries(deps)) {
       const depInfo = info as { version?: string };
-      if (depInfo.version) {
-        // Strip version prefixes like ^, ~, >=
+      if (depInfo.version && !isLocalSpec(depInfo.version)) {
+        // Strip version prefixes like ^, ~, >= (an all-non-digit value strips
+        // to empty and is not a version either).
         const cleanVersion = depInfo.version.replace(/^[^0-9]+/, '');
-        record(name, cleanVersion);
+        if (cleanVersion) record(name, cleanVersion);
       }
     }
     // npm v2 (lockfileVersion 2+): lock.packages. Its keys are INSTALL PATHS,
@@ -149,7 +161,11 @@ export function parseNpmLockVersions(lockContent: string): {
       const pkgInfo = packages[key] as { version?: string; link?: boolean };
       const marker = key.lastIndexOf('node_modules/');
       if (pkgInfo.link === true && marker >= 0) links.add(key);
-      if (!pkgInfo.version || marker < 0) continue;
+      // A `link: true` install (a `file:` dep or a workspace) points at a LOCAL
+      // package: its `version` is a local spec or the linked package's own
+      // version, never a registry release.
+      if (pkgInfo.link === true || !pkgInfo.version || marker < 0) continue;
+      if (isLocalSpec(pkgInfo.version)) continue;
       const name = key.slice(marker + 'node_modules/'.length);
       if (!name) continue;
       record(name, pkgInfo.version);
