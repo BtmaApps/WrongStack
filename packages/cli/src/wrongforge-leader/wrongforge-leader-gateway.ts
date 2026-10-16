@@ -153,6 +153,9 @@ export async function startLeaderGateway(
         .runTool(name, input, {
           sessionId,
           approve: (t, i) => askUser(host, sessionId, t, i),
+          // The provider draws no card for a `wstack_*` call (its events are
+          // marked external), so the session's card is settled here.
+          announce: true,
         })
         .then(
           (r) => send(res, 200, { ok: !r.isError, tool: name, content: r.content }),

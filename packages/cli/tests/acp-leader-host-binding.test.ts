@@ -42,10 +42,10 @@ function fakeAgent(name: string, pending: boolean) {
   };
 }
 
-function host(leader: ReturnType<typeof fakeAgent>) {
+function host(leader: ReturnType<typeof fakeAgent>, events = new EventBus()) {
   return createAcpLeaderHost({
     agent: leader.agent as never,
-    events: new EventBus(),
+    events,
     projectRoot: '/proj',
     getConfig: () => ({}) as Config,
     getTool: (name) => (name === 'delegate' ? DELEGATE : undefined),
@@ -89,5 +89,40 @@ describe('the ACP leader host', () => {
     // No way to ask: refused, never run.
     await expect(h.runTool('delegate', { task: 'x' })).resolves.toMatchObject({ isError: true });
     expect(leader.ran).toEqual(['approved leader']);
+  });
+
+  // A WrongForge leader's `wstack_*` call: the executor announced it with
+  // `tool.started`, and no tool_result or provider card ever settles it.
+  it('settles the tool card of an announced call, and only of one', async () => {
+    const events = new EventBus();
+    const executed: Array<Record<string, unknown>> = [];
+    events.on('tool.executed', (e) => executed.push(e as never));
+    const leader = fakeAgent('leader', false);
+    const h = host(leader, events);
+
+    await h.runTool('delegate', { task: 'x' });
+    expect(executed).toEqual([]);
+
+    await h.runTool('delegate', { task: 'x' }, { announce: true });
+    const batchUse = leader.agent.toolExecutor.executeBatch.mock.calls[1]?.[0]?.[0];
+    expect(executed).toEqual([
+      expect.objectContaining({
+        id: batchUse?.id,
+        name: 'delegate',
+        ok: true,
+        settlement: 'completed',
+        outsideConversation: true,
+        output: 'ran on leader',
+        input: { task: 'x' },
+      }),
+    ]);
+
+    const refused = host(fakeAgent('leader', true), events);
+    await refused.runTool(
+      'delegate',
+      { task: 'x' },
+      { announce: true, approve: async () => false },
+    );
+    expect(executed[1]).toMatchObject({ ok: false, settlement: 'declined' });
   });
 });

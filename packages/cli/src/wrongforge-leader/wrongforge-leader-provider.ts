@@ -421,8 +421,9 @@ export class WrongForgeLeaderProvider implements Provider {
         if (ev.type === 'task.heartbeat' || ev.type === 'step.finished') {
           void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
         }
-        // `wstack_*` calls are the session's own tool calls: their cards come
-        // from its executor. Only WrongForge's own tools need one here.
+        // `wstack_*` calls are the session's own tool calls: the gateway
+        // settles their cards (`runTool` with `announce`). Only WrongForge's
+        // own tools need one here.
         const external = ev.data['external'] === true;
         for (const p of toProgress(ev)) {
           if (p.type === 'message') blocks.text(p.text);

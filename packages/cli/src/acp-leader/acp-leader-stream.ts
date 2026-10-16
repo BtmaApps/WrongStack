@@ -115,12 +115,8 @@ interface CardOutput {
   outputBytes: number;
 }
 
-function cardOutput(call: ACPCapturedToolCall): CardOutput | undefined {
-  const raw = call.rawOutput;
-  const text =
-    call.output ??
-    (raw ? (typeof raw.output === 'string' ? raw.output : JSON.stringify(raw)) : undefined);
-  if (text === undefined) return undefined;
+/** A card's output fields for a result text that no tool_result will carry. */
+export function cardOutputForText(text: string): CardOutput {
   const output = clip(text, OUTPUT_PREVIEW_CHARS);
   return {
     output,
@@ -128,6 +124,15 @@ function cardOutput(call: ACPCapturedToolCall): CardOutput | undefined {
     // The size of what the call returned, not of the preview.
     outputBytes: Buffer.byteLength(text),
   };
+}
+
+function cardOutput(call: ACPCapturedToolCall): CardOutput | undefined {
+  const raw = call.rawOutput;
+  const text =
+    call.output ??
+    (raw ? (typeof raw.output === 'string' ? raw.output : JSON.stringify(raw)) : undefined);
+  if (text === undefined) return undefined;
+  return cardOutputForText(text);
 }
 
 /**

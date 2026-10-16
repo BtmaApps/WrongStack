@@ -473,7 +473,7 @@ describe('the leader gateway', () => {
     expect(host.runTool).toHaveBeenCalledWith(
       'edit',
       { path: 'a.ts' },
-      expect.objectContaining({ sessionId: 'S9' }),
+      expect.objectContaining({ sessionId: 'S9', announce: true }),
     );
 
     expect((await fetch(`${gw.spec.url}/v1/tools`)).status).toBe(401);

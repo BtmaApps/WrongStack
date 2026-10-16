@@ -45,6 +45,13 @@ export interface AcpLeaderHost {
     run?: {
       sessionId?: string | undefined;
       approve?: ((tool: Tool, input: Record<string, unknown>) => Promise<boolean>) | undefined;
+      /**
+       * Settle the call's tool card here: no tool_result reaches the
+       * conversation, and the caller's own stream does not draw one (the
+       * WrongForge leader's `wstack_*` calls). An ACP agent reports its fleet
+       * calls itself, so its cards come from its stream instead.
+       */
+      announce?: boolean | undefined;
     },
   ): Promise<{ content: string; isError: boolean }>;
   /** The leader's confirmation prompt, when the surface has one. */
