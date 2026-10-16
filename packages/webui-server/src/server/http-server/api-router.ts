@@ -97,6 +97,13 @@ export interface ApiRouterDeps {
   getMemoryStore?: (() => import('@wrongstack/core/types').MemoryPort | undefined) | undefined;
 }
 
+/** Answer 401 for a route whose access-token gate failed; `true` = handled. */
+function unauthorized(res: http.ServerResponse): true {
+  res.writeHead(401, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Unauthorized' }));
+  return true;
+}
+
 /**
  * Resolve a session id from a route capture, answering 400 and returning
  * `null` when it is not usable.
@@ -146,11 +153,7 @@ export async function handleApiRoutes(
     return true;
   }
   if (url.pathname === '/api/fleet/ping' && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     try {
       deps.onFleetPing?.();
     } catch {
@@ -162,11 +165,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/sandbox/status' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     // Posture-only snapshot: tier/mode/backend. writableRoots are deliberately
     // NOT exposed over HTTP — they name host filesystem paths.
     const sandboxCfg = getResolvedSandboxConfig();
@@ -180,22 +179,14 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/sessions' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleApiSessions(res, deps.globalRoot);
     return true;
   }
 
   const agentsMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/agents$/);
   if (agentsMatch && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const sessionId = sessionIdOrReject(agentsMatch[1]!, res);
     if (sessionId === null) return true;
     await handleApiSessionAgents(res, deps.globalRoot, sessionId);
@@ -204,11 +195,7 @@ export async function handleApiRoutes(
 
   const eventsMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/events$/);
   if (eventsMatch && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const rawLimit = Number.parseInt(url.searchParams.get('limit') ?? '200', 10);
     const limit = Math.min(500, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 200));
     const sessionId = sessionIdOrReject(eventsMatch[1]!, res);
@@ -219,11 +206,7 @@ export async function handleApiRoutes(
 
   const msgMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/message$/);
   if (msgMatch && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const sessionId = sessionIdOrReject(msgMatch[1]!, res);
     if (sessionId === null) return true;
     await handleApiSessionMessage(res, req, deps.globalRoot, sessionId);
@@ -232,11 +215,7 @@ export async function handleApiRoutes(
 
   const mailboxMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/mailbox$/);
   if (mailboxMatch && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const sessionId = sessionIdOrReject(mailboxMatch[1]!, res);
     if (sessionId === null) return true;
     await handleApiSessionMailbox(res, deps.globalRoot, sessionId);
@@ -245,11 +224,7 @@ export async function handleApiRoutes(
 
   const interruptMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/interrupt$/);
   if (interruptMatch && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const sessionId = sessionIdOrReject(interruptMatch[1]!, res);
     if (sessionId === null) return true;
     await handleApiSessionInterrupt(res, req, deps.globalRoot, sessionId);
@@ -257,71 +232,43 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/fleet/broadcast' && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleApiFleetBroadcast(res, req, deps.globalRoot);
     return true;
   }
 
   if (url.pathname === '/api/analytics' && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleApiAnalyticsPost(res, req);
     return true;
   }
   if (url.pathname === '/api/analytics' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleApiAnalyticsGet(res, url);
     return true;
   }
   if (url.pathname === '/api/analytics/summary' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleApiAnalyticsSummary(res);
     return true;
   }
 
   if (url.pathname === '/api/requirement-intakes' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleRequirementIntakeListForServer(res, deps.intakeService, deps.projectRoot);
     return true;
   }
 
   const intakeProjectMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/requirement-intakes$/);
   if (intakeProjectMatch && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const projectId = strictDecodeParam(intakeProjectMatch[1]!, res);
     if (projectId === null) return true;
     await handleRequirementIntakeCreate(res, req, deps.intakeService, projectId);
     return true;
   }
   if (intakeProjectMatch && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const projectId = strictDecodeParam(intakeProjectMatch[1]!, res);
     if (projectId === null) return true;
     await handleRequirementIntakeList(res, deps.intakeService, projectId);
@@ -330,20 +277,12 @@ export async function handleApiRoutes(
 
   const intakeIdMatch = url.pathname.match(/^\/api\/requirement-intakes\/([^/]+)$/);
   if (intakeIdMatch && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleRequirementIntakeGet(res, deps.intakeService, intakeIdMatch[1]!);
     return true;
   }
   if (intakeIdMatch && req.method === 'PATCH') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleRequirementIntakeUpdate(res, req, deps.intakeService, intakeIdMatch[1]!);
     return true;
   }
@@ -352,11 +291,7 @@ export async function handleApiRoutes(
     /^\/api\/requirement-intakes\/([^/]+)\/(answers|suggestions|submit|cancel|archive)$/,
   );
   if (intakeActionMatch && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const intakeId = intakeActionMatch[1]!;
     const action = intakeActionMatch[2]!;
     if (action === 'answers') {
@@ -374,11 +309,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/codemap/packages' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (!deps.projectRoot) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Project root not configured' }));
@@ -392,11 +323,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/codemap/files' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (!deps.projectRoot) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Project root not configured' }));
@@ -415,11 +342,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/codemap/symbols' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (!deps.projectRoot) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Project root not configured' }));
@@ -438,11 +361,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname.startsWith('/api/techstack/')) {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (!deps.projectRoot) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Project root not configured' }));
@@ -532,11 +451,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/debug/watcher-metrics' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (deps.watcherMetrics) {
       const avgDelay =
         deps.watcherMetrics.broadcastsSent > 0
@@ -566,11 +481,7 @@ export async function handleApiRoutes(
     // WrongStack processes). Completing the pattern keeps the defence intact
     // if this router is ever mounted behind a different front door.
     // See docs/archive/local/audit/webui-full-review-2026-09-03.md B-12.
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     const processes = await readRecentProcessMemoryDiagnostics(deps.globalRoot);
     res.writeHead(200, {
       'Content-Type': 'application/json',
@@ -594,11 +505,7 @@ export async function handleApiRoutes(
   // Dead-code engine: scan / preview / apply / undo / backups. `apply` and
   // `undo` write project files, so the access-token gate covers every route.
   if (url.pathname.startsWith('/api/deadcode/')) {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (!deps.projectRoot) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Project root not configured' }));
@@ -611,11 +518,7 @@ export async function handleApiRoutes(
 
   const vectorForgetMatch = /^\/api\/vector-memory\/store\/([^/]+)$/.exec(url.pathname);
   if (vectorForgetMatch && req.method === 'DELETE') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleVectorMemoryForget(res, url, () => deps.getVectorMemoryStore?.());
     return true;
   }
@@ -627,11 +530,7 @@ export async function handleApiRoutes(
   // so a non-CLI webui-server host stays on its existing surface with
   // zero behavior change.
   if (url.pathname === '/api/vector-memory/status' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleVectorMemoryStatus(res, () => deps.getVectorMemoryStore?.(), {
       ...(deps.projectRoot ? { projectRoot: deps.projectRoot } : {}),
       ...(deps.vectorMemoryModelCacheDir ? { modelCacheDir: deps.vectorMemoryModelCacheDir } : {}),
@@ -640,11 +539,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/vector-memory/search' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleVectorMemorySearch(res, url, () => deps.getVectorMemoryStore?.(), {
       resolveSageMirror: async (id) => {
         const store = deps.getMemoryStore?.();
@@ -657,11 +552,7 @@ export async function handleApiRoutes(
   }
 
   if (url.pathname === '/api/vector-memory/store' && req.method === 'POST') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleVectorMemoryStore(res, req, () => deps.getVectorMemoryStore?.());
     return true;
   }
@@ -670,11 +561,7 @@ export async function handleApiRoutes(
   // policy, not the raw memory.sage.get management operation.
   const memoryResolveMatch = /^\/api\/memory\/resolve\/([^/]+)$/.exec(url.pathname);
   if (memoryResolveMatch && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleMemorySearchResolve(res, memoryResolveMatch[1]!, () => deps.getMemoryStore?.());
     return true;
   }
@@ -682,11 +569,7 @@ export async function handleApiRoutes(
   // Ranked, cursor-paged SAGE search. The legacy /api/memory/search route
   // remains a bounded explanation endpoint for existing clients.
   if (url.pathname === '/api/memory/search-page' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleMemorySearchPage(res, url, () => deps.getMemoryStore?.());
     return true;
   }
@@ -697,11 +580,7 @@ export async function handleApiRoutes(
   // flag the route degrades to a position-derived lexical-only score
   // and the response shape stays compatible.
   if (url.pathname === '/api/memory/search' && req.method === 'GET') {
-    if (requireAccessToken && !accessTokenOk) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return true;
-    }
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     await handleMemorySearch(res, url, () => deps.getMemoryStore?.());
     return true;
   }

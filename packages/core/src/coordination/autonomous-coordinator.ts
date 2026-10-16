@@ -26,6 +26,7 @@ import type { Logger } from '../types/logger.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
 import { defaultSubagentBudget } from './agents/types.js';
 import { AutonomousBrain } from './autonomous-brain.js';
+import { type PendingChangeGate, voteOnPendingChange } from './autonomous-coordinator-consensus.js';
 import {
   rebuildDagFromGraph,
   syncDagStatuses,
@@ -37,6 +38,7 @@ import {
   extractFollowUps,
   goalToOptions,
   optionToGoal,
+  publishTaskResultFact,
   stringifyTaskResult,
 } from './autonomous-coordinator-goal-helpers.js';
 import type {
@@ -50,13 +52,7 @@ import { ConsensusProtocol } from './consensus-protocol.js';
 import type { Director } from './director.js';
 import type { FleetBus, FleetEvent } from './fleet-bus.js';
 import type { FleetManager } from './fleet-manager.js';
-import type {
-  FactCategory,
-  FactNode,
-  GoalNode,
-  GoalPriority,
-  QualityCheck,
-} from './knowledge-graph.js';
+import type { FactCategory, FactNode, GoalNode, GoalPriority } from './knowledge-graph.js';
 import { KnowledgeGraph } from './knowledge-graph.js';
 import type { Mailbox } from './mailbox-types.js';
 import { TaskAuctioneer } from './task-auctioneer.js';
@@ -545,23 +541,15 @@ export class AutonomousCoordinator {
   }
 
   private async _publishTaskResultFact(taskId: string, result: string): Promise<void> {
-    const key = `task-result:${taskId}`;
-    if (this.graph.getFacts({ category: 'quality' }).some((fact) => fact.key === key)) return;
-    const goal = this.graph.get(taskId) as GoalNode | undefined;
-    const subject =
-      goal?.type === 'goal' ? `Task completed: ${goal.title}` : `Task completed: ${taskId}`;
-    const fact = (await this.graph.add({
-      type: 'fact',
-      category: 'quality',
-      subject,
-      detail: result,
-      discoveredBy: this.selfAgentId,
-      discoveredAt: new Date().toISOString(),
-      tags: ['task-result', 'autonomous-coordinator'],
-      key,
-      related: [taskId],
-    } as Omit<FactNode, 'id'>)) as FactNode;
-    this._emit({ type: 'knowledge:added', knowledgeId: fact.id, title: subject, text: result });
+    const fact = await publishTaskResultFact(this.graph, this.selfAgentId, taskId, result);
+    if (fact) {
+      this._emit({
+        type: 'knowledge:added',
+        knowledgeId: fact.id,
+        title: fact.subject,
+        text: result,
+      });
+    }
   }
 
   private async _createFollowUpGoalsFromResult(taskId: string, result: string): Promise<void> {
@@ -607,43 +595,16 @@ export class AutonomousCoordinator {
     this.brain.recordOutcome(decisionId, outcome);
   }
 
-  private async _handlePendingChange(change: {
-    id: string;
-    qualityGate: { passed: boolean; checks: QualityCheck[] };
-  }): Promise<void> {
-    const result = this.consensus.getStatus(change.id);
-    if (result?.outcome !== 'pending') return;
-
-    if (change.qualityGate.passed) {
-      const voteResult = await this.consensus.castVote(
-        change.id,
-        this.selfAgentId,
-        'approve',
-        `Quality gate passed: ${change.qualityGate.checks.map((c) => c.name).join(', ')}`,
-      );
-      if (voteResult.outcome === 'approved') {
-        await this.changes.markApplied(change.id, new Date().toISOString());
-        this._emit({
-          type: 'consensus:reached',
-          goalId: change.id,
-          text: 'Change approved and applied',
-        });
-      }
-    } else {
-      const voteResult = await this.consensus.castVote(
-        change.id,
-        this.selfAgentId,
-        'reject',
-        `Quality gate failed: ${change.qualityGate.checks.map((c) => `${c.name}=${c.passed}`).join(', ')}`,
-      );
-      if (voteResult.outcome === 'rejected' || voteResult.outcome === 'vetoed') {
-        this._emit({
-          type: 'consensus:reached',
-          goalId: change.id,
-          text: 'Change rejected by quality gate',
-        });
-      }
-    }
+  private _handlePendingChange(change: PendingChangeGate): Promise<void> {
+    return voteOnPendingChange(
+      {
+        consensus: this.consensus,
+        changes: this.changes,
+        selfAgentId: this.selfAgentId,
+        emit: (event) => this._emit(event),
+      },
+      change,
+    );
   }
 
   private _busEmit(type: string, payload: unknown): void {

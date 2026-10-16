@@ -203,6 +203,31 @@ export async function query(
   });
 }
 
+/**
+ * Count the messages this actor has neither read nor completed.
+ *
+ * Pushed into SQL rather than filtering `readMessages()`. The pre-tool hook
+ * asks for this repeatedly — `mailbox-hooks.ts` throttles it to once a
+ * second, which bounds the frequency but not the cost — and the JS form
+ * materialized EVERY row in `messages`, joined the whole `message_receipts`
+ * table, and folded per-actor receipt state across all of them just to
+ * return an integer.
+ *
+ * The predicate is deliberately the same one {@link query} builds for
+ * `{ unreadBy, incompleteOnly }`, because it has to agree exactly with
+ * `isMessageCompletedForActor` and `isMailboxMessageVisibleTo`:
+ *
+ * - **unread** — no per-actor receipt carrying `read_at`, and no legacy
+ *   `readBy` key. Both are checked: `ackMany` writes the receipt row AND
+ *   mirrors the timestamp into the message's `readBy` JSON.
+ * - **incomplete** — not `legacy_global_completion`, no per-actor receipt
+ *   carrying `completed_at`, and the aggregate `completed` flag counts only
+ *   when the message has no receipts at all (once any actor has a receipt,
+ *   completion is per-actor and the aggregate flag is not authoritative).
+ * - **audience** — `leaders` mail is invisible unless the actor's base
+ *   identity is `leader`. This call path carries no role, matching the
+ *   `isMailboxMessageVisibleTo(message, forAgentId)` it replaces.
+ */
 export async function unreadCount(
   host: SqliteMailboxQueryHost,
   forAgentId: string,

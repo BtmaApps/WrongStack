@@ -11,45 +11,16 @@ import {
   applyToolDescriptionModeToTool,
   normalizeToolDescriptionMode,
 } from '../utils/tool-description-mode.js';
+import type { ToolRegistration, ToolWrapper } from './tool-registry-types.js';
+import {
+  isRestrictedBy,
+  LAZY_TOOL_GATEWAYS,
+  normalizeToolRestriction,
+  type ToolRestriction,
+  type ToolRestrictionInput,
+} from './tool-restriction.js';
 
-const LAZY_TOOL_GATEWAYS = new Set(['tool_search', 'tool_use']);
-
-/** Exact tool name, or a prefix when the pattern ends with `*`. */
-function matchToolPattern(pattern: string, name: string): boolean {
-  return pattern.endsWith('*') ? name.startsWith(pattern.slice(0, -1)) : pattern === name;
-}
-
-/**
- * A function that wraps (decorates) an existing tool. Receives the
- * original tool and returns a modified version — typically the same
- * tool with a wrapped `execute` / `executeStream`, or with modified
- * metadata (description, permission).
- *
- * Use `ToolRegistry.wrap()` to apply; the wrapper is called immediately
- * and the result replaces the registered tool. Multiple wraps stack —
- * each wrapper receives the output of the previous.
- *
- * @example
- * ```ts
- * registry.wrap('read', (original) => ({
- *   ...original,
- *   async execute(input, ctx, opts) {
- *     console.log('read called');
- *     return original.execute(input, ctx, opts);
- *   }
- * }));
- * ```
- */
-export type ToolWrapper = (tool: Tool) => Tool;
-
-interface ToolRegistration {
-  tool: Tool;
-  owner: string;
-  previous?: ToolRegistration;
-  wrapper?: ToolWrapper;
-  wrapperOwner?: string;
-  removed?: boolean;
-}
+export type { ToolWrapper } from './tool-registry-types.js';
 
 export class ToolRegistry {
   private readonly tools = new Map<string, ToolRegistration>();
@@ -99,14 +70,7 @@ export class ToolRegistry {
    * to tools registered later (MCP servers connect lazily), because it is a
    * name predicate rather than a set of disabled registrations.
    */
-  private _restriction:
-    | {
-        only?: readonly string[];
-        deny: readonly string[];
-        denyCapabilities: readonly string[];
-        requireDeclaredCapabilities: boolean;
-      }
-    | undefined;
+  private _restriction: ToolRestriction | undefined;
 
   /** Pre-compute tool definition token estimate once at registration time. */
   private _stampDefTokens(tool: Tool): void {
@@ -366,43 +330,16 @@ export class ToolRegistry {
    * `deny` hides the named tools. A trailing `*` matches a prefix, so
    * `mcp__github__*` covers one MCP server.
    */
-  setSessionRestriction(restriction: {
-    only?: readonly string[] | undefined;
-    deny?: readonly string[] | undefined;
-    /** Hide any tool declaring one of these capabilities (`--restricted`). */
-    denyCapabilities?: readonly string[] | undefined;
-    /**
-     * Hide tools that declare no capabilities at all unless core owns them:
-     * an undeclared plugin tool could do anything, so it fails closed.
-     */
-    requireDeclaredCapabilities?: boolean | undefined;
-  }): void {
-    this._restriction = {
-      ...(restriction.only ? { only: [...restriction.only] } : {}),
-      deny: [...(restriction.deny ?? [])],
-      denyCapabilities: [...(restriction.denyCapabilities ?? [])],
-      requireDeclaredCapabilities: restriction.requireDeclaredCapabilities === true,
-    };
+  setSessionRestriction(restriction: ToolRestrictionInput): void {
+    this._restriction = normalizeToolRestriction(restriction);
     this._version++;
   }
 
   /** True when the launch-time restriction hides `name`. */
   isRestricted(name: string): boolean {
-    const r = this._restriction;
-    if (!r) return false;
-    if (r.deny.some((pattern) => matchToolPattern(pattern, name))) return true;
-    // The lazy gateways only reach tools that pass this same check, so the
-    // capability rules below never apply to them (tool_use declares
-    // `tool.mutate.any` precisely because it forwards).
-    if (LAZY_TOOL_GATEWAYS.has(name)) return false;
-    const entry = this.tools.get(name);
-    if (entry) {
-      const caps = entry.tool.capabilities ?? [];
-      if (caps.some((cap) => r.denyCapabilities.includes(cap))) return true;
-      if (r.requireDeclaredCapabilities && caps.length === 0 && entry.owner !== 'core') return true;
-    }
-    if (!r.only) return false;
-    return !r.only.some((pattern) => matchToolPattern(pattern, name));
+    return this._restriction !== undefined
+      ? isRestrictedBy(this._restriction, name, this.tools.get(name))
+      : false;
   }
 
   private isHidden(name: string): boolean {

@@ -158,3 +158,17 @@ function codexResetHintMs(snapshots: readonly ProviderQuotaSnapshot[]): number |
   }
   return soonest;
 }
+
+/**
+ * Does this 400 blame a replayed reasoning item?
+ *
+ * The Responses API's reasoning validation errors all name the item type or a
+ * `rs_`-prefixed id ("Item 'rs_…' of type 'reasoning' was provided without its
+ * required following item"). Matching narrowly matters: a 400 for a malformed
+ * tool schema must keep surfacing as an error, not be silently retried with
+ * reasoning stripped and then fail again with a confusing second message.
+ */
+export function isReasoningReplayRejection(err: ProviderError): boolean {
+  const message = `${err.message} ${JSON.stringify(err.body ?? '')}`;
+  return /reasoning item|item\s+['"]?rs_[\w-]+|required following item/i.test(message);
+}

@@ -1,6 +1,24 @@
 import { parseModelRef } from '@wrongstack/core/agent';
 
+/**
+ * Provider ids the host owns: `acp` (an ACP agent such as Claude Code as
+ * leader or worker) and `wrongforge` (the machine's WrongForge). They route
+ * to built-in runners, not to a `providers.<id>` entry, so a user profile
+ * with one of these names would shadow the system provider in the picker and
+ * in `delegate({ provider })`. Mirrors core's `EXTERNAL_AGENT_PROVIDERS`
+ * (kept as a literal so this package does not pull in coordination code).
+ */
+export const RESERVED_PROVIDER_IDS: ReadonlySet<string> = new Set(['acp', 'wrongforge']);
+
+/** True for a system-owned provider id, compared case-insensitively. */
+export function isReservedProviderId(id: string): boolean {
+  return RESERVED_PROVIDER_IDS.has(id.trim().toLowerCase());
+}
+
 export function authProfileAliasError(alias: string): string | undefined {
+  if (isReservedProviderId(alias)) {
+    return `"${alias.trim()}" is a reserved system provider name (${[...RESERVED_PROVIDER_IDS].join(', ')}). Choose another provider id.`;
+  }
   if (
     !alias.trim() ||
     alias !== alias.trim() ||

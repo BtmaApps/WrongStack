@@ -1,6 +1,5 @@
 import type { EventBus } from '@wrongstack/core/kernel';
 import type {
-  UserInputAnswer,
   UserInputQuestion,
   UserInputRequest,
   UserInputResponse,
@@ -8,21 +7,31 @@ import type {
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
-import { Box, type DOMElement, measureElement, Text, useInput, useStdin } from '../ink.js';
+import { Box, type DOMElement, Text, useInput, useStdin } from '../ink.js';
 import { previousGraphemeIndex } from '../input-graphemes.js';
 import { isLeakedMouseInput, parseMouseEvents, splitTrailingMousePartial } from '../mouse.js';
+import type { AnswerDraft, Draft } from './user-input-draft.js';
+import {
+  answerMarker,
+  canEditText,
+  EMPTY_ANSWER,
+  hasAnswer,
+  hasRecommendation,
+  initialDraft,
+  pointInsideElement,
+  progressBar,
+  toAnswer,
+  truncate,
+  validateDraft,
+  visibleWindow,
+} from './user-input-draft.js';
+
+export { initialDraft, pointInsideElement, validateDraft } from './user-input-draft.js';
 
 export type PendingUserInput = {
   request: UserInputRequest;
   resolve: (response: UserInputResponse) => void;
 };
-type AnswerDraft = {
-  selected: string[];
-  text: string;
-  customSelected: boolean;
-  delegated: boolean;
-};
-type Draft = Record<string, AnswerDraft>;
 
 export function usePendingUserInput(events: EventBus): PendingUserInput | null {
   const [pending, setPending] = useState<PendingUserInput[]>([]);
@@ -550,13 +559,6 @@ function UserInputForm({ pending, onInterrupt }: UserInputPromptProps): React.Re
   );
 }
 
-const EMPTY_ANSWER: AnswerDraft = {
-  selected: [],
-  text: '',
-  customSelected: false,
-  delegated: false,
-};
-
 function ManualAnswer({
   value,
   placeholder,
@@ -589,79 +591,6 @@ function ManualAnswer({
   );
 }
 
-export function initialDraft(request: UserInputRequest): Draft {
-  return Object.fromEntries(
-    request.tabs.flatMap((tab) =>
-      tab.questions.map((question) => [
-        question.id,
-        {
-          selected: [...(question.recommendedOptionIds ?? [])],
-          text: question.recommendedText ?? '',
-          customSelected: Boolean(question.recommendedText),
-          delegated: false,
-        },
-      ]),
-    ),
-  );
-}
-
-function canEditText(question: UserInputQuestion): boolean {
-  return question.kind === 'text' || question.allowCustomResponse === true;
-}
-
-function hasRecommendation(question: UserInputQuestion): boolean {
-  return Boolean(question.recommendedOptionIds?.length || question.recommendedText);
-}
-
-function hasAnswer(question: UserInputQuestion, answer?: AnswerDraft): boolean {
-  if (!answer) return false;
-  if (answer.delegated) return true;
-  return question.kind === 'text'
-    ? Boolean(answer.text.trim())
-    : answer.selected.length > 0 || Boolean(answer.customSelected && answer.text.trim());
-}
-
-export function validateDraft(
-  questions: UserInputQuestion[],
-  draft: Draft,
-): {
-  valid: boolean;
-  missingCount: number;
-  firstMissing?: UserInputQuestion | undefined;
-} {
-  const missing = questions.filter(
-    (question) => question.required && !hasAnswer(question, draft[question.id]),
-  );
-  return { valid: missing.length === 0, missingCount: missing.length, firstMissing: missing[0] };
-}
-
-function toAnswer(question: UserInputQuestion, answer: AnswerDraft): UserInputAnswer {
-  const recommended = question.recommendedOptionIds ?? [];
-  return {
-    questionId: question.id,
-    selectedOptionIds: answer.delegated ? [] : answer.selected,
-    ...(!answer.delegated &&
-    (question.kind === 'text' || answer.customSelected) &&
-    answer.text.trim()
-      ? { text: answer.text.trim() }
-      : {}),
-    delegated: answer.delegated,
-    usedRecommendation:
-      !answer.delegated &&
-      answer.selected.length === recommended.length &&
-      answer.selected.every((id) => recommended.includes(id)) &&
-      (question.recommendedText ?? '') ===
-        (question.kind === 'text' || answer.customSelected ? answer.text.trim() : '') &&
-      (recommended.length > 0 || Boolean(question.recommendedText)),
-  };
-}
-
-function answerMarker(question: UserInputQuestion, answer?: AnswerDraft): string {
-  if (!hasAnswer(question, answer)) return question.required ? '○' : '·';
-  if (answer?.delegated) return '↪';
-  return toAnswer(question, answer ?? EMPTY_ANSWER).usedRecommendation ? '★' : '✓';
-}
-
 function renderTabs(
   request: UserInputRequest,
   active: number,
@@ -673,46 +602,4 @@ function renderTabs(
     return `${index + 1}${index === active ? '●' : '○'} ${tab.label} ${done}/${tab.questions.length}`;
   });
   return truncate(labels.join('  '), Math.max(18, width));
-}
-
-function progressBar(completed: number, total: number, width: number): string {
-  const filled = total > 0 ? Math.round((completed / total) * width) : 0;
-  return `[${'█'.repeat(filled)}${'░'.repeat(Math.max(0, width - filled))}]`;
-}
-
-/** Match one-based SGR mouse cells against Ink's measured zero-based rectangle. */
-export function pointInsideElement(element: DOMElement | null, x: number, y: number): boolean {
-  if (!element) return false;
-  const measured = measureElement(element);
-  return (
-    x >= measured.x + 1 &&
-    x <= measured.x + measured.width &&
-    y >= measured.y + 1 &&
-    y <= measured.y + measured.height
-  );
-}
-
-function truncate(value: string, width: number): string {
-  if (value.length <= width) return value;
-  return `${value.slice(0, Math.max(1, width - 1))}…`;
-}
-
-function visibleWindow<T>(
-  items: readonly T[],
-  selected: number,
-  limit: number,
-): {
-  items: Array<{ item: T; index: number }>;
-  above: number;
-  below: number;
-} {
-  const size = Math.max(1, Math.min(limit, items.length));
-  const start = Math.max(0, Math.min(selected - Math.floor(size / 2), items.length - size));
-  return {
-    items: items
-      .slice(start, start + size)
-      .map((item, offset) => ({ item, index: start + offset })),
-    above: start,
-    below: Math.max(0, items.length - start - size),
-  };
 }

@@ -539,6 +539,21 @@ describe('runAuthMenu', () => {
     expect(raw.providers['']).toBeUndefined();
   });
 
+  it('c rejects a reserved system provider id', async () => {
+    const { deps, configPath } = await setupDeps({
+      // Same script that saves a provider for any other id; acp is host-owned
+      // and refused at the id prompt, so the remaining lines hit the menu.
+      scripted: {
+        lines: ['c', 'acp', 'openai-compatible', '', '', '', '', 'q'],
+        secrets: ['acp-key'],
+      },
+    });
+    const code = await runAuthMenu(deps);
+    expect(code).toBe(0);
+    const raw = JSON.parse(await fs.readFile(configPath, 'utf8').catch(() => '{}'));
+    expect(raw.providers?.acp).toBeUndefined();
+  });
+
   it('c adopts the provider as default when no provider/model is set', async () => {
     const { deps, configPath } = await setupDeps({
       // c -> custom flow; id=proxy; family; baseUrl; models=gpt-x,gpt-y; envVars empty;

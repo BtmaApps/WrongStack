@@ -408,11 +408,11 @@ interface UnsweptEntry {
 const UNSWEPT: Record<string, UnsweptEntry> = {
   'input.tsx': {
     reason: 'drops the leak itself before forwarding a keystroke to handleKey',
-    guard: { line: 371, contains: 'isLeakedMouseInput' },
+    guard: { line: 229, contains: 'isLeakedMouseInput' },
   },
   'user-input-prompt.tsx': {
     reason: 'drops the leak itself; also owns a raw-stdin mouse parser',
-    guard: { line: 175, contains: 'isLeakedMouseInput' },
+    guard: { line: 184, contains: 'isLeakedMouseInput' },
   },
   'refine-failure-panel.tsx': {
     reason: 'single-printable-char gate: an SGR report is 9 chars and can never be typed',

@@ -1,124 +1,20 @@
-import {
-  detectContinueIntent,
-  type InputBuilder,
-  resolveContinuation,
-  setBtwNote,
-} from '@wrongstack/core/agent';
-import type { Director } from '@wrongstack/core/coordination';
+import { detectContinueIntent, resolveContinuation, setBtwNote } from '@wrongstack/core/agent';
 import { PROMPT_JOURNAL_RAW_MARKER } from '@wrongstack/core/prompts';
-import type { AttachmentStore, ContentBlock } from '@wrongstack/core/types';
 import { typeSafeJudgeFromContainer } from '@wrongstack/core/typesafe';
 import { todoTool } from '@wrongstack/tools/todo';
-import type { Action, State } from './app-reducer.js';
 import type { SendMode } from './components/send-mode-picker.js';
 import type { ShellCommandWarningDecision } from './components/shell-command-warning.js';
 import { INLINE_TOKEN_SRC } from './input-tokens.js';
-import type { emptyMemoryContextMonitor } from './memory-context-monitor.js';
-import type { MutableCell } from './shared-types.js';
 import { buildSteeringPreamble } from './steering-preamble.js';
+import type { SubmitControllerHost } from './submit-controller-support.js';
+import { waitForIdleSettle } from './submit-controller-support.js';
 import { shouldPushSubmittedHistory } from './submit-history.js';
 import { refineSubmittedPrompt } from './submit-prompt-refinement.js';
 import { submitSlashCommand } from './submit-slash-command.js';
-import { resolveAttachmentTokens, type TokenPreviewStore } from './token-previews.js';
+import { resolveAttachmentTokens } from './token-previews.js';
 import { startFreshTopicContext, TopicShiftAdvisor } from './topic-shift-advisor.js';
-import type { SubmitCapabilities } from './tui-host-capabilities.js';
 
-/**
- * Wait up to `deadlineMs` for an in-flight run to settle into `idle` before
- * kicking the next iteration. Polls `isIdle` rather than spinning: the cadence
- * starts tight (so we react quickly when the abort settles early) and backs
- * off toward the deadline, so a long wait never hammers the event loop at a
- * fixed high frequency. Returns true if idle was reached before the deadline.
- */
-async function waitForIdleSettle(
-  isIdle: () => boolean,
-  deadlineMs: number,
-  opts: { maxPollMs?: number } = {},
-): Promise<boolean> {
-  const maxPollMs = opts.maxPollMs ?? 150;
-  const start = Date.now();
-  let pollMs = 20;
-  while (!isIdle()) {
-    const remaining = deadlineMs - (Date.now() - start);
-    if (remaining <= 0) return false;
-    const wait = Math.min(Math.max(pollMs, 1), maxPollMs, remaining);
-    await new Promise((resolve) => setTimeout(resolve, wait));
-    pollMs = Math.min(pollMs * 2, maxPollMs);
-  }
-  return true;
-}
-
-export interface SubmitControllerHost {
-  readonly capabilities: SubmitCapabilities;
-  readonly state: State;
-  readonly live: {
-    readonly mouseMode: boolean;
-    /** Mouse tracking released to the terminal (`/mouse native`). */
-    readonly nativeMouse: boolean;
-    readonly model: string;
-    readonly provider: string;
-    readonly maxContext: number | undefined;
-    readonly yolo: boolean;
-    readonly autonomy: 'off' | 'suggest' | 'auto' | 'eternal' | 'eternal-parallel';
-    readonly modeLabel: string | undefined;
-    setMouseMode(value: boolean): void;
-    setNativeMouse(value: boolean): void;
-    setModel(value: string): void;
-    setProvider(value: string): void;
-    setMaxContext(value: number): void;
-    setYolo(value: boolean): void;
-    setAutonomy(value: 'off' | 'suggest' | 'auto' | 'eternal' | 'eternal-parallel'): void;
-    setModeLabel(value: string): void;
-    setToolCount(value: number): void;
-  };
-  readonly refs: {
-    readonly state: MutableCell<State>;
-    readonly interrupts: MutableCell<number>;
-    readonly autoSubmitStreak: MutableCell<number>;
-    readonly autoSubmitCapWarned: MutableCell<boolean>;
-    readonly autoSubmitLoopGuard: MutableCell<{ reset(): void }>;
-    readonly tokenPreviews: MutableCell<TokenPreviewStore>;
-    readonly attachments: AttachmentStore;
-    readonly builder: MutableCell<InputBuilder | null>;
-    readonly sessionGeneration: MutableCell<number>;
-    readonly eternalLoop: MutableCell<() => Promise<void>>;
-    readonly parallelLoop: MutableCell<() => Promise<void>>;
-    readonly enhanceEnabled: MutableCell<boolean>;
-    readonly enhanceOriginal: MutableCell<string>;
-    readonly enhanceAbort: MutableCell<AbortController | null>;
-    readonly enhanceCancelled: MutableCell<boolean>;
-    readonly nextStepsTimer: MutableCell<ReturnType<typeof setInterval> | undefined>;
-    readonly midRunSendPicker: MutableCell<boolean>;
-    /** Managed-history scroll surface; null until ScrollableHistory mounts. */
-    readonly historyScroll: MutableCell<
-      import('./components/scrollable-history.js').HistoryScrollController | null
-    >;
-  };
-  readonly actions: {
-    dispatch(action: Action): void;
-    clearDraft(): void;
-    setDraft(buffer: string, cursor: number): void;
-    pasteClipboardImage(): Promise<void>;
-    openPromptPicker(): Promise<void>;
-    refreshGoalSummary(): void;
-    exit(): void;
-    runBlocks(blocks: ContentBlock[]): Promise<void>;
-    liveDirector(): Director | null;
-    setMemoryContextMonitor(value: ReturnType<typeof emptyMemoryContextMonitor>): void;
-    runSteerSequence(direction: string): { preamble: string };
-    setEnhanceStartedAt(value: number | null): void;
-    setEnhanceDuration(value: number | null): void;
-    setRefineProvider(value: string | null): void;
-    setRefineModel(value: string | null): void;
-    onBugHuntStarted(command: string, totalRounds?: number): void;
-    stopBugHuntAfterCurrentRound(): void;
-    consumeBugHuntReplay(command: string): boolean;
-    /** Called after /clear dispatches clearHistory — app.tsx uses this to
-     *  reset mutable refs that the reducer cannot reach (paste accumulator,
-     *  next-steps auto-submit, prompt-usage store, enhance abort). */
-    onAfterClear?(): void;
-  };
-}
+export type { SubmitControllerHost } from './submit-controller-support.js';
 
 // createSubmitController is rebuilt as the App renders. Keep the bounded
 // decision cache attached to the long-lived Agent instead of a render closure.

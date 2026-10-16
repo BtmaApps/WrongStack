@@ -28,10 +28,9 @@
  * Anything language-specific (flag tables, default commands,
  * output parsing) stays in the plugin that owns that language.
  */
-
 import { execFile } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { basename, extname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { existsSync } from 'node:fs';
+import { basename, isAbsolute, relative, resolve, sep } from 'node:path';
 
 import { buildChildEnv } from '@wrongstack/core/utils/child-env';
 import { treeKill } from '@wrongstack/core/utils/tree-kill';
@@ -49,6 +48,12 @@ export {
 import { type ExecInvocation, resolveExecInvocation } from './local-bin.js';
 
 export { BoundedMap, type BoundedMapOptions, BoundedSet } from './bounded-map.js';
+export type { CollectOptions } from './collect-source-files.js';
+export {
+  collectSourceFiles,
+  collectSourceFilesAsync,
+  matchesExtension,
+} from './collect-source-files.js';
 export {
   CREDENTIAL_PATTERNS,
   type CredentialPattern,
@@ -623,144 +628,4 @@ export function locateRunnerEntry(runtime: LanguageRuntime, projectRoot: string)
     if (existsSync(c)) return c;
   }
   return null;
-}
-
-// ---------------------------------------------------------------------------
-// File-collection helpers (shared across multiple plugin source-scan tools)
-// ---------------------------------------------------------------------------
-
-export interface CollectOptions {
-  /** File extensions to include (e.g. ['.ts', '.tsx', '.js']). */
-  extensions: string[];
-  /** Directory names to skip entirely. Default skips node_modules, dist, .git, coverage. */
-  excludeDirs?: string[] | undefined;
-  /** Maximum recursion depth. Unlimited when omitted. */
-  maxDepth?: number | undefined;
-}
-
-const DEFAULT_EXCLUDE_DIRS = ['node_modules', 'dist', '.git', 'coverage'];
-
-/**
- * Recursively collect files under `root` whose extension is in
- * `opts.extensions`. Skips directories named in `opts.excludeDirs`
- * (defaulting to node_modules, dist, .git, coverage) and limits depth
- * when `opts.maxDepth` is set.
- *
- * Shared by 6+ plugin source-scan tools that previously duplicated
- * this implementation identically.
- *
- * Determinism: returns files in sorted order (locale-aware) so
- * scan results are reproducible across platforms and file systems.
- */
-export function collectSourceFiles(root: string, opts: CollectOptions): string[] {
-  const files: string[] = [];
-  if (!existsSync(root)) return files;
-  const s = statSync(root);
-  if (s.isFile()) {
-    if (matchesExtension(root, opts.extensions)) files.push(root);
-    return files;
-  }
-  if (!s.isDirectory()) return files;
-  const exclude = opts.excludeDirs ?? DEFAULT_EXCLUDE_DIRS;
-  const excludeSet = new Set(exclude); // O(1) lookup instead of O(n) includes()
-
-  function walk(dir: string, depth: number) {
-    if (opts.maxDepth !== undefined && depth > opts.maxDepth) return;
-    let entries: string[];
-    try {
-      entries = readdirSync(dir);
-    } catch {
-      return;
-    }
-    // Sort entries for deterministic traversal order across platforms.
-    entries.sort((a, b) => a.localeCompare(b));
-    for (const entry of entries) {
-      if (excludeSet.has(entry)) continue;
-      const full = resolve(dir, entry);
-      let st;
-      try {
-        st = statSync(full);
-      } catch {
-        continue;
-      }
-      if (st.isDirectory()) {
-        walk(full, depth + 1);
-      } else if (st.isFile() && matchesExtension(full, opts.extensions)) {
-        files.push(full);
-      }
-    }
-  }
-
-  walk(root, 0);
-  return files;
-}
-
-/**
- * Async version of `collectSourceFiles` for non-blocking file collection.
- * Uses `fs.promises` to avoid blocking the event loop on large directory trees.
- *
- * Performance: prefer this in hooks and tools that run on every write/edit
- * (e.g., duplicate-code-detector) to keep the agent loop responsive during
- * large scans.
- */
-export async function collectSourceFilesAsync(
-  root: string,
-  opts: CollectOptions,
-): Promise<string[]> {
-  const { readdir, stat } = await import('node:fs/promises');
-  const files: string[] = [];
-
-  try {
-    const s = await stat(root);
-    if (s.isFile()) {
-      if (matchesExtension(root, opts.extensions)) files.push(root);
-      return files;
-    }
-    if (!s.isDirectory()) return files;
-  } catch {
-    return files;
-  }
-
-  const exclude = opts.excludeDirs ?? DEFAULT_EXCLUDE_DIRS;
-  const excludeSet = new Set(exclude);
-
-  async function walk(dir: string, depth: number): Promise<void> {
-    if (opts.maxDepth !== undefined && depth > opts.maxDepth) return;
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    entries.sort((a, b) => a.name.localeCompare(b.name)); // deterministic order
-    for (const entry of entries) {
-      if (excludeSet.has(entry.name)) continue;
-      const full = resolve(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(full, depth + 1);
-      } else if (entry.isFile() && matchesExtension(full, opts.extensions)) {
-        files.push(full);
-      }
-    }
-  }
-
-  await walk(root, 0);
-  return files;
-}
-
-/**
- * Check whether `p` has one of the given extensions (case-insensitive).
- * Handles extensions with or without a leading dot and normalizes casing/whitespace.
- * Replaces a 6-copy helper that was duplicated identically across
- * source-scan plugins.
- */
-export function matchesExtension(p: string, exts: string[]): boolean {
-  const fileExt = extname(p).toLowerCase();
-  if (!fileExt) return false;
-  return exts.some((ext) => {
-    if (!ext || typeof ext !== 'string') return false;
-    const trimmed = ext.trim().toLowerCase();
-    const normalized = trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
-    return normalized === fileExt;
-  });
 }

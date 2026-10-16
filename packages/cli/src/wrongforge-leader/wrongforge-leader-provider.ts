@@ -65,6 +65,8 @@ import {
   type WrongForgeInfo,
   writeWrongForgeInfoCache,
 } from '../fleet/wrongforge-info.js';
+import { reportWrongForgeQuota } from '../fleet/wrongforge-quota.js';
+import { wrongForgeRuntime } from '../fleet/wrongforge-runtime.js';
 import { type LeaderGateway, startLeaderGateway } from './wrongforge-leader-gateway.js';
 
 export const WRONGFORGE_LEADER_PROVIDER_ID = WRONGFORGE_AGENT_ID;
@@ -79,14 +81,14 @@ const CAPABILITIES: Capabilities = {
   parallelTools: false,
   vision: false,
   streaming: true,
-  promptCache: false,
+  promptCache: true,
   systemPrompt: true,
   jsonMode: false,
-  reasoning: false,
+  reasoning: true,
   // Learned from WrongForge's first task result (its model's window).
   maxContext: 0,
   maxOutput: 32_000,
-  cacheControl: 'none',
+  cacheControl: 'native',
   topK: false,
   frequencyPenalty: false,
   presencePenalty: false,
@@ -234,6 +236,11 @@ export class WrongForgeLeaderProvider implements Provider {
         { kind: 'auth' },
       );
     }
+    void reportWrongForgeQuota({
+      endpoint: ep,
+      providerId: this.id,
+      fetchImpl: this.opts.fetchImpl,
+    });
     return wrongForgeCall(ep, this.opts.fetchImpl);
   }
 
@@ -289,7 +296,7 @@ export class WrongForgeLeaderProvider implements Provider {
           ...(model ? { model } : {}),
           max_steps: 1,
           builtin_tools: [],
-          cache: '5m',
+          ...wrongForgeRuntime(req.reasoning, req.cache, info),
           wait: true,
           cancel_on_disconnect: true,
         },
@@ -306,6 +313,8 @@ export class WrongForgeLeaderProvider implements Provider {
       };
     } catch (err) {
       throw providerError(err, this.id);
+    } finally {
+      void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
     }
   }
 
@@ -373,6 +382,7 @@ export class WrongForgeLeaderProvider implements Provider {
           ...(model ? { model } : {}),
           max_steps: LEADER_MAX_STEPS,
           timeout_ms: LEADER_TURN_TIMEOUT_MS,
+          ...wrongForgeRuntime(req.reasoning, req.cache, info),
           system_append: leaderAppend(routed, gateway?.tools ?? []),
           context: { wrongstack: { sessionId: key, role: 'leader' } },
           ...(gateway ? { gateway: { ...gateway.spec, optional: !routed } } : {}),
@@ -383,6 +393,9 @@ export class WrongForgeLeaderProvider implements Provider {
       taskId = task.id;
       leader.joined = true;
       for await (const ev of followTask(call, task.id, opts.signal)) {
+        if (ev.type === 'task.heartbeat' || ev.type === 'step.finished') {
+          void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
+        }
         // `wstack_*` calls are the session's own tool calls: their cards come
         // from its executor. Only WrongForge's own tools need one here.
         const external = ev.data['external'] === true;
@@ -429,6 +442,7 @@ export class WrongForgeLeaderProvider implements Provider {
     } finally {
       opts.signal.removeEventListener('abort', onAbort);
       await run;
+      void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
     }
   }
 

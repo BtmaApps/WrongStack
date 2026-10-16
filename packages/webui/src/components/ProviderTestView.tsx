@@ -2,10 +2,8 @@ import {
   ArrowLeft,
   Ban,
   CheckCircle2,
-  ChevronRight,
   CircleStop,
   FlaskConical,
-  KeyRound,
   Loader2,
   Play,
   RotateCcw,
@@ -26,65 +24,15 @@ import { cn } from '@/lib/utils';
 import { openMainView, showPanel } from '@/lib/view-navigation';
 import { useConfigStore } from '@/stores';
 import { useLocalPrefs } from '@/stores/local-prefs';
-import type { WSServerMessage } from '@/types';
-import { Button } from './ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+  ProviderTestDisableDialog,
+  ProviderTestProviderStep,
+  ProviderTestSteps,
+} from './ProviderTestSections';
+import type { CatalogModel, SavedProvider, Step, TestResult } from './provider-test-model.js';
+import { compactNumber, diagnosisLabel, matchesModelRef } from './provider-test-model.js';
+import { Button } from './ui/button';
 import { Input } from './ui/input';
-
-interface SavedProvider {
-  id: string;
-  type?: string | undefined;
-  family?: string | undefined;
-  apiKeys: Array<{ label: string; maskedKey: string; isActive: boolean }>;
-}
-
-interface CatalogModel {
-  id: string;
-  name: string;
-  description?: string | undefined;
-  contextWindow?: number | undefined;
-  maxOutput?: number | undefined;
-  inputCost?: number | undefined;
-  outputCost?: number | undefined;
-  capabilities: string[];
-}
-
-type TestResult = Extract<WSServerMessage, { type: 'provider.test.result' }>['payload'];
-type Step = 'provider' | 'models' | 'results';
-
-function compactNumber(value: number | undefined): string {
-  if (!value) return '—';
-  return Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(
-    value,
-  );
-}
-
-function diagnosisLabel(value: string, t: (key: string) => string): string {
-  return t(`activity:providerTest.diagnosis.${value}`);
-}
-
-function matchesModelRef(
-  raw: string,
-  provider: string,
-  model: string,
-  defaultProvider: string,
-): boolean {
-  const clean = raw.trim().toLowerCase();
-  const normalizedProvider = provider.trim().toLowerCase();
-  const normalizedModel = model.trim().toLowerCase();
-  return (
-    clean === `${normalizedProvider}/${normalizedModel}` ||
-    clean === `${normalizedProvider} ${normalizedModel}` ||
-    (normalizedProvider === defaultProvider.trim().toLowerCase() && clean === normalizedModel)
-  );
-}
 
 export function ProviderTestView(): React.ReactElement {
   const { t } = useAppTranslation();
@@ -321,85 +269,15 @@ export function ProviderTestView(): React.ReactElement {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            {(['provider', 'models', 'results'] as const).map((item, index) => (
-              <div
-                key={item}
-                className={cn(
-                  'rounded-lg border px-3 py-2',
-                  step === item
-                    ? 'border-primary/50 bg-primary/10 text-primary'
-                    : 'text-muted-foreground',
-                )}
-              >
-                {index + 1}.{' '}
-                {item === 'provider'
-                  ? t('activity:providerTest.stepProvider')
-                  : item === 'models'
-                    ? t('activity:providerTest.stepModels')
-                    : t('activity:providerTest.stepResults')}
-              </div>
-            ))}
-          </div>
+          <ProviderTestSteps step={step} />
 
           {step === 'provider' && (
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-lg font-semibold">
-                  {t('activity:providerTest.chooseProvider')}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {t('activity:providerTest.chooseProviderHint')}
-                </p>
-              </div>
-              {providers.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  {t('activity:providerTest.noAccounts')}
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {providers.map((provider) => {
-                    const activeKey = provider.apiKeys.find((key) => key.isActive);
-                    return (
-                      <button
-                        key={provider.id}
-                        type="button"
-                        onClick={() => setProviderId(provider.id)}
-                        className={cn(
-                          'rounded-xl border p-4 text-left transition-colors hover:bg-accent/50',
-                          providerId === provider.id &&
-                            'border-primary bg-primary/5 ring-1 ring-primary/30',
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-medium">{provider.id}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {provider.type && provider.type !== provider.id
-                                ? `${provider.type} · ${provider.family ?? 'auto'}`
-                                : (provider.family ?? provider.type ?? 'auto-detect')}
-                            </div>
-                          </div>
-                          <KeyRound className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="mt-3 text-xs text-muted-foreground">
-                          {activeKey
-                            ? `${activeKey.label} · ${activeKey.maskedKey}`
-                            : t('activity:providerTest.savedCredentials', {
-                                count: provider.apiKeys.length,
-                              })}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              <div className="flex justify-end">
-                <Button disabled={!providerId} onClick={openModels}>
-                  {t('activity:providerTest.next')} <ChevronRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              </div>
-            </section>
+            <ProviderTestProviderStep
+              providers={providers}
+              providerId={providerId}
+              setProviderId={setProviderId}
+              openModels={openModels}
+            />
           )}
 
           {step === 'models' && (
@@ -750,46 +628,13 @@ export function ProviderTestView(): React.ReactElement {
           )}
         </div>
       </div>
-      <Dialog
-        open={disableTargets.length > 0}
-        onOpenChange={(open) => !open && setDisableTargets([])}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {disableTargets.length > 1
-                ? t('activity:providerTest.disableTitleMany', {
-                    count: disableTargets.length,
-                  })
-                : t('activity:providerTest.disableTitleOne')}
-            </DialogTitle>
-            <DialogDescription>
-              {disableTargets.length > 0
-                ? t('activity:providerTest.disableBody', {
-                    models: disableTargets
-                      .map((target) => `${providerId}/${target.modelId}`)
-                      .join(', '),
-                  })
-                : ''}
-              {disableTargets.some(
-                (target) =>
-                  providerId === activeProvider &&
-                  target.modelId === useConfigStore.getState().model,
-              )
-                ? t('activity:providerTest.disableActiveNote')
-                : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDisableTargets([])}>
-              {t('activity:providerTest.cancel')}
-            </Button>
-            <Button variant="destructive" onClick={confirmDisable}>
-              {t('activity:providerTest.disableModel')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProviderTestDisableDialog
+        disableTargets={disableTargets}
+        setDisableTargets={setDisableTargets}
+        providerId={providerId}
+        activeProvider={activeProvider}
+        confirmDisable={confirmDisable}
+      />
     </div>
   );
 }

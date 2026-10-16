@@ -13,6 +13,7 @@ export type QuotaVendor =
   | 'codex'
   | 'chatgpt'
   | 'claude'
+  | 'wrongforge'
   | 'minimax'
   | 'zai'
   | 'kimi'
@@ -28,6 +29,7 @@ export const VENDOR_ORDER: readonly QuotaVendor[] = [
   'codex',
   'chatgpt',
   'claude',
+  'wrongforge',
   'minimax',
   'zai',
   'kimi',
@@ -49,6 +51,7 @@ export const VENDOR_NAME: Record<QuotaVendor, string> = {
   chatgpt: 'ChatGPT',
   // The subscription of a delegated Claude Code worker (ACP), read from it.
   claude: 'Claude Code worker',
+  wrongforge: 'WrongForge',
   minimax: 'MiniMax',
   zai: 'Z.AI',
   kimi: 'Kimi Code',
@@ -70,6 +73,7 @@ export function isQuotaVendor(value: unknown): value is QuotaVendor {
  * user alias (`glm-work`) and is shown so two accounts can be told apart.
  */
 export const CATALOG_IDS = new Set([
+  'wrongforge',
   'claude-code',
   'openai-codex',
   'openai-chatgpt',
@@ -115,6 +119,7 @@ function upstreamOf(url: string | undefined): { host: string; path: string } {
 
 /** Catalog ids of the key-read vendors, for a provider saved without a base URL. */
 const CATALOG_VENDOR: Readonly<Record<string, QuotaVendor>> = {
+  wrongforge: 'wrongforge',
   'claude-code': 'claude',
   'kimi-for-coding': 'kimi',
   'kimi-code-plan-cn': 'kimi',
@@ -148,6 +153,7 @@ const BALANCE_HOSTS: Readonly<Record<string, QuotaVendor>> = {
 export function quotaVendorOf(p: SavedProviderLite): QuotaVendor | undefined {
   const kind = `${p.type ?? ''} ${p.family ?? ''} ${p.id}`.toLowerCase();
   const { host, path } = upstreamOf(p.baseUrl);
+  if ((p.type ?? p.id) === 'wrongforge') return 'wrongforge';
   if (kind.includes('openai-codex')) return 'codex';
   if (kind.includes('openai-chatgpt')) return 'chatgpt';
   if (/(^|\s)minimax/.test(kind) || /(^|\.)minimaxi?\.(io|cn|com|chat)$/.test(host)) {

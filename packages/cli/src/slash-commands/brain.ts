@@ -94,14 +94,21 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
       const [sub, ...rest] = trimmed.split(/\s+/);
       const subcommand = (sub ?? '').toLowerCase();
 
+      const warn = (msg: string): { message: string } => {
+        opts.renderer.writeWarning(msg);
+        return { message: msg };
+      };
+      const say = (msg: string): { message: string } => {
+        opts.renderer.write(msg);
+        return { message: msg };
+      };
+
       const applyPatch = async (
         patch: BrainConfigPatch,
         describe: (snapshot: BrainConfigSnapshot) => string,
       ): Promise<{ message: string }> => {
         if (!opts.brainRuntime) {
-          const msg = 'The Brain runtime is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain runtime is not available in this session.');
         }
         try {
           const { snapshot, persisted } = opts.brainRuntime.apply(patch);
@@ -114,9 +121,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           else opts.renderer.writeWarning(msg);
           return { message: msg };
         } catch (err) {
-          const msg = `Invalid Brain setting: ${err instanceof Error ? err.message : String(err)}`;
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn(`Invalid Brain setting: ${err instanceof Error ? err.message : String(err)}`);
         }
       };
 
@@ -130,20 +135,15 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
 
       if (subcommand === 'risk') {
         if (!opts.brainSettings) {
-          const msg = 'Brain settings are not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Brain settings are not available in this session.');
         }
         const level = (rest[0] ?? '').toLowerCase();
         if (!level) {
           const msg = `Brain autonomy ceiling: ${color.cyan(opts.brainSettings.maxAutoRisk)} ${color.dim('(set with /brain risk <off|low|medium|high|all>)')}`;
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         }
         if (!RISK_LEVELS.has(level)) {
-          const msg = `Unknown risk level: ${level}. Use off, low, medium, high, or all.`;
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn(`Unknown risk level: ${level}. Use off, low, medium, high, or all.`);
         }
         opts.brainSettings.maxAutoRisk = level as BrainAutoRisk;
         const explain =
@@ -153,26 +153,20 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
               ? 'the Brain auto-decides everything, including critical-risk questions'
               : `the Brain auto-decides questions up to ${level} risk; above that it asks you`;
         const msg = `Brain autonomy ceiling set to ${color.cyan(level)} — ${explain}.`;
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'mode') {
         if (!opts.brainSettings) {
-          const msg = 'Brain settings are not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Brain settings are not available in this session.');
         }
         const mode = (rest[0] ?? '').toLowerCase();
         if (!mode) {
           const msg = `Brain escalation mode: ${color.cyan(opts.brainSettings.mode ?? 'interactive')} ${color.dim('(set with /brain mode <headless|interactive>)')}`;
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         }
         if (mode !== 'headless' && mode !== 'interactive') {
-          const msg = `Unknown mode: ${mode}. Use headless or interactive.`;
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn(`Unknown mode: ${mode}. Use headless or interactive.`);
         }
         opts.brainSettings.mode = mode;
         const explain =
@@ -180,16 +174,13 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
             ? 'the Brain never blocks on you — escalations resolve via the terminal policy (safe default or deny)'
             : 'escalations above the risk ceiling prompt you in the TUI/WebUI';
         const msg = `Brain escalation mode set to ${color.cyan(mode)} — ${explain}.`;
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'model') {
         const ref = rest[0] ?? '';
         if (!ref) {
-          const msg = 'Usage: /brain model <provider/model | session>';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Usage: /brain model <provider/model | session>');
         }
         if (ref.toLowerCase() === 'session') {
           return applyPatch(
@@ -212,8 +203,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           const msg = snapshot
             ? `Brain LLM pool: ${snapshot.poolLabels.length > 0 ? color.cyan(snapshot.poolLabels.join(' → ')) : color.dim('session model')} ${color.dim(`(strategy: ${snapshot.strategy})`)}`
             : 'The Brain runtime is not available in this session.';
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         }
         if (op === 'clear') {
           return applyPatch(
@@ -224,9 +214,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'add') {
           const ref = rest[1];
           if (!ref) {
-            const msg = 'Usage: /brain models add <provider/model>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain models add <provider/model>');
           }
           const current = (snapshot?.models ?? []).map(compactEntry);
           return applyPatch(
@@ -237,9 +225,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'remove') {
           const target = rest[1];
           if (!target || !snapshot) {
-            const msg = 'Usage: /brain models remove <index|provider/model>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain models remove <index|provider/model>');
           }
           const current = snapshot.models.map(compactEntry);
           const idx = /^\d+$/.test(target)
@@ -249,9 +235,9 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
                   c === target || c.endsWith(`/${target}`) || c === parseRefEntry(target)?.model,
               );
           if (idx < 0 || idx >= current.length) {
-            const msg = `No pool entry matches "${target}". Current pool: ${current.join(', ') || '(empty)'}`;
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn(
+              `No pool entry matches "${target}". Current pool: ${current.join(', ') || '(empty)'}`,
+            );
           }
           const next = current.filter((_, i) => i !== idx);
           return applyPatch(
@@ -269,9 +255,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
       if (subcommand === 'strategy') {
         const strategy = (rest[0] ?? '').toLowerCase();
         if (strategy !== 'fallback' && strategy !== 'round-robin') {
-          const msg = 'Usage: /brain strategy <fallback|round-robin>';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Usage: /brain strategy <fallback|round-robin>');
         }
         return applyPatch(
           { strategy },
@@ -283,9 +267,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
       if (subcommand === 'timeout') {
         const raw = (rest[0] ?? '').toLowerCase();
         if (!raw) {
-          const msg = 'Usage: /brain timeout <ms|default>';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Usage: /brain timeout <ms|default>');
         }
         const patch: BrainConfigPatch =
           raw === 'default' ? { decisionTimeoutMs: null } : { decisionTimeoutMs: Number(raw) };
@@ -299,9 +281,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
       if (subcommand === 'human-timeout') {
         const raw = (rest[0] ?? '').toLowerCase();
         if (!raw) {
-          const msg = 'Usage: /brain human-timeout <ms|off>';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Usage: /brain human-timeout <ms|off>');
         }
         const patch: BrainConfigPatch =
           raw === 'off' ? { humanTimeoutMs: null } : { humanTimeoutMs: Number(raw) };
@@ -346,27 +326,20 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         }
         const ledgerPath = opts.brainSettings?.ledgerPath;
         if (!ledgerPath) {
-          const msg = 'The Brain decision ledger is disabled in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain decision ledger is disabled in this session.');
         }
         const n = Math.max(1, Math.min(100, Number.parseInt(rest[0] ?? '15', 10) || 15));
         const msg = await readLedgerEntries(ledgerPath, n);
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'ask') {
         const question = rest.join(' ').trim();
         if (!question) {
-          const msg = 'Usage: /brain ask <question>';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('Usage: /brain ask <question>');
         }
         if (!opts.brain) {
-          const msg = 'The Brain is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain is not available in this session.');
         }
         try {
           const decision = await opts.brain.decide({
@@ -385,27 +358,23 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           } else {
             msg = '🧠 The Brain escalated this question back to you — it needs human judgement.';
           }
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         } catch (err) {
-          const msg = `Brain consultation failed: ${err instanceof Error ? err.message : String(err)}`;
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn(
+            `Brain consultation failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
 
       if (subcommand === '' || subcommand === 'status') {
         const msg = formatBrainStatus(opts);
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'rules') {
         const snapshot = opts.brainRuntime?.getSnapshot();
         if (!snapshot) {
-          const msg = 'The Brain runtime is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain runtime is not available in this session.');
         }
         if ((rest[0] ?? '').toLowerCase() === 'clear') {
           return applyPatch({ rules: null }, () => 'Brain deterministic rules cleared');
@@ -425,16 +394,13 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           lines.push(color.dim(`  ! ${err}`));
         }
         const msg = lines.join('\n');
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'heuristics') {
         const snapshot = opts.brainRuntime?.getSnapshot();
         if (!snapshot) {
-          const msg = 'The Brain runtime is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain runtime is not available in this session.');
         }
         const name = (rest[0] ?? '').toLowerCase();
         if (!name) {
@@ -453,15 +419,14 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
             lines.push(color.dim(`  markers: ${h.blockedResolvedMarkers.join(', ')}`));
           }
           const msg = lines.join('\n');
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         }
         const field = HEURISTIC_FIELDS[name];
         const value = (rest[1] ?? '').toLowerCase();
         if (!field || (value !== 'on' && value !== 'off')) {
-          const msg = 'Usage: /brain heuristics <lowrisk|blocked|deadlock|retry|continue> <on|off>';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn(
+            'Usage: /brain heuristics <lowrisk|blocked|deadlock|retry|continue> <on|off>',
+          );
         }
         return applyPatch(
           { heuristics: { [field]: value === 'on' } },
@@ -474,9 +439,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (!op) {
           const snapshot = opts.brainRuntime?.getSnapshot();
           if (!snapshot) {
-            const msg = 'The Brain runtime is not available in this session.';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('The Brain runtime is not available in this session.');
           }
           const l = snapshot.llm;
           const msg = [
@@ -489,15 +452,12 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
               ? `  circuit         ${color.cyan(snapshot.circuit.state)} (${snapshot.circuit.consecutiveFailures} consecutive failures)`
               : color.dim('  circuit         disabled'),
           ].join('\n');
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         }
         if (op === 'maxtokens') {
           const raw = (rest[1] ?? '').toLowerCase();
           if (!raw) {
-            const msg = 'Usage: /brain llm maxtokens <n|default>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain llm maxtokens <n|default>');
           }
           return applyPatch(
             { llm: raw === 'default' ? { maxTokens: null } : { maxTokens: Number(raw) } },
@@ -512,9 +472,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'uncertain') {
           const value = (rest[1] ?? '').toLowerCase();
           if (value !== 'on' && value !== 'off') {
-            const msg = 'Usage: /brain llm uncertain <on|off>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain llm uncertain <on|off>');
           }
           return applyPatch(
             { llm: { rejectUncertain: value === 'on' } },
@@ -530,9 +488,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'deny') {
           const value = (rest[1] ?? '').toLowerCase();
           if (!DENY_TERMINAL_VALUES.includes(value)) {
-            const msg = 'Usage: /brain llm deny <never|when-decided|always>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain llm deny <never|when-decided|always>');
           }
           return applyPatch(
             { llm: { denyIsTerminal: value as 'never' | 'when-decided' | 'always' } },
@@ -542,9 +498,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'breaker') {
           const raw = (rest[1] ?? '').toLowerCase();
           if (!raw) {
-            const msg = 'Usage: /brain llm breaker <n|off> [cooldownMs]';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain llm breaker <n|off> [cooldownMs]');
           }
           const threshold = raw === 'off' ? 0 : Number(raw);
           const cooldown = rest[2] ? Number(rest[2]) : undefined;
@@ -563,9 +517,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
                 : `Brain LLM circuit breaker opens after ${color.cyan(String(threshold))} consecutive failures`,
           );
         }
-        const msg = 'Usage: /brain llm [maxtokens|uncertain|confidence|deny|breaker] ...';
-        opts.renderer.writeWarning(msg);
-        return { message: msg };
+        return warn('Usage: /brain llm [maxtokens|uncertain|confidence|deny|breaker] ...');
       }
 
       if (subcommand === 'trace') {
@@ -580,9 +532,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'content') {
           const value = (rest[1] ?? '').toLowerCase();
           if (!TRACE_CONTENT_VALUES.includes(value)) {
-            const msg = 'Usage: /brain trace content <none|redacted|full>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain trace content <none|redacted|full>');
           }
           return applyPatch(
             { trace: { content: value as 'none' | 'redacted' | 'full' } },
@@ -591,9 +541,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         }
         const snapshot = opts.brainRuntime?.getSnapshot();
         if (!snapshot) {
-          const msg = 'The Brain runtime is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain runtime is not available in this session.');
         }
         const msg = [
           color.bold('Brain replay trace'),
@@ -606,8 +554,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         ]
           .filter(Boolean)
           .join('\n');
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'cache') {
@@ -632,9 +579,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         }
         const snapshot = opts.brainRuntime?.getSnapshot();
         if (!snapshot) {
-          const msg = 'The Brain runtime is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain runtime is not available in this session.');
         }
         const c = snapshot.cache;
         const total = c.hits + c.misses;
@@ -647,8 +592,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           `  live     ${color.cyan(String(c.size))} entries, ${color.cyan(String(c.hits))} hit / ${String(c.misses)} miss${rate}`,
           color.dim('  Only council/LLM verdicts are cached; a failed outcome evicts its entry.'),
         ].join('\n');
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'escalation') {
@@ -657,8 +601,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           const snapshot = opts.brainRuntime?.getSnapshot();
           const current = snapshot ? color.cyan(snapshot.terminalPolicy) : color.dim('unknown');
           const msg = `Brain escalation policy: ${current}\nUsage: /brain escalation <conservative|deny-all|continue-on-recommended>`;
-          opts.renderer.write(msg);
-          return { message: msg };
+          return say(msg);
         }
         return applyPatch(
           { terminalPolicy: value as 'conservative' | 'deny-all' | 'continue-on-recommended' },
@@ -678,9 +621,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         if (op === 'policy') {
           const value = (rest[1] ?? '').toLowerCase();
           if (!MONITOR_POLICY_VALUES.includes(value)) {
-            const msg = 'Usage: /brain monitor policy <llm|steer|observe>';
-            opts.renderer.writeWarning(msg);
-            return { message: msg };
+            return warn('Usage: /brain monitor policy <llm|steer|observe>');
           }
           return applyPatch(
             { monitor: { policy: value as 'llm' | 'steer' | 'observe' } },
@@ -689,9 +630,7 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
         }
         const snapshot = opts.brainRuntime?.getSnapshot();
         if (!snapshot) {
-          const msg = 'The Brain runtime is not available in this session.';
-          opts.renderer.writeWarning(msg);
-          return { message: msg };
+          return warn('The Brain runtime is not available in this session.');
         }
         const m = snapshot.monitor;
         const msg = [
@@ -703,19 +642,17 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
             '  Changes apply live; a change restarts the watchers, resetting signal counters.',
           ),
         ].join('\n');
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
       if (subcommand === 'stats') {
         const msg = formatBrainStats(opts);
-        opts.renderer.write(msg);
-        return { message: msg };
+        return say(msg);
       }
 
-      const msg = `Unknown subcommand: ${subcommand}. Use /brain, status, stats, risk, mode, model, models, strategy, timeout, human-timeout, council, ledger, rules, heuristics, llm, trace, cache, escalation, monitor, ask, or save (see /brain help).`;
-      opts.renderer.writeWarning(msg);
-      return { message: msg };
+      return warn(
+        `Unknown subcommand: ${subcommand}. Use /brain, status, stats, risk, mode, model, models, strategy, timeout, human-timeout, council, ledger, rules, heuristics, llm, trace, cache, escalation, monitor, ask, or save (see /brain help).`,
+      );
     },
   };
 }

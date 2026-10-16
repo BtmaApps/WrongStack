@@ -16,7 +16,7 @@ import type {
 } from './mailbox-credential-store.js';
 import type { MailboxEventEmitter } from './mailbox-events.js';
 import { normalizeMailboxMessageType } from './mailbox-message-codec.js';
-import { isFanOutRecipient } from './mailbox-receipt-folding.js';
+import { applyAckToMessage, isFanOutRecipient } from './mailbox-receipt-folding.js';
 import {
   mapRegisteredAgentsToStatuses,
   mapRegisteredClientsToStatuses,
@@ -260,19 +260,41 @@ export class SqliteMailbox implements Mailbox {
       type: message.type,
       subject: message.subject,
     });
+    this.emitMessageEvent('message.sent', message, timestamp);
+    return message;
+  }
+
+  async query(query: MailboxQuery): Promise<MailboxMessage[]> {
+    return delegateQuery(this.sqliteMailboxQueryHost(), query);
+  }
+
+  /**
+   * Persist a message after a receipt change. Aggregate completion is STORED
+   * only for a message with a single addressee. One actor finishing a fan-out
+   * (`*`, `@session:`, a bare role alias) must not mark it done for everyone
+   * else — that is what the per-actor receipt model exists to prevent, and
+   * `legacyGlobalCompletion` marks the historical v1 messages that predate it.
+   */
+  private persistMessageView(message: MailboxMessageProjection): void {
+    this.persistMessage(
+      isFanOutRecipient(message.to) ? withoutAggregateCompletion(message) : message,
+      message.legacyGlobalCompletion === true,
+    );
+  }
+
+  private emitMessageEvent(
+    type: 'message.sent' | 'message.acked' | 'message.deleted' | 'message.restored',
+    message: MailboxMessage,
+    timestamp: string,
+  ): void {
     this.eventEmitter?.emit({
-      type: 'message.sent',
+      type,
       messageId: message.id,
       from: message.from,
       to: message.to,
       audience: message.audience,
       timestamp,
     });
-    return message;
-  }
-
-  async query(query: MailboxQuery): Promise<MailboxMessage[]> {
-    return delegateQuery(this.sqliteMailboxQueryHost(), query);
   }
 
   async ack(input: MailboxAckInput): Promise<MailboxMessage | null> {
@@ -289,62 +311,12 @@ export class SqliteMailbox implements Mailbox {
       for (const ack of input.acks) {
         const message = this.findMessage(ack.messageId);
         if (message === undefined) continue;
-        const current = message.recipientState[ack.readerId] ?? { actorId: ack.readerId };
-        const state: MailboxRecipientState = { ...current };
-        let didChange = false;
-
-        if (ack.read !== false && state.readAt === undefined) {
-          state.readAt = timestamp;
-          message.readBy[ack.readerId] = timestamp;
-          didChange = true;
-        }
-        if (
-          ack.completed === true &&
-          state.completedAt === undefined &&
-          message.legacyGlobalCompletion !== true
-        ) {
-          state.completedAt = timestamp;
-          state.completedBy = ack.readerId;
-          didChange = true;
-        }
-        if (ack.read === false && ack.completed === false && state.completedAt !== undefined) {
-          delete state.completedAt;
-          delete state.completedBy;
-          didChange = true;
-        }
-        if (ack.outcome !== undefined && state.outcome !== ack.outcome) {
-          state.outcome = ack.outcome;
-          didChange = true;
-        }
-
-        message.recipientState = {
-          ...message.recipientState,
-          [ack.readerId]: state,
-        };
-        const actorCompleted = state.completedAt !== undefined;
-        message.completed = message.legacyGlobalCompletion === true || actorCompleted;
-        if (actorCompleted) {
-          message.completedBy = state.completedBy ?? ack.readerId;
-          message.completedAt = state.completedAt;
-        } else if (message.legacyGlobalCompletion !== true) {
-          delete message.completedBy;
-          delete message.completedAt;
-        }
-        message.outcome = state.outcome;
+        const { state, didChange } = applyAckToMessage(message, ack, timestamp);
 
         if (didChange) {
           this.persistReceipt(message.id, state);
-          // Aggregate completion is STORED only for a message with a single
-          // addressee. One actor finishing a fan-out (`*`, `@session:`, a bare
-          // role alias) must not mark it done for everyone else — that is what
-          // the per-actor receipt model exists to prevent, and
-          // `legacyGlobalCompletion` marks the historical v1 messages that
-          // predate it. The value returned to the caller below still reports
-          // that actor's own completion.
-          this.persistMessage(
-            isFanOutRecipient(message.to) ? withoutAggregateCompletion(message) : message,
-            message.legacyGlobalCompletion === true,
-          );
+          // The value returned below still reports this actor's own completion.
+          this.persistMessageView(message);
           changed.add(message.id);
         }
         results.push({ ...message, readBy: { ...message.readBy } });
@@ -354,43 +326,12 @@ export class SqliteMailbox implements Mailbox {
 
     for (const message of updated) {
       if (!changed.has(message.id)) continue;
-      this.eventEmitter?.emit({
-        type: 'message.acked',
-        messageId: message.id,
-        from: message.from,
-        to: message.to,
-        audience: message.audience,
-        timestamp,
-      });
+      this.emitMessageEvent('message.acked', message, timestamp);
     }
     return updated;
   }
 
-  /**
-   * Count the messages this actor has neither read nor completed.
-   *
-   * Pushed into SQL rather than filtering `readMessages()`. The pre-tool hook
-   * asks for this repeatedly — `mailbox-hooks.ts` throttles it to once a
-   * second, which bounds the frequency but not the cost — and the JS form
-   * materialized EVERY row in `messages`, joined the whole `message_receipts`
-   * table, and folded per-actor receipt state across all of them just to
-   * return an integer.
-   *
-   * The predicate is deliberately the same one {@link query} builds for
-   * `{ unreadBy, incompleteOnly }`, because it has to agree exactly with
-   * `isMessageCompletedForActor` and `isMailboxMessageVisibleTo`:
-   *
-   * - **unread** — no per-actor receipt carrying `read_at`, and no legacy
-   *   `readBy` key. Both are checked: `ackMany` writes the receipt row AND
-   *   mirrors the timestamp into the message's `readBy` JSON.
-   * - **incomplete** — not `legacy_global_completion`, no per-actor receipt
-   *   carrying `completed_at`, and the aggregate `completed` flag counts only
-   *   when the message has no receipts at all (once any actor has a receipt,
-   *   completion is per-actor and the aggregate flag is not authoritative).
-   * - **audience** — `leaders` mail is invisible unless the actor's base
-   *   identity is `leader`. This call path carries no role, matching the
-   *   `isMailboxMessageVisibleTo(message, forAgentId)` it replaces.
-   */
+  /** Unread-and-incomplete count for an actor — see `unreadCount` in sqlite-mailbox-query. */
   async unreadCount(
     forAgentId: string,
     sessionId?: string,
@@ -419,22 +360,12 @@ export class SqliteMailbox implements Mailbox {
       found.readBy[by] = state.readAt;
       found.recipientState = { ...found.recipientState, [by]: state };
       this.persistReceipt(found.id, state);
-      this.persistMessage(
-        isFanOutRecipient(found.to) ? withoutAggregateCompletion(found) : found,
-        found.legacyGlobalCompletion === true,
-      );
+      this.persistMessageView(found);
       return found;
     });
     if (message === undefined) return null;
     if (alreadyDeleted) return { ...message, readBy: { ...message.readBy } };
-    this.eventEmitter?.emit({
-      type: 'message.deleted',
-      messageId: message.id,
-      from: message.from,
-      to: message.to,
-      audience: message.audience,
-      timestamp,
-    });
+    this.emitMessageEvent('message.deleted', message, timestamp);
     return { ...message, readBy: { ...message.readBy } };
   }
 
@@ -449,23 +380,13 @@ export class SqliteMailbox implements Mailbox {
       }
       delete found.deletedAt;
       delete found.deletedBy;
-      this.persistMessage(
-        isFanOutRecipient(found.to) ? withoutAggregateCompletion(found) : found,
-        found.legacyGlobalCompletion === true,
-      );
+      this.persistMessageView(found);
       return found;
     });
     if (message === undefined) return null;
     if (wasNotDeleted) return { ...message, readBy: { ...message.readBy } };
     const timestamp = new Date().toISOString();
-    this.eventEmitter?.emit({
-      type: 'message.restored',
-      messageId: message.id,
-      from: message.from,
-      to: message.to,
-      audience: message.audience,
-      timestamp,
-    });
+    this.emitMessageEvent('message.restored', message, timestamp);
     return { ...message, readBy: { ...message.readBy } };
   }
 

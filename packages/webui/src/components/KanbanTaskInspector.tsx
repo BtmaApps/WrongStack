@@ -15,14 +15,14 @@ import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useAppTranslation } from '@/i18n';
 import { kanbanMetadataText } from '@/lib/kanban-metadata';
 import { cn } from '@/lib/utils';
-import { ChipMultiSelect } from './ChipMultiSelect';
 import { KanbanBoundaryEditor } from './KanbanBoundaryEditor';
 import { KanbanDecompositionPanel } from './KanbanDecompositionPanel';
 import type { RunLink } from './KanbanRunControls.js';
 import { KanbanTaskActivityRecorder } from './KanbanTaskActivityRecorder';
 import { KanbanTaskCompletionChecks } from './KanbanTaskCompletionChecks';
+import { KanbanTaskContractFields } from './KanbanTaskContractFields';
 import { KanbanTaskExecution } from './KanbanTaskExecution.js';
-import { columnTitle, Field, Metric, SelectField } from './KanbanTaskFields.js';
+import { columnTitle, Field, Metric } from './KanbanTaskFields.js';
 import {
   blockingTaskTitles,
   type TaskInspectorTab,
@@ -470,110 +470,30 @@ export function KanbanTaskInspector({
                       className="w-full resize-y rounded-md border bg-background px-2 py-1.5 text-xs leading-5 outline-none focus:border-primary"
                     />
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {board?.lifecycle?.mode === 'managed' ? (
-                      <div className="rounded-md border bg-muted/30 px-2 py-1.5">
-                        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          {t('activity:kanban.managedStage')}
-                        </div>
-                        <div className="mt-1 text-xs font-semibold capitalize">
-                          {task.lifecycle?.currentStage ?? 'Backlog'}
-                        </div>
-                      </div>
-                    ) : (
-                      <SelectField
-                        label={t('activity:kanban.status')}
-                        value={status}
-                        options={[
-                          'pending',
-                          'ready',
-                          'in_progress',
-                          'blocked',
-                          'review',
-                          'completed',
-                          'failed',
-                          'archived',
-                        ]}
-                        onChange={(value) => setStatus(value as KanbanTask['status'])}
-                      />
-                    )}
-                    <SelectField
-                      label={t('activity:kanban.priority')}
-                      value={priority}
-                      options={['critical', 'high', 'medium', 'low']}
-                      onChange={(value) => setPriority(value as KanbanTask['priority'])}
-                    />
-                    <SelectField
-                      label={t('activity:kanban.type')}
-                      value={taskType}
-                      options={['feature', 'bugfix', 'refactor', 'docs', 'test', 'chore']}
-                      onChange={(value) => setTaskType(value as NonNullable<KanbanTask['type']>)}
-                    />
-                    <Field
-                      label={t('activity:kanban.labelsCommaSeparated')}
-                      value={labelsText}
-                      onChange={setLabelsText}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field
-                      label={t('activity:kanban.dueDatePlaceholder')}
-                      value={dueDate}
-                      onChange={setDueDate}
-                    />
-                    <Field
-                      label={t('activity:kanban.estimatedHours')}
-                      value={estimatedHours}
-                      onChange={setEstimatedHours}
-                    />
-                    <Field
-                      label={t('activity:kanban.actualHours')}
-                      value={actualHours}
-                      onChange={setActualHours}
-                    />
-                  </div>
-                  <div>
-                    <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
-                      {t('activity:kanbanInspector.dependencies')}
-                    </span>
-                    <ChipMultiSelect
-                      options={(board?.tasks ?? [])
-                        .filter((candidate) => candidate.id !== task.id)
-                        .map((candidate) => ({
-                          value: candidate.id,
-                          label: candidate.title,
-                          description: candidate.status,
-                        }))}
-                      selected={dependsOn}
-                      onChange={setDependsOn}
-                      placeholder={t('activity:kanban.selectBlockingTasks')}
-                    />
-                  </div>
-                  <div>
-                    <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
-                      {t('activity:kanbanInspector.taskChainSelectionOrder')}
-                    </span>
-                    <ChipMultiSelect
-                      options={(board?.tasks ?? []).map((candidate) => ({
-                        value: candidate.id,
-                        label: candidate.title,
-                        description: candidate.status,
-                      }))}
-                      selected={chainMembers}
-                      onChange={(next) =>
-                        setChainMembers(next.includes(task.id) ? next : [task.id, ...next])
-                      }
-                      placeholder={t('activity:kanban.selectSequentialChain')}
-                    />
-                    <label className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={enforceChainDependencies}
-                        onChange={(event) => setEnforceChainDependencies(event.target.checked)}
-                      />
-                      {t('activity:kanban.enforceChainOrder')}
-                    </label>
-                  </div>
+                  <KanbanTaskContractFields
+                    board={board}
+                    task={task}
+                    status={status}
+                    setStatus={setStatus}
+                    priority={priority}
+                    setPriority={setPriority}
+                    taskType={taskType}
+                    setTaskType={setTaskType}
+                    labelsText={labelsText}
+                    setLabelsText={setLabelsText}
+                    dueDate={dueDate}
+                    setDueDate={setDueDate}
+                    estimatedHours={estimatedHours}
+                    setEstimatedHours={setEstimatedHours}
+                    actualHours={actualHours}
+                    setActualHours={setActualHours}
+                    dependsOn={dependsOn}
+                    setDependsOn={setDependsOn}
+                    chainMembers={chainMembers}
+                    setChainMembers={setChainMembers}
+                    enforceChainDependencies={enforceChainDependencies}
+                    setEnforceChainDependencies={setEnforceChainDependencies}
+                  />
                   <Field
                     label={t('activity:kanban.assignmentReason')}
                     value={changeReason}

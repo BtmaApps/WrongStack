@@ -11,12 +11,12 @@ Lists, for every provider that has reported this session, how much of that
 subscription's plan has been consumed on each rolling window and when each
 window resets.
 
-Five provider families are metered on plans rather than per token, and all of
-them report into the same store:
+Providers with subscription windows report into the same store:
 
 | Provider | Windows | Where the reading comes from |
 | --- | --- | --- |
 | Anthropic (`anthropic`) | `5h`, `7d` when the response carries them | `anthropic-ratelimit-unified-*` response headers |
+| WrongForge (`wrongforge`) | `5h`, weekly, extra-usage availability/credits | Authenticated `GET /v1/usage` on the configured WrongForge server |
 | ChatGPT / Codex (`openai-codex`) | `primary`, `secondary` (5h and/or weekly, per plan), plus per-feature meters | `GET chatgpt.com/backend-api/wham/usage` on demand; `x-codex-*` response headers per turn |
 | GitHub Copilot (`github-copilot`) | one 30-day window per pool (`premium_interactions`, `chat`, `code`) | `GET api.github.com/copilot_internal/user` |
 | Google Antigravity (`google-antigravity`) | one per model bucket | `POST cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
@@ -46,6 +46,14 @@ turn amber at 70% and red at 90%.
 
 ## Notes
 
+- **WrongForge is read in the background.** Leader and worker task starts,
+  heartbeats, completed steps and task exits request usage without delaying
+  the task. Concurrent reads share one request, with a 20-second minimum gap.
+  Normal reads respect WrongForge's five-minute server cache; `/provider-quota`
+  and the WebUI quota panel refresh use `?force=1` (panel requests are also
+  throttled for 20 seconds). The WebUI's existing periodic refresh keeps an open
+  panel current. Failed reads keep the last known values. The server API key
+  stays on the backend; no separate saved provider key is needed.
 - **The header-based readings cost nothing.** Claude and Codex publish the burn
   on the responses to requests you were already making. Claude therefore
   appears after its first request of the session. Codex does not wait for one:

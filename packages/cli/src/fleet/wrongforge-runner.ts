@@ -50,6 +50,8 @@ import {
   type WrongForgeInfo,
   writeWrongForgeInfoCache,
 } from './wrongforge-info.js';
+import { reportWrongForgeQuota } from './wrongforge-quota.js';
+import { wrongForgeRuntime } from './wrongforge-runtime.js';
 
 export { wrongForgeConfigured } from './wrongforge-client.js';
 export {
@@ -150,6 +152,7 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
       );
     }
     const call = wrongForgeCall(ep, options.fetchImpl);
+    void reportWrongForgeQuota({ endpoint: ep, fetchImpl: options.fetchImpl });
 
     let gateway: WrongForgeGatewaySpec | undefined;
     try {
@@ -173,14 +176,29 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
 
     const model = chooseModel(ctx.config.model, ctx.config.name, info);
     if (model.error) throw subagentError('unknown', model.error);
+    const timeoutMs = task.timeoutMs ?? ctx.config.timeoutMs;
     const submit = {
       prompt: task.description,
       task_id: `ws-${safeWfId(task.id)}-${randomBytes(4).toString('hex')}`,
       // One conversation per worker: a follow-up task to it remembers the last.
       session_id: `ws-${safeWfId(ctx.subagentId)}`,
-      workdir: options.projectRoot,
+      workdir: ctx.config.cwd ?? options.projectRoot,
       ...(model.id ? { model: model.id } : {}),
-      ...(task.timeoutMs ? { timeout_ms: task.timeoutMs } : {}),
+      ...wrongForgeRuntime(
+        {
+          ...ctx.config.modelRuntime?.reasoning,
+          ...(ctx.config.modelRuntime?.reasoning?.mode === 'off' ? { enabled: false } : {}),
+          effort: ctx.config.modelRuntime?.reasoning?.effort ?? ctx.config.leaderEffort,
+        },
+        ctx.config.modelRuntime?.cache,
+        info,
+      ),
+      ...(ctx.config.maxIterations !== undefined
+        ? { max_steps: Math.max(1, Math.min(500, Math.trunc(ctx.config.maxIterations))) }
+        : {}),
+      ...(timeoutMs !== undefined
+        ? { timeout_ms: Math.max(1000, Math.min(14_400_000, Math.trunc(timeoutMs))) }
+        : {}),
       system_append: systemAppend(gateway !== undefined, routed),
       context: {
         wrongstack: { sessionId: ctx.sessionId, subagentId: ctx.subagentId, taskId: task.id },
@@ -213,9 +231,6 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
       }
     };
 
-    // `result.text` glues every step's text together with no separator; the
-    // events keep the steps apart (a tool call ends one), so build it here.
-    const stepTexts: string[] = [''];
     try {
       for await (const ev of followTask(call, record.id, ctx.signal, {
         retryDelayMs: options.retryDelayMs,
@@ -227,12 +242,10 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
         },
       })) {
         active();
-        for (const progress of toProgress(ev)) publish(progress);
-        if (ev.type === 'agent.text' && typeof ev.data['text'] === 'string') {
-          stepTexts[stepTexts.length - 1] += ev.data['text'];
-        } else if (ev.type === 'tool.started' && stepTexts[stepTexts.length - 1]?.trim()) {
-          stepTexts.push('');
+        if (ev.type === 'task.heartbeat' || ev.type === 'step.finished') {
+          void reportWrongForgeQuota({ endpoint: ep, fetchImpl: options.fetchImpl });
         }
+        for (const progress of toProgress(ev)) publish(progress);
       }
       record = await terminalTaskRecord(call, record.id, ctx.signal, {
         retryDelayMs: options.retryDelayMs,
@@ -241,6 +254,7 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
       throw toSubagentError(err, ctx.signal);
     } finally {
       ctx.signal.removeEventListener('abort', cancel);
+      void reportWrongForgeQuota({ endpoint: ep, fetchImpl: options.fetchImpl });
     }
 
     const usage = record.result?.usage;
@@ -260,12 +274,7 @@ export function makeWrongForgeRunner(options: WrongForgeRunnerOptions): Subagent
     if (!result || (!result.text.trim() && result.tool_calls === 0)) {
       throw subagentError('empty_response', 'WrongForge finished with no text and no tool calls');
     }
-    const text =
-      stepTexts
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .join('\n\n') || result.text;
-    return { result: text, iterations: result.steps, toolCalls: result.tool_calls };
+    return { result: result.text, iterations: result.steps, toolCalls: result.tool_calls };
   };
 }
 

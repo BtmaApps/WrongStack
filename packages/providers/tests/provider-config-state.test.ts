@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { removeProviderFallbackReferences } from '../src/provider-config-state.js';
+import {
+  authProfileAliasError,
+  isReservedProviderId,
+  removeProviderFallbackReferences,
+} from '../src/provider-config-state.js';
 
 /**
  * `removeProviderFallbackReferences` scrubs a deleted provider from fallback
@@ -25,5 +29,20 @@ describe('removeProviderFallbackReferences — disabledProviders cleanup', () =>
     const bare: Record<string, unknown> = {};
     expect(() => removeProviderFallbackReferences(bare, 'openai')).not.toThrow();
     expect(bare['disabledProviders']).toBeUndefined();
+  });
+});
+
+describe('authProfileAliasError — reserved system provider ids', () => {
+  it('rejects acp and wrongforge in any case', () => {
+    for (const id of ['acp', 'wrongforge', 'ACP', 'WrongForge']) {
+      expect(isReservedProviderId(id)).toBe(true);
+      expect(authProfileAliasError(id)).toMatch(/reserved system provider/);
+    }
+  });
+
+  it('still accepts names that merely contain a reserved word', () => {
+    for (const id of ['acp-proxy', 'my-wrongforge', 'openai']) {
+      expect(authProfileAliasError(id)).toBeUndefined();
+    }
   });
 });

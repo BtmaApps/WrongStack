@@ -1,5 +1,10 @@
 {
   "schemaVersion": 1,
-  "thresholdLines": 800,
-  "files": {}
+  "thresholdLines": 701,
+  "files": {
+    "packages/plugins/src/audit/index.ts": {
+      "lines": 715,
+      "relativeImports": 0
+    }
+  }
 }

@@ -14,10 +14,11 @@
  */
 
 import type {
+  MailboxAckInput,
   MailboxMessage,
   MailboxMessageProjection,
-  MailboxRecipientState,
   MailboxReceiptRecordV2,
+  MailboxRecipientState,
 } from './mailbox-types.js';
 import { isMailboxReceiptRecordV2 } from './mailbox-types.js';
 
@@ -242,4 +243,59 @@ export function buildReceiptRecordV2(
   if (opts.completed !== undefined) record.completed = opts.completed;
   if (opts.outcome !== undefined) record.outcome = opts.outcome;
   return record;
+}
+
+/**
+ * Fold one actor's ack into a message in place: their receipt (read /
+ * completed / outcome) and the message-level view derived from it. Returns
+ * the new receipt and whether anything about it changed.
+ */
+export function applyAckToMessage(
+  message: MailboxMessageProjection,
+  ack: MailboxAckInput,
+  timestamp: string,
+): { state: MailboxRecipientState; didChange: boolean } {
+  const current = message.recipientState[ack.readerId] ?? { actorId: ack.readerId };
+  const state: MailboxRecipientState = { ...current };
+  let didChange = false;
+
+  if (ack.read !== false && state.readAt === undefined) {
+    state.readAt = timestamp;
+    message.readBy[ack.readerId] = timestamp;
+    didChange = true;
+  }
+  if (
+    ack.completed === true &&
+    state.completedAt === undefined &&
+    message.legacyGlobalCompletion !== true
+  ) {
+    state.completedAt = timestamp;
+    state.completedBy = ack.readerId;
+    didChange = true;
+  }
+  if (ack.read === false && ack.completed === false && state.completedAt !== undefined) {
+    delete state.completedAt;
+    delete state.completedBy;
+    didChange = true;
+  }
+  if (ack.outcome !== undefined && state.outcome !== ack.outcome) {
+    state.outcome = ack.outcome;
+    didChange = true;
+  }
+
+  message.recipientState = {
+    ...message.recipientState,
+    [ack.readerId]: state,
+  };
+  const actorCompleted = state.completedAt !== undefined;
+  message.completed = message.legacyGlobalCompletion === true || actorCompleted;
+  if (actorCompleted) {
+    message.completedBy = state.completedBy ?? ack.readerId;
+    message.completedAt = state.completedAt;
+  } else if (message.legacyGlobalCompletion !== true) {
+    delete message.completedBy;
+    delete message.completedAt;
+  }
+  message.outcome = state.outcome;
+  return { state, didChange };
 }

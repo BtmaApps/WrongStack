@@ -1,41 +1,25 @@
 import { expectDefined } from '@wrongstack/core/utils/expect-defined';
-import {
-  Bot,
-  Brain,
-  ChevronDown,
-  ChevronRight,
-  Crosshair,
-  FileCode2,
-  Gauge,
-  Info,
-  Pencil,
-  Pin,
-  PinOff,
-  RotateCcw,
-  Terminal,
-  User,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, FileCode2, Pencil, Pin, PinOff, RotateCcw } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import remarkGfm from 'remark-gfm';
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
-import { PERF_RUN_METRIC_LABELS, PERF_RUN_MODE_LABELS } from '@/lib/perf-run-message';
 import { cn } from '@/lib/utils';
-import { getWSClient } from '@/lib/ws-client';
 import type { ChatMessage } from '@/stores';
 import { useChatStore, useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import { useAutoSubmitStreak } from '@/stores/auto-submit-streak.js';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { BrainDecisionCard, parseBrainMarkdown } from '../ChatView/BrainDecisionCard.js';
 import { CouncilDecisionCard, parseCouncilMarkdown } from '../ChatView/CouncilDecisionCard.js';
-import { fillInput, NextStepsBar } from '../NextStepsBar';
-import { toast } from '../Toaster';
+import { NextStepsBar } from '../NextStepsBar';
 import { AttachmentGallery } from './AttachmentGallery.js';
 import { CopyButton } from './CopyButton.js';
 import { ErrorBodyWithStack } from './ErrorBody.js';
 import { FailedRunContinue } from './FailedRunContinue.js';
 import { LazyMarkdown as ReactMarkdown } from './LazyMarkdown.js';
+import { BugHuntCard, MessageAvatar, PerfRunCard } from './MessageBubbleCards.js';
 import { createMessageBubbleActions } from './message-bubble-actions.js';
+import { createMessageBubbleSubmitters } from './message-bubble-submit.js';
 import { StreamingMarkdown } from './StreamingMarkdown.js';
 import { ToolLedgerCard } from './ToolLedgerCard.js';
 import { markdownComponents, rehypePlugins } from './utils.js';
@@ -135,58 +119,16 @@ export const MessageBubble = memo(function MessageBubble({
     return <BrainDecisionCard message={message} />;
   }
 
-  /** Auto-submit callback for YOLO+auto mode countdown completion */
-  const handleAutoSubmit = (text: string) => {
-    if (useChatStore.getState().isLoading) return;
-    if (!canAutoSubmit()) {
-      // Cap already hit — show a one-time warning and stop.
-      if (!capWarned) {
-        addMessage({
-          role: 'assistant',
-          content: t('activity:message.autoPaused'),
-        });
-      }
-      return;
-    }
-    const client = getWSClient(wsUrl);
-    if (!client.isConnected) {
-      toast.error(t('common:status.notConnectedRetry'));
-      return;
-    }
-    // Record at the final automatic-submission boundary. All MessageBubble
-    // instances share one session guard through useAutoSubmitStreak().
-    if (!recordPrompt(text)) {
-      addMessage({
-        role: 'assistant',
-        content: t('activity:message.autoLoopHalted'),
-      });
-      fillInput('');
-      return;
-    }
-    recordAutoSubmit();
-    addMessage({ role: 'user', content: text });
-    setLoading(true);
-    client.sendMessage(text);
-    // Clear the input field after auto-submitting, matching the behaviour
-    // of the normal form submission path in ChatInput.
-    fillInput('');
-  };
-
-  /** Batch-submit callback for multi-select: joins selected step texts and
-   *  sends as a single user message, bypassing the refine/enhance panel. */
-  const handleBatchSubmit = (texts: string[]) => {
-    if (useChatStore.getState().isLoading) return;
-    const combined = texts.join('\n');
-    const client = getWSClient(wsUrl);
-    if (!client.isConnected) {
-      toast.error(t('common:status.notConnectedRetry'));
-      return;
-    }
-    addMessage({ role: 'user', content: combined });
-    setLoading(true);
-    client.sendMessage(combined);
-    fillInput('');
-  };
+  const { handleAutoSubmit, handleBatchSubmit } = createMessageBubbleSubmitters({
+    wsUrl,
+    t,
+    addMessage,
+    setLoading,
+    canAutoSubmit,
+    capWarned,
+    recordPrompt,
+    recordAutoSubmit,
+  });
 
   const isLatestAssistant = (() => {
     if (message.role !== 'assistant' || isLoading) return false;
@@ -253,37 +195,13 @@ export const MessageBubble = memo(function MessageBubble({
         isPinned && 'ring-1 ring-warning/30 bg-warning/[0.02] px-1 -mx-1',
       )}
     >
-      {isContinuation ? (
-        <div className="flex-shrink-0 w-8 h-8" aria-hidden />
-      ) : (
-        <div
-          className={cn(
-            'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center',
-            'ring-1 ring-offset-2 ring-offset-background',
-            isUser
-              ? 'bg-primary text-primary-foreground ring-primary/20'
-              : isTool
-                ? 'bg-secondary text-secondary-foreground ring-secondary/20'
-                : isSystem
-                  ? 'bg-muted/60 text-muted-foreground ring-border/40'
-                  : isThinkingLog
-                    ? 'bg-primary/10 text-primary ring-primary/20'
-                    : 'bg-accent text-accent-foreground ring-accent/20',
-          )}
-        >
-          {isUser ? (
-            <User className="h-4 w-4" />
-          ) : isTool ? (
-            <Terminal className="h-4 w-4" />
-          ) : isSystem ? (
-            <Info className="h-4 w-4" />
-          ) : isThinkingLog ? (
-            <Brain className="h-4 w-4" />
-          ) : (
-            <Bot className="h-4 w-4" />
-          )}
-        </div>
-      )}
+      <MessageAvatar
+        isContinuation={isContinuation}
+        isUser={isUser}
+        isTool={isTool}
+        isSystem={isSystem}
+        isThinkingLog={isThinkingLog}
+      />
 
       <div
         className={cn(
@@ -335,48 +253,9 @@ export const MessageBubble = memo(function MessageBubble({
             )}
           >
             {isBugHunt ? (
-              <div className="min-w-[15rem]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Crosshair className="h-4 w-4 text-primary" />
-                  <span>{t('activity:message.bugHunterTitle')}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1">
-                    {t('activity:message.bugHuntRoundOf', {
-                      current: bugHunt?.currentRound ?? 1,
-                      max: bugHunt?.maxBugs,
-                    })}
-                  </span>
-                  <span
-                    className="max-w-full truncate rounded-full border border-border bg-background/60 px-2 py-1"
-                    title={bugHunt?.scope || t('activity:message.wholeProject')}
-                  >
-                    {bugHunt?.scope
-                      ? t('activity:message.scopeAndBelow', { scope: bugHunt.scope })
-                      : t('activity:message.wholeProject')}
-                  </span>
-                </div>
-              </div>
+              <BugHuntCard bugHunt={bugHunt} />
             ) : isPerfRun ? (
-              <div className="min-w-[15rem]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Gauge className="h-4 w-4 text-primary" />
-                  <span>{PERF_RUN_MODE_LABELS[perfRun.mode]}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                  <span
-                    className="max-w-full truncate rounded-full border border-border bg-background/60 px-2 py-1"
-                    title={perfRun.scope || 'Whole project'}
-                  >
-                    {perfRun.scope ? `${perfRun.scope} and below` : 'Whole project'}
-                  </span>
-                  {perfRun.metric && (
-                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1">
-                      {PERF_RUN_METRIC_LABELS[perfRun.metric]}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <PerfRunCard perfRun={perfRun} />
             ) : editing && isUser ? (
               <div className="flex flex-col gap-2 min-w-[280px]">
                 <textarea

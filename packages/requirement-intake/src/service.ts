@@ -22,13 +22,12 @@ import {
 } from './constants.js';
 import {
   IntakeAuthorizationError,
-  IntakeConflictError,
   IntakeNotFoundError,
   IntakeStatusLockedError,
   IntakeValidationError,
 } from './errors.js';
 import { IntakeEventEmitter } from './events.js';
-import { assertTransition, isMutableStatus } from './lifecycle.js';
+import { isMutableStatus } from './lifecycle.js';
 import { type IntakeLogger, NoopIntakeLogger } from './logger.js';
 import { InMemoryIntakeMetrics, type IntakeMetrics } from './metrics.js';
 import { pendingQuestions } from './questions.js';
@@ -44,6 +43,15 @@ import {
   findSuggestionProposal,
   markUserSources,
 } from './service-helpers.js';
+import {
+  closeIntake as closeIntakeWithHost,
+  type IntakeLifecycleHost,
+  type IntakeSubmitResult,
+  submitIntake as submitIntakeWithHost,
+} from './service-lifecycle.js';
+
+export type { IntakeSubmitResult } from './service-lifecycle.js';
+
 import {
   acceptSuggestion as acceptSuggestionFromHost,
   generateSuggestions as generateSuggestionsFromHost,
@@ -86,11 +94,6 @@ export interface RequirementIntakeServiceOptions {
 export interface IntakeCreateResult {
   record: RequirementIntakeRecord;
   created: boolean;
-  idempotent: boolean;
-}
-
-export interface IntakeSubmitResult {
-  record: RequirementIntakeRecord;
   idempotent: boolean;
 }
 
@@ -425,63 +428,7 @@ export class RequirementIntakeService {
     ctx: IntakeContext,
     expectedVersion?: number | undefined,
   ): Promise<IntakeSubmitResult> {
-    const record = await this.requireRecord(id, ctx, 'submit');
-    if (record.status === 'submitted') {
-      this.metrics.increment('intake.duplicate_submit');
-      return { record, idempotent: true };
-    }
-    assertTransition(record.status, 'submitted');
-    this.assertSubmitReady(record);
-
-    const now = Date.now();
-    let previousStatus: IntakeStatus = record.status;
-    const updateOptions: StoreUpdateOptions = {
-      actorId: ctx.id,
-      actorType: ctx.type,
-      action: 'submitted',
-      expectedVersion: expectedVersion ?? record.version,
-    };
-    try {
-      const updated = await this.store.update(id, updateOptions, (next) => {
-        assertTransition(next.status, 'submitted');
-        this.assertSubmitReady(next);
-        previousStatus = next.status;
-        updateOptions.from = next.status;
-        updateOptions.to = 'submitted';
-        next.status = 'submitted';
-        next.submittedAt = now;
-        next.submittedBy = ctx.id;
-        next.submittedByType = ctx.type;
-      });
-
-      this.metrics.increment('intake.submitted');
-      this.metrics.recordDuration('intake.time_to_submit', now - updated.createdAt);
-      this.logger.info('intake', 'intake.submitted', {
-        intakeId: updated.id,
-        projectId: updated.projectId,
-        actorId: ctx.id,
-      });
-      this.emit('RequirementIntakeSubmitted', {
-        intakeId: updated.id,
-        projectId: updated.projectId,
-        actorId: ctx.id,
-        actorType: ctx.type,
-        previousStatus,
-        status: 'submitted',
-      });
-      return { record: updated, idempotent: false };
-    } catch (error) {
-      // A concurrent submit won the CAS race. Re-read: if the record is now
-      // submitted, this is a safe duplicate — report it idempotently.
-      if (error instanceof IntakeConflictError) {
-        const latest = await this.store.load(id);
-        if (latest && latest.status === 'submitted') {
-          this.metrics.increment('intake.duplicate_submit');
-          return { record: latest, idempotent: true };
-        }
-      }
-      throw error;
-    }
+    return submitIntakeWithHost(this.intakeLifecycleHost(), id, ctx, expectedVersion);
   }
 
   async cancelIntake(
@@ -490,44 +437,10 @@ export class RequirementIntakeService {
     reason?: string | undefined,
     expectedVersion?: number | undefined,
   ): Promise<RequirementIntakeRecord> {
-    const record = await this.requireRecord(id, ctx, 'cancel');
-    assertTransition(record.status, 'cancelled');
-
-    // The check above ran on a record read before the lock. Repeat it on the
-    // locked copy, or a submit landing in between is overwritten: submitted ->
-    // cancelled is not a transition. History and event name the real status.
-    let previousStatus = record.status;
-    const meta = {
-      actorId: ctx.id,
-      actorType: ctx.type,
-      action: 'cancelled',
-      from: record.status,
-      to: 'cancelled' as const,
+    return closeIntakeWithHost(this.intakeLifecycleHost(), id, ctx, 'cancelled', {
+      reason,
       expectedVersion,
-    };
-    const updated = await this.store.update(id, meta, (next) => {
-      assertTransition(next.status, 'cancelled');
-      previousStatus = meta.from = next.status;
-      next.status = 'cancelled';
-      next.cancelledAt = Date.now();
-      next.cancelledReason = reason?.trim() || undefined;
     });
-
-    this.metrics.increment('intake.cancelled');
-    this.logger.info('intake', 'intake.cancelled', {
-      intakeId: updated.id,
-      projectId: updated.projectId,
-      actorId: ctx.id,
-    });
-    this.emit('RequirementIntakeCancelled', {
-      intakeId: updated.id,
-      projectId: updated.projectId,
-      actorId: ctx.id,
-      actorType: ctx.type,
-      previousStatus,
-      status: 'cancelled',
-    });
-    return updated;
   }
 
   async archiveIntake(
@@ -535,41 +448,9 @@ export class RequirementIntakeService {
     ctx: IntakeContext,
     expectedVersion?: number | undefined,
   ): Promise<RequirementIntakeRecord> {
-    const record = await this.requireRecord(id, ctx, 'archive');
-    assertTransition(record.status, 'archived');
-
-    // Re-checked under the lock for the same reason as cancelIntake.
-    let previousStatus = record.status;
-    const meta = {
-      actorId: ctx.id,
-      actorType: ctx.type,
-      action: 'archived',
-      from: record.status,
-      to: 'archived' as const,
+    return closeIntakeWithHost(this.intakeLifecycleHost(), id, ctx, 'archived', {
       expectedVersion,
-    };
-    const updated = await this.store.update(id, meta, (next) => {
-      assertTransition(next.status, 'archived');
-      previousStatus = meta.from = next.status;
-      next.status = 'archived';
-      next.archivedAt = Date.now();
     });
-
-    this.metrics.increment('intake.archived');
-    this.logger.info('intake', 'intake.archived', {
-      intakeId: updated.id,
-      projectId: updated.projectId,
-      actorId: ctx.id,
-    });
-    this.emit('RequirementIntakeArchived', {
-      intakeId: updated.id,
-      projectId: updated.projectId,
-      actorId: ctx.id,
-      actorType: ctx.type,
-      previousStatus,
-      status: 'archived',
-    });
-    return updated;
   }
 
   // -------------------------------------------------------------------------
@@ -712,6 +593,19 @@ export class RequirementIntakeService {
       }
       throw error;
     }
+  }
+
+  private intakeLifecycleHost(): IntakeLifecycleHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      requireRecord: this.requireRecord,
+      assertSubmitReady: this.assertSubmitReady,
+      metrics: this.metrics,
+      logger: this.logger,
+      store: this.store,
+      emit: this.emit,
+    } satisfies IntakeLifecycleHost);
+    return this as unknown as IntakeLifecycleHost;
   }
 
   private intakeSuggestionsHost(): IntakeSuggestionsHost {

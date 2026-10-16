@@ -21,6 +21,7 @@ import type { Context } from '@wrongstack/core/agent';
 import type { Provider } from '@wrongstack/core/types';
 import { catalogProviderIdFor } from '@wrongstack/providers';
 import type { CliContext } from '../cli-context.js';
+import { WRONGFORGE_REASONING } from '../fleet/wrongforge-runtime.js';
 import { wireSessionEvents } from '../session-event-wiring.js';
 import { SessionStats } from '../session-stats.js';
 import { setupPipelines } from './pipeline.js';
@@ -91,6 +92,10 @@ export function setupSessionRuntime(args: SessionRuntimeArgs) {
     catalogProviderIdFor(providerId, configStore.get().providers?.[providerId]?.type);
   const refreshActiveReasoningConfig = async (providerId: string, modelId: string) => {
     warnedRuntimeMessages.clear();
+    if (catalogIdOf(providerId) === 'wrongforge') {
+      activeReasoningConfig = WRONGFORGE_REASONING;
+      return;
+    }
     try {
       const resolved = await modelsRegistry.getModel(catalogIdOf(providerId), modelId);
       activeReasoningConfig = resolved?.capabilities.reasoningConfig;
@@ -109,6 +114,9 @@ export function setupSessionRuntime(args: SessionRuntimeArgs) {
       // A WebUI tab can run its own model; its requests take that model's
       // reasoning profile, not the leader's.
       resolveReasoningConfig: async (req, bound) => {
+        if (catalogIdOf(bound?.id ?? context.provider?.id ?? config.provider) === 'wrongforge') {
+          return WRONGFORGE_REASONING;
+        }
         if (!bound || (bound === context.provider && req.model === context.model)) {
           return activeReasoningConfig;
         }

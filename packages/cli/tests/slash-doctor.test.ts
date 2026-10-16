@@ -271,6 +271,14 @@ describe('diagnoseConfig', () => {
     expect(report.changed).toBe(false);
   });
 
+  it('warns on a reserved system provider id without renaming it', () => {
+    const report = diagnoseConfig({ providers: { acp: { type: 'acp' }, WrongForge: {} } });
+    const paths = report.findings.filter((f) => f.severity === 'warning').map((f) => f.path);
+    expect(paths).toEqual(expect.arrayContaining(['providers.acp', 'providers.WrongForge']));
+    expect(Object.keys(report.fixed['providers'] as object).sort()).toEqual(['WrongForge', 'acp']);
+    expect(report.changed).toBe(false);
+  });
+
   it('reports a non-object providers value without fixing it', () => {
     const report = diagnoseConfig({ providers: 'nope' });
     const finding = report.findings.find((f) => f.path === 'providers');

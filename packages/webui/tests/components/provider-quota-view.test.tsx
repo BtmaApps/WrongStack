@@ -90,6 +90,28 @@ beforeEach(() => {
 });
 
 describe('Plan Quota page', () => {
+  it('shows WrongForge windows and remaining allowance without a saved API key', () => {
+    render(<ProviderQuotaView />);
+    savedProviders([{ id: 'wrongforge', type: 'wrongforge' }]);
+    act(() => {
+      useProviderQuotaStore.getState().apply([
+        {
+          providerId: 'wrongforge',
+          meterId: 'default',
+          windows: [
+            { id: 'primary', usedPercent: 18, windowMinutes: 300, resetsAt: resetsAt() },
+            { id: 'secondary', usedPercent: 0, windowMinutes: 10080, resetsAt: resetsAt() },
+          ],
+          capturedAt: Date.now(),
+        },
+      ]);
+    });
+    expect(cardTitles()).toEqual(['WrongForge']);
+    expect(
+      screen.getAllByRole('progressbar').map((bar) => bar.getAttribute('aria-valuenow')),
+    ).toEqual(['18', '0']);
+    expect(screen.getByText(/82% left/)).toBeTruthy();
+  });
   it('asks for the saved providers, replays readings and refreshes account quota on open', () => {
     render(<ProviderQuotaView />);
     expect(sent('providers.saved')).toHaveLength(1);

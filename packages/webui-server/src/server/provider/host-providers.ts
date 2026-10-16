@@ -11,11 +11,15 @@ export interface HostProviderModel {
   name?: string | undefined;
   description?: string | undefined;
   contextWindow?: number | undefined;
+  reasoningEffortLevels?: string[] | undefined;
+  effortSupported?: boolean | undefined;
 }
 
 export interface HostProvider {
   id: string;
   type: string;
+  /** Account read supplied by the host, for providers without saved credentials. */
+  refreshQuota?: (() => Promise<boolean>) | undefined;
   models: readonly HostProviderModel[];
 }
 

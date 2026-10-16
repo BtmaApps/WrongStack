@@ -171,7 +171,9 @@ export type { OAuthRefreshedTokens, ProviderLiveModel } from './provider-account
 export {
   authProfileAliasError,
   clearStaleProviderDefaults,
+  isReservedProviderId,
   ProviderConfigSnapshots,
+  RESERVED_PROVIDER_IDS,
   removeProviderFallbackReferences,
   validateProviderConfigShape,
 } from './provider-config-state.js';

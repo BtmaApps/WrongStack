@@ -58,9 +58,13 @@ import { createHqServerShutdown } from './hq-server/server-lifecycle.js';
 import * as HqServerSnapshot from './hq-server/snapshot.js';
 import { createHqSocketCredentialEnforcer } from './hq-server/socket-credentials.js';
 import { writeHqRuntimeMarker, writeHqStartupInfo } from './hq-server/startup.js';
+import {
+  HQ_SESSION_CLEANUP_INTERVAL_MS,
+  sweepHqBrowserSessions,
+  sweepStaleHqClients,
+} from './hq-server/sweeps.js';
 import type { ConnectedClient, HqSessionEntry, TranscriptRing } from './hq-server/types.js';
 import { handleHqConnection, handleHqUpgrade } from './hq-server/upgrade-handler.js';
-import * as HqServerWs from './hq-server/ws.js';
 import { WebSocket, WebSocketServer } from './ws-runtime.js';
 
 export { HqInsecureExposureError } from '@wrongstack/core/hq';
@@ -266,35 +270,10 @@ async function startHqServerWithAuth(
       sessions,
     });
 
-    const HQ_SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-    const HQ_SESSION_IDLE_TIMEOUT_MS = 30 * 60_000;
-    const SESSION_CLEANUP_INTERVAL_MS = 60_000;
-    const PENDING_2FA_TTL_MS = 5 * 60_000;
-    const sessionCleanupTimer = setInterval(() => {
-      const now = Date.now();
-      const maxAgeCutoff = now - HQ_SESSION_MAX_AGE_MS;
-      const idleCutoff = now - HQ_SESSION_IDLE_TIMEOUT_MS;
-      const pending2faCutoff = now - PENDING_2FA_TTL_MS;
-      for (const [id, session] of sessions) {
-        if (session.createdAt < maxAgeCutoff) {
-          sessions.delete(id);
-          // Max age is absolute, unlike the idle cutoff below: a socket still
-          // streaming on a session that has outlived it must go too.
-          socketCredentials.closeSessionSockets(id, 'Browser session expired');
-          continue;
-        }
-        if (session.pending2fa) {
-          if (session.createdAt < pending2faCutoff) sessions.delete(id);
-          continue;
-        }
-        if (session.lastSeenAt < idleCutoff) {
-          sessions.delete(id);
-        }
-      }
-      for (const [ip, entry] of loginAttempts.entries()) {
-        if (now - entry.lastAttempt > 15 * 60_000) loginAttempts.delete(ip);
-      }
-    }, SESSION_CLEANUP_INTERVAL_MS);
+    const sessionCleanupTimer = setInterval(
+      () => sweepHqBrowserSessions(sessions, loginAttempts, socketCredentials),
+      HQ_SESSION_CLEANUP_INTERVAL_MS,
+    );
     sessionCleanupTimer.unref?.();
 
     const persistence = createHqPersistence(dataDir);
@@ -386,61 +365,15 @@ async function startHqServerWithAuth(
     const sessionSnapshotTtlMs = options.sessionSnapshotTtlMs ?? SESSION_SNAPSHOT_TTL_MS;
     const cleanupTimer = setInterval(() => {
       socketCredentials.sweepExpiredSocketCredentials();
-      const cutoff = Date.now() - clientTtlMs;
-      const sessionCutoff = Date.now() - sessionSnapshotTtlMs;
-      let changed = false;
-      for (const [ws, client] of clients.entries()) {
-        if (new Date(client.lastSeenAt).getTime() < cutoff) {
-          const lostClient = client;
-          ws.terminate();
-          clients.delete(ws);
-          HqServerWs.failUndeliveredCommands(lostClient, browsers, auditLog);
-          HqServerWs.detectLeaderLoss(lostClient, clients, browsers, 'heartbeat-timeout', {
-            eventLog,
-            persistence,
-          });
-          changed = true;
-          continue;
-        }
-        const expiredSessions = new Set<string>();
-        for (const [sessionId, tracked] of client.sessions.entries()) {
-          if (tracked.receivedAt < sessionCutoff) {
-            client.sessions.delete(sessionId);
-            client.mcpSnapshots.delete(sessionId);
-            expiredSessions.add(sessionId);
-            changed = true;
-          }
-        }
-        for (const [runId, fleet] of client.fleets) {
-          if (fleet.sessionId !== undefined && expiredSessions.has(fleet.sessionId)) {
-            client.fleets.delete(runId);
-            changed = true;
-          }
-        }
-        if (
-          client.capabilities.includes('session.summary') &&
-          client.sessions.size === 0 &&
-          Date.now() - Date.parse(client.connectedAt) > sessionSnapshotTtlMs
-        ) {
-          const lostClient = client;
-          ws.terminate();
-          clients.delete(ws);
-          HqServerWs.failUndeliveredCommands(lostClient, browsers, auditLog);
-          // This is a server-side session-summary TTL reap, NOT a missed
-          // heartbeat: the branch above already returned for a genuinely
-          // stale `lastSeenAt`, so this client is still heartbeating — it is
-          // dropped because it has held zero session snapshots past the TTL.
-          // Labeling it 'heartbeat-timeout' (the literal this branch used to
-          // pass) made every peer.rehydrate/peer.lost banner claim a heartbeat
-          // failure that never happened. 'crash' is the closest truthful
-          // existing reason for an abrupt, non-graceful server-side loss.
-          HqServerWs.detectLeaderLoss(lostClient, clients, browsers, 'crash', {
-            eventLog,
-            persistence,
-          });
-          changed = true;
-        }
-      }
+      const changed = sweepStaleHqClients({
+        clients,
+        browsers,
+        auditLog,
+        eventLog,
+        persistence,
+        clientTtlMs,
+        sessionSnapshotTtlMs,
+      });
       if (changed) snapshotBroadcaster.broadcast();
     }, options.clientCleanupIntervalMs ?? CLIENT_CLEANUP_INTERVAL_MS);
     cleanupTimer.unref?.();

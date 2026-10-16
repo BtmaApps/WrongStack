@@ -56,12 +56,14 @@ describe('CLI wiring controllers', () => {
   // agentTranscripts is an OPTIONAL prop at every hop, so a dropped hop
   // compiles fine and silently renders the fallback UI (no F3 transcript).
   // Assert each hop still forwards it so a refactor can't lose the chain:
-  //   cli-main (fleet deps) → execution (destructure + runTui opts)
+  //   cli-main (fleet deps) → execution-tui (destructure + runTui opts)
   //   → tui run-tui (App prop) → App → AgentsMonitor.
   it('threads agentTranscripts through every optional-prop hop', () => {
     const read = (rel: string) => readFileSync(path.join(__dirname, '..', rel), 'utf8');
     expect(read('src/cli-main.ts')).toMatch(/agentTranscripts:\s*agentMonitor/);
-    const execution = read('src/execution.ts');
+    // `execute` hands its deps to the TUI branch, which destructures them.
+    expect(read('src/execution.ts')).toContain('runExecutionTui(deps,');
+    const execution = read('src/execution-tui.ts');
     expect(execution).toMatch(/agentsMonitorController,\s*agentTranscripts,/s);
     expect(execution).toMatch(/\r?\n\s+agentTranscripts,\r?\n/);
     const runTui = readFileSync(

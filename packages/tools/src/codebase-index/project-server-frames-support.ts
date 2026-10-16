@@ -83,6 +83,8 @@ export class ProjectServerConnection {
   /** WS-027: read from the owner-only metadata file — see currentAuthToken. */
   private authToken: string | undefined;
   private readonly pending = new Map<number, PendingRequest>();
+  /** The module heartbeat loop, exposed to the frame reader through its host. */
+  private readonly ensureHeartbeatLoop = ensureHeartbeatLoop;
 
   constructor(
     readonly projectRoot: string,
@@ -606,75 +608,25 @@ export class ProjectServerConnection {
   }
 
   private projectServerFramesHost(): ProjectServerFramesHost {
-    const self = this;
-    return {
-      get ensureHeartbeatLoop() {
-        return ensureHeartbeatLoop;
-      },
-      get socket() {
-        return self.socket;
-      },
-      get readBuffer() {
-        return self.readBuffer;
-      },
-      set readBuffer(value) {
-        self.readBuffer = value;
-      },
-      get useBinary() {
-        return self.useBinary;
-      },
-      set useBinary(value) {
-        self.useBinary = value;
-      },
-      get transition() {
-        const value = self.transition;
-        return value ? value.bind(self) : value;
-      },
-      get onMessage() {
-        const value = self.onMessage;
-        return value ? value.bind(self) : value;
-      },
-      get rejectStaleServer() {
-        const value = self.rejectStaleServer;
-        return value ? value.bind(self) : value;
-      },
-      get info() {
-        return self.info;
-      },
-      set info(value) {
-        self.info = value;
-      },
-      get markResponsive() {
-        const value = self.markResponsive;
-        return value ? value.bind(self) : value;
-      },
-      get connectResolve() {
-        const value = self.connectResolve;
-        return value ? value.bind(self) : value;
-      },
-      get activity() {
-        return self.activity;
-      },
-      set activity(value) {
-        self.activity = value;
-      },
-      get pending() {
-        return self.pending;
-      },
-      get endpoint() {
-        return self.endpoint;
-      },
-      get cleanupPending() {
-        const value = self.cleanupPending;
-        return value ? value.bind(self) : value;
-      },
-      get authToken() {
-        return self.authToken;
-      },
-      set authToken(value) {
-        self.authToken = value;
-      },
-    };
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      ensureHeartbeatLoop: this.ensureHeartbeatLoop,
+      socket: this.socket,
+      readBuffer: this.readBuffer,
+      useBinary: this.useBinary,
+      transition: this.transition,
+      onMessage: this.onMessage,
+      rejectStaleServer: this.rejectStaleServer,
+      info: this.info,
+      markResponsive: this.markResponsive,
+      connectResolve: this.connectResolve,
+      activity: this.activity,
+      pending: this.pending,
+      endpoint: this.endpoint,
+      cleanupPending: this.cleanupPending,
+      authToken: this.authToken,
+    } satisfies ProjectServerFramesHost);
+    return this as unknown as ProjectServerFramesHost;
   }
 }
 

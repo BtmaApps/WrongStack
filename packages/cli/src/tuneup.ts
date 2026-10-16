@@ -1,3 +1,21 @@
+import { checkPerformance, checkPermissions, checkReliability } from './tuneup-runtime-checks.js';
+import type { TuneupFinding, TuneupInput, TuneupReport } from './tuneup-types.js';
+
+export {
+  checkPerformance,
+  checkPermissions,
+  checkReliability,
+  isReadOnlyCommand,
+} from './tuneup-runtime-checks.js';
+export type {
+  TuneupAction,
+  TuneupCategory,
+  TuneupFinding,
+  TuneupInput,
+  TuneupMemoryFile,
+  TuneupSkill,
+  TuneupTrustPolicy,
+} from './tuneup-types.js';
 /**
  * Tune-up engine — deterministic health, context-cost, and performance checks
  * for a WrongStack session, mapping the "clean up + speed up your setup" idea
@@ -18,131 +36,6 @@
  *                 judgement-heavy items (instruction-file dedup / split).
  */
 
-import type { Config } from '@wrongstack/core/types';
-import type { UpdateInfo } from './update-check.js';
-
-type TuneupSeverity = 'error' | 'warning' | 'info' | 'ok';
-
-/** Stable check-group ids — one section per group in the rendered report. */
-export type TuneupCategory =
-  | 'version'
-  | 'autonomy'
-  | 'skills'
-  | 'mcp'
-  | 'plugins'
-  | 'memory'
-  | 'hooks'
-  | 'permissions'
-  | 'performance'
-  | 'reliability'
-  | 'config';
-
-/**
- * A structured, deterministic repair the command knows how to apply.
- * `set-config` is the generic one — a dot-path into the global config plus the
- * value to set — so most knobs need no bespoke apply logic.
- */
-export type TuneupAction =
-  | { kind: 'set-config'; path: string[]; value: unknown; label: string }
-  | { kind: 'add-exec-allow'; commands: string[] }
-  | { kind: 'normalize-hook-timeout'; event: string; index: number; timeoutMs: number };
-
-export interface TuneupFinding {
-  category: TuneupCategory;
-  severity: TuneupSeverity;
-  /** One-line problem statement. */
-  problem: string;
-  /** Optional human hint about the recommended action. */
-  suggestion?: string | undefined;
-  /** Present when a deterministic auto-fix exists; short description shown in the report. */
-  fix?: string | undefined;
-  /** Machine-readable descriptor the command applies on `/tuneup fix`. */
-  action?: TuneupAction | undefined;
-  /** A line folded into the agent follow-up turn (fuzzy items with no mechanical fix). */
-  handoff?: string | undefined;
-}
-
-/** A discovered skill, reduced to what the checks need. */
-export interface TuneupSkill {
-  name: string;
-  source: string;
-  /** Body length in chars, when the command could read it (best-effort). */
-  bodyChars?: number | undefined;
-}
-
-/** Live MCP server status, reduced from `mcpRegistry.describe()`. */
-interface TuneupMcpServer {
-  name: string;
-  state: string;
-  enabled: boolean;
-  toolCount: number;
-}
-
-/** An instruction/memory file layer to compare + size-check. */
-export interface TuneupMemoryFile {
-  /** Human label, e.g. "user memory" or "project AGENTS.md". */
-  label: string;
-  path: string;
-  content: string;
-  /** True for committed/shared layers (project AGENTS.md, root CLAUDE.md). */
-  committed: boolean;
-}
-
-/** The persistent permission trust file, `~/.wrongstack/projects/<hash>/trust.json`. */
-export type TuneupTrustPolicy = Record<
-  string,
-  { allow?: string[] | undefined; deny?: string[] | undefined; auto?: boolean | undefined }
->;
-
-/** Ambient facts the command precomputes (host / disk / env) for the checks. */
-interface TuneupEnv {
-  /** Logical CPU count, for the maxConcurrent sanity check. */
-  cpuCount?: number | undefined;
-  /** Number of configured providers, for the fallback-chain check. */
-  providerCount?: number | undefined;
-  /** Whether the secret vault is passphrase-hardened at rest. */
-  vaultHardened?: boolean | undefined;
-  /** Total bytes of on-disk session logs for this project (disk-hygiene check). */
-  sessionBytes?: number | undefined;
-}
-
-export interface TuneupInput {
-  config: Config;
-  skills: TuneupSkill[];
-  /** `config.skills.eagerMaxChars` or its default. */
-  eagerMaxChars: number;
-  skillMode: 'eager' | 'progressive';
-  /** Live MCP status when the host wired `mcpStatus`; undefined → skip live MCP checks. */
-  mcp?: TuneupMcpServer[] | undefined;
-  /** Instruction-file layers (user memory, project AGENTS.md, root CLAUDE.md/AGENTS.md). */
-  memoryFiles: TuneupMemoryFile[];
-  /** Self-update info (from `checkForUpdate`), when the version check ran. */
-  update?: UpdateInfo | undefined;
-  /** Parsed trust file, when present. */
-  trust?: TuneupTrustPolicy | undefined;
-  /**
-   * Denied read-only commands mined from session history (optional richer
-   * signal). Each entry is a command line and how many times it was denied.
-   */
-  deniedFromHistory?: Array<{ command: string; count: number }> | undefined;
-  /** Ambient host/disk facts. */
-  env?: TuneupEnv | undefined;
-  /** Count of `/doctor`-style config issues (from `diagnoseConfig`). */
-  configIssues?: number | undefined;
-  /**
-   * Power profile: `/tuneup fix --power`. Gates the autonomy/yolo/director
-   * actions so a plain tune-up never flips them (respects the user-owned
-   * autonomy invariant).
-   */
-  power?: boolean | undefined;
-}
-
-interface TuneupReport {
-  findings: TuneupFinding[];
-  /** Composed agent follow-up prompt for fuzzy items; empty when none. */
-  agentHandoff: string;
-}
-
 /** Default eager skill-body budget (mirrors `SkillsConfig.eagerMaxChars`). */
 export const DEFAULT_EAGER_MAX_CHARS = 24_000;
 
@@ -154,68 +47,6 @@ const MANY_HOOKS_PER_EVENT = 4;
 const LARGE_INSTRUCTION_CHARS = 12_000;
 /** …or longer than this many lines. */
 const LARGE_INSTRUCTION_LINES = 400;
-/** A denied command must recur at least this many times to be worth pre-approving. */
-const MIN_DENY_COUNT = 2;
-/** Session-log bytes above this are worth a prune nudge (~50 MB). */
-const LARGE_SESSION_BYTES = 50 * 1024 * 1024;
-
-/**
- * First tokens that make a bash/exec command line safe to auto-approve. Kept
- * deliberately conservative — anything not on this list is left for the user.
- */
-const READONLY_VERBS = new Set([
-  'ls',
-  'cat',
-  'pwd',
-  'echo',
-  'grep',
-  'rg',
-  'find',
-  'head',
-  'tail',
-  'wc',
-  'which',
-  'type',
-  'tree',
-  'stat',
-  'du',
-  'df',
-  'env',
-  'printenv',
-  'date',
-  'whoami',
-  'hostname',
-  'uname',
-  'sort',
-  'uniq',
-  'cut',
-  'awk',
-  'sed',
-  'diff',
-  'realpath',
-  'dirname',
-  'basename',
-]);
-
-/** Shell metacharacters that could turn an otherwise read-only verb destructive. */
-const SHELL_WRITE_TOKENS = /[>|;&`$()]|\brm\b|\bmv\b|\bcp\b|--write|--fix|--force|-i\b/;
-
-/** True when `command` is safely read-only by our conservative heuristic. */
-export function isReadOnlyCommand(command: string): boolean {
-  const trimmed = command.trim();
-  if (trimmed.length === 0) return false;
-  if (SHELL_WRITE_TOKENS.test(trimmed)) {
-    // `git status`/`git log`/`git diff`/`git show` are allowed despite the
-    // broad guard, but nothing with redirection or a write subcommand.
-    if (!/^git\s+(status|log|diff|show|branch|remote|blame)\b/.test(trimmed)) return false;
-    if (/[>|;&`$()]/.test(trimmed)) return false;
-  }
-  const first = trimmed.split(/\s+/)[0] ?? '';
-  if (first === 'git') {
-    return /^git\s+(status|log|diff|show|branch|remote|blame)\b/.test(trimmed);
-  }
-  return READONLY_VERBS.has(first);
-}
 
 // ── Item 1: unused skills / MCP / plugins ────────────────────────────────────
 
@@ -483,168 +314,6 @@ export function checkPowerProfile(input: TuneupInput): TuneupFinding[] {
   }
 
   // (director check removed — Director Mode is permanently on)
-
-  return findings;
-}
-
-// ── Item 7: frequently denied read-only commands ─────────────────────────────
-
-export function checkPermissions(input: TuneupInput): TuneupFinding[] {
-  const candidates = new Map<string, number>();
-
-  for (const [tool, entry] of Object.entries(input.trust ?? {})) {
-    if (tool !== 'bash' && tool !== 'exec') continue;
-    for (const pattern of entry.deny ?? []) {
-      if (isReadOnlyCommand(pattern)) {
-        candidates.set(pattern, Math.max(candidates.get(pattern) ?? 0, MIN_DENY_COUNT));
-      }
-    }
-  }
-
-  for (const { command, count } of input.deniedFromHistory ?? []) {
-    if (count >= MIN_DENY_COUNT && isReadOnlyCommand(command)) {
-      candidates.set(command, Math.max(candidates.get(command) ?? 0, count));
-    }
-  }
-
-  if (candidates.size === 0) return [];
-
-  const commandNames = [
-    ...new Set([...candidates.keys()].map((c) => c.trim().split(/\s+/)[0] ?? '')),
-  ]
-    .filter((n) => n.length > 0)
-    .sort();
-
-  const sample = [...candidates.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([c, n]) => `  · ${c}${n > MIN_DENY_COUNT ? ` (denied ${n}×)` : ''}`)
-    .join('\n');
-
-  return [
-    {
-      category: 'permissions',
-      severity: 'info',
-      problem: `${candidates.size} read-only command(s) keep getting denied/prompted.`,
-      suggestion: `They look safe to pre-approve:\n${sample}`,
-      fix: `add ${commandNames.join(', ')} to tools.exec.allow`,
-      action: { kind: 'add-exec-allow', commands: commandNames },
-    },
-  ];
-}
-
-// ── Performance knobs ────────────────────────────────────────────────────────
-
-export function checkPerformance(input: TuneupInput): TuneupFinding[] {
-  const { config, env } = input;
-  const findings: TuneupFinding[] = [];
-
-  // Fallback recovery: `fallbackAuto` defaults on; only flag an explicit opt-out
-  // with no manual chain, which leaves 429s un-recovered.
-  if (config.fallbackAuto === false && (config.fallbackModels?.length ?? 0) === 0) {
-    findings.push({
-      category: 'performance',
-      severity: 'warning',
-      problem:
-        'Automatic fallback is off and no fallback chain is configured — a 429 will just fail.',
-      suggestion: 'Re-enable the auto chain so rate-limits recover to another keyed model.',
-      fix: 'set fallbackAuto = true',
-      action: {
-        kind: 'set-config',
-        path: ['fallbackAuto'],
-        value: true,
-        label: 'automatic fallback re-enabled',
-      },
-    });
-  }
-
-  // Adaptive concurrency: safe to enable — it only reacts to 429s.
-  if (config.adaptiveConcurrency?.enabled !== true) {
-    findings.push({
-      category: 'performance',
-      severity: 'info',
-      problem: 'Adaptive concurrency is off — maxConcurrent will not back off on rate-limits.',
-      suggestion: 'Enable it to auto-tune concurrency on 429s and recover on sustained success.',
-      fix: 'set adaptiveConcurrency.enabled = true',
-      action: {
-        kind: 'set-config',
-        path: ['adaptiveConcurrency', 'enabled'],
-        value: true,
-        label: 'adaptive concurrency enabled',
-      },
-    });
-  }
-
-  // Circuit breaker: advisory only — enabling it can block bash on failures.
-  if (config.circuitBreaker?.enabled !== true) {
-    findings.push({
-      category: 'performance',
-      severity: 'info',
-      problem: 'The process circuit-breaker is off — repeated bash/exec failures are not gated.',
-      suggestion: 'Turn it on with `/settings breaker on` for bash-heavy or flaky workflows.',
-    });
-  }
-
-  // Codebase index: only nag when the user explicitly disabled the default-on run.
-  if (config.indexing && config.indexing.onSessionStart === false) {
-    findings.push({
-      category: 'performance',
-      severity: 'info',
-      problem:
-        'Session-start codebase indexing is disabled — symbol search/navigation is degraded.',
-      suggestion: 'Re-enable `indexing.onSessionStart` for faster, index-backed code navigation.',
-    });
-  }
-
-  // maxConcurrent sanity relative to CPU count.
-  const cpu = env?.cpuCount;
-  const mc = config.maxConcurrent;
-  if (typeof mc === 'number' && mc > 0 && typeof cpu === 'number' && cpu > 0 && mc > cpu * 4) {
-    findings.push({
-      category: 'performance',
-      severity: 'info',
-      problem: `maxConcurrent is ${mc} on a ${cpu}-core host — likely oversubscribed.`,
-      suggestion: `Consider lowering it toward ${cpu * 2} (or enable adaptive concurrency).`,
-    });
-  }
-
-  return findings;
-}
-
-// ── Reliability / hygiene ────────────────────────────────────────────────────
-
-export function checkReliability(input: TuneupInput): TuneupFinding[] {
-  const { config, env } = input;
-  const findings: TuneupFinding[] = [];
-
-  if (config.session?.auditLevel === 'minimal') {
-    findings.push({
-      category: 'reliability',
-      severity: 'info',
-      problem:
-        'Session audit level is "minimal" — tool timing, retries, and errors are not logged.',
-      suggestion: 'Use "standard" (the default) if you want richer post-hoc diagnostics.',
-    });
-  }
-
-  if (env?.vaultHardened === false) {
-    findings.push({
-      category: 'reliability',
-      severity: 'info',
-      problem: 'The secret vault key is stored in the clear (no at-rest passphrase).',
-      suggestion:
-        'Set `WRONGSTACK_VAULT_PASSPHRASE` to wrap the data key (scrypt + AES-256-GCM); existing secrets migrate automatically.',
-    });
-  }
-
-  if (typeof env?.sessionBytes === 'number' && env.sessionBytes > LARGE_SESSION_BYTES) {
-    findings.push({
-      category: 'reliability',
-      severity: 'info',
-      problem: `Session logs for this project are large (${(env.sessionBytes / (1024 * 1024)).toFixed(0)} MB).`,
-      suggestion: 'Run `/prune` to trim old sessions and reclaim disk.',
-    });
-  }
 
   return findings;
 }

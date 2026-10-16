@@ -17,20 +17,18 @@ export type {
   WrongStackErrorKind,
   WrongStackErrorModel,
 } from '@wrongstack/webui-protocol';
-export {
-  type ConfirmRequest,
-  type ConnectionState,
-  type ConnectOptions,
-  type CoreServerType,
-  type ReconnectOptions,
-  type SendOptions,
-  type ServerPayload,
-  type SessionInfo,
-  type SessionSummary,
-  type WebSocketConstructor,
-  type WebSocketLike,
-  WrongStackClient,
-} from './client.js';
+export { type WebSocketConstructor, type WebSocketLike, WrongStackClient } from './client.js';
+export type {
+  ConfirmRequest,
+  ConnectionState,
+  ConnectOptions,
+  CoreServerType,
+  ReconnectOptions,
+  SendOptions,
+  ServerPayload,
+  SessionInfo,
+  SessionSummary,
+} from './client-types.js';
 export { WrongStackError } from './errors.js';
 export { createHttpClient, type HttpClientOptions, type WrongStackHttpClient } from './http.js';
 export { type ConfirmDecision, Run, type RunEvent, type RunResult } from './run.js';

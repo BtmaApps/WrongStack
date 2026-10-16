@@ -1,4 +1,10 @@
-import type { FactCategory, GoalNode, GoalPriority, KnowledgeGraph } from './knowledge-graph.js';
+import type {
+  FactCategory,
+  FactNode,
+  GoalNode,
+  GoalPriority,
+  KnowledgeGraph,
+} from './knowledge-graph.js';
 
 export interface DecomposedSubGoal {
   title: string;
@@ -135,4 +141,32 @@ export function goalToOptions(
 
 export function optionToGoal(graph: KnowledgeGraph, optionId: string): GoalNode | undefined {
   return graph.get(optionId) as GoalNode | undefined;
+}
+
+/**
+ * Record a completed task's result as a `quality` fact, once per task.
+ * Returns the new fact, or `undefined` when one already exists.
+ */
+export async function publishTaskResultFact(
+  graph: KnowledgeGraph,
+  selfAgentId: string,
+  taskId: string,
+  result: string,
+): Promise<FactNode | undefined> {
+  const key = `task-result:${taskId}`;
+  if (graph.getFacts({ category: 'quality' }).some((fact) => fact.key === key)) return undefined;
+  const goal = graph.get(taskId) as GoalNode | undefined;
+  const subject =
+    goal?.type === 'goal' ? `Task completed: ${goal.title}` : `Task completed: ${taskId}`;
+  return (await graph.add({
+    type: 'fact',
+    category: 'quality',
+    subject,
+    detail: result,
+    discoveredBy: selfAgentId,
+    discoveredAt: new Date().toISOString(),
+    tags: ['task-result', 'autonomous-coordinator'],
+    key,
+    related: [taskId],
+  } as Omit<FactNode, 'id'>)) as FactNode;
 }

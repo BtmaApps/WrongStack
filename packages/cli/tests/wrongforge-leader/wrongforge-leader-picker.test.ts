@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const resolveEndpoint = vi.fn();
 const refreshCache = vi.fn();
 const readCache = vi.fn();
+const readQuota = vi.fn(async (_opts: unknown) => true);
+vi.mock('../../src/fleet/wrongforge-quota.js', () => ({
+  reportWrongForgeQuota: (opts: unknown) => readQuota(opts),
+}));
 
 vi.mock('../../src/fleet/wrongforge-client.js', () => ({
   WRONGFORGE_AGENT_ID: 'wrongforge',
@@ -24,9 +28,25 @@ beforeEach(() => {
   resolveEndpoint.mockReset();
   refreshCache.mockReset();
   readCache.mockReset();
+  readQuota.mockClear();
 });
 
 describe('wrongForgeLeaderPickable', () => {
+  it('offers the server-advertised effort controls for each model', () => {
+    resolveEndpoint.mockReturnValue(endpoint);
+    readCache.mockReturnValue({
+      models: ['a', 'b'],
+      features: [],
+      modelDetails: [
+        { id: 'a', description: 'Reasoning', effortLevels: ['low', 'high'] },
+        { id: 'b', description: 'Plain', effortLevels: [] },
+      ],
+    });
+    expect(wrongForgeLeaderPickable()[0]?.models).toMatchObject([
+      { id: 'a', reasoningEffortLevels: ['low', 'high'], effortSupported: true },
+      { id: 'b', reasoningEffortLevels: [], effortSupported: false },
+    ]);
+  });
   it('offers nothing when no WrongForge is set up on this machine', () => {
     resolveEndpoint.mockReturnValue(undefined);
     expect(wrongForgeLeaderPickable()).toEqual([]);

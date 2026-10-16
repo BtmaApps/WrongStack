@@ -335,5 +335,20 @@ describe('remaining CLI wiring boundaries', () => {
     });
     // The leader's own model has no known profile: no reasoning field.
     expect((await send(leaderProvider, 'test-mod')).reasoning).toBeUndefined();
+    // WrongForge accepts effort at the Task API even without a models.dev entry.
+    expect((await send({ id: 'wrongforge', capabilities: {} }, 'claude-a-1')).reasoning).toEqual({
+      enabled: true,
+      effort: 'high',
+    });
+    await runtime.refreshActiveReasoningConfig('wrongforge', 'claude-a-1');
+    expect(runtime.getActiveReasoningConfig()?.effortLevels).toEqual([
+      'none',
+      'minimal',
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max',
+    ]);
   });
 });

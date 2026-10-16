@@ -37,6 +37,15 @@ function card(providerId: string, vendor: QuotaCard['vendor'], meters: QuotaSnap
 }
 
 describe('routed model → pool account', () => {
+  it('keeps WrongForge subscription readings in their own visible quota card', () => {
+    const reading = meter('wrongforge', 'default', 18);
+    expect(buildQuotaCards({ wrongforge: reading }, [], {})).toMatchObject([
+      { providerId: 'wrongforge', vendor: 'wrongforge', meters: [reading] },
+    ]);
+    expect(buildQuotaCards({}, [{ id: 'wrongforge', type: 'wrongforge' }], {})).toMatchObject([
+      { providerId: 'wrongforge', vendor: 'wrongforge', meters: [] },
+    ]);
+  });
   it('includes direct ChatGPT accounts separately from Codex before any reading', () => {
     const cards = buildQuotaCards(
       {},

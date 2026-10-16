@@ -108,7 +108,7 @@ export function resolveWrongForgeEndpoint(
   env: NodeJS.ProcessEnv = process.env,
 ): WrongForgeEndpoint | undefined {
   const url = (env['WRONGFORGE_URL']?.trim() || DEFAULT_URL).replace(/\/+$/, '');
-  let apiKey = env['WRONGFORGE_API_KEY']?.trim();
+  let apiKey = env['WRONGFORGE_API_KEY']?.trim() || env['AGENT_API_KEY']?.trim();
   if (!apiKey) {
     const home = env['WRONGFORGE_HOME']?.trim() || path.join(homedir(), '.wrongforge');
     try {

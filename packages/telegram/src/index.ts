@@ -1,20 +1,18 @@
 import type { PluginAPI } from '@wrongstack/core/plugin';
-import type { Config, Logger, Plugin, SlashCommand } from '@wrongstack/core/types';
-import { expectDefined } from '@wrongstack/core/utils';
-import { TelegramBotOutbound } from './bot-queue.js';
+import type { Logger, Plugin, SlashCommand } from '@wrongstack/core/types';
 import type { TelegramIncomingMessage } from './bot.js';
 import { TelegramBot } from './bot.js';
-import { diffConfigKeys } from './config-classifier.js';
+import { TelegramBotOutbound } from './bot-queue.js';
 import {
-  DEFAULT_CONFIG,
   PLUGIN_CONFIG_ALIASES,
   PLUGIN_NAME,
   readTelegramConfig,
   readTelegramConfigFromConfig,
   TELEGRAM_CONFIG_FIELDS,
-  telegramConfigSchema,
   type TelegramPluginConfig,
+  telegramConfigSchema,
 } from './config.js';
+import { diffConfigKeys } from './config-classifier.js';
 import type { SessionEndedLike, ToolExecutedLike } from './format.js';
 import { formatDelegateCompleted, formatSessionEnded, formatToolExecuted } from './format.js';
 import { TelegramNotificationChannel } from './notification-channel.js';
@@ -23,34 +21,16 @@ import { lockPathForToken, PollLock } from './poll-lock.js';
 import { fenceTelegramInboundText } from './security/inbound.js';
 import { scrubTelegramOutboundText } from './security/outbound.js';
 import { tgChatIdCommand, tgHealthCommand, tgSendCommand } from './slash-commands/index.js';
+import type { RuntimeConfig } from './telegram-config.js';
+import {
+  DENY_ALL_INBOUND,
+  inboundAllowlist,
+  telegramDefaultConfig,
+  telegramFromConfig,
+} from './telegram-config.js';
 import { makeTelegramApproveTool } from './tools/telegram-approve.js';
 import { makeTelegramReadTool } from './tools/telegram-read.js';
 import { makeTelegramSendTool } from './tools/telegram-send.js';
-
-// ---------------------------------------------------------------------------
-// Teardown state
-// ---------------------------------------------------------------------------
-
-/** Mutable runtime config — updated via api.onConfigChange so changes take
- * effect without restarting the plugin. */
-interface RuntimeConfig {
-  notifyChatId: string | number | undefined;
-  allowedOutboundChats: Array<string | number>;
-  allowedUserIds: Array<string | number>;
-  allowGroupApprovals: boolean;
-  notifyOnSessionEnd: boolean;
-  notifyOnDelegate: boolean;
-  longToolThresholdMs: number;
-  maxMessageLength: number;
-  outboundQueuePerChat: number;
-  outboundQueueConcurrency: number;
-  /** Per-chat rate-limit pacing for outbound sends (live via getter). */
-  rateLimitTokensPerSecond: number;
-  /** Per-chat rate-limit burst size for outbound sends (live via getter). */
-  rateLimitBurst: number;
-  /** Telegram parse mode resolved per-send so hot-reload takes effect live. */
-  parseMode: '' | 'HTML' | 'MarkdownV2';
-}
 
 interface RuntimeState {
   bot: TelegramBot;
@@ -59,40 +39,6 @@ interface RuntimeState {
 }
 
 let teardownState: RuntimeState | null = null;
-
-const DENY_ALL_INBOUND = '__wrongstack_telegram_inbound_disabled__';
-
-function inboundAllowlist(cfg: {
-  inboundMode?: TelegramPluginConfig['inboundMode'];
-  allowedUsers?: TelegramPluginConfig['allowedUsers'];
-  allowedChats?: TelegramPluginConfig['allowedChats'];
-  notifyChatId?: TelegramPluginConfig['notifyChatId'];
-}): {
-  allowedUsers: Set<string>;
-  allowedChats: Set<string>;
-} {
-  if (cfg.inboundMode === 'public') {
-    return { allowedUsers: new Set(), allowedChats: new Set() };
-  }
-  if (cfg.inboundMode === 'paired') {
-    const pairedUsers = new Set((cfg.allowedUsers ?? []).map(String));
-    return {
-      allowedUsers:
-        pairedUsers.size > 0 ? pairedUsers : new Set([String(expectDefined(cfg.notifyChatId))]),
-      allowedChats: new Set([String(expectDefined(cfg.notifyChatId))]),
-    };
-  }
-  if (cfg.inboundMode === 'allowlist') {
-    return {
-      allowedUsers: new Set((cfg.allowedUsers ?? []).map(String)),
-      allowedChats: new Set((cfg.allowedChats ?? []).map(String)),
-    };
-  }
-  return {
-    allowedUsers: new Set([DENY_ALL_INBOUND]),
-    allowedChats: new Set([DENY_ALL_INBOUND]),
-  };
-}
 
 function runCleanups(cleanups: Array<() => void>, log: Logger): void {
   while (cleanups.length > 0) {
@@ -116,62 +62,6 @@ function registerCommand(api: PluginAPI, command: SlashCommand, cleanups: Array<
   cleanups.push(() => {
     api.slashCommands.unregister(`${PLUGIN_NAME}:${command.name}`);
   });
-}
-
-/**
- * Build the plugin's `defaultConfig` from `DEFAULT_CONFIG` with defensive
- * deep copies of every field (arrays and any future nested values).
- * Using `structuredClone` ensures any key added to `DEFAULT_CONFIG` is
- * automatically copied rather than shared by reference, preventing silent
- * drift from the documented defaults. Scalar (immutable) values are
- * unaffected by deep copy.
- *
- * Return type widens to `Record<string, unknown>` to align with the
- * `Plugin.defaultConfig` interface (see `packages/core/src/types/plugin.ts`).
- * The narrower `DEFAULT_CONFIG` shape is still enforced by
- * `telegramConfigSchema` validation downstream.
- */
-function telegramDefaultConfig(): Record<string, unknown> {
-  return structuredClone(DEFAULT_CONFIG) as Record<string, unknown>;
-}
-
-/** Read the Telegram section from a full Config object.
- * Delegates to {@link readTelegramConfigFromConfig} for the canonical
- * extension-slice extraction + default merge, then applies the runtime
- * coercions that `RuntimeConfig` requires (String chatId, array copies). */
-function telegramFromConfig(cfg: Config): {
-  notifyChatId: string | number | undefined;
-  allowedOutboundChats: Array<string | number>;
-  allowedUserIds: Array<string | number>;
-  allowGroupApprovals: boolean;
-  pollIntervalSec: number;
-  notifyOnSessionEnd: boolean;
-  notifyOnDelegate: boolean;
-  longToolThresholdMs: number;
-  maxMessageLength: number;
-  outboundQueuePerChat: number;
-  outboundQueueConcurrency: number;
-  rateLimitTokensPerSecond: number;
-  rateLimitBurst: number;
-  parseMode: '' | 'HTML' | 'MarkdownV2';
-} {
-  const tg = readTelegramConfigFromConfig(cfg);
-  return {
-    notifyChatId: tg.notifyChatId !== undefined ? String(tg.notifyChatId) : undefined,
-    allowedOutboundChats: [...(tg.allowedOutboundChats ?? [])],
-    allowedUserIds: [...(tg.allowedUsers ?? [])],
-    allowGroupApprovals: tg.allowGroupApprovals ?? false,
-    pollIntervalSec: tg.pollIntervalSec ?? 2,
-    notifyOnSessionEnd: tg.notifyOnSessionEnd ?? false,
-    notifyOnDelegate: tg.notifyOnDelegate ?? true,
-    longToolThresholdMs: tg.longToolThresholdMs ?? 30_000,
-    maxMessageLength: tg.maxMessageLength ?? 4000,
-    outboundQueuePerChat: tg.outboundQueuePerChat ?? 32,
-    outboundQueueConcurrency: tg.outboundQueueConcurrency ?? 4,
-    rateLimitTokensPerSecond: tg.rateLimitTokensPerSecond ?? 0.33,
-    rateLimitBurst: tg.rateLimitBurst ?? 4,
-    parseMode: tg.parseMode ?? '',
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -708,11 +598,10 @@ const plugin: Plugin = {
 
 export default plugin;
 
-// Exposed for tests to inspect the queue without going through the API surface.
-export { teardownState };
-
 // Re-export the types and classes consumers may want
 export type { TelegramIncomingMessage } from './bot.js';
 export type { TelegramPluginConfig } from './config.js';
-export { TelegramNotificationChannel } from './notification-channel.js';
 export type { TelegramNotificationChannelOptions } from './notification-channel.js';
+export { TelegramNotificationChannel } from './notification-channel.js';
+// Exposed for tests to inspect the queue without going through the API surface.
+export { teardownState };

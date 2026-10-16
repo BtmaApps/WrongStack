@@ -5,73 +5,9 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import { registerOpenModal } from '@/lib/open-modal-registry';
 import { useUIStore } from '@/stores';
+import type { CategoryCount, PromptDraft, PromptMeta } from './prompt-library-model.js';
+import { emptyDraft, render, SOURCE_GLYPH } from './prompt-library-model.js';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
-
-interface PromptVar {
-  name: string;
-  description?: string;
-  default?: string;
-  required?: boolean;
-  enum?: string[];
-  multiline?: boolean;
-}
-interface PromptMeta {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  category: string;
-  tags: string[];
-  source: string;
-  favorite: boolean;
-  variables: PromptVar[];
-}
-interface CategoryCount {
-  id: string;
-  label: string;
-  count: number;
-}
-
-const SOURCE_GLYPH: Record<string, string> = {
-  builtin: '📦',
-  user: '👤',
-  project: '📁',
-  synced: '☁',
-};
-
-/** A variable row in the authoring form (enum kept as a CSV string for editing). */
-interface VarDraft {
-  name: string;
-  description: string;
-  required: boolean;
-  multiline: boolean;
-  enumCsv: string;
-}
-interface PromptDraft {
-  title: string;
-  description: string;
-  category: string;
-  tagsCsv: string;
-  content: string;
-  vars: VarDraft[];
-}
-const emptyDraft: PromptDraft = {
-  title: '',
-  description: '',
-  category: '',
-  tagsCsv: '',
-  content: '',
-  vars: [],
-};
-
-/** Fill {{name}} placeholders locally; leave unknown placeholders intact. */
-function render(content: string, values: Record<string, string>): string {
-  return content.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, raw: string) =>
-    Object.hasOwn(values, raw.trim()) && values[raw.trim()]
-      ? (values[raw.trim()] as string)
-      : whole,
-  );
-}
 
 /**
  * Prompt library modal — browse / search / filter-by-category / preview /

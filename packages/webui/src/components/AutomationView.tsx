@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { useActiveSessionId, useSessionStore } from '@/stores';
 import './automation.css';
+import { AutomationPreviewPanel, AutomationRunResult } from './AutomationRunParts';
 import { ToolDiffView } from './DiffView';
 
 const freshJob = (): AutomationJobInput => ({
@@ -552,43 +553,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
             </button>
           </div>
           {preview && (
-            <div role="status">
-              <h3>{t('activity:automation.nextRuns', { defaultValue: 'Next scheduled runs' })}</h3>
-              {preview.nextRunTimes.length ? (
-                <ul>
-                  {preview.nextRunTimes.map((time) => (
-                    <li key={time}>
-                      {new Date(time).toLocaleString(undefined, {
-                        timeZone: spec.schedule?.timezone,
-                        timeZoneName: 'short',
-                      })}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>
-                  {t('activity:automation.manualOnly', {
-                    defaultValue: 'Manual or event-triggered.',
-                  })}
-                </p>
-              )}
-              {preview.missingReferences.length > 0 && (
-                <p>Missing credentials: {preview.missingReferences.join(', ')}</p>
-              )}
-              {preview.filterPreview && (
-                <p>
-                  Sample event:{' '}
-                  {preview.filterPreview.matches
-                    ? 'matches'
-                    : `does not match (${preview.filterPreview.reasons.join(', ')})`}
-                </p>
-              )}
-              <p>
-                {t('activity:automation.previewNote', {
-                  defaultValue: 'Preview starts no container or model request.',
-                })}
-              </p>
-            </div>
+            <AutomationPreviewPanel preview={preview} timeZone={spec.schedule?.timezone} />
           )}
         </form>
       </div>
@@ -607,31 +572,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
               <strong>{state.jobs.find((job) => job.id === run.jobId)?.name ?? run.jobId}</strong> ·{' '}
               {run.status} · {run.subjectKey} · {new Date(run.createdAt).toLocaleString()}
               {run.error && <p>{run.error}</p>}
-              {run.result && (
-                <details>
-                  <summary>
-                    Result · {(run.result.durationMs / 1000).toFixed(1)} s ·{' '}
-                    {run.result.usage.costUsd === null
-                      ? 'Cost unknown'
-                      : `$${run.result.usage.costUsd.toFixed(4)} (estimate)`}
-                  </summary>
-                  <p>
-                    Agent: {run.result.agentStatus ?? 'unknown'} · Tokens:{' '}
-                    {run.result.usage.inputTokens ?? '?'} in /{' '}
-                    {run.result.usage.outputTokens ?? '?'} out · Iterations:{' '}
-                    {run.result.usage.iterations ?? '?'}
-                  </p>
-                  <p>
-                    Tests not independently verified. Evidence:{' '}
-                    {run.result.validation.evidence.join(', ')}.
-                  </p>
-                  <pre>{run.result.finalText ?? 'No structured final message.'}</pre>
-                  <p>
-                    Changed files{run.result.changedFilesTruncated ? ' (first 200)' : ''}:{' '}
-                    {run.result.changedFiles.join(', ') || 'none detected'}
-                  </p>
-                </details>
-              )}
+              {run.result && <AutomationRunResult result={run.result} />}
               {(run.status === 'queued' || run.status === 'running') && (
                 <button
                   type="button"

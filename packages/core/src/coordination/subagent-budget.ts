@@ -12,6 +12,7 @@ import {
   type BudgetUsage,
   type SubagentBudgetOptions,
 } from './subagent-budget-contracts.js';
+import { collectExceededBudgets } from './subagent-budget-limits.js';
 import {
   buildSubagentFinishNotice,
   DEFAULT_SUBAGENT_FINISH_GRACE_MS,
@@ -374,83 +375,34 @@ export class SubagentBudget {
    * Returns the kinds that were found to be exceeded (for logging/debugging).
    */
   private checkLimits(elapsedMs?: number): { kind: BudgetKind; used: number; limit: number }[] {
-    const exceeded: { kind: BudgetKind; used: number; limit: number }[] = [];
-
-    if (this.limits.maxIterations !== undefined && this.iterations > this.limits.maxIterations) {
-      exceeded.push({
-        kind: 'iterations',
-        used: this.iterations,
-        limit: this.limits.maxIterations,
-      });
-    }
-    if (this.limits.maxToolCalls !== undefined && this.toolCalls > this.limits.maxToolCalls) {
-      exceeded.push({ kind: 'tool_calls', used: this.toolCalls, limit: this.limits.maxToolCalls });
-    }
-    const totalTokens = this.tokenInput + this.tokenOutput;
-    if (this.limits.maxTokens !== undefined && totalTokens > this.limits.maxTokens) {
-      exceeded.push({ kind: 'tokens', used: totalTokens, limit: this.limits.maxTokens });
-    }
-    if (this.limits.maxCostUsd !== undefined && this.costUsd > this.limits.maxCostUsd) {
-      exceeded.push({ kind: 'cost', used: this.costUsd, limit: this.limits.maxCostUsd });
-    }
-    // Timeout: called from checkTimeout() with elapsedMs (wall-clock) and the
-    // current idle gap. Either crossing its limit trips its own kind so the
-    // coordinator and auto-extend policy can distinguish them.
-    // Wall-clock (`timeoutMs`) is an explicit hard cap; idle (`idleTimeoutMs`)
-    // is the default guard that resets on activity. Both can be exceeded in
-    // the same call — we push both entries so all violated limits are reported.
-    if (elapsedMs !== undefined) {
-      const idle = this.idleMs();
-      if (this.limits.idleTimeoutMs !== undefined && idle > this.limits.idleTimeoutMs) {
-        exceeded.push({ kind: 'idle_timeout', used: idle, limit: this.limits.idleTimeoutMs });
-      }
-      // Skip the wall-clock 'timeout' kind while the coordinator watchdog is
-      // negotiating this exact ceiling — it owns wall-clock; checkTimeout/here
-      // own idle. Only suppress in the negotiation path (a handler is set); on
-      // the no-handler hard-throw path the wall-clock must still trip. (Mirrors
-      // the guard in checkTimeout, which previously was NOT applied here — so
-      // an idle trip that called checkLimits re-added 'timeout' and defeated the
-      // watchdog dedup.)
-      //
-      // `wallClockWatchdogOwned` (gracefulFinish runs) mirrors checkTimeout's
-      // guard: wall-clock ownership is PERMANENT for those runs, not just
-      // mid-negotiation. Without this mirror, a tool.progress heartbeat
-      // landing in the sub-millisecond window between a deadline crossing and
-      // the watchdog's own tick trips idle here, and checkLimits re-added
-      // 'timeout' — starting a legacy wall-clock negotiation that raced the
-      // watchdog's notify-then-grace path.
-      const wallOwnedByWatchdog =
-        this._wallClockWatchdogOwned ||
-        (this._onThreshold !== undefined && this._watchdogActive === this.limits.timeoutMs);
-      if (
-        this.limits.timeoutMs !== undefined &&
-        elapsedMs > this.limits.timeoutMs &&
-        !wallOwnedByWatchdog
-      ) {
-        exceeded.push({ kind: 'timeout', used: elapsedMs, limit: this.limits.timeoutMs });
-      }
-    }
+    const exceeded = collectExceededBudgets(
+      this.limits,
+      {
+        iterations: this.iterations,
+        toolCalls: this.toolCalls,
+        tokens: this.tokenInput + this.tokenOutput,
+        costUsd: this.costUsd,
+      },
+      elapsedMs === undefined
+        ? undefined
+        : {
+            elapsedMs,
+            idleMs: this.idleMs(),
+            wallOwnedByWatchdog:
+              this._wallClockWatchdogOwned ||
+              (this._onThreshold !== undefined && this._watchdogActive === this.limits.timeoutMs),
+          },
+    );
 
     if (exceeded.length === 0) return [];
 
-    if (!this._onThreshold) {
-      // Hard stop — throw on the first exceeded kind.
-      const first = exceeded[0] ?? { kind: 'iterations', limit: 0, used: 0 };
-      throw new BudgetExceededError(first.kind, first.limit, first.used);
-    }
-    if (this._mode === 'sync') {
-      // Hard stop in sync mode.
-      const first = exceeded[0] ?? { kind: 'iterations', limit: 0, used: 0 };
-      throw new BudgetExceededError(first.kind, first.limit, first.used);
-    }
-    const bus = this._events;
-    if (!bus) {
-      // No EventBus wired at all → nobody to negotiate with → hard stop.
-      const first = exceeded[0] ?? { kind: 'iterations', limit: 0, used: 0 };
-      throw new BudgetExceededError(first.kind, first.limit, first.used);
-    }
-
     const first = exceeded[0] ?? { kind: 'iterations', limit: 0, used: 0 };
+    const bus = this._events;
+    // Hard stop on the first exceeded kind: no handler, sync mode, or no
+    // EventBus wired at all (nobody to negotiate with).
+    if (!this._onThreshold || this._mode === 'sync' || !bus) {
+      throw new BudgetExceededError(first.kind, first.limit, first.used);
+    }
 
     // LISTENER-DRIVEN PATH. A registered `budget.threshold_reached` listener
     // (director / collab / auto-extend) negotiates asynchronously. Start one

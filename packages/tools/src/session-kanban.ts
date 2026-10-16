@@ -2,13 +2,10 @@ import {
   boardKey,
   cleanupEmptySessionKanbanBoards,
   cleanupSessionKanbanBoardIfEmpty,
-  enqueueBoardWork,
   ensureSessionKanbanBoard,
   isOwnedSessionBoard,
-  MIRROR_DISABLED_ENV,
   releaseActiveSessionBoard,
   retainActiveSessionBoard,
-  sessionBoardTags,
   sessionIdFromTags,
 } from './session-kanban-boards.js';
 
@@ -24,18 +21,14 @@ import { type FSWatcher, watch } from 'node:fs';
 import { basename, dirname, isAbsolute } from 'node:path';
 import type { Context, TodoItem } from '@wrongstack/core/agent';
 import { loadPlan, loadTasks, type PlanItem } from '@wrongstack/core/storage';
-import { deserializeTaskGraph } from '@wrongstack/core/tasking';
-import type { SerializedTaskGraph } from '@wrongstack/core/types';
 import type { TaskItem } from '@wrongstack/core/utils';
 import {
   bridgeKanbanSupervisor,
-  compactSessionMirrorBoard,
   getBoard,
   getKanbanOrchestrationSnapshot,
   type KanbanBoard,
   type KanbanTask,
   pruneSessionBoards,
-  syncBoardFromTaskGraph,
   touchKanbanPresence,
 } from '@wrongstack/kanban';
 import {
@@ -44,6 +37,16 @@ import {
   todoListToSerializedGraph,
 } from './session-kanban-graph.js';
 import { deliverKanbanManagementReview } from './session-kanban-management.js';
+import {
+  activeMirrors,
+  backgroundWork,
+  mirrorFailures,
+  mirrorKey,
+  pendingMirrors,
+  projectGraph,
+  queueLatestMirror,
+  trackBackgroundWork,
+} from './session-kanban-mirror-queue.js';
 import {
   applyManagedKanbanBoardToTodos as applyManagedKanbanBoardToTodosSync,
   applySessionKanbanBoardToTodos as applySessionKanbanBoardToTodosSync,
@@ -66,192 +69,8 @@ export {
   todosNeedingSessionMirror,
 } from './session-kanban-sync.js';
 
-type PendingMirror = {
-  projectRoot: string;
-  sessionId: string;
-  graph: SerializedTaskGraph;
-  reconciliationGraph?: SerializedTaskGraph | undefined;
-  sourceSystem: 'session-todo' | 'session-task' | 'session-plan';
-};
-const pendingMirrors = new Map<string, PendingMirror>();
-const activeMirrors = new Set<string>();
-const mirrorFailures = new Map<
-  string,
-  { message: string; sourceSystem: PendingMirror['sourceSystem'] }
->();
 const bindings = new WeakMap<Context, () => void>();
 const suppressedTodoMirrors = new WeakSet<Context>();
-
-function mirrorKey(
-  projectRoot: string,
-  sessionId: string,
-  sourceSystem: PendingMirror['sourceSystem'],
-): string {
-  return `${boardKey(projectRoot, sessionId)}\0${sourceSystem}`;
-}
-
-function completedReconciliationGraph(
-  latest: SerializedTaskGraph,
-  candidates: readonly SerializedTaskGraph[],
-): SerializedTaskGraph | undefined {
-  const latestNodeIds = new Set(latest.nodes.map((node) => node.id));
-  const carriedNodeIds = new Set<string>();
-  const completedNodes = candidates.flatMap((candidate) =>
-    candidate.nodes.filter((node) => {
-      if (
-        node.status !== 'completed' ||
-        latestNodeIds.has(node.id) ||
-        carriedNodeIds.has(node.id)
-      ) {
-        return false;
-      }
-      carriedNodeIds.add(node.id);
-      return true;
-    }),
-  );
-  if (completedNodes.length === 0) return undefined;
-
-  const carriedRequirements = completedNodes.flatMap((node) =>
-    node.specRequirementId ? [node.specRequirementId] : [],
-  );
-  return {
-    ...latest,
-    nodes: [...latest.nodes, ...completedNodes],
-    rootNodes: [...new Set([...latest.rootNodes, ...completedNodes.map((node) => node.id)])],
-    ...(latest.requiredRequirementIds
-      ? {
-          requiredRequirementIds: [
-            ...new Set([...latest.requiredRequirementIds, ...carriedRequirements]),
-          ],
-        }
-      : {}),
-  };
-}
-
-async function projectGraph(
-  projectRoot: string | undefined,
-  sessionId: string,
-  graph: SerializedTaskGraph,
-  sourceSystem: 'session-todo' | 'session-task' | 'session-plan',
-): Promise<KanbanBoard | null> {
-  if (!projectRoot || !sessionId || process.env[MIRROR_DISABLED_ENV] === '0') return null;
-  return enqueueBoardWork(projectRoot, sessionId, async () => {
-    const board = await ensureSessionKanbanBoard(projectRoot, sessionId);
-    if (!board) return null;
-    const result = await syncBoardFromTaskGraph(
-      projectRoot,
-      board.id,
-      deserializeTaskGraph(graph),
-      {
-        sourceSystem,
-        tags: [...new Set([...(board.tags ?? []), ...sessionBoardTags(sessionId)])],
-        archiveMissingTasks: true,
-        includeCompletedTasks: true,
-        allowRequirementScopeShrink: true,
-      },
-    );
-    if (!result) return null;
-    const compacted = await compactSessionMirrorBoard(projectRoot, board.id);
-    if (compacted?.removedTaskIds.length) {
-      return (await getBoard(projectRoot, board.id)) ?? result.board;
-    }
-    return result.board;
-  });
-}
-
-function queueLatestMirror(
-  projectRoot: string | undefined,
-  sessionId: string,
-  graph: SerializedTaskGraph,
-  sourceSystem: PendingMirror['sourceSystem'],
-): void {
-  if (!projectRoot || !sessionId || process.env[MIRROR_DISABLED_ENV] === '0') return;
-  const key = mirrorKey(projectRoot, sessionId, sourceSystem);
-  const previous = pendingMirrors.get(key);
-  const reconciliationGraph = previous
-    ? completedReconciliationGraph(
-        graph,
-        [previous.reconciliationGraph, previous.graph].filter(
-          (candidate): candidate is SerializedTaskGraph => candidate !== undefined,
-        ),
-      )
-    : undefined;
-  pendingMirrors.set(key, {
-    projectRoot,
-    sessionId,
-    graph,
-    ...(reconciliationGraph ? { reconciliationGraph } : {}),
-    sourceSystem,
-  });
-  if (activeMirrors.has(key)) return;
-  activeMirrors.add(key);
-  const pump = (async () => {
-    try {
-      for (;;) {
-        const pending = pendingMirrors.get(key);
-        if (!pending) break;
-        pendingMirrors.delete(key);
-        try {
-          if (pending.reconciliationGraph) {
-            await projectGraph(
-              pending.projectRoot,
-              pending.sessionId,
-              pending.reconciliationGraph,
-              pending.sourceSystem,
-            );
-          }
-          await projectGraph(
-            pending.projectRoot,
-            pending.sessionId,
-            pending.graph,
-            pending.sourceSystem,
-          );
-          mirrorFailures.delete(boardKey(pending.projectRoot, pending.sessionId));
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          mirrorFailures.set(boardKey(pending.projectRoot, pending.sessionId), {
-            message,
-            sourceSystem: pending.sourceSystem,
-          });
-          console.warn(
-            JSON.stringify({
-              level: 'warn',
-              event: 'session-kanban.mirror-failed',
-              sessionId: pending.sessionId,
-              sourceSystem: pending.sourceSystem,
-              message,
-              timestamp: new Date().toISOString(),
-            }),
-          );
-        }
-      }
-    } finally {
-      activeMirrors.delete(key);
-      const pending = pendingMirrors.get(key);
-      if (pending) {
-        pendingMirrors.delete(key);
-        // Re-queue through the same coalescing path, but do NOT lose the
-        // carried completed nodes. `projectGraph` runs with
-        // `archiveMissingTasks: true`, so a graph that has shed the completed
-        // work archives those cards — which is exactly the "finished task
-        // disappeared, then came back as a new card" report. `queueLatestMirror`
-        // rebuilds the reconciliation set from the pending entry it finds, so
-        // the carried nodes have to be folded back into the graph here rather
-        // than dropped on the floor.
-        const carried = pending.reconciliationGraph
-          ? completedReconciliationGraph(pending.graph, [pending.reconciliationGraph])
-          : undefined;
-        queueLatestMirror(
-          pending.projectRoot,
-          pending.sessionId,
-          carried ?? pending.graph,
-          pending.sourceSystem,
-        );
-      }
-    }
-  })();
-  trackBackgroundWork(pump);
-}
 
 export function takeSessionMirrorFailure(
   projectRoot: string | undefined,
@@ -308,30 +127,6 @@ export function projectSessionPlanToKanban(
     planFileToSerializedGraph(items, sessionId),
     'session-plan',
   );
-}
-
-/**
- * Every background pass this module starts — presence touches, board
- * refreshes, the mirror pump — outlives the call that started it. Nothing
- * held a handle on that work, so a caller that had finished with a session
- * (a test tearing down its temp dir, a surface closing a session) could not
- * wait for it: the writes landed on a directory that was already gone and
- * reported the ENOENT as a warning long after anyone was listening.
- *
- * The set is the handle. It holds settled-or-not promises that never reject,
- * so tracking can never itself become an unhandled rejection.
- */
-const backgroundWork = new Set<Promise<void>>();
-
-function trackBackgroundWork(work: Promise<unknown>): void {
-  const tracked = work.then(
-    () => undefined,
-    () => undefined,
-  );
-  backgroundWork.add(tracked);
-  void tracked.then(() => {
-    backgroundWork.delete(tracked);
-  });
 }
 
 /**

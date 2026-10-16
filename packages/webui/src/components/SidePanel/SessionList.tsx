@@ -1,6 +1,4 @@
 import {
-  AlertTriangle,
-  FileCode2,
   History,
   Loader2,
   Pencil,
@@ -10,7 +8,6 @@ import {
   SearchCheck,
   Star,
   Trash2,
-  Wrench,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,11 +19,9 @@ import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SessionHistoryEntry } from '@/stores';
 import { useActiveSessionId, useSessionTabStore, useUIStore } from '@/stores';
+import { SessionRenameField, SessionRowStats } from './SessionRowParts.js';
 import {
   filterAndSortSessions,
-  formatCompactNumber,
-  formatRelative,
-  formatSessionDuration,
   getEmptySessionIds,
   getSessionHistoryStats,
   groupSessionHistory,
@@ -35,7 +30,6 @@ import {
   HistoryStats,
   outcomeMeta,
   type SessionHistoryGroup,
-  sessionActivityAt,
   splitSessionHistoryColumns,
 } from './session-history.js';
 
@@ -443,36 +437,14 @@ export function SessionList({
                               data-session-id={entry.id}
                             >
                               {isRenaming ? (
-                                <div className="min-w-0 px-3 py-3">
-                                  <label
-                                    className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
-                                    htmlFor={`session-name-${entry.id}`}
-                                  >
-                                    {t('activity:sessions.rename', {
-                                      defaultValue: 'Session name',
-                                    })}
-                                  </label>
-                                  <input
-                                    ref={renameInput}
-                                    id={`session-name-${entry.id}`}
-                                    value={renameDraft}
-                                    onChange={(event) => setRenameDraft(event.target.value)}
-                                    onBlur={() => commitRename(entry.id)}
-                                    onKeyDown={(event) => {
-                                      if (event.key === 'Enter') {
-                                        event.preventDefault();
-                                        commitRename(entry.id);
-                                      } else if (event.key === 'Escape') {
-                                        event.preventDefault();
-                                        setRenamingId(null);
-                                      }
-                                    }}
-                                    placeholder={
-                                      entry.title || t('activity:sessions.nicknamePlaceholder')
-                                    }
-                                    className="mt-1 h-8 w-full border border-primary bg-background px-2 text-sm outline-none ring-1 ring-primary"
-                                  />
-                                </div>
+                                <SessionRenameField
+                                  entry={entry}
+                                  renameInput={renameInput}
+                                  renameDraft={renameDraft}
+                                  setRenameDraft={setRenameDraft}
+                                  commitRename={commitRename}
+                                  setRenamingId={setRenamingId}
+                                />
                               ) : (
                                 <button
                                   type="button"
@@ -538,50 +510,7 @@ export function SessionList({
                                           {entry.lastUserMessage}
                                         </div>
                                       ) : null}
-                                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-muted-foreground">
-                                        {isResuming ? (
-                                          <span className="inline-flex items-center gap-1 font-sans font-semibold text-primary">
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                            {t('activity:sessions.resuming')}
-                                          </span>
-                                        ) : (
-                                          <span
-                                            title={new Date(
-                                              sessionActivityAt(entry),
-                                            ).toLocaleString()}
-                                          >
-                                            {formatRelative(sessionActivityAt(entry))}
-                                          </span>
-                                        )}
-                                        <span aria-hidden="true">·</span>
-                                        <span>{formatSessionDuration(entry)}</span>
-                                        {entry.tokenTotal > 0 ? (
-                                          <span>{formatCompactNumber(entry.tokenTotal)} tok</span>
-                                        ) : null}
-                                        {(entry.messageCount ?? 0) > 0 ? (
-                                          <span>
-                                            {formatCompactNumber(entry.messageCount ?? 0)} msg
-                                          </span>
-                                        ) : null}
-                                        {(entry.toolCallCount ?? 0) > 0 ? (
-                                          <span className="inline-flex items-center gap-1">
-                                            <Wrench className="h-3 w-3" />
-                                            {entry.toolCallCount}
-                                          </span>
-                                        ) : null}
-                                        {(entry.fileChangeCount ?? 0) > 0 ? (
-                                          <span className="inline-flex items-center gap-1">
-                                            <FileCode2 className="h-3 w-3" />
-                                            {entry.fileChangeCount}
-                                          </span>
-                                        ) : null}
-                                        {(entry.toolErrorCount ?? 0) > 0 ? (
-                                          <span className="inline-flex items-center gap-1 text-destructive">
-                                            <AlertTriangle className="h-3 w-3" />
-                                            {entry.toolErrorCount}
-                                          </span>
-                                        ) : null}
-                                      </div>
+                                      <SessionRowStats entry={entry} isResuming={isResuming} />
                                     </div>
                                   </div>
                                 </button>

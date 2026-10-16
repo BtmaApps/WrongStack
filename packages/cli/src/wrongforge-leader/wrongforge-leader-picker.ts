@@ -9,11 +9,13 @@
 import type { PickableHostProvider } from '../acp-leader/acp-leader-picker.js';
 import { resolveWrongForgeEndpoint, WRONGFORGE_AGENT_ID } from '../fleet/wrongforge-client.js';
 import { readCachedWrongForgeInfo, refreshWrongForgeInfoCache } from '../fleet/wrongforge-info.js';
+import { reportWrongForgeQuota } from '../fleet/wrongforge-quota.js';
 
 /** The `wrongforge` entry, or none when no WrongForge is set up here or its models are unknown. */
 export function wrongForgeLeaderPickable(): PickableHostProvider[] {
   const ep = resolveWrongForgeEndpoint();
   if (!ep) return [];
+  void reportWrongForgeQuota({ endpoint: ep });
   refreshWrongForgeInfoCache(ep);
   const info = readCachedWrongForgeInfo();
   if (!info) return [];
@@ -21,11 +23,21 @@ export function wrongForgeLeaderPickable(): PickableHostProvider[] {
     {
       id: WRONGFORGE_AGENT_ID,
       type: WRONGFORGE_AGENT_ID,
-      models: info.models.map((id) => ({
-        id,
-        name: id === info.defaultModel ? `${id} (WrongForge default)` : id,
-        description: 'WrongForge leading the session',
-      })),
+      refreshQuota: () => reportWrongForgeQuota({ endpoint: ep, force: true }),
+      models: info.models.map((id) => {
+        const details = info.modelDetails?.find((model) => model.id === id);
+        return {
+          id,
+          name: id === info.defaultModel ? `${id} (WrongForge default)` : id,
+          description: details?.description || 'WrongForge leading the session',
+          ...(details
+            ? {
+                reasoningEffortLevels: details.effortLevels,
+                effortSupported: details.effortLevels.length > 0,
+              }
+            : {}),
+        };
+      }),
     },
   ];
 }

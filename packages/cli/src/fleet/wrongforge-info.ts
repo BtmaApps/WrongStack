@@ -24,6 +24,8 @@ export interface WrongForgeInfo {
   models: string[];
   defaultModel?: string | undefined;
   features: string[];
+  effortLevels?: string[] | undefined;
+  modelDetails?: { id: string; description: string; effortLevels: string[] }[] | undefined;
 }
 
 export function wrongForgeInfoCacheFile(): string {
@@ -36,10 +38,30 @@ export function parseWrongForgeInfo(body: unknown): WrongForgeInfo {
   const strings = (v: unknown) =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : [];
   const def = o['default_model'] ?? o['defaultModel'];
+  const details = o['model_details'] ?? o['modelDetails'];
+  const effort = o['effort'] as { levels?: unknown } | undefined;
+  const levels = effort?.levels ?? o['effortLevels'];
   return {
     models: strings(o['models']),
     ...(typeof def === 'string' && def ? { defaultModel: def } : {}),
     features: strings(o['features']),
+    ...(Array.isArray(levels) ? { effortLevels: strings(levels) } : {}),
+    ...(Array.isArray(details)
+      ? {
+          modelDetails: details.flatMap((value: unknown) => {
+            if (!value || typeof value !== 'object') return [];
+            const d = value as Record<string, unknown>;
+            if (typeof d['id'] !== 'string' || !d['id']) return [];
+            return [
+              {
+                id: d['id'],
+                description: typeof d['description'] === 'string' ? d['description'] : '',
+                effortLevels: strings(d['effort_levels'] ?? d['effortLevels']),
+              },
+            ];
+          }),
+        }
+      : {}),
   };
 }
 

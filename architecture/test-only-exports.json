@@ -337,13 +337,9 @@
       "checkMcp",
       "checkMemoryDedup",
       "checkMemorySize",
-      "checkPerformance",
-      "checkPermissions",
       "checkPlugins",
       "checkPowerProfile",
-      "checkReliability",
-      "checkSkills",
-      "isReadOnlyCommand"
+      "checkSkills"
     ],
     "packages/cli/src/update-check.ts": [
       "fetchLatestFromNpm",
@@ -625,9 +621,7 @@
       "isSensitiveAgentStateRelPath"
     ],
     "packages/core/src/security/permission-helpers.ts": [
-      "fsWriteTargetPaths",
-      "MAX_COMMAND_SCAN_NODES",
-      "SENSITIVE_PATH_INPUT_KEYS"
+      "fsWriteTargetPaths"
     ],
     "packages/core/src/security/process-lockdown.ts": [
       "__resetProcessLockdownForTests"
@@ -691,7 +685,6 @@
       "isProjectId"
     ],
     "packages/core/src/utils/tool-output-renderers.ts": [
-      "compactDiff",
       "inputListSummary",
       "numberFromInput"
     ],
@@ -783,7 +776,6 @@
       "KANBAN_SQLITE_FILE"
     ],
     "packages/kanban/src/storage.ts": [
-      "boardMeta",
       "EVENT_LOG_MAX_CACHE_ENTRIES",
       "eventLogCacheSizeForTests",
       "getKanbanEventsPath",
@@ -899,7 +891,6 @@
       "timeoutCoverage"
     ],
     "packages/plugin-sdk/src/runtime/index.ts": [
-      "collectSourceFiles",
       "locateRunnerEntry"
     ],
     "packages/plugins/src/catalog.ts": [
@@ -907,8 +898,7 @@
     ],
     "packages/plugins/src/changelog-writer/index.ts": [
       "commitSubjectFromCommand",
-      "commitToEntry",
-      "mergeIntoChangelog"
+      "commitToEntry"
     ],
     "packages/plugins/src/config-validator/index.ts": [
       "isDotEnvFile",
@@ -942,8 +932,7 @@
     ],
     "packages/plugins/src/gitignore-guard/index.ts": [
       "classifyArtifact",
-      "DEFAULT_ARTIFACT_PATTERNS",
-      "matchGitignorePattern"
+      "DEFAULT_ARTIFACT_PATTERNS"
     ],
     "packages/plugins/src/injection-shield/index.ts": [
       "extractToolContent",
@@ -1237,7 +1226,6 @@
     ],
     "packages/tools/src/codebase-index/background-indexer.ts": [
       "resetIndexStateForTesting",
-      "resolveLastError",
       "setIndexReady"
     ],
     "packages/tools/src/codebase-index/bm25.ts": [
@@ -1814,10 +1802,6 @@
     "packages/webui/src/components/SystemHealthChip.tsx": [
       "summarizeSystemHealth"
     ],
-    "packages/webui/src/components/TaskActivityTimeline.tsx": [
-      "buildTaskActivityExport",
-      "eventFieldChanges"
-    ],
     "packages/webui/src/components/TaskExecutionAttempts.tsx": [
       "buildTaskExecutionAttempts"
     ],
@@ -1840,10 +1824,7 @@
       "MOBILE_BREAKPOINT"
     ],
     "packages/webui/src/hooks/ws-handlers.ts": [
-      "handleConfigDoctorResult",
-      "handleDiagGet",
       "handleModesList",
-      "handleStatsGet",
       "handleTodosUpdated",
       "handleToolsList"
     ],
@@ -1903,7 +1884,6 @@
       "shownThisTurn"
     ],
     "packages/webui/src/hooks/ws-handlers/session-replay-handlers.ts": [
-      "hydrateReplayMessages",
       "isRoutePinnedView"
     ],
     "packages/webui/src/hooks/ws-handlers/techstack-handlers.ts": [

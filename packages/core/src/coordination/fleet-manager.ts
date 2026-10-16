@@ -8,47 +8,31 @@ import { atomicWrite } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { FleetUsage } from './fleet-bus.js';
 import { FleetBus, FleetUsageAggregator } from './fleet-bus.js';
+import type {
+  FleetCheckpointResume,
+  FleetCheckpointSnapshot,
+  FleetManagerOptions,
+  FleetStats,
+  FleetSubagentStatus,
+} from './fleet-manager-types.js';
 import type { IFleetManager } from './ifleet-manager.js';
 import type { DefaultMultiAgentCoordinator } from './multi-agent-coordinator.js';
 import { resolveMaxSpawnDepth } from './spawn-budget.js';
 import { assignNickname, nicknameKeyFromDisplay } from './subagent-nicknames.js';
 import type { WorktreeTaskStateUpdate } from './worktree-task-runner.js';
 
-/** Options for constructing a FleetManager. */
-export interface FleetManagerOptions {
-  manifestPath?: string | undefined;
-  sessionsRoot?: string | undefined;
-  directorRunId?: string | undefined;
-  maxSpawns?: number | undefined;
-  maxSpawnDepth?: number | undefined;
-  spawnDepth?: number | undefined;
-  stateCheckpointPath?: string | undefined;
-  sessionWriter?: SessionWriter | undefined;
-  manifestDebounceMs?: number | undefined;
-  checkpointDebounceMs?: number | undefined;
-  directorBudget?:
-    | {
-        maxCostUsd?: number | undefined;
-        maxTokens?: number | undefined;
-      }
-    | undefined;
-  /**
-   * Maximum context load (as a fraction of maxContext) the leader agent
-   * is allowed to reach before a new spawn is rejected. Default: 0.85.
-   * When the leader's context pressure exceeds this threshold, spawning
-   * a new subagent is refused — the leader must compact first.
-   * Set to 1.0 to disable this check.
-   */
-  maxLeaderContextLoad?: number | undefined;
-  /**
-   * Provider's max context window in tokens. Used with `maxLeaderContextLoad`
-   * to compute the absolute token threshold. Unset/0 = unknown window, which
-   * skips the leader-load check rather than guessing a window.
-   *
-   * A function may be supplied when the leader can switch models at runtime;
-   * canSpawn() reads it lazily so the spawn threshold follows the active model.
-   */
-  maxContext?: number | (() => number | undefined) | undefined;
+export type { FleetManagerOptions } from './fleet-manager-types.js';
+
+/**
+ * Surface a failed manifest write via process.emitWarning so a persistent
+ * failure (e.g. ENOSPC on the sessions dir) does not leave fleet state
+ * un-persisted with no signal until shutdown.
+ */
+function warnManifestWriteFailed(err: unknown): void {
+  process.emitWarning(
+    `FleetManager manifest write failed: ${toErrorMessage(err)}`,
+    'FleetManagerWarning',
+  );
 }
 
 /**
@@ -324,30 +308,7 @@ export class FleetManager implements IFleetManager {
    * before the restart. The checkpoint ceiling is rewritten to the live
    * value so subsequent writes do not reintroduce a stale limit.
    */
-  restoreFromCheckpoint(snapshot: {
-    spawnCount: number;
-    maxSpawns?: number | undefined;
-    version?: 1 | undefined;
-    directorRunId?: string | undefined;
-    updatedAt?: string | undefined;
-    spawnDepth?: number | undefined;
-    maxSpawnDepth?: number | undefined;
-    directorBudget?:
-      | {
-          maxCostUsd?: number | undefined;
-          maxTokens?: number | undefined;
-        }
-      | undefined;
-    subagents?: unknown[] | undefined;
-    tasks?: unknown[] | undefined;
-    usage?: unknown | undefined;
-  }): {
-    usedSpawns: number;
-    maxSpawns: number;
-    remainingSpawns: number;
-    checkpointMaxSpawns?: number | undefined;
-    ceilingMismatch: boolean;
-  } {
+  restoreFromCheckpoint(snapshot: FleetCheckpointSnapshot): FleetCheckpointResume {
     // NOTE: snapshot.spawnCount is intentionally ignored — see the docblock.
     // The lifetime budget restarts with this director run.
     const checkpointMax =
@@ -576,24 +537,14 @@ export class FleetManager implements IFleetManager {
     if (!this.manifestPath) return;
     if (this.manifestDebounceMs === 0) {
       // 0 means instant flush — write synchronously, no timer.
-      void this.writeManifest().catch((err) => {
-        const detail = toErrorMessage(err);
-        process.emitWarning(`FleetManager manifest write failed: ${detail}`, 'FleetManagerWarning');
-      });
+      void this.writeManifest().catch(warnManifestWriteFailed);
       return;
     }
     if (this.manifestDebounceMs < 0) return;
     if (this.manifestTimer) return;
     this.manifestTimer = setTimeout(() => {
       this.manifestTimer = null;
-      void this.writeManifest().catch((err) => {
-        // Surface via process.emitWarning so a persistent manifest-write
-        // failure doesn't get silently swallowed (e.g. ENOSPC on the
-        // sessions dir would otherwise leave fleet state un-persisted with
-        // no signal until shutdown).
-        const detail = toErrorMessage(err);
-        process.emitWarning(`FleetManager manifest write failed: ${detail}`, 'FleetManagerWarning');
-      });
+      void this.writeManifest().catch(warnManifestWriteFailed);
     }, this.manifestDebounceMs);
   }
 
@@ -604,10 +555,7 @@ export class FleetManager implements IFleetManager {
   async flushManifest(): Promise<void> {
     if (!this.manifestPath) return;
     this.clearManifestTimer();
-    await this.writeManifest().catch((err) => {
-      const detail = toErrorMessage(err);
-      process.emitWarning(`FleetManager manifest write failed: ${detail}`, 'FleetManagerWarning');
-    });
+    await this.writeManifest().catch(warnManifestWriteFailed);
   }
 
   /**
@@ -659,16 +607,7 @@ export class FleetManager implements IFleetManager {
     this.pendingTasks.delete(taskId);
   }
 
-  getFleetStats(): {
-    total: number;
-    running: number;
-    idle: number;
-    stopped: number;
-    inFlight: number;
-    pending: number;
-    completed: number;
-    subagentStatuses: { subagentId: string; taskId: string; status: string; assigned: boolean }[];
-  } {
+  getFleetStats(): FleetStats {
     if (!this.coordinator) {
       return {
         total: 0,
@@ -682,12 +621,7 @@ export class FleetManager implements IFleetManager {
       };
     }
     const stats = this.coordinator.getStats();
-    const subagentStatuses: {
-      subagentId: string;
-      taskId: string;
-      status: string;
-      assigned: boolean;
-    }[] = [];
+    const subagentStatuses: FleetSubagentStatus[] = [];
     for (const [subagentId, s] of this.coordinator['subagents']) {
       subagentStatuses.push({
         subagentId,

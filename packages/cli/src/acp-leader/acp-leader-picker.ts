@@ -12,7 +12,15 @@ import { ACP_LEADER_PROVIDER_ID } from './acp-leader-host.js';
 export interface PickableHostProvider {
   id: string;
   type: string;
-  models: Array<{ id: string; name: string; description: string; contextWindow?: number }>;
+  refreshQuota?: () => Promise<boolean>;
+  models: Array<{
+    id: string;
+    name: string;
+    description: string;
+    contextWindow?: number;
+    reasoningEffortLevels?: string[];
+    effortSupported?: boolean;
+  }>;
 }
 
 /** The `acp` entry, or none when no ACP agent is installed. */

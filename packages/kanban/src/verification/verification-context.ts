@@ -21,10 +21,8 @@
  */
 import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { scriptSpawnArgs } from '@wrongstack/persistence';
 import type { KanbanBoard, KanbanTask, KanbanVerificationBaseline } from '../types.js';
 import {
   BoundedProcessOutput,
@@ -43,6 +41,11 @@ import {
   validateCommand,
 } from './command-security.js';
 import { parseGitNameStatus, parseGitNumstat, tryParseTestJson } from './test-output-parser.js';
+import {
+  detectTestRunner,
+  resolveConfiguredExecutable,
+  resolveProjectPath,
+} from './verification-executables.js';
 import { type CommandResult, VerificationProcessRunner } from './verification-process.js';
 
 export type { CommandResult } from './verification-process.js';
@@ -102,12 +105,6 @@ export interface GitStatusResult {
   staged: number;
   files: string[];
   error?: string | undefined;
-}
-
-interface TestRunnerInvocation {
-  command: string;
-  args: string[];
-  kind: 'vitest' | 'jest';
 }
 
 // ─── VerificationContext ───────────────────────────────────────────────────
@@ -303,14 +300,14 @@ export class VerificationContext {
 
   /** Read a file relative to project root. */
   async readFile(filePath: string): Promise<string> {
-    const resolved = await this.resolveProjectPath(filePath);
+    const resolved = await resolveProjectPath(this.projectRoot, filePath);
     if (!resolved) throw new Error(`Path escapes the project root: ${filePath}`);
     return fsp.readFile(resolved, 'utf8');
   }
 
   /** Check if a file exists relative to project root. */
   async fileExists(filePath: string): Promise<boolean> {
-    const resolved = await this.resolveProjectPath(filePath);
+    const resolved = await resolveProjectPath(this.projectRoot, filePath);
     if (!resolved) return false;
     try {
       await fsp.access(resolved);
@@ -322,7 +319,7 @@ export class VerificationContext {
 
   /** Stat a file (size, mtime). */
   async fileStat(filePath: string): Promise<{ exists: boolean; size: number; mtime: string }> {
-    const resolved = await this.resolveProjectPath(filePath);
+    const resolved = await resolveProjectPath(this.projectRoot, filePath);
     if (!resolved) return { exists: false, size: 0, mtime: '' };
     try {
       const stat = await fsp.stat(resolved);
@@ -384,7 +381,11 @@ export class VerificationContext {
     if (typeof tokens === 'string') return this.rejectedCommand(command, start, tokens);
     const constrainedPnpmExec = parseConstrainedPnpmExec(tokens);
     if (typeof constrainedPnpmExec === 'object' && constrainedPnpmExec !== null) {
-      const resolved = await this.resolveConfiguredExecutable(constrainedPnpmExec.executable, true);
+      const resolved = await resolveConfiguredExecutable(
+        this.projectRoot,
+        constrainedPnpmExec.executable,
+        true,
+      );
       if (!resolved) {
         return this.rejectedCommand(
           command,
@@ -411,7 +412,7 @@ export class VerificationContext {
       };
     }
     if (base === 'test' && tokens.length === 3 && ['-e', '-f', '-d'].includes(tokens[1] ?? '')) {
-      const resolved = await this.resolveProjectPath(tokens[2] ?? '');
+      const resolved = await resolveProjectPath(this.projectRoot, tokens[2] ?? '');
       if (!resolved) {
         return this.rejectedCommand(command, start, 'Test path must stay inside the project root.');
       }
@@ -441,7 +442,7 @@ export class VerificationContext {
     if (isConfiguredCommand) {
       const [executable, ...args] = tokens;
       if (!executable) return this.rejectedCommand(command, start, 'Empty command.');
-      const resolved = await this.resolveConfiguredExecutable(executable);
+      const resolved = await resolveConfiguredExecutable(this.projectRoot, executable);
       if (!resolved)
         return this.rejectedCommand(command, start, `Could not resolve ${executable}.`);
       const result = await this.runProcess(resolved.command, [...resolved.args, ...args], {
@@ -481,7 +482,7 @@ export class VerificationContext {
 
     const cwd = opts?.cwd ?? this.projectRoot;
     const timeoutMs = opts?.timeoutMs ?? 180_000;
-    const runner = await this.detectTestRunner(cwd);
+    const runner = await detectTestRunner(cwd);
     if (!runner) {
       return {
         testPattern: pattern,
@@ -555,34 +556,6 @@ export class VerificationContext {
     };
   }
 
-  private async resolveProjectPath(filePath: string): Promise<string | null> {
-    if (path.isAbsolute(filePath)) return null;
-    const root = await fsp.realpath(this.projectRoot);
-    const candidate = path.resolve(root, filePath);
-    const relative = path.relative(root, candidate);
-    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-      return null;
-    }
-    try {
-      const real = await fsp.realpath(candidate);
-      const realRelative = path.relative(root, real);
-      return realRelative === '..' ||
-        realRelative.startsWith(`..${path.sep}`) ||
-        path.isAbsolute(realRelative)
-        ? null
-        : real;
-    } catch {
-      const parent = await fsp.realpath(path.dirname(candidate)).catch(() => null);
-      if (!parent) return null;
-      const parentRelative = path.relative(root, parent);
-      return parentRelative === '..' ||
-        parentRelative.startsWith(`..${path.sep}`) ||
-        path.isAbsolute(parentRelative)
-        ? null
-        : candidate;
-    }
-  }
-
   /** Materialize the worktree with a temporary alternate index, leaving the real index untouched. */
   private async captureWorktreeTree(head = ''): Promise<string> {
     const indexPath = path.join(tmpdir(), `.verification-index-${randomUUID()}`);
@@ -615,140 +588,5 @@ export class VerificationContext {
     opts: { cwd: string; timeoutMs: number; shell?: boolean | undefined },
   ): Promise<CommandResult> {
     return this.processRunner.runProcess(command, args, opts);
-  }
-
-  /**
-   * Resolve an allowlisted base command to something spawn can execute.
-   * Bare tokens like `tsc` are not executables — they are npm bin shims.
-   * Resolution order mirrors detectTestRunner:
-   *   1. Local package bin (`<base>/package.json` `bin` entry): JS entries
-   *      run under this process's node (fully cross-platform, no shell);
-   *      native binaries spawn directly.
-   *   2. node_modules/.bin shims. POSIX shebang scripts spawn directly.
-   *      Windows `.cmd` shims require cmd.exe, so they spawn with
-   *      `shell: true`. Node emits DEP0190 for args+shell (args are
-   *      concatenated, not escaped) — acceptable here only because the
-   *      caller's command already passed the operator/expansion gates, so
-   *      no `& | ; < > ` $() %..% $VAR !..!` can reach the shell, and cmd
-   *      only ever receives the resolved absolute shim path plus gated
-   *      args.
-   *   3. The raw token (POSIX PATH lookup).
-   */
-  private async resolveConfiguredExecutable(
-    base: string,
-    localOnly = false,
-  ): Promise<{ command: string; args: string[]; shell?: boolean } | undefined> {
-    // 1. Local package bin, e.g. `vitest` → vitest/bin/vitest.js under node.
-    try {
-      const req = createRequire(path.join(this.projectRoot, 'package.json'));
-      const pkgJsonPath = req.resolve(`${base}/package.json`);
-      const pkg = JSON.parse(await fsp.readFile(pkgJsonPath, 'utf8')) as {
-        bin?: string | Record<string, string>;
-      };
-      const rel = typeof pkg.bin === 'string' ? pkg.bin : pkg.bin?.[base];
-      if (rel && !path.isAbsolute(rel)) {
-        const packageDir = path.dirname(pkgJsonPath);
-        const entry = path.resolve(packageDir, rel);
-        // Canonical escape test: `..hidden` is a legal in-root first segment;
-        // a bare `startsWith('..')` misreads it as a parent traversal and
-        // wrongly rejects legitimate local-bin resolutions. Same predicate
-        // as resolveProjectPath above (lines 521/525/530) and the design
-        // tool's materialize/verify guards.
-        const relToPkg = path.relative(packageDir, entry);
-        if (
-          relToPkg !== '..' &&
-          !relToPkg.startsWith(`..${path.sep}`) &&
-          !path.isAbsolute(relToPkg)
-        ) {
-          await fsp.access(entry);
-          const isJsEntry = /\.(?:c|m)?js$/.test(entry);
-          return isJsEntry
-            ? { command: process.execPath, args: scriptSpawnArgs(entry, []) }
-            : { command: entry, args: [] };
-        }
-      }
-    } catch {
-      // Not a locally installed package — fall through to the .bin shims.
-    }
-    // 2. node_modules/.bin shims (.cmd first on Windows — the extensionless
-    // shims some package managers also create cannot spawn without a shell).
-    const binShim = path.join(this.projectRoot, 'node_modules', '.bin', base);
-    if (process.platform === 'win32') {
-      const cmdShim = `${binShim}.cmd`;
-      try {
-        await fsp.access(cmdShim);
-        return { command: cmdShim, args: [], shell: true };
-      } catch {
-        // fall through
-      }
-    }
-    try {
-      await fsp.access(binShim);
-      return { command: binShim, args: [] };
-    } catch {
-      // fall through
-    }
-    // Constrained pnpm-exec commands must resolve a project-local binary; do
-    // not turn a missing dependency into a PATH lookup.
-    if (localOnly) return undefined;
-    // 3. Raw token — resolved by PATH on POSIX.
-    return { command: base, args: [] };
-  }
-
-  private async detectTestRunner(cwd: string): Promise<TestRunnerInvocation | null> {
-    let preferred: 'vitest' | 'jest' = 'vitest';
-    try {
-      const pkg = await fsp.readFile(path.join(cwd, 'package.json'), 'utf8');
-      const json = JSON.parse(pkg) as Record<string, unknown>;
-      const scripts = json['scripts'];
-      const testScript =
-        typeof scripts === 'object' && scripts !== null
-          ? (scripts as Record<string, unknown>)['test']
-          : undefined;
-      if (typeof testScript === 'string' && testScript.includes('jest')) preferred = 'jest';
-    } catch {
-      // Fall back to Vitest discovery below.
-    }
-
-    const candidates: Array<'vitest' | 'jest'> =
-      preferred === 'jest' ? ['jest', 'vitest'] : ['vitest', 'jest'];
-    let requireFromProject: ReturnType<typeof createRequire>;
-    try {
-      requireFromProject = createRequire(path.resolve(cwd, 'package.json'));
-    } catch {
-      return null;
-    }
-    for (const runner of candidates) {
-      try {
-        const packageJsonPath = requireFromProject.resolve(`${runner}/package.json`);
-        const packageJson = JSON.parse(await fsp.readFile(packageJsonPath, 'utf8')) as {
-          bin?: string | Record<string, string>;
-        };
-        const relativeBin =
-          typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.[runner];
-        if (!relativeBin || path.isAbsolute(relativeBin)) continue;
-        const packageDir = path.dirname(packageJsonPath);
-        const entry = path.resolve(packageDir, relativeBin);
-        // Canonical escape test: `..hidden` is a legal in-root first segment;
-        // a bare `startsWith('..')` misreads it as a parent traversal and
-        // wrongly rejects legitimate local-runner binaries (forcing a
-        // fallthrough to the next candidate or to PATH). Same predicate as
-        // resolveConfiguredExecutable above and resolveProjectPath at
-        // lines 521/525/530.
-        const relToPkg = path.relative(packageDir, entry);
-        if (
-          relToPkg === '..' ||
-          relToPkg.startsWith(`..${path.sep}`) ||
-          path.isAbsolute(relToPkg)
-        ) {
-          continue;
-        }
-        await fsp.access(entry);
-        return { command: process.execPath, args: scriptSpawnArgs(entry, []), kind: runner };
-      } catch {
-        // Try the next locally installed runner. Never download one during verification.
-      }
-    }
-    return null;
   }
 }

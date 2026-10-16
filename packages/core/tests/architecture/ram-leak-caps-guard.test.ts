@@ -323,8 +323,8 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
     expect(value, file).toBe('30_000');
   });
 
-  it('tools/process-registry-persistent: LOCK_STALE_MS = 30_000', () => {
-    const { value, file } = readConst('tools', 'process-registry-persistent.ts:LOCK_STALE_MS');
+  it('tools/process-registry-lock: LOCK_STALE_MS = 30_000', () => {
+    const { value, file } = readConst('tools', 'process-registry-lock.ts:LOCK_STALE_MS');
     expect(value, file).toBe('30_000');
   });
 

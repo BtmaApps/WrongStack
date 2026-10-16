@@ -29,6 +29,7 @@ import {
   type SessionResumeContext,
   type SessionResumeResult,
 } from './tui-session-resume-contracts.js';
+import { rollbackFailedResume } from './tui-session-resume-rollback.js';
 
 export type { SessionResumeFailure } from './tui-session-resume-contracts.js';
 
@@ -583,79 +584,22 @@ export async function resumeSession(
     if (finalizeOldWriter) void finalizeOldWriter();
     return result;
   } catch (err) {
-    if (!identityClaimed) await resumeClaim?.cancel().catch(() => undefined);
-    if (identityClaimed && previousSessionId) {
-      // Roll identity back regardless of writerSwapped. If we crashed
-      // pre-swap, the resume never took effect so the identity must
-      // point at the original session. If we crashed post-swap, the
-      // failed-resume UI must not leave the user signed into the
-      // resumed session's identity.
-      await state.activateSessionIdentity?.(previousSessionId).catch((rollbackErr) => {
-        console.error(
-          JSON.stringify({
-            level: 'error',
-            event: 'execution.resume_identity_rollback_failed',
-            sessionId: previousSessionId,
-            message: toErrorMessage(rollbackErr),
-            timestamp: new Date().toISOString(),
-          }),
-        );
-      });
-    }
-    if (!writerSwapped) {
-      await openedWriter?.close().catch(() => undefined);
-    } else {
-      // Post-swap failure: restore the agent's writer + messages + sidecars
-      // so the failed-resume UI doesn't silently leave the next user
-      // prompt writing to the resumed JSONL, and so the original
-      // session's todos persistence remains wired up. Best-effort: a
-      // throw here would mask the original error, so swallow + log.
-      //
-      // Restores:
-      //   - `agent.ctx.session` from `oldWriter`
-      //   - `state.sessionRef.current` from `oldSessionRefCurrent`
-      //   - `agent.ctx.messages` from the defensive `oldMessages` copy
-      //   - `state.detachActiveTodosCheckpoint` from `previousDetachFn`
-      //     (the prior session's todos write handle)
-      //   - `agent.ctx.state.todos` from `oldTodos`
-      //   - `agent.ctx.state.meta['plan.path']` / `['task.path']` from
-      //     `oldPlanPath` / `oldTaskPath` (skip when `undefined` —
-      //     missing meta on a legacy session is not a restore target).
-      try {
-        if (oldWriter !== undefined) agent.ctx.session = oldWriter;
-        if (state.sessionRef) state.sessionRef.current = oldSessionRefCurrent;
-        if (oldMessages !== undefined) agent.ctx.state.replaceMessages(oldMessages);
-        if (previousDetachFn !== undefined) state.detachActiveTodosCheckpoint = previousDetachFn;
-        // Always restore the original todos — even when empty. A later
-        // throw (e.g. token accounting) lands AFTER `replaceTodos(restoredTodos)`
-        // already ran, so the resumed session's board is visible; restoring
-        // `[]` is the correct pre-resume truth, not a no-op to skip.
-        agent.ctx.state.replaceTodos([...oldTodos]);
-        if (oldPlanPath !== undefined) agent.ctx.state.setMeta('plan.path', oldPlanPath);
-        if (oldTaskPath !== undefined) agent.ctx.state.setMeta('task.path', oldTaskPath);
-      } catch (rollbackErr) {
-        console.error(
-          JSON.stringify({
-            level: 'error',
-            event: 'execution.resume_post_swap_rollback_failed',
-            message: toErrorMessage(rollbackErr),
-            timestamp: new Date().toISOString(),
-          }),
-        );
-      }
-      if (openedWriter && openedWriter !== oldWriter) {
-        await openedWriter.close().catch((closeErr) => {
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              event: 'execution.resume_opened_writer_close_failed',
-              message: toErrorMessage(closeErr),
-              timestamp: new Date().toISOString(),
-            }),
-          );
-        });
-      }
-    }
+    await rollbackFailedResume({
+      agent,
+      state,
+      previousSessionId,
+      identityClaimed,
+      resumeClaim,
+      writerSwapped,
+      openedWriter,
+      oldWriter,
+      oldMessages,
+      oldSessionRefCurrent,
+      previousDetachFn,
+      oldTodos,
+      oldPlanPath,
+      oldTaskPath,
+    });
     const reason = err instanceof Error ? (err.stack ?? err.message) : String(err);
     console.error(
       JSON.stringify({

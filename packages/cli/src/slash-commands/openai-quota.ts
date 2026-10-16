@@ -40,6 +40,7 @@ import {
   readProviderAccountQuota,
   refreshProviderAccountQuota,
 } from '@wrongstack/providers';
+import { reportWrongForgeQuota } from '../fleet/wrongforge-quota.js';
 
 /** The provider this command reports on. */
 const PROVIDER_ID = 'openai-codex';
@@ -300,10 +301,16 @@ export function buildProviderQuotaCommand(deps: QuotaCommandDeps = {}): SlashCom
       'any turn. An OmniRoute provider with a `managementToken` shows every',
       "account in the gateway's pool; any other provider can describe its own",
       'account endpoint in `quotaEndpoint`.',
+      'The local WrongForge subscription is read through its /v1/usage endpoint,',
+      'even without a saved provider entry; explicit refresh bypasses its cache.',
       'For one provider only, /openai-quota shows just ChatGPT/Codex.',
     ].join('\n'),
     async run(_args, ctx): Promise<{ message: string }> {
-      await Promise.all([readAccountQuotas(ctx?.provider, deps), readKeyedAccountQuotas(deps)]);
+      await Promise.all([
+        readAccountQuotas(ctx?.provider, deps),
+        readKeyedAccountQuotas(deps),
+        reportWrongForgeQuota({ force: true }),
+      ]);
       // Sorted so the output does not reshuffle between runs as providers
       // report in a different order than they did last time.
       const snapshots = [...getAllProviderQuota()].sort(

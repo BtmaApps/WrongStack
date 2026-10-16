@@ -13,6 +13,21 @@ import {
   buildNamespacePayloads,
   CLOUD_SYNC_NAMESPACES,
 } from './cloud-config-sync/sanitize.js';
+import {
+  createCommit,
+  createGitTree,
+  createRef,
+  type GitHubFetch,
+  type GitTreeEntry,
+  getBlob,
+  getCommit,
+  getOptionalRef,
+  getRef,
+  getTreeEntries,
+  type LocalTreeEntry,
+  type RemoteTreeEntry,
+  updateRef,
+} from './cloud-sync-github.js';
 export const ALL_SYNC_CATEGORIES: SyncCategory[] = [
   'settings',
   'skills',
@@ -65,10 +80,6 @@ export interface SyncResult {
   committedAt?: string | undefined;
   message: string;
 }
-
-type LocalTreeEntry = { path: string; content: string; mode: string };
-type GitTreeEntry = LocalTreeEntry | { path: string; sha: null; mode: string };
-type RemoteTreeEntry = { path: string; sha: string; type: 'blob' | 'tree' };
 
 interface SyncStateFile {
   version: 1;
@@ -144,7 +155,7 @@ export class CloudSync {
     const owner = expectDefined(parts[0]);
     const repoName = expectDefined(parts[1]);
     const branch = 'main';
-    const remoteHead = await this.getOptionalRef(token, owner, repoName, branch);
+    const remoteHead = await getOptionalRef(this.github(token, owner, repoName), branch);
     let parentCommitSha = remoteHead?.object?.sha;
     let baseTreeSha: string | undefined;
     let remoteEntries: RemoteTreeEntry[] = [];
@@ -158,12 +169,14 @@ export class CloudSync {
 
     const { treeEntries: localEntries, rev } = await this.buildLocalTree(cfg.categories);
     let treeEntries = this.buildPushTree(localEntries, remoteEntries, cfg.categories);
-    let newTreeSha = await this.createGitTree(token, owner, repoName, treeEntries, baseTreeSha);
+    let newTreeSha = await createGitTree(
+      this.github(token, owner, repoName),
+      treeEntries,
+      baseTreeSha,
+    );
 
-    let commitSha = await this.createCommit(
-      token,
-      owner,
-      repoName,
+    let commitSha = await createCommit(
+      this.github(token, owner, repoName),
       newTreeSha,
       parentCommitSha,
       `Sync ${cfg.categories.join(', ')} — ${new Date().toISOString()}`,
@@ -171,9 +184,9 @@ export class CloudSync {
 
     try {
       if (parentCommitSha) {
-        await this.updateRef(token, owner, repoName, branch, commitSha);
+        await updateRef(this.github(token, owner, repoName), branch, commitSha);
       } else {
-        await this.createRef(token, owner, repoName, branch, commitSha);
+        await createRef(this.github(token, owner, repoName), branch, commitSha);
       }
     } catch (err) {
       // 422 = not a fast forward — remote branch moved. Fetch latest SHA and retry.
@@ -185,16 +198,18 @@ export class CloudSync {
         // preserved and deletions are recalculated after the conflict.
         remoteEntries = await this.getTreeEntries(token, owner, repoName, baseTreeSha);
         treeEntries = this.buildPushTree(localEntries, remoteEntries, cfg.categories);
-        newTreeSha = await this.createGitTree(token, owner, repoName, treeEntries, baseTreeSha);
-        commitSha = await this.createCommit(
-          token,
-          owner,
-          repoName,
+        newTreeSha = await createGitTree(
+          this.github(token, owner, repoName),
+          treeEntries,
+          baseTreeSha,
+        );
+        commitSha = await createCommit(
+          this.github(token, owner, repoName),
           newTreeSha,
           parentCommitSha,
           `Sync ${cfg.categories.join(', ')} — ${new Date().toISOString()}`,
         );
-        await this.updateRef(token, owner, repoName, branch, commitSha);
+        await updateRef(this.github(token, owner, repoName), branch, commitSha);
       } else {
         throw err;
       }
@@ -356,123 +371,30 @@ export class CloudSync {
     return text ? JSON.parse(text) : {};
   }
 
-  private async getRef(token: string, owner: string, repo: string, ref: string) {
-    return (await this.githubFetch(token, owner, repo, 'GET', `/git/refs/heads/${ref}`)) as {
-      object: { sha: string };
-    };
-  }
-
-  private async getOptionalRef(token: string, owner: string, repo: string, ref: string) {
-    try {
-      return await this.getRef(token, owner, repo, ref);
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('failed (404)')) return null;
-      if (err instanceof Error && err.message.includes('failed (409)')) {
-        throw new WrongStackError({
-          message:
-            'GitHub repository is empty. Initialize it with a README or first commit, then retry `/sync push`.',
-          code: ERROR_CODES.UNKNOWN,
-          subsystem: 'general',
-          context: { repo: `${owner}/${repo}`, ref },
-          cause: err,
-        });
-      }
-      throw err;
-    }
-  }
-
-  private async createRef(token: string, owner: string, repo: string, ref: string, sha: string) {
-    await this.githubFetch(token, owner, repo, 'POST', '/git/refs', {
-      ref: `refs/heads/${ref}`,
-      sha,
-    });
-  }
-
-  private async updateRef(token: string, owner: string, repo: string, ref: string, sha: string) {
-    await this.githubFetch(token, owner, repo, 'PATCH', `/git/refs/heads/${ref}`, {
-      sha,
-      force: false,
-    });
-  }
-
-  private async getCommit(token: string, owner: string, repo: string, sha: string) {
-    return (await this.githubFetch(token, owner, repo, 'GET', `/git/commits/${sha}`)) as {
-      tree: { sha: string };
-      message: string;
-    };
-  }
-
-  private async getTreeEntries(
-    token: string,
-    owner: string,
-    repo: string,
-    treeSha: string,
-  ): Promise<RemoteTreeEntry[]> {
-    // GitHub returns `{ sha, tree: [...], truncated }`, NOT a bare array — the
-    // previous cast made `for (const entry of ...)` throw "not iterable", so
-    // pull never actually ran. Unwrap `.tree`, and refuse a truncated result
-    // rather than silently syncing a partial file set.
-    const res = (await this.githubFetch(
-      token,
-      owner,
-      repo,
-      'GET',
-      `/git/trees/${treeSha}?recursive=1`,
-    )) as {
-      tree?: Array<{ path: string; sha: string; type: 'blob' | 'tree' }>;
-      truncated?: boolean;
-    };
-    if (res.truncated) {
-      throw new WrongStackError({
-        message: 'Sync tree is too large — GitHub truncated the result; refusing a partial pull.',
-        code: ERROR_CODES.UNKNOWN,
-        subsystem: 'general',
-      });
-    }
-    return res.tree ?? [];
-  }
-
-  private async createCommit(
-    token: string,
-    owner: string,
-    repo: string,
-    treeSha: string,
-    parentSha?: string | undefined,
-    message = 'sync',
-  ) {
-    const body: Record<string, unknown> = { message, tree: treeSha };
-    if (parentSha) body.parents = [parentSha];
-    const result = (await this.githubFetch(token, owner, repo, 'POST', '/git/commits', body)) as {
-      sha: string;
-    };
-    return result.sha;
-  }
-
-  private async createGitTree(
-    token: string,
-    owner: string,
-    repo: string,
-    entries: GitTreeEntry[],
-    baseTreeSha?: string | undefined,
-  ): Promise<string> {
-    const tree = entries.map((entry) =>
-      'sha' in entry
-        ? { path: entry.path, mode: entry.mode, type: 'blob', sha: entry.sha }
-        : { path: entry.path, mode: entry.mode, type: 'blob', content: entry.content },
+  /** The repo-scoped GitHub call the git helpers take; dispatches through `githubFetch`. */
+  private github(token: string, owner: string, repo: string): GitHubFetch {
+    return Object.assign(
+      (method: Parameters<GitHubFetch>[0], pathSegment: string, body?: unknown) =>
+        this.githubFetch(token, owner, repo, method, pathSegment, body),
+      { repo: `${owner}/${repo}` },
     );
-    const body: Record<string, unknown> = { tree };
-    if (baseTreeSha) body.base_tree = baseTreeSha;
-    const result = (await this.githubFetch(token, owner, repo, 'POST', '/git/trees', body)) as {
-      sha: string;
-    };
-    return result.sha;
   }
 
-  private async getBlob(token: string, owner: string, repo: string, sha: string): Promise<string> {
-    const result = (await this.githubFetch(token, owner, repo, 'GET', `/git/blobs/${sha}`)) as {
-      content: string;
-    };
-    return result.content;
+  // Test seams: the pull path-safety tests stub these per instance.
+  private getRef(token: string, owner: string, repo: string, ref: string) {
+    return getRef(this.github(token, owner, repo), ref);
+  }
+
+  private getCommit(token: string, owner: string, repo: string, sha: string) {
+    return getCommit(this.github(token, owner, repo), sha);
+  }
+
+  private getTreeEntries(token: string, owner: string, repo: string, treeSha: string) {
+    return getTreeEntries(this.github(token, owner, repo), treeSha);
+  }
+
+  private getBlob(token: string, owner: string, repo: string, sha: string) {
+    return getBlob(this.github(token, owner, repo), sha);
   }
 
   // ── Local file helpers ──────────────────────────────────────────────

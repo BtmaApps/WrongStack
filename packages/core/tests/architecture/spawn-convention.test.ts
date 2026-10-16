@@ -101,6 +101,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'cli/src/slash-commands/dev.ts': REASON_SELF_RELAUNCH,
   'cli/src/slash-commands/mailbox-serve.ts': REASON_SELF_RELAUNCH,
   'cli/src/slash-commands/project.ts': REASON_SELF_RELAUNCH,
+  'cli/src/slash-commands/project-switch-interactive.ts': REASON_SELF_RELAUNCH,
   'webui-server/src/server/discover-mailbox-bridge.ts': REASON_SELF_RELAUNCH,
   // ── Operator-facing helpers ──
   'cli/src/auth-menu/loopback-server.ts': REASON_OPERATOR_TOOL,
@@ -136,7 +137,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'plugins/src/diff-summary/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/format-on-save/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/git-autocommit/git-operations.ts': REASON_PLUGIN_RUNNER,
-  'plugins/src/import-organizer/index.ts': REASON_PLUGIN_RUNNER,
+  'plugins/src/import-organizer/commands.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/lint-gate/linter-runner.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/loop-breaker/loop-breaker-fingerprint.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/pr-drafter/index.ts': REASON_PLUGIN_RUNNER,

@@ -12,7 +12,6 @@
  *
  * @module session-registry
  */
-
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { isPidAlive } from '../utils/pid.js';
@@ -21,14 +20,18 @@ import {
   lockOwnerStamp,
   maybeUnlinkOwnedLock,
   pruneStaleTempFiles,
+  readRegistryText,
+  retryTransientWrite,
   STALE_TMP_MS,
   writeAtomicFile,
 } from './session-registry-atomic-file.js';
-import type {
-  AgentEntry,
-  SessionLiveStatus,
-  SessionRegistryEntry,
-} from './session-registry-types.js';
+import {
+  deriveSessionStatus,
+  emptyRegistry,
+  parseRegistry,
+  sameOwner,
+} from './session-registry-records.js';
+import type { AgentEntry, SessionRegistryEntry } from './session-registry-types.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -92,50 +95,6 @@ const TEMP_PRUNE_INTERVAL_MS = STALE_TMP_MS;
  * but non-signalable process (EPERM) as dead and pruned its session.
  */
 const pidAlive = isPidAlive;
-
-function sameOwner(
-  entry: Pick<SessionRegistryEntry, 'pid' | 'startedAt'>,
-  owner: Pick<SessionRegistryEntry, 'pid' | 'startedAt'>,
-): boolean {
-  return entry.pid === owner.pid && entry.startedAt === owner.startedAt;
-}
-
-/**
- * Parse registry file contents, tolerating corruption. A system crash can
- * leave the file zero-filled (NTFS journals the rename metadata but the data
- * blocks were never flushed — the file is its full size of NUL bytes), or a
- * torn write can leave invalid JSON. Treat anything unparsable — or parsable
- * but not a plain object — as an empty registry so the next write heals the
- * file instead of wedging every future write forever.
- */
-function emptyRegistry(): Record<string, SessionRegistryEntry> {
-  return Object.create(null) as Record<string, SessionRegistryEntry>;
-}
-
-function parseRegistry(raw: string): Record<string, SessionRegistryEntry> {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      // Session IDs are object keys. A null-prototype map keeps identifiers
-      // such as `__proto__` as ordinary own properties and avoids inherited
-      // names being mistaken for registered sessions.
-      const registry = emptyRegistry();
-      for (const [id, entry] of Object.entries(parsed)) registry[id] = entry;
-      return registry;
-    }
-  } catch {
-    /* corrupt file — fall through to empty */
-  }
-  return emptyRegistry();
-}
-
-/** Derive the session-level status from the agent collective. */
-function deriveSessionStatus(agents: AgentEntry[]): SessionLiveStatus {
-  const hasRunning = agents.some((a) => a.status === 'running' || a.status === 'streaming');
-  const hasWaiting = agents.some((a) => a.status === 'waiting_user');
-  const hasError = agents.some((a) => a.status === 'error');
-  return hasRunning || hasWaiting || hasError ? 'active' : 'idle';
-}
 
 // ── Registry class ────────────────────────────────────────────────────────
 
@@ -664,68 +623,18 @@ export class SessionRegistry {
     // All retries exhausted — non-ownership telemetry update dropped.
   }
 
-  /**
-   * Registry text for a locked update. Only a MISSING file starts from `{}`:
-   * an empty stand-in for a file that is merely unreadable right now (an
-   * antivirus EBUSY) would be written back and erase every other live
-   * session's ownership claim. Transient codes are retried briefly, anything
-   * else fails the update.
-   */
-  private async readRawWithRetry(): Promise<string> {
-    const transientCodes = new Set(['EPERM', 'EBUSY', 'EACCES', 'EMFILE', 'ENFILE']);
-    const maxAttempts = 5;
-    for (let attempt = 1; ; attempt += 1) {
-      try {
-        return await fs.readFile(this.filePath, 'utf8');
-      } catch (err) {
-        const code = String((err as NodeJS.ErrnoException | undefined)?.code ?? '');
-        if (code === 'ENOENT') return '{}';
-        if (!transientCodes.has(code) || attempt === maxAttempts) throw err;
-        await new Promise((resolve) => setTimeout(resolve, Math.min(80, 5 * attempt)));
-      }
-    }
+  /** The registry file's text for a locked update — see `readRegistryText`. */
+  private readRawWithRetry(): Promise<string> {
+    return readRegistryText(this.filePath);
   }
 
   private async writeAtomicLocked(registry: Record<string, SessionRegistryEntry>): Promise<void> {
     await this.writeAtomicFile(registry);
   }
 
-  /**
-   * Windows-safe wrapper around {@link writeAtomicLocked}. Retries on the small
-   * set of transient OS errors that occur when an antivirus scan, an indexing
-   * service, or a peer process opens the destination file for read at the
-   * same instant rename/copy tries to land. Retries are short and bounded so
-   * the heartbeat never wedges; the per-call cap is well below the 5 s
-   * heartbeat interval.
-   *
-   * Errors that look persistent (ENOENT, JSON.parse-style, anything other than
-   * the well-known transient codes) are rethrown immediately so the original
-   * failure isn't masked.
-   */
-  private async writeAtomicWithRetry(
-    registry: Record<string, SessionRegistryEntry>,
-  ): Promise<void> {
-    const transientCodes = new Set(['EPERM', 'EBUSY', 'EACCES', 'ETXTBSY', 'ENOTEMPTY']);
-    const maxAttempts = 5;
-    let lastErr: unknown;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        await this.writeAtomicLocked(registry);
-        return;
-      } catch (err) {
-        lastErr = err;
-        const code = (err as NodeJS.ErrnoException | undefined)?.code;
-        if (!transientCodes.has(String(code ?? '')) || attempt === maxAttempts) {
-          throw err;
-        }
-        // Tiny backoff with a 5 ms floor and 80 ms ceiling; combined with
-        // maxAttempts=5 the worst-case wait is ~250 ms — acceptable for a
-        // 5 s heartbeat and well under the cross-process lock budget.
-        const delayMs = Math.min(80, 5 * attempt);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  /** {@link writeAtomicLocked} with bounded transient-error retries — see `retryTransientWrite`. */
+  private writeAtomicWithRetry(registry: Record<string, SessionRegistryEntry>): Promise<void> {
+    return retryTransientWrite(() => this.writeAtomicLocked(registry));
   }
 
   private async maybePruneStaleTempFiles(): Promise<void> {

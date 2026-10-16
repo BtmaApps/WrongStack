@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ACPProgressEvent } from '@wrongstack/acp';
+import { getAllProviderQuota, resetProviderQuota } from '@wrongstack/core/quota';
 import type { SubagentRunContext, TaskSpec } from '@wrongstack/core/types';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { buildAcpSubagentRunner } from '../../src/fleet/host-acp.js';
@@ -40,6 +41,7 @@ interface FakeTask {
 
 /** A minimal WrongForge task API: scripted events, then a final record. */
 function fakeWrongForge(script: {
+  usage?: unknown;
   events?: Array<{ type: string; data: Record<string, unknown> }>;
   final?: Partial<FakeTask>;
   submitStatus?: number;
@@ -92,6 +94,7 @@ function fakeWrongForge(script: {
           ...(script.models ? { models: script.models, default_model: script.models[0] } : {}),
         });
       }
+      if (url.pathname === '/v1/usage' && script.usage) return send(200, script.usage);
       const m = /^\/v1\/tasks\/([^/]+)(\/events|\/cancel)?$/.exec(url.pathname);
       if (!m || !task) return send(404, { error: { code: 'not_found', message: 'no' } });
       if (m[2] === '/cancel') {
@@ -175,9 +178,61 @@ const task: TaskSpec = { id: 'task-1', description: 'fix the failing test' };
 const servers: Array<{ close: () => Promise<void> }> = [];
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((s) => s.close()));
+  resetProviderQuota();
 });
 
 describe('WrongForge runner', () => {
+  it('publishes account quota in the background while running a worker', async () => {
+    const wf = await fakeWrongForge({
+      usage: { five_hour: { percent: 18 }, weekly: { percent: 0 } },
+      final: { result: { text: 'done', steps: 1, tool_calls: 0 } },
+    });
+    servers.push(wf);
+    const runner = makeWrongForgeRunner({
+      projectRoot: '/proj',
+      endpoint: () => ({ url: wf.url, apiKey: KEY }),
+    });
+    await expect(runner(task, ctx().c)).resolves.toMatchObject({ result: 'done' });
+    await vi.waitFor(() =>
+      expect(getAllProviderQuota()).toMatchObject([
+        { providerId: 'wrongforge', windows: [{ usedPercent: 18 }, { usedPercent: 0 }] },
+      ]),
+    );
+  });
+  it('uses worker workdir and timeout overrides within Task API limits', async () => {
+    const wf = await fakeWrongForge({
+      final: { result: { text: 'done', steps: 1, tool_calls: 0 } },
+    });
+    servers.push(wf);
+    const runner = makeWrongForgeRunner({
+      projectRoot: '/proj',
+      endpoint: () => ({ url: wf.url, apiKey: KEY }),
+    });
+    const { c } = ctx();
+    c.config.cwd = '/proj/worker';
+    c.config.timeoutMs = 60_000;
+    await runner(task, c);
+    expect(wf.submitted[0]).toMatchObject({ workdir: '/proj/worker', timeout_ms: 60_000 });
+    await runner({ ...task, timeoutMs: 100 }, c);
+    expect(wf.submitted[1]).toMatchObject({ timeout_ms: 1000 });
+    await runner({ ...task, timeoutMs: 20_000_000 }, c);
+    expect(wf.submitted[2]).toMatchObject({ timeout_ms: 14_400_000 });
+  });
+  it('forwards worker runtime controls and the task step budget', async () => {
+    const wf = await fakeWrongForge({
+      final: { result: { text: 'done', steps: 1, tool_calls: 0 } },
+    });
+    servers.push(wf);
+    const runner = makeWrongForgeRunner({
+      projectRoot: '/proj',
+      endpoint: () => ({ url: wf.url, apiKey: KEY }),
+    });
+    const { c } = ctx();
+    c.config.modelRuntime = { reasoning: { effort: 'low' }, cache: { ttl: '5m' } };
+    c.config.maxIterations = 80;
+    await runner(task, c);
+    expect(wf.submitted[0]).toMatchObject({ effort: 'low', cache: '5m', max_steps: 80 });
+  });
   it('submits with the project workdir and returns the final text, live progress and usage', async () => {
     const wf = await fakeWrongForge({
       events: [
@@ -226,8 +281,8 @@ describe('WrongForge runner', () => {
 
     const out = await runner(task, c);
 
-    // Steps stay apart; WrongForge's own result.text would read 'Two bugs.Fixed.'.
-    expect(out).toEqual({ result: 'Two bugs.\n\nFixed.', iterations: 3, toolCalls: 1 });
+    // Only the terminal answer is the delegated result; intermediate text stays live.
+    expect(out).toEqual({ result: 'Fixed.', iterations: 3, toolCalls: 1 });
     const sent = wf.submitted[0] ?? {};
     expect(sent['workdir']).toBe('/proj');
     expect(sent['prompt']).toBe('fix the failing test');
@@ -439,6 +494,12 @@ describe('WrongForge model choice', () => {
 });
 
 describe('resolveWrongForgeEndpoint', () => {
+  it('accepts the server AGENT_API_KEY while preferring an explicit client key', () => {
+    expect(resolveWrongForgeEndpoint({ AGENT_API_KEY: KEY })?.apiKey).toBe(KEY);
+    expect(
+      resolveWrongForgeEndpoint({ AGENT_API_KEY: KEY, WRONGFORGE_API_KEY: 'x'.repeat(20) })?.apiKey,
+    ).toBe('x'.repeat(20));
+  });
   it('reads the key WrongForge saved, honouring WRONGFORGE_HOME and a BOM', () => {
     const home = mkdtempSync(path.join(tmpdir(), 'wf-home-'));
     try {

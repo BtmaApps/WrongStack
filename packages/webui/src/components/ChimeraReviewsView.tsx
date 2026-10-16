@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   AlertTriangle,
   Check,
   CheckCircle2,
@@ -9,9 +8,7 @@ import {
   History,
   Loader2,
   Plus,
-  RefreshCw,
   RotateCw,
-  Search,
   Send,
   ShieldAlert,
   XCircle,
@@ -22,60 +19,9 @@ import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
 import { useChimeraHubStore } from '@/stores/chimera-hub-store';
+import { ChimeraReviewsHeader } from './ChimeraReviewsHeader';
+import { fmtRelative, fmtTime, LIFECYCLE_BADGE, SEVERITY_COLORS } from './chimera-review-format.js';
 import { EmptyState } from './ui/empty-state';
-
-function fmtTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-function fmtRelative(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const diff = Date.now() - d.getTime();
-    if (diff < 60_000) return 'Just now';
-    if (diff < 3600_000) return `${Math.round(diff / 60_000)}m ago`;
-    if (diff < 86400_000) return `${Math.round(diff / 3600_000)}h ago`;
-    if (diff < 604800_000) return `${Math.round(diff / 86400_000)}d ago`;
-    return d.toLocaleDateString();
-  } catch {
-    return iso;
-  }
-}
-
-const LIFECYCLE_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle2 }> = {
-  open: {
-    label: 'Open',
-    cls: 'border-primary/30 bg-primary/10 text-foreground',
-    icon: AlertCircle,
-  },
-  actioned: {
-    label: 'Actioned',
-    cls: 'border-warning/30 bg-warning/10 text-warning',
-    icon: RotateCw,
-  },
-  completed: {
-    label: 'Completed',
-    cls: 'border-success/30 bg-success/10 text-success',
-    icon: CheckCircle2,
-  },
-  skipped: { label: 'Skipped', cls: 'border-border bg-muted text-muted-foreground', icon: XCircle },
-};
-
-const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  critical: {
-    bg: 'bg-destructive/10 border-destructive/30',
-    text: 'text-destructive',
-    dot: 'bg-destructive',
-  },
-  high: { bg: 'bg-warning/15 border-warning/40', text: 'text-warning', dot: 'bg-warning' },
-  medium: { bg: 'bg-warning/10 border-warning/30', text: 'text-warning', dot: 'bg-warning' },
-  low: { bg: 'bg-muted border-border', text: 'text-muted-foreground', dot: 'bg-muted-foreground' },
-};
 
 export function ChimeraReviewsView() {
   const { t } = useAppTranslation();
@@ -162,78 +108,17 @@ export function ChimeraReviewsView() {
   return (
     <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden bg-background text-foreground [overflow-wrap:anywhere]">
       {/* Top Header / Filter Bar */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2">
-          <span className="text-xl" aria-hidden>
-            🦂
-          </span>
-          <div>
-            <h1 className="text-base font-semibold leading-none">Chimera Review Hub & Journal</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Track agent code reviews, findings, session lineage, and audit event timeline
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Session filter */}
-          <select
-            value={filterSessionId}
-            onChange={(e) => setFilterSessionId(e.target.value)}
-            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            aria-label={t('activity:chimeraReport.filterBySession', {
-              defaultValue: 'Filter by session',
-            })}
-          >
-            <option value="">All Sessions ({sessionList.length})</option>
-            {sessionList.map((sid) => (
-              <option key={sid} value={sid}>
-                Session: {sid.length > 16 ? `${sid.slice(0, 16)}…` : sid}
-              </option>
-            ))}
-          </select>
-
-          {/* Lifecycle filter */}
-          <select
-            value={filterLifecycle}
-            onChange={(e) => setFilterLifecycle(e.target.value)}
-            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            aria-label={t('activity:chimeraReport.filterByStatus', {
-              defaultValue: 'Filter by status',
-            })}
-          >
-            <option value="">All Statuses</option>
-            <option value="open">Open</option>
-            <option value="actioned">Actioned</option>
-            <option value="completed">Completed</option>
-            <option value="skipped">Skipped</option>
-          </select>
-
-          {/* Search box */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search reports..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-lg border border-border bg-background pl-8 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-40 sm:w-52"
-            />
-          </div>
-
-          {/* Refresh button */}
-          <button
-            type="button"
-            onClick={() => fetchReports()}
-            disabled={loading}
-            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
-            title="Refresh reports"
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-        </div>
-      </div>
+      <ChimeraReviewsHeader
+        sessionList={sessionList}
+        filterSessionId={filterSessionId}
+        setFilterSessionId={setFilterSessionId}
+        filterLifecycle={filterLifecycle}
+        setFilterLifecycle={setFilterLifecycle}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        loading={loading}
+        fetchReports={fetchReports}
+      />
 
       {/* Main 3-column / Split View */}
       <div className="flex flex-1 min-h-0 min-w-0 flex-col sm:flex-row">

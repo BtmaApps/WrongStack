@@ -10,6 +10,12 @@ import { recordProviderQuota, resetProviderQuota } from '@wrongstack/core/quota'
 import type { Provider, SlashCommand } from '@wrongstack/core/types';
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { reportWrongForgeQuota } from '../src/fleet/wrongforge-quota.js';
+
+vi.mock('../src/fleet/wrongforge-quota.js', () => ({
+  reportWrongForgeQuota: vi.fn(async () => false),
+}));
+
 import {
   buildOpenAIQuotaCommand,
   buildProviderQuotaCommand,
@@ -26,6 +32,25 @@ async function render(): Promise<string> {
   const result = await buildOpenAIQuotaCommand().run('');
   return (result as { message: string }).message;
 }
+
+it('/provider-quota refreshes and renders WrongForge even without a saved provider entry', async () => {
+  vi.mocked(reportWrongForgeQuota).mockImplementationOnce(async () => {
+    recordProviderQuota('wrongforge', [
+      {
+        providerId: 'wrongforge',
+        meterId: 'default',
+        meterLabel: 'WrongForge',
+        windows: [{ id: 'primary', usedPercent: 18, windowMinutes: 300 }],
+        capturedAt: Date.now(),
+      },
+    ]);
+    return true;
+  });
+  const result = await buildProviderQuotaCommand().run('');
+  expect(result?.message).toContain('wrongforge');
+  expect(result?.message).toContain('18%');
+  expect(reportWrongForgeQuota).toHaveBeenCalledWith({ force: true });
+});
 
 describe('/openai-quota', () => {
   it('reads direct ChatGPT app quota through a saved companion and renders real percentages', async () => {

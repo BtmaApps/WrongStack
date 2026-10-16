@@ -17,8 +17,8 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { hostname } from 'node:os';
 import * as path from 'node:path';
-import type { SessionRegistryEntry } from './session-registry-types.js';
 import { isPidAlive } from '../utils/pid.js';
+import type { SessionRegistryEntry } from './session-registry-types.js';
 
 // A held lock is released within milliseconds; anything older is a crashed
 // owner's leftover and is safe to break so writes never wedge permanently.
@@ -274,4 +274,62 @@ export async function pruneStaleTempFiles(filePath: string): Promise<void> {
   } catch {
     // best-effort cleanup must not block registry heartbeats
   }
+}
+
+/**
+ * Registry text for a locked update. Only a MISSING file starts from `{}`:
+ * an empty stand-in for a file that is merely unreadable right now (an
+ * antivirus EBUSY) would be written back and erase every other live
+ * session's ownership claim. Transient codes are retried briefly, anything
+ * else fails the update.
+ */
+export async function readRegistryText(filePath: string): Promise<string> {
+  const transientCodes = new Set(['EPERM', 'EBUSY', 'EACCES', 'EMFILE', 'ENFILE']);
+  const maxAttempts = 5;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await fs.readFile(filePath, 'utf8');
+    } catch (err) {
+      const code = String((err as NodeJS.ErrnoException | undefined)?.code ?? '');
+      if (code === 'ENOENT') return '{}';
+      if (!transientCodes.has(code) || attempt === maxAttempts) throw err;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(80, 5 * attempt)));
+    }
+  }
+}
+
+/**
+ * Run `write` (the registry's atomic write), retrying on the small
+ * set of transient OS errors that occur when an antivirus scan, an indexing
+ * service, or a peer process opens the destination file for read at the
+ * same instant rename/copy tries to land. Retries are short and bounded so
+ * the heartbeat never wedges; the per-call cap is well below the 5 s
+ * heartbeat interval.
+ *
+ * Errors that look persistent (ENOENT, JSON.parse-style, anything other than
+ * the well-known transient codes) are rethrown immediately so the original
+ * failure isn't masked.
+ */
+export async function retryTransientWrite(write: () => Promise<void>): Promise<void> {
+  const transientCodes = new Set(['EPERM', 'EBUSY', 'EACCES', 'ETXTBSY', 'ENOTEMPTY']);
+  const maxAttempts = 5;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await write();
+      return;
+    } catch (err) {
+      lastErr = err;
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      if (!transientCodes.has(String(code ?? '')) || attempt === maxAttempts) {
+        throw err;
+      }
+      // Tiny backoff with a 5 ms floor and 80 ms ceiling; combined with
+      // maxAttempts=5 the worst-case wait is ~250 ms — acceptable for a
+      // 5 s heartbeat and well under the cross-process lock budget.
+      const delayMs = Math.min(80, 5 * attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }

@@ -209,9 +209,16 @@ export async function addCustomProvider(deps: AuthMenuDeps): Promise<boolean> {
     // clash with (or overwrite) another entry.
     type = nextCustomProviderId(Object.keys(providersNow));
     deps.renderer.write(`  ${color.dim('Using generated id:')} ${color.bold(type)}\n`);
-  } else if (providersNow[type]) {
-    deps.renderer.writeWarning(`"${type}" already exists. Pick it from the main menu to edit.`);
-    return false;
+  } else {
+    const idError = authProfileAliasError(type);
+    if (idError) {
+      deps.renderer.writeError(idError);
+      return false;
+    }
+    if (providersNow[type]) {
+      deps.renderer.writeWarning(`"${type}" already exists. Pick it from the main menu to edit.`);
+      return false;
+    }
   }
 
   const familyRaw = (

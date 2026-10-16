@@ -142,6 +142,29 @@ afterEach(async () => {
 });
 
 describe('WrongForge as the leader', () => {
+  it('forwards reasoning and cache controls for one-shot and leader requests', async () => {
+    const wf = await fakeWrongForge({
+      events: [],
+      result: { text: 'done', steps: 1, tool_calls: 0 },
+    });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+    const request: Request = {
+      ...req('hello'),
+      reasoning: { effort: 'low' },
+      cache: { ...req('hello').cache, ttl: '1h' },
+    };
+    await provider.complete(request, { signal: new AbortController().signal });
+    for await (const _event of provider.stream(request, { signal: new AbortController().signal })) {
+      /* drain */
+    }
+    expect(wf.submitted).toHaveLength(2);
+    for (const sent of wf.submitted) expect(sent).toMatchObject({ effort: 'low', cache: '1h' });
+  });
   it('turns a leader turn into a WrongForge task in the session, streaming its text', async () => {
     const wf = await fakeWrongForge({
       events: [

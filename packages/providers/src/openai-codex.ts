@@ -19,7 +19,7 @@
  * below both, so the CLI login flow, the headless WebUI flow, and this refresh
  * path share one definition instead of three that had to be kept in step by hand.
  */
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { recordProviderQuota } from '@wrongstack/core/quota';
 import {
   type Capabilities,
@@ -49,8 +49,16 @@ import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { extractAccountId, extractPlanType } from './openai-codex-account.js';
 import { buildCodexRequestBody } from './openai-codex-body.js';
 import {
+  addBounded,
+  type CodexCacheProbe,
+  newCodexCacheProbe,
+  recordCodexCacheProbeRequest,
+  trackCodexStream,
+} from './openai-codex-cache-probe.js';
+import {
   CODEX_REROUTE_REASON,
   type HeadersLike,
+  isReasoningReplayRejection,
   translateCodexHttpError,
 } from './openai-codex-errors.js';
 import type { CodexLiveModel, CodexModelPolicy } from './openai-codex-model-policy.js';
@@ -80,11 +88,7 @@ import {
   CODEX_TURN_STATE_HEADER,
   CODEX_TURN_STATE_MAX_SESSIONS,
 } from './openai-codex-turn-state-contracts.js';
-import {
-  isCacheProbeEnabled,
-  recordCacheProbeRequest,
-  recordCacheProbeUsage,
-} from './prompt-cache-probe.js';
+import { isCacheProbeEnabled } from './prompt-cache-probe.js';
 import {
   hasSubscriptionRefreshTransaction,
   renewRotatingOAuthCredential,
@@ -108,19 +112,6 @@ export {
 // so the long-standing public name keeps resolving from the provider module.
 export type { CodexResponseMetadata };
 
-/**
- * Does this 400 blame a replayed reasoning item?
- *
- * The Responses API's reasoning validation errors all name the item type or a
- * `rs_`-prefixed id ("Item 'rs_…' of type 'reasoning' was provided without its
- * required following item"). Matching narrowly matters: a 400 for a malformed
- * tool schema must keep surfacing as an error, not be silently retried with
- * reasoning stripped and then fail again with a confusing second message.
- */
-function isReasoningReplayRejection(err: ProviderError): boolean {
-  const message = `${err.message} ${JSON.stringify(err.body ?? '')}`;
-  return /reasoning item|item\s+['"]?rs_[\w-]+|required following item/i.test(message);
-}
 /** The official client proactively refreshes ChatGPT access tokens five minutes early. */
 const CODEX_TOKEN_REFRESH_SKEW_MS = 5 * 60_000;
 
@@ -194,14 +185,7 @@ export class OpenAICodexProvider extends WireAdapter {
   private readonly reasoningReplayDisabled = new Set<string>();
   /** `openai-model` from the response headers, per request (see `model_rerouted`). */
   private readonly servedModels = new WeakMap<Request, string>();
-  private readonly cacheProbeRequests = new WeakMap<
-    object,
-    {
-      requestId: string;
-      sessionKey: string;
-      reasoningTokens?: number | undefined;
-    }
-  >();
+  private readonly cacheProbeRequests = new WeakMap<object, CodexCacheProbe>();
   private contextLimitsEtag: string | undefined;
   private contextLimitsRefresh: Promise<void> | undefined;
   private contextLimitsFreshUntil = 0;
@@ -356,46 +340,17 @@ export class OpenAICodexProvider extends WireAdapter {
   override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
     // A fresh cache object survives request spreads/tool filtering without
     // mixing simultaneous calls, even when callers reuse a Request object.
-    const probe = isCacheProbeEnabled()
-      ? {
-          requestId: '',
-          sessionKey: 'no-session',
-          reasoningTokens: undefined as number | undefined,
-        }
-      : undefined;
+    const probe = newCodexCacheProbe();
     if (probe) {
       req = { ...req, cache: { ...req.cache } };
       this.cacheProbeRequests.set(req.cache!, probe);
     }
     await this.ensureFreshToken(opts.signal);
     let emitted = false;
-    // `track` is a plain generator expression, so it has no `this`; the probe
-    // below needs the provider id from the enclosing scope.
-    const providerId = this.id;
-    const track = async function* (source: AsyncIterable<StreamEvent>): AsyncIterable<StreamEvent> {
-      for await (const event of source) {
-        // `message_start` carries no user-visible content. A backend can emit
-        // it before a response.failed envelope, and retrying at that point is
-        // still safe. Every other streamed event is treated as an output
-        // boundary to prevent duplicate text/tool/reasoning delivery.
-        if (event.type !== 'message_start') emitted = true;
-        // The charge for the request whose prefix the probe just fingerprinted.
-        // Recorded here rather than in `parseStream` because the WebSocket
-        // transport parses the stream itself and never calls that override.
-        if (event.type === 'message_stop' && isCacheProbeEnabled()) {
-          recordCacheProbeUsage({
-            provider: providerId,
-            sessionKey: probe?.sessionKey ?? 'no-session',
-            requestId: probe?.requestId,
-            model: req.model,
-            threadId: req.cache?.threadId ?? req.cache?.sessionId,
-            usage: event.usage,
-            reasoningTokens: probe?.reasoningTokens,
-          });
-        }
-        yield event;
-      }
-    };
+    const track = (source: AsyncIterable<StreamEvent>) =>
+      trackCodexStream(source, { providerId: this.id, req, probe }, () => {
+        emitted = true;
+      });
     let transportError: unknown;
     try {
       if (
@@ -414,11 +369,7 @@ export class OpenAICodexProvider extends WireAdapter {
         // Match the official client: once this session proves WebSocket
         // incompatible, keep using HTTP instead of paying for a failed upgrade
         // before every turn.
-        this.webSocketDisabled.add(this.webSocketScope(req));
-        if (this.webSocketDisabled.size > CODEX_TURN_STATE_MAX_SESSIONS) {
-          const oldest = this.webSocketDisabled.values().next().value;
-          if (oldest !== undefined) this.webSocketDisabled.delete(oldest);
-        }
+        addBounded(this.webSocketDisabled, this.webSocketScope(req), CODEX_TURN_STATE_MAX_SESSIONS);
         try {
           yield* track(super.stream(req, opts));
           return;
@@ -447,11 +398,11 @@ export class OpenAICodexProvider extends WireAdapter {
       err.status === 400 &&
       isReasoningReplayRejection(err)
     ) {
-      this.reasoningReplayDisabled.add(this.reasoningReplayKey(req));
-      if (this.reasoningReplayDisabled.size > CODEX_TURN_STATE_MAX_SESSIONS) {
-        const oldest = this.reasoningReplayDisabled.values().next().value;
-        if (oldest !== undefined) this.reasoningReplayDisabled.delete(oldest);
-      }
+      addBounded(
+        this.reasoningReplayDisabled,
+        this.reasoningReplayKey(req),
+        CODEX_TURN_STATE_MAX_SESSIONS,
+      );
       yield* track(super.stream(req, opts));
       return;
     }
@@ -640,36 +591,11 @@ export class OpenAICodexProvider extends WireAdapter {
       reasoningEffort: this.reasoningEffort,
       textVerbosity: this.textVerbosity,
     });
-    // Opt-in local comparison within the same account/model/thread/settings.
-    // Changed segments can explain lost overlap, but unchanged JSON cannot
-    // prove the backend's rendered prefix, cache boundaries or routing.
     if (isCacheProbeEnabled()) {
-      const sessionKey = String(body['prompt_cache_key'] ?? 'no-session');
-      const probe = req.cache ? this.cacheProbeRequests.get(req.cache) : undefined;
-      if (probe) {
-        probe.requestId = randomUUID();
-        probe.sessionKey = sessionKey;
-        probe.reasoningTokens = undefined;
-      }
-      recordCacheProbeRequest({
-        provider: this.id,
-        sessionKey,
-        requestId: probe?.requestId,
-        threadId: req.cache?.threadId ?? req.cache?.sessionId,
-        // Used only in the in-memory identity; never written into the log.
-        accountScope: createHash('sha256')
-          .update(this.accountId ?? this.access)
-          .digest('hex'),
-        settings: [
-          body['reasoning'],
-          body['text'],
-          body['tool_choice'],
-          body['parallel_tool_calls'],
-        ],
-        model: req.model,
-        instructions: String(body['instructions'] ?? ''),
-        tools: body['tools'] as readonly unknown[] | undefined,
-        items: body['input'] as readonly unknown[],
+      recordCodexCacheProbeRequest(body, req, {
+        providerId: this.id,
+        probe: req.cache ? this.cacheProbeRequests.get(req.cache) : undefined,
+        accountSeed: this.accountId ?? this.access,
       });
     }
     return body;

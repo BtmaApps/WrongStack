@@ -10,6 +10,7 @@ import type { MemoryDraft } from './shared';
 import { draftFromMemory, emptyDraft } from './shared';
 import type { SharedMemorySearch } from './sharedSearch.js';
 import { useMemoryMutations } from './useMemoryMutations.js';
+import { useSendWithAck } from './useSendWithAck.js';
 
 const PAGE_SIZE = 100;
 
@@ -545,49 +546,13 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
     deleteSage(deletingId, 'Deleted from the WebUI Memory Manager.', { neverInject });
   }, [client, deleteSage, deletingId, loadMemories, neverInject]);
 
-  const sendWithAck = useCallback(
-    (
-      type: 'memory.sage.candidateResolve' | 'memory.sage.recover' | 'memory.sage.update',
-      send: () => void,
-      onResponse: (payload: { error?: string | undefined; memory?: SageEntry | undefined }) => void,
-    ) => {
-      const generation = ++mutationGenerationRef.current;
-      mutationCleanupRef.current?.();
-      setMutationError(null);
-
-      let off = () => {};
-      let timeout: ReturnType<typeof setTimeout> | null = null;
-      let settled = false;
-      const cleanup = () => {
-        if (settled) return;
-        settled = true;
-        if (timeout !== null) clearTimeout(timeout);
-        off();
-        if (mutationCleanupRef.current === cleanup) mutationCleanupRef.current = null;
-      };
-
-      off = client.on(type, (message) => {
-        if (generation !== mutationGenerationRef.current || !mountedRef.current) {
-          cleanup();
-          return;
-        }
-        cleanup();
-        onResponse(message.payload);
-      });
-
-      timeout = setTimeout(() => {
-        if (generation !== mutationGenerationRef.current || !mountedRef.current) return;
-        cleanup();
-        setMutationError(
-          'The memory store did not respond. Check the WebSocket connection and try again.',
-        );
-      }, 20_000);
-
-      mutationCleanupRef.current = cleanup;
-      send();
-    },
-    [client],
-  );
+  const sendWithAck = useSendWithAck({
+    client,
+    mutationGenerationRef,
+    mutationCleanupRef,
+    mountedRef,
+    setMutationError,
+  });
 
   const filteredMemories = useMemo(
     () =>

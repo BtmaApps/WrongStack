@@ -34,6 +34,16 @@ describe('provider-keys', () => {
       expect(Object.hasOwn(Object.prototype, 'activeKey')).toBe(false);
     }
   });
+  it('refuses system provider ids acp and wrongforge on add and key upsert', () => {
+    for (const id of ['acp', 'wrongforge']) {
+      const providers: ProvidersRecord = {};
+      expect(
+        addProvider(providers, { id, family: 'openai-compatible', apiKey: 'k' }, 'today'),
+      ).toMatchObject({ ok: false, message: expect.stringMatching(/reserved system provider/) });
+      expect(upsertKey(providers, id, 'default', 'fixture', '').ok).toBe(false);
+      expect(Object.keys(providers)).toEqual([]);
+    }
+  });
   it('treats inherited map properties as missing accounts', () => {
     const providers: ProvidersRecord = {};
     expect(deleteKey(providers, 'toString', 'default').ok).toBe(false);

@@ -6,6 +6,7 @@ import {
   refreshProviderAccountQuota,
 } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
+import type { HostProvider } from './host-providers.js';
 import { normalizeKeys } from './keys-records.js';
 import type { ProviderServiceContext } from './mutations.js';
 
@@ -19,7 +20,7 @@ const MIN_REFRESH_INTERVAL_MS = 20_000;
 /** Outcome of one provider's read, reported back to the requesting tab. */
 export interface QuotaRefreshOutcome {
   providerId: string;
-  vendor: AccountQuotaVendor;
+  vendor: AccountQuotaVendor | 'wrongforge';
   ok: boolean;
   /** The provider was read moments ago; its standing reading was kept. */
   throttled?: boolean;
@@ -67,15 +68,42 @@ async function readAccountQuota(
  * model call, so none spends the plan it reports — which is what lets the
  * panel show a quota before any session has run a turn.
  *
- * Claude has no such read and is skipped: its readings arrive with the
- * responses to real turns. Readings land in the shared quota store, whose
+ * Direct Claude transports are skipped: their readings arrive with real turns.
+ * A WrongForge host supplies its own authenticated /v1/usage reader, even
+ * without a saved provider key. Readings land in the shared quota store, whose
  * listener broadcasts them to every tab; the requesting tab additionally gets
  * a full replay plus the per-provider outcome, so a failed read can be shown
  * instead of a silently stale bar.
  */
 export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
-  const lastRead = new Map<string, { at: number; vendor: AccountQuotaVendor; ok: boolean }>();
+  const lastRead = new Map<
+    string,
+    { at: number; vendor: AccountQuotaVendor | 'wrongforge'; ok: boolean }
+  >();
   const inFlight = new Map<string, Promise<QuotaRefreshOutcome | undefined>>();
+
+  async function readHost(
+    provider: HostProvider,
+    now: number,
+  ): Promise<QuotaRefreshOutcome | undefined> {
+    if (!provider.refreshQuota || provider.type !== 'wrongforge') return undefined;
+    const key = `host:${provider.id}`;
+    const last = lastRead.get(key);
+    if (last && now - last.at < MIN_REFRESH_INTERVAL_MS)
+      return { providerId: provider.id, vendor: last.vendor, ok: last.ok, throttled: true };
+    const existing = inFlight.get(key);
+    if (existing) return existing;
+    const pending = Promise.resolve()
+      .then(provider.refreshQuota)
+      .catch(() => false)
+      .then((ok) => {
+        lastRead.set(key, { at: now, vendor: 'wrongforge', ok });
+        return { providerId: provider.id, vendor: 'wrongforge' as const, ok };
+      })
+      .finally(() => inFlight.delete(key));
+    inFlight.set(key, pending);
+    return pending;
+  }
 
   async function readOne(
     providerId: string,
@@ -109,9 +137,18 @@ export function createQuotaRefreshHandlers(ctx: ProviderServiceContext) {
     try {
       const providers = await ctx.loadConfigProviders();
       const now = Date.now();
-      const outcomes = await Promise.all(
-        Object.entries(providers).map(([id, cfg]) => readOne(id, cfg, now, providers)),
+      const hosts = ctx.deps?.hostProviders?.() ?? [];
+      const hostQuotaIds = new Set(
+        hosts
+          .filter((host) => host.type === 'wrongforge' && host.refreshQuota)
+          .map((host) => host.id),
       );
+      const outcomes = await Promise.all([
+        ...Object.entries(providers)
+          .filter(([id]) => !hostQuotaIds.has(id))
+          .map(([id, cfg]) => readOne(id, cfg, now, providers)),
+        ...hosts.map((provider) => readHost(provider, now)),
+      ]);
       refreshed = outcomes.filter((o): o is QuotaRefreshOutcome => o !== undefined);
     } catch {
       // A config that cannot be read leaves the panel with what it already has.
