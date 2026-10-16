@@ -1,40 +1,17 @@
-## Consumer closure
-…
+## Orientation
+
+- For vague leader todos such as “final diff review, round report” or “Discover/map fresh surfaces,” run an mtime-descending `glob` over `packages/**/src/**` and `packages/**/tests/**`; use `codebase-skeleton` on the freshest 3–4 production files and matching `tests/` cluster.
+- When an active proof-driven-bug-hunter round is expected, `tree` `.temp_files/proof-driven-bug-hunter/` directly. Do not trust `glob '.temp_files/**'` to prove absence because ignore rules can suppress traversal.
+
+## Consumer Closure
+
+- Do not pass filename stems such as `secret-scrubber-patterns` to `codebase-impact-analysis`; `symbolFound=false` is expected. For unbarreled data modules such as `packages/core/src/security/secret-scrubber-patterns.ts`, combine `codebase-incoming-calls` on exported symbols such as `PATTERNS` with repo-wide module-path grep `secret-scrubber-patterns(\.js)?`.
+- For small domain modules, combine a module-path grep such as `./vibe(\.js)?["']` with a symbol-name grep. Barrel exports from `packages/requirement-intake/src/index.ts` can hide external consumers importing `@wrongstack/requirement-intake`.
+- Before describing gateway crypto imports as local, run `codebase-search` for `timingSafeTokenEqual`; `packages/primitives/src/timing-safe.ts` is the canonical constant-time comparison seam.
+- Treat `packages/webui-server/tests/*.test.ts` and `packages/cli/tests/wrongforge-leader/*` as non-exporting suites: establish dependents via repo-wide stem grep and path ratchets in `architecture/*.json`, especially `architecture/test-only-exports.json` and `docs/reports/architecture-health-current.json`. Find production consumers with module-path grep such as `wrongforge-leader-provider(\.js)?`, not symbol impact tools.
+- Treat `.bun-version` and similar pinning files as data: use direct `read` plus repo-wide `grep` on the filename; index, skeleton, and call-graph tools will not find consumers, and CI may duplicate the literal.
 
 ## Disambiguation
 
-- For `packages/webui-server/src/server/*-ws-handler.ts`, inspect `backend-services.ts`, `packages/cli/src/webui-server/domain-handlers.ts`, and `terminalHandler:`/`worktreeHandler:` references in `connection-handler.ts`, `route-contracts.ts`, and `embedded-message-router-types.ts`. Check `packages/core/tests/architecture/ram-leak-caps-guard.test.ts` when changing resource caps.
-- Disambiguate `packages/webui-server/src/server/memory-handlers.ts` from `packages/webui/src/hooks/ws-memory-handlers.ts` and `server/http-server/vector-memory-handlers.ts`; ignore `tsconfig.tsbuildinfo` noise and classify full import specifiers.
-- Disambiguate `breakStaleLock` by module path: `packages/core/src/session-catalog/session-registry-atomic-file.ts` differs from `packages/core/src/plugins/review-claim-store-lock.ts`, re-exported by `review-claim-registry.ts` and imported by `packages/core/tests/plugins/review-claim-registry.test.ts`.
-
-## Non-source probes
-
-- Classify `~/.wrongstack/projects/<hash>/sessions/` as runtime JSONL audit artifacts. Redirect source questions using `grep "transcript\.jsonl"` to `packages/core/src/coordination/agent-monitor.ts`, `packages/cli/src/hq-server/utils.ts`, and `sessions-fleet.ts`. Treat terminal `kind:"status"` with `iteration:999` and a timeout as a dead spawn containing no recoverable findings.
-- For `packages/*/tests/**`, use `codebase-skeleton` to identify Vitest suites; treat “dependents” as Vitest include globs and imported production modules, and grep the test stem to verify no importers.
-
-- Never pass a filename stem (e.g. `secret-scrubber-patterns`) to `codebase-impact-analysis` — it returns `symbolFound=false`. Probe exported symbols (`codebase-incoming-calls` on `PATTERNS`) plus a repo-wide module-path grep (`secret-scrubber-patterns(\.js)?`) to establish consumer closure for unbarreled data modules like `packages/core/src/security/secret-scrubber-patterns.ts`. (anchors: `secret-scrubber-patterns`, `codebase-impact-analysis`, `symbolFound=false`, `codebase-incoming-calls`, `PATTERNS`, `secret-scrubber-patterns(\.js)?`, `packages/core/src/security/secret-scrubber-patterns.ts`) [applied 3×, 3 ok]
-- Always pair a `timingSafeTokenEqual`/shared-helper probe with a quick `codebase-search` on the helper name before reporting gateway crypto imports as local — `packages/primitives/src/timing-safe.ts` is the repo's canonical constant-time compare seam, and fresh gateway edits may already route through it. (anchors: `timingSafeTokenEqual`, `codebase-search`, `packages/primitives/src/timing-safe.ts`) [applied 1×, 1 ok]
-- When a probe names a vague leader todo ("final diff review, round report") with no file hint, orient via `glob` mtime-descending over `packages/**/src/**` to cluster the freshest edits, then `codebase-skeleton` the top cluster plus its matching `tests/` directory — skip `.temp_files/proof-driven-bug-hunter/` mapping when a glob shows no round exists. (anchors: `glob`, `packages/**/src/**`, `codebase-skeleton`, `tests/`, `.temp_files/proof-driven-bug-hunter/`) [applied 48×, 48 ok]
-- Classify `packages/webui-server/tests/*.test.ts` dependents by grepping the test stem repo-wide, not by import tools — suites export nothing, so their only consumers are Vitest include globs and `architecture/*.json` data ratchets that list file paths. (anchors: `packages/webui-server/tests/*.test.ts`, `architecture/*.json`) [applied 1×, 1 ok]
-- For `packages/cli/tests/wrongforge-leader/*` suites, establish dependents with a repo-wide stem grep plus the architecture JSON ratchets (`architecture/test-only-exports.json`, `docs/reports/architecture-health-current.json`) — they export nothing and have no importers, and cross-package consumers of the production module appear only via module-path grep (`wrongforge-leader-provider(\.js)?`), not via symbol impact tools. (anchors: `packages/cli/tests/wrongforge-leader/*`, `architecture/test-only-exports.json`, `docs/reports/architecture-health-current.json`, `wrongforge-leader-provider(\.js)?`) [applied 14×, 14 ok]
-- Treat version-pinning files like `.bun-version` as data, not code: answer consumer probes with direct `read` plus repo-wide `grep` on the filename — index/skeleton/call-graph tools return nothing for them, and CI workflows typically duplicate the literal instead of reading the file. (anchors: `.bun-version`, `read`, `grep`) [applied 2×, 2 ok]
-
----
-*Distilled 2026-10-16T06:01:27.004Z · 6 new directives*
-
-- Always close consumer probes for small domain modules by combining the module-path grep (`./vibe(\.js)?["']`) with a symbol-name grep — barrel re-exports (e.g. `packages/requirement-intake/src/index.ts`) hide consumers behind the package alias `@wrongstack/requirement-intake`, so a module-path grep alone shows only intra-package imports. (anchors: `./vibe(\.js)?["']`, `packages/requirement-intake/src/index.ts`, `@wrongstack/requirement-intake`) [applied 18×, 18 ok]
-
----
-*Distilled 2026-10-16T11:02:08.361Z · 1 new directive*
-
-- Always orient a vague "Discover/map fresh surfaces" probe with an mtime-descending `glob` over `packages/**/src/**` paired with `packages/**/tests/**`, then `codebase-skeleton` the top 3-4 files — the freshest production/test pair usually names the active feature without reading full bodies. (anchors: `glob`, `packages/**/src/**`, `packages/**/tests/**`, `codebase-skeleton`)
-
----
-*Distilled 2026-10-16T11:32:34.668Z · 1 new directive*
-
-- Always locate an active proof-driven-bug-hunter round by `tree`-ing `.temp_files/proof-driven-bug-hunter/` directly — a bare `glob '.temp_files/**'` can return zero files while the directory exists with contents, because repo ignore rules suppress glob traversal but not explicit tree reads. (anchors: `tree`, `.temp_files/proof-driven-bug-hunter/`, `glob '.temp_files/**'`)
-
----
-*Distilled 2026-10-16T12:26:37.008Z · 1 new directive*
-
-_(truncated at 6144 bytes)_
+- Distinguish `packages/webui-server/src/server/memory-handlers.ts` from `packages/webui/src/hooks/ws-memory-handlers.ts` and `server/http-server/vector-memory-handlers.ts`; ignore `tsconfig.tsbuildinfo` noise and classify full import specifiers.
+- Disambiguate `breakStaleLock` by module path: `packages/core/src/session-catalog/session-registry-atomic-file.ts` is separate from `packages/core/src/plugins/review-claim-store-lock.ts`, which is re-exported by `review-claim-registry.ts` and imported by `packages/core/tests/plugins/review-claim-registry.test.ts`.
