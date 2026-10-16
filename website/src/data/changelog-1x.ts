@@ -1,18 +1,31 @@
-// Changelog — 1.x era (1.1.4 → 1.0.0).
+// Changelog — 1.x era (1.1.5 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
+// The 1.1.5 entry summarizes committed fixes through its release bump (9d911e4e0).
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.5',
+    date: '2026-10-15',
+    tagline: 'Session identity, queue limits and safer tool execution',
+    latest: true,
+    highlights: [
+      'The WebUI office map keys clients by session ID so sessions sharing a process stay separate, and saved provider model records take precedence over a host provider with the same ID',
+      'The WebUI server rechecks queue capacity after preparing attachments, counts duplicate ZIP entries toward the entry limit and releases the previous presence registration before registering again',
+      'Sandbox enforcement covers stream-only tools, credential redaction covers URL query parameters and attached password arguments, and unanalysed security-scan batches report an error',
+      'MCP response streams are cancelled when they exceed the body cap, stored tokens with non-finite expiry values are rejected, and LSP shutdown tolerates an already closed transport',
+      'Config backups never overwrite another backup from the same millisecond, a throwing project-watch error handler cannot starve other subscribers, and compaction merges overlapping collapsed ranges to preserve the tail',
+    ],
+  },
+  {
     version: '1.1.4',
     date: '2026-10-14',
     tagline: 'ACP agents steered to project services, a mailbox inbox read and race fixes',
-    latest: true,
     highlights: [
       'ACP leaders and delegated workers get a task kickoff naming the project’s index, memory, mailbox and board services, and hear about new /btw notes and mail mid-turn',
       'The mailbox MCP server reads the actor’s own unread mail with an inbox action',
