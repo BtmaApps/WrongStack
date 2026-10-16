@@ -80,7 +80,12 @@ export async function migrateSqliteLegacyJsonl(input: {
     }
 
     for (const incoming of latestMemories.values()) {
-      const existing = readSqliteSageRow(stmt, incoming.id);
+      let existing: Sage | null;
+      try {
+        existing = readSqliteSageRow(stmt, incoming.id);
+      } catch {
+        existing = null;
+      }
       if (existing && !shouldReplaceMigratedMemory(existing, incoming)) continue;
       upsertMemory(incoming);
       syncAnchorEdges(incoming);
@@ -97,12 +102,18 @@ export async function migrateSqliteLegacyJsonl(input: {
         | { data: string }
         | undefined;
       if (existingRow) {
-        const existing = sqliteRowToCandidate(existingRow);
+        let existing: MemoryCandidate | undefined;
+        try {
+          existing = sqliteRowToCandidate(existingRow);
+        } catch {
+          // Corrupt stored row: let the valid replayed candidate replace it.
+          existing = undefined;
+        }
         // Byte comparison (locale-safe): keep the newer candidate when both
         // the JSONL replay and the SQLite row claim the same id. ISO-8601
         // timestamps sort lexicographically; `localeCompare` can reorder them
         // across locales (see shared/pagination.ts).
-        if (existing.updatedAt > candidate.updatedAt) continue;
+        if (existing && existing.updatedAt > candidate.updatedAt) continue;
       }
       upsertCandidate.run(
         candidate.id,

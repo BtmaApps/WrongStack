@@ -103,7 +103,14 @@ function migrateSchemaV2({
     if (backfillRows.length > 0) {
       const updateCanonical = stmt('UPDATE memories SET canonical_text = ? WHERE id = ?');
       for (const r of backfillRows) {
-        const memory = sqliteRowToMemory(r);
+        let memory: Sage;
+        try {
+          memory = sqliteRowToMemory(r);
+        } catch {
+          // One corrupt row must not make the whole store unopenable: leave its
+          // canonical_text at the '' default, like the v3 anchor backfill below.
+          continue;
+        }
         updateCanonical.run(normalizeTextKey(memory.text), r.id);
       }
     }

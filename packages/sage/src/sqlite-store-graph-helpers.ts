@@ -68,7 +68,7 @@ export function cleanReferencingMemories(
       `SELECT id, data FROM memories
        WHERE id != ?
          AND status != 'deleted'
-         AND (
+         AND CASE WHEN json_valid(data) THEN (
            json_extract(data, '$.supersededBy') = ?
            OR EXISTS (
              SELECT 1 FROM json_each(COALESCE(json_extract(data, '$.supersedes'), '[]'))
@@ -78,7 +78,7 @@ export function cleanReferencingMemories(
              SELECT 1 FROM json_each(COALESCE(json_extract(data, '$.contradicts'), '[]'))
              WHERE value = ?
            )
-         )`,
+         ) ELSE 0 END`,
     )
     .all(targetId, targetId, targetId, targetId) as Array<{ id: string; data: string }>;
 

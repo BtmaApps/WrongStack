@@ -84,7 +84,11 @@ export function appendFreshnessClauses(
     params.push(query.freshness.createdAfter);
   }
   if (query.freshness?.verifiedAfter !== undefined) {
-    clauses.push(`json_extract(${prefix}data, '$.lastVerifiedAt') >= ?`);
+    // `json_extract` RAISES on malformed JSON; a corrupt row must be excluded
+    // (NULL), not abort the whole search.
+    clauses.push(
+      `CASE WHEN json_valid(${prefix}data) THEN json_extract(${prefix}data, '$.lastVerifiedAt') END >= ?`,
+    );
     params.push(query.freshness.verifiedAfter);
   }
 }

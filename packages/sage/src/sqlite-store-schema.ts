@@ -89,22 +89,35 @@ export function initSchema(db: DatabaseSync): void {
   }
 
   if (ftsAvailable) {
+    // Bare `json_extract` RAISES on malformed JSON, so an unguarded trigger turns
+    // one corrupt `data` value into a failure of every INSERT/UPDATE/DELETE that
+    // touches the row (the legacy JSONL replay then cannot open the store).
+    // Guard every extraction with `json_valid`. For an external-content FTS
+    // table the 'delete' command must be given exactly the values that were
+    // indexed, so when the OLD row is unreadable the delete is skipped rather
+    // than issued with made-up values (which would damage the index); the stale
+    // entry only ever maps back to the same rowid, so it cannot surface a
+    // foreign row. The triggers are recreated on every open (like memories_au)
+    // so databases carrying the unguarded versions pick the guards up.
+    db.exec('DROP TRIGGER IF EXISTS memories_ai');
     db.exec(`
-      CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+      CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
         INSERT INTO memories_fts(rowid, text, tags, audience)
         VALUES (new.rowid,
-          json_extract(new.data, '$.text'),
+          CASE WHEN json_valid(new.data) THEN json_extract(new.data, '$.text') ELSE '' END,
           COALESCE(new.tags, ''),
           COALESCE(new.audience, ''));
       END;
     `);
+    db.exec('DROP TRIGGER IF EXISTS memories_ad');
     db.exec(`
-      CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+      CREATE TRIGGER memories_ad AFTER DELETE ON memories BEGIN
         INSERT INTO memories_fts(memories_fts, rowid, text, tags, audience)
-        VALUES('delete', old.rowid,
+        SELECT 'delete', old.rowid,
           json_extract(old.data, '$.text'),
           COALESCE(old.tags, ''),
-          COALESCE(old.audience, ''));
+          COALESCE(old.audience, '')
+        WHERE json_valid(old.data);
       END;
     `);
     // The WHEN clause is a load-bearing guard, not a micro-optimization.
@@ -125,18 +138,20 @@ export function initSchema(db: DatabaseSync): void {
     db.exec('DROP TRIGGER IF EXISTS memories_au');
     db.exec(`
       CREATE TRIGGER memories_au AFTER UPDATE ON memories
-      WHEN json_extract(old.data, '$.text') IS NOT json_extract(new.data, '$.text')
+      WHEN CASE WHEN json_valid(old.data) THEN json_extract(old.data, '$.text') END
+             IS NOT CASE WHEN json_valid(new.data) THEN json_extract(new.data, '$.text') END
         OR COALESCE(old.tags, '') IS NOT COALESCE(new.tags, '')
         OR COALESCE(old.audience, '') IS NOT COALESCE(new.audience, '')
       BEGIN
         INSERT INTO memories_fts(memories_fts, rowid, text, tags, audience)
-        VALUES('delete', old.rowid,
+        SELECT 'delete', old.rowid,
           json_extract(old.data, '$.text'),
           COALESCE(old.tags, ''),
-          COALESCE(old.audience, ''));
+          COALESCE(old.audience, '')
+        WHERE json_valid(old.data);
         INSERT INTO memories_fts(rowid, text, tags, audience)
         VALUES (new.rowid,
-          json_extract(new.data, '$.text'),
+          CASE WHEN json_valid(new.data) THEN json_extract(new.data, '$.text') ELSE '' END,
           COALESCE(new.tags, ''),
           COALESCE(new.audience, ''));
       END;

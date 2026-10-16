@@ -93,12 +93,24 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
            `,
       )
       .all(scope, canonical, audienceKey, ...sessionMatchParams) as Array<{ data: string }>;
-    const exactRow = exactRows.find(
-      (row) => validityKey(sqliteRowToMemory(row).validity) === validityKey(validity),
-    );
+    // Decode once and skip corrupt rows: the canonical_text column survives JSON
+    // corruption, so a corrupt row can still match here and must not fail a write.
+    let exactRow: Sage | undefined;
+    for (const row of exactRows) {
+      let decoded: Sage;
+      try {
+        decoded = sqliteRowToMemory(row);
+      } catch {
+        continue;
+      }
+      if (validityKey(decoded.validity) === validityKey(validity)) {
+        exactRow = decoded;
+        break;
+      }
+    }
 
     const existing =
-      (exactRow ? sqliteRowToMemory(exactRow) : undefined) ??
+      exactRow ??
       findNearDuplicate(ctx, {
         scope,
         audienceKey,
@@ -303,7 +315,13 @@ function findNearDuplicate(
 
   let best: { memory: Sage; score: number } | undefined;
   for (const row of rows.values()) {
-    const candidate = sqliteRowToMemory(row);
+    let candidate: Sage;
+    try {
+      candidate = sqliteRowToMemory(row);
+    } catch {
+      // One corrupt row must not fail a write — skip it like every other scan.
+      continue;
+    }
     if (validityKey(candidate.validity) !== validityKey(opts.validity)) continue;
     if (
       !isNearDuplicateMemory(

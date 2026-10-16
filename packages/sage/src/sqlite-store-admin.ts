@@ -1,7 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { readSqliteSageRow, sqliteRowToMemory } from './sqlite-store-codec.js';
+import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { findSqliteMemoriesForFile } from './sqlite-store-find-file.js';
 import { backfillRecoverableSqliteSage, recoverSqliteSage } from './sqlite-store-recovery.js';
+import { sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
 import type {
   FindMemoriesForFileOptions,
   FindMemoriesForFileResponse,
@@ -33,7 +34,8 @@ function listMemories(host: SqliteAdminHost): Sage[] {
   const rows = host.stmt('SELECT data FROM memories ORDER BY updated_at DESC').all() as Array<{
     data: string;
   }>;
-  return rows.map((row) => sqliteRowToMemory(row));
+  // Lenient decode: one corrupt row must not fail the whole admin scan.
+  return sqliteRowsToMemories(rows);
 }
 
 function addRelationshipEdge(
