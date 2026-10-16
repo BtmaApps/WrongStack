@@ -136,7 +136,10 @@ describe('RemoteMailbox single-owner IPC', () => {
     const previousLease = process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'];
     const previousHeartbeat = process.env['WRONGSTACK_MAILBOX_CLIENT_HEARTBEAT_MS'];
     const previousInline = process.env['WRONGSTACK_MAILBOX_INLINE'];
-    process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'] = '300';
+    // The wait below outlasts the lease, so only heartbeats keep both clients.
+    // A 300 ms lease lost a client whenever a loaded coverage run stalled the
+    // 50 ms heartbeat timer past it.
+    process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'] = '1500';
     process.env['WRONGSTACK_MAILBOX_CLIENT_HEARTBEAT_MS'] = '50';
     delete process.env['WRONGSTACK_MAILBOX_INLINE'];
     const first = new RemoteMailbox({ projectDir, isolatedConnection: true });
@@ -164,7 +167,7 @@ describe('RemoteMailbox single-owner IPC', () => {
         name: 'IPC TUI',
         source: 'tui',
       });
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      await new Promise((resolve) => setTimeout(resolve, 2_500));
       const secondStatus = await second.status();
 
       expect(secondStatus.pid).toBe(firstStatus.pid);

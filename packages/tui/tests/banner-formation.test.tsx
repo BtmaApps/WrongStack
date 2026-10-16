@@ -125,16 +125,18 @@ describe('banner pixel formation', () => {
     const clock = vi.spyOn(Date, 'now').mockReturnValue(startedAt);
     const journey = createAppJourney();
     const view = renderRealTty(<App {...journey.props} banner />, { columns: 100, rows: 45 });
+    // Wait for each frame instead of a fixed 80 ms: under a loaded coverage
+    // run the first paint and the echoed input can take longer than that.
+    // The clock is frozen, so the formation cannot finish while we wait.
+    const frame = (text: string) =>
+      vi.waitFor(() => expect(view.lastFrame()).toContain(text), { timeout: 5_000, interval: 20 });
     try {
-      await settle(80);
-      expect(view.lastFrame()).toContain('BUILT ON THE WRONG STACK');
+      await frame('BUILT ON THE WRONG STACK');
       expect(view.lastFrame()).not.toContain(WORDMARK_LINES[0]);
       view.stdin.write('pixel-animation-input');
-      await settle(80);
-      expect(view.lastFrame()).toContain('pixel-animation-input');
+      await frame('pixel-animation-input');
       clock.mockReturnValue(startedAt + BANNER_FORMATION_DURATION_MS);
-      await settle(90);
-      expect(view.lastFrame()).toContain(WORDMARK_LINES[0]);
+      await frame(WORDMARK_LINES[0] ?? '');
       expect(view.lastFrame()).toContain('pixel-animation-input');
     } finally {
       view.unmount();
