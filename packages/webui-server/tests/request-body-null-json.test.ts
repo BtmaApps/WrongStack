@@ -64,7 +64,11 @@ function post(payload: string): Promise<{ status: number; code?: string }> {
             } catch {
               // 201 replies are JSON objects without an error envelope
             }
-            resolve({ status: res.statusCode ?? 0, code });
+            resolve(
+              code === undefined
+                ? { status: res.statusCode ?? 0 }
+                : { status: res.statusCode ?? 0, code },
+            );
           });
         },
       );
