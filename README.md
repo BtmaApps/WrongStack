@@ -57,6 +57,13 @@ home to.
 
 ### What's new in 1.1.6
 
+- **WrongForge leads with its tools:** a session started on the `wrongforge`
+  provider now sends its turns to WrongForge with the session's tools instead
+  of a one-step, tool-less task or the first fallback model, and the calls it
+  makes through those tools appear as tool cards.
+- **Confirmable tools behind the token-saving tier:** `tool_use` and `mcp_use`
+  ask for confirmation like a direct call, so `pwsh`, `exec`, `fetch`, `git`
+  and MCP tools work with YOLO off on the default tier.
 - **Plugins cannot pose as built-ins:** a plugin may change only the tools it
   registered itself, and only official plugins may register as `core`.
 - **WrongStack skills for agent leaders:** an ACP or WrongForge leader gets

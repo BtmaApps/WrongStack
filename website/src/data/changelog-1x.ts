@@ -13,9 +13,11 @@ export const changelog1x: ChangelogEntry[] = [
   {
     version: '1.1.6',
     date: '2026-10-16',
-    tagline: 'Plugin identity hardening, WrongStack skills for agent leaders and resume fixes',
+    tagline: 'WrongForge leads with its tools, confirmable tools behind tool_use and plugin identity hardening',
     latest: true,
     highlights: [
+      'A session started on the wrongforge provider sends its turns to WrongForge with the session’s tools, instead of a one-step, tool-less task or the first fallback model, and its wstack_* calls appear as tool cards',
+      'tool_use and mcp_use ask for confirmation like a direct call, so pwsh, exec, fetch, git and MCP tools held back by the token-saving tier work with YOLO off',
       'A non-official plugin can no longer register as core, so it cannot wrap built-in tools, slip undeclared tools past --restricted or take the built-in slash-command tier',
       'ACP and WrongForge leaders get WrongStack’s skill tool, and a task’s required skills reach them as a plain instruction instead of a gate they cannot satisfy',
       'An ambiguous wstack hq token revoke now revokes nothing and lists the matching ids instead of reporting success',
