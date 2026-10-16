@@ -1,19 +1,33 @@
-// Changelog — 1.x era (1.1.5 → 1.0.0).
+// Changelog — 1.x era (1.1.6 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
-// The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5.
+// The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, and the 1.1.6
+// entry those in v1.1.5..v1.1.6.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.6',
+    date: '2026-10-16',
+    tagline: 'Plugin identity hardening, WrongStack skills for agent leaders and resume fixes',
+    latest: true,
+    highlights: [
+      'A non-official plugin can no longer register as core, so it cannot wrap built-in tools, slip undeclared tools past --restricted or take the built-in slash-command tier',
+      'ACP and WrongForge leaders get WrongStack’s skill tool, and a task’s required skills reach them as a plain instruction instead of a gate they cannot satisfy',
+      'An ambiguous wstack hq token revoke now revokes nothing and lists the matching ids instead of reporting success',
+      'ACP keeps answering requests after stdin closes, and a replaced turn stops sending updates',
+      'TUI and WebUI resume roll back cleanly, cloud sync reads as synced after a push, and the provider config watcher ignores superseded reads',
+      'The system prompt caches rendered skills and the leader block across turns',
+    ],
+  },
+  {
     version: '1.1.5',
     date: '2026-10-16',
     tagline: 'Built-in tools without MCP, WrongForge as leader or worker and a WebUI agent tree',
-    latest: true,
     highlights: [
       'wstack tools list|describe|run|batch calls built-in tools from the shell without MCP, and wstack tools serve exposes them over token-guarded loopback HTTP',
       'A local WrongForge server can lead a session or take delegated tasks, with its edits, commands, board and memory calls going through the session’s own tools',

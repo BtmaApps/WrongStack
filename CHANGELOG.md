@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] — 2026-10-16
+
+A hardening release. A plugin can no longer pass itself off as a built-in,
+ACP and WrongForge leaders can load WrongStack's skills, and a round of
+correctness fixes lands across ACP, HQ, resume, storage and the WebUIs.
+
+### Changed
+
+- **WrongStack skills for agent leaders.** An ACP or WrongForge agent leading a session now gets WrongStack's `skill` tool through its fleet endpoint or gateway. A task's required-skills marker reaches it as a plain instruction that names that tool. The host no longer blocks a leader's edits on skills it cannot see the leader load, and it no longer runs a skill-picker probe for a leader that chooses its own skills.
+- **Faster system prompt.** Rendered skill entries and the end-of-turn leader block are cached across turns, and skill bodies are read concurrently.
+
+### Fixed
+
+- **Plugin identity.** A non-official plugin named `core` could wrap built-in tools and lower their confirmation, register undeclared tools that `--restricted` exposed, and take the built-in slash-command tier. A plugin may now change only tools it registered itself, and only official plugins may register as `core`.
+- **HQ tokens.** `wstack hq token revoke` with an id-prefix that matched several tokens reported success and revoked none. It now revokes nothing, exits with an error and lists the matching ids.
+- **ACP.** When stdin closes, requests already received are still answered. A turn replaced by a newer one stops sending updates and no longer clears the newer turn's timeout.
+- **Agent leaders and workers.** Fleet grants are dropped with their session, a failing fleet tool returns an error result, a WrongForge gateway that failed to start is retried, an interrupt before the task stream starts cancels the task, and a WrongForge worker's reply keeps the breaks between its steps.
+- **Resume.** The TUI no longer pairs a saved model with a different live provider when it cannot switch providers. A WebUI resume whose activation fails rolls back and closes the journal it opened.
+- **Storage.** Cloud sync records the local file's revision, so a push reads as synced. Clearing input history takes the file lock. The provider config watcher ignores superseded reads and non-object configs. The session registry skips malformed entries and agent records.
+- **Smaller fixes.** `tool_script` reports calls still running as running, not failed. Sage suggestions respect the WebUI's session-scope exclusion. npm lockfile parsing skips `file:`, `link:`, `workspace:` and `portal:` versions. HQ login-attempt writes are serialized, and HQ shutdown can be awaited from several callers and survives a failing close. SimpleUI and the WebUI codemap keep `--- `/`+++ ` lines inside a hunk as content, and SimpleUI no longer adds idle agent rows from telemetry frames. An embedded WebUI host uses the agent's project root.
+
 ## [1.1.5] — 2026-10-16
 
 A tool-gateway release. Built-in tools can be called from the shell or over

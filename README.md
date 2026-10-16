@@ -55,7 +55,18 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.5
+### What's new in 1.1.6
+
+- **Plugins cannot pose as built-ins:** a plugin may change only the tools it
+  registered itself, and only official plugins may register as `core`.
+- **WrongStack skills for agent leaders:** an ACP or WrongForge leader gets
+  WrongStack's `skill` tool, and a task's required skills reach it as a plain
+  instruction instead of a gate it cannot satisfy.
+- **Correctness fixes:** ambiguous HQ token revokes, ACP replies after stdin
+  closes, TUI and WebUI resume rollback, cloud sync status, config watcher
+  ordering, `tool_script` summaries and diff parsing in SimpleUI and the WebUI.
+
+Highlights from **1.1.5**, the previous release:
 
 - **Built-in tools without MCP:** [`wstack tools list|describe|run|batch`](docs/subcommands/tools-skills.md)
   calls WrongStack's tools from the shell, and `wstack tools serve` exposes
@@ -66,21 +77,9 @@ home to.
 - **WebUI agent tree:** the fleet appears as a leader-and-workers tree in the
   session sidebar, the agents panel and the inspector, and a browser call
   blocked by the private-origin policy offers an "Allow access" action.
-- **Safety and correctness fixes:** sandboxed stream-only tools, URL and argv
-  credential redaction, Docker environment allowlisting, WebUI queue and ZIP
-  limits, MCP body caps, ACP permission scope, worktree, mailbox and SDD races,
-  and whole-config hot reload.
 
-Highlights from **1.1.4**, the previous release:
-
-- **ACP agents use the project's services:** an ACP leader or delegated worker
-  is told to use the project's index, memory, mailbox and board, and hears
-  about new `/btw` notes and mail while its turn runs.
-- **Mailbox inbox over MCP:** the mailbox MCP server reads the actor's own
-  unread mail with one `inbox` action.
-- **Clearer WebUI agent identity:** subagent tabs, transcripts, the Office view
-  and the office map show each agent's full provider/model.
-
+1.1.4 pointed ACP agents at the project's index, memory, mailbox and board and
+added the mailbox `inbox` action over MCP;
 1.1.3 made an installed ACP agent such as Claude Code a session leader
 ([`/model acp/claude-code`](docs/slash/model.md)), added delegated Claude
 workers and removed the Claude sign-in;
@@ -398,7 +397,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.5** — current repository version; semver from 1.0.0 onward
+- **v1.1.6** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`
