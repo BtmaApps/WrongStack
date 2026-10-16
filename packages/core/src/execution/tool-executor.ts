@@ -429,7 +429,9 @@ export class ToolExecutor extends ToolExecutorCore {
       if (output.result.type === 'tool_confirm_pending') {
         return {
           success: false,
-          error: `tool "${toolName}" requires separate confirmation; call it directly`,
+          // Only reached without an agent gate (`ctx.nestedToolCall`), which
+          // asks the user itself; nothing here can ask.
+          error: `tool "${toolName}" needs the user's confirmation, and this context has no way to ask for it`,
         };
       }
       if (output.result.is_error) {

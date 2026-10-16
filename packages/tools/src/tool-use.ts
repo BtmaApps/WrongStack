@@ -1,6 +1,7 @@
 import {
   GOVERNED_TOOL_EXECUTOR_META_KEY,
   type GovernedToolExecutor,
+  type NestedToolCaller,
   type Tool,
   ToolValidationError,
 } from '@wrongstack/core/types';
@@ -36,7 +37,9 @@ export const toolUseTool: Tool<ToolUseInput, ToolUseOutput> = {
   // permission decision here is WHICH tool is being reached.
   subjectKey: 'tool',
   mutating: true,
-  timeoutMs: 60_000,
+  // The nested call runs under its own tool's timeout, and may wait for the
+  // user's confirmation; a ceiling here would cut that wait short.
+  managesOwnTimeout: true,
   capabilities: ['tool.mutate.any'],
   icon: 'meta',
   inputSchema: {
@@ -54,7 +57,7 @@ export const toolUseTool: Tool<ToolUseInput, ToolUseOutput> = {
     },
     required: ['tool'],
   },
-  async execute(input, ctx) {
+  async execute(input, ctx, opts) {
     const start = Date.now();
 
     // Every refusal and every nested failure THROWS: the executor marks a call
@@ -83,6 +86,30 @@ export const toolUseTool: Tool<ToolUseInput, ToolUseOutput> = {
     // check even though the outer `tool_use` already requires `confirm`.
     if (tool.permission === 'deny') {
       throw new Error(`tool_use: tool "${input.tool}" is denied by policy`);
+    }
+
+    // The agent's own gate first, as `tool_script` uses it: validation, hooks,
+    // permission, a user confirmation when one is needed, and journaling as
+    // `<id>~1`. The executor bridge below cannot ask the user, so a tool that
+    // needs confirmation was refused there — and a tool the token-saving tier
+    // withheld from the provider surface could not be called directly either.
+    const caller = (ctx as { nestedToolCall?: NestedToolCaller | undefined }).nestedToolCall;
+    if (caller) {
+      const nested = await caller({
+        name: input.tool,
+        input: input.input ?? {},
+        parentToolUseId: opts?.toolUseId ?? `tool-use-${start.toString(36)}`,
+        index: 1,
+      });
+      if (nested.isError) {
+        throw new Error(`tool_use: "${input.tool}" failed: ${nested.content}`);
+      }
+      return {
+        tool: input.tool,
+        success: true,
+        result: nested.content,
+        executionMs: Date.now() - start,
+      };
     }
 
     const governedExecute = ctx.meta?.[GOVERNED_TOOL_EXECUTOR_META_KEY] as

@@ -1,5 +1,6 @@
 import type { ToolRegistry } from '../registry/tool-registry.js';
 import { ToolCapabilities } from '../security/capabilities.js';
+import type { NestedToolCaller } from '../types/context.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import {
   GOVERNED_TOOL_EXECUTOR_META_KEY,
@@ -81,7 +82,7 @@ export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
     riskTier: 'standard',
     capabilities: [ToolCapabilities.MCP_PROXY],
     inputSchema,
-    async execute(raw, ctx) {
+    async execute(raw, ctx, opts) {
       const input = raw as {
         server: string;
         tool: string;
@@ -138,6 +139,20 @@ export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
               ? `Available tools on "${serverName}": ${allTools.join(', ')}.`
               : `No tools found on "${serverName}". The server may not have published any tools.`;
           throw new Error(`Tool "${toolName}" not found on server "${serverName}". ${hint}`);
+        }
+
+        // The agent's own gate first (see tool_use): it can ask the user to
+        // confirm an MCP tool, which the executor bridge below cannot.
+        const caller = (ctx as { nestedToolCall?: NestedToolCaller | undefined }).nestedToolCall;
+        if (caller) {
+          const nested = await caller({
+            name: qualifiedName,
+            input: toolInput ?? {},
+            parentToolUseId: opts?.toolUseId ?? `mcp-use-${Date.now().toString(36)}`,
+            index: 1,
+          });
+          if (nested.isError) throw new Error(nested.content || 'MCP tool execution failed');
+          return nested.content;
         }
 
         const governedExecute = ctx.meta[GOVERNED_TOOL_EXECUTOR_META_KEY] as

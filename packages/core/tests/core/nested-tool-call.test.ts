@@ -606,7 +606,11 @@ describe('a tool call made from inside a tool', () => {
       expect(output).not.toContain('RAW_DETAIL');
       expect(output.length).toBeLessThan(400);
       expect(executed.filter((name) => name === 'fixture_read')).toHaveLength(50);
-      expect(journal().filter((e) => e.type === 'tool_result')).toHaveLength(51);
+      // tool_use runs its target through the same gate, so the script is
+      // journaled as a call of its own (`flow-1~1`) next to its 50 calls.
+      expect(journal().filter((e) => e.type === 'tool_result')).toHaveLength(
+        route === 'tool_use' ? 52 : 51,
+      );
     },
   );
 
@@ -703,5 +707,79 @@ describe('a tool call made from inside a tool', () => {
     events.on('tool.confirm_needed', (e) => e.resolve('yes'));
     await agent.run('go');
     expect(ran).toEqual(['risky', 'echo']);
+  });
+
+  // #409: a confirm tool reached through tool_use (the route for a tool the
+  // token-saving tier withheld) was refused with "call it directly".
+  it('asks for and runs a confirm tool reached through tool_use', async () => {
+    ran.length = 0;
+    const viaToolUse = {
+      content: [
+        {
+          type: 'tool_use' as const,
+          id: 'u-use',
+          name: 'tool_use',
+          input: { tool: 'risky', input: {} },
+        },
+      ],
+      stopReason: 'tool_use' as const,
+    };
+    const { agent, events, ctx, journal } = await buildAgent(new MockProvider([viaToolUse, done]), [
+      toolUseTool,
+    ]);
+    const asked: string[] = [];
+    events.on('tool.confirm_needed', (e) => {
+      asked.push(e.toolUseId);
+      e.resolve('yes');
+    });
+
+    await agent.run('go');
+
+    expect(asked).toContain('u-use~1');
+    expect(ran).toEqual(['risky']);
+    expect(journal()).toEqual(
+      expect.arrayContaining([
+        { type: 'tool_use', id: 'u-use~1' },
+        { type: 'tool_result', id: 'u-use~1', settlement: 'completed' },
+      ]),
+    );
+    const result = ctx.messages
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .find((b) => b.type === 'tool_result' && b.tool_use_id === 'u-use') as
+      | { content: string; is_error?: boolean }
+      | undefined;
+    expect(result?.is_error).toBeFalsy();
+    expect(String(result?.content)).toContain('risky ran');
+  });
+
+  it('reports a declined confirm tool reached through tool_use as a failure', async () => {
+    ran.length = 0;
+    const viaToolUse = {
+      content: [
+        {
+          type: 'tool_use' as const,
+          id: 'u-use',
+          name: 'tool_use',
+          input: { tool: 'risky', input: {} },
+        },
+      ],
+      stopReason: 'tool_use' as const,
+    };
+    const { agent, events, ctx } = await buildAgent(new MockProvider([viaToolUse, done]), [
+      toolUseTool,
+    ]);
+    events.on('tool.confirm_needed', (e) => e.resolve(e.toolUseId === 'u-use' ? 'yes' : 'no'));
+
+    await agent.run('go');
+
+    expect(ran).toEqual([]);
+    const result = ctx.messages
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .find((b) => b.type === 'tool_result' && b.tool_use_id === 'u-use') as
+      | { content: string; is_error?: boolean }
+      | undefined;
+    expect(result?.is_error).toBe(true);
+    expect(String(result?.content)).toContain('denied');
+    expect(String(result?.content)).not.toContain('call it directly');
   });
 });

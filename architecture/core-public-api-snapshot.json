@@ -1624,7 +1624,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 94,
-      "sourceLines": 22898
+      "sourceLines": 22900
     },
     {
       "directory": "extension",
@@ -1792,7 +1792,7 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 24,
-      "sourceLines": 4819
+      "sourceLines": 4834
     },
     {
       "directory": "types",

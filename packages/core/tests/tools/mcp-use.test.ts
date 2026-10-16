@@ -208,6 +208,54 @@ describe('createMcpUseTool', () => {
     expect(exec).toHaveBeenCalledWith({}, expect.anything(), expect.anything());
   });
 
+  // #409: the agent's gate can ask the user to confirm the MCP tool; the
+  // executor bridge cannot, so it is only the fallback.
+  it("runs the call through the agent's nested gate when one is attached", async () => {
+    const deactivateServer = vi.fn();
+    const exec = vi.fn(async () => 'bridge');
+    const inner = mcpTool('mcp__github__ping', exec);
+    const tool = createMcpUseTool({
+      registry: fakeRegistry({ deactivateServer }),
+      toolRegistry: fakeToolRegistry([inner]),
+    });
+    const governed = vi.fn();
+    const nestedToolCall = vi.fn(async () => ({ content: 'gated', isError: false }));
+    const out = await tool.execute(
+      { server: 'github', tool: 'ping', input: { a: 1 } },
+      { meta: { [GOVERNED_TOOL_EXECUTOR_META_KEY]: governed }, nestedToolCall } as never,
+      { signal: new AbortController().signal, toolUseId: 'u-mcp' } as never,
+    );
+    expect(out).toBe('gated');
+    expect(nestedToolCall).toHaveBeenCalledWith({
+      name: 'mcp__github__ping',
+      input: { a: 1 },
+      parentToolUseId: 'u-mcp',
+      index: 1,
+    });
+    expect(governed).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+    expect(deactivateServer).toHaveBeenCalledWith('github');
+  });
+
+  it('throws when the nested gate reports a failed or declined call', async () => {
+    const inner = mcpTool('mcp__github__ping', vi.fn());
+    const tool = createMcpUseTool({
+      registry: fakeRegistry(),
+      toolRegistry: fakeToolRegistry([inner]),
+    });
+    const nestedToolCall = vi.fn(async () => ({
+      content: 'Tool "mcp__github__ping" denied by user.',
+      isError: true,
+    }));
+    await expect(
+      tool.execute(
+        { server: 'github', tool: 'ping', input: {} },
+        { meta: {}, nestedToolCall } as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow('denied by user');
+  });
+
   it('fails closed when governed nested execution is unavailable', async () => {
     const deactivateServer = vi.fn();
     const exec = vi.fn(async () => 'unsafe');
