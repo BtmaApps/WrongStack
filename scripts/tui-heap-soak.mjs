@@ -106,7 +106,8 @@ function parseArgs(argv) {
   if (options.quick) {
     options.entries = 120;
     options.steps = 4;
-    options.plateauSamples = 2;
+    // Keep the full plateau window: two observations turn a transient GC/JIT
+    // allocation into the entire slope, even when the mounted heap settles.
     options.top = Math.min(options.top, 10);
   }
   return { help: false, options };

@@ -686,7 +686,7 @@ jobs:
 
   # -----------------------------------------------------------------
   # TUI heap-soak regression gate — runs the quick profile (120 entries,
-  # 2 plateau samples per width) and asserts the plateau slope stays
+  # 8 plateau rerenders per width) and asserts the plateau slope stays
   # near zero and the mounted heap stays under a ceiling. Catches
   # renderer memory leaks before they reach production.
   # -----------------------------------------------------------------

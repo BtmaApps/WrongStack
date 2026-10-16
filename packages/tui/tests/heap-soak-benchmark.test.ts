@@ -1,8 +1,13 @@
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { analyzeHeapSnapshot } from '../bench/heap-snapshot-dominators.js';
 import {
-  HEAP_SOAK_SEED,
   buildHeapSoakWorkload,
+  HEAP_SOAK_SEED,
   heapSoakWorkloadFingerprint,
   workloadCharacterCount,
 } from '../bench/heap-soak-workload.js';
@@ -59,6 +64,37 @@ function fixtureSnapshot(): unknown {
 }
 
 describe('TUI heap-soak workload', () => {
+  it('keeps enough plateau rerenders in the quick profile to measure a trend', () => {
+    const output = mkdtempSync(join(tmpdir(), 'wrongstack-heap-soak-'));
+    try {
+      const result = spawnSync(
+        process.execPath,
+        ['scripts/tui-heap-soak.mjs', '--quick', '--output', output],
+        {
+          cwd: fileURLToPath(new URL('../../../', import.meta.url)),
+          encoding: 'utf8',
+          timeout: 45_000,
+          maxBuffer: 10 * 1024 * 1024,
+        },
+      );
+      expect(result.error, result.stderr).toBeUndefined();
+      expect(result.status, result.stderr).toBe(0);
+      const report = JSON.parse(readFileSync(join(output, 'report.json'), 'utf8'));
+      expect(report.scenarios).toHaveLength(2);
+      for (const { run } of report.scenarios) {
+        expect(run.scenario.entries).toBe(120);
+        expect(run.scenario.plateauSamples).toBeGreaterThanOrEqual(8);
+        const plateau = run.memory.samples.filter(
+          (point: { phase: string }) => point.phase === 'plateau',
+        );
+        expect(plateau).toHaveLength(5);
+        expect(plateau.at(-1).index - plateau[0].index).toBeGreaterThanOrEqual(7);
+      }
+    } finally {
+      rmSync(output, { recursive: true, force: true });
+    }
+  });
+
   it('replays identical content for the same seed and entry count', () => {
     const first = buildHeapSoakWorkload({ entryCount: 137, seed: HEAP_SOAK_SEED });
     const second = buildHeapSoakWorkload({ entryCount: 137, seed: HEAP_SOAK_SEED });
