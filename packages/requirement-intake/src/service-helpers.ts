@@ -371,7 +371,15 @@ export function applyAnswerToRecord(
   markQuestionAnswered(record, validated.field, validated.answer);
   const mapping = ANSWER_FIELD_MAPPING[validated.field];
   if (mapping) {
+    const before = mapping.list?.(record).slice();
     mapping.set(record, validated.answer);
+    if (before) {
+      // Record what this answer introduced so a later update withdraws only
+      // its own contribution, never items the create input already supplied.
+      answer.contributedItems = splitItems(validated.answer).filter(
+        (item) => !before.includes(item),
+      );
+    }
     const sourceKey = validated.field as keyof RequirementIntakeRecord['fieldSources'];
     record.fieldSources[sourceKey] = 'user';
   }
@@ -399,8 +407,14 @@ export function applyAnswerUpdateToRecord(
   }
   const mapping = ANSWER_FIELD_MAPPING[answer.field];
   const list = mapping?.list?.(record);
+  let contribution: string[] | undefined;
   if (list) {
-    // Withdraw the replaced answer's items, keeping those another answer still gives.
+    // Withdraw only what this answer itself introduced. Items shared with the
+    // create input or still given by another answer must survive the edit.
+    // Answers recorded before `contributedItems` existed fall back to their
+    // full previous text (the historical behavior).
+    const contributed = answer.contributedItems ?? splitItems(previous);
+    const kept = new Set(splitItems(newAnswer));
     const stillGiven = new Set(
       record.answers
         .filter(
@@ -408,13 +422,17 @@ export function applyAnswerUpdateToRecord(
         )
         .flatMap((other) => splitItems(other.answer)),
     );
-    for (const item of splitItems(previous)) {
+    for (const item of contributed) {
+      if (kept.has(item)) continue;
       const at = list.indexOf(item);
       if (at >= 0 && !stillGiven.has(item)) list.splice(at, 1);
     }
+    const introduced = splitItems(newAnswer).filter((item) => !list.includes(item));
+    contribution = [...new Set([...contributed.filter((item) => kept.has(item)), ...introduced])];
   }
   if (mapping) {
     mapping.set(record, newAnswer);
+    if (contribution) answer.contributedItems = contribution;
     const sourceKey = answer.field as keyof RequirementIntakeRecord['fieldSources'];
     record.fieldSources[sourceKey] = 'user';
   }

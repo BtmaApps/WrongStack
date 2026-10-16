@@ -35,6 +35,12 @@ describe('VIBE Protocol — Requirement Intake', () => {
       expect(stripVibeTag('[VIBE] önce [vibe] sonra [VIBE]')).toBe('önce sonra');
     });
 
+    it('separates word-embedded tags with a space instead of gluing words', () => {
+      expect(stripVibeTag('kelime[VIBE]sonra')).toBe('kelime sonra');
+      expect(stripVibeTag('önce[VIBE][VIBE]sonra')).toBe('önce sonra');
+      expect(stripVibeTag('son[VIBE]')).toBe('son');
+    });
+
     it('does not leave hasVibeTag sticky across repeated calls', () => {
       expect(hasVibeTag('[VIBE] bir')).toBe(true);
       expect(hasVibeTag('[VIBE] iki')).toBe(true);
@@ -61,6 +67,18 @@ describe('VIBE Protocol — Requirement Intake', () => {
       expect(refined).toBeDefined();
       expect(refined?.isVibeMode).toBe(true);
       expect(refined?.detectedAt).toBe(1000);
+    });
+
+    it('copies auditNotes when preserving an existing state', () => {
+      const existing = {
+        isVibeMode: true as const,
+        detectedAt: 1,
+        stage: 'coder' as const,
+        auditNotes: ['spec checked'],
+      };
+      const state = deriveVibeState('refined without tag', existing, 2000);
+      expect(state?.auditNotes).toEqual(['spec checked']);
+      expect(state?.auditNotes).not.toBe(existing.auditNotes);
     });
   });
 

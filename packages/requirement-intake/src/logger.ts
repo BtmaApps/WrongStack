@@ -16,8 +16,8 @@ export interface IntakeLogger {
   error(scope: string, message: string, fields?: IntakeLogFields): void;
 }
 
-function snapshotFields(fields: IntakeLogFields | undefined): IntakeLogFields | undefined {
-  return fields === undefined ? undefined : { ...fields };
+function snapshotFields(fields: IntakeLogFields): IntakeLogFields {
+  return { ...fields };
 }
 
 /** Default logger — silent. Hosts may wire their own structured logger. */

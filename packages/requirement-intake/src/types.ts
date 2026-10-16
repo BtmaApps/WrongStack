@@ -72,6 +72,14 @@ export interface IntakeAnswer {
   source: IntakeFieldSource;
   answeredBy?: string | undefined;
   answeredAt: number;
+  /**
+   * List items this answer newly introduced into the record's list field
+   * (constraints, targetUsers, providedContext). Recorded so a later answer
+   * update withdraws only this answer's own contribution, never items the
+   * create input or another answer supplied. Absent on answers created
+   * before this field existed and on non-list fields.
+   */
+  contributedItems?: string[] | undefined;
 }
 
 /** A question asked (or offered) during intake. */
