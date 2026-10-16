@@ -134,9 +134,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/registry": {
-      "files": 163,
+      "files": 164,
       "typeOnly": 70,
-      "runtimeOrMixed": 96
+      "runtimeOrMixed": 97
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1427,
-      "typeOnly": 1260,
+      "files": 1428,
+      "typeOnly": 1261,
       "runtimeOrMixed": 425
     },
     "@wrongstack/core/types/limits": {
@@ -10473,6 +10473,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/fleet/wrongforge-gateway.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/light-subagent-rate-limit-end-to-end.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -16474,6 +16480,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/subagent-session-audit.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/wrongforge-gateway.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

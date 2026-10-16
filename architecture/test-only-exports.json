@@ -162,6 +162,9 @@
       "DEFAULT_SUBAGENT_HIDDEN_TOOLS",
       "NEVER_SUBAGENT_TOOLS"
     ],
+    "packages/cli/src/fleet/wrongforge-gateway.ts": [
+      "WORKER_WITHHELD_TOOLS"
+    ],
     "packages/cli/src/goal-commands.ts": [
       "createTailBuffer"
     ],

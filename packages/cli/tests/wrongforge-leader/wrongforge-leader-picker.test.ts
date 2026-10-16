@@ -1,0 +1,65 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const resolveEndpoint = vi.fn();
+const refreshCache = vi.fn();
+const readCache = vi.fn();
+
+vi.mock('../../src/fleet/wrongforge-client.js', () => ({
+  WRONGFORGE_AGENT_ID: 'wrongforge',
+  resolveWrongForgeEndpoint: () => resolveEndpoint(),
+}));
+
+vi.mock('../../src/fleet/wrongforge-info.js', () => ({
+  readCachedWrongForgeInfo: () => readCache(),
+  refreshWrongForgeInfoCache: (ep: unknown) => refreshCache(ep),
+}));
+
+const { wrongForgeLeaderPickable } = await import(
+  '../../src/wrongforge-leader/wrongforge-leader-picker.js'
+);
+
+const endpoint = { url: 'http://127.0.0.1:8787', apiKey: 'k'.repeat(32) };
+
+beforeEach(() => {
+  resolveEndpoint.mockReset();
+  refreshCache.mockReset();
+  readCache.mockReset();
+});
+
+describe('wrongForgeLeaderPickable', () => {
+  it('offers nothing when no WrongForge is set up on this machine', () => {
+    resolveEndpoint.mockReturnValue(undefined);
+    expect(wrongForgeLeaderPickable()).toEqual([]);
+    expect(refreshCache).not.toHaveBeenCalled();
+    expect(readCache).not.toHaveBeenCalled();
+  });
+
+  it('offers nothing while the model list is unknown, but refreshes it for next time', () => {
+    resolveEndpoint.mockReturnValue(endpoint);
+    readCache.mockReturnValue(undefined);
+    expect(wrongForgeLeaderPickable()).toEqual([]);
+    expect(refreshCache).toHaveBeenCalledWith(endpoint);
+  });
+
+  it('lists the cached models and marks the default one', () => {
+    resolveEndpoint.mockReturnValue(endpoint);
+    readCache.mockReturnValue({
+      models: ['sonnet', 'opus'],
+      defaultModel: 'opus',
+      features: [],
+    });
+
+    const [entry, ...rest] = wrongForgeLeaderPickable();
+    expect(rest).toEqual([]);
+    expect(entry).toMatchObject({ id: 'wrongforge', type: 'wrongforge' });
+    expect(entry?.models).toEqual([
+      { id: 'sonnet', name: 'sonnet', description: 'WrongForge leading the session' },
+      {
+        id: 'opus',
+        name: 'opus (WrongForge default)',
+        description: 'WrongForge leading the session',
+      },
+    ]);
+    expect(refreshCache).toHaveBeenCalledWith(endpoint);
+  });
+});

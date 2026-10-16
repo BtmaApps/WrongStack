@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-16T05:35:09.063Z",
+  "generatedAt": "2026-10-16T05:58:33.685Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4977,
-    "testFiles": 4388,
+    "testFiles": 4390,
     "sourceLines": 1104393,
     "workspaceEdges": 137,
     "moduleEdges": 16399,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 972
+    "testOnlyExports": 973
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 647,
-      "testFiles": 639,
+      "testFiles": 641,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 639
+          "testFiles": 641
         }
       ]
     },
@@ -3004,6 +3004,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/fleet/wrongforge-gateway.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/fleet/wrongforge-runner.test.ts",
         "projects": [
           "root-node"
@@ -5747,6 +5753,12 @@
       },
       {
         "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-gateway.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-picker.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28192,6 +28204,10 @@
     {
       "file": "packages/cli/src/fleet/host-helpers.ts",
       "name": "NEVER_SUBAGENT_TOOLS"
+    },
+    {
+      "file": "packages/cli/src/fleet/wrongforge-gateway.ts",
+      "name": "WORKER_WITHHELD_TOOLS"
     },
     {
       "file": "packages/cli/src/goal-commands.ts",
