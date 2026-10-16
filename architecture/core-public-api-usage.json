@@ -89,9 +89,9 @@
       "runtimeOrMixed": 56
     },
     "@wrongstack/core/kernel": {
-      "files": 374,
+      "files": 375,
       "typeOnly": 162,
-      "runtimeOrMixed": 232
+      "runtimeOrMixed": 233
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -7750,6 +7750,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/execution-chimera-cascade.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/execution-tui.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-16T07:40:37.752Z",
+  "generatedAt": "2026-10-16T08:58:40.103Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 5097,
-    "testFiles": 4402,
+    "testFiles": 4405,
     "sourceLines": 1106537,
     "workspaceEdges": 137,
     "moduleEdges": 16781,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 666,
-      "testFiles": 645,
+      "testFiles": 646,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -196,7 +196,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 645
+          "testFiles": 646
         }
       ]
     },
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1147,
-      "testFiles": 976,
+      "testFiles": 978,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 976
+          "testFiles": 978
         }
       ]
     },
@@ -2783,6 +2783,12 @@
       },
       {
         "file": "packages/cli/tests/execution-kanban-dispatch.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/execution-tui.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6550,6 +6556,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/autonomous-coordinator-consensus.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/autonomous-coordinator.test.ts",
         "projects": [
           "root-node"
@@ -7205,6 +7217,12 @@
       },
       {
         "file": "packages/core/tests/coordination/mailbox-security-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/mailbox-server-dispatch.test.ts",
         "projects": [
           "root-node"
         ]

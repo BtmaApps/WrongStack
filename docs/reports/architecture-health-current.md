@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-16T07:40:37.752Z
+**Generated:** 2026-10-16T08:58:40.103Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -10,7 +10,7 @@
 | Workspace packages | 37 |
 | Production source files | 5097 |
 | Production source lines | 1106537 |
-| Test files | 4402 |
+| Test files | 4405 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16781 |
 | Non-command slash imports | 0 |
@@ -29,10 +29,10 @@ PASS — no blocking architecture-health errors.
 |---|---:|---:|---|
 | @wrongstack/acp | 52 | 58 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
-| @wrongstack/cli | 666 | 645 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/cli | 666 | 646 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1147 | 976 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1147 | 978 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 46 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 108 | 82 | @wrongstack/persistence, @wrongstack/primitives |
