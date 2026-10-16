@@ -348,12 +348,17 @@ describe('ChronicleJournal', () => {
     });
     await journal.append({ eventType: 'fresh', ...context });
 
+    // append() starts the auto-purge fire-and-forget, so there is nothing to
+    // join; poll with a budget that survives a loaded coverage run instead of
+    // expect.poll's 1 s default.
     await expect
-      .poll(async () =>
-        readFile(oldPath, 'utf8').then(
-          () => false,
-          () => true,
-        ),
+      .poll(
+        async () =>
+          readFile(oldPath, 'utf8').then(
+            () => false,
+            () => true,
+          ),
+        { timeout: 15_000 },
       )
       .toBe(true);
     await expect(readFile(journal.path, 'utf8')).resolves.toBeTruthy();
