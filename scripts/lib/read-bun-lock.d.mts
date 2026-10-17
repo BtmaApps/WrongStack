@@ -4,4 +4,5 @@ export interface BunLock {
   overrides: Record<string, unknown>;
   workspaces: Record<string, unknown>;
 }
+export function parseJsonc(text: string): unknown;
 export function readBunLock(file: string): BunLock;

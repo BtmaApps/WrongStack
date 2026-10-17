@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { resolveBunExecutable } from './bun-executable.mjs';
 import { workspaceMemberDirs } from './publishable-packages.mjs';
+import { readBunLock } from './read-bun-lock.mjs';
 
 /** Materialise a production workspace closure using Bun tarballs and a hoisted install. */
 export function deployBunWorkspace(name, destination, root) {
@@ -74,7 +75,7 @@ export function deployBunWorkspace(name, destination, root) {
   // Do not execute the staged workspace's own prepare/install hooks.
   delete manifest.scripts;
   writeFileSync(join(stage, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  const locked = Bun.JSONC.parse(readFileSync(join(root, 'bun.lock'), 'utf8'));
+  const locked = readBunLock(join(root, 'bun.lock'));
   const registryPackages = new Set(
     Object.values(locked.packages)
       .map((pkg) => pkg[0])
@@ -142,7 +143,7 @@ export function deployBunWorkspace(name, destination, root) {
       stdio: 'inherit',
     },
   );
-  const resolvedLock = Bun.JSONC.parse(readFileSync(join(stage, 'bun.lock'), 'utf8'));
+  const resolvedLock = readBunLock(join(stage, 'bun.lock'));
   const localPackages = new Set(
     [...tarballs].map(([key, tarball]) => `${key}@${tarball.replaceAll('\\', '/')}`),
   );
