@@ -12,14 +12,29 @@ import {
   WandSparkles,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clientId } from '../lib/ids';
 import { composeMessage, draftKey, record, text } from '../lib/session';
+import { usePanelRequests } from '../lib/use-panel-requests';
 import type { Attachment, SessionController } from '../lib/use-session';
 import { useSkillPicker } from '../lib/use-skill-picker';
 import { PromptRefiner } from './prompt-refiner';
 
-export function Composer({ controller }: { controller: SessionController }) {
+function fitDraft(element: HTMLTextAreaElement) {
+  const maximum = Math.min(230, Math.max(100, window.innerHeight * 0.28));
+  element.style.height = '0px';
+  const height = element.scrollHeight;
+  element.style.height = `${Math.min(height, maximum)}px`;
+  element.style.overflowY = height > maximum ? 'auto' : 'hidden';
+}
+
+export function Composer({
+  controller,
+  onDraftChange,
+}: {
+  controller: SessionController;
+  onDraftChange?: (hasDraft: boolean) => void;
+}) {
   const { state, connection, ready, modelPending, send, submit, queue, removeQueued, notice } =
     controller;
   const [draft, setDraft] = useState('');
@@ -27,15 +42,38 @@ export function Composer({ controller }: { controller: SessionController }) {
   const [images, setImages] = useState<Attachment[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [reading, setReading] = useState(false);
-  const [deliveryMode, setDeliveryMode] = useState<'queue' | 'steer'>('queue');
+  const [deliveryMode, setDeliveryMode] = useState<'queue' | 'steer' | 'btw'>('queue');
+  const btw = usePanelRequests(controller);
   const [refineOriginal, setRefineOriginal] = useState<string | null>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (textarea.current) fitDraft(textarea.current);
+  }, [draft]);
+  useLayoutEffect(() => {
+    const element = textarea.current;
+    if (!element) return;
+    let width = element.clientWidth;
+    const fit = () => fitDraft(element);
+    const observer = new ResizeObserver(() => {
+      if (element.clientWidth === width) return;
+      width = element.clientWidth;
+      fit();
+    });
+    observer.observe(element);
+    window.addEventListener('resize', fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', fit);
+    };
+  }, []);
   const skills = useSkillPicker(draft, setDraft, textarea, controller);
   const imageInput = useRef<HTMLInputElement>(null);
   const mounted = useRef(true);
   const appliedDraft = useRef('');
   const mention = /(?:^|\s)@([^\s@]*)$/.exec(draft);
   const query = mention?.[1];
+  const hasDraft = Boolean(draft.trim() || references.length || images.length);
+  useEffect(() => onDraftChange?.(hasDraft), [hasDraft, onDraftChange]);
   const enabled =
     connection === 'open' &&
     ready &&
@@ -127,12 +165,34 @@ export function Composer({ controller }: { controller: SessionController }) {
       if (mounted.current) setReading(false);
     }
   };
-  const sendDraft = () => {
-    if (!enabled || reading) return;
-    if (submit(composeMessage(draft, references), images, deliveryMode)) {
-      setDraft('');
-      setReferences([]);
-      setImages([]);
+  const sendDraft = async () => {
+    if (!enabled || reading || btw.busy || !hasDraft) return;
+    const content = composeMessage(draft, references);
+    let delivered: boolean;
+    if (state.running && deliveryMode === 'btw') {
+      if (images.length) {
+        notice('BTW accepts text and file references. Choose Queue or Steer to send images.');
+        return;
+      }
+      const result = await btw.request(
+        'mailbox.send',
+        {
+          to: 'leader',
+          type: 'btw',
+          subject: 'BTW from VibeUI',
+          body: content,
+          priority: 'normal',
+          audience: 'all',
+        },
+        'mailbox.sent',
+      );
+      delivered = result?.success === true;
+      if (delivered) controller.recordBtw(content);
+    } else delivered = submit(content, images, deliveryMode === 'btw' ? 'queue' : deliveryMode);
+    if (delivered) {
+      setDraft((value) => (value === draft ? '' : value));
+      setReferences((value) => (value === references ? [] : value));
+      setImages((value) => (value === images ? [] : value));
       setDeliveryMode('queue');
       textarea.current?.focus();
     }
@@ -211,7 +271,7 @@ export function Composer({ controller }: { controller: SessionController }) {
         className="composer"
         onSubmit={(event) => {
           event.preventDefault();
-          sendDraft();
+          void sendDraft();
         }}
       >
         {(references.length > 0 || images.length > 0) && (
@@ -246,6 +306,12 @@ export function Composer({ controller }: { controller: SessionController }) {
         )}
         {skills.open && enabled && (
           <section className="file-picker skill-picker" aria-label="Matching skills">
+            <header className="skill-picker-heading">
+              <strong>Skills</strong>
+              <span>
+                {skills.matches.length} matching · {skills.total} installed
+              </span>
+            </header>
             <div id={skills.listId} role="listbox" aria-label="Skills">
               {skills.matches.map((skill, index) => (
                 <button
@@ -263,6 +329,9 @@ export function Composer({ controller }: { controller: SessionController }) {
               ))}
             </div>
             {!skills.matches.length && <p role="status">{skills.status}</p>}
+            <footer className="skill-picker-footer">
+              ↑ ↓ browse · Enter / Tab mention · Esc close
+            </footer>
           </section>
         )}
         {query !== undefined && enabled && !skills.open && (
@@ -306,7 +375,7 @@ export function Composer({ controller }: { controller: SessionController }) {
             if (skills.onKeyDown(event)) return;
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
-              sendDraft();
+              void sendDraft();
             }
             if (event.key === 'Escape' && query !== undefined)
               setDraft((value) => value.replace(/@[^\s@]*$/, ''));
@@ -364,23 +433,28 @@ export function Composer({ controller }: { controller: SessionController }) {
               <select
                 className="delivery-mode"
                 aria-label="Message delivery"
-                title="Steer stops the current run, then sends this message first."
+                title="Queue waits for the next turn. Steer stops this run. BTW adds a note without interrupting."
                 value={deliveryMode}
-                onChange={(e) => setDeliveryMode(e.target.value as 'queue' | 'steer')}
+                disabled={btw.busy}
+                onChange={(e) => setDeliveryMode(e.target.value as 'queue' | 'steer' | 'btw')}
               >
                 <option value="queue">Queue</option>
                 <option value="steer">Steer</option>
+                <option value="btw" disabled={images.length > 0}>
+                  BTW
+                </option>
               </select>
             )}
-            {state.running && (
+            {controller.hasActiveWork && (
               <button
                 type="button"
                 className="stop-button"
-                disabled={!enabled}
-                onClick={() => send('abort', { sessionId: state.id })}
+                disabled={connection !== 'open' || !ready}
+                title="Stop this session and all its agents. Queued messages stay paused."
+                onClick={controller.stopAll}
               >
                 <Square size={12} fill="currentColor" />
-                Stop
+                Stop all
               </button>
             )}
             <button
@@ -388,13 +462,18 @@ export function Composer({ controller }: { controller: SessionController }) {
               className="send-button"
               aria-label={
                 state.running
-                  ? deliveryMode === 'steer'
-                    ? 'Steer message'
-                    : 'Queue message'
+                  ? deliveryMode === 'btw'
+                    ? 'Send BTW note'
+                    : deliveryMode === 'steer'
+                      ? 'Steer message'
+                      : 'Queue message'
                   : 'Send message'
               }
               disabled={
-                !enabled || reading || (!draft.trim() && !references.length && !images.length)
+                !enabled ||
+                reading ||
+                btw.busy ||
+                (!draft.trim() && !references.length && !images.length)
               }
             >
               <ArrowUp size={18} />
@@ -402,6 +481,11 @@ export function Composer({ controller }: { controller: SessionController }) {
           </div>
         </div>
       </form>
+      {btw.error && (
+        <p className="form-error" role="alert">
+          {btw.error}
+        </p>
+      )}
       {refineOriginal !== null && (
         <PromptRefiner
           original={refineOriginal}

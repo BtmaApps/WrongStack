@@ -15,6 +15,28 @@ const server = createHttpServer({ host: '127.0.0.1', distDir, apiToken: 'vibeui-
 const wss = new WebSocketServer({ server });
 const received = [];
 const clients = new Set();
+const memoryRecords = [
+  {
+    id: 'm1',
+    text: 'Use Bun for package scripts.',
+    kind: 'convention',
+    scope: 'project',
+    status: 'active',
+    tags: ['tooling'],
+    confidence: 0.9,
+    createdAt: '2026-10-01T12:00:00Z',
+    updatedAt: '2026-10-17T12:00:00Z',
+    anchors: [{ type: 'file', path: 'package.json' }],
+  },
+  {
+    id: 'm2',
+    text: 'Keep interfaces focused.',
+    kind: 'preference',
+    scope: 'project',
+    status: 'active',
+    tags: ['design'],
+  },
+];
 let connections = 0;
 let selectedModel = 'fixture-model';
 let effort = 'auto';
@@ -24,6 +46,7 @@ let preferences = {
   yolo: false,
   yoloPlus: false,
   autonomy: 'suggest',
+  autonomyDelayMs: 1000,
   nextStepsMode: 'optional',
   contextAutoCompact: true,
   contextStrategy: 'hybrid',
@@ -116,6 +139,85 @@ wss.on('connection', (socket) => {
     received.push(message);
     const p = message.payload ?? {};
     if (message.type === 'ping') frame(socket, 'pong', {});
+    if (message.type === 'provider.quota.get' || message.type === 'provider.quota.refresh')
+      frame(socket, 'provider.quota', {
+        snapshots: [
+          {
+            providerId: 'fixture',
+            meterId: 'default',
+            planLabel: 'Fixture plan',
+            capturedAt: Date.now(),
+            windows: [
+              {
+                id: '5h',
+                label: '5 hours',
+                usedPercent: 25,
+                resetsAt: Math.floor(Date.now() / 1000) + 3600,
+              },
+            ],
+          },
+        ],
+        ...(message.type === 'provider.quota.refresh'
+          ? { refreshed: [{ providerId: 'fixture', status: 'ok' }] }
+          : {}),
+      });
+    if (message.type === 'context.clear') {
+      setTimeout(
+        () =>
+          frame(socket, 'session.start', {
+            sessionId: p.sessionId,
+            provider: 'fixture',
+            model: selectedModel,
+            projectName: 'VibeUI Studio',
+            cwd: 'D:/workspace/studio',
+            maxContext: 4096,
+            reset: true,
+            replayMessages: [],
+          }),
+        300,
+      );
+    }
+    if (message.type === 'mailbox.send')
+      frame(socket, 'mailbox.sent', {
+        requestId: p.requestId,
+        success: p.body !== 'reject-btw',
+        ...(p.body === 'reject-btw'
+          ? { error: 'BTW rejected by fixture' }
+          : { messageId: 'btw-fixture' }),
+      });
+    if (message.type === 'memory.sage.listPage') {
+      const matching = memoryRecords.filter(
+        (item) => !p.query || item.text.toLowerCase().includes(p.query.toLowerCase()),
+      );
+      frame(socket, 'memory.sage.listPage', {
+        requestId: p.requestId,
+        memories: matching,
+        total: matching.length,
+        nextCursor: null,
+        stats: { total: 2 },
+      });
+    }
+    if (message.type === 'memory.sage.get')
+      frame(socket, 'memory.sage.get', {
+        requestId: p.requestId,
+        memory: memoryRecords.find((item) => item.id === p.id),
+      });
+    if (message.type === 'memory.sage.graph')
+      frame(socket, 'memory.sage.graph', {
+        requestId: p.requestId,
+        query: p.query,
+        edges: [
+          { id: 'e1', from: 'mem:m1', to: 'mem:m2', relation: 'related_to', weight: 0.8 },
+          ...Array.from({ length: 20 }, (_, i) => ({
+            id: `distant-${i}`,
+            from: 'mem:m2',
+            to: `mem:distant-${i}`,
+            relation: 'related_to',
+          })),
+        ],
+        memories: memoryRecords,
+        ...(p.query === 'mem:m2' ? { edges: [] } : {}),
+      });
     if (message.type === 'prompts.list')
       frame(socket, 'prompts.list', { enabled: true, prompts: promptLibrary });
     if (message.type === 'prompts.content') {
@@ -263,6 +365,10 @@ wss.on('connection', (socket) => {
         skills: [
           { name: 'testing', description: 'Write and verify behavioral tests' },
           { name: 'design-system-foundry', description: 'Create a cohesive design system' },
+          ...Array.from({ length: 40 }, (_, i) => ({
+            name: `skill-${String(i).padStart(2, '0')}`,
+            description: 'A detailed workspace capability',
+          })),
         ],
       });
     }
@@ -382,7 +488,14 @@ wss.on('connection', (socket) => {
         requestId: p.response.requestId,
       });
     if (message.type === 'files.read')
-      frame(socket, 'files.read', { ...p, content: 'A concise project report.' });
+      frame(socket, 'files.read', {
+        ...p,
+        content: p.filePath.endsWith('REPORT.md')
+          ? '# Generated report\nVerified local artifact.\n[Open HTML preview](./preview.html)'
+          : p.filePath.endsWith('preview.html')
+            ? '<!doctype html><html><body><h1>Generated HTML preview</h1><p>Static report content.</p></body></html>'
+            : 'A concise project report.',
+      });
     if (message.type === 'session.subscribe')
       frame(socket, 'session.run_state', { sessionId: p.sessionIds[0], isRunning: false });
     if (message.type === 'providers.list')
@@ -494,7 +607,16 @@ wss.on('connection', (socket) => {
       frame(socket, 'files.list', { files: ['src/app.tsx', 'src/styles.css'] });
     if (message.type === 'session.resume')
       session(socket, p.id, [
-        { role: 'user', content: 'Earlier question' },
+        {
+          role: 'user',
+          origin: 'user_input',
+          authoredLength: 1,
+          content: [
+            { type: 'text', text: 'Earlier question' },
+            { type: 'text', text: '[TOOL COACH — advisory guidance] Runtime coaching' },
+            { type: 'text', text: '[Same-session notes — in-process] Reviewer observation' },
+          ],
+        },
         { role: 'assistant', content: 'Restored answer' },
       ]);
     if (message.type === 'session.new') session(socket, `new-session-${connections}`, []);
@@ -548,12 +670,22 @@ wss.on('connection', (socket) => {
             content: [
               {
                 type: 'text',
-                text: 'Building a calmer workspace.\n<nextsteps>\n1. Review keyboard navigation\n2. Check mobile layout\n</nextsteps>',
+                text:
+                  p.content === 'Auto ownership seed'
+                    ? 'Continue.\n<nextsteps>\n1. Auto follow-up proof auto="true"\n</nextsteps>'
+                    : p.content === 'Auto cancellation seed'
+                      ? 'Continue.\n<nextsteps>\n1. Cancelled follow-up proof auto="true"\n</nextsteps>'
+                      : 'Building a calmer workspace.\n<nextsteps>\n1. Review keyboard navigation\n2. Check mobile layout\n</nextsteps>',
               },
             ],
             stopReason: 'end_turn',
           });
-          frame(socket, 'run.result', { sessionId: p.sessionId, status: 'done', iterations: 1 });
+          frame(socket, 'run.result', {
+            sessionId: p.sessionId,
+            requestId: p.id,
+            status: 'done',
+            iterations: 1,
+          });
         },
         p.content === 'Start before steering' ? 3000 : 700,
       );
@@ -564,12 +696,60 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 const errors = [];
+const themeContrasts = [];
 try {
   const page = await browser.newPage({
     viewport: { width: 1512, height: 982 },
     deviceScaleFactor: 1,
   });
   page.setDefaultTimeout(10_000);
+  const auditTheme = async () => {
+    const report = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const luminance = (token) => {
+        ctx.fillStyle = style.getPropertyValue(`--${token}`).trim();
+        ctx.fillRect(0, 0, 1, 1);
+        const linear = [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3).map((value) => {
+          const channel = value / 255;
+          return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+        return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+      };
+      const pairs = ['text', 'muted', 'faint', 'accent'].flatMap((foreground) =>
+        ['base', 'sidebar', 'raised', 'hover', 'code-surface'].map((background) => [
+          foreground,
+          background,
+        ]),
+      );
+      pairs.push(['accent-text', 'accent']);
+      const contrasts = pairs.map(([foreground, background]) => {
+        const a = luminance(foreground);
+        const b = luminance(background);
+        return { foreground, background, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+      });
+      return {
+        theme: document.documentElement.dataset.theme,
+        palette: document.documentElement.dataset.palette,
+        baseLuminance: luminance('base'),
+        contrasts,
+      };
+    });
+    for (const pair of report.contrasts)
+      assert.ok(
+        pair.ratio >= 4.5,
+        `${report.theme}/${report.palette}: ${pair.foreground} on ${pair.background} contrast ${pair.ratio.toFixed(2)} must meet 4.5:1`,
+      );
+    if (report.theme === 'dark')
+      assert.ok(report.baseLuminance >= 0.02, 'Dark theme should use a lifted charcoal surface');
+    themeContrasts.push({
+      theme: report.theme,
+      palette: report.palette,
+      minimum: Math.min(...report.contrasts.map((pair) => pair.ratio)),
+    });
+  };
   const captureNarrowDialog = async (name) => {
     const viewport = page.viewportSize();
     try {
@@ -600,6 +780,42 @@ try {
   await page.getByRole('button', { name: 'Send message', exact: true }).waitFor();
   await page.getByText('What are we building').waitFor();
   await page.getByText('Ready', { exact: true }).waitFor();
+  await page.locator('.workspace-artwork').waitFor();
+  assert.equal(await page.locator('.workspace-artwork').getAttribute('aria-hidden'), 'true');
+  await page.screenshot({
+    path: join(output, 'welcome-desktop-dark.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(
+    await page
+      .locator('.art-main-panel')
+      .evaluate((element) => getComputedStyle(element).animationName),
+    'none',
+    'Reduced motion disables decorative SVG movement',
+  );
+  assert.equal(
+    await page.locator('.welcome').evaluate((element) => getComputedStyle(element).animationName),
+    'none',
+  );
+  await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+      `Welcome fits at ${width}px`,
+    );
+    await page.screenshot({
+      path: join(output, `welcome-${width}.png`),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  }
+  await page.setViewportSize({ width: 1512, height: 982 });
+  await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.getByRole('button', { name: 'fixture-model' }).waitFor();
   await page.getByRole('button', { name: 'fixture-model' }).click();
   await page.getByRole('option', { name: /Small model/ }).click();
@@ -669,8 +885,10 @@ try {
   ]) {
     await settings.getByRole('button', { name: label, exact: true }).click();
     assert.equal(await page.locator('html').getAttribute('data-palette'), palette);
+    await auditTheme();
     await settings.getByRole('button', { name: 'Light', exact: true }).click();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+    await auditTheme();
     await page.screenshot({
       path: join(output, `settings-light-${palette}.png`),
       fullPage: true,
@@ -697,6 +915,19 @@ try {
     .getByRole('button', { name: 'Providers', exact: true })
     .click();
   const accounts = page.getByRole('dialog');
+  await accounts.getByText('fx...last', { exact: true }).waitFor();
+  await page.screenshot({
+    path: join(output, 'provider-cards.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await accounts
+    .getByRole('textbox', { name: 'Search saved providers', exact: true })
+    .fill('not-a-real-account');
+  await accounts
+    .getByText('No accounts match “not-a-real-account”. Try another name.', { exact: true })
+    .waitFor();
+  await accounts.getByRole('textbox', { name: 'Search saved providers', exact: true }).fill('');
   await accounts.getByText('fx...last', { exact: true }).waitFor();
   await accounts
     .getByRole('button', { name: 'Delete key provider from fixture', exact: true })
@@ -822,6 +1053,7 @@ try {
   assert.ok(
     received.some((m) => m.type === 'context.compact' && m.payload.sessionId === 'session-one'),
   );
+  await context.getByRole('button', { name: 'Simple', exact: true }).click();
   await context.getByRole('button', { name: 'Close dialog', exact: true }).click();
   for (const client of clients)
     frame(client, 'tool.confirm_needed', {
@@ -882,6 +1114,23 @@ try {
     animations: 'disabled',
   });
   const message = page.getByRole('textbox', { name: 'Message', exact: true });
+  const compactDraftHeight = (await message.boundingBox()).height;
+  await message.fill(
+    Array.from({ length: 24 }, (_, index) => `Draft line ${index + 1}`).join('\n'),
+  );
+  await page.waitForFunction(
+    (height) => document.querySelector('textarea[aria-label="Message"]').clientHeight > height + 30,
+    compactDraftHeight,
+  );
+  assert.ok(
+    (await message.boundingBox()).height <= 231,
+    'Long drafts grow within a bounded editor',
+  );
+  await message.fill('Short draft');
+  await page.waitForFunction(
+    (height) => document.querySelector('textarea[aria-label="Message"]').clientHeight <= height + 2,
+    compactDraftHeight,
+  );
   await message.fill('Fail refinement');
   await page.getByRole('button', { name: 'Refine prompt', exact: true }).click();
   await page
@@ -909,6 +1158,22 @@ try {
   await page.getByRole('button', { name: 'Refine prompt', exact: true }).click();
   await page.getByRole('textbox', { name: 'Refined prompt', exact: true }).waitFor();
   await page.getByText('Refined with fixture / refiner-model', { exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .locator('.refiner-original')
+      .evaluate((element) => element.open),
+    false,
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Extended', exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .locator('.refiner-original')
+      .evaluate((element) => element.open),
+    true,
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Simple', exact: true }).click();
   await page.screenshot({
     path: join(output, 'prompt-refiner.png'),
     fullPage: true,
@@ -944,7 +1209,7 @@ try {
     received.find((m) => m.type === 'user_message').payload.content,
     '$testing\n\nExplain the project clearly.\n@src/app.tsx',
   );
-  await page.getByRole('button', { name: 'Review keyboard navigation', exact: false }).click();
+  await page.getByRole('button', { name: 'Edit step 1 in composer', exact: true }).click();
   await page.waitForFunction(
     () =>
       document.querySelector('textarea[aria-label="Message"]')?.value ===
@@ -1041,6 +1306,7 @@ try {
   assert.ok(
     (await readFile(join(output, 'conversation.md'), 'utf8')).includes('Keep queued after error'),
   );
+  await page.getByRole('tab', { name: /Changes/ }).click();
   await page.getByRole('button', { name: 'src/app.tsx', exact: false }).click();
   await page.getByText('export const greeting = "hello, world";', { exact: false }).waitFor();
   await page.screenshot({
@@ -1054,6 +1320,32 @@ try {
   await page.getByText('Build a focused workspace').waitFor();
   await page.getByRole('tab', { name: 'Activity', exact: true }).click();
   await page.getByText('read_file', { exact: true }).first().waitFor();
+  await page.screenshot({
+    path: join(output, 'workspace-redesign.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  const toolCard = page.locator('.tool-card').filter({ hasText: 'read_file' }).first();
+  await toolCard.locator('summary').click();
+  assert.equal(await toolCard.locator('pre').count(), 0, 'Sidebar keeps tool details compact');
+  await toolCard.getByRole('button', { name: 'Inspect call', exact: true }).click();
+  const toolDialog = page.getByRole('dialog');
+  await toolDialog.getByText('File inspected.', { exact: true }).waitFor();
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await toolDialog.getByRole('button', { name: 'Copy tool result', exact: true }).click();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'File inspected.');
+  await toolDialog.getByRole('tab', { name: 'Arguments', exact: true }).click();
+  await toolDialog.locator('pre').filter({ hasText: 'src/app.tsx' }).waitFor();
+  await toolDialog.getByRole('button', { name: 'Extended', exact: true }).click();
+  await toolDialog.getByText(/Call ID · tool-/).waitFor();
+  await page.screenshot({
+    path: join(output, 'tool-inspector.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await captureNarrowDialog('tool-inspector');
+  await toolDialog.getByRole('button', { name: 'Simple', exact: true }).click();
+  await toolDialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
   for (const client of clients) {
     frame(client, 'subagent.event', {
       sessionId: 'session-one',
@@ -1116,7 +1408,104 @@ try {
     false,
     'Verbose activity stays collapsed',
   );
+  const longAgentOutput = `Full output begins here. ${'Detailed worker observation. '.repeat(140)} Final worker observation.`;
+  for (const client of clients)
+    frame(client, 'agent.timeline.message', {
+      sessionId: 'session-one',
+      subagentId: 'worker-review',
+      kind: 'text',
+      content: longAgentOutput,
+      ts: '2026-10-17T12:01:00Z',
+    });
+  await page
+    .getByRole('dialog')
+    .getByText('Latest excerpt. Extended shows the full reported output.', { exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .locator('.agent-latest .markdown')
+      .innerText()
+      .then((value) => value.includes('Full output begins here.')),
+    false,
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Extended', exact: true }).click();
+  await page.getByRole('dialog').getByText('worker-review', { exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .locator('.agent-latest .markdown')
+      .innerText()
+      .then((value) => value.includes('Full output begins here.')),
+    true,
+  );
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .locator('.agent-deeper')
+      .evaluate((element) => element.open),
+    true,
+  );
+  await page.screenshot({
+    path: join(output, 'agent-extended.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.getByRole('dialog').getByRole('button', { name: 'Simple', exact: true }).click();
+  assert.equal(await page.getByRole('dialog').locator('.agent-technical').count(), 0);
   await page.getByRole('dialog').getByRole('button', { name: 'Close dialog', exact: true }).click();
+  // The leader has finished, but its worker still owns live work.
+  for (const client of clients)
+    frame(client, 'session.run_state', { sessionId: 'session-one', isRunning: false });
+  assert.equal(
+    await page.getByRole('button', { name: 'New session', exact: false }).isDisabled(),
+    true,
+  );
+  const abortsBeforeWorkerStop = received.filter((entry) => entry.type === 'abort').length;
+  await page.getByRole('button', { name: 'Stop all', exact: true }).click();
+  await page.waitForFunction(() => document.body.textContent.includes('Stop requested'));
+  assert.equal(
+    received.filter((entry) => entry.type === 'abort').length,
+    abortsBeforeWorkerStop + 1,
+  );
+  assert.equal(
+    received.filter((entry) => entry.type === 'abort').at(-1).payload.sessionId,
+    'session-one',
+  );
+  // Leader acknowledgement alone must not unlock a still-running worker.
+  await page.waitForTimeout(150);
+  assert.equal(
+    await page.getByRole('button', { name: 'New session', exact: false }).isDisabled(),
+    true,
+  );
+  for (const client of clients)
+    frame(client, 'agent.status_changed', {
+      sessionId: 'session-one',
+      subagentId: 'worker-review',
+      status: 'stopped',
+    });
+  await page.getByRole('button', { name: 'Stop all', exact: true }).waitFor({ state: 'hidden' });
+  assert.equal(
+    await page.getByRole('button', { name: 'New session', exact: false }).isEnabled(),
+    true,
+  );
+  // A stop also preserves pending messages without starting another run.
+  for (const client of clients)
+    frame(client, 'session.run_state', { sessionId: 'session-one', isRunning: true });
+  await page.getByRole('combobox', { name: 'Message delivery', exact: true }).selectOption('queue');
+  await message.fill('Keep this queued after stopping');
+  await page.getByRole('button', { name: 'Queue message', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume queue', exact: true }).click();
+  const messagesBeforeStop = received.filter((entry) => entry.type === 'user_message').length;
+  await page.getByRole('button', { name: 'Stop all', exact: true }).click();
+  await page.getByRole('button', { name: 'Stop all', exact: true }).waitFor({ state: 'hidden' });
+  await page.getByRole('button', { name: 'Resume queue', exact: true }).waitFor();
+  assert.equal(
+    received.filter((entry) => entry.type === 'user_message').length,
+    messagesBeforeStop,
+  );
+  await page.locator('.message-queue').getByText('Keep this queued after stopping').waitFor();
+  await page.getByRole('button', { name: 'Remove queued message 1', exact: true }).click();
   await page.getByRole('tab', { name: 'Activity', exact: true }).click();
   for (const client of clients)
     frame(client, 'tool.executed', {
@@ -1141,6 +1530,43 @@ try {
   await page.getByRole('textbox', { name: 'Search project files', exact: true }).fill('app');
   await page.getByRole('button', { name: 'src/app.tsx', exact: true }).click();
   await page.getByRole('dialog').getByText('A concise project report.', { exact: true }).waitFor();
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Copy file contents', exact: true })
+    .click();
+  await page.getByRole('dialog').getByText('Copied file contents.', { exact: true }).waitFor();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    'A concise project report.',
+  );
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = async () => {
+      throw new Error('Fixture clipboard unavailable');
+    };
+  });
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Copy file contents', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByText('Could not copy. Select the text to copy it manually.', { exact: true })
+    .waitFor();
+  await page.evaluate(() => {
+    delete navigator.clipboard.writeText;
+  });
+  await page.getByRole('dialog').getByRole('button', { name: 'Extended', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByText(/1 line · 25 characters/)
+    .waitFor();
+  await page.getByRole('dialog').getByRole('button', { name: 'Simple', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Copy file contents', exact: true })
+    .click();
+  await page.getByRole('dialog').getByText('Copied file contents.', { exact: true }).waitFor();
   const fileContentBox = await page.getByRole('dialog').locator('.file-content').boundingBox();
   const fileDirectoryBox = await page.getByRole('dialog').locator('.files-directory').boundingBox();
   assert.ok(
@@ -1153,6 +1579,20 @@ try {
     animations: 'disabled',
   });
   await captureNarrowDialog('files-modal');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .getByRole('complementary', { name: 'Directories and files', exact: true })
+      .isVisible(),
+    false,
+    'Mobile reading gives the file the full pane',
+  );
+  await page.getByRole('button', { name: 'Browse files', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Search project files', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'src/app.tsx', exact: true }).click();
+  await page.getByRole('dialog').getByText('A concise project report.', { exact: true }).waitFor();
+  await page.setViewportSize({ width: 1512, height: 982 });
   await page.getByRole('button', { name: 'Reference in message', exact: true }).click();
   await page.getByRole('button', { name: 'Remove src/app.tsx', exact: true }).click();
   const chatCountBeforeResources = received.filter((m) => m.type === 'user_message').length;
@@ -1232,9 +1672,77 @@ try {
   await hub.getByRole('button', { name: 'Enable connection', exact: true }).click();
   await hub.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await hub.getByRole('tab', { name: 'Memory', exact: true }).click();
-  await hub.getByText('Use Bun for package scripts.', { exact: false }).waitFor();
-  await hub.getByRole('textbox', { name: 'Search resources', exact: true }).fill('focused');
-  await hub.getByText('Keep interfaces focused.', { exact: true }).waitFor();
+  assert.equal(await hub.getByLabel('Memory kind', { exact: true }).isVisible(), false);
+  await hub.getByRole('button', { name: 'Filters', exact: true }).click();
+  await hub.getByLabel('Memory kind', { exact: true }).waitFor();
+  await hub.getByRole('button', { name: 'Filters', exact: true }).click();
+  await hub.getByRole('button', { name: /Use Bun for package scripts/ }).click();
+  await hub
+    .locator('.memory-detail')
+    .getByText('Use Bun for package scripts.', { exact: true })
+    .waitFor();
+  await hub.locator('summary').filter({ hasText: 'Sources & details' }).click();
+  await hub.getByText('package.json', { exact: false }).waitFor();
+  await hub.getByText('90%', { exact: true }).waitFor();
+  await hub.getByRole('button', { name: 'Relationships', exact: true }).click();
+  assert.equal(
+    received.filter((entry) => entry.type === 'memory.sage.graph').at(-1)?.payload.maxDepth,
+    1,
+    'Relationships must request only direct neighbors',
+  );
+  await hub.getByText('1 direct relationship', { exact: true }).waitFor();
+  assert.equal(
+    await hub.locator('.memory-graph').count(),
+    0,
+    'Relationships start as a readable list',
+  );
+  assert.equal(
+    await hub.locator('.memory-relations button').count(),
+    1,
+    'Indirect neighbors never appear in the list',
+  );
+  await hub.getByRole('button', { name: 'Show graph', exact: true }).click();
+  await hub.getByRole('region', { name: 'Memory relationship graph', exact: true }).waitFor();
+  await hub.locator('.react-flow__edge').waitFor();
+  assert.equal(
+    await hub.locator('.react-flow__node').count(),
+    2,
+    'Graph stays focused on the selected memory',
+  );
+  assert.equal(await hub.locator('.react-flow__edge').count(), 1);
+  await page.screenshot({
+    path: join(output, 'memory-graph.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await hub.getByRole('button', { name: 'Hide graph', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: join(output, 'memory-relations-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  assert.equal(await hub.evaluate((el) => el.scrollWidth > el.clientWidth), false);
+  await hub.getByRole('button', { name: 'All memories', exact: true }).click();
+  await hub.getByRole('navigation', { name: 'Memory records', exact: true }).waitFor();
+  await hub.getByRole('button', { name: /Use Bun for package scripts/ }).click();
+  await hub.getByRole('button', { name: 'Relationships', exact: true }).click();
+  await hub.getByText('1 direct relationship', { exact: true }).waitFor();
+
+  await page.setViewportSize({ width: 1512, height: 982 });
+  await hub
+    .locator('.memory-relations')
+    .getByRole('button', { name: /Keep interfaces focused/ })
+    .click();
+  await hub
+    .locator('.memory-detail')
+    .getByText('Keep interfaces focused.', { exact: true })
+    .waitFor();
+  await hub.getByRole('button', { name: 'Relationships', exact: true }).click();
+  await hub.getByText('No direct memory relationships recorded.', { exact: true }).waitFor();
+  assert.equal(await hub.getByRole('button', { name: 'Show graph', exact: true }).count(), 0);
+  await hub.getByRole('textbox', { name: 'Search memory', exact: true }).fill('focused');
+  await hub.getByRole('button', { name: /Keep interfaces focused/ }).waitFor();
   await hub.getByRole('button', { name: 'Close dialog', exact: true }).click();
   assert.equal(
     received.filter((m) => m.type === 'user_message').length,
@@ -1249,7 +1757,23 @@ try {
       .evaluate((el) => el === document.activeElement),
     true,
   );
-  await page.keyboard.type('Personal instructions');
+  const actionSearch = page.getByRole('combobox', { name: 'Search actions', exact: true });
+  await actionSearch.fill('Stop all tasks');
+  await page.getByRole('option', { name: /Stop all tasks/ }).waitFor();
+  assert.equal(
+    await actionSearch.getAttribute('aria-activedescendant'),
+    null,
+    'Disabled actions do not receive keyboard selection',
+  );
+  await actionSearch.press('Enter');
+  assert.equal(await page.getByRole('dialog').isVisible(), true);
+  await actionSearch.fill('Personal instructions');
+  await page.getByRole('dialog').locator('mark').first().waitFor();
+  await page.screenshot({
+    path: join(output, 'quick-actions-refined.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
   await page.keyboard.press('Enter');
   await page.getByRole('textbox', { name: 'Personal instructions text', exact: true }).waitFor();
   await page.waitForFunction(
@@ -1284,14 +1808,62 @@ try {
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.keyboard.press('Control+Shift+f');
   await page
-    .getByRole('textbox', { name: 'Search conversation text', exact: true })
+    .getByRole('combobox', { name: 'Search conversation text', exact: true })
     .fill('Change direction now');
+  await page.getByRole('dialog').locator('mark').first().waitFor();
+  await page.screenshot({
+    path: join(output, 'conversation-search-refined.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
   await page
-    .getByRole('dialog')
-    .getByRole('button', { name: /You.*Change direction now/ })
-    .click();
+    .getByRole('combobox', { name: 'Search conversation text', exact: true })
+    .press('ArrowDown');
+  await page
+    .getByRole('combobox', { name: 'Search conversation text', exact: true })
+    .press('Enter');
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const settingsWrites = received.filter((entry) => entry.type === 'prefs.update').length;
+  const settingsSearch = page.getByRole('textbox', { name: 'Search settings', exact: true });
+  await settingsSearch.fill('not-an-existing-setting');
+  await page.getByText('0 matching settings', { exact: true }).waitFor();
+  await settingsSearch.fill('subagents');
+  await page
+    .getByRole('region', { name: 'Matching settings' })
+    .getByRole('button', { name: /Allow subagents/ })
+    .waitFor();
+  await page.screenshot({
+    path: join(output, 'settings-search.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page
+    .getByRole('region', { name: 'Matching settings' })
+    .getByRole('button', { name: /Allow subagents/ })
+    .click();
+  await page.waitForFunction(
+    () => document.querySelector('input[aria-label="Allow subagents"]') === document.activeElement,
+  );
+  assert.equal(
+    received.filter((entry) => entry.type === 'prefs.update').length,
+    settingsWrites,
+    'Searching and navigating never changes a preference',
+  );
+  await settingsSearch.fill('reasoning');
+  await settingsSearch.press('Escape');
+  assert.equal(await settingsSearch.inputValue(), '');
+  assert.equal(
+    await page.getByRole('dialog').isVisible(),
+    true,
+    'Escape clears search before closing settings',
+  );
+  await page
+    .getByRole('dialog')
+    .locator('summary')
+    .filter({ hasText: /^Execution & delegation$/ })
+    .click();
+
   await page
     .getByRole('dialog')
     .locator('summary')
@@ -1399,6 +1971,22 @@ try {
     .getByRole('dialog')
     .getByRole('button', { name: /Review a target/ })
     .click();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .getByRole('navigation', { name: 'Prompts list', exact: true })
+      .isVisible(),
+    false,
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'All prompts', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('navigation', { name: 'Prompts list', exact: true })
+    .waitFor();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Review a target/ })
+    .click();
   await page.getByRole('textbox', { name: 'Prompt variable target', exact: true }).waitFor();
   await page
     .getByRole('textbox', { name: 'Prompt variable target', exact: true })
@@ -1454,6 +2042,450 @@ try {
     .getByRole('dialog')
     .getByRole('button', { name: 'Use prompt in draft', exact: true })
     .click();
+  await page.setViewportSize({ width: 1512, height: 982 });
+  // Real authored input stays separate from replayed host guidance.
+  const runtimeContext = page.locator('.runtime-context').first();
+  assert.equal(await runtimeContext.locator('pre').first().isVisible(), false);
+  await runtimeContext.locator('summary').click();
+  await runtimeContext.getByText(/Runtime coaching/).waitFor();
+  await page.screenshot({
+    path: join(output, 'runtime-context-expanded.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await runtimeContext.locator('summary').click();
+
+  await message.fill('$');
+  await page.getByText('42 matching · 42 installed', { exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole('listbox', { name: 'Skills', exact: true }).getByRole('option').count(),
+    42,
+  );
+  await message.press('PageDown');
+  await message.press('PageDown');
+  assert.equal(
+    await page
+      .getByRole('listbox', { name: 'Skills', exact: true })
+      .evaluate((element) => element.scrollTop > 0),
+    true,
+  );
+  await page.screenshot({
+    path: join(output, 'skills-browser.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await message.press('Escape');
+  await message.fill('');
+
+  await page.getByRole('button', { name: 'Provider usage and quotas', exact: true }).click();
+  await page.getByText('75% remaining', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Extended', exact: true }).click();
+  await page.getByRole('dialog').locator('pre').filter({ hasText: 'usedPercent' }).waitFor();
+  await page.screenshot({
+    path: join(output, 'provider-quotas.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Simple', exact: true }).click();
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+
+  // Markdown file links open in-app, including malformed duplicated local URLs.
+  for (const client of clients) {
+    frame(client, 'provider.response', {
+      sessionId: 'session-two',
+      content: [
+        {
+          type: 'text',
+          text: `[Generated report](${origin}/.temp_files/kanban-handoff/.temp_files/kanban-handoff/REPORT.md)`,
+        },
+      ],
+      stopReason: 'end_turn',
+    });
+    frame(client, 'run.result', { sessionId: 'session-two', status: 'done', iterations: 1 });
+  }
+  await page.getByRole('link', { name: 'Generated report', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('heading', { name: 'Generated report', exact: true })
+    .waitFor();
+  assert.ok(
+    received.some(
+      (entry) =>
+        entry.type === 'files.read' &&
+        entry.payload.filePath === '.temp_files/kanban-handoff/REPORT.md',
+    ),
+  );
+  await page.getByRole('link', { name: 'Open HTML preview', exact: true }).click();
+  await page
+    .frameLocator('iframe.html-preview')
+    .getByRole('heading', { name: 'Generated HTML preview', exact: true })
+    .waitFor();
+  assert.equal(await page.locator('iframe.html-preview').getAttribute('sandbox'), '');
+  await page.screenshot({
+    path: join(output, 'html-artifact.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Extended', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .locator('.source-preview')
+    .filter({ hasText: '<!doctype html>' })
+    .waitFor();
+  await page.getByRole('button', { name: 'Simple', exact: true }).click();
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  assert.equal(new URL(page.url()).pathname, '/');
+
+  // BTW is an acknowledged session-scoped note and never aborts the run.
+  for (const client of clients)
+    frame(client, 'provider.text_delta', { sessionId: 'session-two', text: 'Working on the task' });
+  const beforeBtw = received.length;
+  await page.getByRole('combobox', { name: 'Message delivery', exact: true }).selectOption('btw');
+  assert.equal(
+    await page.getByRole('button', { name: 'New session', exact: false }).isDisabled(),
+    true,
+  );
+  assert.equal(await page.locator('.session-row:enabled').count(), 0);
+  await message.fill('reject-btw');
+  await page.getByRole('button', { name: 'Send BTW note', exact: true }).click();
+  await page.getByText('BTW rejected by fixture', { exact: true }).waitFor();
+  assert.equal(await message.inputValue(), 'reject-btw');
+  await message.fill('Also keep the footer quiet');
+  await page.getByRole('button', { name: 'Send BTW note', exact: true }).click();
+  await page.getByText('Also keep the footer quiet', { exact: true }).waitFor();
+  assert.equal(
+    received
+      .slice(beforeBtw)
+      .filter(
+        (entry) =>
+          entry.type === 'abort' ||
+          entry.type === 'user_message' ||
+          entry.type === 'session.new' ||
+          entry.type === 'session.resume',
+      ).length,
+    0,
+  );
+  assert.ok(
+    received
+      .slice(beforeBtw)
+      .some(
+        (entry) =>
+          entry.type === 'mailbox.send' &&
+          entry.payload.sessionId === 'session-two' &&
+          entry.payload.to === 'leader' &&
+          entry.payload.type === 'btw',
+      ),
+  );
+  for (const client of clients) {
+    frame(client, 'provider.response', {
+      sessionId: 'session-two',
+      content: [{ type: 'text', text: 'Working on the task, with the footer kept quiet.' }],
+      stopReason: 'end_turn',
+    });
+    frame(client, 'run.result', { sessionId: 'session-two', status: 'done', iterations: 1 });
+  }
+  await page
+    .getByText('Working on the task, with the footer kept quiet.', { exact: true })
+    .waitFor();
+
+  // Batch actions submit once without consuming or replacing the user's draft.
+  for (const client of clients)
+    frame(client, 'provider.response', {
+      sessionId: 'session-two',
+      content: [
+        {
+          type: 'text',
+          text: 'Choose follow-ups.\n<nextsteps>\n1. First batch task\n2. Second batch task\n</nextsteps>',
+        },
+      ],
+      stopReason: 'end_turn',
+    });
+  await message.fill('Keep my unsent draft');
+  await page
+    .getByRole('checkbox', { name: 'Select step 1: First batch task', exact: true })
+    .check();
+  await page
+    .getByRole('checkbox', { name: 'Select step 2: Second batch task', exact: true })
+    .check();
+  await page.screenshot({
+    path: join(output, 'next-steps-selection.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Submit selected', exact: true }).click();
+  await page
+    .locator('.message-user')
+    .last()
+    .getByText('First batch task', { exact: true })
+    .waitFor();
+  assert.equal(
+    received.filter((entry) => entry.type === 'user_message').at(-1).payload.content,
+    '1. First batch task\n2. Second batch task',
+  );
+  assert.equal(await message.inputValue(), 'Keep my unsent draft');
+  await page.waitForFunction(() => !document.querySelector('.working-line'));
+  await message.fill('');
+
+  await page.clock.install();
+  for (const client of clients)
+    frame(client, 'prefs.updated', {
+      sessionId: 'session-two',
+      yolo: true,
+      autonomy: 'auto',
+      autonomyDelayMs: 1000,
+      autoProceedMaxIterations: 0,
+    });
+  await message.fill('Auto ownership seed');
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel auto-submit', exact: true }).waitFor();
+  await page.clock.fastForward(1100);
+  await page.getByText('Auto follow-up proof', { exact: true }).waitFor();
+  await page.waitForFunction(() => !document.querySelector('.working-line'));
+  assert.equal(
+    received.filter(
+      (entry) => entry.type === 'user_message' && entry.payload.content === 'Auto follow-up proof',
+    ).length,
+    1,
+  );
+  await message.fill('Auto cancellation seed');
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel auto-submit', exact: true }).click();
+  await page.clock.fastForward(2000);
+  assert.equal(
+    received.filter(
+      (entry) =>
+        entry.type === 'user_message' && entry.payload.content === 'Cancelled follow-up proof',
+    ).length,
+    0,
+  );
+  const beforeForeignCompletion = received.filter((entry) => entry.type === 'user_message').length;
+  for (const client of clients) {
+    frame(client, 'provider.response', {
+      sessionId: 'session-two',
+      content: [
+        {
+          type: 'text',
+          text: 'A different browser finished.\n<nextsteps>\n1. Never submit from this observer auto="true"\n</nextsteps>',
+        },
+      ],
+      stopReason: 'end_turn',
+    });
+    frame(client, 'run.result', {
+      sessionId: 'session-two',
+      requestId: 'owned-by-another-client',
+      status: 'done',
+      iterations: 1,
+    });
+  }
+  await page.getByText('A different browser finished.', { exact: true }).waitFor();
+  await page.clock.fastForward(2000);
+  assert.equal(
+    await page.getByRole('button', { name: 'Cancel auto-submit', exact: true }).count(),
+    0,
+  );
+  assert.equal(
+    received.filter((entry) => entry.type === 'user_message').length,
+    beforeForeignCompletion,
+    'Observers never auto-submit another client’s completed run',
+  );
+  for (const client of clients)
+    frame(client, 'prefs.updated', { sessionId: 'session-two', autonomy: 'suggest' });
+
+  // Clear is explicit and does not touch another session's saved journal.
+  await message.fill('Draft to clear');
+  await page.getByRole('button', { name: 'Session actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Clear current context', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep conversation', exact: true }).click();
+  assert.equal(await message.inputValue(), 'Draft to clear');
+  await page.getByRole('button', { name: 'Session actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Clear current context', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Clear current context', exact: true })
+    .click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('textarea[aria-label="Message"]')?.value === '' &&
+      !document.querySelector('.transcript'),
+  );
+  assert.ok(
+    received.some(
+      (entry) => entry.type === 'context.clear' && entry.payload.sessionId === 'session-two',
+    ),
+  );
+  await page.getByRole('button', { name: 'New session', exact: false }).click();
+  await page.waitForFunction(() =>
+    JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id.startsWith(
+      'new-session-',
+    ),
+  );
+  await page.getByRole('button', { name: /Focused workspace/ }).click();
+  await page.waitForFunction(
+    () =>
+      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
+  );
+
+  // Large code, tables and rapid clipboard operations stay contained and accessible.
+  const largeCode = `const ready = true;\nconst longLine = "${'x'.repeat(1600)}";\n${Array.from({ length: 5000 }, (_, i) => `// line ${i + 1}: checked payload`).join('\n')}\n`;
+  const wideTable =
+    '| Alpha | Beta | Gamma | Delta | Epsilon | Zeta |\n| --- | --- | --- | --- | --- | --- |\n' +
+    Array.from(
+      { length: 12 },
+      (_, i) =>
+        `| ${Array.from({ length: 6 }, (_, col) => `Value ${i + 1}.${col + 1}`).join(' | ')} |`,
+    ).join('\n');
+  for (const client of clients)
+    frame(client, 'provider.response', {
+      sessionId: 'session-one',
+      content: [
+        {
+          type: 'text',
+          text: `Code and table stress proof.\n\n\`\`\`javascript\n${largeCode}\`\`\`\n\n${wideTable}`,
+        },
+      ],
+      stopReason: 'end_turn',
+    });
+  const codePanel = page.locator('.message-assistant').last().locator('.code-panel');
+  await codePanel.getByRole('button', { name: 'Copy code', exact: true }).waitFor();
+  await codePanel.getByRole('button', { name: 'Wrap lines', exact: true }).click();
+  await codePanel.evaluate((element) => {
+    window.__originalCodePanel = element;
+  });
+  await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+  assert.equal(
+    await codePanel.getAttribute('data-wrap'),
+    'true',
+    'Workspace updates preserve reader settings',
+  );
+  assert.equal(
+    await page.evaluate(() => window.__originalCodePanel.isConnected),
+    true,
+    'Workspace updates preserve the code panel DOM',
+  );
+  await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+  await codePanel.getByRole('button', { name: 'Wrap lines', exact: true }).click();
+  assert.ok(
+    await codePanel
+      .locator('pre')
+      .evaluate((element) => element.scrollHeight > element.clientHeight),
+  );
+  await codePanel.getByRole('button', { name: 'Copy code', exact: true }).click();
+  await codePanel.getByText('Copied', { exact: true }).waitFor();
+  const copiedCode = await page.evaluate(() => navigator.clipboard.readText());
+  assert.ok(
+    copiedCode.replaceAll('\r\n', '\n') === largeCode,
+    'Clipboard preserves all code text with native line endings',
+  );
+  await page.evaluate(() => {
+    let calls = 0;
+    navigator.clipboard.writeText = () =>
+      ++calls === 1
+        ? new Promise((resolve) => {
+            window.__resolveFirstCopy = resolve;
+          })
+        : Promise.reject(new Error('Fixture copy failure'));
+  });
+  await codePanel.getByRole('button', { name: 'Copy code', exact: true }).click();
+  await codePanel.getByRole('button', { name: 'Copy code', exact: true }).click();
+  await codePanel
+    .getByText('Copy unavailable. You can select and copy the text manually.', { exact: true })
+    .waitFor();
+  await page.evaluate(() => {
+    window.__resolveFirstCopy();
+    delete navigator.clipboard.writeText;
+  });
+  assert.equal(
+    await codePanel.getByText('Copied', { exact: true }).count(),
+    0,
+    'Late clipboard completion never replaces the newer failure state',
+  );
+  await codePanel.getByRole('button', { name: 'Copy code', exact: true }).click();
+  await codePanel.getByText('Copied', { exact: true }).waitFor();
+  for (const width of [320, 390, 1512]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+      `Large output fits at ${width}px`,
+    );
+    assert.ok(
+      await codePanel
+        .locator('pre')
+        .evaluate((element) => element.scrollWidth > element.clientWidth),
+      'Long lines scroll inside the code panel',
+    );
+    await codePanel.getByRole('button', { name: 'Wrap lines', exact: true }).click();
+    assert.equal(
+      await codePanel.locator('pre').evaluate((element) => getComputedStyle(element).whiteSpace),
+      'pre-wrap',
+    );
+    assert.ok(
+      await codePanel
+        .locator('pre')
+        .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+      'Wrapped text stays inside the reader',
+    );
+    await codePanel.getByRole('button', { name: 'Wrap lines', exact: true }).click();
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  const table = page.getByRole('region', { name: 'Scrollable table', exact: true });
+  assert.ok(await table.evaluate((element) => element.scrollWidth > element.clientWidth));
+  await table.focus();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => document.querySelector('.markdown-table').scrollLeft > 0);
+  await codePanel.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: join(output, 'mobile-code-panel.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.setViewportSize({ width: 1512, height: 982 });
+
+  // Consecutive workspace entries share one disclosure; search opens hidden notes.
+  for (const client of clients) {
+    for (const text of [
+      'Workspace grouping first note',
+      'Workspace grouping second note',
+      'Workspace grouping final note',
+    ]) {
+      frame(client, 'error', { sessionId: 'session-one', message: text });
+    }
+  }
+  const notes = page.locator('.workspace-notes').last();
+  await notes.locator('summary').getByText('3 notes', { exact: true }).waitFor();
+  assert.equal(
+    await notes.getByText('Workspace grouping first note', { exact: true }).isVisible(),
+    false,
+  );
+  await notes.locator('summary').click();
+  assert.equal(await notes.locator('article').count(), 3);
+  await notes.getByText('Workspace grouping second note', { exact: true }).waitFor();
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.screenshot({
+    path: join(output, 'workspace-notes-mobile.png'),
+    animations: 'disabled',
+  });
+  await notes.locator('summary').click();
+  await page.setViewportSize({ width: 1512, height: 982 });
+  await page.keyboard.press('Control+Shift+f');
+  await page
+    .getByRole('combobox', { name: 'Search conversation text', exact: true })
+    .fill('Workspace grouping first note');
+  await page
+    .getByRole('dialog')
+    .getByRole('option', { name: /Workspace.*Workspace grouping first note/ })
+    .click();
+  await notes.getByText('Workspace grouping first note', { exact: true }).waitFor();
+  assert.equal(await notes.evaluate((element) => element.open), true);
+  await page.setViewportSize({ width: 1512, height: 982 });
+  await page.screenshot({
+    path: join(output, 'workspace-notes-desktop.png'),
+    animations: 'disabled',
+  });
+  await notes.locator('summary').click();
+  await page.setViewportSize({ width: 390, height: 844 });
+
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
@@ -1467,6 +2499,7 @@ try {
         userMessages: received.filter((m) => m.type === 'user_message').length,
         screenshots: output,
         browserErrors: errors,
+        themeContrasts,
       },
       null,
       2,

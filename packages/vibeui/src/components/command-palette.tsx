@@ -1,7 +1,9 @@
 'use client';
 
+import { ArrowUpRight, Command, MessageSquare } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Modal } from './dialogs';
+import { SearchHighlight } from './search-highlight';
 
 export interface WorkspaceCommand {
   id: string;
@@ -21,12 +23,15 @@ export function CommandPalette({
   const [selected, setSelected] = useState(0);
   const listId = useId();
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    document.getElementById(`${listId}-${selected}`)?.scrollIntoView({ block: 'nearest' });
-  }, [listId, selected]);
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const matches = commands.filter((command) =>
-    `${command.title} ${command.detail}`.toLowerCase().includes(query.toLowerCase()),
+    terms.every((term) => `${command.title} ${command.detail}`.toLowerCase().includes(term)),
   );
+  const available = matches.flatMap((command, index) => (command.disabled ? [] : [index]));
+  const active = available.includes(selected) ? selected : (available[0] ?? -1);
+  useEffect(() => {
+    document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: 'nearest' });
+  }, [listId, active, query]);
   const choose = (index: number) => {
     const command = matches[index];
     if (!command || command.disabled) return;
@@ -51,7 +56,7 @@ export function CommandPalette({
         aria-autocomplete="list"
         aria-expanded="true"
         aria-controls={listId}
-        aria-activedescendant={matches[selected] ? `${listId}-${selected}` : undefined}
+        aria-activedescendant={matches[active] ? `${listId}-${active}` : undefined}
         placeholder="Search commands, resources or sessions…"
         value={query}
         onChange={(e) => {
@@ -62,15 +67,19 @@ export function CommandPalette({
           if (e.nativeEvent.isComposing) return;
           if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
-            setSelected((value) =>
-              matches.length
-                ? (value + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length
-                : 0,
-            );
+            if (available.length)
+              setSelected(
+                available[
+                  (available.indexOf(active) +
+                    (e.key === 'ArrowDown' ? 1 : -1) +
+                    available.length) %
+                    available.length
+                ] ?? active,
+              );
           }
           if (e.key === 'Enter') {
             e.preventDefault();
-            choose(selected);
+            choose(active);
           }
         }}
       />
@@ -79,21 +88,39 @@ export function CommandPalette({
           <button
             type="button"
             role="option"
-            aria-selected={selected === index}
+            aria-selected={active === index}
             aria-disabled={command.disabled === true}
             id={`${listId}-${index}`}
             key={command.id}
             onClick={() => choose(index)}
           >
-            <strong>{command.title}</strong>
+            <strong>
+              {command.id.startsWith('session-') ? (
+                <MessageSquare size={15} />
+              ) : (
+                <Command size={15} />
+              )}
+              <span className="search-title-text">
+                <SearchHighlight value={command.title} query={query} />
+              </span>
+              <ArrowUpRight size={13} className="search-result-arrow" />
+            </strong>
             <small>
-              {command.detail}
+              <SearchHighlight value={command.detail} query={query} />
               {command.disabled ? ' · Unavailable right now' : ''}
             </small>
           </button>
         ))}
       </div>
       {!matches.length && <p className="panel-hint">No matching actions.</p>}
+      <div className="search-footer">
+        <span>
+          {matches.length} {matches.length === 1 ? 'result' : 'results'}
+        </span>
+        <span>
+          <kbd>↑↓</kbd> navigate <kbd>↵</kbd> open
+        </span>
+      </div>
     </Modal>
   );
 }

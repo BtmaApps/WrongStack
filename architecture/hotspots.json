@@ -11,15 +11,15 @@
       "relativeImports": 0
     },
     "packages/vibeui/src/components/provider-manager.tsx": {
-      "lines": 711,
-      "relativeImports": 4
+      "lines": 733,
+      "relativeImports": 6
     },
     "packages/vibeui/src/components/workspace.tsx": {
-      "lines": 956,
-      "relativeImports": 16
+      "lines": 1063,
+      "relativeImports": 22
     },
     "packages/vibeui/src/lib/session.ts": {
-      "lines": 826,
+      "lines": 855,
       "relativeImports": 2
     }
   }

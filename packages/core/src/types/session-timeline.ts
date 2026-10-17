@@ -31,8 +31,11 @@
  * `node:*` (see the note on the narrow subpath import in
  * `webui-protocol/src/replay-payload.ts`).
  */
+
+import { authoredBlocks } from '../utils/live-context.js';
 import type { ContentBlock } from './blocks.js';
 import type { Message } from './messages.js';
+import type { SessionEvent } from './session.js';
 import {
   isSystemInjectedMessage,
   projectSessionMarkers,
@@ -40,7 +43,6 @@ import {
   type SessionMarker,
   type SessionMarkerDetail,
 } from './session-markers.js';
-import type { SessionEvent } from './session.js';
 
 /**
  * An image or PDF the user attached to a prompt, as it survives in the
@@ -85,6 +87,8 @@ export interface SessionToolMeta {
 
 interface TimelineEntryBase {
   ts: string;
+  /** Host-written context retained for optional, collapsed inspection by chat surfaces. */
+  runtimeContext?: string[] | undefined;
 }
 
 export interface SessionTimelineUserEntry extends TimelineEntryBase {
@@ -357,10 +361,16 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
   // in ONE place is what stops the surfaces disagreeing about it. The
   // block-array path already trimmed each run; string content did not, so the
   // same message rendered padded in two surfaces and trimmed in the third.
-  const pushText = (role: Message['role'], raw: string, ts: string, final: boolean): void => {
+  const pushText = (
+    role: Message['role'],
+    raw: string,
+    ts: string,
+    final: boolean,
+    authored = false,
+  ): void => {
     const text = raw.trim();
     if (!text) return;
-    if (hideSystemInjections && isSystemInjectedMessage(text)) return;
+    if (hideSystemInjections && !authored && isSystemInjectedMessage(text)) return;
     if (role === 'assistant') backbone.push({ kind: 'assistant', ts, text, final });
     else if (role === 'system') backbone.push({ kind: 'system', ts, text });
     else backbone.push({ kind: 'user', ts, text });
@@ -379,13 +389,37 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
     const ts = message.ts ?? lastTs;
     if (message.ts) lastTs = message.ts;
 
+    const explicitAuthor = message.origin === 'user_input';
+    const runtimeContext: string[] = [];
+    const startIndex = backbone.length;
+    const originalBlocks: ContentBlock[] =
+      typeof message.content === 'string'
+        ? [{ type: 'text', text: message.content }]
+        : message.content;
+    const authored = new Set(authoredBlocks({ ...message, content: originalBlocks }));
+    const blocks = originalBlocks.filter((block) => {
+      if (!hideSystemInjections || message.role !== 'user' || block.type !== 'text') return true;
+      const host =
+        message.origin === 'runtime' ||
+        !authored.has(block) ||
+        (!explicitAuthor &&
+          (isSystemInjectedMessage(block.text) ||
+            /^\[(?:TOOL COACH\b|Same-session notes\b)/u.test(block.text.trimStart())));
+      if (host && block.text.trim()) runtimeContext.push(block.text);
+      return !host;
+    });
+    const retainRuntimeContext = () => {
+      if (!runtimeContext.length) return;
+      const user = backbone.slice(startIndex).find((entry) => entry.kind === 'user');
+      if (user) user.runtimeContext = runtimeContext;
+      else backbone.push({ kind: 'system', ts, text: 'Runtime context', runtimeContext });
+    };
     if (typeof message.content === 'string') {
       // String content cannot carry a tool_use block, so it always ended its turn.
-      pushText(message.role, message.content, ts, true);
+      if (blocks.length) pushText(message.role, message.content, ts, true, explicitAuthor);
+      retainRuntimeContext();
       continue;
     }
-
-    const blocks = message.content;
 
     // Thinking blocks precede text/tool_use per the provider contract
     // (blocks.ts). `'inline'` emits them there; `'merged-after'` holds them
@@ -404,7 +438,7 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
       // message is one bubble, emitted before its tools by the pre-pass below.
       if (textBlocks === 'join') return;
       const text = textParts.join(textSeparator).trim();
-      if (text) pushText(message.role, text, ts, final);
+      if (text) pushText(message.role, text, ts, final, explicitAuthor);
       textParts.length = 0;
     };
 
@@ -414,7 +448,7 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
         .map((block) => block.text)
         .join(textSeparator)
         .trim();
-      if (joined) pushText(message.role, joined, ts, final);
+      if (joined) pushText(message.role, joined, ts, final, explicitAuthor);
     }
 
     // Walk content blocks IN ORDER, interleaving text and tool entries.
@@ -494,6 +528,7 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
       if (last?.kind === 'user' && last.ts === ts) last.images = images;
       else backbone.push({ kind: 'user', ts, text: '', images });
     }
+    retainRuntimeContext();
   }
 
   // ── Two-pointer merge with the marker stream ─────────────────────────────

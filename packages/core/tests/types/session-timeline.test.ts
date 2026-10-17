@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Message } from '../../src/types/messages.js';
+import type { SessionEvent } from '../../src/types/session.js';
 import { CHAT_MARKER_SOURCES } from '../../src/types/session-markers.js';
 import {
   projectLastRequestTokens,
@@ -7,7 +8,6 @@ import {
   projectSessionToolMeta,
   type SessionTimelineEntry,
 } from '../../src/types/session-timeline.js';
-import type { SessionEvent } from '../../src/types/session.js';
 
 const kinds = (entries: SessionTimelineEntry[]): string[] => entries.map((e) => e.kind);
 
@@ -65,6 +65,95 @@ describe('projectSessionToolMeta', () => {
 });
 
 describe('projectSessionTimeline — conversation backbone', () => {
+  it('separates host notes from authored text while retaining them for collapsed inspection', () => {
+    const timeline = projectSessionTimeline({
+      messages: [
+        {
+          role: 'user',
+          origin: 'user_input',
+          authoredLength: 1,
+          content: [
+            { type: 'text', text: 'Please fix the layout' },
+            {
+              type: 'text',
+              text: '[TOOL COACH — inspect before changing]\nRead the component first.',
+            },
+            {
+              type: 'text',
+              text: '[Same-session notes — in-process, not mailbox. Fold into the current task;\ndo not restart unless a steer contradicts the goal.]\nReviewer note',
+            },
+          ],
+        },
+      ],
+    });
+    expect(timeline).toEqual([
+      expect.objectContaining({
+        kind: 'user',
+        text: 'Please fix the layout',
+        runtimeContext: [
+          expect.stringContaining('TOOL COACH'),
+          expect.stringContaining('Same-session notes'),
+        ],
+      }),
+    ]);
+  });
+  it('keeps runtime-only notes out of user bubbles and preserves tool results', () => {
+    const timeline = projectSessionTimeline({
+      messages: [
+        {
+          role: 'assistant',
+          content: [{ type: 'tool_use', id: 'read', name: 'read_file', input: {} }],
+        },
+        {
+          role: 'user',
+          origin: 'runtime',
+          authoredLength: 0,
+          content: [
+            { type: 'tool_result', tool_use_id: 'read', content: 'source code' },
+            { type: 'text', text: '[TOOL COACH — verification phase]\nCheck the result.' },
+          ],
+        },
+      ],
+    });
+    expect(timeline.filter((entry) => entry.kind === 'user')).toEqual([]);
+    expect(timeline[0]).toMatchObject({ kind: 'tool', output: 'source code' });
+    expect(timeline[1]).toMatchObject({
+      kind: 'system',
+      runtimeContext: [expect.stringContaining('TOOL COACH')],
+    });
+  });
+  it('recognizes older host blocks without deleting an explicitly authored discussion of their markers', () => {
+    const timeline = projectSessionTimeline({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Fix this' },
+            { type: 'text', text: '[TOOL COACH — advisory guidance]\nInspect tools' },
+          ],
+        },
+        {
+          role: 'user',
+          origin: 'user_input',
+          authoredLength: 1,
+          content: [
+            {
+              type: 'text',
+              text: '[TOOL COACH — advisory guidance] is the marker I want to discuss',
+            },
+          ],
+        },
+      ],
+    });
+    expect(timeline[0]).toMatchObject({
+      text: 'Fix this',
+      runtimeContext: [expect.stringContaining('Inspect tools')],
+    });
+    expect(timeline[1]).toMatchObject({
+      kind: 'user',
+      text: '[TOOL COACH — advisory guidance] is the marker I want to discuss',
+    });
+  });
   it('walks content blocks in order so prose after a tool stays after it', () => {
     const messages: Message[] = [
       {

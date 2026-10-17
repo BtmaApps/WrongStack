@@ -259,7 +259,24 @@ export function createSessionContextHandlers(
       );
       sendTo(ws, {
         type: 'context.editor.snapshot',
-        payload: { ...snapshot, sessionId: actingSessionId(msg) },
+        payload: {
+          ...snapshot,
+          sessionId: actingSessionId(msg),
+          ...(isRecordPayload(msg.payload) && msg.payload['includeReadonlyContent'] === true
+            ? {
+                readonlyContent: {
+                  systemPrompt: target.systemPrompt,
+                  tools: (ctx.listTools?.() ?? ctx.toolRegistry?.list() ?? target.tools ?? []).map(
+                    (tool) => ({
+                      name: tool.name,
+                      description: tool.description,
+                      inputSchema: tool.inputSchema,
+                    }),
+                  ),
+                },
+              }
+            : {}),
+        },
       });
     },
     validateContextEditor: async (ws, msg) => {

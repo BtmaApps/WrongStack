@@ -14,6 +14,60 @@ const start = (sessionId = 'one') => ({
 });
 
 describe('VibeUI conversation', () => {
+  it('keeps replayed runtime context out of authored user text', () => {
+    const state = reduceFrame(initialState(), {
+      ...start(),
+      payload: {
+        ...start().payload,
+        replayMessages: [
+          {
+            role: 'user',
+            origin: 'user_input',
+            authoredLength: 1,
+            content: [
+              { type: 'text', text: 'My request' },
+              { type: 'text', text: '[TOOL COACH — inspect before changing]\nRead first.' },
+            ],
+          },
+        ],
+      },
+    });
+    expect(state.messages[0]).toMatchObject({
+      role: 'user',
+      text: 'My request',
+      runtimeContext: ['[TOOL COACH — inspect before changing]\nRead first.'],
+    });
+  });
+  it('keeps streaming through a human BTW note and settles the same answer once', () => {
+    let state = reduceFrame(initialState(), start());
+    state = reduceFrame(state, {
+      type: 'provider.text_delta',
+      payload: { sessionId: 'one', text: 'Hello' },
+    });
+    state = {
+      ...state,
+      messages: [
+        ...state.messages,
+        { id: 'btw', role: 'user', delivery: 'btw', text: 'Also remember this' },
+      ],
+    };
+    state = reduceFrame(state, {
+      type: 'provider.text_delta',
+      payload: { sessionId: 'one', text: ' world' },
+    });
+    state = reduceFrame(state, {
+      type: 'provider.response',
+      payload: {
+        sessionId: 'one',
+        content: [{ type: 'text', text: 'Hello world!' }],
+        stopReason: 'end_turn',
+      },
+    });
+    expect(state.messages.filter((message) => message.role === 'assistant')).toEqual([
+      expect.objectContaining({ text: 'Hello world!', streaming: false }),
+    ]);
+    expect(state.messages[1]).toMatchObject({ delivery: 'btw', text: 'Also remember this' });
+  });
   it('streams one answer, settles it with canonical text and stops at the run boundary', () => {
     let state = reduceFrame(initialState(), start());
     state = reduceFrame(state, {

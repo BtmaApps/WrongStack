@@ -1,11 +1,14 @@
 'use client';
 
 import { preserveSkillMentions } from '@wrongstack/webui-protocol';
+import { WandSparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { clientId } from '../lib/ids';
 import { record, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { Modal } from './dialogs';
+import { usePresentation } from './presentation-mode';
+import { RunSignal } from './vibe-visuals';
 
 export function PromptRefiner({
   original,
@@ -19,6 +22,7 @@ export function PromptRefiner({
   onApply: (value: string) => void;
 }) {
   const { state, connection, send, subscribe } = controller;
+  const { mode } = usePresentation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refined, setRefined] = useState('');
@@ -31,6 +35,7 @@ export function PromptRefiner({
     setError('');
     setRefined('');
     setEnglish('');
+    setUsedModel('');
     const timer = setTimeout(() => {
       setLoading(false);
       setError('Refinement timed out. Your original draft is preserved.');
@@ -78,14 +83,26 @@ export function PromptRefiner({
         if (!open) onClose();
       }}
       title="Refine your prompt"
+      icon={<WandSparkles size={20} />}
+      detailToggle
       description="Review and edit before returning a version to your draft. Nothing is sent to the agent automatically."
       wide
     >
-      <details className="refiner-original" open>
+      <details className="refiner-original" key={mode} open={mode === 'extended'}>
         <summary>Original prompt</summary>
         <pre>{original}</pre>
       </details>
-      {loading && <p role="status">Refining with your configured refiner or current model…</p>}
+      {loading && (
+        <div className="refiner-loading" role="status">
+          <RunSignal />
+          <span>
+            <strong>Refining your draft</strong>
+            <small>
+              Using your configured refiner or current model. Your original stays available.
+            </small>
+          </span>
+        </div>
+      )}
       {error && (
         <p role="alert" className="form-error">
           {error}

@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { record, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
+import { usePresentation } from './presentation-mode';
 
 export function RuntimeControls({ controller }: { controller: SessionController }) {
+  const { mode } = usePresentation();
   const { state, send, subscribe, connection, ready, compactPending, modelPending } = controller;
   const [pending, setPending] = useState('');
   const [error, setError] = useState('');
@@ -155,7 +157,7 @@ export function RuntimeControls({ controller }: { controller: SessionController 
           <option value="required">Required</option>
         </select>
       </label>
-      <details className="settings-group">
+      <details className="settings-group" key={`context-${mode}`} open={mode === 'extended'}>
         <summary>Context & efficiency</summary>
         <BooleanPreference
           name="Automatic compaction"
@@ -190,7 +192,7 @@ export function RuntimeControls({ controller }: { controller: SessionController 
           change={change}
         />
       </details>
-      <details className="settings-group">
+      <details className="settings-group" key={`execution-${mode}`} open={mode === 'extended'}>
         <summary>Execution & delegation</summary>
         <NumberPreference
           name="Iteration limit"
@@ -223,7 +225,7 @@ export function RuntimeControls({ controller }: { controller: SessionController 
           change={change}
         />
       </details>
-      <details className="settings-group">
+      <details className="settings-group" key={`refiner-${mode}`} open={mode === 'extended'}>
         <summary>Refiner & reasoning</summary>
         <label className="settings-row">
           <span>

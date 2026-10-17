@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { localArtifactPath } from '../src/components/artifact-navigation';
 import { parseArtifact } from '../src/lib/artifacts';
 import { initialState, reduceFrame } from '../src/lib/session';
 
@@ -52,4 +53,23 @@ it('ignores another session’s artifact and correlates file reads', () => {
     payload: { requestId: 'request', filePath: artifact.path, content: '# Result' },
   });
   expect(next.preview).toMatchObject({ content: '# Result', loading: false });
+});
+
+it('resolves local report links without fabricated HTTP paths or escaping the workspace', () => {
+  expect(
+    localArtifactPath(
+      'http://127.0.0.1:3477/.temp_files/kanban-handoff/.temp_files/kanban-handoff/REPORT.md',
+      'http://127.0.0.1:3477',
+    ),
+  ).toBe('.temp_files/kanban-handoff/REPORT.md');
+  expect(
+    localArtifactPath(
+      './REPORT.md',
+      'http://127.0.0.1:3477',
+      '.temp_files/kanban-handoff/README.md',
+    ),
+  ).toBe('.temp_files/kanban-handoff/REPORT.md');
+  expect(localArtifactPath('https://example.com/report.md', 'http://127.0.0.1:3477')).toBeNull();
+  expect(localArtifactPath('../../escape.md', 'http://127.0.0.1:3477')).toBeNull();
+  expect(localArtifactPath('#heading', 'http://127.0.0.1:3477')).toBeNull();
 });

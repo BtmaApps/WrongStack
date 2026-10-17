@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Download, MoreHorizontal, Pencil } from 'lucide-react';
+import { Copy, Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { useEffect, useRef, useState } from 'react';
 import type { SessionController } from '../lib/use-session';
@@ -16,6 +16,7 @@ export function SessionActions({
 }) {
   const { state, connection, notice } = controller;
   const [renaming, setRenaming] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [name, setName] = useState('');
   const download = useRef<{ url: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   useEffect(
@@ -80,6 +81,13 @@ export function SessionActions({
               Export conversation
             </DropdownMenu.Item>
             <DropdownMenu.Item
+              disabled={controller.sessionLocked || !state.messages.length}
+              onSelect={() => setClearing(true)}
+            >
+              <Trash2 size={14} />
+              Clear current context
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
               onSelect={async () => {
                 try {
                   await navigator.clipboard.writeText(state.cwd);
@@ -133,6 +141,29 @@ export function SessionActions({
             </button>
           </div>
         </form>
+      </Modal>
+      <Modal
+        open={clearing}
+        onOpenChange={setClearing}
+        title="Clear current context?"
+        description={`Clear the loaded conversation, draft and queue for “${title}”. Saved session journals and project files remain available.`}
+        icon={<Trash2 size={20} />}
+      >
+        <div className="dialog-actions">
+          <button type="button" className="secondary-button" onClick={() => setClearing(false)}>
+            Keep conversation
+          </button>
+          <button
+            type="button"
+            className="secondary-button danger-button"
+            disabled={controller.sessionLocked}
+            onClick={() => {
+              if (controller.clearContext()) setClearing(false);
+            }}
+          >
+            Clear current context
+          </button>
+        </div>
       </Modal>
     </>
   );

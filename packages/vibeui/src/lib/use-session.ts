@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Artifact } from './artifacts';
 import { clientId } from './ids';
 import {
+  draftKey,
   initialState,
   record,
   reduceFrame,
@@ -39,8 +40,14 @@ export interface DraftRequest {
 export function useSession() {
   const [state, setState] = useState(initialState);
   const current = useRef(state);
+  const autoStreak = useRef(new Map<string, number>());
+  const ownedRuns = useRef(new Map<string, string>());
   const [connection, setConnection] = useState<Connection>('connecting');
   const [ready, setReady] = useState(false);
+  const [sessionTransition, setSessionTransition] = useState('');
+  const transition = useRef('');
+  const clearingSession = useRef('');
+  const [clearGeneration, setClearGeneration] = useState(0);
   const listeners = useRef(new Set<(frame: ProtocolEnvelope) => void>());
   const compacting = useRef(false);
   const [compactPending, setCompactPending] = useState(false);
@@ -153,7 +160,20 @@ export function useSession() {
         p.sessionId !== current.current.id
       )
         return;
-      update((s) => reduceFrame(s, frame));
+      update((s) => {
+        const next = reduceFrame(s, frame);
+        if (frame.type !== 'run.result') return next;
+        const owned =
+          typeof p.requestId === 'string' && ownedRuns.current.get(next.id) === p.requestId;
+        return owned
+          ? next
+          : {
+              ...next,
+              messages: next.messages.map((message) =>
+                message.autoEligible ? { ...message, autoEligible: false } : message,
+              ),
+            };
+      });
       for (const listener of listeners.current) listener(frame);
       if (
         frame.type === 'context.compacted' ||
@@ -176,6 +196,22 @@ export function useSession() {
       }
       if (frame.type === 'files.tree') clearTimeout(treeTimeout.current);
       if (frame.type === 'session.start') {
+        ownedRuns.current.delete(current.current.id);
+        if (clearingSession.current === current.current.id) {
+          const cleared = clearingSession.current;
+          clearingSession.current = '';
+          updateQueue((items) => items.filter((item) => item.sessionId !== cleared));
+          setQueuePaused(cleared, false);
+          steering.current = null;
+          autoStreak.current.delete(cleared);
+          try {
+            localStorage.removeItem(draftKey(cleared));
+          } catch {
+            /* Draft stays in memory if storage is unavailable. */
+          }
+          setDraftRequest(null);
+          setClearGeneration((value) => value + 1);
+        }
         initialFallback = null;
         try {
           localStorage.setItem(
@@ -189,6 +225,11 @@ export function useSession() {
         clearTimeout(sessionTimeout.current);
         switching.current = false;
         setReady(true);
+        if (transition.current) {
+          notice(`Active session changed: ${transition.current}`);
+          transition.current = '';
+          setSessionTransition('');
+        }
         requestModels(current.current.provider);
         send('prefs.get', { sessionId: current.current.id });
         send('modes.list', { sessionId: current.current.id });
@@ -196,7 +237,7 @@ export function useSession() {
         send('sessions.list', { sessionId: current.current.id, limit: 30 });
         refreshWorkspace();
       }
-      if (frame.type === 'session.run_state') setReady(true);
+      if (frame.type === 'session.run_state' && !switching.current) setReady(true);
       if (frame.type === 'provider.catalog') {
         for (const provider of current.current.providers)
           if (provider.configured) requestModels(provider.id);
@@ -217,6 +258,9 @@ export function useSession() {
       }
       if (frame.type === 'run.result' || frame.type === 'tool.executed') refreshWorkspace();
       if (frame.type === 'error' && switching.current) {
+        clearingSession.current = '';
+        transition.current = '';
+        setSessionTransition('');
         switching.current = false;
         setReady(true);
       }
@@ -226,6 +270,7 @@ export function useSession() {
       onState: (next) => {
         setConnection(next);
         if (next !== 'open') {
+          ownedRuns.current.clear();
           setReady(false);
           return;
         }
@@ -273,6 +318,7 @@ export function useSession() {
         notice('Connection interrupted. Your message has been kept.');
         return false;
       }
+      ownedRuns.current.set(s.id, id);
       update((previous) => ({
         ...previous,
         running: true,
@@ -296,6 +342,7 @@ export function useSession() {
   const submit = useCallback(
     (content: string, images: Attachment[], mode: 'queue' | 'steer' = 'queue'): boolean => {
       if (!content.trim() && !images.length) return false;
+      autoStreak.current.set(current.current.id, 0);
       if (
         connection !== 'open' ||
         !ready ||
@@ -369,6 +416,9 @@ export function useSession() {
     (id?: string) => {
       if (
         current.current.running ||
+        current.current.agents.some((agent) =>
+          ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
+        ) ||
         switching.current ||
         pendingModel.current ||
         compacting.current
@@ -378,6 +428,14 @@ export function useSession() {
         ? send('session.resume', { id, sessionId: current.current.id })
         : send('session.new', { sessionId: current.current.id });
       if (ok) {
+        const from =
+          current.current.sessions.find((session) => session.id === current.current.id)?.title ||
+          'Current session';
+        const to = id
+          ? current.current.sessions.find((session) => session.id === id)?.title || id
+          : 'New session';
+        transition.current = `${from} → ${to}`;
+        setSessionTransition(transition.current);
         desiredSession.current = id ?? '';
         switching.current = true;
         setReady(false);
@@ -385,6 +443,8 @@ export function useSession() {
           desiredSession.current = '';
           switching.current = false;
           setReady(true);
+          transition.current = '';
+          setSessionTransition('');
           notice('Session did not open. Check the connection and try again.');
         }, 30_000);
       }
@@ -409,9 +469,76 @@ export function useSession() {
   );
 
   return {
+    hasActiveWork:
+      state.running ||
+      state.agents.some((agent) =>
+        ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
+      ),
+    stopAll: () => {
+      const s = current.current;
+      if (!ready || connection !== 'open' || !s.id || switching.current) return false;
+      // Pause before the abort acknowledgement: a queued turn must not restart the fleet.
+      setQueuePaused(s.id, true);
+      steering.current = null;
+      ownedRuns.current.delete(s.id);
+      update((previous) => ({
+        ...previous,
+        messages: previous.messages.map((message) =>
+          message.autoEligible ? { ...message, autoEligible: false } : message,
+        ),
+      }));
+      if (!send('abort', { sessionId: s.id })) {
+        notice('Stop could not be sent. Reconnect and try again. The message queue is paused.');
+        return false;
+      }
+      notice('Stop requested for this session and its agents. The message queue is paused.');
+      return true;
+    },
+    clearGeneration,
+    sessionLocked:
+      !ready ||
+      connection !== 'open' ||
+      state.running ||
+      modelPending ||
+      compactPending ||
+      state.agents.some((agent) =>
+        ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
+      ),
+    clearContext: () => {
+      const s = current.current;
+      if (
+        s.running ||
+        switching.current ||
+        pendingModel.current ||
+        compacting.current ||
+        s.agents.some((agent) =>
+          ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
+        )
+      )
+        return false;
+      if (!send('context.clear', { sessionId: s.id })) return false;
+      clearingSession.current = s.id;
+      desiredSession.current = s.id;
+      switching.current = true;
+      transition.current = `Clearing ${s.sessions.find((item) => item.id === s.id)?.title || 'current session'}`;
+      setSessionTransition(transition.current);
+      setReady(false);
+      clearTimeout(sessionTimeout.current);
+      sessionTimeout.current = setTimeout(() => {
+        clearingSession.current = '';
+        switching.current = false;
+        desiredSession.current = '';
+        transition.current = '';
+        setSessionTransition('');
+        setReady(false);
+        notice('Clear was not confirmed. Reconnect before sending another message.');
+      }, 30000);
+      return true;
+    },
     state,
     connection,
     ready,
+    sessionTransition,
     modelPending,
     compactPending,
     subscribe,
@@ -437,6 +564,40 @@ export function useSession() {
     },
     send,
     submit,
+    submitNext: (content: string, ownerId: string, automatic = false) => {
+      const s = current.current;
+      if (
+        s.running ||
+        s.runFailure ||
+        queueRef.current.some((item) => item.sessionId === s.id) ||
+        s.messages
+          .slice()
+          .reverse()
+          .find((message) => message.role === 'assistant')?.id !== ownerId
+      )
+        return false;
+      const count = autoStreak.current.get(s.id) ?? 0;
+      const limit = Number(s.prefs.autoProceedMaxIterations) || 0;
+      if (
+        automatic &&
+        (s.prefs.autonomy !== 'auto' || s.prefs.yolo !== true || (limit > 0 && count >= limit))
+      )
+        return false;
+      const accepted = dispatch(content, []);
+      if (accepted) autoStreak.current.set(s.id, automatic ? count + 1 : 0);
+      return accepted;
+    },
+    autoLimitReached:
+      Number(state.prefs.autoProceedMaxIterations) > 0 &&
+      (autoStreak.current.get(state.id) ?? 0) >= Number(state.prefs.autoProceedMaxIterations),
+    recordBtw: (content: string) =>
+      update((s) => ({
+        ...s,
+        messages: [
+          ...s.messages,
+          { id: clientId(), role: 'user' as const, text: content, delivery: 'btw' as const },
+        ].slice(-500),
+      })),
     notice,
     switchSession,
     switchModel,

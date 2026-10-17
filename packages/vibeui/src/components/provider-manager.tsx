@@ -7,6 +7,8 @@ import { clientId } from '../lib/ids';
 import { record, rows, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { Modal } from './dialogs';
+import { usePresentation } from './presentation-mode';
+import { EmptyArtwork } from './vibe-visuals';
 
 interface SavedProvider {
   id: string;
@@ -204,6 +206,7 @@ export function ProviderManager({
         if (!open) onClose();
       }}
       title="Providers & accounts"
+      detailToggle
       icon={<KeyRound size={20} />}
       description="Manage saved credentials, subscription sign-ins and custom model endpoints."
       wide
@@ -298,11 +301,24 @@ export function ProviderManager({
           />
           {!loaded && <p role="status">Loading saved providers…</p>}
           {loaded && !saved.length && (
-            <p className="panel-hint">
-              No accounts yet. Add an API key, sign in with a subscription, or connect a local
-              endpoint.
-            </p>
+            <div className="provider-empty">
+              <EmptyArtwork kind="providers" />
+              <h3>Connect your first provider</h3>
+              <p className="panel-hint">
+                No accounts yet. Add an API key, sign in with a subscription, or connect a local
+                endpoint.
+              </p>
+            </div>
           )}
+          {loaded &&
+            saved.length > 0 &&
+            !saved.some((provider) =>
+              `${provider.id} ${provider.type}`.toLowerCase().includes(query.toLowerCase()),
+            ) && (
+              <p className="panel-hint" role="status">
+                No accounts match “{query}”. Try another name.
+              </p>
+            )}
           <div className="provider-cards">
             {saved
               .filter((p) => `${p.id} ${p.type}`.toLowerCase().includes(query.toLowerCase()))
@@ -409,17 +425,23 @@ function ProviderCard({
     { kind: 'provider' } | { kind: 'key'; label: string } | null
   >(null);
   const [addingKey, setAddingKey] = useState(false);
+  const { mode } = usePresentation();
   const [label, setLabel] = useState('');
   const [secret, setSecret] = useState('');
   return (
     <article className="provider-account" data-current={current || undefined}>
       <header>
-        <div>
-          <strong>{provider.id}</strong>
-          <small>
-            {provider.type || provider.family}
-            {current && ' · Current model provider'}
-          </small>
+        <div className="provider-identity">
+          <span className="provider-avatar" aria-hidden="true">
+            {provider.id.slice(0, 2).toUpperCase()}
+          </span>
+          <div>
+            <strong>{provider.id}</strong>
+            <small>
+              {provider.type || provider.family}
+              {current && ' · Current model provider'}
+            </small>
+          </div>
         </div>
         <div>
           {strategy && (
@@ -448,7 +470,7 @@ function ProviderCard({
           </button>
         </div>
       </header>
-      <p className="provider-endpoint">
+      <p className="provider-endpoint" hidden={mode !== 'extended'}>
         {provider.baseUrl || 'Subscription / managed endpoint'} · {provider.models.length}{' '}
         configured models
       </p>

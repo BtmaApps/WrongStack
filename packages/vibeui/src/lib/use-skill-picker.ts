@@ -59,7 +59,7 @@ export function useSkillPicker(
   useEffect(() => {
     setSelected(0);
   }, [mention?.query]);
-  const matches = matchSkillMentions(skills, mention?.query ?? '').slice(0, 12);
+  const matches = matchSkillMentions(skills, mention?.query ?? '');
   useEffect(() => {
     if (open)
       document.getElementById(`${listId}-${selected}`)?.scrollIntoView({ block: 'nearest' });
@@ -81,6 +81,7 @@ export function useSkillPicker(
     open,
     listId,
     matches,
+    total: skills.length,
     selected,
     status,
     pick,
@@ -98,6 +99,13 @@ export function useSkillPicker(
           matches.length
             ? (value + (event.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length
             : 0,
+        );
+        return true;
+      }
+      if (['PageDown', 'PageUp'].includes(event.key)) {
+        event.preventDefault();
+        setSelected((value) =>
+          Math.max(0, Math.min(matches.length - 1, value + (event.key === 'PageDown' ? 8 : -8))),
         );
         return true;
       }

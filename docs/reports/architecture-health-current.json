@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T22:22:13.118Z",
+  "generatedAt": "2026-10-17T22:22:47.993Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5134,
-    "testFiles": 4453,
-    "sourceLines": 1115396,
+    "sourceFiles": 5147,
+    "testFiles": 4456,
+    "sourceLines": 1117811,
     "workspaceEdges": 139,
-    "moduleEdges": 16885,
+    "moduleEdges": 16938,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -848,8 +848,8 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 32,
-      "testFiles": 6,
+      "sourceFiles": 45,
+      "testFiles": 9,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -862,7 +862,7 @@
         {
           "path": "packages/vibeui/tsconfig.test.json",
           "error": null,
-          "testFiles": 6
+          "testFiles": 9
         }
       ]
     },
@@ -22658,6 +22658,12 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/memory-view.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/resources.test.ts",
         "projects": [
           "root-node"
@@ -22670,7 +22676,19 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/search-highlight.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/session.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/transcript-view.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28058,40 +28076,40 @@
     },
     {
       "file": "packages/vibeui/src/components/provider-manager.tsx",
-      "lines": 711,
-      "relativeImports": 4
+      "lines": 733,
+      "relativeImports": 6
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 956,
-      "relativeImports": 16
+      "lines": 1063,
+      "relativeImports": 22
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 826,
+      "lines": 855,
       "relativeImports": 2
     }
   ],
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 956,
-      "relativeImports": 16
+      "lines": 1063,
+      "relativeImports": 22
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 826,
+      "lines": 855,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/vibeui/src/components/provider-manager.tsx",
+      "lines": 733,
+      "relativeImports": 6
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/vibeui/src/components/provider-manager.tsx",
-      "lines": 711,
-      "relativeImports": 4
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -28112,6 +28130,11 @@
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 700,
       "relativeImports": 22
+    },
+    {
+      "file": "packages/vibeui/src/lib/use-session.ts",
+      "lines": 700,
+      "relativeImports": 4
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
@@ -28317,11 +28340,6 @@
       "file": "packages/webui/src/components/SkillDetailView.tsx",
       "lines": 685,
       "relativeImports": 4
-    },
-    {
-      "file": "packages/cli/src/hq-server/routes.ts",
-      "lines": 684,
-      "relativeImports": 16
     }
   ],
   "testOnlyExports": [

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { contentText, record, rows, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { Modal } from './dialogs';
+import { usePresentation } from './presentation-mode';
 
 export function ContextDialog({
   controller,
@@ -21,7 +22,7 @@ export function ContextDialog({
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [revision, setRevision] = useState(0);
-  const [view, setView] = useState<'simple' | 'extended'>('simple');
+  const { mode: view } = usePresentation();
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
     setSnapshot(null);
@@ -105,6 +106,7 @@ export function ContextDialog({
       title="Context window"
       description="Usage, cache and the conversation in memory."
       wide
+      detailToggle
     >
       <div className="context-toolbar">
         <span>
@@ -120,24 +122,6 @@ export function ContextDialog({
           Refresh context
         </button>
       </div>
-      <fieldset className="context-view-switch" aria-label="Context detail level">
-        <button
-          type="button"
-          aria-pressed={view === 'simple'}
-          aria-controls="context-simple-panel"
-          onClick={() => setView('simple')}
-        >
-          Simple
-        </button>
-        <button
-          type="button"
-          aria-pressed={view === 'extended'}
-          aria-controls="context-extended-panel"
-          onClick={() => setView('extended')}
-        >
-          Extended
-        </button>
-      </fieldset>
       {view === 'simple' && (
         <section id="context-simple-panel" aria-label="Simple context metrics">
           <div className="context-capacity">

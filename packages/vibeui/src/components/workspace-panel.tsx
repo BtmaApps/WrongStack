@@ -14,9 +14,12 @@ import {
 import { Tabs } from 'radix-ui';
 import { useEffect, useState } from 'react';
 import { compareLines } from '../lib/diff';
+import { record, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { AgentMonitor } from './agent-monitor';
 import { Modal } from './dialogs';
+import { ToolInspector } from './tool-inspector';
+import { EmptyArtwork } from './vibe-visuals';
 
 export function WorkspacePanel({
   controller,
@@ -30,8 +33,10 @@ export function WorkspacePanel({
   requestedView?: { tab: string; key: number };
 }) {
   const { state, send, connection, refreshWorkspace } = controller;
-  const [tab, setTab] = useState('changes');
+  const [tab, setTab] = useState('activity');
   const [selectedPath, setSelectedPath] = useState('');
+  const [inspectedTool, setInspectedTool] = useState('');
+  const selectedTool = state.tools.find((tool) => tool.id === inspectedTool);
   useEffect(() => {
     if (requestedView?.key) setTab(requestedView.tab);
   }, [requestedView]);
@@ -40,6 +45,7 @@ export function WorkspacePanel({
   }, [revealAgents]);
   useEffect(() => {
     setSelectedPath('');
+    setInspectedTool('');
   }, [state.id]);
   return (
     <aside className="workspace-panel" aria-label="Workspace">
@@ -67,6 +73,10 @@ export function WorkspacePanel({
       </header>
       <Tabs.Root value={tab} onValueChange={setTab} className="workspace-tabs">
         <Tabs.List aria-label="Workspace views" className="tab-list">
+          <Tabs.Trigger value="activity">
+            <TerminalSquare size={14} />
+            Activity
+          </Tabs.Trigger>
           <Tabs.Trigger value="changes">
             <FileDiff size={14} />
             Changes <span>{state.files.length}</span>
@@ -74,10 +84,6 @@ export function WorkspacePanel({
           <Tabs.Trigger value="tasks">
             <ListChecks size={14} />
             Tasks
-          </Tabs.Trigger>
-          <Tabs.Trigger value="activity">
-            <TerminalSquare size={14} />
-            Activity
           </Tabs.Trigger>
 
           <Tabs.Trigger value="agents">
@@ -96,7 +102,7 @@ export function WorkspacePanel({
           </div>
           {!state.files.length && (
             <PanelEmpty
-              icon={<FileDiff size={23} />}
+              kind="changes"
               title="A clean slate"
               detail="Changed files will appear here as you build."
             />
@@ -177,7 +183,7 @@ export function WorkspacePanel({
         <Tabs.Content value="tasks" className="panel-content">
           {!state.todos.length && !state.tasks.length && !state.plan.length && (
             <PanelEmpty
-              icon={<ListChecks size={23} />}
+              kind="tasks"
               title="Room for a plan"
               detail="The agent’s plan and tasks will appear here when available."
             />
@@ -263,7 +269,7 @@ export function WorkspacePanel({
           </div>
           {!state.tools.length && (
             <PanelEmpty
-              icon={<TerminalSquare size={23} />}
+              kind="activity"
               title="Quiet for now"
               detail="Tool calls and their results stay here, out of your way."
             />
@@ -281,12 +287,38 @@ export function WorkspacePanel({
                   <small>{tool.status}</small>
                   <ChevronRight size={13} />
                 </summary>
-                <pre>{JSON.stringify(tool.input, null, 2)}</pre>
-                {tool.output && <pre>{tool.output}</pre>}
+                <div className="tool-card-preview">
+                  <p>
+                    {text(record(tool.input).path) ||
+                      text(record(tool.input).file_path) ||
+                      text(record(tool.input).command) ||
+                      text(record(tool.input).query) ||
+                      'Tool arguments and full result are available to inspect.'}
+                  </p>
+                  {tool.output && (
+                    <p className="tool-result-preview">
+                      {tool.output.replace(/\s+/g, ' ').slice(0, 200)}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setInspectedTool(tool.id)}
+                  >
+                    Inspect call
+                  </button>
+                </div>
               </details>
             ))}
         </Tabs.Content>
       </Tabs.Root>
+      {selectedTool && (
+        <ToolInspector
+          key={selectedTool.id}
+          tool={selectedTool}
+          onClose={() => setInspectedTool('')}
+        />
+      )}
       <footer>
         <span className={`status-dot ${connection === 'open' ? '' : 'error'}`} />
         {connection === 'open' ? 'Local workspace' : 'Connection interrupted — reconnecting'}
@@ -312,17 +344,17 @@ function FileLines({ value }: { value: string }) {
   );
 }
 function PanelEmpty({
-  icon,
+  kind,
   title,
   detail,
 }: {
-  icon: React.ReactNode;
+  kind: 'activity' | 'changes' | 'tasks';
   title: string;
   detail: string;
 }) {
   return (
     <div className="panel-empty">
-      {icon}
+      <EmptyArtwork kind={kind} />
       <h3>{title}</h3>
       <p>{detail}</p>
     </div>

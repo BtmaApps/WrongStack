@@ -5,10 +5,13 @@ import { useState } from 'react';
 import type { AgentEntry } from '../lib/session';
 import { Modal } from './dialogs';
 import { MarkdownContent } from './markdown-content';
+import { usePresentation } from './presentation-mode';
+import { EmptyArtwork, RunSignal } from './vibe-visuals';
 
 const active = (status: string) =>
   ['running', 'busy', 'working', 'active', 'starting', 'spawned'].includes(status);
 export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; connected: boolean }) {
+  const { mode } = usePresentation();
   const [selected, setSelected] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const visible = agents.filter((item) => showInactive || active(item.status));
@@ -32,7 +35,11 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
         Show inactive ({agents.filter((item) => !active(item.status)).length})
       </label>
       {!visible.length && (
-        <p className="panel-hint">No active agents. Delegated work will appear here.</p>
+        <div className="panel-empty">
+          <EmptyArtwork kind="agents" />
+          <h3>No active agents</h3>
+          <p>Delegated work will appear here when a task needs another pair of hands.</p>
+        </div>
       )}
       {visible.map((item) => (
         <button
@@ -41,15 +48,20 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
           key={item.id}
           onClick={() => setSelected(item.id)}
         >
-          <span
-            className={`status-dot ${active(item.status) ? 'busy' : ['failed', 'error'].includes(item.status) ? 'error' : ''}`}
-          />
+          <span className="agent-identity" aria-hidden="true">
+            {item.name.slice(0, 1).toUpperCase()}
+          </span>
           <span>
             <strong>{item.name}</strong>
             <small>{item.task || item.currentTool || 'Waiting for task details'}</small>
             <small>{item.model || 'Model not reported'}</small>
           </span>
-          <small>{item.status}</small>
+          <span
+            className={`agent-state ${active(item.status) ? 'agent-state-active' : ['failed', 'error'].includes(item.status) ? 'agent-state-error' : ''}`}
+          >
+            {active(item.status) && <RunSignal />}
+            <small>{item.status}</small>
+          </span>
         </button>
       ))}
       <Modal
@@ -61,6 +73,7 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
         icon={<Users size={20} />}
         description="Task, model and latest activity for this session."
         wide
+        detailToggle
       >
         {agent && (
           <div className="agent-detail">
@@ -75,15 +88,56 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
               <small>Task</small>
               <p>{agent.task || 'No task description reported.'}</p>
             </div>
+            <section
+              className="agent-work-stats"
+              data-detail={mode}
+              aria-label="Agent work summary"
+            >
+              <div>
+                <strong>{agent.iterations.toLocaleString()}</strong>
+                <small>Iterations</small>
+              </div>
+              <div>
+                <strong>{agent.toolCalls.toLocaleString()}</strong>
+                <small>Tool calls</small>
+              </div>
+              <div>
+                <strong>{agent.tokens.toLocaleString()}</strong>
+                <small>Reported tokens</small>
+              </div>
+            </section>
+            {mode === 'extended' && (
+              <dl className="agent-technical">
+                <dt>Agent ID</dt>
+                <dd>{agent.id}</dd>
+                <dt>Context capacity</dt>
+                <dd>
+                  {agent.maxContext > 0
+                    ? `${agent.maxContext.toLocaleString()} tokens`
+                    : 'Not reported'}
+                </dd>
+                <dt>Reported cost</dt>
+                <dd>${agent.costUsd.toFixed(4)}</dd>
+              </dl>
+            )}
             <div className="agent-latest">
               <small>Latest output</small>
               {lastOutput ? (
-                <MarkdownContent text={lastOutput.slice(-2500)} />
+                <>
+                  <MarkdownContent
+                    text={mode === 'extended' ? lastOutput : lastOutput.slice(-2500)}
+                  />
+                  {mode === 'simple' && lastOutput.length > 2500 && (
+                    <p className="fine-print">
+                      Latest excerpt. Extended shows the full reported output.
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="panel-hint">Waiting for activity from this agent.</p>
               )}
             </div>
-            <details className="agent-deeper">
+            <details className="agent-deeper" key={mode} open={mode === 'extended'}>
               <summary>Detailed activity ({agent.entries.length})</summary>
               <p className="fine-print">
                 {agent.iterations} iterations / {agent.toolCalls} tool calls. Older activity may be

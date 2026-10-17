@@ -1,11 +1,11 @@
 'use client';
 
-import { BookOpen, RefreshCw, Star } from 'lucide-react';
+import { ArrowLeft, BookOpen, RefreshCw, Star } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { Tabs } from 'radix-ui';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fillPrompt,
-  memoryWindow,
   promptSlug,
   promptVariables,
   resourceDetails,
@@ -17,6 +17,13 @@ import { usePanelRequests } from '../lib/use-panel-requests';
 import type { SessionController } from '../lib/use-session';
 import { Modal } from './dialogs';
 import { MarkdownContent } from './markdown-content';
+import { usePresentation } from './presentation-mode';
+import { EmptyArtwork } from './vibe-visuals';
+
+const MemoryBrowser = dynamic(
+  () => import('./memory-browser').then((module) => module.MemoryBrowser),
+  { ssr: false, loading: () => <p role="status">Opening memory browser…</p> },
+);
 
 export type ResourceTab = 'prompts' | 'skills' | 'tools' | 'mcp' | 'memory';
 const TITLES: Record<ResourceTab, string> = {
@@ -36,6 +43,7 @@ export function ResourceHub({
   onClose: () => void;
 }) {
   const { state, connection, prepareDraft } = controller;
+  const { mode } = usePresentation();
   const { request, busy, error, setError } = usePanelRequests(controller);
   const [tab, setTab] = useState<ResourceTab>(initialTab);
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
@@ -43,12 +51,6 @@ export function ResourceHub({
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [query, setQuery] = useState('');
   const [enabled, setEnabled] = useState(true);
-  const [memory, setMemory] = useState('');
-  const [memoryPage, setMemoryPage] = useState(0);
-  const memoryView = useMemo(
-    () => memoryWindow(memory, query, memoryPage),
-    [memory, query, memoryPage],
-  );
   const [values, setValues] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
@@ -56,12 +58,12 @@ export function ResourceHub({
   const owner = useRef(0);
   const load = useCallback(
     async (kind: ResourceTab) => {
+      if (kind === 'memory') return;
       const epoch = ++owner.current;
-      const p = await request(kind === 'memory' ? 'memory.list' : `${kind}.list`);
+      const p = await request(`${kind}.list`);
       if (!p || owner.current !== epoch) return;
       setEnabled(p.enabled !== false);
       setItems(rows(p[kind === 'mcp' ? 'servers' : kind]));
-      if (kind === 'memory') setMemory(text(p.text));
     },
     [request],
   );
@@ -71,8 +73,6 @@ export function ResourceHub({
     setDetail(null);
     setQuery('');
     setCreating(false);
-    setMemory('');
-    setMemoryPage(0);
     setEnabled(true);
     void load(tab);
     return () => {
@@ -124,8 +124,23 @@ export function ResourceHub({
         if (!open) onClose();
       }}
       title="Workspace resources"
+      detailToggle
       icon={<BookOpen size={20} />}
       description="Prompts and capabilities for this workspace."
+      headerActions={
+        tab !== 'memory' && (
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Refresh resources"
+            title="Refresh resources"
+            disabled={busy || offline}
+            onClick={() => void load(tab)}
+          >
+            <RefreshCw size={15} />
+          </button>
+        )
+      }
       wide
     >
       <Tabs.Root value={tab} onValueChange={(value) => setTab(value as ResourceTab)}>
@@ -137,15 +152,6 @@ export function ResourceHub({
               </Tabs.Trigger>
             ))}
           </Tabs.List>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Refresh resources"
-            disabled={busy || offline}
-            onClick={() => void load(tab)}
-          >
-            <RefreshCw size={15} />
-          </button>
         </div>
         <Tabs.Content value={tab}>
           {error && (
@@ -165,54 +171,20 @@ export function ResourceHub({
             </p>
           )}
           <input
-            className="context-search"
+            className="context-search resource-search"
+            data-has-selection={Boolean(row) || creating}
+            hidden={tab === 'memory'}
             aria-label="Search resources"
             placeholder={`Search ${TITLES[tab].toLowerCase()}…`}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
-              setMemoryPage(0);
             }}
           />
           {tab === 'memory' ? (
-            <section className="hub-memory" aria-label="Workspace memory">
-              <p className="fine-print">
-                Read-only memory snapshot · search covers all loaded content.
-              </p>
-              {memory ? (
-                <>
-                  <div className="hub-actions">
-                    <span className="fine-print">
-                      Page {memoryView.page + 1} / {memoryView.pages} ·{' '}
-                      {memoryView.total.toLocaleString()} characters
-                    </span>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled={memoryView.page === 0}
-                      onClick={() => setMemoryPage(memoryView.page - 1)}
-                    >
-                      Previous memory page
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled={memoryView.page + 1 >= memoryView.pages}
-                      onClick={() => setMemoryPage(memoryView.page + 1)}
-                    >
-                      Next memory page
-                    </button>
-                  </div>
-                  <pre className="context-raw">
-                    {memoryView.content || 'No matching memory lines.'}
-                  </pre>
-                </>
-              ) : (
-                !busy && <p className="panel-hint">No memory content reported.</p>
-              )}
-            </section>
+            <MemoryBrowser controller={controller} />
           ) : (
-            <div className="hub-layout">
+            <div className="hub-layout" data-selected={Boolean(row) || creating}>
               <nav className="hub-list" aria-label={`${TITLES[tab]} list`}>
                 {tab === 'prompts' && (
                   <button
@@ -262,6 +234,21 @@ export function ResourceHub({
                 )}
               </nav>
               <section className="hub-detail" aria-label="Selected resource">
+                {(row || creating) && (
+                  <button
+                    type="button"
+                    className="secondary-button resource-back"
+                    onClick={() => {
+                      owner.current++;
+                      setCreating(false);
+                      setSelected('');
+                      setDetail(null);
+                    }}
+                  >
+                    {' '}
+                    <ArrowLeft size={14} /> All {TITLES[tab].toLowerCase()}
+                  </button>
+                )}
                 {creating ? (
                   <form
                     className="provider-form"
@@ -319,7 +306,7 @@ export function ResourceHub({
                   </form>
                 ) : !row ? (
                   <div className="file-empty">
-                    <BookOpen size={24} />
+                    <EmptyArtwork kind={tab === 'tools' || tab === 'mcp' ? 'activity' : 'files'} />
                     <p>Choose a resource to inspect it.</p>
                   </div>
                 ) : (
@@ -429,7 +416,7 @@ export function ResourceHub({
                           {text(row.owner)} · {text(row.permission) || 'Runtime permission policy'}{' '}
                           · {row.disabled === true ? 'Disabled' : 'Enabled'}
                         </p>
-                        <details className="hub-technical">
+                        <details className="hub-technical" key={mode} open={mode === 'extended'}>
                           <summary>Parameters</summary>
                           <pre className="context-raw">
                             {Array.isArray(row.params)
@@ -468,7 +455,7 @@ export function ResourceHub({
                           </small>
                         </div>
                         {text(row.error) && <p className="form-error">{text(row.error)}</p>}
-                        <details className="hub-technical">
+                        <details className="hub-technical" key={mode} open={mode === 'extended'}>
                           <summary>Available tools</summary>
                           <pre className="context-raw">
                             {Array.isArray(row.tools)

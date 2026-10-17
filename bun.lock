@@ -28,7 +28,7 @@
     },
     "apps/desktop": {
       "name": "@wrongstack/desktop",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wrongstack-desktop": "./bin/wrongstack-desktop.js",
         "wstack-desktop": "./bin/wrongstack-desktop.js",
@@ -60,7 +60,7 @@
     },
     "apps/wrongstack": {
       "name": "wrongstack",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack": "./dist/index.js",
         "wrongstack": "./dist/index.js",
@@ -75,7 +75,7 @@
     },
     "packages/acp": {
       "name": "@wrongstack/acp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@agentclientprotocol/sdk": "^1.4.0",
         "@wrongstack/core": "workspace:*",
@@ -89,7 +89,7 @@
     },
     "packages/bench": {
       "name": "@wrongstack/bench",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
       },
@@ -100,7 +100,7 @@
     },
     "packages/cli": {
       "name": "@wrongstack/cli",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack": "./dist/index.js",
         "wrongstack": "./dist/index.js",
@@ -153,7 +153,7 @@
     },
     "packages/client": {
       "name": "@wrongstack/client",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/webui-protocol": "workspace:*",
       },
@@ -167,7 +167,7 @@
     },
     "packages/codebase-index-mcp": {
       "name": "@wrongstack/codebase-index-mcp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack-codebase-index-mcp": "./dist/cli.js",
       },
@@ -184,7 +184,7 @@
     },
     "packages/core": {
       "name": "@wrongstack/core",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/kanban": "workspace:*",
         "@wrongstack/persistence": "workspace:*",
@@ -202,7 +202,7 @@
     },
     "packages/governance": {
       "name": "@wrongstack/governance",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/persistence": "workspace:*",
       },
@@ -214,7 +214,7 @@
     },
     "packages/kanban": {
       "name": "@wrongstack/kanban",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/persistence": "workspace:*",
         "@wrongstack/primitives": "workspace:*",
@@ -226,7 +226,7 @@
     },
     "packages/kanban-mcp": {
       "name": "@wrongstack/kanban-mcp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack-kanban-mcp": "./dist/cli.js",
       },
@@ -245,7 +245,7 @@
     },
     "packages/mailbox-mcp": {
       "name": "@wrongstack/mailbox-mcp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack-mailbox-mcp": "./dist/cli.js",
       },
@@ -261,7 +261,7 @@
     },
     "packages/mcp": {
       "name": "@wrongstack/mcp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "undici": "^8.10.2",
@@ -275,7 +275,7 @@
     },
     "packages/persistence": {
       "name": "@wrongstack/persistence",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "devDependencies": {
         "@types/node": "^26.5.1",
         "typescript": "^7.0.2",
@@ -283,7 +283,7 @@
     },
     "packages/plug-lsp": {
       "name": "@wrongstack/plug-lsp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wrongstack-lsp-setup": "./dist/setup.js",
       },
@@ -302,7 +302,7 @@
     },
     "packages/plugin-sdk": {
       "name": "@wrongstack/plugin-sdk",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/tools": "workspace:*",
@@ -315,7 +315,7 @@
     },
     "packages/plugins": {
       "name": "@wrongstack/plugins",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/plugin-sdk": "workspace:*",
@@ -332,7 +332,7 @@
     },
     "packages/primitives": {
       "name": "@wrongstack/primitives",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "devDependencies": {
         "@types/node": "^26.5.1",
         "typescript": "^7.0.2",
@@ -340,7 +340,7 @@
     },
     "packages/providers": {
       "name": "@wrongstack/providers",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@ai-sdk/amazon-bedrock": "5.0.82",
         "@ai-sdk/anthropic": "4.0.53",
@@ -364,7 +364,7 @@
     },
     "packages/requirement-intake": {
       "name": "@wrongstack/requirement-intake",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "zod": "4.6.2",
@@ -376,7 +376,7 @@
     },
     "packages/requirement-intake-mcp": {
       "name": "@wrongstack/requirement-intake-mcp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack-requirement-intake-mcp": "./dist/cli.js",
       },
@@ -393,7 +393,7 @@
     },
     "packages/runtime": {
       "name": "@wrongstack/runtime",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/governance": "workspace:*",
@@ -413,7 +413,7 @@
     },
     "packages/sage": {
       "name": "@wrongstack/sage",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/persistence": "workspace:*",
@@ -427,7 +427,7 @@
     },
     "packages/sage-mcp": {
       "name": "@wrongstack/sage-mcp",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "bin": {
         "wstack-sage-mcp": "./dist/cli.js",
       },
@@ -444,7 +444,7 @@
     },
     "packages/sdd": {
       "name": "@wrongstack/sdd",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/kanban": "workspace:*",
@@ -458,7 +458,7 @@
     },
     "packages/security-scanner": {
       "name": "@wrongstack/security-scanner",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
       },
@@ -469,7 +469,7 @@
     },
     "packages/simpleui": {
       "name": "@wrongstack/simpleui",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@fontsource-variable/inter": "^5.3.0",
         "@fontsource/ibm-plex-mono": "^5.3.0",
@@ -497,7 +497,7 @@
     },
     "packages/techstack": {
       "name": "@wrongstack/techstack",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/persistence": "workspace:*",
@@ -510,7 +510,7 @@
     },
     "packages/telegram": {
       "name": "@wrongstack/telegram",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "devDependencies": {
         "@types/node": "^26.5.1",
         "@wrongstack/core": "workspace:*",
@@ -524,7 +524,7 @@
     },
     "packages/tools": {
       "name": "@wrongstack/tools",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@jitl/quickjs-singlefile-mjs-release-sync": "^0.32.0",
         "@msgpack/msgpack": "^3.1.3",
@@ -548,7 +548,7 @@
     },
     "packages/tui": {
       "name": "@wrongstack/tui",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/kanban": "workspace:*",
@@ -575,7 +575,7 @@
     },
     "packages/vector-memory": {
       "name": "@wrongstack/vector-memory",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/persistence": "workspace:*",
@@ -592,6 +592,7 @@
       "version": "1.1.7",
       "dependencies": {
         "@wrongstack/webui-protocol": "workspace:*",
+        "@xyflow/react": "12.12.0",
         "lucide-react": "1.45.0",
         "radix-ui": "1.8.1",
         "react": "19.3.1",
@@ -611,7 +612,7 @@
     },
     "packages/webui": {
       "name": "@wrongstack/webui",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
         "@fontsource-variable/cascadia-code": "^5.3.0",
@@ -707,7 +708,7 @@
     },
     "packages/webui-hq": {
       "name": "@wrongstack/webui-hq",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@fontsource-variable/ibm-plex-sans": "^5.3.0",
         "@fontsource-variable/manrope": "^5.3.0",
@@ -761,7 +762,7 @@
     },
     "packages/webui-protocol": {
       "name": "@wrongstack/webui-protocol",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
       },
@@ -774,7 +775,7 @@
     },
     "packages/webui-server": {
       "name": "@wrongstack/webui-server",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@wrongstack/core": "workspace:*",
         "@wrongstack/kanban": "workspace:*",
@@ -800,7 +801,7 @@
     },
     "packages/wrongtrace": {
       "name": "@wrongstack/wrongtrace",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "undici-types": "^8.10.2",
       },
@@ -812,7 +813,7 @@
     },
     "website": {
       "name": "wrongstack-website",
-      "version": "1.1.2",
+      "version": "1.1.7",
       "dependencies": {
         "@radix-ui/react-slot": "^1.3.3",
         "class-variance-authority": "^0.7.1",
@@ -1680,9 +1681,9 @@
 
     "@xterm/xterm": ["@xterm/xterm@6.0.0", "", {}, "sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg=="],
 
-    "@xyflow/react": ["@xyflow/react@12.11.6", "", { "dependencies": { "@xyflow/system": "0.0.82", "classcat": "5.0.5", "zustand": "4.5.7" }, "peerDependencies": { "@types/react": ">=17", "@types/react-dom": ">=17", "react": ">=17", "react-dom": ">=17" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-9XsEJNHjatKYndszKTF/bsU7FOP9dJ6V/EQwzy3oMdtqgBuUq7BjKSwkEo+C7s4qHstHQfwwoHA3E8QfpPxZZQ=="],
+    "@xyflow/react": ["@xyflow/react@12.12.0", "", { "dependencies": { "@xyflow/system": "0.0.83", "classcat": "^5.0.3", "zustand": "^4.4.0" }, "peerDependencies": { "@types/react": ">=17", "@types/react-dom": ">=17", "react": ">=17", "react-dom": ">=17" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-74oXI0Rgm1Eu33cHQAd74J6oVgCH9mbFyTVQbsGgp2kmWwh0HdtBr2VP04z8mbPD+M/xO69nqG5dDEt7/EN2rQ=="],
 
-    "@xyflow/system": ["@xyflow/system@0.0.82", "", { "dependencies": { "@types/d3-drag": "3.0.7", "@types/d3-interpolate": "3.0.4", "@types/d3-selection": "3.0.11", "@types/d3-transition": "3.0.9", "@types/d3-zoom": "3.0.8", "d3-drag": "3.0.0", "d3-interpolate": "3.0.1", "d3-selection": "3.0.0", "d3-zoom": "3.0.0" } }, "sha512-4DKnL3CGtCGLRSmgDqaajRVgeksMXq/Yw4wPfdMfm7JvdIiWHGzVYOfFUztiATwdBXZqUU6HhehwUdbV9G23PQ=="],
+    "@xyflow/system": ["@xyflow/system@0.0.83", "", { "dependencies": { "@types/d3-drag": "^3.0.7", "@types/d3-interpolate": "^3.0.4", "@types/d3-selection": "^3.0.10", "@types/d3-transition": "^3.0.8", "@types/d3-zoom": "^3.0.8", "d3-drag": "^3.0.0", "d3-interpolate": "^3.0.1", "d3-selection": "^3.0.0", "d3-zoom": "^3.0.0" } }, "sha512-a//eDjez3WZF47aaPTfVUDD0OINOq+WVwBZCRTqG+m0a5euX8EwlJ4jMY1Wxz0Ocj4xOeekJ70V22Pq0ll8RJw=="],
 
     "abbrev": ["abbrev@4.0.0", "", {}, "sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA=="],
 
@@ -2900,7 +2901,11 @@
 
     "@wrongstack/webui/@types/node": ["@types/node@26.5.1", "", { "dependencies": { "undici-types": "8.9.0" } }, "sha512-CzNm2FezW4VR/LjG6yUdiEgLE/rAQ9Slj5gCu/C2VrdcW7I0ahNZ8DRbHT7zOZ6r3ONgd/bsQIeSaoDGrd1C6g=="],
 
+    "@wrongstack/webui/@xyflow/react": ["@xyflow/react@12.11.6", "", { "dependencies": { "@xyflow/system": "0.0.82", "classcat": "5.0.5", "zustand": "4.5.7" }, "peerDependencies": { "@types/react": ">=17", "@types/react-dom": ">=17", "react": ">=17", "react-dom": ">=17" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-9XsEJNHjatKYndszKTF/bsU7FOP9dJ6V/EQwzy3oMdtqgBuUq7BjKSwkEo+C7s4qHstHQfwwoHA3E8QfpPxZZQ=="],
+
     "@wrongstack/webui-hq/@types/node": ["@types/node@26.5.1", "", { "dependencies": { "undici-types": "8.9.0" } }, "sha512-CzNm2FezW4VR/LjG6yUdiEgLE/rAQ9Slj5gCu/C2VrdcW7I0ahNZ8DRbHT7zOZ6r3ONgd/bsQIeSaoDGrd1C6g=="],
+
+    "@wrongstack/webui-hq/@xyflow/react": ["@xyflow/react@12.11.6", "", { "dependencies": { "@xyflow/system": "0.0.82", "classcat": "5.0.5", "zustand": "4.5.7" }, "peerDependencies": { "@types/react": ">=17", "@types/react-dom": ">=17", "react": ">=17", "react-dom": ">=17" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-9XsEJNHjatKYndszKTF/bsU7FOP9dJ6V/EQwzy3oMdtqgBuUq7BjKSwkEo+C7s4qHstHQfwwoHA3E8QfpPxZZQ=="],
 
     "@wrongstack/webui-hq/jsdom": ["jsdom@25.0.1", "", { "dependencies": { "cssstyle": "4.6.0", "data-urls": "5.0.0", "decimal.js": "10.6.0", "form-data": "4.0.6", "html-encoding-sniffer": "4.0.0", "http-proxy-agent": "7.0.2", "https-proxy-agent": "7.0.6", "is-potential-custom-element-name": "1.0.1", "nwsapi": "2.2.27", "parse5": "7.3.0", "rrweb-cssom": "0.7.1", "saxes": "6.0.0", "symbol-tree": "3.2.4", "tough-cookie": "5.1.2", "w3c-xmlserializer": "5.0.0", "webidl-conversions": "7.0.0", "whatwg-encoding": "3.1.1", "whatwg-mimetype": "4.0.0", "whatwg-url": "14.2.0", "ws": "8.21.3", "xml-name-validator": "5.0.0" }, "peerDependencies": { "canvas": "^2.11.2" }, "optionalPeers": ["canvas"] }, "sha512-8i7LzZj7BF8uplX+ZyOlIz86V6TAsSs+np6m1kpW9u0JWi4z/1t+FzcK1aek+ybTnAC4KhBL4uXCNT0wcUIeCw=="],
 
@@ -3142,6 +3147,10 @@
 
     "@wrongstack/webui-hq/@types/node/undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
 
+    "@wrongstack/webui-hq/@xyflow/react/@xyflow/system": ["@xyflow/system@0.0.82", "", { "dependencies": { "@types/d3-drag": "3.0.7", "@types/d3-interpolate": "3.0.4", "@types/d3-selection": "3.0.11", "@types/d3-transition": "3.0.9", "@types/d3-zoom": "3.0.8", "d3-drag": "3.0.0", "d3-interpolate": "3.0.1", "d3-selection": "3.0.0", "d3-zoom": "3.0.0" } }, "sha512-4DKnL3CGtCGLRSmgDqaajRVgeksMXq/Yw4wPfdMfm7JvdIiWHGzVYOfFUztiATwdBXZqUU6HhehwUdbV9G23PQ=="],
+
+    "@wrongstack/webui-hq/@xyflow/react/zustand": ["zustand@4.5.7", "", { "dependencies": { "use-sync-external-store": "1.7.0" }, "peerDependencies": { "@types/react": ">=16.8", "immer": ">=9.0.6", "react": ">=16.8" }, "optionalPeers": ["@types/react", "immer", "react"] }, "sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw=="],
+
     "@wrongstack/webui-hq/jsdom/data-urls": ["data-urls@5.0.0", "", { "dependencies": { "whatwg-mimetype": "4.0.0", "whatwg-url": "14.2.0" } }, "sha512-ZYP5VBHshaDAiVZxjbRVcFJpc+4xGgT0bK3vzy1HLN8jTO975HEbuYzZJcHoQEY5K1a0z8YayJkyVETa08eNTg=="],
 
     "@wrongstack/webui-hq/jsdom/html-encoding-sniffer": ["html-encoding-sniffer@4.0.0", "", { "dependencies": { "whatwg-encoding": "3.1.1" } }, "sha512-Y22oTqIU4uuPgEemfz7NDJz6OeKf12Lsu+QC+s3BVpda64lTiMYCyGwg5ki4vFxkMwQdeZDl2adZoqUgdFuTgQ=="],
@@ -3163,6 +3172,10 @@
     "@wrongstack/webui-server/@types/node/undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
 
     "@wrongstack/webui/@types/node/undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
+
+    "@wrongstack/webui/@xyflow/react/@xyflow/system": ["@xyflow/system@0.0.82", "", { "dependencies": { "@types/d3-drag": "3.0.7", "@types/d3-interpolate": "3.0.4", "@types/d3-selection": "3.0.11", "@types/d3-transition": "3.0.9", "@types/d3-zoom": "3.0.8", "d3-drag": "3.0.0", "d3-interpolate": "3.0.1", "d3-selection": "3.0.0", "d3-zoom": "3.0.0" } }, "sha512-4DKnL3CGtCGLRSmgDqaajRVgeksMXq/Yw4wPfdMfm7JvdIiWHGzVYOfFUztiATwdBXZqUU6HhehwUdbV9G23PQ=="],
+
+    "@wrongstack/webui/@xyflow/react/zustand": ["zustand@4.5.7", "", { "dependencies": { "use-sync-external-store": "1.7.0" }, "peerDependencies": { "@types/react": ">=16.8", "immer": ">=9.0.6", "react": ">=16.8" }, "optionalPeers": ["@types/react", "immer", "react"] }, "sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw=="],
 
     "app-builder-lib/@electron/get/env-paths": ["env-paths@2.2.1", "", {}, "sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A=="],
 

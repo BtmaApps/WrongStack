@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { PresentationProvider } from '../components/presentation-mode';
+import '@xyflow/react/dist/style.css';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,7 +17,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         {backendPort && <meta name="wrongstack-ws-url" content={`ws://127.0.0.1:${backendPort}`} />}
       </head>
-      <body>{children}</body>
+      <body>
+        <PresentationProvider>{children}</PresentationProvider>
+      </body>
     </html>
   );
 }

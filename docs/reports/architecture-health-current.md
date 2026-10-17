@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T22:22:13.118Z
+**Generated:** 2026-10-17T22:22:47.993Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5134 |
-| Production source lines | 1115396 |
-| Test files | 4453 |
+| Production source files | 5147 |
+| Production source lines | 1117811 |
+| Test files | 4456 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16885 |
+| Relative module edges | 16938 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 335 | 328 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 496 | 426 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/vibeui | 32 | 6 | @wrongstack/webui-protocol |
+| @wrongstack/vibeui | 45 | 9 | @wrongstack/webui-protocol |
 | @wrongstack/webui | 750 | 486 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
@@ -84,14 +84,15 @@ None.
 
 | Lines | File |
 |---:|---|
-| 956 | `packages/vibeui/src/components/workspace.tsx` |
-| 826 | `packages/vibeui/src/lib/session.ts` |
+| 1063 | `packages/vibeui/src/components/workspace.tsx` |
+| 855 | `packages/vibeui/src/lib/session.ts` |
+| 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 715 | `packages/plugins/src/audit/index.ts` |
-| 711 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 700 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
 | 700 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 700 | `packages/vibeui/src/lib/use-session.ts` |
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 699 | `packages/core/src/execution/design-verify.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
@@ -133,7 +134,6 @@ None.
 | 685 | `packages/tools/src/browser/tools.ts` |
 | 685 | `packages/webui-server/src/server/provider-routes.ts` |
 | 685 | `packages/webui/src/components/SkillDetailView.tsx` |
-| 684 | `packages/cli/src/hq-server/routes.ts` |
 
 ## Exports only tests reference
 

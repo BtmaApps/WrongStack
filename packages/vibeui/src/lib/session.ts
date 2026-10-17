@@ -36,6 +36,9 @@ export interface ChatEntry {
   text: string;
   streaming?: boolean;
   final?: boolean;
+  runtimeContext?: string[];
+  delivery?: 'btw';
+  autoEligible?: boolean;
   images?: { data: string; mediaType: string }[];
 }
 export interface ToolEntry {
@@ -192,13 +195,23 @@ function appendDelta(
   delta: string,
   id: string,
 ): ChatEntry[] {
-  const last = messages.at(-1);
+  const index = conversationTail(messages);
+  const last = messages[index];
   if (last?.role === role && last.streaming)
-    return [...messages.slice(0, -1), { ...last, text: bounded(last.text + delta) }];
+    return [
+      ...messages.slice(0, index),
+      { ...last, text: bounded(last.text + delta) },
+      ...messages.slice(index + 1),
+    ];
   return [
     ...messages.map((entry) => ({ ...entry, streaming: false })),
     { id, role, text: bounded(delta), streaming: true },
   ].slice(-500);
+}
+function conversationTail(messages: ChatEntry[]): number {
+  let index = messages.length - 1;
+  while (index >= 0 && messages[index]?.delivery === 'btw') index--;
+  return index;
 }
 
 /** All views derive from the canonical wire projections, including historical tool ordering. */
@@ -242,6 +255,9 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
           id: `replay-${index}`,
           role: entry.kind === 'marker' ? 'system' : entry.kind,
           text: bounded(entry.text),
+          ...(entry.runtimeContext?.length
+            ? { runtimeContext: entry.runtimeContext.map(bounded) }
+            : {}),
           ...(entry.kind === 'assistant' ? { final: entry.final } : {}),
           ...(entry.kind === 'user' && entry.images
             ? {
@@ -332,19 +348,21 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     };
   if (chat?.kind === 'response') {
     const response = bounded(contentText(chat.content));
-    const last = state.messages.at(-1);
+    const lastIndex = conversationTail(state.messages);
+    const last = state.messages[lastIndex];
     return {
       ...state,
       messages:
         last?.role === 'assistant' && last.streaming
           ? [
-              ...state.messages.slice(0, -1),
+              ...state.messages.slice(0, lastIndex),
               {
                 ...last,
                 text: response || last.text,
                 streaming: false,
                 final: isFinalTurnStopReason(chat.stopReason),
               },
+              ...state.messages.slice(lastIndex + 1),
             ]
           : response
             ? ([
@@ -371,7 +389,11 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     const messages = state.messages.map((m) => ({ ...m, streaming: false }));
     if (chat.kind === 'error')
       messages.push({ id, role: 'system', text: chat.message, streaming: false });
-    if (chat.kind === 'run-result' && chat.finalText && state.messages.at(-1)?.role !== 'assistant')
+    if (
+      chat.kind === 'run-result' &&
+      chat.finalText &&
+      state.messages[conversationTail(state.messages)]?.role !== 'assistant'
+    )
       messages.push({
         id,
         role: 'assistant',
@@ -379,6 +401,13 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
         streaming: false,
         final: chat.status === 'done',
       });
+    if (chat.kind === 'run-result' && chat.status === 'done') {
+      const lastAssistant = messages
+        .slice()
+        .reverse()
+        .find((message) => message.role === 'assistant');
+      if (lastAssistant) lastAssistant.autoEligible = true;
+    }
     return {
       ...state,
       running: false,

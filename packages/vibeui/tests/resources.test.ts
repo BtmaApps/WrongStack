@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   fillPrompt,
-  memoryWindow,
   promptSlug,
   promptVariables,
   resourceMatches,
@@ -9,13 +8,6 @@ import {
 import { acceptsPanelReply } from '../src/lib/use-panel-requests';
 
 describe('shared resource workflows', () => {
-  it('bounds large memory rendering while searching content beyond the current page', () => {
-    const content = `${'x'.repeat(20000)}\nNeedle outside the first page`;
-    expect(memoryWindow(content, '', 0).content).toHaveLength(16000);
-    expect(memoryWindow(content, '', 1).content).toContain('Needle');
-    expect(memoryWindow(content, 'needle', 0).content).toBe('Needle outside the first page');
-    expect(memoryWindow(content, 'missing', 99)).toMatchObject({ page: 0, pages: 1, content: '' });
-  });
   it('fills named prompt variables literally while retaining unknown placeholders', () => {
     expect(
       fillPrompt('Review {{ target }} and {{missing}}; {{target}}', {

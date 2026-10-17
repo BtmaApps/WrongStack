@@ -50,14 +50,17 @@ derive their WebSocket endpoint from the page origin or the host-injected meta.
   English versions, preserves explicit skill mentions, references and images,
   and returns the chosen text to the draft without automatically sending it.
 - Settings drawer: working mode, Off/Suggest/Auto autonomy, YOLO and next-step
-  policy. Controls use server-confirmed preferences scoped to the active session.
+  policy, including Off / YOLO / YOLO+. Controls use server-confirmed preferences scoped to the active session.
 - Context bar offers Simple metrics and Extended content modes. It opens real
   conversation content, optional read-only system/tool
   instructions, token estimates, request residency/history retention and cache
   statistics. Cumulative cache reads/writes and current prefix coverage are
   separate. Explicit compaction pauses the queue; resume it deliberately.
-- Final `<nextsteps>` suggestions return to the composer on selection. Automatic
-  continuation remains owned by the runtime; the UI never duplicates it.
+- Final `<nextsteps>` suggestions support direct submit, multi-select batch submit
+  and optional editing in the composer. The first `auto="true"` item counts down
+  only for a successful run started by this browser, with YOLO + Auto enabled.
+  Typing, selection, cancellation, queueing, disconnection or changing the gate
+  stops the countdown. Replays and observer tabs never auto-submit.
 - Files open in a standalone modal: content on the left, directory/search on the
   right. Changed files open a diff/before/after modal; plan/task/to-do views are read-only.
 - Tool activity, passive text/image/diff previews and an Agents view with task,
@@ -66,14 +69,28 @@ derive their WebSocket endpoint from the page origin or the host-injected meta.
   detailed activity is collapsed. Worker replay and current-session fleet snapshots
   restore available activity after reconnect; missing metadata is labelled.
 - Permission decisions and queued structured user questions.
+- Queue / Steer / BTW delivery while working. BTW uses acknowledged mailbox
+  delivery scoped to the current session and keeps the draft on failure.
+- Shared persistent Simple / Extended presentation: readable summaries or raw
+  context, memory/graph metadata, provider endpoints and detailed agent activity.
+- Host context appended to user inputs is kept in a collapsed Runtime context
+  section; it is separate from the human-authored message.
+- Local Markdown/file links open the file modal. HTML uses a sandboxed passive
+  preview in Simple and source in Extended. External links remain external.
+- Provider usage/quotas entry in the left footer: reported windows, remaining
+  percentages, reset times, balances, stale-reading labels and on-demand refresh.
+- One active session: run/subagent work locks switching and creation. Session
+  transitions name their source/target; explicit context clear waits for backend
+  acknowledgement before removing the current draft and queued messages.
 - Reconnection with canonical replay, dark/light appearance, four persistent
   accent palettes, frontend/backend version information and mobile drawers.
 - Ctrl/Cmd+P quick actions and session navigation; Ctrl/Cmd+Shift+F searches
   loaded conversation messages and jumps to a result.
 - Shared resource center: backend prompt search/favorites/creation, required
   template variables, skill content and mention insertion, tool availability,
-  MCP status/enable/disable/reconnect and a paged read-only memory snapshot with
-  search across all loaded content.
+  MCP status/enable/disable/reconnect. Memory uses bounded SAGE record pages,
+  search/kind/status filters, record detail and a React Flow graph of persisted
+  relationships; it never renders the raw whole-store text dump.
 - Collapsible Context/Efficiency, Execution/Delegation and Refiner/Reasoning
   settings. Numbers use explicit Apply; preferences reflect backend confirmation.
 - Personal instruction editor with explicit global scope and backend revision

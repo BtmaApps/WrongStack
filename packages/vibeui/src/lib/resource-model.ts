@@ -50,20 +50,3 @@ export function resourceDetails(tab: string, payload: Record<string, unknown>) {
   if (tab === 'prompts') return text(payload.content);
   return text(record(payload).description);
 }
-export function memoryWindow(content: string, query: string, page: number, pageSize = 16000) {
-  const q = query.trim().toLowerCase();
-  const filtered = q
-    ? content
-        .split('\n')
-        .filter((line) => line.toLowerCase().includes(q))
-        .join('\n')
-    : content;
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const current = Math.max(0, Math.min(pages - 1, page));
-  return {
-    content: filtered.slice(current * pageSize, (current + 1) * pageSize),
-    total: filtered.length,
-    pages,
-    page: current,
-  };
-}

@@ -1,10 +1,23 @@
 'use client';
 
-import { ChevronRight, FileCode2, Folder, Paperclip, RefreshCw, Search, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Copy,
+  FileCode2,
+  Folder,
+  Paperclip,
+  RefreshCw,
+  Search,
+  X,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SessionController } from '../lib/use-session';
 import { type FileNode, matchingFiles } from '../lib/workspace-model';
 import { MarkdownContent } from './markdown-content';
+import { usePresentation } from './presentation-mode';
+import { EmptyArtwork } from './vibe-visuals';
 
 export function FileBrowser({
   controller,
@@ -14,7 +27,11 @@ export function FileBrowser({
   onReference: () => void;
 }) {
   const { state, connection, loadFileTree } = controller;
+  const { mode } = usePresentation();
   const [query, setQuery] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const copyOwner = useRef(0);
   const matches = useMemo(() => matchingFiles(state.fileTree, query), [state.fileTree, query]);
   useEffect(() => {
     if (
@@ -35,11 +52,64 @@ export function FileBrowser({
       kind: /\.(png|jpe?g|webp|gif)$/i.test(path) ? 'image' : 'text',
     });
   const preview = state.preview;
+  const lineCount = useMemo(
+    () => (preview?.content ? preview.content.split('\n').length : 0),
+    [preview?.content],
+  );
+  useEffect(() => {
+    copyOwner.current++;
+    setCopyStatus('');
+    return () => {
+      copyOwner.current++;
+      clearTimeout(copyTimer.current);
+    };
+  }, [preview?.artifact.path]);
+  const copyFile = async () => {
+    if (!preview || preview.loading || preview.error) return;
+    const owner = copyOwner.current;
+    try {
+      await navigator.clipboard.writeText(preview.content);
+      if (owner !== copyOwner.current) return;
+      setCopyStatus('Copied file contents.');
+    } catch {
+      if (owner !== copyOwner.current) return;
+      setCopyStatus('Could not copy. Select the text to copy it manually.');
+    }
+    clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyStatus(''), 4000);
+  };
   const previewBody = preview && (
     <>
       <div className="file-preview-path" title={preview.artifact.path}>
+        <FileCode2 size={13} />
         {preview.artifact.path}
       </div>
+      <div className="file-preview-meta">
+        <span>
+          {preview.artifact.kind === 'image'
+            ? 'Image preview'
+            : mode === 'simple' && /\.md$/i.test(preview.artifact.path)
+              ? 'Markdown preview'
+              : mode === 'simple' && /\.html?$/i.test(preview.artifact.path)
+                ? 'HTML preview'
+                : 'Source'}
+        </span>
+        <span>Read only</span>
+        {mode === 'extended' &&
+          !preview.loading &&
+          !preview.error &&
+          preview.artifact.kind !== 'image' && (
+            <span>
+              {lineCount.toLocaleString()} {lineCount === 1 ? 'line' : 'lines'} ·{' '}
+              {preview.content.length.toLocaleString()} characters
+            </span>
+          )}
+      </div>
+      {copyStatus && (
+        <p className="fine-print" role="status">
+          {copyStatus}
+        </p>
+      )}
       {preview.loading ? (
         <p className="panel-hint" role="status">
           Loading file…
@@ -50,8 +120,15 @@ export function FileBrowser({
         </p>
       ) : preview.artifact.kind === 'image' ? (
         <img className="file-preview-image" src={preview.content} alt={preview.artifact.title} />
-      ) : /\.md$/i.test(preview.artifact.path) ? (
-        <MarkdownContent text={preview.content} />
+      ) : /\.html?$/i.test(preview.artifact.path) && mode === 'simple' ? (
+        <iframe
+          className="html-preview"
+          title={`Preview ${preview.artifact.title}`}
+          sandbox=""
+          srcDoc={preview.content}
+        />
+      ) : /\.md$/i.test(preview.artifact.path) && mode === 'simple' ? (
+        <MarkdownContent text={preview.content} basePath={preview.artifact.path} />
       ) : (
         <pre className="source-preview">
           <code>{preview.content}</code>
@@ -60,7 +137,7 @@ export function FileBrowser({
     </>
   );
   return (
-    <div className="files-layout">
+    <div className="files-layout" data-selected={Boolean(preview)}>
       <aside className="files-directory" aria-label="Directories and files">
         <div className="panel-section-heading">
           <h2>Project files</h2>
@@ -132,7 +209,7 @@ export function FileBrowser({
       </aside>
       {!preview && (
         <section className="file-content file-empty">
-          <FileCode2 size={28} />
+          <EmptyArtwork kind="files" />
           <h3>Choose a file</h3>
           <p>Select a project file from the directory on the right.</p>
         </section>
@@ -140,8 +217,32 @@ export function FileBrowser({
       {preview && (
         <section className="file-content artifact-preview file-preview">
           <div className="panel-section-heading">
-            <h3>{preview.artifact.title}</h3>
+            <button
+              type="button"
+              className="secondary-button file-back"
+              aria-label="Browse files"
+              onClick={controller.closeArtifact}
+            >
+              <ArrowLeft size={14} /> Files
+            </button>
+            <h3 title={preview.artifact.title}>{preview.artifact.title}</h3>
             <div>
+              {preview.artifact.kind !== 'image' && (
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Copy file contents"
+                  title="Copy file contents"
+                  disabled={preview.loading || Boolean(preview.error)}
+                  onClick={() => void copyFile()}
+                >
+                  {copyStatus === 'Copied file contents.' ? (
+                    <Check size={14} />
+                  ) : (
+                    <Copy size={14} />
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 className="icon-button"

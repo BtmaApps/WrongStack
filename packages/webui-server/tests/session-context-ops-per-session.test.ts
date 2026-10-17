@@ -350,6 +350,25 @@ describe('context operations act on the requesting tab', () => {
     expect(snap?.sessionId).toBe('sess_bg');
     expect(snap?.messages).toHaveLength(7);
   });
+  it('includes read-only instructions only when explicitly requested, scoped to the asking session', async () => {
+    const h = harness();
+    await h.handlers.openContextEditor(ws, {
+      type: 'context.editor.open',
+      payload: { sessionId: 'sess_bg', includeReadonlyContent: true },
+    });
+    expect(h.sent.find((m) => m.type === 'context.editor.snapshot')?.payload).toMatchObject({
+      sessionId: 'sess_bg',
+      readonlyContent: { systemPrompt: [{ type: 'text', text: 'prompt for sess_bg' }], tools: [] },
+    });
+    h.sent.length = 0;
+    await h.handlers.openContextEditor(ws, {
+      type: 'context.editor.open',
+      payload: { sessionId: 'sess_front' },
+    });
+    expect(h.sent.find((m) => m.type === 'context.editor.snapshot')?.payload).not.toHaveProperty(
+      'readonlyContent',
+    );
+  });
 
   it('answers an empty-history tab with a snapshot, not silence', async () => {
     const empty = mkContext('sess_empty', 0);
