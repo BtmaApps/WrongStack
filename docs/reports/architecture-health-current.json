@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T09:59:34.095Z",
+  "generatedAt": "2026-10-17T10:29:06.679Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 5098,
     "testFiles": 4441,
-    "sourceLines": 1107328,
+    "sourceLines": 1107484,
     "workspaceEdges": 137,
     "moduleEdges": 16790,
     "nonCommandSlashImports": 0,
@@ -27990,6 +27990,11 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/core/src/coordination/subagent-budget.ts",
+      "lines": 698,
+      "relativeImports": 6
+    },
+    {
       "file": "packages/core/src/security/secret-vault.ts",
       "lines": 697,
       "relativeImports": 11
@@ -28138,11 +28143,6 @@
       "file": "packages/core/src/coordination/provider-status-tracker.ts",
       "lines": 686,
       "relativeImports": 7
-    },
-    {
-      "file": "packages/core/src/coordination/subagent-budget.ts",
-      "lines": 686,
-      "relativeImports": 6
     },
     {
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",

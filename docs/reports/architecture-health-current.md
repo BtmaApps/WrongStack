@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T09:59:34.095Z
+**Generated:** 2026-10-17T10:29:06.679Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 5098 |
-| Production source lines | 1107328 |
+| Production source lines | 1107484 |
 | Test files | 4441 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16790 |
@@ -91,6 +91,7 @@ None.
 | 699 | `packages/core/src/execution/design-verify.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 698 | `packages/acp/src/client/acp-session.ts` |
+| 698 | `packages/core/src/coordination/subagent-budget.ts` |
 | 697 | `packages/core/src/security/secret-vault.ts` |
 | 696 | `packages/core/src/coordination/autonomous-brain.ts` |
 | 696 | `packages/core/src/coordination/fleet-manager.ts` |
@@ -121,7 +122,6 @@ None.
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |
 | 686 | `packages/core/src/coordination/provider-status-tracker.ts` |
-| 686 | `packages/core/src/coordination/subagent-budget.ts` |
 | 686 | `packages/webui-server/src/server/session-handler-helpers.ts` |
 | 685 | `packages/client/src/client.ts` |
 | 685 | `packages/core/src/session-catalog/session-registry.ts` |

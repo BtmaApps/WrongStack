@@ -120,6 +120,25 @@ describe('createSageSurfaceSyncSource', () => {
     expect(surface.calls).toHaveLength(1);
   });
 
+  it('drops session-scoped rows the unscoped enumerator still returns (legacy unowned)', async () => {
+    // SAGE's unscoped listSagePage hides OWNED session memories but still
+    // returns legacy UNOWNED ones; none of them belong in the project store.
+    const surface = fakeSurface([
+      {
+        memories: [
+          sageRow('project', 'shared fact'),
+          sageRow('legacy-session', 'private note', { scope: 'session' }),
+        ],
+        nextCursor: 'c1',
+      },
+      { memories: [sageRow('user', 'user fact', { scope: 'user' })], nextCursor: null },
+    ]);
+    const memories = await createSageSurfaceSyncSource(surface).listActiveMemories({ limit: 100 });
+    expect(memories.map((m) => m.id)).toEqual(['project', 'user']);
+    // A dropped row still advances the walk: page 2 was fetched.
+    expect(surface.calls).toHaveLength(2);
+  });
+
   it('keeps the privacy default: recallable statuses only, no session expansion', async () => {
     const surface = fakeSurface([{ memories: [], nextCursor: null }]);
     await createSageSurfaceSyncSource(surface).listActiveMemories({ limit: 10 });

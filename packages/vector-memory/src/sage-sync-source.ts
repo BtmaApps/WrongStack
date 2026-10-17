@@ -16,7 +16,8 @@
  * Every SAGE retrieval surface hides owned session-scoped memories from an
  * enumerator that omits them — this adapter keeps that under-report default
  * so one session's private records are never mirrored into the shared,
- * project-scoped vector store.
+ * project-scoped vector store. Legacy UNOWNED session rows still come back
+ * from that default, so the adapter also drops every `scope: 'session'` row.
  */
 import type { SageSurface } from '@wrongstack/sage';
 
@@ -100,6 +101,11 @@ export function createSageSurfaceSyncSource(
         });
         const rows = page.memories ?? [];
         for (const m of rows) {
+          // SAGE's unscoped enumerator still returns legacy UNOWNED
+          // session-scoped rows. Session memories never belong in this
+          // shared, project-scoped store — the live mirror and the stale
+          // sweep both exclude them, so the corpus walk must too.
+          if (m.scope === 'session') continue;
           memories.push({
             id: m.id,
             text: m.text,
