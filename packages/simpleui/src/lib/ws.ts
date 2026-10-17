@@ -253,11 +253,15 @@ export interface SendRetractHandle {
   retract(): void;
 }
 
+interface QueuedFrame {
+  serialized: string;
+}
+
 export class SimpleSocket {
   private socket: WebSocket | null = null;
   private connectionState: SurfaceConnectionState = createSurfaceConnectionState();
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private queue: string[] = [];
+  private queue: QueuedFrame[] = [];
   private queueChars = 0;
   private listeners: Set<(msg: ServerMessage) => void> = new Set();
   private connectGeneration = 0;
@@ -298,7 +302,7 @@ export class SimpleSocket {
       this.options.onState('open');
       const queued = this.queue.splice(0);
       this.queueChars = 0;
-      for (const message of queued) socket.send(message);
+      for (const frame of queued) socket.send(frame.serialized);
     });
     socket.addEventListener('message', (event) => {
       if (this.socket !== socket || this.connectionState.stopped) return;
@@ -372,7 +376,7 @@ export class SimpleSocket {
     ) {
       const removed = this.queue.shift();
       if (removed === undefined) break;
-      this.queueChars = Math.max(0, this.queueChars - removed.length);
+      this.queueChars = Math.max(0, this.queueChars - removed.serialized.length);
       dropped = true;
     }
     if (dropped) {
@@ -385,11 +389,12 @@ export class SimpleSocket {
         }),
       );
     }
-    this.queue.push(serialized);
+    const frame = { serialized };
+    this.queue.push(frame);
     this.queueChars += serialized.length;
     return {
       retract: (): void => {
-        const index = this.queue.indexOf(serialized);
+        const index = this.queue.indexOf(frame);
         if (index < 0) return;
         this.queue.splice(index, 1);
         this.queueChars = Math.max(0, this.queueChars - serialized.length);

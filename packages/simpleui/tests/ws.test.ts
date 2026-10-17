@@ -268,6 +268,50 @@ describe('SimpleUI token persistence (F5 survival)', () => {
   });
 });
 
+describe('SimpleSocket queued-send retraction ownership', () => {
+  it('does not let an overflow-dropped handle retract a newer identical frame', async () => {
+    class MockWebSocket {
+      static instances: MockWebSocket[] = [];
+      static OPEN = 1;
+      readyState = 0;
+      sent: string[] = [];
+      listeners = new Map<string, Array<() => void>>();
+      addEventListener = vi.fn((type: string, handler: () => void) => {
+        const list = this.listeners.get(type) ?? [];
+        list.push(handler);
+        this.listeners.set(type, list);
+      });
+      send = vi.fn((message: string) => this.sent.push(message));
+      close = vi.fn();
+      emit(type: string): void {
+        for (const handler of this.listeners.get(type) ?? []) handler();
+      }
+      constructor() {
+        MockWebSocket.instances.push(this);
+      }
+    }
+    vi.stubGlobal('WebSocket', MockWebSocket);
+    const socket = new SimpleSocket({ onMessage: vi.fn(), onState: vi.fn() });
+
+    const dropped = socket.send('files.tree');
+    for (let index = 0; index < 100; index += 1) {
+      socket.send('files.read', { filePath: `control-${index}.ts` });
+    }
+    socket.send('files.tree');
+
+    dropped?.retract();
+    await socket.connect();
+    const wire = MockWebSocket.instances[0]!;
+    wire.readyState = MockWebSocket.OPEN;
+    wire.emit('open');
+
+    const frames = wire.sent.map((message) => JSON.parse(message) as { type: string });
+    expect(frames.some((frame) => frame.type === 'files.read')).toBe(true);
+    expect(frames.filter((frame) => frame.type === 'files.tree')).toHaveLength(1);
+    socket.close();
+  });
+});
+
 describe('SimpleSocket reconnect timer', () => {
   it('a fresh connect() retires a pending reconnect timer', async () => {
     vi.useFakeTimers();
