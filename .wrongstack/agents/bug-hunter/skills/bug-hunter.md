@@ -1,26 +1,23 @@
-## Investigation and reconciliation
-…
-- After `edit` reports “file was modified externally,” re-read the settled diff and fix only residual `TS6133`, stale-arity `TS2554`, or `assist/source/organizeImports` issues; never recreate a peer’s helper. Run `pnpm exec biome check --write <file>`, verify with `pnpm exec biome check <file>`, then rerun the package typecheck.
-- For `packages/webui`, disprove extraction or missing-prop claims package-wide, including `useMemoryManagerState` and `sharedSearch?`, with `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/webui/tsconfig.json`. If wiring requires invented UX, stop passing unsupported props and leave dormant scaffolding to the feature owner.
+## Goal-run findings
 
-## Contract checks
+- Re-read `packages/cli/src/goal-host.ts` before accepting stop-race claims: in `onGoalStop`, `runState = 'stopped'` and `stopped.unsubscribe()` execute before the first `await`, preventing subsequent bus events from reaching `onDone`/`onFailed`. Treat findings based on omitted or truncated regions as unverified.
+- Before adding workspace guards, inspect `prepareGoalWorkspace` in `packages/core/src/goal/` and existing `await isGitWorkTree(runRoot)` gating in `packages/webui-server/src/server/goal-run.ts`.
 
-- Before patching the `readGenerated` catch block in `packages/plugins/src/semver-bump/index.ts`, enumerate before×after: absent-before+absent-after → skip; present-before+absent-after → throw; bytes-differ → stage. Run `pnpm exec vitest run packages/plugins/tests/semver-bump-exec.test.ts` and separate unrelated package failures.
-- Before reporting fixture-host drift, compare endpoints such as `auth.kimi.ai` with `KIMI_TOKEN_URL` and `deviceUrl` in `packages/providers/src/oauth/subscription-flows.ts`; account for `vi.stubGlobal` / `vi.spyOn`, then run `pnpm exec vitest run packages/providers/tests/subscription-device-auth.test.ts`.
-- For visibility-policy contradictions, compare comments, owner-pinned tests, and stated policy. Present fail-open versus fail-closed alternatives; do not unilaterally change security-boundary behavior.
+## TUI picker and MCP contracts
 
-## Schema migrations
+- In `packages/tui/src/hooks/use-picker-keys-tools-settings.ts`, evaluate reachable counts before flagging `x + ((i + (cond ? count - 1 : 1)) % count)`: for `count ≥ 3`, `count - 1 ≡ -1 (mod count)` correctly wraps backward; reverse equals forward only at `count = 2`. Trace earlier `else if` arms consuming `remove`, and account for Ink’s Shift+Tab flags `{ tab: true, shift: true }`.
+- Enforce canonical `transport` values `stdio | sse | streamable-http`. Check `packages/cli/src/boot/mcp-config-flag.ts` for rejection rules and `packages/cli/src/acp-mcp-servers.ts` for `http` → `streamable-http` normalization; do not let TUI validators persist `'http'`. Align whitelists and error messages.
+- Verify TUI changes with:
+  - `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/tui/tsconfig.json`
+  - `pnpm exec biome check packages/tui/src/hooks/use-panel-controllers.ts`
+  - `pnpm exec vitest run packages/tui/tests/mcp-panel-management.test.tsx`
 
-- Pair every `SCHEMA_VERSION` bump with a guarded migration in `applySchema` at `packages/techstack/src/store/schema.ts`; `CREATE TABLE IF NOT EXISTS` does not upgrade existing tables.
-- Follow `ensureCatalogStorageColumns` in `packages/core/src/session-catalog/store-schema.ts`: inspect `PRAGMA table_info(<table>)` and issue `ALTER TABLE ... ADD COLUMN` only for absent columns.
-- Exercise previous-version stores in `packages/techstack/tests/store/store-roundtrip.test.ts`, not `sqlite.test.ts`; do not use `:memory:` creation as proof of migration coverage.
+## Live-tree reconciliation
 
-- Falsify Chimera missing-export claims with one package-wide grep of both the imported and exported identifiers plus the package typecheck (`node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/mcp/tsconfig.json`) — in co-modified trees the sibling imports are often renamed in place after the reviewer's snapshot, and the same grep surfaces the covering test file that refutes parallel "no coverage" claims. Do not rename or alias an export until every live `import { … } from './constants.js'` line has been read. ```json { "verification_evidence": { "typecheck": { "command": "node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/mcp/tsconfig.json", "exitCode": 0 }, "lint": { "command": "pnpm exec biome check packages/mcp/tests/protocol-version-negotiation.test.ts packages/mcp/src/constants.ts", "exitCode": 0 }, "tests": { "command": "pnpm exec vitest run packages/mcp/tests/protocol-version-negotiation.test.ts", "exitCode": 0 } } } ``` (anchors: `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/mcp/tsconfig.json`, `import { … } from './constants.js'`, `packages/mcp/tsconfig.json`, `./constants.js`, `packages/mcp/tests/protocol-version-negotiation.test.ts`, `packages/mcp/src/constants.ts`)
-- Always falsify "undeclared identifier" review claims with a file-wide grep of the identifier plus a package typecheck before patching — in co-modified live trees, the declaration can sit far from the reference (e.g. `CONNECT_ATTEMPT_BASE_MS` declared at module scope in `packages/mcp/src/registry-connect-loop.ts:247`, referenced at `:379`), reviewer line citations drift, and any residual `tsc` error may belong to a different peer-modified file (`git status --short -- <path>` to attribute). ## LEARNED [skill: bug-hunter] (anchors: `CONNECT_ATTEMPT_BASE_MS`, `packages/mcp/src/registry-connect-loop.ts:247`, `:379`, `tsc`, `git status --short -- <path>`, `packages/mcp/src/registry-connect-loop.ts`)
+- Before fixing missing exports or undeclared identifiers in co-modified files, grep live declarations and imports and run the package typecheck. For MCP, use `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/mcp/tsconfig.json`; read every relevant `import { … } from './constants.js'`. Attribute unrelated errors with `git status --short -- <path>`.
+- After “file was modified externally,” reread the settled diff; fix residual `TS6133`, `TS2554`, or `assist/source/organizeImports` issues without recreating peer helpers.
 
-- Adjudicate stale-event race findings against the stop handler's synchronous prefix: in `packages/cli/src/goal-host.ts` `onGoalStop`, `runState = 'stopped'` and `stopped.unsubscribe()` both run before the first `await`, so post-stop bus events cannot reach `onDone`/`onFailed` — and a reviewer claiming stop "no longer unsubscribes" read a stale snapshot, so re-read the live file before accepting any of their adjacent findings. Never inherit a reviewer's line citations through a truncated read: if the artifact omitted the cited region, report the finding unverified instead of editing; for goal-run workspace findings, first read `prepareGoalWorkspace` in `packages/core/src/goal/` and check `await isGitWorkTree(runRoot)` gating at `packages/webui-server/src/server/goal-run.ts` before guarding. ```json { "verification_evidence": { "git-status": { "command": "git status -- packages/cli/src/goal-host.ts packages/core/src/goal/phase-orchestrator.ts packages/core/src/goal/types.ts packages/webui-server/src/server/goal-run.ts packages/webui/src/components/GoalView.tsx packages/webui/src/stores/goal-run-store.ts", "exitCode": 0 } } } ``` (anchors: `packages/cli/src/goal-host.ts`, `onGoalStop`, `runState = 'stopped'`, `stopped.unsubscribe()`, `await`, `onDone`, `onFailed`, `prepareGoalWorkspace`, `packages/core/src/goal/`, `await isGitWorkTree(runRoot)`, `packages/webui-server/src/server/goal-run.ts`, `packages/core/src/goal/phase-orchestrator.ts`, `packages/core/src/goal/types.ts`, `packages/webui/src/components/GoalView.tsx`, `packages/webui/src/stores/goal-run-store.ts`) [applied 6×, 6 ok]
+## SQLite migrations
 
----
-*Distilled 2026-10-06T09:12:25.501Z · 1 new directive*
-
-_(truncated at 6144 bytes)_
+- Pair `SCHEMA_VERSION` bumps with guarded migrations in `packages/techstack/src/store/schema.ts`’s `applySchema`; `CREATE TABLE IF NOT EXISTS` cannot upgrade tables. Follow `ensureCatalogStorageColumns` in `packages/core/src/session-catalog/store-schema.ts`: inspect `PRAGMA table_info(<table>)` before `ALTER TABLE ... ADD COLUMN`.
+- Test previous-version stores in `packages/techstack/tests/store/store-roundtrip.test.ts`; neither `sqlite.test.ts` nor fresh `:memory:` creation proves migration coverage.

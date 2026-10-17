@@ -1,17 +1,18 @@
-## Goal run controls
+## Live-tree adjudication
 
-- Before restoring a “dropped” guard in `packages/webui-server/src/server/goal-ws-run-controls.ts`, falsify it by subsumption and write ordering: `(stopping && runPromise)` is covered by bare `runPromise`; `handleStop` sets `runStatus='stopped'` synchronously before clearing `runPromise`, so `startInFlight || runPromise || runStatus∈{running,paused}` remains closed.
-- In `handleResumeGraph`, load the graph and throw on a missing id before `acquireGoalRunLease`/`acquireRunLease`; never let an invalid id hold the legacy lease or surface as `GoalRunLeaseBusyError`.
-- When terminal persistence is gated by `host.releaseRunLease || wasStarting`, never mutate `graph.runState` through an ungated parallel path.
-- After run-control changes, run `pnpm exec vitest run packages/webui-server/tests/goal-ws-handler.test.ts packages/webui-server/tests/goal-multiple-runs.integration.test.ts`, `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/webui-server/tsconfig.json`, and `pnpm exec biome check packages/webui-server/src/server/goal-ws-run-controls.ts`.
+- Before a cascade fix on a co-modified tree, inspect the exact path across adjudication using `exec`: `git diff --stat`, then `git diff -U0 -- <path>`; repeat before editing. Treat a guarded-edit no-match as “re-anchor to live text,” never “retry unchanged.”
+- Adjudicate duplicate-identifier, compile-failure, and missing-field claims against live source before editing. Run `node node_modules/typescript/bin/tsc --noEmit --pretty false -p <pkg>/tsconfig.json` and covering tests; clean results close false positives such as `packages/webui-hq/src/data/local-prefs.ts:hideIdle`. Keep out-of-diff diagnostics separate, with exact `file:line`.
+- For mismatched-quote claims, distrust a rendered `read` of the trailing delimiter: inspect `(Get-Content <path>)[n][-30..-1] -join ''` and typecheck. Use guarded `edit`, not PowerShell `String.Replace` with double-quoted backticks.
 
-## Co-modified adjudication
+## Verification
 
-- Before acting on a duplicate-identifier or compile-failure claim, read the flagged file live and run `node node_modules/typescript/bin/tsc --noEmit --pretty false -p <package>/tsconfig.json` without editing. A clean production typecheck over the flagged scope is decisive; reread current assertions and treat contradictory prose such as “the original block is gone” as a likely false positive.
-- Keep out-of-diff diagnostics separate: report exact `file:line` and rerun after peer work settles. For example, `packages/cli/src/goal-host.ts` referencing `leaseScope` absent from `PhaseGraph` in `packages/core/src/goal/types.ts` must not contaminate clean `packages/core/tsconfig.json` or `packages/runtime/tsconfig.json` results.
+- Use `bunx vitest run …`, `bunx biome …`, and the Node typecheck above. Avoid `pnpm exec`, including stale `packages/tui` notes: `packageManager` pins Bun, causing `Unsupported package manager specification (bun@1.4.3)`.
+- After run-control changes, run `bunx vitest run packages/webui-server/tests/goal-ws-handler.test.ts packages/webui-server/tests/goal-multiple-runs.integration.test.ts`, typecheck `packages/webui-server/tsconfig.json`, and run `bunx biome check packages/webui-server/src/server/goal-ws-run-controls.ts`.
 
-## Contract pins
+## Behavioral contracts
 
-- Run the covering suite immediately after a review-cascade fix. Before reverting a contradictory pin, inspect `git status --short` (`??`) and `git log --oneline -5 -- <test file>`; `??` with empty history identifies a coauthored stale pin.
-- For `packages/core/tests/goal/phase-merge-verdict.test.ts`, preserve non-conflicting fixtures and pin `packages/core/src/goal/phase-orchestrator-integration.ts`: unresolved conflict `ok:false + conflict:true` keeps the phase `completed` and sets `integrationStatus: 'needs_review'` per `setIntegrationMetadata` in `packages/core/src/goal/phase-orchestrator-queries.ts`.
-- Verify with `pnpm exec vitest run packages/core/tests/goal`, `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/core/tsconfig.json`, and `pnpm exec biome check --write <test file>`.
+- Before restoring guards in `packages/webui-server/src/server/goal-ws-run-controls.ts`, check subsumption and ordering: bare `runPromise` covers `(stopping && runPromise)`; `handleStop` sets `runStatus='stopped'` before clearing `runPromise`.
+- In `handleResumeGraph`, load and reject missing graph ids before `acquireGoalRunLease`/`acquireRunLease`; invalid ids must not acquire legacy leases or surface as `GoalRunLeaseBusyError`.
+- When persistence is gated by `host.releaseRunLease || wasStarting`, avoid ungated parallel mutations of `graph.runState`.
+- Before changing `packages/tui/src/app-view.tsx` for alleged optimistic-setting flicker, check dependency semantics: `useEffect` keyed on `liveSettings?.selectionMode` cannot clear `localSelectionMode` until that dependency changes.
+- Preserve the unresolved-conflict contract in `packages/core/tests/goal/phase-merge-verdict.test.ts`: `ok:false + conflict:true` leaves the phase `completed` with `integrationStatus: 'needs_review'`. Check `packages/core/src/goal/phase-orchestrator-integration.ts` and `setIntegrationMetadata` in `packages/core/src/goal/phase-orchestrator-queries.ts`; verify with `bunx vitest run packages/core/tests/goal` and typecheck `packages/core/tsconfig.json`.
