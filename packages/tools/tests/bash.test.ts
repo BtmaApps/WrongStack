@@ -544,11 +544,21 @@ describe('executeBashStream circuit breaker probe safety (F506)', () => {
   it('does not leak halfOpenProbeInFlight on pre-aborted command or blocked kill command', async () => {
     _resetProcessRegistry();
     const registry = getProcessRegistry();
-    registry.breaker.setEnabled(true);
+    // `breaker` is private on ProcessRegistryImpl; reach its internals via a typed cast.
+    const breaker = (
+      registry as unknown as {
+        breaker: {
+          setEnabled(enabled: boolean): void;
+          state: string;
+          halfOpenProbeInFlight: boolean;
+        };
+      }
+    ).breaker;
+    breaker.setEnabled(true);
 
     try {
-      (registry.breaker as any).state = 'half-open';
-      (registry.breaker as any).halfOpenProbeInFlight = false;
+      breaker.state = 'half-open';
+      breaker.halfOpenProbeInFlight = false;
 
       const abortCtrl = new AbortController();
       abortCtrl.abort();
@@ -562,7 +572,7 @@ describe('executeBashStream circuit breaker probe safety (F506)', () => {
       const gen = executeBashStream({ command: 'echo hello' }, ctx, { signal: abortCtrl.signal });
       const res = await gen.next();
       expect(res.value?.output.exit_code).toBe(124);
-      expect((registry.breaker as any).halfOpenProbeInFlight).toBe(false);
+      expect(breaker.halfOpenProbeInFlight).toBe(false);
 
       // Blocked kill command in half-open state also does not leak probe
       let blocked = false;
@@ -573,7 +583,9 @@ describe('executeBashStream circuit breaker probe safety (F506)', () => {
           workingDir: process.cwd(),
           signal: new AbortController().signal,
         };
-        const killGen = executeBashStream({ command: `kill -9 ${process.pid}` }, killCtx);
+        const killGen = executeBashStream({ command: `kill -9 ${process.pid}` }, killCtx, {
+          signal: killCtx.signal,
+        });
         await killGen.next();
       } catch (err: any) {
         if (
@@ -584,7 +596,7 @@ describe('executeBashStream circuit breaker probe safety (F506)', () => {
         }
       }
       expect(blocked).toBe(true);
-      expect((registry.breaker as any).halfOpenProbeInFlight).toBe(false);
+      expect(breaker.halfOpenProbeInFlight).toBe(false);
     } finally {
       _resetProcessRegistry();
     }
