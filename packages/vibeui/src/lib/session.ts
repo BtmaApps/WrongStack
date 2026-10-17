@@ -237,6 +237,7 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
           textBlocks: 'split',
           thinkingPlacement: 'inline',
           textSeparator: '\n\n',
+          runtimeContextEntries: true,
         })
       : null;
     const messages: ChatEntry[] = [];

@@ -229,6 +229,13 @@ export interface ProjectSessionTimelineInput {
    * read the events instead.
    */
   hideSystemInjections?: boolean | undefined;
+  /**
+   * Emit a standalone `system` entry carrying `runtimeContext` when a message
+   * held only host-written context and no user text. Defaults to false: a
+   * surface that does not render `runtimeContext` would show it as an empty
+   * "Runtime context" note.
+   */
+  runtimeContextEntries?: boolean | undefined;
 }
 
 /** Project the `tool_call_end` records of an event stream, keyed by tool id. */
@@ -339,6 +346,7 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
     textBlocks = 'split',
     textSeparator = '',
     hideSystemInjections = true,
+    runtimeContextEntries = false,
   } = input;
 
   const markers =
@@ -412,7 +420,8 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
       if (!runtimeContext.length) return;
       const user = backbone.slice(startIndex).find((entry) => entry.kind === 'user');
       if (user) user.runtimeContext = runtimeContext;
-      else backbone.push({ kind: 'system', ts, text: 'Runtime context', runtimeContext });
+      else if (runtimeContextEntries)
+        backbone.push({ kind: 'system', ts, text: 'Runtime context', runtimeContext });
     };
     if (typeof message.content === 'string') {
       // String content cannot carry a tool_use block, so it always ended its turn.

@@ -1,4 +1,4 @@
-import type { SessionEvent, Message } from '@wrongstack/core/types';
+import type { Message, SessionEvent } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { replaySessionEvents, replaySessionMessages } from '../src/components/history/replay.js';
 
@@ -407,8 +407,10 @@ describe('replaySessionMessages — additional coverage', () => {
       },
     ] as never;
     const entries = replaySessionMessages(messages, events, 1);
-    expect(entries).toHaveLength(2); // user + tool
-    const toolEntry = entries[1]!;
+    // Text beside tool results without authoredLength was folded in by the host
+    // (see authoredBlocks), so it is not replayed as a user bubble.
+    expect(entries).toHaveLength(1);
+    const toolEntry = entries[0]!;
     expect(toolEntry.kind).toBe('tool');
     expect((toolEntry as { output: string }).output).toContain('file content');
   });

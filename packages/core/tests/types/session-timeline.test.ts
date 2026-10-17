@@ -98,29 +98,30 @@ describe('projectSessionTimeline — conversation backbone', () => {
     ]);
   });
   it('keeps runtime-only notes out of user bubbles and preserves tool results', () => {
-    const timeline = projectSessionTimeline({
-      messages: [
-        {
-          role: 'assistant',
-          content: [{ type: 'tool_use', id: 'read', name: 'read_file', input: {} }],
-        },
-        {
-          role: 'user',
-          origin: 'runtime',
-          authoredLength: 0,
-          content: [
-            { type: 'tool_result', tool_use_id: 'read', content: 'source code' },
-            { type: 'text', text: '[TOOL COACH — verification phase]\nCheck the result.' },
-          ],
-        },
-      ],
-    });
+    const messages: Message[] = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'read', name: 'read_file', input: {} }],
+      },
+      {
+        role: 'user',
+        origin: 'runtime',
+        authoredLength: 0,
+        content: [
+          { type: 'tool_result', tool_use_id: 'read', content: 'source code' },
+          { type: 'text', text: '[TOOL COACH — verification phase]\nCheck the result.' },
+        ],
+      },
+    ];
+    const timeline = projectSessionTimeline({ messages, runtimeContextEntries: true });
     expect(timeline.filter((entry) => entry.kind === 'user')).toEqual([]);
     expect(timeline[0]).toMatchObject({ kind: 'tool', output: 'source code' });
     expect(timeline[1]).toMatchObject({
       kind: 'system',
       runtimeContext: [expect.stringContaining('TOOL COACH')],
     });
+    // Surfaces that do not render runtimeContext get no empty "Runtime context" note.
+    expect(projectSessionTimeline({ messages }).map((entry) => entry.kind)).toEqual(['tool']);
   });
   it('recognizes older host blocks without deleting an explicitly authored discussion of their markers', () => {
     const timeline = projectSessionTimeline({
