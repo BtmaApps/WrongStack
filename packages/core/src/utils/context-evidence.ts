@@ -64,7 +64,7 @@ export interface RecordToolOutputEvidenceInput {
 
 export function recordUserIntentEvidence(ctx: AgentContext, text: string): void {
   if (isRuntimeContextInput(text)) return;
-  const intent = normalizeWhitespace(text).slice(0, MAX_USER_TURN_CHARS);
+  const intent = sliceWellFormed(normalizeWhitespace(text), MAX_USER_TURN_CHARS);
   if (!intent) return;
   const state = ensureEvidence(ctx);
   const turn = { text: intent, updatedAt: Date.now() };
@@ -115,9 +115,12 @@ export function buildConversationContinuityBlock(
   const selected: string[] = [];
   let remaining = MAX_CONTINUITY_CHARS;
   for (let i = sourceTurns.length - 1; i >= 0 && selected.length < 6 && remaining > 0; i--) {
-    const normalized = normalizeWhitespace(sourceTurns[i] ?? '').slice(0, MAX_USER_TURN_CHARS);
+    const normalized = sliceWellFormed(
+      normalizeWhitespace(sourceTurns[i] ?? ''),
+      MAX_USER_TURN_CHARS,
+    );
     if (!normalized) continue;
-    const bounded = normalized.slice(0, remaining);
+    const bounded = sliceWellFormed(normalized, remaining);
     selected.push(bounded);
     remaining -= bounded.length;
   }
@@ -294,7 +297,19 @@ export function buildContextEvidenceDigest(ctx: AgentContext): string {
 
   const digest = lines.join('\n');
   if (digest.length <= MAX_DIGEST_CHARS) return digest;
-  return `${digest.slice(0, MAX_DIGEST_CHARS)}... [+${digest.length - MAX_DIGEST_CHARS} chars]`;
+  return `${sliceWellFormed(digest, MAX_DIGEST_CHARS)}... [+${digest.length - MAX_DIGEST_CHARS} chars]`;
+}
+
+/**
+ * `text.slice(0, max)` that never ends between the halves of a surrogate pair:
+ * a lone high surrogate in model-bound evidence is invalid on the wire.
+ */
+function sliceWellFormed(text: string, max: number): string {
+  if (text.length <= max) return text;
+  let end = Math.max(0, max);
+  const last = end > 0 ? text.charCodeAt(end - 1) : 0;
+  if (last >= 0xd800 && last <= 0xdbff) end--;
+  return text.slice(0, end);
 }
 
 export function repeatedReadPressure(ctx: AgentContext): number {

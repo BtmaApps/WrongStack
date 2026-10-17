@@ -50,6 +50,16 @@ describe('ulid', () => {
   });
 });
 
+describe('ulid fractional seed time', () => {
+  it('floors a fractional millisecond seed into a valid, same-prefix ULID', () => {
+    const fractional = ulid(1700000000000.5);
+    expect(fractional).toHaveLength(26);
+    expect(isUlid(fractional)).toBe(true);
+    expect(fractional).not.toContain('undefined');
+    expect(fractional.slice(0, 10)).toBe(ulid(1700000000000).slice(0, 10));
+  });
+});
+
 describe('isUlid', () => {
   // isUlid is the structural validator. A well-formed ULID is exactly
   // 26 chars, every char in the Crockford base32 alphabet

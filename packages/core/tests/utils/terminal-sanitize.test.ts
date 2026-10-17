@@ -104,6 +104,23 @@ describe('sanitizeTerminalText — ReDoS bound', () => {
   });
 });
 
+describe('sanitizeTerminalPreview surrogate pairs', () => {
+  const lone = (s: string): boolean =>
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+
+  it('never cuts an emoji in half at the character cap', () => {
+    const r = sanitizeTerminalPreview(`a${'😀'.repeat(50)}`, { maxChars: 10 });
+    expect(lone(r.text)).toBe(false);
+    expect(r.text.length).toBeLessThanOrEqual(10);
+    expect(r.truncated).toBe(true);
+  });
+
+  it('keeps a pair that ends exactly at the cap', () => {
+    const r = sanitizeTerminalPreview('😀😀😀', { maxChars: 4 });
+    expect(r.text).toBe('😀😀');
+  });
+});
+
 describe('sanitizeTerminalPreview', () => {
   it('reports the full sanitized size so callers need no second pass', () => {
     const body = Array.from({ length: 100 }, (_, i) => `line ${i}`).join('\n');

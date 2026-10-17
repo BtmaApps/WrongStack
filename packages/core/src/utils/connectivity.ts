@@ -17,6 +17,8 @@ const DEFAULT_TTL_MS = 30_000;
 interface ConnectivityCache {
   ok: boolean;
   at: number;
+  /** The probe this result answers: a result for one URL says nothing about another. */
+  url: string;
 }
 
 let cached: ConnectivityCache | undefined;
@@ -44,11 +46,11 @@ export async function checkConnectivity(opts?: {
   const ttl = opts?.ttlMs ?? DEFAULT_TTL_MS;
 
   // Respect a non-expired cache entry
-  if (cached && ttl > 0 && Date.now() - cached.at < ttl) {
+  if (cached && cached.url === url && ttl > 0 && Date.now() - cached.at < ttl) {
     return cached.ok;
   }
 
-  cached = { ok: await probe(url, timeout), at: Date.now() };
+  cached = { ok: await probe(url, timeout), at: Date.now(), url };
   return cached.ok;
 }
 

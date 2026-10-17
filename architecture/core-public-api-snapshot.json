@@ -1596,21 +1596,21 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 51,
-      "sourceLines": 12660
+      "sourceLines": 12664
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 242,
-      "sourceLines": 61862
+      "sourceLines": 61876
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 81,
-      "sourceLines": 16586
+      "sourceLines": 16594
     },
     {
       "directory": "design",
@@ -1813,7 +1813,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 91,
-      "sourceLines": 15244
+      "sourceLines": 15344
     },
     {
       "directory": "vcs",

@@ -417,6 +417,22 @@ describe('recordActualUsage + estimateRequestTokensCalibrated', () => {
   });
 });
 
+describe('recordActualUsage non-finite samples', () => {
+  it('ignores NaN/Infinity usage and estimates so calibration stays finite', () => {
+    recordActualUsage(Number.NaN, 100, 'nf');
+    recordActualUsage(Number.POSITIVE_INFINITY, 100, 'nf');
+    recordActualUsage(120, Number.NaN, 'nf');
+    expect(getCalibrationState('nf').count).toBe(0);
+    for (let i = 0; i < 3; i++) recordActualUsage(120, 100, 'nf');
+    const state = getCalibrationState('nf');
+    expect(state.count).toBe(3);
+    expect(state.ratio).toBeCloseTo(1.2);
+    expect(Number.isFinite(estimateRequestTokensCalibrated('x'.repeat(350), '', [], 'nf').total)).toBe(
+      true,
+    );
+  });
+});
+
 describe('estimateRequestTokensUpperBound', () => {
   const msg = (text: string) => [{ role: 'user', content: [{ type: 'text', text }] }];
 

@@ -390,7 +390,9 @@ export type MatrixKeyKind = 'role' | 'phase' | 'default' | 'unknown';
 /** Classify a matrix key so `/setmodel` can reject typos before persisting. */
 export function matrixKeyKind(key: string): MatrixKeyKind {
   if (key === '*') return 'default';
-  if (key in AGENT_CATALOG) return 'role';
+  // Own keys only: `in` also matches Object.prototype (`toString`, `constructor`),
+  // which would let a typo'd or hostile role name be persisted as a valid key.
+  if (Object.hasOwn(AGENT_CATALOG, key)) return 'role';
   if (MATRIX_PHASE_KEYS.includes(key)) return 'phase';
   return 'unknown';
 }

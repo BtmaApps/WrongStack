@@ -132,7 +132,11 @@ export function sanitizeTerminalPreview(
 
   let clipped = safe;
   if (clipped.length > maxChars) {
-    clipped = clipped.slice(0, maxChars);
+    // Never cut a surrogate pair: a lone half renders as a replacement glyph in
+    // the permission prompt the user is reading.
+    let end = maxChars;
+    if (end > 0 && /[\uD800-\uDBFF]/.test(clipped[end - 1]!)) end--;
+    clipped = clipped.slice(0, end);
     truncated = true;
   }
 

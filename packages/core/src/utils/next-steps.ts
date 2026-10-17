@@ -18,6 +18,7 @@
  *
  * Supported assistant-output format:
  *   <nextsteps>      (canonical XML tag format)
+ *   Items are list lines ("1. text") or `<nextstep>text</nextstep>` elements.
  *
  * The parser also tolerates attributes on the opening tag so malformed model
  * output such as `<nextsteps auto="true">` does not leak into the UI. Opening
@@ -292,6 +293,35 @@ function parseItems(content: string, stopAtNonItem: boolean): ParsedNextStep[] {
   return steps;
 }
 
+/**
+ * Matches one `<nextstep>…</nextstep>` element. Some models wrap each item in
+ * its own tag instead of writing list lines; the item may span lines, carry
+ * `auto="true"` on the tag, or still start with a list marker.
+ */
+const ITEM_TAG_RE = /<nextstep\b([^<>]*)>([\s\S]*?)<\/nextstep\s*>/gi;
+
+/** Parse `<nextstep>` elements; returns undefined when the block has none. */
+function parseItemTags(content: string): ParsedNextStep[] | undefined {
+  const spans = fenceSpans(content);
+  const steps: ParsedNextStep[] = [];
+  let sawTag = false;
+  for (const match of content.matchAll(ITEM_TAG_RE)) {
+    if (spans.some(([start, end]) => match.index >= start && match.index < end)) continue;
+    sawTag = true;
+    const inner = match[2]!.replace(/\s+/g, ' ').trim();
+    if (!inner) continue;
+    // A list marker inside the tag ("1. Run tests") is formatting, not text.
+    const listed = ITEM_RE.exec(inner);
+    const text = decodeItemText(listed ? listed[2]!.trim() : inner);
+    if (text === undefined || !text.trim()) continue;
+    const auto =
+      steps.length === 0 && (/\bauto\s*=\s*["']true["']/i.test(match[1]!) || !!listed?.[3]);
+    pushStep(steps, steps.length + 1, text, auto);
+    if (steps.length >= MAX_STEPS) break;
+  }
+  return sawTag ? steps : undefined;
+}
+
 /** Parse numbered/bullet items from raw text without a heading. */
 function parseRawNumbered(content: string): ParseNextStepsResult {
   const steps = parseItems(content, false);
@@ -310,7 +340,10 @@ function parseWithHeading(raw: string): ParseNextStepsResult {
   const stripped = content === raw ? raw : content.replace(/\n{3,}/g, '\n\n').trim();
   const empty: ParseNextStepsResult = { steps: [], texts: [], stripped, autoTexts: [] };
   const spans = fenceSpans(content);
-  const headings = [...content.matchAll(/<nextsteps\b[^<>]*>\s*\n+/gi)].filter(
+  // The opening tag ends its line, unless `<nextstep>` items follow inline.
+  const headings = [
+    ...content.matchAll(/<nextsteps\b[^<>]*>(?:\s*\n+|[ \t]*(?=<nextstep\b))/gi),
+  ].filter(
     (match) =>
       !match[0].trimEnd().endsWith('/>') &&
       !spans.some(([start, end]) => match.index >= start && match.index < end),
@@ -321,7 +354,8 @@ function parseWithHeading(raw: string): ParseNextStepsResult {
     const closeAbs = nonFencedIndexOf(content, '</nextsteps>', headingEnd, spans);
     // A later opening cannot donate its close to an unfinished earlier block.
     if (closeAbs === -1 || closeAbs >= (headings[i + 1]?.index ?? Infinity)) continue;
-    const steps = parseItems(content.slice(headingEnd, closeAbs), true);
+    const body = content.slice(headingEnd, closeAbs);
+    const steps = parseItemTags(body) ?? parseItems(body, true);
     if (steps.length === 0) continue;
 
     let blockEnd = closeAbs + '</nextsteps>'.length;

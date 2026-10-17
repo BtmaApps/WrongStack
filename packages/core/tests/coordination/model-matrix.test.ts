@@ -302,6 +302,13 @@ describe('matrixKeyKind / isValidMatrixKey', () => {
     }
     expect(isValidMatrixKey('nope')).toBe(false);
   });
+
+  it('does not treat Object.prototype member names as role keys', () => {
+    for (const key of ['toString', 'constructor', 'hasOwnProperty', 'valueOf']) {
+      expect(matrixKeyKind(key)).toBe('unknown');
+      expect(isValidMatrixKey(key)).toBe(false);
+    }
+  });
 });
 
 describe('agent catalog prompts', () => {

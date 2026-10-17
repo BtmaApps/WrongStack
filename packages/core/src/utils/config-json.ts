@@ -116,6 +116,8 @@ export function getJsonPath(root: unknown, path: JsonPath): unknown {
       continue;
     }
     if (!isJsonObject(current)) return undefined;
+    // Own keys only: `toString`/`valueOf` etc. are not config data.
+    if (!Object.hasOwn(current, segment)) return undefined;
     current = current[segment];
   }
   return current;
@@ -155,7 +157,7 @@ export function removeJsonPath(root: JsonObject, path: JsonPath): boolean {
     parent.splice(leaf, 1);
     return true;
   }
-  if (!isJsonObject(parent) || !(leaf in parent)) return false;
+  if (!isJsonObject(parent) || !Object.hasOwn(parent, leaf)) return false;
   delete parent[leaf];
   return true;
 }

@@ -1,7 +1,46 @@
 /**
  * Coverage for core/src/utils/connectivity.ts
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { checkConnectivity, resetConnectivityCache } from '../../src/utils/connectivity.js';
+
+describe('connectivity cache is scoped to the probe URL', () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    resetConnectivityCache();
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetConnectivityCache();
+  });
+
+  it('serves a repeat probe of the same URL from cache inside the TTL', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+    expect(await checkConnectivity({ probeUrl: 'https://a.test', ttlMs: 60_000 })).toBe(true);
+    expect(await checkConnectivity({ probeUrl: 'https://a.test', ttlMs: 60_000 })).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('probes a different URL instead of answering from another URL cache', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes('up.test')) return new Response(null, { status: 200 });
+      throw new Error('network down');
+    });
+    expect(await checkConnectivity({ probeUrl: 'https://up.test', ttlMs: 60_000 })).toBe(true);
+    expect(await checkConnectivity({ probeUrl: 'https://down.test', ttlMs: 60_000 })).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('still bypasses the cache entirely when ttlMs is 0', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+    await checkConnectivity({ probeUrl: 'https://a.test', ttlMs: 0 });
+    await checkConnectivity({ probeUrl: 'https://a.test', ttlMs: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe('connectivity', () => {
   it('checkConnectivity is exported and callable', async () => {

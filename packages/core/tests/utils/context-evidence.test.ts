@@ -143,6 +143,45 @@ describe('buildConversationContinuityBlock', () => {
   });
 });
 
+describe('context-evidence truncation keeps text well-formed', () => {
+  const lone = (s: string): boolean =>
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+  // MAX_USER_TURN_CHARS is 700: one leading ASCII char puts the cut mid-pair.
+  const emojiTurn = `a${'😀'.repeat(500)}`;
+  const ctxWithEvidence = (): Context =>
+    ({ contextEvidence: createContextEvidenceState(), messages: [] }) as never as Context;
+
+  it('cuts an ASCII turn at exactly the cap (control)', () => {
+    const ctx = ctxWithEvidence();
+    recordUserIntentEvidence(ctx, 'x'.repeat(2000));
+    expect(ctx.contextEvidence.currentIntent?.text).toHaveLength(700);
+  });
+
+  it('does not split an emoji when capping a recorded user turn', () => {
+    const ctx = ctxWithEvidence();
+    recordUserIntentEvidence(ctx, emojiTurn);
+    const text = ctx.contextEvidence.currentIntent?.text ?? '';
+    expect(lone(text)).toBe(false);
+    expect(text.length).toBeLessThanOrEqual(700);
+  });
+
+  it('does not split an emoji in the conversation-continuity block', () => {
+    const ctx = ctxWithEvidence();
+    recordUserIntentEvidence(ctx, emojiTurn);
+    const block = buildConversationContinuityBlock(ctx);
+    expect(block).toBeDefined();
+    expect(lone(block?.text ?? '')).toBe(false);
+  });
+
+  it('does not split an emoji when the evidence digest hits its cap', () => {
+    const ctx = ctxWithEvidence();
+    for (let i = 0; i < 8; i++) recordUserIntentEvidence(ctx, `${i}${'😀'.repeat(400)}`);
+    const digest = buildContextEvidenceDigest(ctx);
+    expect(digest).toContain('chars]');
+    expect(lone(digest)).toBe(false);
+  });
+});
+
 describe('recordToolOutputEvidence', () => {
   it('extracts files, symbols, commands, errors and records metadata', () => {
     const ctx = makeCtx();

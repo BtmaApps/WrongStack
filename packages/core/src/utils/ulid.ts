@@ -40,7 +40,10 @@ export function ulid(seedTime: number = Date.now()): string {
     typeof seedTime === 'number' && Number.isFinite(seedTime) && seedTime > 0
       ? seedTime
       : Date.now();
-  return encodeTime(safeTime, TIME_LEN) + encodeRandom(RANDOM_LEN);
+  // The base-32 digit extraction needs an integer: a fractional timestamp
+  // (e.g. from performance.timeOrigin + now()) produced a non-integer index
+  // and the literal text "undefined" inside the id.
+  return encodeTime(Math.floor(safeTime), TIME_LEN) + encodeRandom(RANDOM_LEN);
 }
 
 /** True for a well-formed 26-char Crockford-base32 ULID. */

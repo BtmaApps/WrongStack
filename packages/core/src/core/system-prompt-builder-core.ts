@@ -339,6 +339,14 @@ export abstract class SystemPromptBuilderCore {
         : bundle,
     );
     this._instructionBundles.set(key, loading);
+    // A rejected load must not stay cached: this builder is reused for the whole
+    // session, so one transient read failure (EMFILE, a locked preset file)
+    // would otherwise fail every later system-prompt build — and so every turn —
+    // until the preset generation or fingerprint happened to change. Evict only
+    // if the entry is still this promise, so a newer load is never dropped.
+    loading.catch(() => {
+      if (this._instructionBundles.get(key) === loading) this._instructionBundles.delete(key);
+    });
     return loading;
   }
 

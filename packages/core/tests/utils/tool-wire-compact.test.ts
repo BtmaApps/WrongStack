@@ -117,6 +117,29 @@ describe('compactDescription', () => {
   });
 });
 
+describe('compactDescription surrogate pairs', () => {
+  const hasLoneSurrogate = (s: string): boolean =>
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+
+  it('never cuts an emoji in half on the semantic-boundary path', () => {
+    const out = compactDescription(`a${'😀'.repeat(60)}`, 40);
+    expect(hasLoneSurrogate(out)).toBe(false);
+    expect(out.length).toBeLessThanOrEqual(40);
+  });
+
+  it('never cuts an emoji in half on the tiny-budget path', () => {
+    const out = compactDescription(`a${'😀'.repeat(20)}`, 20);
+    expect(hasLoneSurrogate(out)).toBe(false);
+    expect(out.length).toBeLessThanOrEqual(20);
+  });
+
+  it('keeps ASCII truncation unchanged', () => {
+    const out = compactDescription('a'.repeat(3000), 100);
+    expect(out.length).toBeLessThanOrEqual(100);
+    expect(hasLoneSurrogate(out)).toBe(false);
+  });
+});
+
 describe('findSemanticBoundary', () => {
   // The boundary finder implements a 3-tier hierarchy:
   //   punctuation (. ; :) > comma (,) > space ( )

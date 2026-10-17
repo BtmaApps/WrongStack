@@ -162,12 +162,18 @@ function compactSchemaNode(node: unknown, maxDescriptionChars: number): unknown 
 export function compactDescription(text: string, maxChars: number): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxChars) return normalized;
-  if (maxChars <= 20) return normalized.slice(0, maxChars);
+  if (maxChars <= 20) return dropSplitSurrogate(normalized.slice(0, maxChars));
 
   const hardLimit = maxChars - 12;
   const boundary = findSemanticBoundary(normalized, hardLimit);
-  const head = normalized.slice(0, boundary > 0 ? boundary : hardLimit).trimEnd();
+  const head = dropSplitSurrogate(normalized.slice(0, boundary > 0 ? boundary : hardLimit)).trimEnd();
   return `${head} ...`;
+}
+
+/** A UTF-16 cut can land between a surrogate pair; a lone high surrogate is invalid on the wire. */
+function dropSplitSurrogate(text: string): string {
+  const last = text.charCodeAt(text.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? text.slice(0, -1) : text;
 }
 
 export function findSemanticBoundary(text: string, limit: number): number {

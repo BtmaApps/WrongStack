@@ -108,3 +108,23 @@ describe('getJsonPath / removeJsonPath refuse prototype keys (WS-054)', () => {
     expect(config['a']).toBeUndefined();
   });
 });
+
+describe('getJsonPath / removeJsonPath ignore inherited Object.prototype members', () => {
+  it('reads an absent key named like a prototype method as undefined', () => {
+    const root = { mcpServers: {} as Record<string, unknown> };
+    expect(getJsonPath(root, ['mcpServers', 'toString'])).toBeUndefined();
+    expect(getJsonPath(root, ['mcpServers', 'valueOf', 'x'])).toBeUndefined();
+  });
+
+  it('does not report removing an absent prototype-named key as success', () => {
+    const root = { mcpServers: {} as Record<string, unknown> };
+    expect(removeJsonPath(root, ['mcpServers', 'valueOf'])).toBe(false);
+  });
+
+  it('still reads and removes an own key with a prototype-method name', () => {
+    const root = { mcpServers: { toString: { cmd: 'x' } } as Record<string, unknown> };
+    expect(getJsonPath(root, ['mcpServers', 'toString', 'cmd'])).toBe('x');
+    expect(removeJsonPath(root, ['mcpServers', 'toString'])).toBe(true);
+    expect(Object.hasOwn(root.mcpServers, 'toString')).toBe(false);
+  });
+});

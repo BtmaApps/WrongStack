@@ -52,13 +52,35 @@ export function patternIsLikelyCatastrophic(source: string): boolean {
       // Skip group markers so `?` in `(?:`/`(?=` is not read as a quantifier.
       if (source[i + 1] === '?') {
         if (source[i + 2] === ':' || source[i + 2] === '=' || source[i + 2] === '!') i += 2;
-        else if (source[i + 2] === '<') i += 3;
+        else if (source[i + 2] === '<') {
+          // Lookbehind `(?<=`/`(?<!` or a named group `(?<name>`: skip the whole
+          // marker, or the name and `>` would be read as literal separators.
+          if (source[i + 3] === '=' || source[i + 3] === '!') i += 3;
+          else {
+            const close = source.indexOf('>', i + 3);
+            i = close === -1 ? i + 2 : close;
+          }
+        }
       }
       continue;
     }
     if (ch === ')') {
       flushPending();
       const frame = stack.pop();
+      // A nested group's quantified atoms and alternation also repeat under the
+      // enclosing group's quantifier; without this, `((a+)a)+` looked like a
+      // body with no quantifier and its trailing `a` "disambiguated" it.
+      const parent = stack[stack.length - 1];
+      if (frame !== undefined && parent !== undefined) {
+        if (frame.hasAlt) parent.hasAlt = true;
+        if (frame.hasQuant) parent.hasQuant = true;
+        parent.quantSets.push(...frame.quantSets);
+        // Its literals stay mandatory unless the group itself is optional.
+        const next = source[i + 1];
+        if (!frame.hasAlt && next !== '?' && next !== '*' && next !== '{') {
+          parent.literals.push(...frame.literals);
+        }
+      }
       if (frame !== undefined && isUnboundedQuantifier(source, i + 1)) {
         // Disambiguated iterations: the body carries a mandatory literal that
         // every quantified atom provably cannot match, so each repetition is
@@ -81,6 +103,13 @@ export function patternIsLikelyCatastrophic(source: string): boolean {
         if (pendingSet !== null) frame.quantSets.push(pendingSet);
         frame.hasQuant = true;
       }
+      pendingLiteral = null;
+      pendingSet = null;
+      continue;
+    }
+    if (ch === '?') {
+      // Optional/lazy marker, not an atom: the preceding atom is no longer a
+      // mandatory literal, and `?` itself must never become a "separator".
       pendingLiteral = null;
       pendingSet = null;
       continue;

@@ -307,7 +307,6 @@ class InlineChronicleProjectAccess implements ChronicleProjectAccess {
    */
   private store(): Promise<ChronicleSqliteJournal> {
     this.sqlite ??= (async () => {
-      await fsPromises.mkdir(this.chronicleDirectory, { recursive: true });
       // Constructed INSIDE the try, mirroring the daemon: the constructor
       // opens the SQLite handle and switches it to WAL before any step that can
       // fail. Constructed outside, such a throw escaped the catch below — the
@@ -317,6 +316,11 @@ class InlineChronicleProjectAccess implements ChronicleProjectAccess {
       // memo reset is the whole repair; `journal?.close()` covers the rest.
       let journal: ChronicleSqliteJournal | undefined;
       try {
+        // `mkdir` belongs inside the try too: outside it, a transient failure
+        // (a file in the way, a locked or read-only directory) rejected the
+        // memoized promise WITHOUT resetting it, so every later call — and
+        // `close()`, which awaits it — re-threw that first error forever.
+        await fsPromises.mkdir(this.chronicleDirectory, { recursive: true });
         journal = new ChronicleSqliteJournal({
           directory: this.chronicleDirectory,
           ...journalLimits(this.options),

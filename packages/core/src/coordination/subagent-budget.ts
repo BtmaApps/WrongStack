@@ -413,7 +413,19 @@ export class SubagentBudget {
     if (bus.hasListenerFor('budget.threshold_reached')) {
       for (const entry of exceeded) {
         if (this._pendingNegotiations.has(entry.kind)) continue; // already negotiating this kind
-        this._pendingNegotiations.set(entry.kind, this._negotiateExtension(entry));
+        const negotiation = this._negotiateExtension(entry);
+        this._pendingNegotiations.set(entry.kind, negotiation);
+        // `_negotiateExtension` is async but does not await for a synchronous
+        // decision ('continue' / 'throw'), so its own `finally` has already run
+        // by the time this `set` executes — and it deleted nothing. Release the
+        // slot here as well, or that kind is never negotiated again and every
+        // later overrun replays the stale decision. Identity-guarded so a newer
+        // negotiation for the same kind is not dropped.
+        void negotiation.finally(() => {
+          if (this._pendingNegotiations.get(entry.kind) === negotiation) {
+            this._pendingNegotiations.delete(entry.kind);
+          }
+        });
       }
       const decision = this._pendingNegotiations.get(first.kind);
       if (!decision) throw new Error(`No pending negotiation for ${first.kind}`);

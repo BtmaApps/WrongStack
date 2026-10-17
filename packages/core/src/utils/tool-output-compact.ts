@@ -193,9 +193,11 @@ export function formatInlineValue(value: unknown): string {
 
 export function clipInline(value: string, max = INLINE_LIMIT): string {
   const compact = value.replace(/\s+/g, ' ').trim();
-  return compact.length <= max
-    ? compact
-    : `${compact.slice(0, max - 15)}...(${compact.length} chars)`;
+  if (compact.length <= max) return compact;
+  // Never cut a surrogate pair: a lone half is invalid text in the rendered header.
+  let end = max - 15;
+  if (end > 0 && /[\uD800-\uDBFF]/.test(compact[end - 1]!)) end--;
+  return `${compact.slice(0, end)}...(${compact.length} chars)`;
 }
 
 export function oneLineJson(value: unknown): string {

@@ -410,10 +410,13 @@ export function recordActualUsage(
   estimatedInputTokens?: number,
   calibrationKey: string = CALIBRATION_GLOBAL_KEY,
 ): void {
-  if (actualInputTokens <= 0) return;
+  // `NaN <= 0` is false, so a NaN/Infinity sample (a provider usage field that
+  // was missing or overflowed) used to pass these guards and poison the EWM
+  // ratio permanently: every later sample stays NaN and the clamp cannot fix it.
+  if (!Number.isFinite(actualInputTokens) || actualInputTokens <= 0) return;
   const cal = calState(calibrationKey);
   const est = estimatedInputTokens ?? cal.prevEst;
-  if (est <= 0) return;
+  if (!Number.isFinite(est) || est <= 0) return;
 
   const sampleRatio = actualInputTokens / est;
   if (cal.count === 0) {
