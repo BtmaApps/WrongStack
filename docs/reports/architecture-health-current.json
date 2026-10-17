@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T22:24:04.058Z",
+  "generatedAt": "2026-10-17T22:24:36.667Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 38,
     "sourceFiles": 5154,
     "testFiles": 4460,
-    "sourceLines": 1118588,
+    "sourceLines": 1118598,
     "workspaceEdges": 139,
     "moduleEdges": 16952,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 959
+    "testOnlyExports": 958
   },
   "errors": [],
   "packageCycles": [],
@@ -29654,10 +29654,6 @@
     {
       "file": "packages/core/src/utils/child-env.ts",
       "name": "sanitizeNodeOptions"
-    },
-    {
-      "file": "packages/core/src/utils/config-backup.ts",
-      "name": "configSlug"
     },
     {
       "file": "packages/core/src/utils/config-json.ts",

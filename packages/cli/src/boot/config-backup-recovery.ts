@@ -1,6 +1,13 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { atomicWrite, backupConfigFile, color, toErrorMessage } from '@wrongstack/core/utils';
+import {
+  atomicWrite,
+  backupConfigFile,
+  color,
+  configSlug,
+  safeProfileName,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import type { ReadlineInputReader } from '../input-reader.js';
 import type { TerminalRenderer } from '../renderer.js';
 
@@ -37,10 +44,7 @@ export async function defaultProfileProvidersAreEmpty(profilePath: string): Prom
 }
 
 function profileSnapshotTimestamp(fileName: string, fallback: number): number {
-  const match =
-    /^profiles-default-config-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})\.json$/i.exec(
-      fileName,
-    );
+  const match = /-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})\.json$/i.exec(fileName);
   if (!match) return fallback;
   const [, year, month, day, hour, minute, second, millisecond] = match;
   return Date.UTC(
@@ -64,9 +68,15 @@ export async function findLatestProviderBackup(
   profileName = 'default',
 ): Promise<ProviderConfigBackup | undefined> {
   const directory = path.join(globalRoot, 'config-history');
-  const escapedProfile = profileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Match the prefix backupConfigFile actually writes: it slugifies the
+  // profile config path, so `my_work` is stored as `profiles-my-work-config-…`.
+  const prefix = configSlug(
+    path.join(globalRoot, 'profiles', safeProfileName(profileName), 'config.json'),
+    globalRoot,
+  );
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const filePattern = new RegExp(
-    `^profiles-${escapedProfile}-config-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}\\.json$`,
+    `^${escapedPrefix}-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}\\.json$`,
     'i',
   );
   const candidates: Array<{ filePath: string; fileName: string; modifiedAtMs: number }> = [];

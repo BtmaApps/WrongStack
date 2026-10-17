@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { backupConfigFile } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   defaultProfileProvidersAreEmpty,
@@ -62,6 +63,37 @@ describe('interactive config backup recovery', () => {
     const workBackup = await findLatestProviderBackup(globalRoot, 'work');
     expect(workBackup?.fileName).toBe('profiles-work-config-2026-07-19T14-00-00-000.json');
     expect(workBackup?.providerIds).toEqual(['wrongProfile']);
+  });
+
+  it('finds the snapshot backupConfigFile wrote for a profile name it slugifies', async () => {
+    // backupConfigFile stores `profiles/my_work/config.json` as
+    // `profiles-my-work-config-<ts>.json`; the reader must use the same prefix.
+    const workPath = path.join(globalRoot, 'profiles', 'my_work', 'config.json');
+    await fs.mkdir(path.dirname(workPath), { recursive: true });
+    await fs.writeFile(workPath, JSON.stringify({ providers: { anthropic: {} } }));
+    await backupConfigFile(workPath, { globalRoot });
+    const written = await fs.readdir(path.join(globalRoot, 'config-history'));
+    expect(written).toEqual([expect.stringMatching(/^profiles-my-work-config-/)]);
+
+    const backup = await findLatestProviderBackup(globalRoot, 'my_work');
+    expect(backup?.fileName).toBe(written[0]);
+    expect(backup?.providerIds).toEqual(['anthropic']);
+    // Other profiles' snapshots stay out of scope.
+    expect(await findLatestProviderBackup(globalRoot, 'default')).toBeUndefined();
+  });
+
+  it('orders a non-default profile by the timestamp in the file name, not mtime', async () => {
+    const historyDir = path.join(globalRoot, 'config-history');
+    const older = path.join(historyDir, 'profiles-work-config-2026-07-19T10-00-00-000.json');
+    const newer = path.join(historyDir, 'profiles-work-config-2026-07-19T12-00-00-000.json');
+    await fs.writeFile(newer, JSON.stringify({ providers: { newer: {} } }));
+    await fs.writeFile(older, JSON.stringify({ providers: { older: {} } }));
+    // Make mtime disagree with the name: the older snapshot was touched last.
+    await fs.utimes(newer, new Date('2026-07-19T00:00:00Z'), new Date('2026-07-19T00:00:00Z'));
+    await fs.utimes(older, new Date('2026-07-20T00:00:00Z'), new Date('2026-07-20T00:00:00Z'));
+
+    const backup = await findLatestProviderBackup(globalRoot, 'work');
+    expect(backup?.providerIds).toEqual(['newer']);
   });
 
   it('defaults to yes and restores the complete backup JSON', async () => {

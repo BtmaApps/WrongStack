@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 823,
+      "files": 824,
       "typeOnly": 71,
-      "runtimeOrMixed": 782
+      "runtimeOrMixed": 783
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -25522,6 +25522,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/auth-live-provider-check.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/boot-config-backup-recovery.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -665,9 +665,6 @@
     "packages/core/src/utils/child-env.ts": [
       "sanitizeNodeOptions"
     ],
-    "packages/core/src/utils/config-backup.ts": [
-      "configSlug"
-    ],
     "packages/core/src/utils/config-json.ts": [
       "getJsonPath",
       "isJsonObject",
