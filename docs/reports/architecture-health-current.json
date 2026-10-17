@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-16T19:04:09.976Z",
+  "generatedAt": "2026-10-17T09:59:34.095Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 5098,
-    "testFiles": 4420,
-    "sourceLines": 1107189,
+    "testFiles": 4441,
+    "sourceLines": 1107328,
     "workspaceEdges": 137,
-    "moduleEdges": 16788,
+    "moduleEdges": 16790,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 957
+    "testOnlyExports": 958
   },
   "errors": [],
   "packageCycles": [],
@@ -248,7 +248,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1147,
-      "testFiles": 984,
+      "testFiles": 990,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -263,7 +263,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 984
+          "testFiles": 990
         }
       ]
     },
@@ -385,7 +385,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 63,
-      "testFiles": 74,
+      "testFiles": 77,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -398,7 +398,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 74
+          "testFiles": 77
         }
       ]
     },
@@ -605,7 +605,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 148,
-      "testFiles": 130,
+      "testFiles": 140,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -620,7 +620,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 130
+          "testFiles": 140
         }
       ]
     },
@@ -770,7 +770,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 335,
-      "testFiles": 326,
+      "testFiles": 328,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -786,7 +786,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 326
+          "testFiles": 328
         }
       ]
     },
@@ -6412,6 +6412,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/chronicle/project-access-open-retry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/chronicle/project-access.test.ts",
         "projects": [
           "root-node"
@@ -6683,6 +6689,12 @@
       },
       {
         "file": "packages/core/tests/coordination/budget-edges-t1-t4.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/budget-sync-decision-slot.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8074,6 +8086,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/system-prompt-builder-bundle-retry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/system-prompt-builder-extra.test.ts",
         "projects": [
           "root-node"
@@ -9215,6 +9233,12 @@
       },
       {
         "file": "packages/core/tests/jev-disable-payment.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/jev-logcontent-memo.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11530,6 +11554,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/utils/json-schema-pattern-safety.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/utils/json-schema-validate.test.ts",
         "projects": [
           "root-node"
@@ -11729,6 +11759,12 @@
       },
       {
         "file": "packages/core/tests/utils/tool-name.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/utils/tool-output-compact.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12892,6 +12928,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/sse-close-after-stream-error.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/sse-reader-callback-ownership.test.ts",
         "projects": [
           "root-node"
@@ -12922,6 +12964,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/streamable-response-matching.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/structured-output.test.ts",
         "projects": [
           "root-node"
@@ -12929,6 +12977,12 @@
       },
       {
         "file": "packages/mcp/tests/token-store-expiry-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/token-store-stable-refresh-reauth.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15388,6 +15442,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/admin-list-with-corrupt-row.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/agent-anchor.test.ts",
         "projects": [
           "root-node"
@@ -15413,6 +15473,12 @@
       },
       {
         "file": "packages/sage/tests/daemon-log.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/delete-with-corrupt-sibling-row.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15514,6 +15580,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/hq-sync-apply-over-corrupt-row.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/hq-sync.test.ts",
         "projects": [
           "root-node"
@@ -15545,6 +15617,12 @@
       },
       {
         "file": "packages/sage/tests/injection-validity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/jsonl-migration-corrupt-existing-row.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15629,6 +15707,12 @@
       },
       {
         "file": "packages/sage/tests/middleware/tool-call-memory-rejected-detail.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/migration-v2-corrupt-row.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15796,6 +15880,18 @@
         ]
       },
       {
+        "file": "packages/sage/tests/remember-exact-match-corrupt-row.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/remember-with-corrupt-sibling-row.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/remote-memory-port-behavior.test.ts",
         "projects": [
           "root-node"
@@ -15851,6 +15947,12 @@
       },
       {
         "file": "packages/sage/tests/sage-heading-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/search-verified-after-corrupt-row.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16102,6 +16204,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/triggers-and-tag-filter-corrupt-sibling.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/turn-memory.test.ts",
         "projects": [
           "root-node"
@@ -16139,6 +16247,12 @@
       },
       {
         "file": "packages/sage/tests/update-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/upsert-over-corrupt-row-trigger.test.ts",
         "projects": [
           "root-node"
         ]
@@ -19504,6 +19618,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/session-kanban-retention.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/session-kanban-source-integrity.test.ts",
         "projects": [
           "root-node"
@@ -19697,6 +19817,12 @@
       },
       {
         "file": "packages/tools/tests/toolflow-presentation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/tree-sitter-language-retry.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30490,6 +30616,10 @@
     {
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "name": "__privateScriptPathsForTest"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/tree-sitter-parser.ts",
+      "name": "loadTreeSitterLanguage"
     },
     {
       "file": "packages/tools/src/codebase-index/vector-search.ts",

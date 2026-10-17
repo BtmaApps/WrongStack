@@ -27,6 +27,17 @@ export const pendingMirrors = new Map<string, PendingMirror>();
 
 export const activeMirrors = new Set<string>();
 
+/**
+ * The final graph each mirror key last projected successfully. Completed
+ * nodes from it are carried into the next turn's graphs: `projectGraph`
+ * archives every card missing from the graph, so without this a Todo list
+ * that prunes finished rows on a later turn archived the completed cards.
+ * Kept separate from the in-burst `reconciliationGraph`, whose completed
+ * nodes are projected once and then dropped so a card completed and removed
+ * within one coalesced burst still archives.
+ */
+export const lastMirroredGraphs = new Map<string, SerializedTaskGraph>();
+
 export const mirrorFailures = new Map<
   string,
   { message: string; sourceSystem: PendingMirror['sourceSystem'] }
@@ -142,20 +153,25 @@ export function queueLatestMirror(
         if (!pending) break;
         pendingMirrors.delete(key);
         try {
+          const previous = lastMirroredGraphs.get(key);
+          const withHistory = (graph: SerializedTaskGraph): SerializedTaskGraph =>
+            (previous ? completedReconciliationGraph(graph, [previous]) : undefined) ?? graph;
           if (pending.reconciliationGraph) {
             await projectGraph(
               pending.projectRoot,
               pending.sessionId,
-              pending.reconciliationGraph,
+              withHistory(pending.reconciliationGraph),
               pending.sourceSystem,
             );
           }
+          const finalGraph = withHistory(pending.graph);
           await projectGraph(
             pending.projectRoot,
             pending.sessionId,
-            pending.graph,
+            finalGraph,
             pending.sourceSystem,
           );
+          lastMirroredGraphs.set(key, finalGraph);
           mirrorFailures.delete(boardKey(pending.projectRoot, pending.sessionId));
         } catch (error) {
           const message = rawErrorMessage(error);
