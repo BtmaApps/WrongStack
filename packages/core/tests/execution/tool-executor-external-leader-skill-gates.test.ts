@@ -27,7 +27,12 @@ import { MockProvider } from '../helpers/mock-provider.js';
 import { createMockTool } from '../helpers/test-harness.js';
 
 const dirs: string[] = [];
+// Each setup() opens a session writer whose FileHandle must be closed
+// explicitly: left for GC, Bun raises ERR_INVALID_STATE ("closed during
+// garbage collection") as an uncaught error that fails the whole run.
+const sessions: Array<{ close(): Promise<void> }> = [];
 afterEach(async () => {
+  for (const s of sessions.splice(0)) await s.close();
   for (const d of dirs.splice(0)) await fs.rm(d, { recursive: true, force: true });
 });
 
@@ -55,6 +60,7 @@ async function setup(keepsOwnContext: boolean) {
   }
   const store = new DefaultSessionStore({ dir: path.join(tmp, 'sessions') });
   const session = await store.create({ id: '', model: 'm', provider: 'mock' });
+  sessions.push(session);
   const ctx = new Context({
     systemPrompt: [{ type: 'text', text: 't' }],
     provider,
