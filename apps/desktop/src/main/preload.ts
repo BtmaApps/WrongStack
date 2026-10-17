@@ -8,6 +8,21 @@ import type {
   WrongStackDesktopApi,
 } from '../shared/types.js';
 import { IPC } from './ipc.js';
+import { installPreloadFocus } from './preload-focus.js';
+
+const focusBoundary = installPreloadFocus();
+const updateFocusAvailability = (status: unknown): void => {
+  focusBoundary.setAvailable(
+    typeof status === 'object' &&
+      status !== null &&
+      'status' in status &&
+      status.status === 'ready',
+  );
+};
+ipcRenderer.on(IPC.webuiStatusChanged, (_event, status: unknown) =>
+  updateFocusAvailability(status),
+);
+void ipcRenderer.invoke(IPC.getWebuiStatus).then(updateFocusAvailability, () => undefined);
 
 const api: WrongStackDesktopApi = {
   getState: () => ipcRenderer.invoke(IPC.getState),

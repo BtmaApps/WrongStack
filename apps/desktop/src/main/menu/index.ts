@@ -27,32 +27,56 @@ export function configureApplicationMenu(ctx: MenuBuilderContext): void {
   const hasActiveProjectWebui = hasActiveWebui && active?.kind === 'project';
   const activeWebuiPrefs = ctx.getActiveWebuiPrefs();
 
+  // A menu click has no caller to receive a rejection: Electron invokes the
+  // `click` handler and discards whatever it returns. The operations below do
+  // reject for ordinary reasons — `activateRuntime` throws `Runtime not
+  // found: ${id}` when the id goes stale between the menu being built and the
+  // click landing, and `touchProject` reaches the same `fs.mkdir` /
+  // `atomicWrite` calls proven to reject in desktop-config-io. Left bare, any
+  // of those is an unhandled rejection in the Electron MAIN process.
+  //
+  // Absorb it the way `agent-bridge.ts` does for its automatic reconnects, and
+  // log it: the operation failed, and silence would make a dead project
+  // indistinguishable from an ignored click.
+  const absorb = (work: Promise<unknown>): void => {
+    void work.catch((error: unknown) => {
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'desktop.menu_action_failed',
+          message: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    });
+  };
+
   const navigate = (command: DesktopWebuiCommand) => {
-    void ctx.dispatchWebuiCommand(command);
+    absorb(ctx.dispatchWebuiCommand(command));
   };
 
   const activateAndNavigate = (runtimeId: string, command: DesktopWebuiCommand) => {
-    void ctx.activateRuntime(runtimeId).then(() => ctx.dispatchWebuiCommand(command));
+    absorb(ctx.activateRuntime(runtimeId).then(() => ctx.dispatchWebuiCommand(command)));
   };
 
   const reloadRuntimeWebui = (runtimeId: string) => {
-    void ctx.activateRuntime(runtimeId).then(() => ctx.reloadActiveWebuiView());
+    absorb(ctx.activateRuntime(runtimeId).then(() => ctx.reloadActiveWebuiView()));
   };
 
   const actions: ProjectMenuActions = {
-    activate: (runtimeId) => void ctx.activateRuntime(runtimeId),
+    activate: (runtimeId) => absorb(ctx.activateRuntime(runtimeId)),
     activateAndNavigate,
-    registerProject: () => void ctx.registerProject(),
+    registerProject: () => absorb(ctx.registerProject()),
     newSession: (runtimeId) => {
-      if (runtimeId) void ctx.openProjectSession(runtimeId);
-      else void ctx.openProject();
+      if (runtimeId) absorb(ctx.openProjectSession(runtimeId));
+      else absorb(ctx.openProject());
     },
     openBrowser: (runtimeId) => {
       const url = ctx.getRuntimeManager().getRuntimeUrlWithToken(runtimeId);
       if (url) ctx.openExternal(url);
     },
     reload: reloadRuntimeWebui,
-    close: (runtimeId) => void ctx.closeRuntime(runtimeId),
+    close: (runtimeId) => absorb(ctx.closeRuntime(runtimeId)),
     reveal: (runtimeId) => {
       const runtime = ctx.getRuntimeManager().getRuntime(runtimeId);
       if (runtime) ctx.revealInExplorer(runtime.root);

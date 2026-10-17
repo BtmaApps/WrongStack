@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T22:23:37.956Z",
+  "generatedAt": "2026-10-17T22:24:04.058Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5152,
-    "testFiles": 4457,
-    "sourceLines": 1118335,
+    "sourceFiles": 5154,
+    "testFiles": 4460,
+    "sourceLines": 1118588,
     "workspaceEdges": 139,
-    "moduleEdges": 16948,
+    "moduleEdges": 16952,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -271,8 +271,8 @@
     {
       "name": "@wrongstack/desktop",
       "dir": "apps/desktop",
-      "sourceFiles": 46,
-      "testFiles": 30,
+      "sourceFiles": 48,
+      "testFiles": 33,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/webui",
@@ -288,7 +288,7 @@
         {
           "path": "apps/desktop/tsconfig.test.json",
           "error": null,
-          "testFiles": 30
+          "testFiles": 33
         }
       ]
     },
@@ -1160,6 +1160,18 @@
         ]
       },
       {
+        "file": "apps/desktop/tests/focus-boundary.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop/tests/focus-routing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop/tests/i18n-main.test.ts",
         "projects": [
           "root-node"
@@ -1185,6 +1197,12 @@
       },
       {
         "file": "apps/desktop/tests/layout.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop/tests/menu-action-errors.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28158,6 +28176,11 @@
       "relativeImports": 12
     },
     {
+      "file": "apps/desktop/src/main/main.ts",
+      "lines": 698,
+      "relativeImports": 20
+    },
+    {
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
@@ -28196,11 +28219,6 @@
       "file": "packages/core/src/storage/config-loader.ts",
       "lines": 695,
       "relativeImports": 28
-    },
-    {
-      "file": "apps/desktop/src/main/main.ts",
-      "lines": 694,
-      "relativeImports": 20
     },
     {
       "file": "packages/cli/src/slash-commands/fix-classifier.ts",

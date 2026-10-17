@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T22:23:37.956Z
+**Generated:** 2026-10-17T22:24:04.058Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5152 |
-| Production source lines | 1118335 |
-| Test files | 4457 |
+| Production source files | 5154 |
+| Production source lines | 1118588 |
+| Test files | 4460 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16948 |
+| Relative module edges | 16952 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -33,7 +33,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/client | 7 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1147 | 990 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop | 46 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop | 48 | 33 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 108 | 82 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
@@ -96,6 +96,7 @@ None.
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 699 | `packages/core/src/execution/design-verify.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
+| 698 | `apps/desktop/src/main/main.ts` |
 | 698 | `packages/core/src/coordination/subagent-budget.ts` |
 | 697 | `packages/core/src/security/secret-vault.ts` |
 | 696 | `packages/core/src/coordination/autonomous-brain.ts` |
@@ -104,7 +105,6 @@ None.
 | 696 | `packages/webui/src/components/KanbanView.tsx` |
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
-| 694 | `apps/desktop/src/main/main.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |

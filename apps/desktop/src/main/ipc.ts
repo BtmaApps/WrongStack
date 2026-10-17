@@ -1,4 +1,6 @@
 export const IPC = {
+  focusBoundary: 'desktop:focus-boundary',
+  focusEdge: 'desktop:focus-edge',
   getState: 'desktop:get-state',
   getConversation: 'desktop:get-conversation',
   getWebuiStatus: 'desktop:get-webui-status',

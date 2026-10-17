@@ -144,8 +144,10 @@ export class DesktopWebuiController {
       event.preventDefault();
       this.openExternal(url);
     });
-    view.webContents.on('did-start-loading', () => {
-      if (this.views.get(runtimeId) !== entry) return;
+    view.webContents.on('did-start-navigation', (details) => {
+      // Spinner events also occur after mount without replacing the document.
+      if (!details.isMainFrame || details.isSameDocument || this.views.get(runtimeId) !== entry)
+        return;
       entry.bridgeReady = false;
       this.setEntryStatus(entry, { runtimeId, status: 'loading' });
     });
@@ -269,6 +271,48 @@ export class DesktopWebuiController {
     for (const entry of this.views.values()) {
       if (!entry.view.webContents.isDestroyed())
         entry.view.webContents.send(IPC.webuiLocaleChanged, locale);
+    }
+  }
+
+  routeFocus(
+    event: Pick<Electron.IpcMainInvokeEvent, 'sender' | 'senderFrame'>,
+    direction: unknown,
+  ): boolean {
+    if (direction !== 'forward' && direction !== 'backward') return false;
+    const shell = this.ctx.getShellView()?.webContents;
+    const entry = this.activeEntry();
+    const activeId = this.ctx.manager.snapshot().activeRuntimeId;
+    if (
+      !shell ||
+      shell.isDestroyed() ||
+      !entry ||
+      !entry.attached ||
+      entry.runtimeId !== activeId ||
+      entry.status.status !== 'ready' ||
+      !entry.bridgeReady ||
+      entry.view.webContents.isDestroyed() ||
+      entry.view.webContents.isLoading()
+    )
+      return false;
+    const bounds = entry.view.getBounds();
+    if (bounds.width <= 0 || bounds.height <= 0) return false;
+    const webui = entry.view.webContents;
+    const sender = event.sender;
+    if (
+      (sender !== shell && sender !== webui) ||
+      sender.isDestroyed() ||
+      !sender.isFocused() ||
+      event.senderFrame !== sender.mainFrame
+    )
+      return false;
+    const target = sender === shell ? webui : shell;
+    try {
+      target.send(IPC.focusEdge, direction);
+      target.focus();
+      return true;
+    } catch {
+      // Navigation/disposal can invalidate a view while IPC is being delivered.
+      return false;
     }
   }
 

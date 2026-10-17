@@ -7,9 +7,13 @@ import type {
   WrongStackDesktopHostApi,
 } from '../shared/types.js';
 import { IPC } from './ipc.js';
+import { installPreloadFocus } from './preload-focus.js';
+
+const focusBoundary = installPreloadFocus();
 
 const api: WrongStackDesktopHostApi = {
   setReady: (ready: boolean) => {
+    focusBoundary.setAvailable(ready === true);
     ipcRenderer.send(IPC.webuiReadyChanged, ready);
   },
   setPrefs: (prefs: DesktopWebuiPrefs) => {

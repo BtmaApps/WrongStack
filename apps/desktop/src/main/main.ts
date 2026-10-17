@@ -22,6 +22,7 @@ import {
   BaseWindow,
   type BaseWindowConstructorOptions,
   dialog,
+  ipcMain,
   screen,
   shell,
   WebContentsView,
@@ -453,6 +454,9 @@ async function boot(): Promise<void> {
 
   // The shell preload can invoke desktop:* channels during renderer startup.
   registerExtractedIpcHandlers(buildIpcHandlerContext());
+  ipcMain.handle(IPC.focusBoundary, (event, direction: unknown) =>
+    webuiController.routeFocus(event, direction),
+  );
 
   installShellStateReplay(shellView.webContents, () => ({
     locale: getMainLocale(),
