@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { configureExecPolicy, execTool, resetExecPolicy } from '../src/exec.js';
 import { validateArgs } from '../src/exec-arg-validation.js';
@@ -127,12 +127,13 @@ describe('exec under host-authorized autonomy', () => {
     'runs an explicit executable path under %s and preserves every argument',
     async (autonomy) => {
       const sandbox = await mkSandbox();
-      const args = [
-        '-e',
-        'console.log(JSON.stringify(process.argv.slice(1)))',
-        '--',
-        ...Array.from({ length: 35 }, (_, index) => `arg ${index}`),
-      ];
+      // A script file, not `-e <code> --`: Bun's Windows `node.exe` shim (the
+      // `process.execPath` under `bun --bun vitest`) drops the first positional
+      // argument after inline `-e`/`-p` code, which would fail this assertion
+      // for a reason unrelated to exec's argument passing.
+      const script = join(sandbox.dir, 'print-argv.cjs');
+      await writeFile(script, 'console.log(JSON.stringify(process.argv.slice(2)))\n');
+      const args = [script, ...Array.from({ length: 35 }, (_, index) => `arg ${index}`)];
       try {
         await expect(
           execTool.execute({ command: process.execPath, args }, sandbox.ctx, {
@@ -145,7 +146,7 @@ describe('exec under host-authorized autonomy', () => {
         });
         expect(result.exitCode).toBe(0);
         expect(result.args).toEqual(args);
-        expect(JSON.parse(result.stdout)).toEqual(args.slice(3));
+        expect(JSON.parse(result.stdout)).toEqual(args.slice(1));
         configureExecPolicy({ deny: [process.execPath] });
         await expect(
           execTool.execute({ command: process.execPath, args }, sandbox.ctx, {
@@ -153,7 +154,9 @@ describe('exec under host-authorized autonomy', () => {
             autonomy,
           }),
         ).rejects.toThrow('explicitly denied');
-        configureExecPolicy({ deny: [process.versions.bun ? 'bun' : 'node'] });
+        // Deny by the bare name of the binary actually running: under
+        // `bun --bun` that is Bun's `node.exe` shim, not `bun`.
+        configureExecPolicy({ deny: [basename(process.execPath)] });
         await expect(
           execTool.execute({ command: process.execPath, args }, sandbox.ctx, {
             signal: new AbortController().signal,

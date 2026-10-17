@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T15:31:05.931Z",
+  "generatedAt": "2026-10-17T15:46:10.530Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5123,
-    "testFiles": 4448,
-    "sourceLines": 1112527,
+    "sourceFiles": 5125,
+    "testFiles": 4450,
+    "sourceLines": 1113503,
     "workspaceEdges": 139,
-    "moduleEdges": 16846,
+    "moduleEdges": 16852,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 667,
-      "testFiles": 651,
+      "sourceFiles": 668,
+      "testFiles": 652,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 651
+          "testFiles": 652
         }
       ]
     },
@@ -272,7 +272,7 @@
       "name": "@wrongstack/desktop",
       "dir": "apps/desktop",
       "sourceFiles": 46,
-      "testFiles": 30,
+      "testFiles": 31,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/webui",
@@ -288,7 +288,7 @@
         {
           "path": "apps/desktop/tsconfig.test.json",
           "error": null,
-          "testFiles": 30
+          "testFiles": 31
         }
       ]
     },
@@ -848,7 +848,7 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 25,
+      "sourceFiles": 26,
       "testFiles": 5,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
@@ -1185,6 +1185,12 @@
       },
       {
         "file": "apps/desktop/tests/layout.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop/tests/menu-action-errors.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5553,6 +5559,12 @@
       },
       {
         "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/vibeui.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28027,21 +28039,41 @@
       "relativeImports": 0
     },
     {
+      "file": "packages/vibeui/src/components/provider-manager.tsx",
+      "lines": 710,
+      "relativeImports": 4
+    },
+    {
+      "file": "packages/vibeui/src/components/workspace.tsx",
+      "lines": 746,
+      "relativeImports": 12
+    },
+    {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 792,
+      "lines": 826,
       "relativeImports": 2
     }
   ],
   "hotspots": [
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 792,
+      "lines": 826,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/vibeui/src/components/workspace.tsx",
+      "lines": 746,
+      "relativeImports": 12
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/vibeui/src/components/provider-manager.tsx",
+      "lines": 710,
+      "relativeImports": 4
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -28272,16 +28304,6 @@
       "file": "packages/providers/src/openai-codex.ts",
       "lines": 684,
       "relativeImports": 27
-    },
-    {
-      "file": "packages/core/src/goal/phase-orchestrator.ts",
-      "lines": 682,
-      "relativeImports": 17
-    },
-    {
-      "file": "packages/plugins/src/notify-hub/index.ts",
-      "lines": 682,
-      "relativeImports": 3
     }
   ],
   "testOnlyExports": [
