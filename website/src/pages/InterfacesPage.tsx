@@ -11,13 +11,13 @@ import { surfaces } from '@/data/content';
 import { Link } from '@/lib/router';
 
 const comparison = [
-  ['Interactive chat', true, true, true, true, true, false],
-  ['Rich tool rendering', false, true, true, true, true, true],
-  ['Code editor', false, false, true, false, true, false],
-  ['Fleet monitoring', true, true, true, true, true, true],
-  ['Cross-session overview', false, false, false, false, true, true],
-  ['Scriptable / pipe-friendly', true, false, false, false, false, false],
-  ['Cross-machine control', false, false, false, false, false, true],
+  ['Interactive chat', true, true, true, true, true, true, false],
+  ['Rich tool rendering', false, true, true, true, true, true, true],
+  ['Code editor', false, false, true, false, false, true, false],
+  ['Fleet monitoring', true, true, true, true, true, true, true],
+  ['Cross-session overview', false, false, false, false, false, true, true],
+  ['Scriptable / pipe-friendly', true, false, false, false, false, false, false],
+  ['Cross-machine control', false, false, false, false, false, false, true],
 ] as const;
 
 export function InterfacesPage() {
@@ -28,7 +28,7 @@ export function InterfacesPage() {
         eyebrow="Interfaces"
         title={
           <>
-            Six surfaces.
+            Seven surfaces.
             <br />
             <span className="text-brand">One live system.</span>
           </>
@@ -132,14 +132,14 @@ export function InterfacesPage() {
             index="02"
             eyebrow="Compare"
             title="Pick by workflow, not feature anxiety."
-            description="HQ observes many sessions; the other five drive a working session. Desktop embeds WebUI runtimes and adds native multi-project management."
+            description="HQ observes many sessions; the other six drive a working session. Desktop embeds WebUI runtimes and adds native multi-project management."
           />
           <div className="mt-12 overflow-x-auto rounded-2xl border border-line bg-card">
-            <table className="w-full min-w-[900px] border-collapse text-left">
+            <table className="w-full min-w-[1000px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-line bg-bg font-mono text-xs font-black uppercase tracking-[0.14em] text-faint">
                   <th className="p-4 sm:p-5">Capability</th>
-                  {['CLI', 'TUI', 'WebUI', 'SimpleUI', 'Desktop', 'HQ'].map((name) => (
+                  {['CLI', 'TUI', 'WebUI', 'SimpleUI', 'VibeUI', 'Desktop', 'HQ'].map((name) => (
                     <th key={name} className="p-4 text-center sm:p-5">
                       {name}
                     </th>
@@ -235,9 +235,9 @@ export function InterfacesPage() {
           index="04"
           eyebrow="Quick comparison"
           title="When to use which surface."
-          description="Each of the six interfaces excels at a different workflow. You don't have to choose one — mix them as your task demands."
+          description="Each of the seven interfaces excels at a different workflow. You don't have to choose one — mix them as your task demands."
         />
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
           {surfaces.map(({ name, best, launch }) => (
             <div key={name} className="rounded-xl border border-line bg-card p-4">
               <h3 className="font-black text-sm text-fg">{name}</h3>
@@ -247,7 +247,7 @@ export function InterfacesPage() {
           ))}
         </div>
       </section>
-      {/* Keep the six-card grid symmetric — revisited when the breakpoints settle. */}
+      {/* Keep the seven-card grid symmetric — revisited when the breakpoints settle. */}
       <PageNext
         label="Commands"
         title="Learn the control language"

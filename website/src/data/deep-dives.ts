@@ -753,8 +753,8 @@ export const featureDeepDives: Record<string, FeatureDeepDive> = {
       },
       {
         title: 'Shape the interface',
-        body: 'CLI modes, TUI panels, WebUI settings, SimpleUI, Desktop and HQ expose shared state while preserving surface-specific preferences.',
-        code: 'one kernel → six tailored surfaces',
+        body: 'CLI modes, TUI panels, WebUI settings, SimpleUI, VibeUI, Desktop and HQ expose shared state while preserving surface-specific preferences.',
+        code: 'one kernel → seven tailored surfaces',
       },
       {
         title: 'Protect trust boundaries',

@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   Cable,
   CircleGauge,
+  CodeXml,
   Command,
   Compass,
   Database,
@@ -164,7 +165,7 @@ export const moreNav = [
   {
     href: '/interfaces',
     label: 'Interfaces',
-    description: 'CLI, TUI, WebUI, SimpleUI, Desktop and HQ',
+    description: 'CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop and HQ',
     icon: PanelTop,
     group: 'learn',
   },
@@ -595,6 +596,22 @@ export const surfaces = [
       'Shares the CLI agent',
     ],
     icon: MessageSquareMore,
+  },
+  {
+    id: 'vibeui',
+    name: 'VibeUI',
+    tagline: 'The focused coding workspace',
+    description:
+      'A focused browser coding workspace between SimpleUI and the full WebUI, with a streaming chat queue, sessions, provider and model picking, diffs, plan views and live agent transcripts.',
+    launch: 'wstack --vibeui',
+    best: 'Focused coding without the full workbench',
+    traits: [
+      'Queue, Steer and BTW delivery',
+      'Provider/model picker with reasoning effort',
+      'Diffs, plans and agent transcripts',
+      'SAGE memory graph',
+    ],
+    icon: CodeXml,
   },
   {
     id: 'desktop',

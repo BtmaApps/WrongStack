@@ -261,6 +261,7 @@ export const packages = [
   '@wrongstack/requirement-intake',
   '@wrongstack/requirement-intake-mcp',
   '@wrongstack/simpleui',
+  '@wrongstack/vibeui',
   '@wrongstack/techstack',
   '@wrongstack/tui',
   '@wrongstack/webui',

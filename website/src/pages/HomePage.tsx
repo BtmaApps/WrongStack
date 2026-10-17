@@ -401,8 +401,8 @@ export function HomePage() {
                 Change the surface. Keep the system.
               </h2>
               <p className="mt-6 max-w-md text-base leading-7 text-zinc-400">
-                The CLI, TUI, WebUI, SimpleUI, Desktop and HQ do not reimplement the agent. They
-                compose and observe the same contracts.
+                The CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop and HQ do not reimplement the agent.
+                They compose and observe the same contracts.
               </p>
               <Link
                 href="/interfaces"
@@ -425,10 +425,7 @@ export function HomePage() {
                   </code>
                 </Reveal>
               ))}
-              <Reveal
-                delay={surfaces.length * 0.04}
-                className="bg-[#0c0d12] sm:col-span-2 lg:col-span-3"
-              >
+              <Reveal delay={surfaces.length * 0.04} className="bg-[#0c0d12] lg:col-span-2">
                 <Link
                   href="/interfaces"
                   className="group flex items-center justify-between gap-6 bg-white/[0.04] p-6 transition-colors duration-300 hover:bg-brand focus-visible:bg-brand"
@@ -441,7 +438,7 @@ export function HomePage() {
                       Find your surface.
                     </h3>
                     <p className="mt-1 max-w-xl text-sm leading-6 text-zinc-400 transition-colors group-hover:text-white/75 group-focus-visible:text-white/75">
-                      Compare all six interfaces and choose the one that fits the work.
+                      Compare all seven interfaces and choose the one that fits the work.
                     </p>
                   </div>
                   <span className="grid size-11 shrink-0 place-items-center rounded-full border border-white/15 text-brand transition-all group-hover:border-white group-hover:bg-white group-focus-visible:border-white group-focus-visible:bg-white">

@@ -17,9 +17,10 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--tui` | Launch the Ink/React full-screen TUI (lazy-loaded). |
 | `--webui` | Launch the standalone browser UI + WebSocket bridge. |
 | `--simpleui` | Launch the minimal SimpleUI chat surface. |
+| `--vibeui` | Launch the VibeUI focused coding workspace (default port 3476; `wstack vibeui` is equivalent). |
 | `--desktop` | Launch the Electron desktop shell hosting a token-gated local WebUI. |
 | `--hq` | Launch the cross-machine HQ Command Center. |
-| `--no-menu` | Skip the five-option launch menu on a TTY and go straight to the REPL. |
+| `--no-menu` | Skip the launch menu on a TTY and go straight to the REPL. |
 | `--yolo` | Auto-approve tool calls within the active permission policy (never overrides trust-denies). |
 | `--provider <id>` / `--model <id>` | Skip the startup picker and pin a provider/model. |
 | `-p, --print <query>` | Single-shot: run one query non-interactively and exit. |

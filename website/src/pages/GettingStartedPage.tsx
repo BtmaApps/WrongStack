@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  CodeXml,
   KeyRound,
   Laptop,
   LogIn,
@@ -211,6 +212,12 @@ export function GettingStartedPage() {
               'A stripped-down browser chat—conversation, live tool progress and agent tabs without the full workspace.',
             ],
             [
+              CodeXml,
+              'Focused coding workspace',
+              'wstack --vibeui',
+              'A browser coding workspace between SimpleUI and the full WebUI—chat queue, sessions, model picker, diffs and agent transcripts on port 3476.',
+            ],
+            [
               ShieldCheck,
               'Trusted project session',
               'wstack --tui --yolo',
@@ -234,10 +241,15 @@ export function GettingStartedPage() {
               'wstack --hq',
               'Cross-session control plane — steer live agents, queue work and watch mailboxes from any browser.',
             ],
-          ].map(([Icon, title, command, body]) => {
+          ].map(([Icon, title, command, body], index, items) => {
             const ItemIcon = Icon as typeof Terminal;
+            // Ten recipes leave one orphan in the three-column grid; let it span the row.
+            const spanRow = index === items.length - 1 && items.length % 3 === 1;
             return (
-              <article key={String(title)} className="bg-card p-6">
+              <article
+                key={String(title)}
+                className={spanRow ? 'bg-card p-6 lg:col-span-3' : 'bg-card p-6'}
+              >
                 <ItemIcon className="size-5 text-brand" />
                 <h2 className="mt-7 font-black text-fg">{String(title)}</h2>
                 <code className="mt-3 block overflow-x-auto font-mono text-xs text-brand">

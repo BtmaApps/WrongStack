@@ -55,36 +55,35 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.6
+### What's new in 1.1.7
+
+- **VibeUI, a seventh interface:** [`wstack vibeui`](packages/vibeui/README.md)
+  (`--vibeui`, port 3476) opens a focused coding workspace between SimpleUI and
+  the full WebUI: queued chat with Queue / Steer / BTW, provider and account
+  setup, files and diffs, live agents, quotas, SAGE memory with a relationship
+  graph, and next-step suggestions that can submit on their own under YOLO + Auto.
+- **Text selection in the TUI:** a Text mode beside Block copies only the
+  selected visible text; switch it in Settings or the composer footer.
+- **WebUI refresh and desktop focus:** a reworked workbench look with locally
+  served provider logos, and Tab moves between the desktop shell and its WebUI.
+- **Correctness fixes:** ACP turns survive a slow permission decision, an idle
+  project daemon shuts down again, a rejected intake suggestion stays rejected,
+  one corrupt SAGE row no longer breaks unrelated memory operations, and MCP
+  transports, the token store and the OAuth callback are hardened.
+
+Highlights from **1.1.6**, the previous release:
 
 - **WrongForge leads with its tools:** a session started on the `wrongforge`
-  provider now sends its turns to WrongForge with the session's tools instead
-  of a one-step, tool-less task or the first fallback model, and the calls it
-  makes through those tools appear as tool cards.
+  provider sends its turns to WrongForge with the session's tools, and the
+  calls it makes through them appear as tool cards.
 - **Confirmable tools behind the token-saving tier:** `tool_use` and `mcp_use`
   ask for confirmation like a direct call, so `pwsh`, `exec`, `fetch`, `git`
   and MCP tools work with YOLO off on the default tier.
 - **Plugins cannot pose as built-ins:** a plugin may change only the tools it
   registered itself, and only official plugins may register as `core`.
-- **WrongStack skills for agent leaders:** an ACP or WrongForge leader gets
-  WrongStack's `skill` tool, and a task's required skills reach it as a plain
-  instruction instead of a gate it cannot satisfy.
-- **Correctness fixes:** ambiguous HQ token revokes, ACP replies after stdin
-  closes, TUI and WebUI resume rollback, cloud sync status, config watcher
-  ordering, `tool_script` summaries and diff parsing in SimpleUI and the WebUI.
 
-Highlights from **1.1.5**, the previous release:
-
-- **Built-in tools without MCP:** [`wstack tools list|describe|run|batch`](docs/subcommands/tools-skills.md)
-  calls WrongStack's tools from the shell, and `wstack tools serve` exposes
-  them over token-guarded loopback HTTP to other agents.
-- **WrongForge leader and worker:** a local WrongForge server can lead a session
-  (`/model wrongforge/<model>`) or take delegated tasks, working through the
-  session's own tools so WrongStack's rules apply.
-- **WebUI agent tree:** the fleet appears as a leader-and-workers tree in the
-  session sidebar, the agents panel and the inspector, and a browser call
-  blocked by the private-origin policy offers an "Allow access" action.
-
+1.1.5 added [`wstack tools`](docs/subcommands/tools-skills.md) for built-in
+tools without MCP, WrongForge as leader or worker and the WebUI agent tree;
 1.1.4 pointed ACP agents at the project's index, memory, mailbox and board and
 added the mailbox `inbox` action over MCP;
 1.1.3 made an installed ACP agent such as Claude Code a session leader
@@ -137,8 +136,8 @@ See the [release history](CHANGELOG.md) for earlier releases.
 - **Goals that end verified.** `/goal` loops until a locked contract passes,
   the **Brain** rules on risky calls, and Kanban cards reach Done only when
   their criteria pass.
-- **Six surfaces, one engine.** REPL, TUI, WebUI, SimpleUI, Desktop and the
-  cross-machine **HQ** share the same sessions and memory.
+- **Seven surfaces, one engine.** REPL, TUI, WebUI, SimpleUI, VibeUI, Desktop
+  and the cross-machine **HQ** share the same sessions and memory.
 - **Any model, including local ones.** API keys or subscription sign-in, a
   models.dev catalog, Ollama / vLLM / LM Studio presets, and per-role routing
   with fallback chains.
@@ -162,7 +161,7 @@ scratch:
 | **Memory** | Usually none, or bolted-on files | **SAGE** — code-anchored SQLite/FTS5 memory, recalled every turn |
 | **Multi-agent** | Orchestrates external processes | **Native fleet + Director** with isolated budgets and one mailbox |
 | **Local-only** | Needs the upstream tool and network | **Runs on localhost** with Ollama / vLLM / LM Studio presets |
-| **Surfaces** | One terminal | **Six** — REPL, TUI, WebUI, SimpleUI, Desktop, HQ |
+| **Surfaces** | One terminal | **Seven** — REPL, TUI, WebUI, SimpleUI, VibeUI, Desktop, HQ |
 | **Safety** | Depends on the wrapped tool | **Per-call permission policy** and Chimera review of your diffs |
 
 ---
@@ -301,13 +300,14 @@ Full flag and subcommand reference: [`docs/cli-reference.md`](docs/cli-reference
 | **TUI** | `wstack --tui` | Rich full-screen terminal with panels |
 | **WebUI** | `wstack --webui` | Browser chat + tool/diff/session panels |
 | **SimpleUI** | `wstack --simpleui` | Fast, focused standalone browser chat (see below) |
+| **VibeUI** | `wstack --vibeui` | Focused coding workspace between SimpleUI and WebUI (see below) |
 | **Desktop** | `wstack --desktop` | Electron shell over a token-gated local WebUI |
 | **HQ** | `wstack --hq` | Cross-machine command center for a whole team |
 
 Plain `wstack` on a TTY opens a launch menu; add `--no-menu` to go straight to the
 REPL. See [WebUI](docs/webui.md) for the browser surface details.
 
-WebUI and SimpleUI keep their host terminal compact: repeated warnings share
+WebUI, SimpleUI and VibeUI keep their host terminal compact: repeated warnings share
 one row, logs and finished workers disappear after 30 seconds, and live worker
 rows fit the terminal. Use `WEBUI_VERBOSE=1` for full console output.
 
@@ -327,6 +327,14 @@ stripped WebUI. It reuses the same WebSocket backend but ships its own bundle,
 with a sticky composer, `@`-file picker, streaming markdown + syntax highlighting,
 vision/image attachments, session switching, and a lazy-loaded Tools/Todo/Task/Plan
 sidebar — deliberately minimal, fast, and focused.
+
+**VibeUI** (new in 1.1.7) is a focused coding workspace between SimpleUI and the
+full WebUI, built with Next.js and Radix UI and served as prebuilt assets by the
+same host on port 3476. It adds a queued composer with Queue / Steer / BTW,
+provider and account setup, files and diff modals, a live Agents view, provider
+quotas, SAGE memory with a relationship graph and Simple / Extended context
+views. Terminal, browser streams and automation editing stay in the WebUI. See
+[`packages/vibeui/README.md`](packages/vibeui/README.md).
 
 ---
 
@@ -404,7 +412,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.6** — current repository version; semver from 1.0.0 onward
+- **v1.1.7** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

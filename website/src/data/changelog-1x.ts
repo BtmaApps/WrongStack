@@ -1,20 +1,36 @@
-// Changelog — 1.x era (1.1.6 → 1.0.0).
+// Changelog — 1.x era (1.1.7 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
-// The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, and the 1.1.6
-// entry those in v1.1.5..v1.1.6.
+// The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, the 1.1.6 entry
+// those in v1.1.5..v1.1.6, and the 1.1.7 entry those in v1.1.6..v1.1.7.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.7',
+    date: '2026-10-18',
+    tagline:
+      'VibeUI joins as the seventh interface, with TUI text selection and a WebUI visual refresh',
+    latest: true,
+    highlights: [
+      'VibeUI, launched with wstack vibeui or wstack --vibeui on port 3476, is a focused coding workspace between SimpleUI and the full WebUI, served as prebuilt static assets by the existing WrongStack host and bundled in npm and standalone binaries',
+      'VibeUI streams chat with a per-session queue you can pause, reorder and edit, and brings sessions, the provider/model picker, @file and $skill completion, diffs, plan and task views, live agent transcripts, quota and SAGE memory with a relationship graph',
+      'The TUI adds a Text chat selection mode beside Block, so dragging copies only the selected visible text; switch it in Settings → Selection or the composer footer',
+      'The WebUI workbench gets refreshed page, interaction and motion styles that respect reduced motion, and provider logos are served locally',
+      'Desktop moves focus between its shell and the active WebUI view with Tab and Shift+Tab, and logs failed menu actions instead of leaving unhandled rejections',
+      'ACP keeps a prompt turn alive while a permission decision is pending, an idle project daemon can shut down again, and a concurrently rejected intake suggestion can no longer be accepted over the user’s decision',
+      'A corrupt SAGE memories row no longer breaks unrelated memory operations, completed todo cards survive later turns in the session kanban mirror, and provider backup recovery finds profiles with slugified names',
+    ],
+  },
+  {
     version: '1.1.6',
     date: '2026-10-16',
-    tagline: 'WrongForge leads with its tools, confirmable tools behind tool_use and plugin identity hardening',
-    latest: true,
+    tagline:
+      'WrongForge leads with its tools, confirmable tools behind tool_use and plugin identity hardening',
     highlights: [
       'A session started on the wrongforge provider sends its turns to WrongForge with the session’s tools, instead of a one-step, tool-less task or the first fallback model, and its wstack_* calls appear as tool cards',
       'tool_use and mcp_use ask for confirmation like a direct call, so pwsh, exec, fetch, git and MCP tools held back by the token-saving tier work with YOLO off',

@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.7] — 2026-10-18
+
+VibeUI arrives as a seventh interface: a focused coding workspace between
+SimpleUI and the full WebUI. The TUI gains text selection, the WebUI a visual
+refresh, and a round of fixes lands across ACP, the daemon, SAGE, MCP and tools.
+
+### Added
+
+- **VibeUI.** `wstack vibeui` or `wstack --vibeui` (also in the launch menu) opens `@wrongstack/vibeui` on port 3476 with the usual `--port`, `--host`, `--open` and browser-auth flags. It is a Next.js/Radix UI workspace shipped as prebuilt assets and served by the existing WrongStack host, so npm installs and standalone binaries need no separate server. It covers streaming chat with a per-session queue and Queue / Steer / BTW delivery, session search, rename and Markdown export, a searchable model picker with reasoning effort, a provider and account modal (API keys, OAuth and subscription sign-in, custom endpoints), `@file` and `$skill` completion, image attachments, prompt refinement, autonomy and Off / YOLO / YOLO+ controls, a Simple / Extended context view with token and cache figures, files and diff modals, a live Agents view, permission prompts and structured questions, provider quotas, SAGE memory pages with a relationship graph, quick actions (Ctrl/Cmd+P) and conversation search (Ctrl/Cmd+Shift+F). Next-step suggestions submit directly or as a batch; under YOLO + Auto the first `auto` item counts down only for a successful run started in that browser. Terminal, browser streams, automation editing and advanced administration remain in the WebUI. SimpleUI is unchanged.
+- **TUI text selection.** A Text chat selection mode beside the default Block copies only the selected visible text instead of the whole card. Switch it in Settings → Selection or with the `[Block] / [Text]` control in the composer footer; it persists as `autonomy.selectionMode`. The composer always selects text.
+- **WebUI workbench refresh.** New workbench, page and interaction styles with inline artwork that follows the active palette, an activity indicator for running, success, error and pending states, and motion that respects `prefers-reduced-motion`. Provider brand marks (Lobe Icons, MIT) are served locally and shared by setup, settings and sign-in; unknown providers get a neutral icon.
+
+### Changed
+
+- **Session timeline.** Host-written context attached to a user message is kept as a collapsed runtime-context section instead of being dropped, and the context editor can return the read-only system prompt and tool schemas.
+- **Desktop focus.** Tab and Shift+Tab at the edge of a view move focus between the desktop shell and the active WebUI view.
+
+### Fixed
+
+- **ACP.** A prompt turn no longer times out while the agent waits on our answer to a permission request or an fs/terminal call.
+- **Project daemon.** The daemon's own attachment-broker grant no longer counts as a live session, so an unused daemon can idle out again.
+- **Requirement intake.** Accepting a suggestion re-checks that it is still pending under the record lock, so a concurrent reject is not overwritten and a double accept is refused.
+- **SAGE.** One memories row with invalid JSON no longer breaks delete, search, write, admin reads or boot, and the FTS triggers tolerate it. Legacy session memories without an owner stay out of the shared vector mirror.
+- **Tools.** `bash` and `pwsh` refusals and launch failures throw instead of returning error data. Completed todo cards survive later turns in the session kanban mirror, and merged or archived cards are skipped. Tree-sitter loads retry, and tool-diff truncation is surrogate-safe.
+- **MCP.** SSE closes cleanly after a stream error, streamable responses are matched to their request, refresh re-auth is stable, and the token store and OAuth callback server are hardened.
+- **WebUI host.** Static pages carry CSP hashes for trusted inline scripts, font MIME types and immutable caching for hashed assets, and the refine reply echoes its `requestId`.
+- **Desktop.** Failed menu actions and UI-locale writes are logged instead of becoming unhandled rejections in the main process.
+- **Smaller fixes.** `/jev logcontent off` takes effect for later judges. The embedded host's "already in progress" refusal is retryable in the client. Automation results keep changed files whose paths contain spaces. Provider-backup recovery finds profiles whose names are slugified on disk. The kanban verifier accepts the exact desktop Vitest command. SimpleUI retracts queued frames by identity. Telegram notification truncation is surrogate-safe. Build scripts run the real Bun binary and read `bun.lock` under Node.
+
 ## [1.1.6] — 2026-10-16
 
 A hardening release. A plugin can no longer pass itself off as a built-in,
