@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T10:29:06.679Z
+**Generated:** 2026-10-17T11:12:36.253Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 5098 |
-| Production source lines | 1107484 |
+| Production source lines | 1107485 |
 | Test files | 4441 |
 | Workspace dependency edges | 137 |
 | Relative module edges | 16790 |
@@ -121,9 +121,9 @@ None.
 | 687 | `packages/core/src/chronicle/project-server-client.ts` |
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |
+| 686 | `packages/client/src/client.ts` |
 | 686 | `packages/core/src/coordination/provider-status-tracker.ts` |
 | 686 | `packages/webui-server/src/server/session-handler-helpers.ts` |
-| 685 | `packages/client/src/client.ts` |
 | 685 | `packages/core/src/session-catalog/session-registry.ts` |
 | 685 | `packages/tools/src/browser/tools.ts` |
 | 685 | `packages/webui-server/src/server/provider-routes.ts` |

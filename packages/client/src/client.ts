@@ -526,9 +526,11 @@ export class WrongStackClient {
   private failRunOn(sessionId: string, payload: ServerPayload<'error'>): void {
     if (payload.phase !== 'user_message' && payload.phase !== 'agent.run') return;
     // A busy refusal answers the prompt just sent, not the run still going.
-    const run = BUSY_REFUSAL.test(payload.message)
-      ? this.newestPendingRun(sessionId)
-      : this.pendingRun(sessionId);
+    // The same test decides retryability: both hosts' busy wordings
+    // ("already processing" standalone, "already in progress" embedded) mean
+    // "send it again once the current run ends".
+    const busy = BUSY_REFUSAL.test(payload.message);
+    const run = busy ? this.newestPendingRun(sessionId) : this.pendingRun(sessionId);
     if (!run) return;
     this.runs.delete(run.id);
     run.fail(
@@ -536,8 +538,7 @@ export class WrongStackClient {
         kind: 'server',
         code: payload.code ?? payload.phase,
         detail: payload.message,
-        retryable:
-          payload.code === 'session_not_ready' || /already processing/i.test(payload.message),
+        retryable: payload.code === 'session_not_ready' || busy,
       }),
     );
   }

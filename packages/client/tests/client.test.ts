@@ -292,6 +292,37 @@ describe('WrongStackClient', () => {
     });
   });
 
+  it('marks the embedded host busy refusal retryable, like the standalone one', async () => {
+    // The embedded WebUI host refuses with phase 'agent.run' and
+    // "A run is already in progress" (embedded-host-adapters.ts); the
+    // standalone server says "already processing". Both mean "retry later".
+    const { server, client } = await connected();
+    const running = client.send('first');
+    await server.frame('user_message');
+    const refused = client.send('second');
+    await server.frame('user_message');
+    server.emit({
+      type: 'error',
+      payload: {
+        phase: 'agent.run',
+        message: 'A run is already in progress. Abort it first.',
+        sessionId: 'sess_1',
+      },
+    });
+    await expect(refused.result).rejects.toMatchObject({
+      kind: 'server',
+      code: 'agent.run',
+      retryable: true,
+    });
+    expect(running.done).toBe(false);
+    // A non-busy agent.run failure stays non-retryable.
+    server.emit({
+      type: 'error',
+      payload: { phase: 'agent.run', message: 'provider exploded', sessionId: 'sess_1' },
+    });
+    await expect(running.result).rejects.toMatchObject({ kind: 'server', retryable: false });
+  });
+
   it('pins a busy refusal on the prompt just sent, not on the run still going', async () => {
     const { server, client } = await connected();
     const running = client.send('first');
@@ -837,6 +868,7 @@ describe('createHttpClient', () => {
     await expect(run2.result).rejects.toMatchObject({
       kind: 'server',
       detail: 'Session turn is already in progress',
+      retryable: true,
     });
     server.emit({
       type: 'run.result',
