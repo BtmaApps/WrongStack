@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T22:24:36.667Z
+**Generated:** 2026-10-17T22:25:15.887Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5154 |
-| Production source lines | 1118598 |
-| Test files | 4460 |
+| Production source files | 5155 |
+| Production source lines | 1118665 |
+| Test files | 4461 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16952 |
+| Relative module edges | 16955 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -35,7 +35,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/core | 1147 | 990 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 33 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
-| @wrongstack/kanban | 108 | 82 | @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/kanban | 109 | 83 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 7 | 8 | @wrongstack/core, @wrongstack/mcp |
 | @wrongstack/mcp | 63 | 77 | @wrongstack/core |

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T22:24:36.667Z",
+  "generatedAt": "2026-10-17T22:25:15.887Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5154,
-    "testFiles": 4460,
-    "sourceLines": 1118598,
+    "sourceFiles": 5155,
+    "testFiles": 4461,
+    "sourceLines": 1118665,
     "workspaceEdges": 139,
-    "moduleEdges": 16952,
+    "moduleEdges": 16955,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -316,8 +316,8 @@
     {
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
-      "sourceFiles": 108,
-      "testFiles": 82,
+      "sourceFiles": 109,
+      "testFiles": 83,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -331,7 +331,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 82
+          "testFiles": 83
         }
       ]
     },
@@ -12543,6 +12543,12 @@
       },
       {
         "file": "packages/kanban/tests/verification/criterion-input-preserved.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/kanban/tests/verification/desktop-vitest-command.test.ts",
         "projects": [
           "root-node"
         ]

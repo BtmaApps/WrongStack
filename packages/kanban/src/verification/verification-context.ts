@@ -40,6 +40,7 @@ import {
   VERIFIER_COMMANDS_ENV,
   validateCommand,
 } from './command-security.js';
+import { isDesktopVitestCommand, resolveDesktopVitestCommand } from './desktop-vitest-command.js';
 import { parseGitNameStatus, parseGitNumstat, tryParseTestJson } from './test-output-parser.js';
 import {
   detectTestRunner,
@@ -379,6 +380,16 @@ export class VerificationContext {
 
     const tokens = parseCommandArguments(command);
     if (typeof tokens === 'string') return this.rejectedCommand(command, start, tokens);
+    if (isDesktopVitestCommand(tokens)) {
+      const invocation = await resolveDesktopVitestCommand(this.projectRoot);
+      if (typeof invocation === 'string') return this.rejectedCommand(command, start, invocation);
+      const result = await this.runProcess(invocation.command, invocation.args, {
+        cwd: invocation.cwd,
+        timeoutMs: opts?.timeoutMs ?? 180_000,
+        shell: false,
+      });
+      return { ...result, command };
+    }
     const constrainedPnpmExec = parseConstrainedPnpmExec(tokens);
     if (typeof constrainedPnpmExec === 'object' && constrainedPnpmExec !== null) {
       const resolved = await resolveConfiguredExecutable(
