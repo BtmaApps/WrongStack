@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T15:53:32.545Z",
+  "generatedAt": "2026-10-17T16:34:44.622Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5130,
-    "testFiles": 4450,
-    "sourceLines": 1113615,
+    "sourceFiles": 5134,
+    "testFiles": 4454,
+    "sourceLines": 1115232,
     "workspaceEdges": 139,
-    "moduleEdges": 16868,
+    "moduleEdges": 16880,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 958
+    "testOnlyExports": 959
   },
   "errors": [],
   "packageCycles": [],
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 667,
+      "sourceFiles": 668,
       "testFiles": 652,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -271,8 +271,8 @@
     {
       "name": "@wrongstack/desktop",
       "dir": "apps/desktop",
-      "sourceFiles": 46,
-      "testFiles": 31,
+      "sourceFiles": 48,
+      "testFiles": 33,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/webui",
@@ -288,7 +288,7 @@
         {
           "path": "apps/desktop/tsconfig.test.json",
           "error": null,
-          "testFiles": 31
+          "testFiles": 33
         }
       ]
     },
@@ -316,8 +316,8 @@
     {
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
-      "sourceFiles": 108,
-      "testFiles": 82,
+      "sourceFiles": 109,
+      "testFiles": 83,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -331,7 +331,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 82
+          "testFiles": 83
         }
       ]
     },
@@ -849,7 +849,7 @@
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
       "sourceFiles": 32,
-      "testFiles": 5,
+      "testFiles": 6,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -862,7 +862,7 @@
         {
           "path": "packages/vibeui/tsconfig.test.json",
           "error": null,
-          "testFiles": 5
+          "testFiles": 6
         }
       ]
     },
@@ -1155,6 +1155,18 @@
       },
       {
         "file": "apps/desktop/tests/desktop-privileged-actions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop/tests/focus-boundary.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop/tests/focus-routing.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12530,6 +12542,12 @@
         ]
       },
       {
+        "file": "packages/kanban/tests/verification/desktop-vitest-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/kanban/tests/verification/evidence-validator-coverage.test.ts",
         "projects": [
           "root-node"
@@ -22646,6 +22664,12 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/resources.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/runtime-surfaces.test.ts",
         "projects": [
           "root-node"
@@ -28045,8 +28069,8 @@
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 746,
-      "relativeImports": 12
+      "lines": 950,
+      "relativeImports": 16
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
@@ -28056,14 +28080,14 @@
   ],
   "hotspots": [
     {
+      "file": "packages/vibeui/src/components/workspace.tsx",
+      "lines": 950,
+      "relativeImports": 16
+    },
+    {
       "file": "packages/vibeui/src/lib/session.ts",
       "lines": 826,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 746,
-      "relativeImports": 12
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
@@ -28111,6 +28135,11 @@
       "relativeImports": 12
     },
     {
+      "file": "apps/desktop/src/main/main.ts",
+      "lines": 698,
+      "relativeImports": 20
+    },
+    {
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
@@ -28144,11 +28173,6 @@
       "file": "packages/core/src/storage/config-loader.ts",
       "lines": 695,
       "relativeImports": 28
-    },
-    {
-      "file": "apps/desktop/src/main/main.ts",
-      "lines": 694,
-      "relativeImports": 20
     },
     {
       "file": "packages/cli/src/slash-commands/fix-classifier.ts",
@@ -31338,6 +31362,10 @@
     {
       "file": "packages/vector-memory/src/sage-fusion.ts",
       "name": "__testing"
+    },
+    {
+      "file": "packages/vibeui/src/lib/use-panel-requests.ts",
+      "name": "acceptsPanelReply"
     },
     {
       "file": "packages/webui-hq/src/data/local-prefs.ts",

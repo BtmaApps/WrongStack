@@ -1631,6 +1631,9 @@
     "packages/vector-memory/src/sage-fusion.ts": [
       "__testing"
     ],
+    "packages/vibeui/src/lib/use-panel-requests.ts": [
+      "acceptsPanelReply"
+    ],
     "packages/webui-hq/src/data/local-prefs.ts": [
       "getHqLocalPrefsSnapshot",
       "reloadHqLocalPrefs",

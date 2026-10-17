@@ -1,0 +1,49 @@
+{
+  "name": "@wrongstack/vibeui",
+  "version": "1.1.7",
+  "description": "A focused WrongStack coding workspace built with Next.js and Radix UI.",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "bun --bun next dev --hostname 127.0.0.1 --port 3476",
+    "build": "bun --bun next build --webpack && bun build-package.mjs",
+    "typecheck": "bun ../../scripts/bun-typecheck.mjs --noEmit && bun ../../scripts/bun-typecheck.mjs --noEmit -p tsconfig.test.json",
+    "test": "bun --bun run vitest run --config vitest.config.ts",
+    "test:browser": "bun tests/browser-smoke.mjs"
+  },
+  "dependencies": {
+    "@wrongstack/webui-protocol": "workspace:*",
+    "lucide-react": "1.45.0",
+    "radix-ui": "1.8.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
+  },
+  "devDependencies": {
+    "next": "16.4.2",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

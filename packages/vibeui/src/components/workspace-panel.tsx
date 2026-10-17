@@ -1,0 +1,329 @@
+'use client';
+
+import {
+  Check,
+  ChevronRight,
+  FileCode2,
+  FileDiff,
+  ListChecks,
+  RefreshCw,
+  TerminalSquare,
+  Users,
+  X,
+} from 'lucide-react';
+import { Tabs } from 'radix-ui';
+import { useEffect, useState } from 'react';
+import { compareLines } from '../lib/diff';
+import type { SessionController } from '../lib/use-session';
+import { AgentMonitor } from './agent-monitor';
+import { Modal } from './dialogs';
+
+export function WorkspacePanel({
+  controller,
+  onClose,
+  revealAgents = 0,
+  requestedView,
+}: {
+  controller: SessionController;
+  onClose: () => void;
+  revealAgents?: number;
+  requestedView?: { tab: string; key: number };
+}) {
+  const { state, send, connection, refreshWorkspace } = controller;
+  const [tab, setTab] = useState('changes');
+  const [selectedPath, setSelectedPath] = useState('');
+  useEffect(() => {
+    if (requestedView?.key) setTab(requestedView.tab);
+  }, [requestedView]);
+  useEffect(() => {
+    if (revealAgents) setTab('agents');
+  }, [revealAgents]);
+  useEffect(() => {
+    setSelectedPath('');
+  }, [state.id]);
+  return (
+    <aside className="workspace-panel" aria-label="Workspace">
+      <header>
+        <span className="eyebrow">WORKSPACE</span>
+        <div>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Refresh workspace"
+            disabled={connection !== 'open'}
+            onClick={refreshWorkspace}
+          >
+            <RefreshCw size={14} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Close workspace"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </header>
+      <Tabs.Root value={tab} onValueChange={setTab} className="workspace-tabs">
+        <Tabs.List aria-label="Workspace views" className="tab-list">
+          <Tabs.Trigger value="changes">
+            <FileDiff size={14} />
+            Changes <span>{state.files.length}</span>
+          </Tabs.Trigger>
+          <Tabs.Trigger value="tasks">
+            <ListChecks size={14} />
+            Tasks
+          </Tabs.Trigger>
+          <Tabs.Trigger value="activity">
+            <TerminalSquare size={14} />
+            Activity
+          </Tabs.Trigger>
+
+          <Tabs.Trigger value="agents">
+            <Users size={14} />
+            Agents
+          </Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="agents" className="panel-content">
+          <AgentMonitor key={state.id} agents={state.agents} connected={connection === 'open'} />
+        </Tabs.Content>
+
+        <Tabs.Content value="changes" className="panel-content">
+          <div className="panel-section-heading">
+            <h2>Working changes</h2>
+            <span>{state.files.length} files</span>
+          </div>
+          {!state.files.length && (
+            <PanelEmpty
+              icon={<FileDiff size={23} />}
+              title="A clean slate"
+              detail="Changed files will appear here as you build."
+            />
+          )}
+          <div className="changed-files">
+            {state.files.map((file) => (
+              <div key={file.path}>
+                <button
+                  type="button"
+                  className={`file-row ${selectedPath === file.path ? 'selected' : ''}`}
+                  disabled={connection !== 'open'}
+                  onClick={() => {
+                    setSelectedPath(file.path);
+                    send('git.diff', { sessionId: state.id, path: file.path });
+                  }}
+                >
+                  <FileCode2 size={15} />
+                  <span title={file.path}>{file.path}</span>
+                  <small className="diff-add">{file.additions ? `+${file.additions}` : ''}</small>
+                  <small className="diff-remove">
+                    {file.deletions ? `−${file.deletions}` : ''}
+                  </small>
+                  <b>{file.status}</b>
+                </button>
+              </div>
+            ))}
+          </div>
+          {selectedPath && (
+            <Modal
+              open
+              onOpenChange={(open) => {
+                if (!open) setSelectedPath('');
+              }}
+              title={selectedPath}
+              description="Working tree changes · compare diff, before and after."
+              wide
+            >
+              <div className="diff-view">
+                {state.diff?.path !== selectedPath ? (
+                  <p className="panel-hint">Loading file…</p>
+                ) : state.diff.error ? (
+                  <p role="status">{state.diff.error}</p>
+                ) : (
+                  <Tabs.Root defaultValue="diff">
+                    <Tabs.List className="diff-tabs" aria-label="File version">
+                      <Tabs.Trigger value="diff">Diff</Tabs.Trigger>
+                      <Tabs.Trigger value="before">Before</Tabs.Trigger>
+                      <Tabs.Trigger value="after">After</Tabs.Trigger>
+                    </Tabs.List>
+                    <Tabs.Content value="diff">
+                      <div className="file-lines">
+                        <pre>
+                          {compareLines(state.diff.oldText, state.diff.newText)
+                            .slice(0, 2000)
+                            .map((line, i) => (
+                              <span className={`code-line line-${line.kind}`} key={i}>
+                                <span>{line.newLine ?? line.oldLine}</span>
+                                {line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' '}{' '}
+                                {line.text || ' '}
+                              </span>
+                            ))}
+                        </pre>
+                      </div>
+                    </Tabs.Content>
+                    <Tabs.Content value="before">
+                      <FileLines value={state.diff.oldText} />
+                    </Tabs.Content>
+                    <Tabs.Content value="after">
+                      <FileLines value={state.diff.newText} />
+                    </Tabs.Content>
+                  </Tabs.Root>
+                )}
+              </div>
+            </Modal>
+          )}
+        </Tabs.Content>
+        <Tabs.Content value="tasks" className="panel-content">
+          {!state.todos.length && !state.tasks.length && !state.plan.length && (
+            <PanelEmpty
+              icon={<ListChecks size={23} />}
+              title="Room for a plan"
+              detail="The agent’s plan and tasks will appear here when available."
+            />
+          )}
+          {[
+            { title: 'To-do', items: state.todos },
+            { title: 'Plan', items: state.plan },
+            { title: 'Tasks', items: state.tasks },
+          ]
+            .filter((group) => group.items.length)
+            .map((group) => (
+              <section className="task-section" key={group.title}>
+                <h2>{group.title}</h2>
+                {group.items.map((task) => (
+                  <div
+                    className={`task-row ${task.status === 'completed' || task.status === 'done' ? 'complete' : ''}`}
+                    key={task.id}
+                  >
+                    <span className="task-check">
+                      {task.status === 'completed' || task.status === 'done' ? (
+                        <Check size={12} />
+                      ) : task.status === 'in_progress' ? (
+                        <span className="status-dot busy" />
+                      ) : null}
+                    </span>
+                    <span>
+                      {task.title}
+                      <small>{task.status.replaceAll('_', ' ')}</small>
+                    </span>
+                  </div>
+                ))}
+              </section>
+            ))}
+        </Tabs.Content>
+        <Tabs.Content value="activity" className="panel-content">
+          {state.artifacts.length > 0 && (
+            <section className="task-section">
+              <h2>Outputs</h2>
+              {state.artifacts.map((artifact) => (
+                <button
+                  type="button"
+                  className="file-row"
+                  key={artifact.id}
+                  disabled={connection !== 'open'}
+                  onClick={() => controller.openArtifact(artifact)}
+                >
+                  <FileCode2 size={15} />
+                  <span>{artifact.title}</span>
+                  <ChevronRight size={13} />
+                </button>
+              ))}
+            </section>
+          )}
+          {state.preview && (
+            <section className="artifact-preview">
+              <div className="panel-section-heading">
+                <h3>{state.preview.artifact.title}</h3>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Close output preview"
+                  onClick={controller.closeArtifact}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              {state.preview.loading ? (
+                <p className="panel-hint">Loading output…</p>
+              ) : state.preview.error ? (
+                <p role="status" className="panel-hint">
+                  {state.preview.error}
+                </p>
+              ) : state.preview.artifact.kind === 'image' ? (
+                <img src={state.preview.content} alt={state.preview.artifact.title} />
+              ) : (
+                <pre>{state.preview.content}</pre>
+              )}
+            </section>
+          )}
+          <div className="panel-section-heading">
+            <h2>Behind the scenes</h2>
+            <span>{state.tools.length} calls</span>
+          </div>
+          {!state.tools.length && (
+            <PanelEmpty
+              icon={<TerminalSquare size={23} />}
+              title="Quiet for now"
+              detail="Tool calls and their results stay here, out of your way."
+            />
+          )}
+          {state.tools
+            .slice()
+            .reverse()
+            .map((tool) => (
+              <details className="tool-card" key={tool.id}>
+                <summary>
+                  <span
+                    className={`status-dot ${tool.status === 'running' ? 'busy' : tool.status === 'error' || tool.status === 'interrupted' ? 'error' : ''}`}
+                  />
+                  <span>{tool.name}</span>
+                  <small>{tool.status}</small>
+                  <ChevronRight size={13} />
+                </summary>
+                <pre>{JSON.stringify(tool.input, null, 2)}</pre>
+                {tool.output && <pre>{tool.output}</pre>}
+              </details>
+            ))}
+        </Tabs.Content>
+      </Tabs.Root>
+      <footer>
+        <span className={`status-dot ${connection === 'open' ? '' : 'error'}`} />
+        {connection === 'open' ? 'Local workspace' : 'Connection interrupted — reconnecting'}
+      </footer>
+    </aside>
+  );
+}
+
+function FileLines({ value }: { value: string }) {
+  const lines = value.split('\n');
+  return (
+    <div className="file-lines">
+      <pre>
+        {lines.slice(0, 2000).map((line, i) => (
+          <span className="code-line" key={i}>
+            <span>{i + 1}</span>
+            {line || ' '}
+          </span>
+        ))}
+      </pre>
+      {lines.length > 2000 && <p className="panel-hint">Showing the first 2,000 lines.</p>}
+    </div>
+  );
+}
+function PanelEmpty({
+  icon,
+  title,
+  detail,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="panel-empty">
+      {icon}
+      <h3>{title}</h3>
+      <p>{detail}</p>
+    </div>
+  );
+}

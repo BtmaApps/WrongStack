@@ -69,6 +69,7 @@
     "@wrongstack/sdd": "workspace:*",
     "@wrongstack/security-scanner": "workspace:*",
     "@wrongstack/simpleui": "workspace:*",
+    "@wrongstack/vibeui": "workspace:*",
     "@wrongstack/techstack": "workspace:*",
     "@wrongstack/telegram": "workspace:*",
     "@wrongstack/tools": "workspace:*",
