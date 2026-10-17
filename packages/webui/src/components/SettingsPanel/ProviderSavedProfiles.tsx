@@ -11,8 +11,8 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-
 import { confirmModal } from '@/components/ConfirmModal';
+import { ProviderLogo } from '@/components/ProviderLogo';
 import { isProviderDisabled } from '@/components/QuickModelSwitcher.filter';
 
 import { ModelEditor } from '../SetupScreen/ModelEditor';
@@ -26,9 +26,8 @@ import { Input } from '../ui/input';
 import { LOCAL_SERVER_PRESETS } from './local-presets';
 
 import { PreferenceToggle } from './PreferenceToggle';
-
-import { ProviderModelsPanel } from './ProviderModelsPanel';
 import { ProviderCloudSettings } from './ProviderCloudSettings';
+import { ProviderModelsPanel } from './ProviderModelsPanel';
 export function ProviderSavedProfiles({
   t,
   savedProviders,
@@ -269,6 +268,7 @@ export function ProviderSavedProfiles({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <ProviderLogo providerId={sp.id} baseUrl={sp.baseUrl} providerType={sp.type} />
                   <h4 className="min-w-0 break-words font-mono text-sm font-semibold text-foreground">
                     {sp.id}
                   </h4>
@@ -370,7 +370,7 @@ export function ProviderSavedProfiles({
 
               {/* API Keys */}
               <div className="rounded-lg border border-border/70 bg-background/75 p-3 shadow-sm shadow-black/[0.02]">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <span className="text-sm font-semibold">
                       {t('settings:provider.apiKeysLabel')}

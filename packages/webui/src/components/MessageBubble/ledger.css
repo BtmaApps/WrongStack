@@ -1,14 +1,12 @@
 /* ── Terminal Ledger ────────────────────────────────────────────────────────
- * Tool results and model-reasoning blocks in the chat history, styled as sharp
- * editorial-terminal cards with a colored status rail. The design system pins
- * every radius to 0, so identity comes from hairline borders, a monospace
- * ledger header, and a left status rail — never rounded corners. Motion is
- * restrained: only a live (running / streaming) card breathes.
+ * Tool results and reasoning blocks retain a readable monospace header and
+ * semantic status rail within the workbench's softer surface geometry.
  * ---------------------------------------------------------------------------*/
 
 .ws-ledger {
   position: relative;
-  background: hsl(var(--card) / 0.4);
+  background: linear-gradient(145deg, hsl(var(--card) / 0.9), hsl(var(--card) / 0.55));
+  border-radius: 12px;
   border-left-width: 2px;
   border-left-style: solid;
 }
@@ -23,7 +21,6 @@
 }
 .ws-ledger--running {
   border-left-color: hsl(var(--warning) / 0.9);
-  animation: wsRailPulse 1.8s ease-in-out infinite;
 }
 
 /* A single hairline sweep down a running rail — reads as "work in flight"
@@ -40,19 +37,6 @@
   pointer-events: none;
 }
 
-/* The header dot: solid, tinted by status; pulses only while running. */
-.ws-ledger__dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  background: currentColor;
-  box-shadow: 0 0 6px -1px currentColor;
-}
-.ws-ledger__dot--running {
-  animation: wsDotPulse 1.4s ease-in-out infinite;
-}
-
 /* ── Reasoning log ──────────────────────────────────────────────────────────
  * Model reasoning gets a dotted rail instead of a solid one — a quieter,
  * "aside" texture distinct from the tool ledger's decisive solid rail. */
@@ -66,19 +50,9 @@
   filter: drop-shadow(0 0 5px hsl(var(--primary) / 0.4));
 }
 
-@keyframes wsRailPulse {
-  0%,
-  100% {
-    border-left-color: hsl(var(--warning) / 0.9);
-  }
-  50% {
-    border-left-color: hsl(var(--warning) / 0.4);
-  }
-}
-
 @keyframes wsRailSweep {
   0% {
-    top: -34%;
+    transform: translateY(-100%);
     opacity: 0;
   }
   25% {
@@ -88,27 +62,14 @@
     opacity: 1;
   }
   100% {
-    top: 100%;
+    transform: translateY(300%);
     opacity: 0;
-  }
-}
-
-@keyframes wsDotPulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.45;
-    transform: scale(0.82);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ws-ledger--running,
-  .ws-ledger--running::before,
-  .ws-ledger__dot--running {
+  .ws-ledger--running::before {
     animation: none;
   }
   .ws-ledger--running::before {

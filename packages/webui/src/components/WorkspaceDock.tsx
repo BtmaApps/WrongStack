@@ -150,6 +150,7 @@ function DockChip({
   return (
     <button
       type="button"
+      data-active={active}
       onClick={onClick}
       title={
         active
@@ -157,7 +158,7 @@ function DockChip({
           : t('activity:dock.expandChip', { label })
       }
       className={cn(
-        'flex items-center gap-2 h-7 px-2.5 rounded-md border text-xs font-medium shrink-0 transition-colors',
+        'ws-dock-chip flex items-center gap-2 h-8 px-3 rounded-lg border text-xs font-medium shrink-0',
         active ? activeTone : cn('border-border/40', idleTone),
       )}
     >
@@ -244,7 +245,7 @@ export function WorkspaceDock() {
   return (
     <div>
       {/* ── Chip strip ── */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/70 bg-card/70 px-2 py-1.5 shadow-sm">
+      <div className="ws-dock-surface flex flex-wrap items-center gap-1.5 rounded-xl border border-border/70 px-2 py-2 shadow-sm">
         {visible.goal && (
           <DockChip
             section="goal"

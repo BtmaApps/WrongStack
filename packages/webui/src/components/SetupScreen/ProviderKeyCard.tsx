@@ -8,8 +8,9 @@ import {
   Loader2,
   Share2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { useEffect, useState } from 'react';
+import { ProviderLogo } from '@/components/ProviderLogo';
 import { toast } from '@/components/Toaster';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -131,7 +132,11 @@ export function ProviderKeyCard({
       )}
     >
       <div className="flex items-start gap-3">
-        <span className="text-2xl shrink-0 mt-0.5">{popular.icon}</span>
+        <ProviderLogo
+          providerId={popular.id}
+          baseUrl={catalogProvider?.apiBase}
+          className="h-10 w-10"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold">{popular.name}</h3>

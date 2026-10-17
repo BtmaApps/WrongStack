@@ -13,6 +13,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { sessionModelStats } from '@/lib/session-model-stats';
 import { buildSessionStory, type StoryEvent, type StoryKind } from '@/lib/session-story';
@@ -172,7 +173,8 @@ export function SessionStoryView() {
       data-motion={motion ? 'on' : 'off'}
     >
       <div className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-7">
-        <header className="border-b border-border bg-card px-5 py-4">
+        <header className="ws-page-header border-b border-border">
+          <PageMotif kind="flow" />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
@@ -191,9 +193,7 @@ export function SessionStoryView() {
               <p className="mb-2 text-xs uppercase tracking-[.25em] text-info">
                 {t('activity:story.heroEyebrow')}
               </p>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                {t('activity:story.heroHeadline')}
-              </h1>
+              <h1 className="tracking-tight">{t('activity:story.heroHeadline')}</h1>
               {latestRequest && (
                 <p className="mt-3 max-w-3xl text-sm leading-6">{latestRequest.slice(0, 320)}</p>
               )}

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import {
   ChevronDown,
   ChevronRight,
@@ -6,8 +7,8 @@ import {
   ScrollText,
   TriangleAlert,
 } from 'lucide-react';
-import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
@@ -138,11 +139,12 @@ export function PromptJournalView() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
       {/* ── Header ── */}
-      <div className="border-b border-border/70 px-4 py-3 sm:px-6">
+      <div className="ws-page-header border-b border-border/70">
+        <PageMotif kind="library" />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ScrollText className="h-5 w-5 text-primary" />
-            <h1 className="text-base font-semibold">{t('activity:promptJournal.title')}</h1>
+            <h1 className="">{t('activity:promptJournal.title')}</h1>
           </div>
           <button
             type="button"

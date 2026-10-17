@@ -1,4 +1,5 @@
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 
@@ -28,13 +29,14 @@ export function ChimeraReviewsHeader({
 }: ChimeraReviewsHeaderProps) {
   const { t } = useAppTranslation();
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-3 sm:px-6">
+    <div className="ws-page-header flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border">
+      <PageMotif kind="scan" />
       <div className="flex items-center gap-2">
-        <span className="text-xl" aria-hidden>
-          🦂
+        <span className="ws-page-icon" aria-hidden>
+          <ShieldCheck className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-base font-semibold leading-none">Chimera Review Hub & Journal</h1>
+          <h1 className="leading-none">Chimera Review Hub & Journal</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Track agent code reviews, findings, session lineage, and audit event timeline
           </p>

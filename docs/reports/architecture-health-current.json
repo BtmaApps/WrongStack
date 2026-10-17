@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T22:22:47.993Z",
+  "generatedAt": "2026-10-17T22:23:37.956Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5147,
-    "testFiles": 4456,
-    "sourceLines": 1117811,
+    "sourceFiles": 5152,
+    "testFiles": 4457,
+    "sourceLines": 1118335,
     "workspaceEdges": 139,
-    "moduleEdges": 16938,
+    "moduleEdges": 16948,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -869,8 +869,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 750,
-      "testFiles": 486,
+      "sourceFiles": 755,
+      "testFiles": 487,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 486
+          "testFiles": 487
         }
       ]
     },
@@ -25826,6 +25826,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/provider-logo.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/provider-models-panel-filter.test.ts",
         "projects": [
           "webui-jsdom"
@@ -28177,6 +28183,11 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/webui/src/components/KanbanView.tsx",
+      "lines": 696,
+      "relativeImports": 18
+    },
+    {
       "file": "packages/core/src/registry/tool-registry.ts",
       "lines": 695,
       "relativeImports": 9
@@ -28212,11 +28223,6 @@
       "relativeImports": 4
     },
     {
-      "file": "packages/webui/src/components/KanbanView.tsx",
-      "lines": 693,
-      "relativeImports": 17
-    },
-    {
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
@@ -28247,6 +28253,11 @@
       "relativeImports": 5
     },
     {
+      "file": "packages/webui/src/components/SettingsPanel/index.tsx",
+      "lines": 691,
+      "relativeImports": 25
+    },
+    {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 691,
       "relativeImports": 14
@@ -28275,11 +28286,6 @@
       "file": "packages/core/src/storage/file-session-writer.ts",
       "lines": 689,
       "relativeImports": 14
-    },
-    {
-      "file": "packages/webui/src/components/SettingsPanel/index.tsx",
-      "lines": 689,
-      "relativeImports": 25
     },
     {
       "file": "packages/core/src/coordination/task-auctioneer.ts",

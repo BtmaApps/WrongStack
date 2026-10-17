@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "./workbench.css";
+@import "./pages.css";
+@import "./interactions.css";
 @source "../../providers/src/provider-definitions.ts";
 @source "../../providers/src/trusted-presets.ts";
 
@@ -39,7 +42,7 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
-  /* Product UI uses the website's crisp operator-manual geometry. */
+  /* Square geometry is shared by every control and surface. */
   --radius-xs: 0;
   --radius-sm: 0;
   --radius-md: 0;
@@ -400,10 +403,6 @@
   *::before,
   *::after {
     @apply border-border;
-    /* Design invariant: every WebUI surface, control, indicator and progress
-       track is square. This also neutralises legacy `rounded-full` utilities
-       while components are migrated incrementally. */
-    border-radius: 0 !important;
   }
 
   html {
@@ -1808,4 +1807,13 @@ kbd {
   /* `transition-colors` minus outline-color: hover/colour changes still ease,
      the focus ring does not. */
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+}
+
+/* Product-wide square-corner contract. Keep this unlayered: component CSS,
+   rounded-full utilities, inline third-party styles and portal content must
+   share the same geometry. SVG artwork and brand paths remain unchanged. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
 }

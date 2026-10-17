@@ -3,6 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { PageMotif } from '../PageMotif';
 
 /**
  * Sheet — a side-anchored overlay built on Radix Dialog.
@@ -74,7 +75,7 @@ const SheetContent = React.forwardRef<
       >
         {children}
         {showCloseButton ? (
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+          <DialogPrimitive.Close className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
@@ -85,8 +86,14 @@ const SheetContent = React.forwardRef<
 );
 SheetContent.displayName = DialogPrimitive.Content.displayName;
 
-const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex flex-col space-y-1.5 text-left p-4 border-b', className)} {...props} />
+const SheetHeader = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn('ws-sheet-heading flex flex-col space-y-1.5 text-left p-4 border-b', className)}
+    {...props}
+  >
+    <PageMotif kind="network" />
+    {children}
+  </div>
 );
 SheetHeader.displayName = 'SheetHeader';
 

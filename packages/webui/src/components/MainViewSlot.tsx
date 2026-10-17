@@ -51,7 +51,7 @@ export function MainViewSlot({
   }
 
   const content = meta.wrapperClassName ? (
-    <div className={meta.wrapperClassName}>
+    <div className={`${meta.wrapperClassName} ws-page ws-view-enter`} data-workbench-view={view}>
       <Component {...props} />
     </div>
   ) : (

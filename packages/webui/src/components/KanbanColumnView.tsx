@@ -267,12 +267,12 @@ export function KanbanColumnView({
   return (
     <section
       className={cn(
-        'flex h-full shrink-0 flex-col rounded-md border bg-muted/25 transition-[width] duration-200',
+        'ws-kanban-column flex h-full shrink-0 flex-col border',
         dragOver && 'border-primary/70 bg-primary/5',
         empty ? 'w-[180px]' : 'w-[310px]',
       )}
     >
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
+      <div className="ws-kanban-column-heading flex h-10 shrink-0 items-center gap-2 border-b px-3">
         <span
           className="h-2.5 w-2.5 rounded-full"
           style={{ background: column.color ?? 'hsl(var(--primary))' }}
@@ -324,6 +324,7 @@ export function KanbanColumnView({
           return (
             <li
               key={task.id}
+              data-selected={selectedTaskId === task.id}
               draggable={board.lifecycle?.mode !== 'managed'}
               onDragStart={(event) => {
                 if (board.lifecycle?.mode === 'managed') return;
@@ -336,7 +337,7 @@ export function KanbanColumnView({
               }}
               onDragEnd={() => setDragTaskId(null)}
               className={cn(
-                'relative rounded-md border bg-background p-3 shadow-sm transition-colors',
+                'ws-task-card ws-interactive-card relative border p-3',
                 selectedTaskId === task.id ? 'border-primary' : 'hover:border-primary/50',
               )}
             >

@@ -200,7 +200,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 shrink-0 flex-col border-r border-border/70 bg-card/75 backdrop-blur-xl',
+        'ws-activity-rail flex h-full min-h-0 shrink-0 flex-col border-r border-border/70 backdrop-blur-xl',
         desktopShell ? 'w-10' : 'w-12',
       )}
     >

@@ -163,7 +163,7 @@ function MemoryCard({ memory, isSelected, onClick }: MemoryCardProps) {
       aria-current={isSelected ? 'true' : undefined}
       onClick={onClick}
       className={cn(
-        'group relative block w-full border-b border-border/55 px-3 py-3 text-left transition-[background-color,border-color] hover:bg-info/5',
+        'ws-memory-card ws-record-row group relative block w-full border-b border-border/55 px-3 py-3 text-left transition-[background-color,border-color] hover:bg-info/5',
         isSelected && 'bg-info/8',
       )}
     >

@@ -240,8 +240,9 @@ export const MessageBubble = memo(function MessageBubble({
           <ToolLedgerCard message={message} readOnly={readOnly} />
         ) : (
           <div
+            data-role={message.role}
             className={cn(
-              'max-w-full rounded-lg shadow-sm',
+              'ws-message-surface max-w-full rounded-xl shadow-sm',
               compactMode ? 'px-3 py-1.5' : 'px-4 py-3',
               isUser
                 ? 'bg-transparent text-foreground border border-primary/40 rounded-br-sm'
@@ -249,6 +250,7 @@ export const MessageBubble = memo(function MessageBubble({
                   ? 'bg-muted/30 border border-border/30 text-muted-foreground text-xs italic py-2'
                   : 'bg-card border border-border/70 text-foreground',
               message.isError && 'border-destructive/20',
+              editing && isUser && 'w-full',
               isUser && message.status === 'failed' && 'opacity-60 ring-1 ring-destructive/30',
             )}
           >
@@ -257,7 +259,7 @@ export const MessageBubble = memo(function MessageBubble({
             ) : isPerfRun ? (
               <PerfRunCard perfRun={perfRun} />
             ) : editing && isUser ? (
-              <div className="flex flex-col gap-2 min-w-[280px]">
+              <div className="ws-message-edit flex w-full min-w-0 flex-col gap-2 sm:min-w-[280px]">
                 <textarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}

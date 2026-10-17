@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T22:22:47.993Z
+**Generated:** 2026-10-17T22:23:37.956Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5147 |
-| Production source lines | 1117811 |
-| Test files | 4456 |
+| Production source files | 5152 |
+| Production source lines | 1118335 |
+| Test files | 4457 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16938 |
+| Relative module edges | 16948 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -59,7 +59,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tui | 496 | 426 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 45 | 9 | @wrongstack/webui-protocol |
-| @wrongstack/webui | 750 | 486 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 755 | 487 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 300 | 296 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -101,6 +101,7 @@ None.
 | 696 | `packages/core/src/coordination/autonomous-brain.ts` |
 | 696 | `packages/core/src/coordination/fleet-manager.ts` |
 | 696 | `packages/webui-server/src/server/completion-handlers.ts` |
+| 696 | `packages/webui/src/components/KanbanView.tsx` |
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
 | 694 | `apps/desktop/src/main/main.ts` |
@@ -108,20 +109,19 @@ None.
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |
 | 693 | `packages/webui-server/src/server/memory-handlers.ts` |
-| 693 | `packages/webui/src/components/KanbanView.tsx` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |
 | 692 | `packages/webui/src/components/MailboxPanel.tsx` |
 | 691 | `packages/core/src/core/agent-response.ts` |
 | 691 | `packages/governance/src/event-store.ts` |
 | 691 | `packages/sage/src/types.ts` |
 | 691 | `packages/tui/src/hooks/use-director-fleet-bridge.ts` |
+| 691 | `packages/webui/src/components/SettingsPanel/index.tsx` |
 | 691 | `packages/webui/src/lib/ws-client.ts` |
 | 690 | `packages/cli/src/slash-commands/kanban-task-subcommands.ts` |
 | 690 | `packages/core/src/coordination/autonomous-coordinator.ts` |
 | 690 | `packages/tui/src/reducers/settings-value-cycle.ts` |
 | 689 | `packages/core/src/core/agent-tools.ts` |
 | 689 | `packages/core/src/storage/file-session-writer.ts` |
-| 689 | `packages/webui/src/components/SettingsPanel/index.tsx` |
 | 688 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 688 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 687 | `packages/core/src/chronicle/project-server-client.ts` |

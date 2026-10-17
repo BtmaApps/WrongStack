@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronRight, Home, Network, Radio } from 'lucide-react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { LiveAgentPresence } from '@/stores/codemap-activity-store';
@@ -24,15 +25,14 @@ export function CodeMapHeader({
 }: CodeMapHeaderProps): React.ReactElement {
   const { t } = useAppTranslation();
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b bg-card px-4 py-3">
+    <header className="ws-page-header flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b">
+      <PageMotif kind="network" />
       <div className="flex min-w-[220px] items-center gap-3">
-        <span className="flex h-9 w-9 items-center justify-center border border-primary bg-primary/10 text-primary">
+        <span className="ws-page-icon flex h-9 w-9 items-center justify-center border border-primary bg-primary/10 text-primary">
           <Network className="h-4 w-4" />
         </span>
         <div>
-          <h1 className="font-display text-sm font-semibold tracking-tight">
-            {t('activity:codeMap.codeAtlas')}
-          </h1>
+          <h1 className="font-display tracking-tight">{t('activity:codeMap.codeAtlas')}</h1>
           <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
             {t('activity:codeMap.architectureIntelligence')}
           </p>

@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -302,13 +303,12 @@ export function TechStackView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="shrink-0 border-b border-border/70 px-4 py-3">
+      <header className="ws-page-header shrink-0 border-b border-border/70">
+        <PageMotif kind="system" />
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-base font-bold sm:text-lg">
-                {t('activity:techStack.techstack')}
-              </h1>
+              <h1 className="">{t('activity:techStack.techstack')}</h1>
               <span className="border border-info/35 bg-info/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-info">
                 {snapshot
                   ? t('activity:techStack.workspaceCount', { count: snapshot.workspaces.length })
@@ -399,7 +399,7 @@ export function TechStackView() {
 
       {/* Metrics */}
       {snapshot && (
-        <div className="grid shrink-0 grid-cols-2 gap-px border-b border-border/70 bg-border/60 sm:grid-cols-4">
+        <div className="ws-metric-grid grid shrink-0 grid-cols-2 border-b border-border/70 sm:grid-cols-4">
           <MetricCard
             label={t('activity:techStack.dependencies')}
             value={dependencies.length}

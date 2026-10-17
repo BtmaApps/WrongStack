@@ -22,6 +22,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -249,7 +250,8 @@ export function SessionInspectView() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-[hsl(var(--surface-2)/0.45)] overflow-y-auto overscroll-contain">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-10 shrink-0 border-b border-border/70 bg-card/90 px-4 py-3 backdrop-blur-sm">
+      <header className="ws-page-header sticky top-0 z-10 shrink-0 border-b border-border/70 backdrop-blur-sm">
+        <PageMotif kind="scan" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <button
@@ -261,7 +263,7 @@ export function SessionInspectView() {
               {t('activity:sessionInspect.backToSessions')}
             </button>
             <div className="flex items-center gap-2">
-              <h1 className="truncate text-lg font-semibold tracking-tight" title={displayName}>
+              <h1 className="truncate tracking-tight" title={displayName}>
                 {displayName}
               </h1>
               {payload.outcome ? (

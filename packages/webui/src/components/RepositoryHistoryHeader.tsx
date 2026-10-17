@@ -1,4 +1,5 @@
 import { Filter, GitBranch, GitFork, RefreshCw, Search } from 'lucide-react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { HistoryRef } from './repository-history-model';
@@ -25,17 +26,16 @@ export function RepositoryHistoryHeader({
 }) {
   const { t } = useAppTranslation();
   return (
-    <header className="shrink-0 border-b border-border/70 bg-card/30 px-4 py-3 backdrop-blur-xl sm:px-5">
+    <header className="ws-page-header shrink-0 border-b border-border/70 backdrop-blur-xl">
+      <PageMotif kind="flow" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_0_22px_hsl(var(--primary)/0.12)]">
+            <span className="ws-page-icon flex h-8 w-8 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_0_22px_hsl(var(--primary)/0.12)]">
               <GitFork className="h-4 w-4" />
             </span>
             <div>
-              <h1 className="text-base font-semibold tracking-tight">
-                {t('activity:repositoryHistory.title')}
-              </h1>
+              <h1 className="tracking-tight">{t('activity:repositoryHistory.title')}</h1>
               <p className="text-[11px] text-muted-foreground">
                 {t('activity:repositoryHistory.tagline')}
               </p>

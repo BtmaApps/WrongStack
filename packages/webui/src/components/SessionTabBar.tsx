@@ -161,7 +161,7 @@ export function SessionTabBar() {
   if (tabs.length === 0 && !currentSessionId) return null;
 
   return (
-    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border/70 bg-card/60 px-2 text-xs backdrop-blur-md">
+    <div className="ws-session-tabs flex h-10 shrink-0 items-center justify-between border-b border-border/70 px-2 text-xs backdrop-blur-md">
       <div
         role="tablist"
         aria-label={t('activity:tabBar.tablistLabel', { defaultValue: 'Open session tabs' })}
@@ -185,7 +185,7 @@ export function SessionTabBar() {
                 handleSelect(tab.sessionId);
               }}
               className={cn(
-                'group relative flex h-7 max-w-[220px] min-w-[126px] cursor-pointer items-center gap-1.5 rounded-t-md border px-2 transition-colors select-none',
+                'ws-session-tab group relative flex h-8 max-w-[220px] min-w-[126px] cursor-pointer items-center gap-1.5 rounded-t-lg border px-2 select-none',
                 tab.isActive
                   ? cn(accent.border, accent.activeBg, 'font-semibold text-foreground shadow-xs')
                   : 'border-border/40 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground',

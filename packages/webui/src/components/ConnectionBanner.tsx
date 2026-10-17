@@ -1,9 +1,9 @@
-import { cn } from '@/lib/utils';
-import { getWSClient } from '@/lib/ws-client';
-import { useAppTranslation } from '@/i18n';
-import { useConfigStore } from '@/stores';
 import { Loader2, RotateCcw, WifiOff, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { getWSClient } from '@/lib/ws-client';
+import { useConfigStore } from '@/stores';
 
 /**
  * Prominent connection-lost banner. The ActivityBar's status dot is easy
@@ -55,7 +55,7 @@ export function ConnectionBanner() {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-4 py-2 border-b text-sm',
+        'ws-banner flex items-center gap-3 px-4 py-2 border-b text-sm',
         isReconnecting
           ? 'bg-warning/10 text-warning border-warning/30'
           : 'bg-destructive/10 text-destructive border-destructive/30',

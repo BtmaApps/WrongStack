@@ -190,7 +190,7 @@ export function WorkbenchTopbar({
   return (
     <>
       {/* ── Mobile Compact Header (<md) ── */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border/70 bg-card/85 px-2.5 py-1.5 shadow-sm backdrop-blur-xl md:hidden">
+      <div className="ws-topbar flex shrink-0 items-center justify-between border-b border-border/70 bg-card/85 px-2.5 py-1.5 shadow-sm backdrop-blur-xl md:hidden">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
@@ -334,7 +334,7 @@ export function WorkbenchTopbar({
       </div>
 
       {/* ── Desktop Full Header (>=md) ── */}
-      <div className="hidden shrink-0 border-b border-border/70 bg-card/85 px-3 py-2 shadow-sm backdrop-blur-xl md:block">
+      <div className="ws-topbar hidden shrink-0 border-b border-border/70 bg-card/85 px-3 py-2 shadow-sm backdrop-blur-xl md:block">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="min-w-0">

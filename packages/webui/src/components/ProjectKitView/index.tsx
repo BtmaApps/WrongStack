@@ -10,6 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { navigateToView } from '@/lib/view-navigation';
@@ -43,11 +44,12 @@ export function ProjectKitView() {
   };
   return (
     <section className="flex h-full min-h-0 flex-col bg-background" aria-label="Project Kit">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 md:px-6">
+      <header className="ws-page-header flex flex-wrap items-center justify-between gap-3 border-b border-border">
+        <PageMotif kind="system" />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <PackageOpen className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Project Kit</h1>
+            <h1 className="">Project Kit</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{t('activity:projectKit.subtitle')}</p>
           {state.catalog && (

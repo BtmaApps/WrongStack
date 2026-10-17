@@ -111,7 +111,7 @@ export function SectionCard({
   return (
     <div
       className={cn(
-        'rounded-xl border bg-card/80 backdrop-blur-sm p-4 space-y-3',
+        'ws-panel rounded-xl border bg-card/80 backdrop-blur-sm p-4 space-y-3',
         'shadow-sm transition-shadow hover:shadow-md',
         'ring-1 ring-border/40',
         accentBg,

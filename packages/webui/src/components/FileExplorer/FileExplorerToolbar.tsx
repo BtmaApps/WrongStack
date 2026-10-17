@@ -22,7 +22,7 @@ export function FileExplorerToolbar({
 }) {
   const { t } = useAppTranslation();
   return (
-    <div className="flex items-center gap-0.5 px-2 py-0.5 border-b shrink-0">
+    <div className="flex flex-wrap items-center gap-1 px-2 py-2 border-b shrink-0 bg-card/40">
       <button
         type="button"
         onClick={onExpandAll}

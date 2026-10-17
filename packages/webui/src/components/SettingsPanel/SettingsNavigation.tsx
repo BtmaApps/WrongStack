@@ -92,7 +92,10 @@ export function SettingsNavigation({
   };
 
   return (
-    <nav aria-label={t('settings:navigation.label')} className="min-w-0 lg:sticky lg:top-4">
+    <nav
+      aria-label={t('settings:navigation.label')}
+      className="ws-settings-nav min-w-0 lg:sticky lg:top-4"
+    >
       <button
         type="button"
         aria-expanded={mobileOpen}

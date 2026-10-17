@@ -8,6 +8,7 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from './button';
 
 interface EmptyStateAction {
   label: string;
@@ -15,7 +16,7 @@ interface EmptyStateAction {
 }
 
 interface EmptyStateProps {
-  /** Icon component (lucide-react element). Rendered in a square tile. */
+  /** Icon component (lucide-react element), framed by a decorative vector. */
   icon?: ReactNode;
   /** Primary heading. */
   title: string;
@@ -40,15 +41,46 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex min-h-0 min-w-0 flex-1 items-center justify-center p-4',
+        'flex h-full min-h-0 min-w-0 flex-1 items-center justify-center p-4',
         panel && 'bg-[hsl(var(--surface-2)/0.45)]',
         className,
       )}
     >
-      <div className="flex w-full max-w-md flex-col items-center gap-4 p-5 sm:p-8 text-center text-muted-foreground">
+      <div className="ws-empty-state flex w-full max-w-md flex-col items-center gap-4 p-5 sm:p-8 text-center text-muted-foreground">
         {icon && (
-          <span className="flex h-12 w-12 items-center justify-center border border-primary/20 bg-primary/10 text-primary">
-            {icon}
+          <span className="ws-empty-art" aria-hidden="true">
+            <svg viewBox="0 0 120 96" fill="none" aria-hidden="true" focusable="false">
+              <path
+                d="M4 48h20m72 0h20M60 4v12m0 64v12"
+                stroke="currentColor"
+                opacity="0.25"
+                strokeDasharray="2 4"
+              />
+              <rect
+                x="30"
+                y="18"
+                width="60"
+                height="60"
+                rx="18"
+                stroke="currentColor"
+                opacity="0.15"
+                transform="rotate(-12 60 48)"
+              />
+              <rect
+                x="34"
+                y="22"
+                width="52"
+                height="52"
+                rx="14"
+                fill="currentColor"
+                fillOpacity="0.06"
+                stroke="currentColor"
+                strokeOpacity="0.3"
+              />
+              <circle cx="22" cy="24" r="3" fill="currentColor" opacity="0.4" />
+              <path d="M99 68v8m-4-4h8" stroke="currentColor" opacity="0.5" />
+            </svg>
+            <span className="ws-empty-art-icon">{icon}</span>
           </span>
         )}
         <div>
@@ -56,13 +88,9 @@ export function EmptyState({
           {description && <p className="mt-2 text-sm leading-relaxed">{description}</p>}
         </div>
         {action && (
-          <button
-            type="button"
-            onClick={action.onClick}
-            className="mt-1 rounded-none border border-border/70 bg-card/70 px-4 py-2 text-sm text-foreground shadow-sm transition-colors hover:bg-accent"
-          >
+          <Button type="button" variant="outline" onClick={action.onClick} className="mt-1">
             {action.label}
-          </button>
+          </Button>
         )}
       </div>
     </div>

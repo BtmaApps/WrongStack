@@ -135,17 +135,12 @@ export function Insight({
   tone?: 'normal' | 'danger';
 }) {
   return (
-    <div className="min-w-0 border-r border-border/60 px-4 py-3">
+    <div className="ws-metric min-w-0 border border-border/60 px-4 py-3">
       <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         <span className="text-primary [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
         {label}
       </div>
-      <div
-        className={cn(
-          'mt-1 text-xl font-semibold tabular-nums',
-          tone === 'danger' && 'text-destructive',
-        )}
-      >
+      <div className={cn('ws-metric-value mt-2', tone === 'danger' && 'text-destructive')}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
       <div className="mt-0.5 truncate text-[9px] text-muted-foreground">{detail}</div>

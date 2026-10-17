@@ -76,6 +76,7 @@ function NotificationItem({
   return (
     <div
       role="menuitem"
+      data-unread={!item.read}
       tabIndex={0}
       onClick={() => {
         if (!item.read) onMarkAsRead();
@@ -87,7 +88,7 @@ function NotificationItem({
         }
       }}
       className={cn(
-        'group relative flex items-start gap-2.5 px-3 py-2.5 text-xs transition-colors cursor-pointer outline-none select-none',
+        'ws-notification-item group relative flex items-start gap-2.5 px-3 py-2.5 text-xs transition-colors cursor-pointer outline-none select-none',
         'hover:bg-accent/50 focus-visible:bg-accent/60',
         item.read ? 'opacity-85' : 'bg-primary/[0.04]',
       )}

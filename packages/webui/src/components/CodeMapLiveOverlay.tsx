@@ -194,7 +194,7 @@ export function LiveControlBar({
 }): React.ReactElement {
   const { t } = useAppTranslation();
   return (
-    <div className="pointer-events-auto absolute right-3 top-14 z-20 flex h-9 items-center border bg-card/95 shadow-lg backdrop-blur">
+    <div className="ws-code-live-controls pointer-events-auto absolute right-3 top-14 z-20 flex h-9 items-center border bg-card/95 shadow-lg backdrop-blur">
       <button
         type="button"
         className={cn(

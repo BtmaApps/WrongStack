@@ -1,7 +1,7 @@
-import { cn } from '@/lib/utils';
-import { Copy, Check } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
 import { toast } from '../Toaster';
 import { copyToClipboard } from './utils.js';
 
@@ -20,6 +20,7 @@ export function CopyButton({
   return (
     <button
       type="button"
+      data-copied={copied}
       onClick={async (ev) => {
         ev.stopPropagation();
         const ok = await copyToClipboard(text);
@@ -33,7 +34,7 @@ export function CopyButton({
         }
       }}
       className={cn(
-        'inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors',
+        'ws-copy-feedback inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors',
         className,
       )}
       title={labelText}

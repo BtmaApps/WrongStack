@@ -1,0 +1,601 @@
+/* Shared visual language: theme-derived surfaces, precise borders and motion.
+   Kept in the component layer so local utility overrides retain precedence. */
+@layer components {
+  :root {
+    --ws-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --ws-edge: color-mix(in oklch, hsl(var(--border)) 80%, hsl(var(--primary)) 20%);
+  }
+
+  .ws-topbar {
+    position: relative;
+    background: linear-gradient(110deg, hsl(var(--card) / 0.96), hsl(var(--background) / 0.86));
+    box-shadow: 0 1px 0 hsl(var(--foreground) / 0.025);
+  }
+
+  .ws-activity-rail {
+    background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--surface-2) / 0.6));
+  }
+
+  .ws-side-panel {
+    background: linear-gradient(155deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.96));
+  }
+
+  .ws-nav-button {
+    border-radius: 8px;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .ws-nav-button > :where(span) > svg {
+    transition: transform 240ms var(--ws-ease);
+  }
+
+  .ws-nav-button.ws-nav-button-active {
+    background: linear-gradient(145deg, hsl(var(--primary) / 0.16), hsl(var(--primary) / 0.06));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--primary) / 0.12),
+      0 2px 8px hsl(var(--primary) / 0.06);
+  }
+
+  .ws-button {
+    transition:
+      transform 180ms var(--ws-ease),
+      box-shadow 180ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .ws-button:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+  }
+
+  .ws-button[data-variant="default"] {
+    box-shadow:
+      inset 0 1px 0 hsl(var(--foreground) / 0.12),
+      0 3px 10px hsl(var(--primary) / 0.16);
+  }
+
+  .ws-dialog.ws-modal {
+    border-radius: 16px;
+    border-color: var(--ws-edge);
+    box-shadow:
+      0 32px 100px -24px hsl(var(--shadow-color) / 0.5),
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+  }
+
+  .ws-dialog-overlay[data-state="open"] {
+    animation: ws-overlay-in 180ms ease-out both;
+  }
+
+  .ws-dialog-overlay[data-state="closed"] {
+    animation: ws-overlay-out 140ms ease-in both;
+  }
+
+  .ws-modal[data-state="open"] {
+    animation: ws-modal-in 280ms var(--ws-ease) both;
+  }
+
+  .ws-modal[data-state="closed"] {
+    animation: ws-modal-out 140ms ease-in both;
+  }
+
+  .ws-menu {
+    border-radius: 12px;
+    box-shadow:
+      0 12px 40px -12px hsl(var(--shadow-color) / 0.3),
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+    transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  }
+
+  .ws-menu[data-state="open"] {
+    animation: ws-menu-in 200ms var(--ws-ease) both;
+  }
+
+  .ws-menu[data-state="closed"] {
+    animation: ws-overlay-out 100ms ease-in both;
+  }
+
+  .ws-tabs-list {
+    border: 1px solid hsl(var(--border) / 0.65);
+    border-radius: 10px;
+    background: hsl(var(--surface-2) / 0.6);
+  }
+
+  .ws-tab-trigger {
+    border-radius: 6px;
+  }
+
+  .ws-tab-trigger[data-state="active"] {
+    box-shadow:
+      0 1px 4px hsl(var(--shadow-color) / 0.08),
+      inset 0 0 0 1px hsl(var(--border) / 0.6);
+    color: hsl(var(--primary));
+  }
+
+  .ws-tab-content[data-state="active"] {
+    animation: ws-reveal 280ms var(--ws-ease) backwards;
+  }
+
+  .ws-view-enter {
+    animation: ws-overlay-in 240ms ease-out;
+  }
+
+  .ws-chat-surface {
+    border-radius: 16px;
+    background: linear-gradient(160deg, hsl(var(--card) / 0.8), hsl(var(--card) / 0.45));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--foreground) / 0.035),
+      0 4px 20px hsl(var(--shadow-color) / 0.025);
+  }
+
+  .ws-composer {
+    border-radius: 14px;
+    background: hsl(var(--card));
+    box-shadow:
+      0 4px 20px -8px hsl(var(--shadow-color) / 0.12),
+      inset 0 1px 0 hsl(var(--foreground) / 0.035);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .ws-composer:focus-within {
+    border-color: hsl(var(--primary) / 0.55);
+    box-shadow:
+      0 0 0 3px hsl(var(--primary) / 0.07),
+      0 8px 28px -12px hsl(var(--primary) / 0.16);
+  }
+
+  .ws-composer[data-running="true"] {
+    border-color: hsl(var(--warning) / 0.55);
+  }
+
+  .ws-welcome {
+    gap: 16px;
+    padding: clamp(16px, 3vw, 36px);
+    max-width: 1000px;
+  }
+
+  .ws-welcome-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 32%);
+    align-items: center;
+    gap: 16px;
+    padding: clamp(20px, 3vw, 32px);
+    overflow: hidden;
+    border: 1px solid var(--ws-edge);
+    border-radius: 18px;
+    background:
+      radial-gradient(ellipse at 100% 0%, hsl(var(--primary) / 0.08), transparent 65%),
+      hsl(var(--card) / 0.85);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--foreground) / 0.04),
+      0 8px 32px -20px hsl(var(--shadow-color) / 0.14);
+    animation: ws-reveal 500ms var(--ws-ease) both;
+  }
+
+  .ws-welcome-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .ws-welcome-eyebrow::before {
+    content: "";
+    width: 18px;
+    height: 2px;
+    background: hsl(var(--primary));
+  }
+
+  .ws-welcome-title {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 2.8vw, 38px);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.045em;
+    overflow-wrap: anywhere;
+  }
+
+  .ws-welcome-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 20px;
+    color: hsl(var(--muted-foreground));
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .ws-welcome-meta p {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ws-workbench-art {
+    width: 100%;
+    max-width: 360px;
+    color: hsl(var(--primary));
+    pointer-events: none;
+  }
+
+  .ws-art-grid {
+    opacity: 0.12;
+  }
+  .ws-art-traces {
+    opacity: 0.35;
+  }
+  .ws-art-stack {
+    fill: hsl(var(--card));
+    stroke: hsl(var(--primary) / 0.55);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+  }
+  .ws-art-stack-back {
+    opacity: 0.5;
+  }
+  .ws-art-stack-middle {
+    opacity: 0.75;
+  }
+  .ws-art-stack-front {
+    fill: color-mix(in oklch, hsl(var(--card)) 93%, hsl(var(--primary)) 7%);
+  }
+  .ws-art-code {
+    stroke: hsl(var(--primary));
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+  .ws-art-signal {
+    fill: hsl(var(--primary));
+  }
+  .ws-art-secondary {
+    fill: hsl(var(--brand-orange));
+  }
+  .ws-art-orbit {
+    transform-origin: 180px 120px;
+  }
+
+  .ws-welcome-shortcuts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .ws-welcome-shortcut {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 12px 16px;
+    border: 1px solid hsl(var(--border) / 0.75);
+    border-radius: 10px;
+    background: hsl(var(--card) / 0.65);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    transition:
+      transform 220ms var(--ws-ease),
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .ws-welcome-shortcut > span {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .ws-welcome-shortcut > svg:first-child {
+    color: hsl(var(--primary));
+  }
+  .ws-welcome-shortcut > svg:last-child {
+    color: hsl(var(--muted-foreground));
+    transition: transform 220ms var(--ws-ease);
+  }
+
+  .ws-welcome-launchers {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 12px;
+  }
+
+  .ws-launcher-card {
+    min-width: 0;
+    border-radius: 14px;
+    background: hsl(var(--card) / 0.75);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .ws-launcher-card:focus-within {
+    border-color: hsl(var(--primary) / 0.4);
+  }
+
+  .ws-launcher-art {
+    display: block;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    color: hsl(var(--primary));
+  }
+
+  .ws-launcher-card--perf .ws-launcher-art {
+    color: hsl(var(--brand-orange));
+  }
+  .ws-launcher-fields {
+    animation: ws-reveal 220ms var(--ws-ease) both;
+  }
+
+  .ws-loading-art {
+    width: 96px;
+    color: hsl(var(--primary));
+  }
+
+  .ws-empty-state {
+    animation: ws-reveal 400ms var(--ws-ease) both;
+  }
+
+  .ws-empty-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 120px;
+    height: 96px;
+    color: hsl(var(--primary));
+  }
+
+  .ws-empty-art > svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .ws-empty-art-icon {
+    display: grid;
+    place-items: center;
+  }
+  .ws-empty-art-icon > svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ws-sheet-content[data-side="right"] {
+    border-radius: 16px 0 0 16px;
+    box-shadow: -16px 0 64px -24px hsl(var(--shadow-color) / 0.3);
+  }
+
+  .ws-sheet-content[data-side="left"] {
+    border-radius: 0 16px 16px 0;
+    box-shadow: 16px 0 64px -24px hsl(var(--shadow-color) / 0.3);
+  }
+
+  .ws-loading-art rect {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ws-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+    .ws-nav-button:hover > span > svg {
+      transform: translateY(-1px) scale(1.07);
+    }
+    .ws-welcome-shortcut:hover {
+      transform: translateY(-2px);
+      border-color: hsl(var(--primary) / 0.4);
+      background: hsl(var(--primary) / 0.045);
+    }
+    .ws-welcome-shortcut:hover > svg:last-child {
+      transform: translateX(3px);
+    }
+    .ws-launcher-card:hover {
+      border-color: hsl(var(--primary) / 0.3);
+      box-shadow: 0 6px 20px -12px hsl(var(--primary) / 0.12);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ws-art-stack-front {
+      animation: ws-stack-float 6s ease-in-out infinite;
+    }
+    .ws-art-stack-middle {
+      animation: ws-stack-float 6s -0.8s ease-in-out infinite;
+    }
+    .ws-art-orbit {
+      animation: ws-orbit 32s linear infinite;
+    }
+    .ws-loading-art rect {
+      animation: ws-loading 1.4s ease-in-out infinite;
+    }
+    .ws-loading-art rect:nth-child(2) {
+      animation-delay: 120ms;
+    }
+    .ws-loading-art rect:nth-child(3) {
+      animation-delay: 240ms;
+    }
+    .ws-welcome-shortcuts {
+      animation: ws-reveal 500ms 60ms var(--ws-ease) both;
+    }
+    .ws-welcome-launchers {
+      animation: ws-reveal 500ms 120ms var(--ws-ease) both;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .ws-welcome-launchers {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 639px) {
+    .ws-welcome {
+      padding: 12px;
+      gap: 12px;
+    }
+    .ws-welcome-hero {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 20px;
+    }
+    .ws-workbench-art {
+      position: absolute;
+      right: -52px;
+      top: -25px;
+      width: 185px;
+      opacity: 0.13;
+    }
+    .ws-welcome-hero-copy {
+      position: relative;
+      z-index: 1;
+    }
+    .ws-welcome-shortcuts {
+      gap: 6px;
+    }
+    .ws-welcome-shortcut {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px;
+      font-size: 11px;
+    }
+    .ws-welcome-shortcut > svg:last-child {
+      display: none;
+    }
+    .ws-welcome-eyebrow {
+      margin-bottom: 16px;
+    }
+    .ws-welcome-title {
+      font-size: 26px;
+    }
+    .ws-chat-surface {
+      border-radius: 12px;
+    }
+  }
+}
+
+@keyframes ws-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ws-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ws-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* Tailwind centers with the individual translate property; animate transform separately. */
+@keyframes ws-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes ws-modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes ws-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes ws-stack-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes ws-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ws-loading {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(2px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* Portals live outside .ws-app-root. Cover them explicitly as well as the shell.
+   Do not clear transforms: those can encode centering and expanded state. */
+@media (prefers-reduced-motion: reduce) {
+  .ws-app-root *,
+  .ws-app-root *::before,
+  .ws-app-root *::after,
+  .ws-modal,
+  .ws-modal *,
+  .ws-dialog-overlay,
+  .ws-menu,
+  .ws-menu *,
+  .ws-sheet-overlay,
+  .ws-sheet-content,
+  .ws-sheet-content * {
+    /* biome-ignore lint/complexity/noImportantStyles: Accessibility preference must override utility and inline animation. */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Accessibility preference must override utility transitions. */
+    transition: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Accessibility preference must override smooth scrolling. */
+    scroll-behavior: auto !important;
+  }
+}
+
+.ws-view-parked *,
+.ws-view-parked *::before,
+.ws-view-parked *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: Parked views must not keep decorative animations running. */
+  animation-play-state: paused !important;
+}

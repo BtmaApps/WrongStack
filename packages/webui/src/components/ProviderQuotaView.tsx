@@ -1,3 +1,5 @@
+import { PageMotif } from '@/components/PageMotif';
+import { EmptyState } from '@/components/ui/empty-state';
 /**
  * Plan Quota — every metered account on one wide page.
  *
@@ -113,12 +115,13 @@ export function ProviderQuotaView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <header className="ws-page-header flex shrink-0 items-center gap-3 border-b border-border/70">
+        <PageMotif kind="chart" />
+        <span className="ws-page-icon flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Gauge className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold">{t('activity:quotaPage.title')}</h1>
+          <h1 className="">{t('activity:quotaPage.title')}</h1>
           <p className="truncate text-xs text-muted-foreground">
             {t('activity:quotaPage.subtitle')}
           </p>
@@ -147,9 +150,12 @@ export function ProviderQuotaView() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
           {cards.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">
-              {t('activity:quotaPanel.none')}
-            </div>
+            <EmptyState
+              icon={<Gauge />}
+              title={t('activity:quotaPanel.none')}
+              panel={false}
+              className="min-h-60 rounded-2xl border border-dashed border-border/70"
+            />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

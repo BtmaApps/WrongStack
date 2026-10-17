@@ -55,6 +55,7 @@
     "test:page-scroll-browser": "bun tests/page-scroll-browser-smoke.mjs",
     "test:story-theme-browser": "bun tests/story-theme-browser-smoke.mjs",
     "test:session-sidebar-browser": "bun tests/session-sidebar-browser-smoke.mjs",
+    "test:workbench-visual-browser": "bun tests/workbench-visual-browser-smoke.mjs",
     "test:kanban-startup": "bun tests/kanban-start-webui-smoke.mjs",
     "test:watch": "bun --bun run vitest",
     "test:coverage": "bun ../../scripts/coverage-lock.mjs bun ../../scripts/run-vitest-coverage.mjs run --coverage"

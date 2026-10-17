@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { PageMotif } from '@/components/PageMotif';
 import { toast } from '@/components/Toaster';
 import { usePagination } from '@/hooks/usePagination';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -348,7 +349,8 @@ export function SetupScreen() {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
       {/* Header */}
-      <header className="flex shrink-0 flex-col gap-3 border-b bg-card px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <header className="ws-page-header flex shrink-0 flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+        <PageMotif kind="system" />
         <div className="flex min-w-0 items-center gap-3">
           <img
             src="/wrongstack.svg"
@@ -357,7 +359,7 @@ export function SetupScreen() {
             className="ws-brand-logo h-10 w-10 shrink-0 border border-border/70 shadow-sm"
           />
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold">{t('setup:screen.header.title')}</h1>
+            <h1 className="truncate">{t('setup:screen.header.title')}</h1>
             <p className="text-xs text-muted-foreground sm:truncate">
               {t('setup:screen.header.subtitle')}
             </p>

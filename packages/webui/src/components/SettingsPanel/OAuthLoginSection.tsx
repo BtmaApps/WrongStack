@@ -1,15 +1,6 @@
-import {
-  CheckCircle2,
-  Code2,
-  ExternalLink,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Sparkles,
-  User,
-  XCircle,
-} from 'lucide-react';
+import { CheckCircle2, ExternalLink, Loader2, Plus, RefreshCw, User, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ProviderLogo } from '@/components/ProviderLogo';
 import { toast } from '@/components/Toaster';
 import { i18n, useAppTranslation } from '@/i18n';
 import type { WrongStackWebSocketClient } from '@/lib/ws-client';
@@ -45,12 +36,6 @@ interface ProviderMeta {
   description?: string | undefined;
   /** Extended guidance from the strategy registry, one entry per paragraph. */
   notes?: readonly string[] | undefined;
-}
-
-function providerIcon(id: string) {
-  if (id === 'chatgpt' || id === 'chatgpt-api') return <Sparkles className="h-5 w-5" />;
-  if (id === 'copilot') return <Code2 className="h-5 w-5" />;
-  return <User className="h-5 w-5" />;
 }
 
 const ACTIVE_PHASES: OAuthPhase[] = [
@@ -235,7 +220,7 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
             <div key={meta.id} className="rounded-lg border border-border bg-background/70 p-3">
               <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-stretch">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="text-muted-foreground">{providerIcon(meta.id)}</span>
+                  <ProviderLogo providerId={meta.providerId} providerType={meta.id} />
                   <div className="min-w-0">
                     <div className="font-medium">{meta.label}</div>
                     <div className="truncate text-xs text-muted-foreground">

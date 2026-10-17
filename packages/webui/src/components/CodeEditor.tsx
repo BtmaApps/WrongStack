@@ -442,6 +442,7 @@ export function CodeEditor() {
   if (openFiles.length === 0) {
     return (
       <EmptyState
+        icon={<FileText className="h-6 w-6" />}
         title={t('activity:codeEditor.noFilesOpen')}
         description={t('activity:codeEditor.selectToEdit')}
       />

@@ -1,3 +1,4 @@
+import { PageMotif } from '@/components/PageMotif';
 /**
  * Dead Code panel — the user-controlled cleanup loop over the dead-code engine.
  *
@@ -245,7 +246,8 @@ export function DeadCodeScanPanel() {
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground [overflow-wrap:anywhere]">
       {/* Header */}
-      <div className="border-b border-border px-4 py-3 sm:px-6">
+      <div className="ws-page-header border-b border-border">
+        <PageMotif kind="scan" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">{t('activity:deadCode.title')}</h2>

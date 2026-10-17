@@ -13,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import {
   isModelDisabled,
   isModelInFavorites,
@@ -244,12 +245,13 @@ export function ProviderTestView(): React.ReactElement {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <header className="ws-page-header flex shrink-0 items-center gap-3 border-b border-border/70">
+        <PageMotif kind="scan" />
+        <span className="ws-page-icon flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <FlaskConical className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold">{t('activity:providerTest.title')}</h1>
+          <h1 className="">{t('activity:providerTest.title')}</h1>
           <p className="truncate text-xs text-muted-foreground">
             {t('activity:providerTest.tagline')}
           </p>

@@ -18,14 +18,14 @@ export function KanbanViewModeTabs({
   onViewModeChange: (mode: KanbanViewMode) => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-1 border-b px-4 py-1.5">
+    <div className="ws-toolbar flex shrink-0 items-center gap-1 overflow-x-auto border-b px-4 py-1.5">
       {KANBAN_VIEW_MODES.map(([mode, label]) => (
         <button
           key={mode}
           type="button"
           onClick={() => onViewModeChange(mode)}
           className={cn(
-            'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+            'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
             viewMode === mode
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:bg-muted',

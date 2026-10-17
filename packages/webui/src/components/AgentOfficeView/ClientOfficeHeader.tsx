@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { PageMotif } from '../PageMotif';
 import { type ClientOfficeModel, formatUptime } from './model.js';
 
 export function ClientOfficeHeader({ office, now }: { office: ClientOfficeModel; now: number }) {
@@ -36,6 +37,7 @@ export function ClientOfficeHeader({ office, now }: { office: ClientOfficeModel;
   );
   return (
     <header className="agent-office__client-header">
+      <PageMotif kind="network" />
       <div className="agent-office__client-title">
         <span className="agent-office__client-icon">
           <Building2 aria-hidden="true" />

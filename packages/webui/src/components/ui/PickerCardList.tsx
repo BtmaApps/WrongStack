@@ -71,9 +71,10 @@ export function PickerCardList({
         <button
           type="button"
           disabled={disabled}
+          aria-pressed={!selectedId}
           onClick={() => onSelect('')}
           className={cn(
-            'w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all',
+            'ws-picker-option w-full flex items-center justify-between gap-3 p-3 rounded-xl border text-left',
             !selectedId
               ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
               : 'border-border hover:bg-muted',
@@ -93,9 +94,10 @@ export function PickerCardList({
           key={opt.id}
           type="button"
           disabled={disabled}
+          aria-pressed={selectedId === opt.id}
           onClick={() => onSelect(opt.id)}
           className={cn(
-            'w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all disabled:cursor-wait disabled:opacity-60',
+            'ws-picker-option w-full flex items-center justify-between gap-3 p-3 rounded-xl border text-left disabled:cursor-wait disabled:opacity-60',
             selectedId === opt.id
               ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
               : 'border-border hover:bg-muted',

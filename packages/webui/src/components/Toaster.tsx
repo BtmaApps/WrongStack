@@ -32,15 +32,24 @@ function ToastItem({ entry }: { entry: ToastEntry }) {
 
   return (
     <div
+      data-variant={entry.variant}
       className={cn(
-        'flex items-start gap-2 rounded-lg border bg-popover shadow-lg px-3 py-2 text-sm max-w-sm',
-        'animate-message',
+        'ws-toast flex items-start gap-2 border text-sm',
         entry.variant === 'error' && 'border-destructive/40',
         entry.variant === 'warn' && 'border-warning/40',
         entry.variant === 'success' && 'border-success/40',
       )}
     >
-      <Icon variant={entry.variant} />
+      <span className="ws-toast-icon">
+        <Icon variant={entry.variant} />
+      </span>
+      {Number.isFinite(entry.ttl) && entry.ttl > 0 && (
+        <span
+          className="ws-toast-timer"
+          style={{ animationDuration: `${entry.ttl}ms` }}
+          aria-hidden="true"
+        />
+      )}
       <div className="flex-1 min-w-0 whitespace-pre-wrap break-words leading-snug">
         {entry.message}
       </div>
@@ -59,7 +68,7 @@ function ToastItem({ entry }: { entry: ToastEntry }) {
       <button
         type="button"
         onClick={() => dismissToast(entry.id)}
-        className="text-muted-foreground hover:text-foreground"
+        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title={t('activity:toast.dismiss')}
         aria-label={t('activity:toast.dismiss')}
       >
@@ -75,7 +84,7 @@ export function Toaster() {
   if (toasts.length === 0) return null;
   return (
     <section
-      className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 pointer-events-auto"
+      className="fixed bottom-4 right-4 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 pointer-events-auto"
       aria-label={t('activity:toaster.notifications')}
       aria-live="polite"
     >

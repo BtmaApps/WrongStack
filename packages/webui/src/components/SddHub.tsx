@@ -64,7 +64,7 @@ export function SddHub(): React.ReactElement {
       <div
         role="tablist"
         aria-orientation="horizontal"
-        className="flex shrink-0 items-end border-b border-border/70 bg-card px-4"
+        className="ws-sdd-tabs flex shrink-0 items-end border-b border-border/70 bg-card px-4"
       >
         {TABS.map((tab, index) => {
           const isActive = activeTab === tab.id;

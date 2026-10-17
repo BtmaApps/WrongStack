@@ -107,7 +107,7 @@ export function CodeMapTreeSidebar({
     [treeScrollRef],
   );
   return (
-    <aside className="flex w-[286px] shrink-0 flex-col border-r bg-card/70">
+    <aside className="ws-code-sidebar flex w-[286px] shrink-0 flex-col border-r bg-card/70">
       <div className="border-b p-3">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-[10px] font-bold uppercase tracking-[0.18em]">
@@ -117,7 +117,7 @@ export function CodeMapTreeSidebar({
             {rootGraph.nodes.length} roots
           </span>
         </div>
-        <label className="flex h-8 items-center gap-2 border bg-background px-2 focus-within:border-primary">
+        <label className="flex h-9 items-center gap-2 rounded-lg border bg-background px-3 focus-within:border-primary">
           <Search className="h-3.5 w-3.5 text-muted-foreground" />
           <input
             className="min-w-0 flex-1 bg-transparent font-mono text-[10px] outline-none placeholder:text-muted-foreground"

@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { usePagination } from '@/hooks/usePagination';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -267,14 +268,13 @@ export function ChronicleDashboard() {
   return (
     <div className="flex h-full min-h-0 bg-background" data-testid="chronicle-dashboard">
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-border/70 bg-gradient-to-r from-primary/[0.045] via-background to-background px-5 py-4">
+        <header className="ws-page-header border-b border-border/70">
+          <PageMotif kind="chart" />
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <BrainCircuit className="h-5 w-5 text-primary" />
-                <h1 className="text-lg font-semibold tracking-tight">
-                  {t('activity:chronicle.codingIntelligence')}
-                </h1>
+                <h1 className="tracking-tight">{t('activity:chronicle.codingIntelligence')}</h1>
                 <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold tracking-wider text-foreground">
                   {t('activity:chronicle.chronicle')}
                 </span>
@@ -309,7 +309,7 @@ export function ChronicleDashboard() {
           </div>
         </header>
 
-        <section className="grid grid-cols-2 border-b border-border/70 xl:grid-cols-6">
+        <section className="ws-metric-grid ws-metric-grid--compact grid grid-cols-2 border-b border-border/70 xl:grid-cols-6">
           <Insight
             icon={<BrainCircuit />}
             label={t('activity:chronicle.llmRequests')}

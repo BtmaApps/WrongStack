@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Cpu, RotateCcw, Star, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ModelCandidate } from '@/hooks/useProviderModels';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -32,10 +32,13 @@ export function ModelPicker({
   const { t } = useAppTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLFieldSetElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const popupId = useId();
 
   useEffect(() => {
     if (!open) return;
+    inputRef.current?.focus();
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
@@ -54,9 +57,23 @@ export function ModelPicker({
   }, [candidates, query]);
 
   return (
-    <div ref={ref} className={cn('relative', className)}>
+    <fieldset
+      ref={ref}
+      aria-label={placeholder ?? t('activity:model.runDefault')}
+      className={cn('relative m-0 min-w-0 border-0 p-0', className)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+          ref.current?.querySelector('button')?.focus();
+        }
+      }}
+    >
       <button
         type="button"
+        aria-expanded={open}
+        aria-controls={open ? popupId : undefined}
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-1.5 text-left text-xs transition-colors hover:border-primary/45 hover:bg-muted/80"
       >
@@ -77,9 +94,13 @@ export function ModelPicker({
       </button>
 
       {open && (
-        <div className="sdd-rise absolute z-50 mt-1 max-h-72 w-full min-w-[240px] overflow-hidden rounded-md border border-border/80 bg-popover ws-dialog">
+        <div
+          id={popupId}
+          className="ws-picker-popover absolute z-50 mt-1 max-h-72 w-full min-w-0 overflow-hidden border border-border/80 bg-popover sm:min-w-[240px]"
+        >
           <div className="flex items-center gap-1.5 border-b border-border/70 bg-muted/20 px-2 py-1.5">
             <input
+              ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('activity:model.filterPlaceholder')}
@@ -158,6 +179,6 @@ export function ModelPicker({
           </div>
         </div>
       )}
-    </div>
+    </fieldset>
   );
 }

@@ -1,4 +1,5 @@
 import { ArrowLeft, BrainCircuit, Plus, RefreshCw } from 'lucide-react';
+import { PageMotif } from '@/components/PageMotif';
 import { Button } from '@/components/ui/button';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,8 @@ export function MemoryManagerHeader({
   const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   return (
-    <header className="relative shrink-0 overflow-hidden border-b border-border/70 bg-card/72 px-4 py-3 backdrop-blur-xl sm:px-5">
+    <header className="ws-page-header relative shrink-0 overflow-hidden border-b border-border/70 backdrop-blur-xl">
+      <PageMotif kind="library" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_right,hsl(var(--info)/0.11),transparent_68%)]" />
       <div className="relative flex flex-wrap items-center gap-3">
         <Button
@@ -31,14 +33,12 @@ export function MemoryManagerHeader({
         >
           <ArrowLeft className="size-4" />
         </Button>
-        <span className="flex size-10 items-center justify-center border border-info/40 bg-info/10 text-info shadow-[0_0_20px_hsl(var(--info)/0.12)]">
+        <span className="ws-page-icon flex size-10 items-center justify-center border border-info/40 bg-info/10 text-info shadow-[0_0_20px_hsl(var(--info)/0.12)]">
           <BrainCircuit className="size-5" />
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-base font-bold sm:text-lg">
-              {t('activity:memoryManager.sageHeading')}
-            </h1>
+            <h1 className="">{t('activity:memoryManager.sageHeading')}</h1>
             <span className="border border-success/35 bg-success/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-success">
               {t('activity:memoryManager.projectKnowledge')}
             </span>

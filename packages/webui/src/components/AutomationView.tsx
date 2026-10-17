@@ -10,6 +10,7 @@ import {
   importAutomationJob,
 } from '@wrongstack/webui-protocol';
 import { useEffect, useRef, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { useActiveSessionId, useSessionStore } from '@/stores';
 import './automation.css';
@@ -130,7 +131,8 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
   const schedule = spec.schedule ? 'cron' : spec.intervalMs ? 'interval' : 'manual';
   return (
     <section className="automation-workspace" aria-label="Automations">
-      <header>
+      <header className="ws-page-header">
+        <PageMotif kind="flow" />
         <div>
           <h1>Automations</h1>
           <p>

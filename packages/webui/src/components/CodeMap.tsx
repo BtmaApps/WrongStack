@@ -320,7 +320,7 @@ function CodeMapInner(): React.ReactElement {
         navigate={navigate}
       />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="ws-code-map-layout flex min-h-0 flex-1">
         <CodeMapTreeSidebar
           rootGraph={rootGraph}
           loading={loading}
@@ -355,7 +355,7 @@ function CodeMapInner(): React.ReactElement {
           onSearchChange={setSearch}
         />
 
-        <main className="relative min-w-0 flex-1 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.055),transparent_38%)]">
+        <main className="ws-code-canvas relative min-w-0 flex-1 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.055),transparent_38%)]">
           <CodeMapCanvasToolbar
             layout={layout}
             canvasMode={canvasMode}

@@ -9,16 +9,49 @@ starts both surfaces with `wstack --webui` (equivalent to `wstack webui`).
 From the workspace root:
 
 ```bash
-pnpm --filter @wrongstack/webui dev
-pnpm --filter @wrongstack/webui build
-pnpm --filter @wrongstack/webui typecheck
-pnpm --filter @wrongstack/webui test
-pnpm --filter @wrongstack/webui test:coverage
+bun run --filter @wrongstack/webui dev
+bun run --filter @wrongstack/webui build
+bun run --filter @wrongstack/webui typecheck
+bun run --filter @wrongstack/webui test
+bun run --filter @wrongstack/webui test:coverage
 ```
 
 The Vite development server serves the frontend. A functional agent session also
 requires the WrongStack WebUI backend; use `wstack --webui` for the integrated
 surface.
+
+## Visual system and browser checks
+
+`src/index.css` owns the theme palettes and the global square-corner contract;
+radius tokens and rendered CSS corners stay at zero, including portaled overlays.
+SVG artwork and provider brand paths retain their original shapes. `src/workbench.css`
+defines shared surfaces, component motion and responsive welcome layouts.
+`src/pages.css` defines page headers, metric cards, content panels and responsive
+detail layouts. `WorkbenchArt.tsx` and `PageMotif.tsx` supply inline vectors that
+follow the active palette and distinguish workflow, knowledge and system pages.
+`src/interactions.css` adds state-driven tool indicators, disclosure transitions,
+selection feedback, session tabs, queue cards and toast progress. `ActivitySignal`
+renders running, success, error and pending states with inline SVG.
+Motion respects `prefers-reduced-motion`, and animations pause in parked views.
+
+Run `bun run --filter @wrongstack/webui test:workbench-visual-browser` with the
+installed Playwright Chromium runtime to check light/dark layouts at desktop,
+tablet and phone widths, launcher folding, navigation, dialog focus restoration,
+menus and reduced motion. It discovers every route from `VIEW_REGISTRY` and
+renders each at desktop/phone widths in both themes, including setup and
+diagnostic views. Populated Kanban, agent and memory fixtures additionally check
+card movement, usable agent details on mobile, and memory search.
+Interaction checks cover 320/390/768/1440px in both themes: advancing tool motion,
+result states, model search and Escape focus, real clipboard writes, queue
+removal, inspector dismissal, toast lifetime styling and reduced motion.
+Set `WEBUI_VISUAL_INTERACTIONS_ONLY=1` to run just these interaction checks.
+Set `WEBUI_VISUAL_PROVIDERS_ONLY=1` to check provider key cards, catalog and saved
+profiles at 320/390/1440px in both themes, including local SVG loading and custom
+provider fallbacks. Logos live in `public/provider-logos/` with their pinned
+source and license; `ProviderLogo` is shared by setup, settings and account sign-in.
+Screenshots are saved under `.temp_files/webui-workbench-visual/` at the workspace
+root. The fixture replaces the WebSocket transport; it does not validate live
+provider requests or backend operations.
 
 ## Package boundaries
 

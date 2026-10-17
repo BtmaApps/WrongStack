@@ -24,7 +24,7 @@ export function CodeMapCanvasToolbar({
 }) {
   const { t } = useAppTranslation();
   return (
-    <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 flex items-center gap-2">
+    <div className="ws-code-toolbar pointer-events-none absolute left-3 right-3 top-3 z-10 flex items-center gap-2">
       <div className="pointer-events-auto flex border bg-card/95 shadow-md backdrop-blur">
         <button
           type="button"

@@ -8,6 +8,7 @@ import {
   Server,
 } from 'lucide-react';
 import { type ReactElement, useMemo, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { useChatStore } from '@/stores/chat-store';
 import { useSessionStore } from '@/stores/session-store';
@@ -114,10 +115,11 @@ export function RefreshDebugView() {
   return (
     <div className="h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.45)] p-4 sm:p-6">
       <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
-        <header className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+        <header className="ws-page-header rounded-xl border border-border/70">
+          <PageMotif kind="system" />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h1 className="flex min-w-0 items-center gap-2 text-xl font-bold sm:text-2xl">
+              <h1 className="flex min-w-0 items-center gap-2">
                 <RotateCw className="h-6 w-6 shrink-0 text-primary sm:h-7 sm:w-7" />
                 {t('activity:refresh.heading')}
               </h1>

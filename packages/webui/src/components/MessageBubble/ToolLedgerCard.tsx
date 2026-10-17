@@ -1,10 +1,11 @@
-import { ChevronDown, ChevronRight, Clock, Download, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, Download } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { getToolTooltip, getToolVisual } from '@/lib/tool-icon';
 import { summarizeToolInput, toolDisplayName, toolFlowMetricsLabel } from '@/lib/tool-summary';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/stores';
+import { ActivitySignal } from '../ActivitySignal';
 import { diffFromToolInput, ToolDiffView } from '../DiffView';
 import { ToolResult } from '../ToolResult';
 import { BrowserOriginApproval, browserBlockedOrigin } from './BrowserOriginApproval.js';
@@ -44,8 +45,8 @@ const DOT_COLOR: Record<Status, string> = {
  * A single tool call rendered as a Terminal Ledger card: a colored status rail,
  * a monospace header row (dot · icon · name · summary · meta · exit code), a
  * line-numbered console body (via {@link ToolResult}), and a hairline action
- * footer. Sharp corners by design — the identity is the rail + hairline, not
- * rounding. Replaces the old two-part "chevron button + gray box" layout.
+ * footer. State is echoed by a small animated vector; the rail stays readable
+ * even when motion is reduced.
  */
 export const ToolLedgerCard = memo(function ToolLedgerCard({
   message,
@@ -84,6 +85,7 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({
 
   return (
     <div
+      data-tool-state={status}
       className={cn(
         'ws-ledger min-w-0 max-w-full overflow-hidden border border-l-2 border-border/50',
         status === 'ok' && 'ws-ledger--ok',
@@ -98,17 +100,14 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({
         aria-expanded={expanded}
         title={tooltip}
         className={cn(
-          'flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-xs select-none',
+          'ws-tool-disclosure flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs select-none',
           hasBody ? 'cursor-pointer hover:bg-muted/40' : 'cursor-default',
           'transition-colors',
         )}
       >
-        <span
-          className={cn(
-            'ws-ledger__dot',
-            DOT_COLOR[status],
-            status === 'running' && 'ws-ledger__dot--running',
-          )}
+        <ActivitySignal
+          state={status === 'ok' ? 'success' : status}
+          className={DOT_COLOR[status]}
         />
         <ToolIcon className="h-3.5 w-3.5 shrink-0" style={{ color: toolColor }} />
         <span className="font-semibold tracking-tight text-foreground">
@@ -128,12 +127,14 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({
         </span>
 
         {inputSummary && (
-          <span className="min-w-0 flex-1 truncate text-muted-foreground/80">{inputSummary}</span>
+          <span className="ws-tool-summary min-w-0 basis-full order-2 truncate text-muted-foreground/80 sm:order-none sm:flex-1">
+            {inputSummary}
+          </span>
         )}
         {!inputSummary && <span className="flex-1" />}
 
         {/* Meta cluster — right aligned, tabular so it doesn't jitter. */}
-        <span className="flex shrink-0 items-center gap-2 tabular-nums text-muted-foreground/75">
+        <span className="ws-tool-meta flex max-w-full shrink-0 items-center gap-2 tabular-nums text-muted-foreground/75">
           {resultLines > 0 && !expanded && (
             <span className="text-[10px]">
               {t('activity:message.linesSuffix', { count: resultLines })}
@@ -158,9 +159,7 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({
           {typeof message.toolDurationMs === 'number' && (
             <span className="text-[10px]">{formatToolDuration(message.toolDurationMs)}</span>
           )}
-          {status === 'running' ? (
-            <Loader2 className="h-3 w-3 animate-spin text-warning" />
-          ) : hasBody ? (
+          {hasBody ? (
             expanded ? (
               <ChevronDown className="h-3.5 w-3.5" />
             ) : (
@@ -216,7 +215,7 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({
 
       {/* ── Expanded body ──────────────────────────────────────────────── */}
       {expanded && (
-        <div className="border-t border-border/40">
+        <div className="ws-tool-body border-t border-border/40">
           <ToolCallOverview message={message} />
           <details className="group/details" open>
             <summary className="cursor-pointer select-none border-b border-border/30 px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/75 hover:bg-muted/30">

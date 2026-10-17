@@ -1,11 +1,12 @@
 import {
   ArrowRight,
   ChevronDown,
-  Crosshair,
-  Gauge,
+  FolderOpen,
   KeyRound,
   Loader2,
   ShieldOff,
+  SlidersHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -25,13 +26,14 @@ import {
   type PerfRunMode,
 } from '@/lib/perf-run-message';
 import { cn } from '@/lib/utils';
-import { openMainView } from '@/lib/view-navigation';
+import { openMainView, showPanel } from '@/lib/view-navigation';
 import { getWSClient } from '@/lib/ws-client';
 import { useChatStore, useConfigStore, useFileStore, useSessionStore } from '@/stores';
 import { useBugHuntRunStore } from '@/stores/bug-hunt-run-store';
 import type { TreeNode } from '@/stores/file-store';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import type { WSServerMessage } from '@/types';
+import { LauncherArt, WorkbenchArt } from './WorkbenchArt';
 
 const BUG_HUNTER_SLUG = 'proof-driven-bug-hunter';
 
@@ -280,7 +282,7 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
           className={cn(
             'group rounded-xl border bg-gradient-to-r from-warning/5 to-warning/[0.02]',
             'border-warning/30 hover:border-warning/50 transition-all duration-200 shadow-sm',
-            'p-5 flex items-center gap-4 text-left animate-message',
+            'p-5 flex flex-wrap sm:flex-nowrap items-center gap-4 text-left animate-message',
           )}
         >
           <span className="flex items-center justify-center w-11 h-11 rounded-lg bg-gradient-to-br from-warning/20 to-warning/10 text-warning shrink-0 shadow-sm shadow-warning/10">
@@ -292,7 +294,7 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
               {t('setup:welcome.noKeyBody')}
             </p>
           </div>
-          <span className="flex items-center gap-1 text-xs text-warning font-medium shrink-0 group-hover:translate-x-0.5 transition-transform">
+          <span className="flex w-full sm:w-auto items-center gap-1 text-xs text-warning font-medium shrink-0 group-hover:translate-x-0.5 transition-transform">
             {t('setup:welcome.openSettings')} <ArrowRight className="h-3.5 w-3.5" />
           </span>
         </button>
@@ -301,244 +303,250 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
   );
 
   return (
-    <div className="flex flex-col gap-5 py-4 sm:py-6 max-w-4xl mx-auto w-full">
+    <div className="ws-welcome flex flex-col mx-auto w-full">
       {/* Calm chrome: with no provider key nothing else here can run, so
           that call to action leads instead of trailing the launchers. */}
       {!fullChrome && noKeyCta}
-      {/* ── Session start panel ── */}
-      <div className="relative overflow-hidden p-3 sm:p-5">
-        {/* Decorative gradient blob — subtle visual depth */}
-
-        <div className="relative flex flex-col gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <img
-              src="/wrongstack.svg"
-              alt="WrongStack"
-              draggable={false}
-              className="ws-brand-logo h-12 w-12 shrink-0 border border-border sm:h-14 sm:w-14"
-            />
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold tracking-tight">
-                {projectName
-                  ? t('setup:welcome.heroTitleInProject', { name: projectName })
-                  : t('setup:welcome.heroTitle')}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                {t('setup:welcome.heroSubtitle')}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 pl-[60px] sm:pl-[68px]">
+      <div className="ws-welcome-hero">
+        <div className="ws-welcome-hero-copy min-w-0">
+          <div className="ws-welcome-eyebrow">WrongStack / {t('activity:nav.chat')}</div>
+          <h2 className="ws-welcome-title">
+            {projectName
+              ? t('setup:welcome.heroTitleInProject', { name: projectName })
+              : t('setup:welcome.heroTitle')}
+          </h2>
+          <p className="mt-3 max-w-md text-sm text-muted-foreground leading-relaxed">
+            {t('setup:welcome.heroSubtitle')}
+          </p>
+          <div className="ws-welcome-meta">
             {provider && model && (
-              <p className="truncate text-xs text-muted-foreground/80 font-mono">
+              <p>
                 {provider} / {model}
               </p>
             )}
-            {cwd && (
-              <p className="truncate text-[11px] text-muted-foreground/75 font-mono" title={cwd}>
-                {t('setup:welcome.workingDirectory', { cwd })}
-              </p>
-            )}
+            {cwd && <p title={cwd}>{t('setup:welcome.workingDirectory', { cwd })}</p>}
           </div>
-          <div className="mt-2 border-t border-border/70 pt-4">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={!subagentsAllowed}
-              aria-label={t('setup:welcome.soloSessionTitle')}
-              onClick={toggleSoloSession}
-              disabled={!wsConnected}
-              className={cn(
-                'mb-3 flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition-colors',
-                !subagentsAllowed
-                  ? 'border-warning/45 bg-card'
-                  : 'border-border/70 bg-card hover:bg-muted/45',
-                'disabled:cursor-not-allowed disabled:opacity-50',
-              )}
+        </div>
+        <WorkbenchArt />
+      </div>
+      <div className="ws-welcome-shortcuts">
+        <button type="button" className="ws-welcome-shortcut" onClick={() => showPanel('files')}>
+          <FolderOpen className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{t('activity:nav.files')}</span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        </button>
+        <button type="button" className="ws-welcome-shortcut" onClick={() => showPanel('skills')}>
+          <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{t('activity:nav.skills')}</span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="ws-welcome-shortcut"
+          onClick={() => openMainView('settings')}
+        >
+          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{t('activity:topbar.view.settings')}</span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        </button>
+      </div>
+      <div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!subagentsAllowed}
+          aria-label={t('setup:welcome.soloSessionTitle')}
+          onClick={toggleSoloSession}
+          disabled={!wsConnected}
+          className={cn(
+            'mb-3 flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition-colors',
+            !subagentsAllowed
+              ? 'border-warning/45 bg-card'
+              : 'border-border/70 bg-card hover:bg-muted/45',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+          )}
+        >
+          <ShieldOff className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">
+              {t('setup:welcome.soloSessionTitle')}
+            </span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {t('setup:welcome.soloSessionBody')}
+            </span>
+          </span>
+          <span className="text-xs font-semibold uppercase">
+            {!subagentsAllowed ? t('setup:welcome.on') : t('setup:welcome.off')}
+          </span>
+        </button>
+        <div className="ws-welcome-launchers">
+          <div className="ws-launcher-card border border-border p-4">
+            <LauncherHeader
+              foldable={!fullChrome}
+              expanded={bugOpen}
+              onToggle={() => toggleLauncher('bug')}
+              testId="welcome-launcher-bug"
             >
-              <ShieldOff className="h-5 w-5 shrink-0" />
+              <span className="ws-launcher-art flex items-center justify-center">
+                {bugHuntState === 'loading' ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <LauncherArt kind="audit" />
+                )}
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">
-                  {t('setup:welcome.soloSessionTitle')}
+                  {t('setup:welcome.bugHunterTitle')}
                 </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {t('setup:welcome.soloSessionBody')}
+                <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                  {t('setup:welcome.bugHunterBody')}
                 </span>
               </span>
-              <span className="text-xs font-semibold uppercase">
-                {!subagentsAllowed ? t('setup:welcome.on') : t('setup:welcome.off')}
-              </span>
-            </button>
-            <div className="rounded-md border border-border bg-card p-4">
-              <LauncherHeader
-                foldable={!fullChrome}
-                expanded={bugOpen}
-                onToggle={() => toggleLauncher('bug')}
-                testId="welcome-launcher-bug"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-                  {bugHuntState === 'loading' ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Crosshair className="h-5 w-5" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">
-                    {t('setup:welcome.bugHunterTitle')}
+            </LauncherHeader>
+            {bugOpen && (
+              <div className="ws-launcher-fields mt-4 grid gap-2">
+                <label className="sr-only" htmlFor="bug-hunt-scope">
+                  {t('setup:welcome.bugHunterScope')}
+                </label>
+                <select
+                  id="bug-hunt-scope"
+                  value={bugHuntScope}
+                  onChange={(event) => setBugHuntScope(event.target.value)}
+                  disabled={!wsConnected || bugHuntState === 'loading'}
+                  className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">{t('setup:welcome.bugHunterWholeProject')}</option>
+                  {scopeDirectories.map((path) => (
+                    <option key={path} value={path}>
+                      {t('setup:welcome.bugHunterDirectoryScope', { path })}
+                    </option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                  <span className="whitespace-nowrap text-muted-foreground">
+                    {t('setup:welcome.bugHunterMaxBugs')}
                   </span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                    {t('setup:welcome.bugHunterBody')}
-                  </span>
-                </span>
-              </LauncherHeader>
-              {bugOpen && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem_auto]">
-                  <label className="sr-only" htmlFor="bug-hunt-scope">
-                    {t('setup:welcome.bugHunterScope')}
-                  </label>
                   <select
-                    id="bug-hunt-scope"
-                    value={bugHuntScope}
-                    onChange={(event) => setBugHuntScope(event.target.value)}
+                    aria-label={t('setup:welcome.bugHunterMaxBugs')}
+                    value={bugHuntMaxBugs}
+                    onChange={(event) =>
+                      setBugHuntMaxBugs(Number(event.target.value) as BugHuntLimit)
+                    }
                     disabled={!wsConnected || bugHuntState === 'loading'}
-                    className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    className="min-w-0 bg-transparent font-semibold outline-none"
                   >
-                    <option value="">{t('setup:welcome.bugHunterWholeProject')}</option>
-                    {scopeDirectories.map((path) => (
-                      <option key={path} value={path}>
-                        {t('setup:welcome.bugHunterDirectoryScope', { path })}
+                    {BUG_HUNT_LIMITS.map((count) => (
+                      <option key={count} value={count}>
+                        {count}
                       </option>
                     ))}
                   </select>
-                  <label className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
-                    <span className="whitespace-nowrap text-muted-foreground">
-                      {t('setup:welcome.bugHunterMaxBugs')}
-                    </span>
-                    <select
-                      aria-label={t('setup:welcome.bugHunterMaxBugs')}
-                      value={bugHuntMaxBugs}
-                      onChange={(event) =>
-                        setBugHuntMaxBugs(Number(event.target.value) as BugHuntLimit)
-                      }
-                      disabled={!wsConnected || bugHuntState === 'loading'}
-                      className="min-w-0 bg-transparent font-semibold outline-none"
-                    >
-                      {BUG_HUNT_LIMITS.map((count) => (
-                        <option key={count} value={count}>
-                          {count}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={startBugHunt}
-                    disabled={!wsConnected || savedCount === 0 || bugHuntState === 'loading'}
-                    className="group flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t('setup:welcome.bugHunterStart')}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
-              )}
-            </div>
+                </label>
+                <button
+                  type="button"
+                  onClick={startBugHunt}
+                  disabled={!wsConnected || savedCount === 0 || bugHuntState === 'loading'}
+                  className="group flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t('setup:welcome.bugHunterStart')}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            )}
             {bugHuntState === 'error' && (
               <p className="mt-2 text-xs text-destructive" role="alert">
                 {t('setup:welcome.bugHunterError')}
               </p>
             )}
-            <div className="mt-3 rounded-md border border-border bg-card p-4">
-              <LauncherHeader
-                foldable={!fullChrome}
-                expanded={perfOpen}
-                onToggle={() => toggleLauncher('perf')}
-                testId="welcome-launcher-perf"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-                  {perfState === 'loading' ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Gauge className="h-5 w-5" />
-                  )}
+          </div>
+          <div className="ws-launcher-card ws-launcher-card--perf border border-border p-4">
+            <LauncherHeader
+              foldable={!fullChrome}
+              expanded={perfOpen}
+              onToggle={() => toggleLauncher('perf')}
+              testId="welcome-launcher-perf"
+            >
+              <span className="ws-launcher-art flex items-center justify-center">
+                {perfState === 'loading' ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <LauncherArt kind="performance" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{t('setup:welcome.perfTitle')}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                  {t('setup:welcome.perfBody')}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">
-                    {t('setup:welcome.perfTitle')}
-                  </span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                    {t('setup:welcome.perfBody')}
-                  </span>
-                </span>
-              </LauncherHeader>
-              {perfOpen && (
-                <>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                    <label className="sr-only" htmlFor="perf-scope">
-                      {t('setup:welcome.perfScope')}
-                    </label>
-                    <select
-                      id="perf-scope"
-                      value={perfScope}
-                      onChange={(event) => setPerfScope(event.target.value)}
-                      disabled={!wsConnected || perfState === 'loading'}
-                      className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">{t('setup:welcome.perfWholeProject')}</option>
-                      {scopeDirectories.map((path) => (
-                        <option key={path} value={path}>
-                          {t('setup:welcome.perfDirectoryScope', { path })}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="sr-only" htmlFor="perf-mode">
-                      {t('setup:welcome.perfMode')}
-                    </label>
-                    <select
-                      id="perf-mode"
-                      value={perfMode}
-                      onChange={(event) => setPerfMode(event.target.value as PerfRunMode)}
-                      disabled={!wsConnected || perfState === 'loading'}
-                      className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      {PERF_RUN_MODES.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {PERF_RUN_MODE_LABELS[mode]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <label className="sr-only" htmlFor="perf-metric">
-                      {t('setup:welcome.perfMetric')}
-                    </label>
-                    <select
-                      id="perf-metric"
-                      value={perfMetric}
-                      onChange={(event) => setPerfMetric(event.target.value as PerfRunMetric | '')}
-                      disabled={!wsConnected || perfState === 'loading'}
-                      className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">{t('setup:welcome.perfMetricAuto')}</option>
-                      {PERF_RUN_METRICS.map((metric) => (
-                        <option key={metric} value={metric}>
-                          {PERF_RUN_METRIC_LABELS[metric]}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={startPerfRun}
-                      disabled={!wsConnected || savedCount === 0 || perfState === 'loading'}
-                      className="group flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {t('setup:welcome.perfStart')}
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+              </span>
+            </LauncherHeader>
+            {perfOpen && (
+              <>
+                <div className="ws-launcher-fields mt-4 grid gap-2">
+                  <label className="sr-only" htmlFor="perf-scope">
+                    {t('setup:welcome.perfScope')}
+                  </label>
+                  <select
+                    id="perf-scope"
+                    value={perfScope}
+                    onChange={(event) => setPerfScope(event.target.value)}
+                    disabled={!wsConnected || perfState === 'loading'}
+                    className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">{t('setup:welcome.perfWholeProject')}</option>
+                    {scopeDirectories.map((path) => (
+                      <option key={path} value={path}>
+                        {t('setup:welcome.perfDirectoryScope', { path })}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="sr-only" htmlFor="perf-mode">
+                    {t('setup:welcome.perfMode')}
+                  </label>
+                  <select
+                    id="perf-mode"
+                    value={perfMode}
+                    onChange={(event) => setPerfMode(event.target.value as PerfRunMode)}
+                    disabled={!wsConnected || perfState === 'loading'}
+                    className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    {PERF_RUN_MODES.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {PERF_RUN_MODE_LABELS[mode]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="ws-launcher-fields mt-2 grid gap-2">
+                  <label className="sr-only" htmlFor="perf-metric">
+                    {t('setup:welcome.perfMetric')}
+                  </label>
+                  <select
+                    id="perf-metric"
+                    value={perfMetric}
+                    onChange={(event) => setPerfMetric(event.target.value as PerfRunMetric | '')}
+                    disabled={!wsConnected || perfState === 'loading'}
+                    className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">{t('setup:welcome.perfMetricAuto')}</option>
+                    {PERF_RUN_METRICS.map((metric) => (
+                      <option key={metric} value={metric}>
+                        {PERF_RUN_METRIC_LABELS[metric]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={startPerfRun}
+                    disabled={!wsConnected || savedCount === 0 || perfState === 'loading'}
+                    className="group flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {t('setup:welcome.perfStart')}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </div>
+              </>
+            )}
             {perfState === 'error' && (
               <p className="mt-2 text-xs text-destructive" role="alert">
                 {t('setup:welcome.perfError')}

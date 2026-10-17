@@ -1,6 +1,7 @@
 import { Layers, Loader2, Pause, Play, Rocket, Square, Undo2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { showPanel } from '@/components/activity-bar/nav';
+import { PageMotif } from '@/components/PageMotif';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -206,11 +207,12 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
       <MyGoals sessionId={sessionId} onSelect={handleSelectBoard} onNew={handleNew} />
       {/* Header */}
-      <header className="flex shrink-0 flex-col gap-2 border-b bg-card px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="ws-page-header flex shrink-0 flex-col gap-2 border-b sm:flex-row sm:items-center sm:justify-between">
+        <PageMotif kind="flow" />
         <div className="flex min-w-0 items-center gap-2">
           <Layers className="h-5 w-5 text-muted-foreground" />
           <div>
-            <h1 className="text-lg font-semibold">{hasPhases ? title || 'Goal' : 'Goal'}</h1>
+            <h1 className="">{hasPhases ? title || 'Goal' : 'Goal'}</h1>
             {hasPhases && (
               <p className="text-xs text-muted-foreground">
                 {t('activity:goalRun.summary', { count: phases.length, pct: overallPercent })}
@@ -394,8 +396,9 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
         </div>
       ) : (
         /* ── Start screen ── */
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="max-w-lg w-full space-y-6">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+          <div className="ws-goal-launch max-w-2xl w-full space-y-6">
+            <PageMotif kind="flow" />
             <div className="text-center space-y-2">
               <Rocket className="h-10 w-10 mx-auto text-primary/60" />
               <h2 className="text-xl font-semibold">{t('activity:goalRun.startHeading')}</h2>

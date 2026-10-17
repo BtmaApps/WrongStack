@@ -429,7 +429,7 @@ export function SessionList({
                             <article
                               key={entry.id}
                               className={cn(
-                                'group grid min-w-0 grid-cols-[minmax(0,1fr)_auto] bg-card transition-colors',
+                                'ws-session-history-row group grid min-w-0 grid-cols-[minmax(0,1fr)_auto] bg-card transition-colors',
                                 entry.isCurrent
                                   ? 'border-l-2 border-l-primary bg-primary/5'
                                   : 'border-l-2 border-l-transparent hover:bg-muted/45',

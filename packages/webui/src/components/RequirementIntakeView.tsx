@@ -8,6 +8,7 @@
  */
 import { Check, ChevronDown, ChevronRight, Copy, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -229,10 +230,9 @@ export function RequirementIntakeView({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="border-b border-border/70 px-5 py-3">
-        <div className="text-sm font-semibold text-foreground">
-          {t('activity:reqIntake.requirementsIntake')}
-        </div>
+      <header className="ws-page-header border-b border-border/70">
+        <PageMotif kind="flow" />
+        <h1 className="text-foreground">{t('activity:reqIntake.requirementsIntake')}</h1>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
           {t('activity:reqIntake.collectAndPreserveSoftwareDevelopmentRequests')}
         </div>

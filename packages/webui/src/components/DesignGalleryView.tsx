@@ -1,3 +1,4 @@
+import { PageMotif } from '@/components/PageMotif';
 /**
  * DesignGalleryView — a live preview gallery of every design kit.
  *
@@ -468,7 +469,8 @@ export function DesignGalleryView({ className }: { className?: string }) {
       )}
     >
       <div className="border-b border-border/60 p-3">
-        <div className="rounded-xl border border-border/70 bg-card/75 p-3 shadow-sm">
+        <div className="ws-page-header rounded-xl border border-border/70">
+          <PageMotif kind="library" />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">

@@ -384,9 +384,9 @@ export function ChatInput({
         data-chat-started={chatStarted ? 'true' : 'false'}
         data-has-draft={input.trim() || pendingImages.length > 0 ? 'true' : 'false'}
         className={cn(
-          'relative flex flex-col gap-2 rounded-xl border border-border/70 bg-background/85 p-2 shadow-lg shadow-black/5 transition-colors sm:flex-row sm:items-end',
+          'ws-composer relative flex flex-col gap-2 border border-border/70 p-2 sm:flex-row sm:items-end',
           isLoading && 'border-warning/45 bg-warning/5 shadow-warning/10',
-          !chatStarted && !isLoading && 'border-border/50 bg-card/55 shadow-none',
+          !chatStarted && !isLoading && 'border-border/60',
           draggingOver && 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5',
         )}
       >

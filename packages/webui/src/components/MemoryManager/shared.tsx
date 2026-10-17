@@ -277,12 +277,12 @@ export function MetricCard({
           ? 'text-info'
           : 'text-foreground';
   return (
-    <div className="border border-border/70 bg-card/55 px-3 py-2.5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.035)]">
+    <div className="ws-metric border border-border/70 bg-card/55 px-3 py-2.5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.035)]">
       <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
       <div className="mt-1 flex items-end justify-between gap-2">
-        <p className={cn('font-mono text-xl font-bold tabular-nums', toneClass)}>{value}</p>
+        <p className={cn('ws-metric-value', toneClass)}>{value}</p>
         <p className="truncate text-[9px] text-muted-foreground">{hint}</p>
       </div>
     </div>

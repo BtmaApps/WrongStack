@@ -121,10 +121,11 @@ export function SageTabs({ defaultValue = 'all' }: { defaultValue?: SageTabValue
     <Tabs
       value={tab}
       onValueChange={(value) => setTab(value as SageTabValue)}
-      className="flex h-full min-h-0 min-w-0 flex-1 flex-col"
+      className="ws-page flex h-full min-h-0 min-w-0 flex-1 flex-col"
+      data-workbench-view="memory"
     >
       <div
-        className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/55 px-4 py-2 sm:px-5"
+        className="ws-toolbar flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/55 px-4 py-2 sm:px-5"
         role="presentation"
       >
         <TabsList

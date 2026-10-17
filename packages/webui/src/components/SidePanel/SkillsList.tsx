@@ -373,7 +373,7 @@ export function SkillsList({ className }: { className?: string }) {
                       type="button"
                       onClick={() => handleSelectSkill(skill)}
                       className={cn(
-                        'w-full rounded-lg border px-2.5 py-2 text-left text-xs transition-colors',
+                        'ws-picker-option w-full rounded-xl border px-3 py-3 text-left text-xs transition-colors',
                         selectedSkillName === skill.name
                           ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
                           : 'border-border/50 bg-card/55 text-foreground hover:border-border hover:bg-accent/50',

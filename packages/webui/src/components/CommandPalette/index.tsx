@@ -598,7 +598,7 @@ function renderGroupedList(
                 onMouseEnter={() => setIndex(globalIdx)}
                 onClick={() => dispatch(item)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded text-left text-sm transition-colors',
+                  'ws-command-option w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-colors',
                   active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/40',
                 )}
               >

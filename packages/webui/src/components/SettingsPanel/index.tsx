@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { PageMotif } from '@/components/PageMotif';
 import { isModelDisabled, isProviderDisabled } from '@/components/QuickModelSwitcher.filter';
 import { toast } from '@/components/Toaster';
 import { useProviderModels } from '@/hooks/useProviderModels';
@@ -472,13 +473,14 @@ export function SettingsPanel() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-gradient-to-b from-background/90 via-background/60 to-background/80">
-      <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-card shrink-0">
+      <header className="ws-page-header flex items-center justify-between gap-2 border-b border-border shrink-0">
+        <PageMotif kind="system" />
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-primary/20 bg-primary/10 text-primary">
+          <span className="ws-page-icon flex h-9 w-9 shrink-0 items-center justify-center border border-primary/20 bg-primary/10 text-primary">
             <Settings2 className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-foreground">{t('settings:title')}</h1>
+            <h1 className="text-foreground">{t('settings:title')}</h1>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {provider && activeModel ? `${provider} / ${activeModel}` : t('settings:subtitle')}
             </p>
@@ -515,9 +517,9 @@ export function SettingsPanel() {
           >
             <SettingsNavigation tabs={TABS} activeTab={settingsActiveTab} onSelect={selectTab} />
 
-            <div className="min-w-0 space-y-0">
+            <div className="ws-settings-content min-w-0 space-y-0">
               {activeTabDef?.descKey && (
-                <div className="mb-5 flex items-start gap-3 border-b border-border/70 pb-4">
+                <div className="ws-settings-section-title mb-5 flex items-start gap-3 border-b border-border/70 pb-4">
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                     {activeTabDef.icon}
                   </span>
@@ -573,7 +575,7 @@ export function SettingsPanel() {
                   catalogQuery={catalogQuery}
                   setCatalogQuery={setCatalogQuery}
                 />
-                <div className="rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">
+                <div className="ws-panel rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">
                   <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                     <Cpu className="h-4 w-4 text-muted-foreground" />
                     {t('settings:model.heading')}
@@ -635,7 +637,7 @@ export function SettingsPanel() {
               </TabsContent>
 
               <TabsContent value="chimera" className="mt-0 space-y-6">
-                <div className="rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">
+                <div className="ws-panel rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">
                   <ChimeraSettingsPanel
                     syncPref={syncPref}
                     sessionProvider={provider}

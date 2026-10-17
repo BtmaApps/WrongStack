@@ -144,7 +144,8 @@
 
 .thinking-wave span {
   width: 0.18rem;
-  min-height: 0.14rem;
+  height: 0.6rem;
+  transform-origin: bottom;
   border-radius: 9999px;
   background: currentColor;
   opacity: 0.65;
@@ -258,12 +259,12 @@
 @keyframes thinkingWave {
   0%,
   100% {
-    height: 0.14rem;
+    transform: scaleY(0.24);
     opacity: 0.38;
   }
 
   45% {
-    height: 0.58rem;
+    transform: scaleY(0.97);
     opacity: 0.92;
   }
 }

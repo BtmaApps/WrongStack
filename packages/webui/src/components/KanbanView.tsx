@@ -1,6 +1,7 @@
 import type { KanbanBoardPresence, KanbanEvent, KanbanTask } from '@wrongstack/kanban';
-import { Copy, History, Plus, Trash2, X } from 'lucide-react';
+import { Columns3, Copy, History, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useHorizontalScroll } from '@/hooks/useHorizontalScroll';
 import { useAppTranslation } from '@/i18n';
 import { auditKanbanBoard } from '@/lib/kanban-cleaner';
@@ -29,6 +30,7 @@ import { KanbanTaskTree } from './KanbanTaskTree';
 import { KanbanVerificationDashboard } from './KanbanVerificationDashboard';
 import { type KanbanViewMode, KanbanViewModeTabs } from './KanbanViewModeTabs';
 import { KanbanWorkbench } from './KanbanWorkbench';
+import { EmptyState } from './ui/empty-state';
 import { useKanbanRegistrySessionIds } from './useKanbanRegistrySessionIds';
 
 export const TASK_ACTIVITY_LOAD_LIMIT = 5_000;
@@ -417,11 +419,10 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
       />
 
       <main className="flex min-h-0 min-w-0 flex-none flex-col md:flex-1">
-        <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
+        <header className="ws-page-header flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b">
+          <PageMotif kind="flow" />
           <div className="w-full min-w-0 sm:w-auto sm:flex-1">
-            <h1 className="truncate text-sm font-semibold">
-              {activeBoard?.title ?? 'No board selected'}
-            </h1>
+            <h1 className="truncate">{activeBoard?.title ?? 'No board selected'}</h1>
             <div className="truncate text-[11px] text-muted-foreground">
               {activeBoard
                 ? `${activeBoard.columns.length} columns / ${activeBoard.tasks.length} tasks`
@@ -652,9 +653,11 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
               )}
             </>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t('activity:kanban.noBoardSelected')}
-            </div>
+            <EmptyState
+              icon={<Columns3 />}
+              title={t('activity:kanban.noBoardSelected')}
+              panel={false}
+            />
           )}
         </div>
       </main>

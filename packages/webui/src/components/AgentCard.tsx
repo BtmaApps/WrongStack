@@ -14,12 +14,12 @@
  * InspectorPanel, which reuses this card for the "Agents" tab.
  */
 
-import { Crown, Cpu, Loader2, Wrench, Zap } from 'lucide-react';
+import { Cpu, Crown, Loader2, Wrench, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
-import { ContextBar } from '@/components/ContextBar';
 import { AgentTranscript } from '@/components/AgentTranscript';
+import { ContextBar } from '@/components/ContextBar';
 import { SparklineChart } from '@/components/ui/sparkline';
+import { useAppTranslation } from '@/i18n';
 import { computeAgentStats } from '@/lib/agent-status';
 import { cn } from '@/lib/utils';
 import type { SubagentView } from '@/stores';
@@ -70,7 +70,7 @@ export function AgentCard({ agent, isLeader }: { agent: SubagentView; isLeader: 
   return (
     <div
       className={cn(
-        'rounded-xl border p-4 space-y-3',
+        'ws-panel ws-interactive-card rounded-xl border p-4 space-y-3',
         active ? 'border-primary/20 bg-primary/[0.02]' : 'border-border bg-card',
         isLeader && 'ring-2 ring-warning/30',
       )}

@@ -1,0 +1,304 @@
+/* Stateful surfaces: motion is tied to real UI events and runtime state.
+   Entry animations do not retain transforms, so fixed menus keep their anchors. */
+@layer components {
+  .ws-sheet-heading {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(115deg, hsl(var(--primary) / 0.07), transparent 70%);
+  }
+  .ws-command-option[aria-selected="true"] {
+    box-shadow: inset 2px 0 hsl(var(--primary));
+  }
+  .ws-activity-signal {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+  .ws-activity-signal[data-state="running"] {
+    color: hsl(var(--warning));
+  }
+  .ws-activity-signal[data-state="success"] {
+    color: hsl(var(--success));
+  }
+  .ws-activity-signal[data-state="error"] {
+    color: hsl(var(--destructive));
+  }
+  .ws-activity-signal[data-state="pending"] {
+    color: hsl(var(--info));
+  }
+  .ws-signal-wave rect {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .ws-signal-result {
+    transform-origin: 12px 12px;
+  }
+
+  .ws-message-surface {
+    border-radius: 14px;
+    box-shadow: 0 2px 10px -7px hsl(var(--shadow-color) / 0.12);
+  }
+  .ws-message-surface[data-role="user"] {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.07), hsl(var(--primary) / 0.025));
+    border-color: hsl(var(--primary) / 0.25);
+  }
+  .ws-message-surface[data-role="assistant"] {
+    background: linear-gradient(155deg, hsl(var(--card)), hsl(var(--card) / 0.75));
+  }
+  .ws-message-edit {
+    min-width: 0;
+    width: min(100%, 36rem);
+  }
+
+  .ws-tool-disclosure {
+    min-height: 44px;
+    border-radius: inherit;
+  }
+  .ws-tool-body {
+    animation: ws-detail-reveal 220ms var(--ws-ease) backwards;
+  }
+  .ws-copy-feedback {
+    border-radius: 5px;
+  }
+  .ws-copy-feedback[data-copied="true"] {
+    color: hsl(var(--success));
+  }
+
+  .ws-session-tabs {
+    background: hsl(var(--card) / 0.45);
+  }
+  .ws-session-tab {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease;
+  }
+  .ws-session-tab[aria-selected="true"] {
+    box-shadow:
+      0 3px 12px -8px hsl(var(--primary) / 0.35),
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+  }
+  .ws-session-tab:focus-within button {
+    opacity: 1;
+  }
+  .ws-session-history-row {
+    margin: 4px;
+    border-radius: 10px;
+    border: 1px solid hsl(var(--border) / 0.55);
+  }
+
+  .ws-dock-chip {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease;
+  }
+  .ws-dock-chip[data-active="true"] {
+    box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.045);
+  }
+  .ws-dock-surface {
+    background: linear-gradient(120deg, hsl(var(--card) / 0.9), hsl(var(--card) / 0.55));
+  }
+
+  .ws-toast {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    padding: 14px;
+    background: hsl(var(--popover) / 0.97);
+    box-shadow: 0 12px 36px -16px hsl(var(--shadow-color) / 0.35);
+    backdrop-filter: blur(14px);
+  }
+  .ws-toast-timer {
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: hsl(var(--info) / 0.6);
+    transform-origin: left;
+  }
+  .ws-toast[data-variant="success"] .ws-toast-timer {
+    background: hsl(var(--success) / 0.65);
+  }
+  .ws-toast[data-variant="error"] .ws-toast-timer {
+    background: hsl(var(--destructive) / 0.65);
+  }
+  .ws-toast[data-variant="warn"] .ws-toast-timer {
+    background: hsl(var(--warning) / 0.65);
+  }
+  .ws-toast-icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    margin-top: -2px;
+    border: 1px solid hsl(var(--border) / 0.7);
+    border-radius: 9px;
+    background: hsl(var(--background) / 0.6);
+  }
+  .ws-notification-item {
+    border-radius: 9px;
+    margin: 4px;
+  }
+  .ws-notification-item[data-unread="true"] {
+    box-shadow: inset 2px 0 0 hsl(var(--primary));
+  }
+
+  .ws-picker-popover {
+    border-radius: 12px;
+    box-shadow: 0 16px 40px -20px hsl(var(--shadow-color) / 0.4);
+    animation: ws-detail-reveal 180ms var(--ws-ease) backwards;
+  }
+  .ws-picker-option {
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+  .ws-picker-option[aria-pressed="true"] > svg {
+    animation: ws-signal-confirm 280ms var(--ws-ease);
+  }
+
+  .ws-queue-item {
+    margin: 8px;
+    border: 1px solid hsl(var(--border) / 0.65);
+    border-radius: 10px;
+    background: hsl(var(--card) / 0.6);
+  }
+  .ws-queue-item[data-dispatched="true"] {
+    background: hsl(var(--muted) / 0.35);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ws-signal-wave rect {
+      animation: ws-signal-wave 900ms ease-in-out infinite;
+    }
+    .ws-signal-wave rect:nth-child(2) {
+      animation-delay: -300ms;
+    }
+    .ws-signal-wave rect:nth-child(3) {
+      animation-delay: -600ms;
+    }
+    .ws-signal-result {
+      animation: ws-signal-confirm 350ms var(--ws-ease) backwards;
+    }
+    .ws-signal-pending circle {
+      animation: ws-signal-wait 1500ms ease-in-out infinite;
+    }
+    .ws-signal-pending circle:nth-child(2) {
+      animation-delay: 150ms;
+    }
+    .ws-signal-pending circle:nth-child(3) {
+      animation-delay: 300ms;
+    }
+    .ws-toast {
+      animation: ws-toast-enter 320ms var(--ws-ease) backwards;
+    }
+    .ws-toast-timer {
+      animation: ws-toast-expire linear forwards;
+    }
+    .ws-session-tab {
+      animation: ws-tab-enter 240ms var(--ws-ease) backwards;
+    }
+    .ws-queue-item {
+      animation: ws-detail-reveal 240ms var(--ws-ease) backwards;
+    }
+    .ws-copy-feedback[data-copied="true"] > svg {
+      animation: ws-signal-confirm 280ms var(--ws-ease);
+    }
+    .ws-banner {
+      animation: ws-detail-reveal 240ms var(--ws-ease) backwards;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .ws-tool-disclosure {
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+    .ws-tool-meta {
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+    .ws-tool-summary {
+      flex-basis: 100%;
+      order: 2;
+    }
+  }
+  @media (pointer: coarse) {
+    .ws-session-tab button {
+      opacity: 0.7;
+    }
+  }
+}
+
+@keyframes ws-signal-wave {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@keyframes ws-signal-wait {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@keyframes ws-signal-confirm {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ws-detail-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ws-toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes ws-toast-expire {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes ws-tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

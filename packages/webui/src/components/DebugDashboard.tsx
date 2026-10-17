@@ -11,6 +11,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { i18n, useAppTranslation } from '@/i18n';
 import type { DebugData, FileWatcherMetrics, SystemMetrics } from './DebugDashboardParts.js';
@@ -114,10 +115,11 @@ export function DebugDashboard() {
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
         {/* Header */}
-        <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+        <div className="ws-page-header rounded-xl border border-border/70">
+          <PageMotif kind="system" />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <h1 className="flex items-center gap-2 text-lg font-semibold sm:text-xl">
+              <h1 className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-primary" />
                 {t('activity:debug.heading')}
               </h1>
@@ -538,7 +540,7 @@ export function DebugDashboard() {
             <Activity className="h-4 w-4 text-primary" />
             {t('activity:debug.rawData')}
           </h2>
-          <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+          <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
             <pre className="overflow-x-auto text-xs font-mono text-muted-foreground">
               {JSON.stringify(
                 {

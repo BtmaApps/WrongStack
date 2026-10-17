@@ -41,6 +41,7 @@ import {
   zoneFor,
 } from './context-dashboard-sections.js';
 import { MemoryLifecycleTrace } from './MemoryManager/MemoryLifecycleTrace';
+import { PageMotif } from './PageMotif';
 
 // ── Main component ────────────────────────────────────────────────────
 
@@ -177,7 +178,8 @@ export function ContextDashboard() {
   return (
     <div
       ref={useScrollPosition('context')}
-      className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+      className="ws-page flex-1 min-h-0 overflow-y-auto overscroll-contain"
+      data-workbench-view="context"
     >
       {/* Inject fadeInUp keyframes once */}
       <style>{`
@@ -187,7 +189,14 @@ export function ContextDashboard() {
         }
       `}</style>
       {/* Header bar */}
-      <div className={cn('sticky top-0 z-10 flex items-center gap-3 px-4 py-2 border-b', zone.bg)}>
+      <div
+        className={cn(
+          'ws-page-header sticky top-0 z-10 flex items-center gap-3 px-4 py-2 border-b border-l-2',
+          zone.bg,
+        )}
+        style={{ borderLeftColor: zone.cssColor }}
+      >
+        <PageMotif kind="chart" />
         <Button
           variant="ghost"
           size="icon"
@@ -200,7 +209,7 @@ export function ContextDashboard() {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg">{zone.emoji}</span>
           <Sparkles className="h-3.5 w-3.5 text-primary/60" />
-          <h1 className="text-sm font-semibold">{t('activity:ctxDash.contextDashboard')}</h1>
+          <h1 className="">{t('activity:ctxDash.contextDashboard')}</h1>
           <span
             className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded-full', zone.bg, zone.text)}
           >

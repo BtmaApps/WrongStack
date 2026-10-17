@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PageMotif } from '@/components/PageMotif';
 import { usePagination } from '@/hooks/usePagination';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useAppTranslation } from '@/i18n';
@@ -146,10 +147,10 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
-      <div className={`mt-0.5 ${color}`}>{icon}</div>
+    <div className="ws-metric flex items-start gap-3 border border-border/70 bg-card/75 p-4 shadow-sm">
+      <div className={`ws-metric-icon mt-0.5 ${color}`}>{icon}</div>
       <div className="min-w-0">
-        <div className="text-2xl font-semibold tabular-nums text-foreground">{value}</div>
+        <div className="ws-metric-value text-foreground">{value}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">{label}</div>
         {sub ? <div className="mt-1 text-xs text-muted-foreground/70">{sub}</div> : null}
       </div>
@@ -343,13 +344,12 @@ export function AnalyticsDashboard() {
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
         {/* ── Header ── */}
-        <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+        <div className="ws-page-header rounded-xl border border-border/70">
+          <PageMotif kind="chart" />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              <h1 className="truncate text-base font-semibold">
-                {t('activity:analytics.heading')}
-              </h1>
+              <h1 className="truncate">{t('activity:analytics.heading')}</h1>
             </div>
             <span className="text-xs text-muted-foreground">
               {t('activity:analytics.autoRefresh')}
@@ -420,7 +420,7 @@ export function AnalyticsDashboard() {
           {/* ── Row 2: Breakdowns ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Category breakdown */}
-            <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+            <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <TrendingUp className="h-3.5 w-3.5 text-primary" />
                 {t('activity:analytics.eventsByCategory')}
@@ -455,7 +455,7 @@ export function AnalyticsDashboard() {
             </div>
 
             {/* Tool usage / Event breakdown */}
-            <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+            <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <BarChart3 className="h-3.5 w-3.5 text-warning" />
                 {t('activity:analytics.topEvents')}
@@ -493,7 +493,7 @@ export function AnalyticsDashboard() {
           {/* ── Row 3: Current session stats & error alert ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Session usage detail */}
-            <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+            <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <DollarSign className="h-3.5 w-3.5 text-primary" />
                 {t('activity:analytics.activeSessionUsage')}
@@ -571,7 +571,7 @@ export function AnalyticsDashboard() {
             </div>
 
             {/* Error/warning indicator */}
-            <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+            <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
               <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                 {t('activity:analytics.healthErrors')}
@@ -616,7 +616,7 @@ export function AnalyticsDashboard() {
           </div>
 
           {/* ── Row 4: Recent events stream ── */}
-          <div className="rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
+          <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
             <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
               <Activity className="h-3.5 w-3.5 text-primary" />
               {t('activity:analytics.recentEvents')}

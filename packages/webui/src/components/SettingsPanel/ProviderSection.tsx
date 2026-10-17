@@ -1,5 +1,6 @@
 import { CheckCircle2, Eye, EyeOff, Globe, Key, Loader2, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ProviderLogo } from '@/components/ProviderLogo';
 import { toast } from '@/components/Toaster';
 import { useFieldKeyboardNav } from '@/hooks/useFieldKeyboardNav';
 import { useAppTranslation } from '@/i18n';
@@ -271,7 +272,7 @@ export function ProviderSection({
       </div>
 
       {/* Provider source toggle */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <Button
           variant={providerTab === 'catalog' ? 'default' : 'outline'}
           size="sm"
@@ -343,10 +344,15 @@ export function ProviderSection({
                               !selected && 'hover:bg-muted',
                             )}
                           >
-                            <div className="flex w-full justify-between items-start">
-                              <div>
-                                <span className="font-medium">{p.name}</span>
-                                <span className="ml-2 text-xs text-muted-foreground">({p.id})</span>
+                            <div className="flex w-full flex-wrap gap-2 justify-between items-start">
+                              <div className="flex min-w-0 items-center gap-2.5">
+                                <ProviderLogo providerId={p.id} baseUrl={p.apiBase} />
+                                <div className="min-w-0 break-words">
+                                  <span className="font-medium">{p.name}</span>
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    ({p.id})
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 {p.hasApiKey && (

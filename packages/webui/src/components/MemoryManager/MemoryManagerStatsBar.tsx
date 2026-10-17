@@ -29,7 +29,7 @@ export function MemoryManagerStatsBar({
 
   return (
     <>
-      <div className="grid shrink-0 grid-cols-2 gap-px border-b border-border/70 bg-border/60 sm:grid-cols-4">
+      <div className="ws-metric-grid grid shrink-0 grid-cols-2 border-b border-border/70 sm:grid-cols-4">
         <MetricCard
           label={t('activity:memoryManager.tabMemories')}
           value={stats?.total ?? memories.length}

@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import type { SubagentView } from '@/stores';
 import { useActiveSessionId, useFleetStore, useSessionLeaderId, useUIStore } from '@/stores';
 import { onLaneDisposed } from '@/stores/chat-lanes';
+import { EmptyState } from './ui/empty-state';
 
 const STATUS_META: Record<
   string,
@@ -185,27 +186,28 @@ export function LiveFleetTab({ nowTick }: { nowTick: number }) {
 
   if (list.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        <div className="text-center space-y-3">
-          <Bot className="h-10 w-10 mx-auto opacity-30" />
-          <p className="text-sm">{t('activity:agentRoster.noActiveFleetAgents')}</p>
-          <p className="text-xs text-muted-foreground/70">{t('activity:agentRoster.liveEmpty')}</p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<Bot />}
+        title={t('activity:agentRoster.noActiveFleetAgents')}
+        description={t('activity:agentRoster.liveEmpty')}
+        panel={false}
+      />
     );
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div className="ws-live-fleet flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
       {/* Left: agent list */}
       <div
         className={cn(
           'flex flex-col min-h-0 min-w-0 overflow-hidden',
-          selected ? 'w-80 shrink-0 border-r border-border/50' : 'flex-1',
+          selected
+            ? 'max-h-[38%] min-h-40 w-full shrink-0 border-b border-border/50 md:max-h-none md:min-h-0 md:w-80 md:border-r md:border-b-0'
+            : 'flex-1',
         )}
       >
         {/* Filter bar */}
-        <div className="flex items-center gap-1 shrink-0 px-3 py-2 border-b border-border/50">
+        <div className="ws-toolbar flex flex-wrap items-center gap-1 shrink-0 px-3 py-2 border-b border-border/50">
           {(['all', 'running', 'done', 'failed'] as const).map((f) => (
             <button
               key={f}
@@ -392,20 +394,20 @@ function AgentDetailCard({ agent, nowTick }: { agent: SubagentView; nowTick: num
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-2">
-        <div className="rounded-lg border bg-card p-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="ws-metric rounded-lg border bg-card p-2">
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
             {t('activity:agentRoster.iterations')}
           </span>
           <div className="text-lg font-mono font-semibold mt-0.5">{agent.iteration}</div>
         </div>
-        <div className="rounded-lg border bg-card p-2">
+        <div className="ws-metric rounded-lg border bg-card p-2">
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
             {t('activity:agentRoster.toolCalls')}
           </span>
           <div className="text-lg font-mono font-semibold mt-0.5">{agent.toolCalls}</div>
         </div>
-        <div className="rounded-lg border bg-card p-2">
+        <div className="ws-metric rounded-lg border bg-card p-2">
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
             {t('activity:agentRoster.cost')}
           </span>
@@ -413,7 +415,7 @@ function AgentDetailCard({ agent, nowTick }: { agent: SubagentView; nowTick: num
             {fmtCost(agent.costUsd)}
           </div>
         </div>
-        <div className="rounded-lg border bg-card p-2">
+        <div className="ws-metric rounded-lg border bg-card p-2">
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
             {t('activity:agentRoster.context')}
           </span>

@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils';
 import { useActiveSessionId } from '@/stores';
 import { onLaneDisposed } from '@/stores/chat-lanes';
 import type { QueueMode } from '@/stores/chat-store';
+import { PageMotif } from './PageMotif';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
+import { EmptyState } from './ui/empty-state';
 
 type SortDir = 'oldest' | 'newest';
 
@@ -108,7 +110,7 @@ export function QueuePanel({
     >
       <DialogContent
         className={cn(
-          'max-w-lg gap-0 overflow-hidden border-border/80 bg-card p-0 pt-[10dvh] flex flex-col max-h-[70dvh]',
+          'max-w-lg gap-0 overflow-hidden border-border/80 bg-card p-0 flex flex-col max-h-[80dvh]',
           className,
         )}
         showCloseButton={false}
@@ -118,7 +120,8 @@ export function QueuePanel({
           {t('activity:queue.subtitle', { count: queue.length })}
         </DialogDescription>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/70 bg-card/95 px-4 py-3 shrink-0">
+        <div className="ws-page-header flex flex-wrap items-center justify-between gap-3 border-b border-border/70 shrink-0">
+          <PageMotif kind="flow" />
           <div className="flex items-center gap-2.5">
             <span className="flex items-center justify-center w-8 h-8 rounded-md border border-primary/20 bg-primary/10 text-primary">
               <ListOrdered className="h-4 w-4" />
@@ -131,6 +134,14 @@ export function QueuePanel({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('common:action.close')}
+              className="order-last flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={() => setSortDir((d) => (d === 'newest' ? 'oldest' : 'newest'))}
@@ -170,11 +181,13 @@ export function QueuePanel({
         {/* Queue list */}
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
           {queue.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-              <ListOrdered className="h-10 w-10 opacity-15" />
-              <p className="text-sm font-medium">{t('activity:queue.emptyTitle')}</p>
-              <p className="text-xs text-center max-w-xs">{t('activity:queue.emptyBody')}</p>
-            </div>
+            <EmptyState
+              icon={<ListOrdered />}
+              title={t('activity:queue.emptyTitle')}
+              description={t('activity:queue.emptyBody')}
+              panel={false}
+              className="min-h-60"
+            />
           ) : (
             <ul className="divide-y divide-border/60" data-testid="queue-list">
               {sortedQueue.map(({ item, sourceIdx }, idx) => {
@@ -186,7 +199,7 @@ export function QueuePanel({
                   <li
                     key={`${item.addedAt}-${sourceIdx}`}
                     className={cn(
-                      'flex items-start justify-between gap-3 px-4 py-3 text-xs transition-colors',
+                      'ws-queue-item flex items-start justify-between gap-3 px-4 py-3 text-xs transition-colors',
                       dispatched
                         ? 'bg-muted/30 text-muted-foreground hover:bg-muted/40'
                         : 'hover:bg-muted/35',

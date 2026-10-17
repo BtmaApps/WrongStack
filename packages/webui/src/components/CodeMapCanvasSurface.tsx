@@ -5,16 +5,16 @@ import {
   type Edge,
   MiniMap,
   type Node,
-  ReactFlow,
   type OnEdgesChange,
   type OnNodesChange,
+  ReactFlow,
 } from '@xyflow/react';
 import { Loader2, Network } from 'lucide-react';
 import type React from 'react';
-import { type CodeMapNodeData, EDGE_COLOR, nodeTypes } from './CodeMapVisuals';
-import { MINIMAP_NODE_LIMIT } from './CodeMapConfig';
-import type { CodeMapGraphResponse, GraphRefType } from './codemap-model';
 import { useAppTranslation } from '@/i18n';
+import { MINIMAP_NODE_LIMIT } from './CodeMapConfig';
+import { type CodeMapNodeData, EDGE_COLOR, nodeTypes } from './CodeMapVisuals';
+import type { CodeMapGraphResponse, GraphRefType } from './codemap-model';
 
 /** A 401/403 surfaced by the fetch — an auth problem, not a missing index. */
 function isAuthError(message: string): boolean {
@@ -132,7 +132,7 @@ export function CodeMapCanvasSurface({
           )}
         </ReactFlow>
       )}
-      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 border bg-card/90 px-3 py-1.5 font-mono text-[8px] text-muted-foreground shadow backdrop-blur">
+      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-lg border bg-card/90 px-3 py-1.5 font-mono text-[8px] text-muted-foreground shadow backdrop-blur">
         {(Object.entries(EDGE_COLOR) as [GraphRefType, string][]).map(([kind, color]) => (
           <span key={kind} className="flex items-center gap-1">
             <span className="h-0.5 w-3" style={{ backgroundColor: color }} />
