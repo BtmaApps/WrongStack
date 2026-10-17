@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T16:34:44.622Z",
+  "generatedAt": "2026-10-17T16:42:37.034Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 38,
     "sourceFiles": 5134,
     "testFiles": 4454,
-    "sourceLines": 1115232,
+    "sourceLines": 1115286,
     "workspaceEdges": 139,
     "moduleEdges": 16880,
     "nonCommandSlashImports": 0,
@@ -28064,12 +28064,12 @@
     },
     {
       "file": "packages/vibeui/src/components/provider-manager.tsx",
-      "lines": 710,
+      "lines": 711,
       "relativeImports": 4
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 950,
+      "lines": 956,
       "relativeImports": 16
     },
     {
@@ -28081,7 +28081,7 @@
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 950,
+      "lines": 956,
       "relativeImports": 16
     },
     {
@@ -28096,7 +28096,7 @@
     },
     {
       "file": "packages/vibeui/src/components/provider-manager.tsx",
-      "lines": 710,
+      "lines": 711,
       "relativeImports": 4
     },
     {

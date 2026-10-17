@@ -124,6 +124,7 @@ export function ResourceHub({
         if (!open) onClose();
       }}
       title="Workspace resources"
+      icon={<BookOpen size={20} />}
       description="Prompts and capabilities for this workspace."
       wide
     >

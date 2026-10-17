@@ -131,6 +131,7 @@ export function WorkspacePanel({
                 if (!open) setSelectedPath('');
               }}
               title={selectedPath}
+              icon={<FileDiff size={20} />}
               description="Working tree changes · compare diff, before and after."
               wide
             >

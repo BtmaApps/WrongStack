@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Check, KeyRound, Moon, Sun, X } from 'lucide-react';
+import { AlertCircle, Check, KeyRound, Moon, PanelTop, Settings2, Sun, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { useEffect, useState } from 'react';
 import { uiVersion } from '../lib/build-info';
@@ -18,6 +18,7 @@ export function Modal({
   wide = false,
   drawer = false,
   initialFocusRef,
+  icon,
 }: {
   open: boolean;
   onOpenChange: (value: boolean) => void;
@@ -28,6 +29,7 @@ export function Modal({
   wide?: boolean;
   drawer?: boolean;
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  icon?: React.ReactNode;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -43,12 +45,21 @@ export function Modal({
           className={`modal-content ${wide ? 'modal-wide' : ''} ${drawer ? 'modal-drawer' : ''}`}
         >
           <header className="modal-heading">
-            <div>
-              <Dialog.Title>{title}</Dialog.Title>
-              <Dialog.Description className="modal-description">{description}</Dialog.Description>
+            <div className="modal-heading-content">
+              <span className="modal-heading-icon" aria-hidden="true">
+                {icon || <PanelTop size={20} />}
+              </span>
+              <div className="modal-heading-text">
+                <Dialog.Title>{title}</Dialog.Title>
+                <Dialog.Description className="modal-description">{description}</Dialog.Description>
+              </div>
             </div>
             {dismissible && (
-              <Dialog.Close className="icon-button" aria-label="Close dialog" title="Close · Esc">
+              <Dialog.Close
+                className="icon-button modal-close"
+                aria-label="Close dialog"
+                title="Close · Esc"
+              >
                 <X size={18} />
               </Dialog.Close>
             )}
@@ -88,8 +99,9 @@ export function Settings({
       onOpenChange={(value) => {
         if (!value) onClose();
       }}
-      title="Make yourself at home"
-      description="A few essentials for your workspace."
+      title="Settings"
+      description="Appearance, agent behavior and workspace preferences."
+      icon={<Settings2 size={20} />}
       drawer
     >
       {open && <RuntimeControls controller={controller} />}
@@ -181,6 +193,7 @@ export function PendingInteractions({ controller }: { controller: SessionControl
         open={Boolean(confirm)}
         onOpenChange={() => {}}
         title="Your permission is needed"
+        icon={<AlertCircle size={20} />}
         dismissible={false}
         description={`${confirm?.tool || 'A tool'} is waiting for your decision.`}
       >

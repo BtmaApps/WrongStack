@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T16:34:44.622Z
+**Generated:** 2026-10-17T16:42:37.034Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5134 |
-| Production source lines | 1115232 |
+| Production source lines | 1115286 |
 | Test files | 4454 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 16880 |
@@ -84,10 +84,10 @@ None.
 
 | Lines | File |
 |---:|---|
-| 950 | `packages/vibeui/src/components/workspace.tsx` |
+| 956 | `packages/vibeui/src/components/workspace.tsx` |
 | 826 | `packages/vibeui/src/lib/session.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
-| 710 | `packages/vibeui/src/components/provider-manager.tsx` |
+| 711 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 700 | `packages/core/src/coordination/multi-agent-coordinator.ts` |

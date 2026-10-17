@@ -562,7 +562,11 @@ export function Workspace() {
               onClick={() => setSettings(true)}
             >
               {state.mode || 'Default'} · {state.prefs.autonomy}
-              {state.prefs.yolo === true ? ' · YOLO' : ''}
+              {state.prefs.yoloPlus === true
+                ? ' · YOLO+'
+                : state.prefs.yolo === true
+                  ? ' · YOLO'
+                  : ''}
             </button>
           )}
           {liveAgents.length > 0 && (
@@ -839,6 +843,7 @@ export function Workspace() {
         open={filesOpen}
         onOpenChange={setFilesOpen}
         title="Files"
+        icon={<Folder size={20} />}
         description="Read a file or add it to your next message."
         wide
       >
@@ -888,6 +893,7 @@ export function Workspace() {
         open={sessionsOpen}
         onOpenChange={setSessionsOpen}
         title="Sessions"
+        icon={<MessageSquare size={20} />}
         description="Search and resume conversations in this project."
       >
         <label className="session-search">

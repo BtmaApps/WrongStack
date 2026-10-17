@@ -110,17 +110,31 @@ export function RuntimeControls({ controller }: { controller: SessionController 
       <label className="settings-row">
         <span>
           <strong>YOLO</strong>
-          <small>Auto-approve tool permissions, including pending requests.</small>
+          <small>
+            {state.prefs.yoloPlus === true
+              ? 'Approve all calls, including subagents. Explicit deny rules still apply.'
+              : state.prefs.yolo === true
+                ? 'Approve standard calls; sensitive actions may still ask.'
+                : 'Ask when permission is required.'}
+          </small>
         </span>
-        <input
-          type="checkbox"
-          role="switch"
-          aria-checked={state.prefs.yolo === true}
-          aria-label="YOLO"
-          checked={state.prefs.yolo === true}
+        <select
+          aria-label="YOLO mode"
+          value={state.prefs.yoloPlus === true ? 'plus' : state.prefs.yolo === true ? 'on' : 'off'}
           disabled={disabled || typeof state.prefs.yolo !== 'boolean'}
-          onChange={(e) => change('yolo', 'prefs.update', { yolo: e.target.checked })}
-        />
+          onChange={(e) =>
+            change('yolo', 'prefs.update', {
+              yolo: e.target.value !== 'off',
+              yoloPlus: e.target.value === 'plus',
+            })
+          }
+        >
+          <option value="off">Off</option>
+          <option value="on">YOLO</option>
+          <option value="plus" disabled={typeof state.prefs.yoloPlus !== 'boolean'}>
+            YOLO+
+          </option>
+        </select>
       </label>
       <label className="settings-row">
         <span>

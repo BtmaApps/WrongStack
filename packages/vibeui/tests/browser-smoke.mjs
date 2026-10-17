@@ -22,6 +22,7 @@ let sessionName = 'A place to start';
 let workingMode = 'default';
 let preferences = {
   yolo: false,
+  yoloPlus: false,
   autonomy: 'suggest',
   nextStepsMode: 'optional',
   contextAutoCompact: true,
@@ -623,9 +624,30 @@ try {
   );
   await page.getByRole('button', { name: 'Agent settings', exact: true }).click();
   const settings = page.getByRole('dialog');
-  await settings.getByRole('switch', { name: 'YOLO', exact: true }).click();
+  for (const mode of ['plus', 'on', 'plus', 'off']) {
+    await settings.getByRole('combobox', { name: 'YOLO mode', exact: true }).selectOption(mode);
+    await page.waitForFunction(
+      (value) => document.querySelector('select[aria-label="YOLO mode"]')?.value === value,
+      mode,
+    );
+    const update = received.filter((frame) => frame.type === 'prefs.update').at(-1);
+    assert.equal(update.payload.sessionId, 'session-one');
+    assert.equal(update.payload.yolo, mode !== 'off');
+    assert.equal(update.payload.yoloPlus, mode === 'plus');
+    const summary = await page
+      .getByRole('button', { name: 'Agent settings', exact: true, includeHidden: true })
+      .textContent();
+    assert.equal(summary.includes('YOLO+'), mode === 'plus');
+    if (mode === 'plus')
+      await settings
+        .getByText('Approve all calls, including subagents. Explicit deny rules still apply.', {
+          exact: true,
+        })
+        .waitFor();
+  }
+  await settings.getByRole('combobox', { name: 'YOLO mode', exact: true }).selectOption('on');
   await page.waitForFunction(
-    () => document.querySelector('input[aria-label="YOLO"]')?.checked === true,
+    () => document.querySelector('select[aria-label="YOLO mode"]')?.value === 'on',
   );
   await settings.getByRole('combobox', { name: 'Autonomy', exact: true }).selectOption('auto');
   await page.waitForFunction(
@@ -658,9 +680,9 @@ try {
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   }
   assert.equal(await page.locator('html').getAttribute('data-palette'), 'ocean');
-  await settings.getByRole('switch', { name: 'YOLO', exact: true }).click();
+  await settings.getByRole('combobox', { name: 'YOLO mode', exact: true }).selectOption('off');
   await page.waitForFunction(
-    () => document.querySelector('input[aria-label="YOLO"]')?.checked === false,
+    () => document.querySelector('select[aria-label="YOLO mode"]')?.value === 'off',
   );
   await settings.getByText('VibeUI v1.1.7 · WrongStack v1.1.7', { exact: true }).waitFor();
   await page.screenshot({
@@ -1070,6 +1092,11 @@ try {
   await page.getByRole('checkbox', { name: /^Show inactive/ }).uncheck();
   await page.getByRole('button', { name: /Reviewer.*Inspect the project/ }).click();
   await page.getByRole('dialog').getByText('worker-model', { exact: true }).waitFor();
+  const agentDialogBox = await page.getByRole('dialog').boundingBox();
+  assert.ok(
+    agentDialogBox && agentDialogBox.width >= 1000,
+    'Agent detail gives desktop output a wide reading area',
+  );
   await page
     .getByRole('dialog')
     .locator('.agent-latest')

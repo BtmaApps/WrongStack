@@ -1,5 +1,6 @@
 'use client';
 
+import { Users } from 'lucide-react';
 import { useState } from 'react';
 import type { AgentEntry } from '../lib/session';
 import { Modal } from './dialogs';
@@ -57,10 +58,12 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
           if (!open) setSelected('');
         }}
         title={agent?.name || 'Agent'}
+        icon={<Users size={20} />}
         description="Task, model and latest activity for this session."
+        wide
       >
         {agent && (
-          <>
+          <div className="agent-detail">
             {!connected && <p role="status">Disconnected - displayed activity may be stale.</p>}
             <div className="agent-summary">
               <span className={`status-dot ${active(agent.status) ? 'busy' : ''}`} />
@@ -99,7 +102,7 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
                 ))}
               </div>
             </details>
-          </>
+          </div>
         )}
       </Modal>
     </section>

@@ -204,6 +204,7 @@ export function ProviderManager({
         if (!open) onClose();
       }}
       title="Providers & accounts"
+      icon={<KeyRound size={20} />}
       description="Manage saved credentials, subscription sign-ins and custom model endpoints."
       wide
     >
