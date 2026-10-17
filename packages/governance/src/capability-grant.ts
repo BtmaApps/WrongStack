@@ -552,9 +552,17 @@ export class GovernanceCapabilityGrantRegistry {
    * That emits `grant_expired` audit events for anything it reaps, which is
    * why the caller must not poll this: the idle timer asks at most once per
    * idle window.
+   *
+   * `excludeIssuedBy` skips grants the daemon issued to itself (its attachment
+   * broker): that grant is renewed for the daemon's whole life, so counting it
+   * would mean the daemon can never look idle.
    */
-  hasActiveGrants(): boolean {
+  hasActiveGrants(excludeIssuedBy?: string): boolean {
     this.pruneInactive();
-    return this.records.size > 0;
+    if (excludeIssuedBy === undefined) return this.records.size > 0;
+    for (const record of this.records.values()) {
+      if (record.issuedBy !== excludeIssuedBy) return true;
+    }
+    return false;
   }
 }

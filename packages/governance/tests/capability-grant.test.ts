@@ -1157,3 +1157,30 @@ describe('authenticated governance project service', () => {
     ).toThrow(/between 32 and 512 characters/);
   });
 });
+
+describe('governance capability grant registry — daemon self-grant exclusion', () => {
+  it('hasActiveGrants(excludeIssuedBy) skips the daemon self-grant but still counts client grants', () => {
+    let seq = 0;
+    const registry = new GovernanceCapabilityGrantRegistry('project-1', {
+      now: () => START_TIME,
+      tokenMaterial: () => {
+        seq += 1;
+        return { grantId: `g-self-${seq}`, secret: `${SECRET}${seq}` };
+      },
+    });
+    expect(registry.hasActiveGrants('governance-daemon-owner')).toBe(false);
+    registry.issue({
+      clientId: 'governance-attachment-broker-self',
+      issuedBy: 'governance-daemon-owner',
+      capabilities: ['runtime_attach'],
+      ttlMs: 10 * 60_000,
+    });
+    // The plain check still sees the self-grant; the excluded check must not,
+    // because the broker renews that credential for the daemon's whole life.
+    expect(registry.hasActiveGrants()).toBe(true);
+    expect(registry.hasActiveGrants('governance-daemon-owner')).toBe(false);
+    registry.issue({ clientId: 'c1', capabilities: ['task_read'], ttlMs: 60_000 });
+    expect(registry.hasActiveGrants('governance-daemon-owner')).toBe(true);
+    expect(registry.hasActiveGrants('trusted-server')).toBe(true);
+  });
+});

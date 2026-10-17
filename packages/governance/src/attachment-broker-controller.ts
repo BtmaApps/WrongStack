@@ -14,6 +14,11 @@ import {
 } from './daemon-metadata.js';
 import { sanitizeGovernanceMessage } from './sanitize.js';
 
+/**
+ * `issuedBy` stamped on the broker's own grant. The idle check keys on it to
+ * tell the daemon's self-held credential apart from grants clients hold.
+ */
+export const GOVERNANCE_DAEMON_OWNER_ISSUER = 'governance-daemon-owner';
 const GOVERNANCE_DAEMON_ATTACHMENT_BROKER_RENEW_BEFORE_MS = 15 * 60 * 1_000;
 const GOVERNANCE_DAEMON_ATTACHMENT_BROKER_RETRY_MS = 5_000;
 const GOVERNANCE_DAEMON_ATTACHMENT_BROKER_DEGRADED_FAILURES = 3;
@@ -213,7 +218,7 @@ export class GovernanceAttachmentBrokerController {
     try {
       issued = this.#options.grants.issueGrant({
         clientId: `governance-attachment-broker-${this.#options.metadata.instanceId}`,
-        issuedBy: 'governance-daemon-owner',
+        issuedBy: GOVERNANCE_DAEMON_OWNER_ISSUER,
         capabilities: ['runtime_attach', 'daemon_status_read'],
         ttlMs: this.#ttlMs,
       });

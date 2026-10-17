@@ -24,7 +24,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
-import { GovernanceProjectServer } from '../src/index.js';
+import { GOVERNANCE_DAEMON_OWNER_ISSUER, GovernanceProjectServer } from '../src/index.js';
 
 const temporaryDirectories: string[] = [];
 const servers: GovernanceProjectServer[] = [];
@@ -107,5 +107,40 @@ describe('governance project server idle shutdown', () => {
     await new Promise((resolve) => setTimeout(resolve, 1_000));
     expect(fired).toBe(false);
     expect(server.ready).toBe(true);
+  });
+
+  it('stops on idle even though the daemon holds its own attachment-broker grant', async () => {
+    // The daemon renews its self-issued broker credential for as long as it
+    // lives (the attachment broker rotates it well before expiry). That grant
+    // is not a session heartbeat: only grants a client holds keep the server
+    // alive, otherwise the idle path could never fire at all.
+    const root = projectRoot();
+    let resolveIdle: (() => void) | undefined;
+    const idle = new Promise<void>((resolve) => {
+      resolveIdle = resolve;
+    });
+    const server = new GovernanceProjectServer({
+      projectRoot: root,
+      projectId: 'project-self-grant',
+      idleMs: 50,
+      onIdle: () => resolveIdle?.(),
+    });
+    servers.push(server);
+    await server.start();
+    server.issueGrant({
+      clientId: 'governance-attachment-broker-self',
+      issuedBy: GOVERNANCE_DAEMON_OWNER_ISSUER,
+      capabilities: ['runtime_attach', 'daemon_status_read'],
+      ttlMs: 10 * 60_000,
+    });
+    await expect(
+      Promise.race([
+        idle.then(() => 'idle' as const),
+        new Promise<'timeout'>((resolve) => {
+          const timer = setTimeout(() => resolve('timeout'), 5_000);
+          timer.unref?.();
+        }),
+      ]),
+    ).resolves.toBe('idle');
   });
 });

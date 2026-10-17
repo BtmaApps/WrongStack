@@ -1,7 +1,10 @@
 import * as fs from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
-import type { GovernanceAttachmentBrokerLifecycleEvent } from './attachment-broker-controller.js';
+import {
+  GOVERNANCE_DAEMON_OWNER_ISSUER,
+  type GovernanceAttachmentBrokerLifecycleEvent,
+} from './attachment-broker-controller.js';
 import { AuthenticatedGovernanceProjectService } from './authenticated-project-service.js';
 import {
   GovernanceCapabilityGrantRegistry,
@@ -316,7 +319,9 @@ export class GovernanceProjectServer {
         this.scheduleIdleStop();
         return;
       }
-      if (this.grants?.hasActiveGrants()) {
+      // The daemon's own attachment-broker grant is renewed for as long as the
+      // daemon lives; only grants a client holds are a session heartbeat.
+      if (this.grants?.hasActiveGrants(GOVERNANCE_DAEMON_OWNER_ISSUER)) {
         this.scheduleIdleStop();
         return;
       }
