@@ -8,6 +8,21 @@ describe('automation result evidence', () => {
     ]);
     expect(buildAutomationResult('', null, 0).validation.evidence).not.toContain('changes.patch');
   });
+  it('keeps paths containing spaces despite the trailing TAB git adds to their headers', () => {
+    const patch =
+      'diff --git a/my file.ts b/my file.ts\n' +
+      'new file mode 100644\n' +
+      '--- /dev/null\n' +
+      '+++ b/my file.ts\t\n' +
+      '@@ -0,0 +1 @@\n' +
+      '+x\n' +
+      '--- a/old name.ts\t\n' +
+      '+++ /dev/null\n';
+    expect(buildAutomationResult('', patch, 0).changedFiles.sort()).toEqual([
+      'my file.ts',
+      'old name.ts',
+    ]);
+  });
   it('retains unknown pricing instead of treating a legacy zero as free', () => {
     const result = buildAutomationResult(
       JSON.stringify({

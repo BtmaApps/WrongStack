@@ -50,7 +50,10 @@ export function buildAutomationResult(
   const files = new Set<string>();
   for (const line of (patch ?? '').split('\n')) {
     if (!line.startsWith('+++ ') && !line.startsWith('--- ')) continue;
-    let raw = line.slice(4);
+    // Git ends the header with a TAB when the name contains a space (GNU diff
+    // convention); left in place, the control-character filter below dropped
+    // every such file from changedFiles.
+    let raw = line.slice(4).replace(/\t$/, '');
     if (raw.startsWith('"') && raw.endsWith('"')) {
       const bytes: Buffer[] = [];
       for (let i = 1; i < raw.length - 1; i++) {
