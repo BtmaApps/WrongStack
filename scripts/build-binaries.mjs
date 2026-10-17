@@ -75,6 +75,7 @@ const ASSETS = {
   webui: ['package.json', 'dist'],
   'webui-hq': ['package.json', 'dist'],
   simpleui: ['package.json', 'dist'],
+  vibeui: ['package.json', 'dist'],
 };
 
 /** Build noise that is never read at runtime. */

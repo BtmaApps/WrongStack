@@ -18,6 +18,7 @@ export function shouldCaptureTuiStartup(
     !flags['no-tui'] &&
     !flags['webui'] &&
     !flags['simpleui'] &&
+    !flags['vibeui'] &&
     !flags['hq'] &&
     !flags['desktop'] &&
     !flags['remote'] &&

@@ -58,6 +58,7 @@ export const BOOLEAN_FLAGS = new Set([
   'webui',
   'webui-session-child',
   'simpleui',
+  'vibeui',
   'full-auto',
   'desktop',
   'open',
@@ -241,12 +242,12 @@ function normalizeSurfaceAliases(
   // SimpleUI deliberately reuses the WebUI backend/runtime path. Keep its own
   // flag so dispatch can select the independent frontend build, while also
   // setting `webui` so every existing non-interactive surface guard applies.
-  if (flags['simpleui']) flags['webui'] = true;
+  if (flags['simpleui'] || flags['vibeui']) flags['webui'] = true;
   if (flags['webui-session-child']) flags['webui'] = true;
 
   const first = positional[0];
-  if (first === 'simpleui') {
-    flags['simpleui'] = true;
+  if (first === 'simpleui' || first === 'vibeui') {
+    flags[first] = true;
     flags['webui'] = true;
     positional.splice(0, 1);
     return;

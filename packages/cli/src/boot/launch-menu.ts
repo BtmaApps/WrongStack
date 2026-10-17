@@ -88,6 +88,7 @@ export function shouldSkipMenu(
   if (flags['webui'] === true) return true;
   if (flags['webui-session-child'] === true) return true;
   if (flags['simpleui'] === true) return true;
+  if (flags['vibeui'] === true) return true;
   if (flags['hq'] === true) return true;
   if (flags['desktop'] === true) return true;
   if (flags['no-interactive'] === true) return true;
@@ -328,6 +329,8 @@ function describeMode(mode: LaunchMenuMode): string {
       return 'WebUI';
     case 'simpleui':
       return 'SimpleUI';
+    case 'vibeui':
+      return 'VibeUI';
     case 'hq':
       return 'HQ';
     case 'desktop':
@@ -375,6 +378,11 @@ export function applyLaunchMenuToArgv(argv: string[], result: LaunchMenuResult):
       if (typeof result.port === 'number') out.push(`--port=${result.port}`);
       if (typeof result.host === 'string') out.push(`--host=${result.host}`);
       out.push('--simpleui');
+      return out;
+    case 'vibeui':
+      if (typeof result.port === 'number') out.push(`--port=${result.port}`);
+      if (typeof result.host === 'string') out.push(`--host=${result.host}`);
+      out.push('--vibeui');
       return out;
     case 'hq':
       if (typeof result.port === 'number') out.push(`--port=${result.port}`);

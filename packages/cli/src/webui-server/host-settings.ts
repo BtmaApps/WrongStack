@@ -11,7 +11,9 @@ export function resolveWebuiHostSettings(opts: CliWebUIOptions) {
   const publicWsUrl = opts.publicWsUrl ?? process.env['WEBUI_PUBLIC_WS_URL'];
   const requireToken = opts.requireToken ?? envFlag('WEBUI_REQUIRE_TOKEN');
   const surface = opts.surface ?? 'webui';
-  const surfaceDefaults = surface === 'simpleui' ? { http: 3466 } : { http: 3456 };
+  const surfaceDefaults = {
+    http: surface === 'vibeui' ? 3476 : surface === 'simpleui' ? 3466 : 3456,
+  };
   const requestedHttpPort = opts.httpPort ?? opts.port ?? surfaceDefaults.http;
   const strictPort = opts.strictPort ?? isStrictPort();
   const globalRoot = opts.globalConfigPath

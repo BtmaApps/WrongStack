@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T22:21:44.380Z",
+  "generatedAt": "2026-10-17T22:22:13.118Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5133,
-    "testFiles": 4452,
-    "sourceLines": 1115333,
+    "sourceFiles": 5134,
+    "testFiles": 4453,
+    "sourceLines": 1115396,
     "workspaceEdges": 139,
-    "moduleEdges": 16884,
+    "moduleEdges": 16885,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 667,
-      "testFiles": 652,
+      "sourceFiles": 668,
+      "testFiles": 653,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 652
+          "testFiles": 653
         }
       ]
     },
@@ -5559,6 +5559,12 @@
       },
       {
         "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/vibeui.test.ts",
         "projects": [
           "root-node"
         ]

@@ -15,6 +15,7 @@ export type NetworkLaunchMode = Exclude<LaunchMenuMode, 'tui-repl' | 'desktop'>;
 export const DEFAULT_PORTS: Record<NetworkLaunchMode, number> = {
   webui: 3456,
   simpleui: 3466,
+  vibeui: 3476,
   hq: HQ_DEFAULT_PORT,
 };
 
@@ -60,6 +61,13 @@ export const MODE_OPTIONS: ReadonlyArray<{
     label: 'Desktop',
     hint: 'Electron app (alias: --desktop)',
     icon: '🖥',
+  },
+  {
+    key: 6,
+    mode: 'vibeui',
+    label: 'VibeUI',
+    hint: `focused coding workspace (port ${DEFAULT_PORTS.vibeui})`,
+    icon: '✦',
   },
 ];
 

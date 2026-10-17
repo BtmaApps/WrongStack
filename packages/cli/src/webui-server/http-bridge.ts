@@ -21,7 +21,7 @@ import type { WebuiTransport } from './transport.js';
 
 export interface WebuiHttpBridgeInput {
   opts: CliWebUIOptions;
-  surface: 'webui' | 'simpleui';
+  surface: 'webui' | 'simpleui' | 'vibeui';
   host: string;
   httpPort: number;
   strictPort: boolean;
@@ -84,7 +84,7 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
     publicWsUrl,
     apiToken: wsToken,
     requireToken,
-    deferListen: surface === 'simpleui',
+    deferListen: surface === 'simpleui' || surface === 'vibeui',
     strictPort,
     // Resolve the same-origin health probes from live preferences, including
     // changes made after boot, just like the standalone WebUI host.
@@ -154,7 +154,7 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
 
   if (httpServer) {
     const boundPort =
-      surface === 'simpleui'
+      surface === 'simpleui' || surface === 'vibeui'
         ? await startDeferredHttpListen({
             server: httpServer.server,
             host,

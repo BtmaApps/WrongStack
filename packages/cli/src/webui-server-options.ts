@@ -44,7 +44,7 @@ export interface CliWebUIOptions {
   /** Alternate frontend dist directory (used by the independent SimpleUI surface). */
   frontendDistDir?: string | undefined;
   /** Surface kind: 'webui' (default) or 'simpleui'. Controls port defaults and the instance registry label. */
-  surface?: 'webui' | 'simpleui' | undefined;
+  surface?: 'webui' | 'simpleui' | 'vibeui' | undefined;
   /** Fixed access token/password. Defaults to WEBUI_TOKEN or random per process. */
   accessToken?: string | undefined;
   /** Fail instead of auto-advancing when the requested HTTP/WS port is busy. */

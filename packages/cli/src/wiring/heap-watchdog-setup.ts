@@ -65,13 +65,15 @@ export function setupCliHeapWatchdog({
       const hqSnapshot = brainMailbox.getHqSnapshotStats();
       const kanbanSync = hqPublisherRef.getKanbanSyncStats?.();
       return {
-        surface: flags['simpleui']
-          ? 'simpleui'
-          : flags['webui']
-            ? 'webui'
-            : tuiOwnsScreen
-              ? 'tui'
-              : 'cli',
+        surface: flags['vibeui']
+          ? 'vibeui'
+          : flags['simpleui']
+            ? 'simpleui'
+            : flags['webui']
+              ? 'webui'
+              : tuiOwnsScreen
+                ? 'tui'
+                : 'cli',
         sessionId: context.session.id,
         messages: context.state.messages.length,
         messageEstimatedTokens: context.state.messages.reduce(

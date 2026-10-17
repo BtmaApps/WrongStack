@@ -33,6 +33,7 @@ import { ToolValidationError } from '@wrongstack/core/types';
 export const SURFACE_DEFAULT_PORTS = {
   webui: { http: 3456 },
   simpleui: { http: 3466 },
+  vibeui: { http: 3476 },
 } as const satisfies Record<string, { http: number }>;
 
 export type SurfaceKind = keyof typeof SURFACE_DEFAULT_PORTS;
@@ -42,6 +43,7 @@ const MAX_TCP_PORT = 65535;
 
 /** Human-readable label for surfaces. */
 export function surfaceLabel(surface: SurfaceKind): string {
+  if (surface === 'vibeui') return 'VibeUI';
   return surface === 'webui' ? 'WebUI' : 'SimpleUI';
 }
 

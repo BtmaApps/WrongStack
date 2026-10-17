@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 822,
+      "files": 823,
       "typeOnly": 71,
-      "runtimeOrMixed": 781
+      "runtimeOrMixed": 782
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -25288,6 +25288,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/utils/win32-cmd.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/vibeui-dist.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

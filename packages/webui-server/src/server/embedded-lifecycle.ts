@@ -172,7 +172,7 @@ export function announceWebuiReady(p: AnnounceWebuiReadyParams): void {
       ? ' (authentication required; use automatic browser launch or a separately provisioned WEBUI_TOKEN)'
       : '';
     log(
-      `\n  ▸ ${p.surface === 'webui' ? 'WebUI' : 'SimpleUI'} ready at \x1b[1m${displayUrl}\x1b[0m${authHint}` +
+      `\n  ▸ ${p.surface === 'vibeui' ? 'VibeUI' : p.surface === 'webui' ? 'WebUI' : 'SimpleUI'} ready at \x1b[1m${displayUrl}\x1b[0m${authHint}` +
         `    (same agent as this terminal)\n${extraBlock}`,
     );
     if (p.open) launch(openUrl);

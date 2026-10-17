@@ -225,6 +225,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
   } = ctx;
   const isSessionChild = Boolean(webuiSessionChild);
   const isSimpleUi = !isSessionChild && flags['simpleui'] === true;
+  const isVibeUi = !isSessionChild && flags['vibeui'] === true;
 
   // Route permission confirmations to the browser (tool.confirm_needed
   // events) instead of inline terminal prompts — runWebUI forwards them to
@@ -292,7 +293,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     // HTTP and WebSocket upgrades share one listener. Keep the older
     // --http-port/--ws-port and environment names as aliases, but resolve
     // exactly one port so `--port` also controls the page users open.
-    const defaultPort = isSimpleUi ? 3466 : 3456;
+    const defaultPort = isVibeUi ? 3476 : isSimpleUi ? 3466 : 3456;
     webuiPort =
       webuiSessionChild?.port ??
       parsePort(
@@ -324,6 +325,10 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
       const { ensureSimpleUiDistDir } = await import('../simpleui-dist.js');
       frontendDistDir = await ensureSimpleUiDistDir();
     }
+    if (isVibeUi) {
+      const { resolveVibeUiDistDir } = await import('../vibeui-dist.js');
+      frontendDistDir = resolveVibeUiDistDir();
+    }
   } catch (err) {
     if (webuiSessionChild) {
       await writeWebuiSessionChildError(webuiSessionChild.readyFile, {
@@ -348,7 +353,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     events,
     statusTracker,
     session,
-    surface: isSimpleUi ? 'simpleui' : 'webui',
+    surface: isVibeUi ? 'vibeui' : isSimpleUi ? 'simpleui' : 'webui',
     host: webuiHost,
     port: webuiPort,
     frontendDistDir,
@@ -460,7 +465,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         }).catch(() => undefined);
         return;
       }
-      const surface = isSimpleUi ? 'SimpleUI' : 'WebUI';
+      const surface = isVibeUi ? 'VibeUI' : isSimpleUi ? 'SimpleUI' : 'WebUI';
       renderer.writeInfo(
         `  ✦ ${terminalText(surface, 'success', { bold: true })} ${terminalText('running →', 'muted')} ${terminalLink(url)}`,
       );
@@ -525,7 +530,9 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         renderer.setSilent(false);
         renderer.write('\n');
         renderer.writeInfo(
-          color.yellow(`  Shutting down ${isSimpleUi ? 'SimpleUI' : 'WebUI'} server…`),
+          color.yellow(
+            `  Shutting down ${isVibeUi ? 'VibeUI' : isSimpleUi ? 'SimpleUI' : 'WebUI'} server…`,
+          ),
         );
         resolve(0);
       })
@@ -546,7 +553,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         // here would be filtered out — a failed start would print nothing.
         renderer.writeInfo(
           color.red(
-            `  ✗ ${isSimpleUi ? 'SimpleUI' : 'WebUI'} failed to start: ${
+            `  ✗ ${isVibeUi ? 'VibeUI' : isSimpleUi ? 'SimpleUI' : 'WebUI'} failed to start: ${
               err instanceof Error ? err.message : String(err)
             }`,
           ),
