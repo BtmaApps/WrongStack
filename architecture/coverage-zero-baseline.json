@@ -1,4 +1,37 @@
 {
   "schemaVersion": 1,
-  "files": []
+  "files": [
+    "packages/vibeui/src/app/layout.tsx",
+    "packages/vibeui/src/app/page.tsx",
+    "packages/vibeui/src/components/agent-monitor.tsx",
+    "packages/vibeui/src/components/assistant-content.tsx",
+    "packages/vibeui/src/components/code-panel.tsx",
+    "packages/vibeui/src/components/command-palette.tsx",
+    "packages/vibeui/src/components/composer.tsx",
+    "packages/vibeui/src/components/context-dialog.tsx",
+    "packages/vibeui/src/components/conversation-search.tsx",
+    "packages/vibeui/src/components/dialogs.tsx",
+    "packages/vibeui/src/components/file-browser.tsx",
+    "packages/vibeui/src/components/instructions-editor.tsx",
+    "packages/vibeui/src/components/markdown-content.tsx",
+    "packages/vibeui/src/components/memory-browser.tsx",
+    "packages/vibeui/src/components/model-picker.tsx",
+    "packages/vibeui/src/components/presentation-mode.tsx",
+    "packages/vibeui/src/components/prompt-refiner.tsx",
+    "packages/vibeui/src/components/provider-manager.tsx",
+    "packages/vibeui/src/components/provider-quotas.tsx",
+    "packages/vibeui/src/components/resource-hub.tsx",
+    "packages/vibeui/src/components/runtime-controls.tsx",
+    "packages/vibeui/src/components/session-actions.tsx",
+    "packages/vibeui/src/components/settings-search.tsx",
+    "packages/vibeui/src/components/tool-inspector.tsx",
+    "packages/vibeui/src/components/vibe-visuals.tsx",
+    "packages/vibeui/src/components/workspace-notes.tsx",
+    "packages/vibeui/src/components/workspace-panel.tsx",
+    "packages/vibeui/src/components/workspace.tsx",
+    "packages/vibeui/src/lib/ids.ts",
+    "packages/vibeui/src/lib/use-copy-text.ts",
+    "packages/vibeui/src/lib/use-session.ts",
+    "packages/vibeui/src/lib/use-skill-picker.ts"
+  ]
 }
