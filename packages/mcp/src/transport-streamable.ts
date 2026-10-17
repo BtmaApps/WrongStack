@@ -80,7 +80,11 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         if (cut === 0) continue;
         const match = this.takeEnvelopes(pending.slice(0, cut), requestId, others);
         pending = pending.slice(cut);
-        if (match) {
+        // `takeEnvelopes` falls back to another request's response, which is only
+        // right once the stream is exhausted. Stop early on OUR response alone:
+        // cancelling on a stray id here dropped our own reply, still unread in a
+        // later chunk, and the caller's id check then failed the call.
+        if (match?.id === requestId) {
           await reader.cancel().catch(() => undefined);
           return match;
         }

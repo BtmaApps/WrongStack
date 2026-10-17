@@ -575,7 +575,11 @@ export class SSETransport extends BaseHTTPTransport {
     if (alreadyClosed) return;
     this.readLoopAbort?.abort();
     try {
-      this.reader?.cancel();
+      // `cancel()` returns a promise that rejects with the stream's error when
+      // the stream already died (the usual reason to close a dropped session).
+      // The surrounding try/catch is synchronous and cannot see that rejection,
+      // so it surfaced as an unhandledRejection — fatal under Node's default.
+      void Promise.resolve(this.reader?.cancel()).catch(() => undefined);
     } catch {
       /* ignore */
     }

@@ -119,6 +119,10 @@ export async function startMcpOAuthCallbackServer(
   options.signal?.addEventListener('abort', onAbort, { once: true });
 
   function close(): void {
+    if (!finished) {
+      finished = true;
+      fail?.(new Error('MCP OAuth callback listener was closed'));
+    }
     clearTimeout(timer);
     options.signal?.removeEventListener('abort', onAbort);
     // closeAllConnections exists on Node 18.2+; a keep-alive browser connection

@@ -113,6 +113,9 @@ export function buildClientStdioHost(self: MCPClientInternals): ClientStdioHost 
       self._serverMetadata = value;
     },
     notify: (...args) => self.notify(...args),
+    get toolCatalogVersion() {
+      return self.toolCatalogVersion;
+    },
     get toolCatalogRevision() {
       return self.toolCatalogRevision;
     },

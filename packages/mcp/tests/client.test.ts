@@ -1047,3 +1047,50 @@ describe('MCPClient stdio rx — UTF-8 chunk boundaries', () => {
     }
   }, 30_000);
 });
+
+describe('MCPClient stdio connect state guard on close / abort (F507)', () => {
+  it('does not resurrect state to connected when closed while tools/list is in flight', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mcp-f507-'));
+    const script = path.join(root, 'server.cjs');
+    await fs.writeFile(
+      script,
+      [
+        "const readline = require('node:readline');",
+        "const send = (v) => process.stdout.write(JSON.stringify(v) + '\\n');",
+        'const lines = readline.createInterface({ input: process.stdin, terminal: false });',
+        "lines.on('line', (line) => {",
+        '  const req = JSON.parse(line);',
+        "  if (req.method === 'initialize') {",
+        "    send({ jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'f507-fixture', version: '1.0.0' } } });",
+        "  } else if (req.method === 'tools/list') {",
+        "    setTimeout(() => send({ jsonrpc: '2.0', id: req.id, result: { tools: [{ name: 't', description: 'd', inputSchema: { type: 'object' } }] } }), 100);",
+        '  }',
+        '});',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const client = new MCPClient({
+      name: 'f507-fixture',
+      transport: 'stdio',
+      command: process.execPath,
+      args: [script],
+      startupTimeoutMs: 10_000,
+    });
+
+    try {
+      const connectPromise = client.connect();
+      // Allow initialize to complete, then close during tools/list delay
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await client.close();
+
+      // Wait for connectPromise to settle
+      await connectPromise.catch(() => {});
+      // State must not have been resurrected to connected
+      expect(client.getState()).not.toBe('connected');
+    } finally {
+      await client.close().catch(() => {});
+      await fs.rm(root, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+});

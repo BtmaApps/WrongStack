@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T15:24:42.593Z",
+  "generatedAt": "2026-10-17T15:27:59.502Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,12 +11,12 @@
     ]
   },
   "summary": {
-    "packages": 37,
-    "sourceFiles": 5098,
-    "testFiles": 4438,
-    "sourceLines": 1107487,
-    "workspaceEdges": 137,
-    "moduleEdges": 16790,
+    "packages": 38,
+    "sourceFiles": 5123,
+    "testFiles": 4446,
+    "sourceLines": 1112397,
+    "workspaceEdges": 139,
+    "moduleEdges": 16846,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -181,6 +181,7 @@
         "@wrongstack/tools",
         "@wrongstack/tui",
         "@wrongstack/vector-memory",
+        "@wrongstack/vibeui",
         "@wrongstack/webui",
         "@wrongstack/webui-hq",
         "@wrongstack/webui-protocol",
@@ -385,7 +386,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 63,
-      "testFiles": 74,
+      "testFiles": 77,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -398,7 +399,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 74
+          "testFiles": 77
         }
       ]
     },
@@ -841,6 +842,27 @@
           "path": "packages/vector-memory/tsconfig.test.json",
           "error": null,
           "testFiles": 28
+        }
+      ]
+    },
+    {
+      "name": "@wrongstack/vibeui",
+      "dir": "packages/vibeui",
+      "sourceFiles": 25,
+      "testFiles": 5,
+      "workspaceDependencies": [
+        "@wrongstack/webui-protocol"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/vibeui/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        },
+        {
+          "path": "packages/vibeui/tsconfig.test.json",
+          "error": null,
+          "testFiles": 5
         }
       ]
     },
@@ -12928,6 +12950,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/sse-close-after-stream-error.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/sse-reader-callback-ownership.test.ts",
         "projects": [
           "root-node"
@@ -12958,6 +12986,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/streamable-response-matching.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/structured-output.test.ts",
         "projects": [
           "root-node"
@@ -12965,6 +12999,12 @@
       },
       {
         "file": "packages/mcp/tests/token-store-expiry-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/token-store-stable-refresh-reauth.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22576,6 +22616,36 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/artifacts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/diff.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/runtime-surfaces.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/session.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/workspace-round2.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/src/components/hq/__tests__/token-gate-revoked.test.tsx",
         "projects": [
           "root-node"
@@ -27796,6 +27866,16 @@
       "syntax": "import"
     },
     {
+      "from": "packages/vibeui/src/app/layout.tsx",
+      "specifier": "./globals.css",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/vibeui/src/lib/build-info.ts",
+      "specifier": "../../package.json",
+      "syntax": "import"
+    },
+    {
       "from": "packages/webui/src/components/AgentOfficeView.tsx",
       "specifier": "./AgentOfficeView.css",
       "syntax": "import"
@@ -27933,9 +28013,19 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/vibeui/src/lib/session.ts",
+      "lines": 778,
+      "relativeImports": 2
     }
   ],
   "hotspots": [
+    {
+      "file": "packages/vibeui/src/lib/session.ts",
+      "lines": 778,
+      "relativeImports": 2
+    },
     {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
@@ -28180,11 +28270,6 @@
       "file": "packages/plugins/src/notify-hub/index.ts",
       "lines": 682,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/core/src/coordination/brain-monitor.ts",
-      "lines": 681,
-      "relativeImports": 5
     }
   ],
   "testOnlyExports": [

@@ -28,6 +28,7 @@ export interface ClientStdioHost {
   readonly serverRequests: ServerRequestResponder;
   _serverMetadata: MCPServerMetadata | undefined;
   notify(method: string, params: unknown): Promise<void>;
+  readonly toolCatalogVersion: number;
   readonly toolCatalogRevision: number;
   _tools: MCPTool[];
   _toolsCache: MCPTool[] | undefined;
@@ -192,9 +193,10 @@ export async function connectStdio(host: ClientStdioHost): Promise<void> {
         toErrorMessage(err),
     );
   }
-  const revision = host.toolCatalogRevision;
+  const version = host.toolCatalogVersion;
   const tools = (await listAllTools((params) => host.request('tools/list', params))) ?? [];
-  if (revision === host.toolCatalogRevision) host._tools = tools;
+  if (version !== host.toolCatalogVersion || host.state !== 'connecting') return;
+  host._tools = tools;
   // Cache tools so reconnect can re-register without re-discovering
   host._toolsCache = host._tools;
   host.state = 'connected';

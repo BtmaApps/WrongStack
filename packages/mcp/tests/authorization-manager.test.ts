@@ -318,6 +318,42 @@ describe('MCPAuthorizationManager', () => {
     ).emit('authorized', stored);
     expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({ scopes: [] }));
   });
+
+  it('settles completion when a loopback login is cancelled', async () => {
+    const resource = 'https://mcp.example.com/mcp';
+    const store = {
+      load: vi.fn(async () => undefined),
+      save: vi.fn(),
+      remove: vi.fn(async () => false),
+    } as unknown as MCPVaultTokenStore;
+    const manager = new MCPAuthorizationManager({
+      store,
+      discover: async () => discovery(resource),
+    });
+    const handle = await manager.beginLogin({
+      serverName: 'remote',
+      resource,
+      clientId: 'client',
+      timeoutMs: 60_000,
+    });
+
+    handle.cancel();
+
+    const observed = await Promise.race([
+      handle.completion.then(
+        () => ({ state: 'fulfilled' as const }),
+        (error: unknown) => ({
+          state: 'rejected' as const,
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      ),
+      new Promise<{ state: 'pending' }>((resolve) =>
+        setImmediate(() => resolve({ state: 'pending' })),
+      ),
+    ]);
+    expect(observed).toMatchObject({ state: 'rejected' });
+    expect('message' in observed ? observed.message : '').toMatch(/cancel|closed|abandon/i);
+  });
 });
 
 async function createFixture(): Promise<{

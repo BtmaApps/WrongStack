@@ -9,6 +9,10 @@
     "packages/plugins/src/audit/index.ts": {
       "lines": 715,
       "relativeImports": 0
+    },
+    "packages/vibeui/src/lib/session.ts": {
+      "lines": 778,
+      "relativeImports": 2
     }
   }
 }

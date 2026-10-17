@@ -1,18 +1,18 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T15:24:42.593Z
+**Generated:** 2026-10-17T15:27:59.502Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
 
 | Measure | Value |
 |---|---:|
-| Workspace packages | 37 |
-| Production source files | 5098 |
-| Production source lines | 1107487 |
-| Test files | 4438 |
-| Workspace dependency edges | 137 |
-| Relative module edges | 16790 |
+| Workspace packages | 38 |
+| Production source files | 5123 |
+| Production source lines | 1112397 |
+| Test files | 4446 |
+| Workspace dependency edges | 139 |
+| Relative module edges | 16846 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -29,7 +29,7 @@ PASS — no blocking architecture-health errors.
 |---|---:|---:|---|
 | @wrongstack/acp | 52 | 60 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
-| @wrongstack/cli | 667 | 651 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/cli | 667 | 651 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1147 | 990 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
@@ -38,7 +38,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/kanban | 108 | 82 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 7 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 63 | 74 | @wrongstack/core |
+| @wrongstack/mcp | 63 | 77 | @wrongstack/core |
 | @wrongstack/persistence | 9 | 21 | — |
 | @wrongstack/plug-lsp | 52 | 56 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 12 | 10 | @wrongstack/core, @wrongstack/tools |
@@ -58,6 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 335 | 327 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 493 | 424 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
+| @wrongstack/vibeui | 25 | 5 | @wrongstack/webui-protocol |
 | @wrongstack/webui | 750 | 486 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
@@ -83,6 +84,7 @@ None.
 
 | Lines | File |
 |---:|---|
+| 778 | `packages/vibeui/src/lib/session.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
@@ -132,7 +134,6 @@ None.
 | 684 | `packages/providers/src/openai-codex.ts` |
 | 682 | `packages/core/src/goal/phase-orchestrator.ts` |
 | 682 | `packages/plugins/src/notify-hub/index.ts` |
-| 681 | `packages/core/src/coordination/brain-monitor.ts` |
 
 ## Exports only tests reference
 

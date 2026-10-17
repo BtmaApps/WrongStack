@@ -209,8 +209,8 @@ export class MCPVaultTokenStore {
 
 export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvider {
   private refreshPromise?: Promise<MCPStoredAuthorization | undefined> | undefined;
-  /** Refresh token the authorization server rejected; cleared by a new authorization. */
-  private rejectedRefreshToken?: string | undefined;
+  /** Rejected grant revision; a newer authorization may legitimately reuse the same token. */
+  private rejectedRefresh?: { fingerprint: string; updatedAt: string } | undefined;
   private readonly resource: string;
   private readonly refreshSkewMs: number;
 
@@ -276,7 +276,10 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
     state: MCPStoredAuthorization,
   ): Promise<MCPStoredAuthorization | undefined> {
     const refreshToken = state.tokenSet.refreshToken;
-    if (!refreshToken || refreshToken === this.rejectedRefreshToken) {
+    const rejected = this.rejectedRefresh;
+    const sameRejectedGrant =
+      refreshToken === rejected?.fingerprint && state.updatedAt === rejected?.updatedAt;
+    if (!refreshToken || sameRejectedGrant) {
       // A token the server already rejected is not retried on every request;
       // `reauth_required` was announced when it was rejected.
       if (!refreshToken) this.emit('reauth_required', state);
@@ -304,7 +307,7 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
       // transient fault (network, timeout, 5xx) still throws so the caller
       // can retry.
       if (err instanceof MCPOAuthHttpError && err.status >= 400 && err.status < 500) {
-        this.rejectedRefreshToken = refreshToken;
+        this.rejectedRefresh = { fingerprint: refreshToken, updatedAt: state.updatedAt };
         this.emit('reauth_required', state);
         return undefined;
       }
