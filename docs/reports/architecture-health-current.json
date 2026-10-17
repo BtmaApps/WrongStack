@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T11:13:14.848Z",
+  "generatedAt": "2026-10-17T11:33:37.850Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 5098,
-    "testFiles": 4441,
-    "sourceLines": 1107485,
+    "testFiles": 4442,
+    "sourceLines": 1107493,
     "workspaceEdges": 137,
     "moduleEdges": 16790,
     "nonCommandSlashImports": 0,
@@ -533,7 +533,7 @@
       "name": "@wrongstack/requirement-intake",
       "dir": "packages/requirement-intake",
       "sourceFiles": 18,
-      "testFiles": 18,
+      "testFiles": 19,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -546,7 +546,7 @@
         {
           "path": "packages/requirement-intake/tsconfig.test.json",
           "error": null,
-          "testFiles": 18
+          "testFiles": 19
         }
       ]
     },
@@ -15239,6 +15239,12 @@
       },
       {
         "file": "packages/requirement-intake/tests/store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/requirement-intake/tests/suggestion-race.test.ts",
         "projects": [
           "root-node"
         ]

@@ -149,6 +149,14 @@ export async function acceptSuggestion(
             { field: 'suggestionId', message: `suggestion not found: ${proposalId}` },
           ]);
         }
+        // The pending check above ran on a pre-lock read. Repeat it on the
+        // locked copy (as rejectSuggestion does): a reject landing in between
+        // must not be overwritten by applying the proposal anyway.
+        if (target.status !== 'pending') {
+          throw new IntakeValidationError([
+            { field: 'suggestionId', message: `suggestion is already ${target.status}` },
+          ]);
+        }
         host.applyProposal(next, target);
         target.status = 'accepted';
         target.resolvedAt = Date.now();
