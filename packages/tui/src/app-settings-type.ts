@@ -95,6 +95,7 @@ export type Settings = {
   showModelReasoning: boolean;
   /** Default presentation density for committed TUI tool results. */
   toolResultViewMode?: ToolResultViewMode | undefined;
+  selectionMode?: 'block' | 'text' | undefined;
   /** Agent swarm panel placement: 'bottom' (lower region), 'sidebar' (right
    *  sidebar, vertical), or 'off' (hidden). Default: 'bottom'.
    *  Backward-compat: old boolean configs are coerced — true→'bottom', false→'off'. */

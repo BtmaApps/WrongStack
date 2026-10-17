@@ -308,6 +308,7 @@ describe('getSettingsFieldValue', () => {
     breakerAutoKillResetMs: 60_000,
     showModelReasoning: true,
     toolResultViewMode: 'normal',
+    selectionMode: 'block',
     showAgentSwarmPanel: 'off',
     showSageMemoryInject: false,
     sageMemoryInjectThreshold: 0.85,
@@ -479,6 +480,7 @@ describe('formatAllSettingsSummary', () => {
     breakerAutoKillResetMs: 60_000,
     showModelReasoning: true,
     toolResultViewMode: 'normal',
+    selectionMode: 'block',
     showAgentSwarmPanel: 'bottom',
     showSageMemoryInject: false,
     sageMemoryInjectThreshold: 0.85,
@@ -600,8 +602,9 @@ describe('resetSettingsFieldValue', () => {
     if (!r.ok) expect(r.error).toContain('99');
   });
 
-  it('SETTINGS_DEFAULTS has all 54 keys including Tool Coach, required next steps and startup reuse', () => {
-    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(55);
+  it('SETTINGS_DEFAULTS includes selection mode alongside the existing settings', () => {
+    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(56);
+    expect(SETTINGS_DEFAULTS.selectionMode).toBe('block');
     expect(SETTINGS_DEFAULTS.featureToolCoach).toBe(true);
     expect(SETTINGS_DEFAULTS.nextStepsRequired).toBe(true);
     expect(SETTINGS_DEFAULTS.rememberStartupChoices).toBe(true);

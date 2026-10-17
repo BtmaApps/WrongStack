@@ -353,6 +353,8 @@ export async function routePointerEvents(
       // stray release (click on the rail, status bar, or anywhere a press
       // never routed into beginSelection) must not spawn the async copy.
       if (historyScrollRef.current?.hasSelection()) {
+        historyScrollRef.current.extendSelection(key.mouse.y - 1, key.mouse.x - 1);
+        if (!historyScrollRef.current.hasSelection()) return true;
         ctx.detach(
           historyScrollRef.current?.commitSelection().then((copied) => {
             if (copied) onHistoryCopy?.(SELECTION_COPY_ID);

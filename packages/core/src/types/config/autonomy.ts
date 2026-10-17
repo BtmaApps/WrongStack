@@ -139,6 +139,8 @@ export interface AutonomyConfig {
   showModelReasoning?: boolean | undefined;
   /** Default TUI tool-result density. Full remains visually capped. */
   toolResultViewMode?: 'minimal' | 'normal' | 'full' | undefined;
+  /** TUI drag-copy behavior; absent means whole blocks. */
+  selectionMode?: 'block' | 'text' | undefined;
   /**
    * Agent swarm panel placement: 'bottom' (lower region), 'sidebar' (right sidebar), or 'off' (hidden).
    * Backward-compat: legacy boolean values are coerced — true→'bottom', false→'off'. Default: 'bottom'.
@@ -308,7 +310,7 @@ export interface LaunchConfig {
  */
 export interface LaunchMenuChoice {
   /** Which top-level surface the user picked from the menu. */
-  mode: 'tui-repl' | 'webui' | 'simpleui' | 'hq' | 'desktop';
+  mode: 'tui-repl' | 'webui' | 'simpleui' | 'vibeui' | 'hq' | 'desktop';
   /** Port override the user typed (defaults to the surface's default). */
   port?: number | undefined;
   /** Host override the user typed (defaults to 127.0.0.1). */

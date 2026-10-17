@@ -369,6 +369,7 @@ export function routeSettingsOverlayKey(
     breakerAutoKillResetMs: config.breakerAutoKillResetMs ?? 60_000,
     showModelReasoning: config.showModelReasoning ?? false,
     toolResultViewMode: config.toolResultViewMode ?? 'normal',
+    selectionMode: config.selectionMode ?? 'block',
     showAgentSwarmPanel: coerceAgentSwarmMode(config.showAgentSwarmPanel),
     // Hydrate the right-sidebar master switch from the persisted config.
     // Omitting it made the reducer's `action.showSidebar ?? true` fall back to

@@ -49,6 +49,7 @@ const baseValues: SettingsPickerValues = {
   breakerAutoKillResetMs: 60_000,
   showModelReasoning: true,
   toolResultViewMode: 'normal',
+  selectionMode: 'block',
   showAgentSwarmPanel: 'bottom',
   showSageMemoryInject: false,
   sageMemoryInjectThreshold: 0.85,

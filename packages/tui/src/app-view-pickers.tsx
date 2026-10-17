@@ -218,6 +218,7 @@ export function AppViewPickers({
             breakerAutoKillResetMs={state.settingsPicker.breakerAutoKillResetMs}
             showModelReasoning={state.settingsPicker.showModelReasoning}
             toolResultViewMode={state.settingsPicker.toolResultViewMode}
+            selectionMode={state.settingsPicker.selectionMode}
             showAgentSwarmPanel={state.settingsPicker.showAgentSwarmPanel}
             showSidebar={state.settingsPicker.showSidebar}
             showSageMemoryInject={state.settingsPicker.showSageMemoryInject}

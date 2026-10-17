@@ -80,6 +80,7 @@ export type SettingsPickerPatch = Partial<{
   showModelReasoning: boolean;
   /** Default presentation density for every committed TUI tool result. */
   toolResultViewMode: ToolResultViewMode;
+  selectionMode: 'block' | 'text';
   showAgentSwarmPanel: AgentSwarmPanelMode;
   showSidebar: boolean;
   /**

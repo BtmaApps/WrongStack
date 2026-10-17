@@ -137,6 +137,7 @@ export interface HistoryScrollController {
 }
 
 export interface ScrollableHistoryProps extends HistoryProps {
+  selectionMode?: 'block' | 'text' | undefined;
   /** Intro timestamp, retained across viewport remounts until replayed or cleared. */
   bannerAnimationStartedAt?: number | undefined;
   onBannerReplay?: (() => void) | undefined;

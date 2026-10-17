@@ -276,4 +276,5 @@ export const SETTINGS_FIELD_LABELS: readonly string[] = [
   'Require next steps', // 64
   'Reuse startup choices', // 65
   'System prompt', // 66
+  'Chat selection', // 67
 ];

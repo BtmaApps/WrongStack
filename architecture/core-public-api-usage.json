@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 205,
+      "files": 206,
       "typeOnly": 29,
-      "runtimeOrMixed": 178
+      "runtimeOrMixed": 179
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 149,
+      "files": 150,
       "typeOnly": 39,
-      "runtimeOrMixed": 140
+      "runtimeOrMixed": 141
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1451,
-      "typeOnly": 1278,
+      "files": 1452,
+      "typeOnly": 1279,
       "runtimeOrMixed": 429
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 821,
+      "files": 822,
       "typeOnly": 71,
-      "runtimeOrMixed": 780
+      "runtimeOrMixed": 781
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -12015,6 +12015,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/tui-selection-mode.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/tui-settings-adapter.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -13456,6 +13462,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/tui-resume-end-to-end.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/tui-selection-mode.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17206,6 +17218,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/tui-resource-menus.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/tui-selection-mode.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -25842,6 +25860,12 @@
       "file": "packages/cli/tests/tui-resource-menus.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/tui-selection-mode.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

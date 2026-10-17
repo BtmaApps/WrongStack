@@ -146,6 +146,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         s.breakerAutoKillResetMs !== undefined ||
         s.showModelReasoning !== undefined ||
         s.toolResultViewMode !== undefined ||
+        s.selectionMode !== undefined ||
         s.showAgentSwarmPanel !== undefined ||
         s.showSidebar !== undefined ||
         s.panelPositions !== undefined ||
@@ -206,6 +207,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
             autonomy.showModelReasoning = s.showModelReasoning;
           if (s.toolResultViewMode !== undefined)
             autonomy.toolResultViewMode = s.toolResultViewMode;
+          if (s.selectionMode !== undefined) autonomy.selectionMode = s.selectionMode;
           if (s.showAgentSwarmPanel !== undefined)
             autonomy.showAgentSwarmPanel = s.showAgentSwarmPanel;
           if (s.showSidebar !== undefined) autonomy.showSidebar = s.showSidebar;

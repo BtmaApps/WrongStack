@@ -160,6 +160,7 @@ const UI_PREFERENCES_TREE: ContractNode = {
     refinerModel: true,
     showModelReasoning: true,
     toolResultViewMode: true,
+    selectionMode: true,
     shellBangWarningDontShowAgain: true,
     showAgentSwarmPanel: true,
     showSageMemoryInject: true,

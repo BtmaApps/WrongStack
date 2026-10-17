@@ -604,6 +604,15 @@ export function cycleSettingsValue(inputs: {
             hint: undefined,
           },
         };
+      if (f === 67)
+        return {
+          ...state,
+          settingsPicker: {
+            ...sp,
+            selectionMode: sp.selectionMode === 'text' ? 'block' : 'text',
+            hint: undefined,
+          },
+        };
       if (f === 63)
         return {
           ...state,

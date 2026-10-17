@@ -93,6 +93,7 @@ export function reduceSettingsPanel(state: State, action: SettingsPanelAction): 
           breakerAutoKillResetMs: action.breakerAutoKillResetMs,
           showModelReasoning: action.showModelReasoning,
           toolResultViewMode: action.toolResultViewMode,
+          selectionMode: action.selectionMode ?? 'block',
           showAgentSwarmPanel: action.showAgentSwarmPanel,
           showSidebar: action.showSidebar ?? true,
           panelPositions: coercePanelPositionMap(action.panelPositions),

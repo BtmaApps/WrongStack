@@ -99,6 +99,7 @@ export function getSettingsFieldValue(
     [36, 'animationStyle'],
     [40, 'showAgentSwarmPanel'],
     [62, 'toolResultViewMode'],
+    [67, 'selectionMode'],
   ];
   if (field === 66) {
     return {
@@ -245,6 +246,7 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ name: string; fields: readonly number[]
     name: 'Startup',
     fields: [65, 66],
   },
+  { name: 'Selection', fields: [67] },
 ];
 
 /**
@@ -353,6 +355,7 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   breakerAutoKillResetMs: 60_000,
   showModelReasoning: false,
   toolResultViewMode: 'normal',
+  selectionMode: 'block',
   showAgentSwarmPanel: 'bottom',
   panelPositions: DEFAULT_PANEL_POSITIONS,
   readSymbols: false,
@@ -463,6 +466,7 @@ function buildResetPatch(field: number): SettingsPickerPatch | null {
     // unresettable even though BOOL_FIELDS accepts on/off for it.
     [61, 'showSidebar'],
     [62, 'toolResultViewMode'],
+    [67, 'selectionMode'],
   ];
   for (const [f, key] of KEY_MAP) {
     if (f === field) {

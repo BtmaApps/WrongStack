@@ -2,8 +2,9 @@ import type React from 'react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { fnKey } from '../fn-keys.js';
 import { useActiveTheme } from '../hooks/use-active-theme.js';
+import { useComposerPointer } from '../hooks/use-composer-pointer.js';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
-import { Box, Text, useInput, useStdin } from '../ink.js';
+import { Box, type DOMElement, Text, useInput, useStdin } from '../ink.js';
 import { type InputCell, layoutInputRows } from '../input-tokens.js';
 import {
   isLeakedMouseInput,
@@ -17,6 +18,7 @@ import { glyphs } from '../ui-glyphs.js';
 import type { AnimationStyle } from './animation-style.js';
 import type { ComposerStatus } from './composer-status-chip.js';
 import { ComposerTopRail, renderRow } from './input-rows.js';
+import { TextSelectionOverlay } from './text-selection-overlay.js';
 
 export const DEFAULT_INPUT_PROMPT = `${glyphs.prompt} `;
 
@@ -26,6 +28,9 @@ export function inputContentWidth(termColumns: number): number {
 }
 
 export interface InputProps {
+  selectionMode?: 'block' | 'text' | undefined;
+  onSelectionModeToggle?: (() => void) | undefined;
+  onSelectionBegin?: (() => void) | undefined;
   prompt?: string | undefined;
   value: string;
   cursor: number;
@@ -187,8 +192,15 @@ export const Input = memo(function Input({
   placeholderHeight,
   onKey,
   maxWidth,
+  selectionMode = 'block',
+  onSelectionModeToggle,
+  onSelectionBegin,
 }: InputProps): React.ReactElement | null {
   useActiveTheme();
+  const composerNodeRef = useRef<DOMElement | null>(null);
+  const pointer = useComposerPointer();
+  const pointerHandlerRef = useRef(pointer.handle);
+  pointerHandlerRef.current = pointer.handle;
   // Suppress duplicate key events: when our raw-stdin handler catches a key
   // before Ink's useInput does, we set a suppression flag so Ink doesn't
   // fire a duplicate event. Without this, Backspace deletes two characters
@@ -400,6 +412,7 @@ export const Input = memo(function Input({
       const mouseEvents = parseMouseEvents(s);
       if (mouseEvents.length > 0) {
         for (const ev of mouseEvents) {
+          if (pointerHandlerRef.current(ev)) continue;
           onKey('', {
             ...EMPTY_KEY,
             mouse: ev,
@@ -487,6 +500,34 @@ export const Input = memo(function Input({
     ? rows.slice(clampedScroll, clampedScroll + MAX_VISIBLE_ROWS)
     : rows;
 
+  pointer.model.current = {
+    node: composerNodeRef.current,
+    runs: visibleRows.map((row, index) => ({
+      row: index + 1,
+      col:
+        2 +
+        displayWidth(
+          row
+            .filter((cell) => cell.prompt)
+            .map((cell) => cell.ch)
+            .join(''),
+        ),
+      text: row
+        .filter((cell) => !cell.prompt)
+        .map((cell) => cell.ch)
+        .join(''),
+    })),
+    width: cols,
+    rows: visibleRows.length,
+    hidden: hidden ?? false,
+    disabled: disabled ?? false,
+    value,
+    scroll: clampedScroll,
+    mode: selectionMode,
+    toggle: onSelectionModeToggle,
+    begin: onSelectionBegin,
+  };
+
   // Hidden mode: keep the listeners above mounted, but render only an empty
   // placeholder of the same height the visible input would occupy. The bottom
   // region stays a constant height (so Ink's log-update never bleeds the live
@@ -519,7 +560,11 @@ export const Input = memo(function Input({
 
   // ── Bottom frame with optional scroll indicator ──
   // Three-part bottom frame: colored border border, colorless hint text + scroll indicator, colored filler + corner.
-  const bottomHint = hint || footerHint;
+  const modeLabel =
+    cols >= 14 && onSelectionModeToggle
+      ? `[${selectionMode === 'text' ? 'Text' : 'Block'}] · `
+      : '';
+  const bottomHint = modeLabel + (pointer.notice || hint || footerHint);
   const availW = cols;
   const leftBorder = '╰─ ';
   const leftBW = 3;
@@ -530,7 +575,14 @@ export const Input = memo(function Input({
   const fillW = Math.max(0, availW - leftBW - shownHintW - 2 - displayWidth(scrollIndicator));
 
   return (
-    <Box flexDirection="column" height={(needsScroll ? MAX_VISIBLE_ROWS : rows.length) + 2}>
+    <Box
+      ref={(node) => {
+        composerNodeRef.current = node;
+        if (pointer.model.current) pointer.model.current.node = node;
+      }}
+      flexDirection="column"
+      height={(needsScroll ? MAX_VISIBLE_ROWS : rows.length) + 2}
+    >
       <ComposerTopRail
         width={cols}
         title={title}
@@ -553,6 +605,7 @@ export const Input = memo(function Input({
           </Text>
         );
       })}
+      <TextSelectionOverlay runs={pointer.selection.runs} range={pointer.selection.range} />
       {/* Bottom frame: border matches top rail, hint text is muted */}
       <Text>
         <Text color={disabled ? theme.error : (accent ?? theme.brandPrimary)}>{leftBorder}</Text>

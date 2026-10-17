@@ -206,6 +206,7 @@ export function usePanelControllers({
       breakerAutoKillResetMs: s.breakerAutoKillResetMs ?? 60_000,
       showModelReasoning: s.showModelReasoning ?? false,
       toolResultViewMode: s.toolResultViewMode ?? 'normal',
+      selectionMode: s.selectionMode ?? 'block',
       showAgentSwarmPanel: coerceAgentSwarmMode(s.showAgentSwarmPanel),
       // Hydrate the right-sidebar master switch from the persisted config.
       // Omitting it made the reducer's `action.showSidebar ?? true` fall back

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T16:42:37.034Z",
+  "generatedAt": "2026-10-17T22:21:44.380Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5134,
-    "testFiles": 4454,
-    "sourceLines": 1115286,
+    "sourceFiles": 5133,
+    "testFiles": 4452,
+    "sourceLines": 1115333,
     "workspaceEdges": 139,
-    "moduleEdges": 16880,
+    "moduleEdges": 16884,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 668,
+      "sourceFiles": 667,
       "testFiles": 652,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -271,8 +271,8 @@
     {
       "name": "@wrongstack/desktop",
       "dir": "apps/desktop",
-      "sourceFiles": 48,
-      "testFiles": 33,
+      "sourceFiles": 46,
+      "testFiles": 30,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/webui",
@@ -288,7 +288,7 @@
         {
           "path": "apps/desktop/tsconfig.test.json",
           "error": null,
-          "testFiles": 33
+          "testFiles": 30
         }
       ]
     },
@@ -316,8 +316,8 @@
     {
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
-      "sourceFiles": 109,
-      "testFiles": 83,
+      "sourceFiles": 108,
+      "testFiles": 82,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -331,7 +331,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 83
+          "testFiles": 82
         }
       ]
     },
@@ -794,8 +794,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 493,
-      "testFiles": 424,
+      "sourceFiles": 496,
+      "testFiles": 426,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -818,7 +818,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 424
+          "testFiles": 426
         }
       ]
     },
@@ -1160,18 +1160,6 @@
         ]
       },
       {
-        "file": "apps/desktop/tests/focus-boundary.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop/tests/focus-routing.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "apps/desktop/tests/i18n-main.test.ts",
         "projects": [
           "root-node"
@@ -1197,12 +1185,6 @@
       },
       {
         "file": "apps/desktop/tests/layout.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop/tests/menu-action-errors.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5468,6 +5450,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/tui-selection-mode.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/tui-session-resume.test.ts",
         "projects": [
           "root-node"
@@ -5571,12 +5559,6 @@
       },
       {
         "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/cli/tests/vibeui.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12537,12 +12519,6 @@
       },
       {
         "file": "packages/kanban/tests/verification/criterion-input-preserved.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/kanban/tests/verification/desktop-vitest-command.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21554,6 +21530,18 @@
         ]
       },
       {
+        "file": "packages/tui/tests/selection-mode-app.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/selection-modes.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/send-mode-picker.test.ts",
         "projects": [
           "root-node"
@@ -28135,11 +28123,6 @@
       "relativeImports": 12
     },
     {
-      "file": "apps/desktop/src/main/main.ts",
-      "lines": 698,
-      "relativeImports": 20
-    },
-    {
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
@@ -28173,6 +28156,11 @@
       "file": "packages/core/src/storage/config-loader.ts",
       "lines": 695,
       "relativeImports": 28
+    },
+    {
+      "file": "apps/desktop/src/main/main.ts",
+      "lines": 694,
+      "relativeImports": 20
     },
     {
       "file": "packages/cli/src/slash-commands/fix-classifier.ts",
@@ -28243,6 +28231,11 @@
       "file": "packages/core/src/coordination/autonomous-coordinator.ts",
       "lines": 690,
       "relativeImports": 20
+    },
+    {
+      "file": "packages/tui/src/reducers/settings-value-cycle.ts",
+      "lines": 690,
+      "relativeImports": 6
     },
     {
       "file": "packages/core/src/core/agent-tools.ts",
@@ -28323,11 +28316,6 @@
       "file": "packages/cli/src/hq-server/routes.ts",
       "lines": 684,
       "relativeImports": 16
-    },
-    {
-      "file": "packages/providers/src/openai-codex.ts",
-      "lines": 684,
-      "relativeImports": 27
     }
   ],
   "testOnlyExports": [

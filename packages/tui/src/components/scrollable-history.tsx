@@ -1,5 +1,6 @@
 import type React from 'react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CellRange, mountedTextRuns, type TextRun } from '../cell-selection.js';
 import { EntryHeightCache } from '../height-cache.js';
 import { SCROLLBAR_HIT_WIDTH } from '../hit-test.js';
 import { useActiveTheme } from '../hooks/use-active-theme.js';
@@ -40,6 +41,7 @@ import {
   tailForDisplay,
   toolStreamBoxHeight,
 } from './history.js';
+import { TextSelectionOverlay } from './text-selection-overlay.js';
 
 export {
   type CopyHit,
@@ -104,6 +106,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   copiedEntryId,
   markedEntryId = null,
   onRequestOlderEntries,
+  selectionMode = 'block',
   toolResultViewMode = 'normal',
   toolResultViewOverrides,
   onToolResultViewChange,
@@ -354,7 +357,15 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   }
   const scrolled = effectiveAnchor !== null;
 
+  const textViewportRef = useRef<DOMElement | null>(null);
+  const [textSelection, setTextSelection] = useState<{
+    range: CellRange | null;
+    runs: readonly TextRun[];
+  }>({ range: null, runs: [] });
   const { applyAnchor } = useHistoryController({
+    selectionMode,
+    readTextRuns: () => (textViewportRef.current ? mountedTextRuns(textViewportRef.current) : []),
+    onTextSelection: (range, runs) => setTextSelection({ range, runs }),
     geometry,
     effectiveAnchor,
     groupIds,
@@ -553,6 +564,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
     <Box flexDirection="row" width={viewportWidth}>
       <Box
         flexDirection="column"
+        ref={textViewportRef}
         width={termWidth}
         flexShrink={0}
         height={vp}
@@ -647,6 +659,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
           ) : null}
         </Box>
       </Box>
+      <TextSelectionOverlay runs={textSelection.runs} range={textSelection.range} />
       <Scrollbar
         rows={vp}
         offset={offsetFromBottom}

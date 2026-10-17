@@ -74,6 +74,7 @@ export function buildSettingsPickerRows({
   breakerAutoKillResetMs,
   showModelReasoning,
   toolResultViewMode,
+  selectionMode = 'block',
   showAgentSwarmPanel,
   showSidebar,
   showSageMemoryInject,
@@ -432,6 +433,12 @@ export function buildSettingsPickerRows({
       value: SYSTEM_PROMPT_CHOICE_LABELS[nextSystemPromptVariant] ?? nextSystemPromptVariant,
       detail:
         'Lite / Standard / Pro / Scout — applies from the next session; this session keeps its current prompt',
+    },
+    { section: 'Selection' },
+    {
+      label: 'Chat selection',
+      value: selectionMode === 'text' ? 'Text' : 'Block',
+      detail: 'Drag and release to copy whole blocks or only the selected text',
     },
   ];
 }

@@ -174,6 +174,7 @@ export function resolveSettingsFieldValue(
     [36, 'animationStyle', ANIMATION_STYLE_CHOICES],
     [40, 'showAgentSwarmPanel', ['bottom', 'sidebar', 'off']],
     [62, 'toolResultViewMode', TOOL_RESULT_VIEW_MODES],
+    [67, 'selectionMode', ['block', 'text']],
   ];
   for (const [f, key, values] of ENUM_FIELDS) {
     if (field !== f) continue;

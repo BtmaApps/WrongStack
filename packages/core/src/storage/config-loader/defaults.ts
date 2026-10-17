@@ -167,6 +167,7 @@ export const CONFIG_BEHAVIOR_DEFAULTS: Omit<Config, 'provider' | 'model'> = {
     showAgentSwarmPanel: 'bottom',
     showModelReasoning: false,
     toolResultViewMode: 'normal',
+    selectionMode: 'block',
   },
   circuitBreaker: { ...DEFAULT_CIRCUIT_BREAKER_CONFIG },
   modelRuntime: {

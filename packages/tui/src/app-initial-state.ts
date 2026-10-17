@@ -320,6 +320,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
       breakerAutoKillResetMs: 60_000,
       showModelReasoning: false,
       toolResultViewMode: DEFAULT_TOOL_RESULT_VIEW_MODE,
+      selectionMode: 'block',
       showAgentSwarmPanel: 'bottom',
       showSidebar: true,
       panelPositions: DEFAULT_PANEL_POSITIONS,

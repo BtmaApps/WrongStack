@@ -221,6 +221,7 @@ export function readTuiSettings(configStore: ConfigStore): Record<string, unknow
     breakerEnabled: cfg.circuitBreaker?.enabled === true,
     breakerAutoKillResetMs: cfg.circuitBreaker?.autoKillResetMs ?? 60_000,
     showModelReasoning: autonomy?.showModelReasoning ?? false,
+    selectionMode: autonomy?.selectionMode === 'text' ? 'text' : 'block',
     toolResultViewMode:
       autonomy?.toolResultViewMode === 'minimal' || autonomy?.toolResultViewMode === 'full'
         ? autonomy.toolResultViewMode

@@ -91,6 +91,7 @@ export interface SettingsPickerProps {
   /** Show the "Model Reasoning" blocks in chat history. Default: true. */
   showModelReasoning: boolean;
   toolResultViewMode: ToolResultViewMode;
+  selectionMode?: 'block' | 'text' | undefined;
   /** Agent swarm placement. */
   showAgentSwarmPanel: import('../app-settings-type.js').AgentSwarmPanelMode;
   /** Right sidebar master toggle. */

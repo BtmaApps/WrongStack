@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { type CellRange, selectionText, type TextRun } from '../../cell-selection.js';
 import { writeClipboardText } from '../../clipboard.js';
 import {
   anchorForGroupIndex,
@@ -32,6 +33,9 @@ import {
 import type { HistoryEntry } from './types.js';
 
 interface UseHistoryControllerOptions {
+  selectionMode?: 'block' | 'text' | undefined;
+  readTextRuns?: (() => TextRun[]) | undefined;
+  onTextSelection?: ((range: CellRange | null, runs: readonly TextRun[]) => void) | undefined;
   geometry: ScrollGeometry;
   effectiveAnchor: ScrollAnchor | null;
   groupIds: readonly number[];
@@ -95,6 +99,17 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
     onToolResultViewChange,
   } = opts;
 
+  const mode = opts.selectionMode ?? 'block';
+  const textRunsRef = useRef<TextRun[]>([]);
+  const callbacksRef = useRef(opts);
+  callbacksRef.current = opts;
+  useEffect(() => {
+    selectionRef.current = { anchor: null, head: null, inProgress: false };
+    textRunsRef.current = [];
+    selectionBandStore?.publish(null);
+    callbacksRef.current.onTextSelection?.(null, []);
+  }, [mode, termWidth, vp, selectionRef, selectionBandStore]);
+
   const geometryRef = useRef(geometry);
   geometryRef.current = geometry;
   const effectiveAnchorRef = useRef(effectiveAnchor);
@@ -104,12 +119,17 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
 
   const publishBand = useCallback((): void => {
     const cur = selectionRef.current;
+    if (mode === 'text')
+      callbacksRef.current.onTextSelection?.(
+        cur.anchor && cur.head ? { anchor: cur.anchor, head: cur.head } : null,
+        textRunsRef.current,
+      );
     selectionBandStore?.publish(
       cur.anchor !== null && cur.head !== null && cur.inProgress
         ? bandFromSelection(cur.anchor, cur.head)
         : null,
     );
-  }, [selectionBandStore, selectionRef]);
+  }, [mode, selectionBandStore, selectionRef]);
 
   // ── Gutter translation (v1.1 M3) ──────────────────────────────────────
   // Slice columns are contractually body-local, but the mouse handler passes
@@ -248,12 +268,13 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
           return;
         }
         const cardHit = selectionHitAt(row, mountedGroupSpansRef.current);
-        if (cardHit === null) {
+        if (row < 0 || row >= vp || (mode === 'block' && cardHit === null)) {
           selectionRef.current = { anchor: null, head: null, inProgress: false };
           publishBand();
           return;
         }
-        const bodyCol = toBodyLocalCol(row, col);
+        textRunsRef.current = mode === 'text' ? (callbacksRef.current.readTextRuns?.() ?? []) : [];
+        const bodyCol = mode === 'text' ? col : toBodyLocalCol(row, col);
         selectionRef.current = {
           anchor: { row, col: bodyCol },
           head: { row, col: bodyCol },
@@ -270,7 +291,10 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
           publishBand();
           return;
         }
-        selectionRef.current = { ...cur, head: { row, col: toBodyLocalCol(row, col) } };
+        selectionRef.current = {
+          ...cur,
+          head: { row, col: mode === 'text' ? col : toBodyLocalCol(row, col) },
+        };
         publishBand();
       },
       endSelection: () => {
@@ -310,11 +334,14 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
             toolGroupsByHeadId.set(span.entryId, span.entryIds);
           }
         }
-        const text = assembleSelectionText({
-          entryIds,
-          entriesById: entriesByIdRef.current,
-          ...(toolGroupsByHeadId.size > 0 ? { toolGroupsByHeadId } : {}),
-        });
+        const text =
+          mode === 'text'
+            ? selectionText(textRunsRef.current, { anchor: cur.anchor, head: cur.head })
+            : assembleSelectionText({
+                entryIds,
+                entriesById: entriesByIdRef.current,
+                ...(toolGroupsByHeadId.size > 0 ? { toolGroupsByHeadId } : {}),
+              });
         selectionRef.current = { anchor: null, head: null, inProgress: false };
         publishBand();
         if (text.length === 0) return false;
@@ -327,6 +354,7 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
     }),
     [
       applyAnchor,
+      mode,
       publishBand,
       termWidth,
       vp,

@@ -128,6 +128,7 @@ export type AppActionSettings =
       breakerAutoKillResetMs: number;
       showModelReasoning: boolean;
       toolResultViewMode: ToolResultViewMode;
+      selectionMode?: 'block' | 'text' | undefined;
       showAgentSwarmPanel: import('./app-settings-type.js').AgentSwarmPanelMode;
       showSidebar?: boolean | undefined;
       panelPositions: import('./ui-contracts.js').PanelPositionMap;

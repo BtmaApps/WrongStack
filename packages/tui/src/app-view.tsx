@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppMainColumn } from './app-main-column.js';
 import { AppStatusRegion } from './app-status-region.js';
 import {
@@ -119,6 +119,41 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   // Bash mode relabels the whole composer (`$` prompt, warn-colored rail,
   // BASH MODE title) so the shell-command state is unmistakable at a glance.
   const bashMode = state.bashMode;
+  const [localSelectionMode, setLocalSelectionMode] = useState<'block' | 'text' | null>(null);
+  const selectionMode = state.settingsPicker.open
+    ? state.settingsPicker.selectionMode
+    : (localSelectionMode ?? liveSettings?.selectionMode ?? 'block');
+  const [selectionModeError, setSelectionModeError] = useState('');
+  const selectionModeRef = useRef(selectionMode);
+  selectionModeRef.current = selectionMode;
+  useEffect(() => {
+    if (state.settingsPicker.open || localSelectionMode === liveSettings?.selectionMode)
+      setLocalSelectionMode(null);
+  }, [liveSettings?.selectionMode, state.settingsPicker.open, localSelectionMode]);
+  const selectionSaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const selectionSaveVersion = useRef(0);
+  const toggleSelectionMode = () => {
+    const next = selectionModeRef.current === 'block' ? 'text' : 'block';
+    selectionModeRef.current = next;
+    const version = ++selectionSaveVersion.current;
+    historyScrollRef.current?.clearSelection();
+    setLocalSelectionMode(next);
+    setSelectionModeError('');
+    selectionSaveQueue.current = selectionSaveQueue.current.then(async () => {
+      try {
+        const current = host.getSettings?.();
+        const error = current
+          ? await host.saveSettings?.({ ...current, selectionMode: next })
+          : 'Selection mode could not be saved';
+        if (error) throw new Error(error);
+      } catch {
+        if (version === selectionSaveVersion.current) {
+          setLocalSelectionMode(null);
+          setSelectionModeError('Could not save selection mode');
+        }
+      }
+    });
+  };
   const toolResultViewMode = state.settingsPicker.open
     ? state.settingsPicker.toolResultViewMode
     : (liveSettings?.toolResultViewMode ?? 'normal');
@@ -272,6 +307,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                   }
                   toolResultViewMode={toolResultViewMode}
                   toolResultViewOverrides={state.toolResultViewOverrides}
+                  selectionMode={selectionMode}
                   onToolResultViewChange={onToolResultViewChange}
                   layoutStore={layoutStore}
                   copiedEntryId={state.copiedEntryId}
@@ -296,6 +332,11 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                   <BackgroundStrip fleet={state.fleet} width={mainColumnWidth} />
                 ) : null}
                 <Input
+                  selectionMode={selectionMode}
+                  onSelectionModeToggle={
+                    host.getSettings && host.saveSettings ? toggleSelectionMode : undefined
+                  }
+                  onSelectionBegin={() => historyScrollRef.current?.clearSelection()}
                   prompt={bashMode ? BASH_PROMPT : INPUT_PROMPT}
                   value={state.buffer}
                   cursor={state.cursor}
@@ -311,7 +352,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                     (state.status === 'aborting' && !state.steeringPending) ||
                     state.confirmQueue.length > 0
                   }
-                  hint={bashMode ? BASH_HINT : inputHint}
+                  hint={selectionModeError || (bashMode ? BASH_HINT : inputHint)}
                   onKey={stableOnKey}
                   workingTime={workingTimeMs}
                 />

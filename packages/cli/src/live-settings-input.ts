@@ -79,6 +79,7 @@ export interface LiveSettingsInput {
   showModelReasoning?: boolean | undefined;
   /** Default presentation density for committed TUI tool results. */
   toolResultViewMode?: 'minimal' | 'normal' | 'full' | undefined;
+  selectionMode?: 'block' | 'text' | undefined;
   /** Agent swarm panel placement: 'bottom' (lower region), 'sidebar' (right sidebar), or 'off' (hidden).
    * Backward-compat: legacy boolean values are coerced by the TUI settings adapter. Default: 'bottom'. */
   showAgentSwarmPanel?: 'bottom' | 'sidebar' | 'off' | boolean | undefined;
