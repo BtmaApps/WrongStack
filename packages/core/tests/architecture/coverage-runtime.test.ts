@@ -1,5 +1,5 @@
-import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -20,6 +20,7 @@ import {
   isDirectRun as isCoverageLockDirectRun,
   sleep,
 } from '../../../../scripts/coverage-lock.mjs';
+import { resolveBunExecutable } from '../../../../scripts/lib/bun-executable.mjs';
 import {
   COVERAGE_RUNS,
   isDirectRun as isTestCoverageDirectRun,
@@ -376,7 +377,7 @@ describe('coverage lock script', () => {
     const scriptPath = path.join(repoRoot, 'scripts', 'coverage-lock.mjs');
     const originalArgv = process.argv;
     const originalHeld = process.env.WRONGSTACK_COVERAGE_LOCK_HELD;
-    process.argv = [process.execPath, scriptPath, process.execPath, '--version'];
+    process.argv = [process.execPath, scriptPath, resolveBunExecutable(), '--version'];
     process.env.WRONGSTACK_COVERAGE_LOCK_HELD = '1';
     const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
 
@@ -477,7 +478,7 @@ describe('coverage runner script', () => {
       }),
     ).toBe(0);
     expect(spawnCommand).toHaveBeenCalledWith(
-      process.execPath,
+      resolveBunExecutable(),
       ['run', 'test:coverage:root'],
       expect.any(Object),
     );

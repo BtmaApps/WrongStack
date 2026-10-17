@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
+import { resolveBunExecutable } from './bun-executable.mjs';
 import { workspaceMemberDirs } from './publishable-packages.mjs';
 
 /** Materialise a production workspace closure using Bun tarballs and a hoisted install. */
@@ -49,10 +50,14 @@ export function deployBunWorkspace(name, destination, root) {
   for (const key of selected) {
     const pkg = packages.get(key);
     const filename = `${key.replace(/^@/, '').replace('/', '-')}-${pkg.manifest.version}.tgz`;
-    execFileSync(process.execPath, ['pm', 'pack', '--ignore-scripts', '--destination', packs], {
-      cwd: pkg.dir,
-      stdio: 'inherit',
-    });
+    execFileSync(
+      resolveBunExecutable(),
+      ['pm', 'pack', '--ignore-scripts', '--destination', packs],
+      {
+        cwd: pkg.dir,
+        stdio: 'inherit',
+      },
+    );
     const tarball = join(packs, filename);
     tarballs.set(key, tarball);
     overrides[key] = `file:${tarball.replaceAll('\\', '/')}`;
@@ -129,10 +134,14 @@ export function deployBunWorkspace(name, destination, root) {
   }
   writeFileSync(join(stage, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   writeFileSync(join(stage, 'bun.lock'), `${JSON.stringify(stagedLock, null, 2)}\n`);
-  execFileSync(process.execPath, ['install', '--lockfile-only', '--ignore-scripts', '--offline'], {
-    cwd: stage,
-    stdio: 'inherit',
-  });
+  execFileSync(
+    resolveBunExecutable(),
+    ['install', '--lockfile-only', '--ignore-scripts', '--offline'],
+    {
+      cwd: stage,
+      stdio: 'inherit',
+    },
+  );
   const resolvedLock = Bun.JSONC.parse(readFileSync(join(stage, 'bun.lock'), 'utf8'));
   const localPackages = new Set(
     [...tarballs].map(([key, tarball]) => `${key}@${tarball.replaceAll('\\', '/')}`),
@@ -148,7 +157,7 @@ export function deployBunWorkspace(name, destination, root) {
     }
   }
   execFileSync(
-    process.execPath,
+    resolveBunExecutable(),
     ['install', '--frozen-lockfile', '--production', '--ignore-scripts', '--linker', 'hoisted'],
     { cwd: stage, stdio: 'inherit' },
   );

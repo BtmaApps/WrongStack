@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OFFICIAL_PLUGIN_MANIFEST } from '../packages/plugins/src/manifest/index.ts';
+import { resolveBunExecutable } from './lib/bun-executable.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PACKAGE_PATH = fileURLToPath(new URL('../packages/plugins/package.json', import.meta.url));
@@ -135,7 +136,7 @@ function renderExports() {
 
 function formatTypeScript(path, content) {
   const result = spawnSync(
-    process.execPath,
+    resolveBunExecutable(),
     ['run', 'biome', 'format', '--stdin-file-path', path],
     {
       cwd: ROOT,

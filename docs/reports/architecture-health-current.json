@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T15:46:10.530Z",
+  "generatedAt": "2026-10-17T15:53:32.545Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5125,
+    "sourceFiles": 5130,
     "testFiles": 4450,
-    "sourceLines": 1113503,
+    "sourceLines": 1113615,
     "workspaceEdges": 139,
-    "moduleEdges": 16852,
+    "moduleEdges": 16868,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 668,
+      "sourceFiles": 667,
       "testFiles": 652,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -848,7 +848,7 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 26,
+      "sourceFiles": 32,
       "testFiles": 5,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"

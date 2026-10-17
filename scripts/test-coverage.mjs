@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveBunExecutable } from './lib/bun-executable.mjs';
 
 export const COVERAGE_RUNS = [
   {
@@ -46,7 +47,7 @@ export function isDirectRun(metaUrl = import.meta.url, argvEntry = process.argv[
 export function runCoverage(options = {}) {
   const runs = options.runs ?? COVERAGE_RUNS;
   const spawnCommand = options.spawnCommand ?? spawnSync;
-  const execPath = options.execPath ?? process.execPath;
+  const execPath = options.execPath ?? resolveBunExecutable(options.env ?? process.env);
   const cwd = options.cwd ?? process.cwd();
   const env = options.env ?? process.env;
   const log = options.log ?? console.log;

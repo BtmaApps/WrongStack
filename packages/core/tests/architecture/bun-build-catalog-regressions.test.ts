@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { resolveBunExecutable } from '../../../../scripts/lib/bun-executable.mjs';
 import { toolCatalog } from '../../../../website/src/data/runtime-catalog.js';
 
 const root = resolve(import.meta.dirname, '../../../..');
@@ -19,7 +20,7 @@ function put(dir: string, file: string, content: string) {
   writeFileSync(target, content);
 }
 function run(dir: string, script: string, ...args: string[]) {
-  return spawnSync(process.execPath, [script, ...args], {
+  return spawnSync(resolveBunExecutable(), [script, ...args], {
     cwd: dir,
     encoding: 'utf8',
     timeout: 15_000,
@@ -40,11 +41,9 @@ describe('Bun workspace build discovery', () => {
       JSON.stringify({ type: 'module', workspaces: ['packages/*', 'website'] }),
     );
     put(dir, 'scripts/build.mjs', readFileSync(join(root, 'scripts/build.mjs'), 'utf8'));
-    put(
-      dir,
-      'scripts/lib/publishable-packages.mjs',
-      readFileSync(join(root, 'scripts/lib/publishable-packages.mjs'), 'utf8'),
-    );
+    for (const lib of ['scripts/lib/publishable-packages.mjs', 'scripts/lib/bun-executable.mjs']) {
+      put(dir, lib, readFileSync(join(root, lib), 'utf8'));
+    }
     for (const [location, name, marker] of [
       ['packages/leaf', '@wrongstack/leaf', 'leaf'],
       ['website', '@wrongstack/site', 'site'],

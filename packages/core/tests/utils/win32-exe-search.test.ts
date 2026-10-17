@@ -84,11 +84,14 @@ describe.runIf(process.platform === 'win32')('win32 bare-name resolution (plante
 
   it('cmd.exe `call` shims do not resolve the cwd copy once buildChildEnv is used', () => {
     const line = `call "${planted}cmd"`;
-    const script = `const cp=require('child_process');const r=cp.spawnSync(process.env.COMSPEC,['/d','/c',${JSON.stringify(line)}],{encoding:'utf8',windowsVerbatimArguments:true,env:JSON.parse(process.argv[1])});process.stdout.write(r.stdout.includes('PLANTED-CMD')?'RAN':'REFUSED')`;
+    // The grandchild env travels in an env var, not as a positional argument
+    // after `-e`: Bun's Windows node.exe shim (process.execPath under
+    // `bun --bun`) drops the first positional argument following inline code.
+    const script = `const cp=require('child_process');const r=cp.spawnSync(process.env.COMSPEC,['/d','/c',${JSON.stringify(line)}],{encoding:'utf8',windowsVerbatimArguments:true,env:JSON.parse(process.env.WS_PROBE_CHILD_ENV)});process.stdout.write(r.stdout.includes('PLANTED-CMD')?'RAN':'REFUSED')`;
     const run = (childEnv: NodeJS.ProcessEnv): string => {
-      const result = spawnSync(process.execPath, ['-e', script, JSON.stringify(childEnv)], {
+      const result = spawnSync(process.execPath, ['-e', script], {
         cwd: dir,
-        env: envWithout(),
+        env: { ...envWithout(), WS_PROBE_CHILD_ENV: JSON.stringify(childEnv) },
         encoding: 'utf8',
         windowsHide: true,
       });

@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveBunExecutable } from './lib/bun-executable.mjs';
 import { workspaceMemberDirs } from './lib/publishable-packages.mjs';
 
 const root = join(fileURLToPath(import.meta.url), '..', '..');
@@ -144,7 +145,7 @@ function runBuild(pkgDir, script, envOverrides) {
     NODE_OPTIONS: '--max-old-space-size=4096',
     WRONGSTACK_WORKSPACE_BUILD: '1',
   };
-  const result = spawnSync(process.execPath, ['run', 'build'], {
+  const result = spawnSync(resolveBunExecutable(), ['run', 'build'], {
     cwd: join(root, pkgDir),
     stdio: 'inherit',
     env,
