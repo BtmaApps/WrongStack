@@ -89,9 +89,28 @@ export async function writeUiLocale(code: string): Promise<void> {
   } catch {
     return; // corrupt config — don't clobber
   }
-  const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
-  decrypted.uiLocale = code;
-  const encrypted = encryptConfigSecrets(decrypted, vault);
-  await fs.mkdir(path.dirname(profileConfigPath), { recursive: true });
-  await atomicWrite(profileConfigPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  // Everything past this point can fail on a real filesystem or a vault that
+  // cannot be read or written, and the only caller discards this promise
+  // (`void writeUiLocale(...)` in ipc-handlers/index.ts). A rejection there is
+  // an unhandled rejection in the Electron main process, so the corrupt-config
+  // guard above is not enough on its own — hold the documented "never throws"
+  // contract across the whole write path, not just the parse.
+  try {
+    const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+    decrypted.uiLocale = code;
+    const encrypted = encryptConfigSecrets(decrypted, vault);
+    await fs.mkdir(path.dirname(profileConfigPath), { recursive: true });
+    await atomicWrite(profileConfigPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  } catch (error) {
+    // Best-effort by contract, but not silent: a language change that never
+    // reaches disk would otherwise be indistinguishable from one that did.
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'desktop.locale_write_failed',
+        message: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      }),
+    );
+  }
 }

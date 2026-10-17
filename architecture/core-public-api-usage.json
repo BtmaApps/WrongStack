@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 204,
+      "files": 205,
       "typeOnly": 29,
-      "runtimeOrMixed": 177
+      "runtimeOrMixed": 178
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 820,
+      "files": 821,
       "typeOnly": 71,
-      "runtimeOrMixed": 779
+      "runtimeOrMixed": 780
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -11400,6 +11400,12 @@
       "file": "apps/desktop/src/main/webui/controller.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "apps/desktop/tests/desktop-config-io.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",
@@ -23410,6 +23416,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "apps/desktop/src/main/runtime-project-manifest.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "apps/desktop/tests/desktop-config-io.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

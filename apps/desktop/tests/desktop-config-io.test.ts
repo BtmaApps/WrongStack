@@ -4,7 +4,7 @@
  * Tests the full encrypt → write → read → decrypt round-trip.
  */
 import * as path from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ============================================================================
 // Mocks
@@ -51,6 +51,10 @@ vi.mock('node:fs/promises', () => ({
   mkdir: vi.fn(async () => undefined),
 }));
 
+import * as fsPromises from 'node:fs/promises';
+// The mocked seams the regression cases below inject a failure into.
+import { decryptConfigSecrets } from '@wrongstack/core/security';
+import { atomicWrite } from '@wrongstack/core/utils';
 import {
   desktopConfigPaths,
   readUiLocale,
@@ -217,6 +221,72 @@ describe('writeUiLocale', () => {
     expect(parsed.theme).toBe('dark');
     expect(parsed.fontSize).toBe(14);
     expect(parsed.windowBounds).toEqual({ x: 0, y: 0, width: 1200, height: 800 });
+  });
+});
+
+// ============================================================================
+// writeUiLocale — "never throws to the caller"
+// ============================================================================
+
+/**
+ * The sole production caller is `void writeUiLocale(...)` in
+ * ipc-handlers/index.ts — no `.catch()`. A rejection there is an UNHANDLED
+ * REJECTION in the Electron main process, and the function's own doc comment
+ * promises it cannot happen. Each case injects a failure at one real seam past
+ * the corrupt-config guard and asserts the promise still resolves.
+ */
+describe('writeUiLocale never throws to the caller', () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+  });
+
+  it('resolves and warns when the atomic write fails', async () => {
+    vi.mocked(atomicWrite).mockRejectedValueOnce(new Error('EACCES: permission denied'));
+    await expect(writeUiLocale('tr')).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('resolves and warns when the profile directory cannot be created', async () => {
+    // The real trigger from the .temp_files proof: the profile path is a file.
+    vi.mocked(fsPromises.mkdir).mockRejectedValueOnce(new Error('EEXIST: file already exists'));
+    await expect(writeUiLocale('de')).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('resolves and warns when the vault cannot decrypt the existing config', async () => {
+    vi.mocked(decryptConfigSecrets).mockImplementationOnce(() => {
+      throw new Error('vault key unreadable');
+    });
+    await expect(writeUiLocale('fr')).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('recovers on the next call after a failed write', async () => {
+    // Control: the guard must swallow the failure without leaving state that
+    // makes every later locale change fail too.
+    vi.mocked(atomicWrite).mockRejectedValueOnce(new Error('ENOSPC: no space left on device'));
+    await expect(writeUiLocale('tr')).resolves.toBeUndefined();
+
+    await writeUiLocale('it');
+    expect(JSON.parse(mockFileStore.get(desktopConfigPaths.profileConfigPath)!).uiLocale).toBe(
+      'it',
+    );
+  });
+
+  it('stays silent on the healthy path', async () => {
+    // Control for the three cases above: they assert a warning because
+    // something actually failed. A healthy write must not warn.
+    await writeUiLocale('es');
+    expect(JSON.parse(mockFileStore.get(desktopConfigPaths.profileConfigPath)!).uiLocale).toBe(
+      'es',
+    );
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 
