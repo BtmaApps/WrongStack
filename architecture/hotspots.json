@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "thresholdLines": 701,
   "files": {
+    "packages/acp/src/client/acp-session.ts": {
+      "lines": 707,
+      "relativeImports": 23
+    },
     "packages/plugins/src/audit/index.ts": {
       "lines": 715,
       "relativeImports": 0

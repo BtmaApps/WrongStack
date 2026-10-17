@@ -540,6 +540,12 @@ export class ACPSession {
       // `idle`: the clock restarts whenever the agent is heard from
       // (touchIdleRequests), so it measures silence, not the request's length.
       const expire = (): void => {
+        // The agent is waiting on us (a permission decision, a file or terminal
+        // call), so its silence is ours: keep the turn alive until we answer.
+        if (idle && this.callbacksInFlight > 0) {
+          entry.timeoutHandle = setTimeout(expire, effectiveTimeout);
+          return;
+        }
         this.pending.delete(id);
         reject(
           idle
@@ -625,6 +631,8 @@ export class ACPSession {
   }
 
   private progressHandler: ACPProgressHandler | null = null;
+  /** Agent→client requests (permission, fs, terminal) still being answered. */
+  private callbacksInFlight = 0;
   private scratch: ACPSessionScratch = createSessionScratch();
 
   private resetScratch(): void {
@@ -671,6 +679,7 @@ export class ACPSession {
     void (this.fileServer satisfies AcpSessionMessagesHost['fileServer']);
     void (this.terminalServer satisfies AcpSessionMessagesHost['terminalServer']);
     void (this.progressHandler satisfies AcpSessionMessagesHost['progressHandler']);
+    void (this.callbacksInFlight satisfies AcpSessionMessagesHost['callbacksInFlight']);
     return this as unknown as AcpSessionMessagesHost;
   }
 

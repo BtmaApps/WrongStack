@@ -245,6 +245,43 @@ describe('ACPSession — focused coverage', () => {
     await session.close();
   });
 
+  it('does not stall a turn while our own permission decision is pending', async () => {
+    // A human can take longer than the silence window to answer; the agent is
+    // waiting on us then, so the turn must survive until the answer goes out
+    // and only then measure the agent's silence again.
+    let answered = false;
+    const session = await startSession(undefined, {
+      promptIdleTimeoutMs: 60,
+      permissionPolicy: async () => {
+        await new Promise((r) => setTimeout(r, 200));
+        answered = true;
+        return { outcome: 'selected', optionId: 'allow' };
+      },
+    });
+    const t = lastTransport();
+    const promptP = session.prompt([textContent('x')], new AbortController().signal);
+    await new Promise((r) => setImmediate(r));
+    t.respond(t.sent.find((m) => m.method === 'session/new')!.id!, 'session/new', {
+      sessionId: 'sess_abc',
+    });
+    await new Promise((r) => setImmediate(r));
+    t.emit({
+      jsonrpc: '2.0',
+      id: 'perm-1',
+      method: 'session/request_permission',
+      params: {
+        sessionId: 'sess_abc',
+        toolCall: { toolCallId: 'tc1', title: 'Edit', status: 'pending' },
+        options: [{ optionId: 'allow', name: 'Allow', kind: 'allow_once' }],
+      },
+    } as never as ACPMessage);
+    // Agent never speaks again: once our answer is out, its silence stalls the turn.
+    await expect(promptP).rejects.toMatchObject({ kind: 'stalled' });
+    expect(answered).toBe(true);
+    expect(t.sent.some((m) => m.id === 'perm-1' && m.result !== undefined)).toBe(true);
+    await session.close();
+  });
+
   it('lets a turn that keeps reporting run past the silence window', async () => {
     const session = await startSession(undefined, { timeoutMs: 40, promptIdleTimeoutMs: 60 });
     const t = lastTransport();

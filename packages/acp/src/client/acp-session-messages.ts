@@ -27,6 +27,24 @@ export interface AcpSessionMessagesHost {
   fileServer: import('./file-server.js').FileServer;
   terminalServer: import('./terminal-server.js').TerminalServer;
   progressHandler: import('./acp-session-types.js').ACPProgressHandler | null;
+  /** Agent→client requests still being answered; the turn's idle clock waits for them. */
+  callbacksInFlight: number;
+}
+
+/**
+ * Run an agent→client request handler while the turn's idle clock is held:
+ * the agent is waiting on our answer (a human permission decision can take
+ * minutes), so its silence must not stall the turn. The clock restarts when
+ * the answer goes out, measuring the agent's silence from there.
+ */
+function trackCallback(host: AcpSessionMessagesHost, run: () => Promise<void>): void {
+  host.callbacksInFlight++;
+  run()
+    .catch(() => {})
+    .finally(() => {
+      host.callbacksInFlight--;
+      touchIdleRequests(host.pending);
+    });
 }
 
 export function responseSender(this: AcpSessionMessagesHost): ACPResponseSender {
@@ -88,34 +106,40 @@ export function handleMessage(this: AcpSessionMessagesHost, msg: ACPMessage): vo
   }
 
   if (msg.method === 'session/request_permission') {
-    handleAcpPermissionRequest(
-      msg,
-      this.permissionPolicy,
-      this.responseSender(),
-      this.callbackOptions(),
-    ).catch(() => {});
+    trackCallback(this, () =>
+      handleAcpPermissionRequest(
+        msg,
+        this.permissionPolicy,
+        this.responseSender(),
+        this.callbackOptions(),
+      ),
+    );
     return;
   }
 
   if (msg.method === 'fs/read_text_file' || msg.method === 'fs/write_text_file') {
-    handleAcpFsRequest(
-      msg,
-      this.fileServer,
-      this.permissionPolicy,
-      this.responseSender(),
-      this.callbackOptions(),
-    ).catch(() => {});
+    trackCallback(this, () =>
+      handleAcpFsRequest(
+        msg,
+        this.fileServer,
+        this.permissionPolicy,
+        this.responseSender(),
+        this.callbackOptions(),
+      ),
+    );
     return;
   }
 
   if (msg.method?.startsWith('terminal/')) {
-    handleAcpTerminalRequest(
-      msg,
-      this.terminalServer,
-      this.permissionPolicy,
-      this.responseSender(),
-      this.callbackOptions(),
-    ).catch(() => {});
+    trackCallback(this, () =>
+      handleAcpTerminalRequest(
+        msg,
+        this.terminalServer,
+        this.permissionPolicy,
+        this.responseSender(),
+        this.callbackOptions(),
+      ),
+    );
     return;
   }
 

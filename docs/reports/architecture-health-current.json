@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T13:26:31.438Z",
+  "generatedAt": "2026-10-17T14:22:01.278Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,16 +11,16 @@
     ]
   },
   "summary": {
-    "packages": 37,
-    "sourceFiles": 5098,
-    "testFiles": 4442,
-    "sourceLines": 1107514,
-    "workspaceEdges": 137,
-    "moduleEdges": 16790,
+    "packages": 38,
+    "sourceFiles": 5111,
+    "testFiles": 4447,
+    "sourceLines": 1110279,
+    "workspaceEdges": 139,
+    "moduleEdges": 16808,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 0,
+    "testsWithoutTypecheck": 3,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 958
   },
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 667,
-      "testFiles": 651,
+      "sourceFiles": 668,
+      "testFiles": 652,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -181,6 +181,7 @@
         "@wrongstack/tools",
         "@wrongstack/tui",
         "@wrongstack/vector-memory",
+        "@wrongstack/vibeui",
         "@wrongstack/webui",
         "@wrongstack/webui-hq",
         "@wrongstack/webui-protocol",
@@ -196,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 651
+          "testFiles": 652
         }
       ]
     },
@@ -845,6 +846,22 @@
       ]
     },
     {
+      "name": "@wrongstack/vibeui",
+      "dir": "packages/vibeui",
+      "sourceFiles": 12,
+      "testFiles": 3,
+      "workspaceDependencies": [
+        "@wrongstack/webui-protocol"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/vibeui/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        }
+      ]
+    },
+    {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 750,
@@ -924,7 +941,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 300,
-      "testFiles": 295,
+      "testFiles": 296,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -950,7 +967,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 295
+          "testFiles": 296
         }
       ]
     },
@@ -5531,6 +5548,12 @@
       },
       {
         "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/vibeui.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22600,6 +22623,24 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/artifacts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/diff.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/session.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/src/components/hq/__tests__/token-gate-revoked.test.tsx",
         "projects": [
           "root-node"
@@ -24581,6 +24622,12 @@
       },
       {
         "file": "packages/webui-server/tests/start-webui-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/static-hydration-csp.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27749,7 +27796,29 @@
       }
     ],
     "invalidRuntime": [],
-    "withoutTypecheck": [],
+    "withoutTypecheck": [
+      {
+        "file": "packages/vibeui/tests/artifacts.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "packages/vibeui/tests/diff.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "packages/vibeui/tests/session.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      }
+    ],
     "multipleTypechecks": [
       {
         "file": "packages/core/src/goal/__tests__/phase-graph-builder-dependencies.test.ts",
@@ -27817,6 +27886,11 @@
     {
       "from": "packages/simpleui/src/main.tsx",
       "specifier": "./styles.css",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/vibeui/src/app/layout.tsx",
+      "specifier": "./globals.css",
       "syntax": "import"
     },
     {
@@ -27949,6 +28023,11 @@
   "nonCommandSlashImports": [],
   "hotspotCandidates": [
     {
+      "file": "packages/acp/src/client/acp-session.ts",
+      "lines": 707,
+      "relativeImports": 23
+    },
+    {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
@@ -27959,6 +28038,11 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/acp/src/client/acp-session.ts",
+      "lines": 707,
+      "relativeImports": 23
     },
     {
       "file": "packages/core/src/chronicle/project-server.ts",
@@ -27989,11 +28073,6 @@
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
-    },
-    {
-      "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 698,
-      "relativeImports": 23
     },
     {
       "file": "packages/core/src/coordination/subagent-budget.ts",
