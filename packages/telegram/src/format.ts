@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import { redactSecrets } from './redact.js';
+import { sliceUtf16Safe } from './text-format.js';
 
 // ---------------------------------------------------------------------------
 // Payload types (subsets of core event shapes)
@@ -98,7 +99,8 @@ export function fmtToolOutput(raw: string | undefined): string {
   const lines = cleaned.split('\n').filter((l) => l.trim().length > 0);
   let preview = lines.slice(0, 3).join('\n');
   if (lines.length > 3) preview += `\n… +${lines.length - 3} more lines`;
-  if (preview.length > 300) preview = `${preview.slice(0, 297)}…`;
+  // Surrogate-safe cut: a raw slice through an emoji leaves a lone surrogate.
+  if (preview.length > 300) preview = `${sliceUtf16Safe(preview, 297)}…`;
   return preview;
 }
 
@@ -117,7 +119,7 @@ export function fmtToolOutput(raw: string | undefined): string {
 export function formatDelegateCompleted(e: DelegateCompletedLike): string {
   const icon = e.ok ? '✅' : '❌';
   const status = e.status ?? (e.ok ? 'success' : 'failed');
-  const task = e.task.length > 160 ? `${e.task.slice(0, 159)}…` : e.task;
+  const task = e.task.length > 160 ? `${sliceUtf16Safe(e.task, 159)}…` : e.task;
 
   // Prefer the host's one-line summary; fall back to echoing the task when a
   // failure produced no summary. Both go through `redactSecrets` — a

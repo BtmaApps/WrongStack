@@ -53,6 +53,17 @@ describe('formatDelegateCompleted', () => {
     expect(failed).toContain(`${'x'.repeat(159)}…`);
   });
 
+  it('never splits a surrogate pair when truncating a long task', () => {
+    const msg = formatDelegateCompleted({
+      ...base,
+      ok: false,
+      summary: '',
+      task: `${'t'.repeat(158)}\u{1F600}${'u'.repeat(50)}`,
+    });
+    expect(msg.isWellFormed()).toBe(true);
+    expect(msg).toContain(`(no summary) — ${'t'.repeat(158)}…`);
+  });
+
   it('produces a humanized multi-line message (not JSON)', () => {
     const msg = formatDelegateCompleted(base);
     expect(msg).not.toMatch(/[{}]/); // no raw JSON braces
@@ -178,6 +189,16 @@ describe('fmtToolOutput', () => {
   it('does not redact when there is nothing sensitive', () => {
     const raw = 'line1\nline2\nline3';
     expect(fmtToolOutput(raw)).toBe(raw);
+  });
+
+  it('never splits a surrogate pair when truncating the preview', () => {
+    // Code units 296-297 are one emoji; the 297-unit cut used to land between them.
+    const out = fmtToolOutput(`${'a'.repeat(296)}\u{1F600}${'b'.repeat(50)}`);
+    expect(out.isWellFormed()).toBe(true);
+    expect(out).toBe(`${'a'.repeat(296)}…`);
+    // An emoji that fits whole before the cut is kept.
+    const kept = fmtToolOutput(`${'a'.repeat(295)}\u{1F600}${'b'.repeat(50)}`);
+    expect(kept).toBe(`${'a'.repeat(295)}\u{1F600}…`);
   });
 });
 
