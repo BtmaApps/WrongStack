@@ -53,6 +53,23 @@ export async function* executePwshStream(
     return;
   }
 
+  const killCheck = await checkAndBlockKillCommand(input.command);
+  if (killCheck.blocked) {
+    throw new Error(`pwsh: ${killCheck.reason}`);
+  }
+
+  const isWin = os.platform() === 'win32';
+  const bin = isWin ? resolvePowerShell('pwsh.exe') : 'pwsh';
+  const encodedCommand = Buffer.from(wrapPwshCommand(input.command), 'utf16le').toString('base64');
+  const args = [...shellArgs('pwsh'), encodedCommand];
+
+  let targetCwd: string;
+  try {
+    targetCwd = await safeResolveReal(input.workdir ?? ctx.workingDir ?? ctx.projectRoot, ctx);
+  } catch (err) {
+    throw new Error(`pwsh: ${(err as Error).message}`, { cause: err });
+  }
+
   const isBackground = !!(input.run_in_background || input.background);
   const registry = getProcessRegistry();
 
@@ -65,24 +82,7 @@ export async function* executePwshStream(
     );
   }
 
-  const killCheck = await checkAndBlockKillCommand(input.command);
-  if (killCheck.blocked) {
-    throw new Error(`pwsh: ${killCheck.reason}`);
-  }
-
-  const isWin = os.platform() === 'win32';
-  const bin = isWin ? resolvePowerShell('pwsh.exe') : 'pwsh';
-  const encodedCommand = Buffer.from(wrapPwshCommand(input.command), 'utf16le').toString('base64');
-  const args = [...shellArgs('pwsh'), encodedCommand];
-
   const env = buildChildEnv(ctx.session?.id);
-  let targetCwd: string;
-  try {
-    targetCwd = await safeResolveReal(input.workdir ?? ctx.workingDir ?? ctx.projectRoot, ctx);
-  } catch (err) {
-    throw new Error(`pwsh: ${(err as Error).message}`, { cause: err });
-  }
-
   const startedAt = Date.now();
   const detached = !isWin;
 

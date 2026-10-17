@@ -570,3 +570,56 @@ describe('nextsteps candidate boundaries', () => {
     expect(parsed.autoTexts).toEqual([]);
   });
 });
+
+describe('parseNextSteps (<nextstep> item elements)', () => {
+  it('parses one <nextstep> element per line and strips the block', () => {
+    const text = [
+      'Done.',
+      '',
+      '<nextsteps>',
+      '<nextstep>Run the full test suite</nextstep>',
+      '<nextstep>Commit the parser fix</nextstep>',
+      '</nextsteps>',
+    ].join('\n');
+    const parsed = parseNextSteps(text);
+    expect(parsed.steps).toEqual([
+      { index: 1, text: 'Run the full test suite' },
+      { index: 2, text: 'Commit the parser fix' },
+    ]);
+    expect(parsed.stripped).toBe('Done.');
+  });
+
+  it('parses elements written inline, multi-line, or with a list marker', () => {
+    const text =
+      'Ok.\n<nextsteps><nextstep>1. Run lint</nextstep><nextstep>\n  Fix the\n  failing test\n</nextstep></nextsteps>';
+    const parsed = parseNextSteps(text);
+    expect(parsed.texts).toEqual(['Run lint', 'Fix the failing test']);
+    expect(parsed.stripped).toBe('Ok.');
+  });
+
+  it('honours auto="true" only on the first element', () => {
+    const text = [
+      '<nextsteps>',
+      '<nextstep auto="true">Run the tests</nextstep>',
+      '<nextstep auto="true">Push</nextstep>',
+      '</nextsteps>',
+    ].join('\n');
+    const parsed = parseNextSteps(text);
+    expect(parsed.steps).toEqual([
+      { index: 1, text: 'Run the tests', auto: true },
+      { index: 2, text: 'Push' },
+    ]);
+    expect(parsed.autoTexts).toEqual(['Run the tests']);
+  });
+
+  it('keeps a fenced <nextstep> example out of the suggestions', () => {
+    const text = [
+      '```xml',
+      '<nextsteps>',
+      '<nextstep>Example only</nextstep>',
+      '</nextsteps>',
+      '```',
+    ].join('\n');
+    expect(parseNextSteps(text).steps).toEqual([]);
+  });
+});

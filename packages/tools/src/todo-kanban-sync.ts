@@ -58,10 +58,24 @@ export function bindTodosToBoard(
           ? previousItem.kanbanTaskId
           : undefined;
     const title = normalizedTitle(item.content);
+    const isCandidateActive = (candidate: KanbanTask | undefined): candidate is KanbanTask =>
+      candidate !== undefined &&
+      candidate.status !== 'archived' &&
+      candidate.mergedIntoTaskId === undefined;
+
+    let requestedTask = requestedTaskId ? taskById.get(requestedTaskId) : undefined;
+    if (requestedTask?.mergedIntoTaskId) {
+      const mergedTarget = taskById.get(requestedTask.mergedIntoTaskId);
+      if (isCandidateActive(mergedTarget)) requestedTask = mergedTarget;
+    }
+
+    const taskByTodoId = taskById.get(item.id);
+    const taskByOrigin = taskByOriginId.get(item.id);
+
     const candidates: Array<KanbanTask | undefined> = [
-      requestedTaskId ? taskById.get(requestedTaskId) : undefined,
-      taskById.get(item.id),
-      taskByOriginId.get(item.id),
+      isCandidateActive(requestedTask) ? requestedTask : undefined,
+      isCandidateActive(taskByTodoId) ? taskByTodoId : undefined,
+      isCandidateActive(taskByOrigin) ? taskByOrigin : undefined,
       available.find((task) => !used.has(task.id) && normalizedTitle(task.title) === title),
     ];
     const task = candidates.find((candidate) => candidate && !used.has(candidate.id));

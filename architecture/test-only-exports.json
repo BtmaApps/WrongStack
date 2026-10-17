@@ -1279,6 +1279,9 @@
     "packages/tools/src/codebase-index/toolchain-scripts.ts": [
       "__privateScriptPathsForTest"
     ],
+    "packages/tools/src/codebase-index/tree-sitter-parser.ts": [
+      "loadTreeSitterLanguage"
+    ],
     "packages/tools/src/codebase-index/vector-search.ts": [
       "buildRankMap",
       "RRF_K",

@@ -253,7 +253,13 @@ export const DIFF_LINE_SAFETY_CAP = 4000;
 /** Truncate the middle-out: keep the head, append an ellipsis, past `max`. */
 export function truncMid(s: string, max: number): string {
   if (s.length <= max) return s;
-  return `${s.slice(0, max - 1)}…`;
+  // Never cut a surrogate pair: a lone high surrogate renders as a replacement glyph.
+  let end = max - 1;
+  if (end > 0) {
+    const last = s.charCodeAt(end - 1);
+    if (last >= 0xd800 && last <= 0xdbff) end--;
+  }
+  return `${s.slice(0, end)}…`;
 }
 
 /**

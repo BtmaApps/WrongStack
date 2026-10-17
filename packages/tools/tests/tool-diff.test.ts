@@ -260,4 +260,29 @@ describe('parseUnifiedDiffPreview (rich, TUI-promoted)', () => {
     expect(truncMid('short', 100)).toBe('short');
     expect(truncMid('abcdef', 4)).toBe('abc…');
   });
+
+  describe('truncMid surrogate pairs', () => {
+    const lone = (s: string): boolean =>
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+
+    it('never cuts an emoji in half', () => {
+      // max 10 puts the cut at index 9, between the halves of the 5th emoji.
+      const out = truncMid('😀'.repeat(20), 10);
+      expect(lone(out)).toBe(false);
+      expect(out.length).toBeLessThanOrEqual(10);
+      expect(out.endsWith('…')).toBe(true);
+    });
+
+    it('keeps a full pair when the cut lands on a pair boundary', () => {
+      // max 9 -> cut index 8, after four whole emoji.
+      expect(truncMid('😀'.repeat(20), 9)).toBe(`${'😀'.repeat(4)}…`);
+    });
+
+    it('keeps a diff row well-formed at the per-row safety cap', () => {
+      const p = parseUnifiedDiffPreview(`@@ -1,1 +1,1 @@\n+a${'😀'.repeat(40)}\n`, 50, 10);
+      const add = p.rows.find((r) => r.kind === 'add');
+      expect(add).toBeDefined();
+      expect(lone(add?.text ?? '')).toBe(false);
+    });
+  });
 });

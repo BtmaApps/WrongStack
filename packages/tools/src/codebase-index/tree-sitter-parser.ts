@@ -86,6 +86,13 @@ function expectedChecksums(): Record<string, string> | null {
   return cachedChecksums;
 }
 
+/**
+ * A grammar failure that retrying cannot fix (no grammar registered, checksum
+ * mismatch, unpinned file). Its rejection stays cached; any other load failure
+ * (EMFILE, a locked file, an interrupted read) is transient and must be retried.
+ */
+class PermanentGrammarError extends Error {}
+
 function verifyWasmIntegrity(wasmPath: string): void {
   const manifest = expectedChecksums();
   // null = manifest intentionally absent (dist tree) → verification skipped.
@@ -101,7 +108,7 @@ function verifyWasmIntegrity(wasmPath: string): void {
         'Refusing to load; falling back to the regex parser. If this change is intentional, ' +
         'regenerate wasm/checksums.json via scripts/check-tree-sitter-wasm.mjs --write and review the diff.',
     );
-    throw new Error(`tree-sitter grammar not pinned: ${rel}`);
+    throw new PermanentGrammarError(`tree-sitter grammar not pinned: ${rel}`);
   }
   const actual = createHash('sha256').update(readFileSync(wasmPath)).digest('hex');
   if (actual !== expected) {
@@ -110,7 +117,7 @@ function verifyWasmIntegrity(wasmPath: string): void {
         'Refusing to load; falling back to the regex parser. If this change is intentional, ' +
         'regenerate wasm/checksums.json via scripts/check-tree-sitter-wasm.mjs --write and review the diff.',
     );
-    throw new Error(`tree-sitter grammar integrity failure: ${rel}`);
+    throw new PermanentGrammarError(`tree-sitter grammar integrity failure: ${rel}`);
   }
 }
 
@@ -193,7 +200,7 @@ async function loadLanguage(lang: SymbolLang): Promise<CachedLanguage> {
   const promise = (async (): Promise<CachedLanguage> => {
     const grammarName = resolveGrammarName(lang);
     if (!grammarName) {
-      throw new Error(`tree-sitter: no grammar registered for lang "${lang}"`);
+      throw new PermanentGrammarError(`tree-sitter: no grammar registered for lang "${lang}"`);
     }
     const wasmPath = path.join(WASM_DIR, grammarName, `tree-sitter-${grammarName}.wasm`);
     const { Language, init } = await getRuntime();
@@ -215,6 +222,13 @@ async function loadLanguage(lang: SymbolLang): Promise<CachedLanguage> {
   // concurrent callers both miss the `existing` check, the second one
   // re-uses our in-flight promise. Promise assignment is atomic in V8.
   languageCache.set(lang, promise);
+  // A cached rejection is permanent: without this, one transient load failure
+  // disabled the grammar (and therefore the language's symbols) for the whole
+  // life of a long-running daemon. Evict only if this entry is still ours.
+  promise.catch((error: unknown) => {
+    if (error instanceof PermanentGrammarError) return;
+    if (languageCache.get(lang) === promise) languageCache.delete(lang);
+  });
   return promise;
 }
 

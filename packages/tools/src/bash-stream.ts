@@ -40,6 +40,29 @@ export async function* executeBashStream(
     });
   }
 
+  const callerSignal = opts?.signal ?? ctx?.signal ?? new AbortController().signal;
+  if (callerSignal.aborted) {
+    yield {
+      type: 'final',
+      output: {
+        output: 'Aborted',
+        exit_code: 124,
+        timed_out: true,
+        pid: null,
+      },
+    };
+    return;
+  }
+
+  // Kill protection: block commands that try to kill protected WrongStack processes
+  // This includes direct kill commands, bash -c wrapped kills, and name-based kills (pkill, killall)
+  const killCheck = await checkAndBlockKillCommand(input.command);
+  if (killCheck.blocked) {
+    throw new Error(
+      `bash: ${killCheck.reason || 'Kill command blocked: targets a protected WrongStack process.'}`,
+    );
+  }
+
   const registry = getProcessRegistry();
   // Background processes bypass the circuit breaker — they are fire-and-forget
   // and should not affect breaker state. This allows background vitest, dev
@@ -51,15 +74,6 @@ export async function* executeBashStream(
   if (!registry.beforeCall(bypassBreaker)) {
     throw new Error(
       'bash: circuit breaker open — too many consecutive failures or slow calls. Use /kill to inspect or /kill reset to recover.',
-    );
-  }
-
-  // Kill protection: block commands that try to kill protected WrongStack processes
-  // This includes direct kill commands, bash -c wrapped kills, and name-based kills (pkill, killall)
-  const killCheck = await checkAndBlockKillCommand(input.command);
-  if (killCheck.blocked) {
-    throw new Error(
-      `bash: ${killCheck.reason || 'Kill command blocked: targets a protected WrongStack process.'}`,
     );
   }
 
@@ -104,19 +118,6 @@ export async function* executeBashStream(
   // to the project root. Historically this was hard-wired to projectRoot,
   // which made `set_working_dir` silently ineffective for shell tools.
   const spawnCwd = ctx.workingDir ?? ctx.projectRoot;
-  const callerSignal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
-  if (callerSignal.aborted) {
-    yield {
-      type: 'final',
-      output: {
-        output: 'Aborted',
-        exit_code: 124,
-        timed_out: true,
-        pid: null,
-      },
-    };
-    return;
-  }
 
   // On POSIX we put the shell in its own process group so that timeout /
   // abort can kill the entire group with `process.kill(-pid)`. Otherwise

@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import type { ToolProgressEvent, ToolStreamEvent } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { bashTool } from '../src/bash.js';
-import { getProcessRegistry } from '../src/process-registry.js';
+import { executeBashStream } from '../src/bash-stream.js';
+import { _resetProcessRegistry, getProcessRegistry } from '../src/process-registry.js';
 import { mkSandbox, newSignal } from './fixtures.js';
 import { runtimeFixtureCommand } from './shell-fixture-command.js';
 
@@ -537,4 +538,55 @@ describe('bashTool background mode stderr', () => {
     },
     10_000,
   );
+});
+
+describe('executeBashStream circuit breaker probe safety (F506)', () => {
+  it('does not leak halfOpenProbeInFlight on pre-aborted command or blocked kill command', async () => {
+    _resetProcessRegistry();
+    const registry = getProcessRegistry();
+    registry.breaker.setEnabled(true);
+
+    try {
+      (registry.breaker as any).state = 'half-open';
+      (registry.breaker as any).halfOpenProbeInFlight = false;
+
+      const abortCtrl = new AbortController();
+      abortCtrl.abort();
+      const ctx: any = {
+        session: { id: 'test-f506' },
+        projectRoot: process.cwd(),
+        workingDir: process.cwd(),
+        signal: abortCtrl.signal,
+      };
+
+      const gen = executeBashStream({ command: 'echo hello' }, ctx, { signal: abortCtrl.signal });
+      const res = await gen.next();
+      expect(res.value?.output.exit_code).toBe(124);
+      expect((registry.breaker as any).halfOpenProbeInFlight).toBe(false);
+
+      // Blocked kill command in half-open state also does not leak probe
+      let blocked = false;
+      try {
+        const killCtx: any = {
+          session: { id: 'test-f506-kill' },
+          projectRoot: process.cwd(),
+          workingDir: process.cwd(),
+          signal: new AbortController().signal,
+        };
+        const killGen = executeBashStream({ command: `kill -9 ${process.pid}` }, killCtx);
+        await killGen.next();
+      } catch (err: any) {
+        if (
+          err.message.includes('targets a protected WrongStack process') ||
+          err.message.includes('Kill command blocked')
+        ) {
+          blocked = true;
+        }
+      }
+      expect(blocked).toBe(true);
+      expect((registry.breaker as any).halfOpenProbeInFlight).toBe(false);
+    } finally {
+      _resetProcessRegistry();
+    }
+  });
 });

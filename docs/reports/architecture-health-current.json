@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T15:27:59.502Z",
+  "generatedAt": "2026-10-17T15:28:36.636Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5123,
-    "testFiles": 4446,
-    "sourceLines": 1112397,
+    "testFiles": 4447,
+    "sourceLines": 1112457,
     "workspaceEdges": 139,
     "moduleEdges": 16846,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 957
+    "testOnlyExports": 958
   },
   "errors": [],
   "packageCycles": [],
@@ -771,7 +771,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 335,
-      "testFiles": 327,
+      "testFiles": 328,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 327
+          "testFiles": 328
         }
       ]
     },
@@ -19850,6 +19850,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/tree-sitter-language-retry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/tree-sitter-refs.test.ts",
         "projects": [
           "root-node"
@@ -30688,6 +30694,10 @@
     {
       "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
       "name": "__privateScriptPathsForTest"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/tree-sitter-parser.ts",
+      "name": "loadTreeSitterLanguage"
     },
     {
       "file": "packages/tools/src/codebase-index/vector-search.ts",

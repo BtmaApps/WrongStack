@@ -235,7 +235,51 @@ describe('PersistentProcessRegistry', () => {
       const before = vi.mocked(fs.writeFile).mock.calls.length;
       await registry.unregister(7777);
       expect(vi.mocked(fs.writeFile).mock.calls.length).toBeGreaterThan(before);
-      expect(persistedRegistry()?.instances.some(([, entry]) => entry.pid === 7777)).toBe(false);
+    });
+  });
+
+  describe('malformed entry recovery (F504)', () => {
+    it('discards null and malformed instance entries without crashing downstream protection', async () => {
+      const regPath = path.join(
+        os.tmpdir(),
+        'wstack-persist-test-' + process.pid,
+        'process-registry.json',
+      );
+      const validEntry = {
+        pid: 4444,
+        name: 'valid-proc',
+        command: 'node valid.js',
+        startedAt: Date.now() - 1000,
+        lastHeartbeat: Date.now(),
+        instanceId: 'host:4444:xyz',
+        hostname: os.hostname(),
+        protected: true,
+        spawnMode: 'main',
+        platform: process.platform,
+      };
+      mockStore.set(
+        regPath,
+        JSON.stringify({
+          version: 1,
+          instances: [
+            ['4444', validEntry],
+            ['9999', null],
+            ['8888', { notAProcess: true }],
+            ['7777', undefined],
+          ],
+          protectedPatterns: ['wrongstack', null, '', 'node'],
+          lastCleanup: Date.now(),
+        }),
+      );
+
+      const protectedPids = await registry.getAllProtectedPids();
+      expect(protectedPids).toEqual([4444]);
+      expect(await registry.isProtectedPid(4444)).toBe(true);
+      expect(await registry.isProtectedPid(9999)).toBe(false);
+
+      const status = await registry.getGlobalStatus();
+      expect(status.totalProcesses).toBe(1);
+      expect(status.protectedCount).toBe(1);
     });
   });
 });

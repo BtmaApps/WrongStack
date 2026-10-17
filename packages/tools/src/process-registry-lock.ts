@@ -169,6 +169,19 @@ function freshRegistryData(): PersistentRegistryData {
   };
 }
 
+function isPersistentProcessEntry(val: unknown): val is PersistentProcessEntry {
+  if (!val || typeof val !== 'object') return false;
+  const e = val as Record<string, unknown>;
+  return (
+    typeof e.pid === 'number' &&
+    Number.isFinite(e.pid) &&
+    typeof e.name === 'string' &&
+    typeof e.instanceId === 'string' &&
+    typeof e.lastHeartbeat === 'number' &&
+    Number.isFinite(e.lastHeartbeat)
+  );
+}
+
 export async function readRegistryFile(filePath: string): Promise<PersistentRegistryData> {
   let content: string;
   try {
@@ -188,14 +201,26 @@ export async function readRegistryFile(filePath: string): Promise<PersistentRegi
     };
     if (!parsed || typeof parsed !== 'object') return freshRegistryData();
     const base = freshRegistryData();
+    const instances = new Map<string, PersistentProcessEntry>();
+    if (Array.isArray(parsed.instances)) {
+      for (const item of parsed.instances) {
+        if (
+          Array.isArray(item) &&
+          item.length >= 2 &&
+          (typeof item[0] === 'string' || typeof item[0] === 'number') &&
+          isPersistentProcessEntry(item[1])
+        ) {
+          instances.set(String(item[0]), item[1]);
+        }
+      }
+    }
+    const protectedPatterns = Array.isArray(parsed.protectedPatterns)
+      ? parsed.protectedPatterns.filter((p): p is string => typeof p === 'string' && p.length > 0)
+      : base.protectedPatterns;
     return {
       version: 1,
-      instances: Array.isArray(parsed.instances)
-        ? new Map(parsed.instances as [string, PersistentProcessEntry][])
-        : base.instances,
-      protectedPatterns: Array.isArray(parsed.protectedPatterns)
-        ? parsed.protectedPatterns
-        : base.protectedPatterns,
+      instances,
+      protectedPatterns,
       lastCleanup: typeof parsed.lastCleanup === 'number' ? parsed.lastCleanup : base.lastCleanup,
     };
   } catch {

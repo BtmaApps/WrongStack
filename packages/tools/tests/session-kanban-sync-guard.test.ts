@@ -15,6 +15,7 @@ vi.mock('@wrongstack/core/coordination', async (importOriginal) => ({
 }));
 
 import { applyManagedKanbanBoardToTodos } from '../src/session-kanban-sync.js';
+import { bindTodosToBoard } from '../src/todo-kanban-sync.js';
 
 /** Mirrors sessionIdFromTags in session-kanban.ts — the `session:<id>` tag. */
 function sessionOwnerFromTags(tags: readonly string[] | undefined): string | null {
@@ -105,5 +106,99 @@ describe('managed board session-ownership guard', () => {
     const context = makeContext('session-a');
     applyManagedKanbanBoardToTodos(context, makeBoard(['session:session-b']), new WeakSet());
     expect(replaced).toHaveLength(1);
+  });
+});
+
+describe('bindTodosToBoard archived and merged task binding guard (F505)', () => {
+  it('strips dead bindings to archived tasks and redirects merged tasks', () => {
+    const board: KanbanBoard = {
+      id: 'board-test',
+      title: 'Managed board',
+      columns: [{ id: 'col-1', title: 'Todo', order: 0 }],
+      tasks: [
+        {
+          id: 'task-active',
+          title: 'Active task',
+          columnId: 'col-1',
+          status: 'todo',
+          order: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'task-archived',
+          title: 'Archived task',
+          columnId: 'col-1',
+          status: 'archived',
+          order: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'task-merged-source',
+          title: 'Merged source',
+          columnId: 'col-1',
+          status: 'todo',
+          mergedIntoTaskId: 'task-merged-target',
+          order: 2,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'task-merged-target',
+          title: 'Merged target',
+          columnId: 'col-1',
+          status: 'todo',
+          order: 3,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    } as never as KanbanBoard;
+
+    // Active task binding is kept
+    const active = bindTodosToBoard(
+      [
+        {
+          id: 't1',
+          content: 'Active task',
+          status: 'pending',
+          kanbanBoardId: 'board-test',
+          kanbanTaskId: 'task-active',
+        },
+      ],
+      [],
+      board,
+    );
+    expect(active[0]?.kanbanTaskId).toBe('task-active');
+
+    // Archived task binding is stripped
+    const archived = bindTodosToBoard(
+      [
+        {
+          id: 't2',
+          content: 'Archived task',
+          status: 'pending',
+          kanbanBoardId: 'board-test',
+          kanbanTaskId: 'task-archived',
+        },
+      ],
+      [],
+      board,
+    );
+    expect(archived[0]?.kanbanTaskId).toBeUndefined();
+    expect(archived[0]?.kanbanBoardId).toBeUndefined();
+
+    // Merged task binding redirects to live target
+    const merged = bindTodosToBoard(
+      [
+        {
+          id: 't3',
+          content: 'Merged task',
+          status: 'pending',
+          kanbanBoardId: 'board-test',
+          kanbanTaskId: 'task-merged-source',
+        },
+      ],
+      [],
+      board,
+    );
+    expect(merged[0]?.kanbanTaskId).toBe('task-merged-target');
   });
 });
