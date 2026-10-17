@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T15:28:36.636Z",
+  "generatedAt": "2026-10-17T15:29:03.552Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5123,
-    "testFiles": 4447,
-    "sourceLines": 1112457,
+    "testFiles": 4448,
+    "sourceLines": 1112488,
     "workspaceEdges": 139,
     "moduleEdges": 16846,
     "nonCommandSlashImports": 0,
@@ -946,7 +946,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 300,
-      "testFiles": 295,
+      "testFiles": 296,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -972,7 +972,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 295
+          "testFiles": 296
         }
       ]
     },
@@ -24633,6 +24633,12 @@
       },
       {
         "file": "packages/webui-server/tests/start-webui-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/static-hydration-csp.test.ts",
         "projects": [
           "root-node"
         ]

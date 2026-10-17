@@ -264,9 +264,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/next-steps": {
-      "files": 1,
+      "files": 2,
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     "@wrongstack/core/utils/residency-labels": {
       "files": 4,
@@ -28534,6 +28534,12 @@
     {
       "specifier": "@wrongstack/core/utils/next-steps",
       "file": "packages/tools/src/next-steps.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/next-steps",
+      "file": "packages/webui-protocol/src/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

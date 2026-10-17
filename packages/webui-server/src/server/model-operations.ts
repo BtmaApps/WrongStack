@@ -23,6 +23,7 @@ import type { WSServerMessage } from './types.js';
 import { validateModelSwitchPayload } from './ws-payload-validation.js';
 
 export interface ModelRefinePayload {
+  requestId?: string | undefined;
   /** The asking tab's session, stamped by `withSession` on the client. */
   sessionId?: string | undefined;
   text: string;
@@ -209,10 +210,14 @@ export function createModelOperations(context: ModelOperationsContext) {
     // history, and the reply must be lane-routable — an untagged
     // model.refine_result is dropped by the origin-scoped client handler,
     // silently discarding pre-queue refinement results.
-    const stamp =
-      typeof payload.sessionId === 'string' && payload.sessionId.length > 0
+    const stamp = {
+      ...(typeof payload.sessionId === 'string' && payload.sessionId.length > 0
         ? { sessionId: payload.sessionId }
-        : {};
+        : {}),
+      ...(typeof payload.requestId === 'string' && payload.requestId.length > 0
+        ? { requestId: payload.requestId }
+        : {}),
+    };
     if (!text?.trim()) {
       context.send(ws, {
         type: 'model.refine_result',

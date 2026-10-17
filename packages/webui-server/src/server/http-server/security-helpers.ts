@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type * as http from 'node:http';
 import * as path from 'node:path';
 import { decodeSessionIdStrict } from '@wrongstack/core/utils';
@@ -11,6 +12,9 @@ export const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain',
 };
 
 function escapeHtmlAttr(value: string): string {
@@ -164,6 +168,7 @@ export function buildCspHeader(
   host?: string,
   port?: number,
   extraConnectSrc?: readonly string[] | undefined,
+  html?: string | undefined,
 ): string {
   const connect = new Set(["'self'"]);
   const publicWsSource = publicWsUrl ? cspSourceFromUrl(publicWsUrl) : undefined;
@@ -182,7 +187,14 @@ export function buildCspHeader(
       }
     }
   }
-  const scriptSrc = ["'self'", ...EXTRA_SCRIPT_SOURCES].join(' ');
+  // Hash only scripts in the trusted packaged HTML. Next's static export
+  // contains inline hydration payloads; do not enable unsafe-inline for them.
+  const hashes = new Set<string>();
+  for (const match of (html ?? '').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+    if (/\bsrc\s*=/i.test(match[1] ?? '') || !match[2]) continue;
+    hashes.add(`'sha256-${createHash('sha256').update(match[2]).digest('base64')}'`);
+  }
+  const scriptSrc = ["'self'", ...EXTRA_SCRIPT_SOURCES, ...hashes].join(' ');
   return (
     `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; ` +
     `connect-src ${Array.from(connect).join(' ')}; ` +

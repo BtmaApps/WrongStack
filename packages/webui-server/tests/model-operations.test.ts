@@ -54,6 +54,31 @@ function harness(
 }
 
 describe('model switch lifecycle', () => {
+  it('echoes refinement request ids on validation and missing-session failures', async () => {
+    const h = harness({ liveSessionId: 'session-live' });
+    await h.refineModel({ sessionId: 'session-live', requestId: 'refine-empty', text: '' });
+    await h.refineModel({
+      sessionId: 'session-gone',
+      requestId: 'refine-missing',
+      text: 'Improve this',
+    });
+    expect(h.sent).toContainEqual({
+      type: 'model.refine_result',
+      payload: expect.objectContaining({
+        sessionId: 'session-live',
+        requestId: 'refine-empty',
+        error: 'Empty text',
+      }),
+    });
+    expect(h.sent).toContainEqual({
+      type: 'model.refine_result',
+      payload: expect.objectContaining({
+        sessionId: 'session-gone',
+        requestId: 'refine-missing',
+        errorKind: 'provider_error',
+      }),
+    });
+  });
   it('broadcasts a correlated success with the activation boundary', async () => {
     const h = harness({ runActive: true });
 

@@ -7,6 +7,7 @@ export {
   extractSkillMentions,
   insertSkillMention,
   matchSkillMentions,
+  preserveSkillMentions,
   type SkillMention,
   type SkillMentionCandidate,
 } from '@wrongstack/core/skill-mentions';
@@ -42,6 +43,14 @@ export {
   projectSessionTimeline,
   projectSessionToolMeta,
 } from '@wrongstack/core/types/session-timeline';
+export {
+  indexInsideCodeFence,
+  isFinalTurnStopReason,
+  type ParsedNextStep,
+  parseNextSteps,
+  projectNextStepsToolInput,
+  stripNextStepsBlock,
+} from '@wrongstack/core/utils/next-steps';
 export {
   AUTO_WAKE_PROMPT_MARKER,
   autoWakeNoticeText,

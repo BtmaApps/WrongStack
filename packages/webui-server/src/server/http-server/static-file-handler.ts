@@ -58,21 +58,23 @@ export async function handleStaticFileRequest(
   setStaticSecurityHeaders(res);
 
   if (ext === '.html') {
+    const html = injectWsConfig(await fs.readFile(resolvedPath, 'utf8'), {
+      publicWsUrl: opts.publicWsUrl,
+    });
     if (!shouldSetAuthCookie) res.setHeader('Cache-Control', 'no-cache');
     res.setHeader(
       'Content-Security-Policy',
-      buildCspHeader(opts.publicWsUrl, opts.host, port, extraConnectSrc(opts)),
+      buildCspHeader(opts.publicWsUrl, opts.host, port, extraConnectSrc(opts), html),
     );
-    const html = await fs.readFile(resolvedPath, 'utf8');
     res.writeHead(200);
-    res.end(injectWsConfig(html, { publicWsUrl: opts.publicWsUrl }));
+    res.end(html);
     return;
   }
 
   if (!shouldSetAuthCookie) {
     res.setHeader(
       'Cache-Control',
-      url.pathname.startsWith('/assets/')
+      url.pathname.startsWith('/assets/') || url.pathname.startsWith('/_next/static/')
         ? 'public, max-age=31536000, immutable'
         : 'public, max-age=3600',
     );
@@ -93,7 +95,9 @@ export async function handleSpaFallback(
   port: number,
 ): Promise<void> {
   try {
-    const html = await fs.readFile(path.join(distDir, 'index.html'), 'utf8');
+    const html = injectWsConfig(await fs.readFile(path.join(distDir, 'index.html'), 'utf8'), {
+      publicWsUrl: opts.publicWsUrl,
+    });
     setStaticSecurityHeaders(res);
     res.writeHead(200, {
       'Content-Type': 'text/html',
@@ -102,9 +106,10 @@ export async function handleSpaFallback(
         opts.host,
         port,
         extraConnectSrc(opts),
+        html,
       ),
     });
-    res.end(injectWsConfig(html, { publicWsUrl: opts.publicWsUrl }));
+    res.end(html);
   } catch {
     res.writeHead(404);
     res.end('Not found');
