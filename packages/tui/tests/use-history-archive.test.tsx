@@ -189,11 +189,14 @@ describe('useHistoryArchive', () => {
         />,
       );
     });
-    await settle();
-
-    const written = await fs.readFile(archiveFile, 'utf8');
-    const lines = written.split('\n').filter((line) => line.trim().length > 0);
-    expect(lines).toHaveLength(3);
+    // The hook removes the file and then appends the live entries; under load
+    // the append can land well after a fixed settle, so wait for the content.
+    const readLines = async () =>
+      (await fs.readFile(archiveFile, 'utf8').catch(() => ''))
+        .split('\n')
+        .filter((line) => line.trim().length > 0);
+    await vi.waitFor(async () => expect(await readLines()).toHaveLength(3), { timeout: 10_000 });
+    const lines = await readLines();
     expect(lines.some((line) => line.includes('stale'))).toBe(false);
 
     act(() => view.unmount());
