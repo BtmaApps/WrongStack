@@ -78,7 +78,7 @@ function isCaseSensitive(query: string): boolean {
 }
 
 function lineAround(text: string, index: number, length: number): Omit<TranscriptMatch, 'entryId'> {
-  const start = text.lastIndexOf('\n', index - 1) + 1;
+  const start = index <= 0 ? 0 : text.lastIndexOf('\n', index - 1) + 1;
   const newline = text.indexOf('\n', index + length);
   const end = newline === -1 ? text.length : newline;
   return { line: text.slice(start, end), column: index - start, length };
@@ -147,7 +147,8 @@ export function transcriptMatchSnippet(
     };
   }
   const context = Math.max(0, budget - match.length);
-  let start = Math.max(0, match.column - Math.floor(context / 3));
+  const leftShare = match.column > 0 && context > 0 ? Math.max(1, Math.floor(context / 3)) : 0;
+  let start = Math.max(0, match.column - leftShare);
   const end = Math.min(line.length, start + budget);
   start = Math.max(0, end - budget);
   const leftCut = start > 0;

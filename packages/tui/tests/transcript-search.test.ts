@@ -115,6 +115,22 @@ describe('transcriptMatchSnippet', () => {
     expect(snippet.after.endsWith('…')).toBe(true);
     expect((snippet.before + snippet.hit + snippet.after).length).toBeLessThanOrEqual(30);
   });
+
+  it('never produces a negative column when text starts with a newline and never overflows tight width budgets', () => {
+    const [leadingMatch] = findTranscriptMatches(
+      [{ id: 9, kind: 'assistant', text: '\nhello' }],
+      '\nhello',
+      { includeReasoning: true },
+    );
+    expect(leadingMatch?.column).toBe(0);
+
+    const match = { line: 'abcdeMATCHfghij', column: 5, length: 5 };
+    for (const width of [5, 6, 7, 8]) {
+      const budget = Math.max(match.length + 2, width);
+      const snippet = transcriptMatchSnippet(match, width);
+      expect((snippet.before + snippet.hit + snippet.after).length).toBeLessThanOrEqual(budget);
+    }
+  });
 });
 
 describe('chat search reducer', () => {
