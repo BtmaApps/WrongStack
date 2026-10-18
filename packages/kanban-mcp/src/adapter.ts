@@ -164,7 +164,8 @@ async function watchForKanbanMutation(
   getConnection: (projectRoot: string) => Promise<KanbanEventConnection | null>,
   signal: AbortSignal,
 ): Promise<unknown> {
-  const boardId = typeof args['boardId'] === 'string' ? args['boardId'] : undefined;
+  const rawBoardId = typeof args['boardId'] === 'string' ? args['boardId'].trim() : '';
+  const boardId = rawBoardId.length > 0 ? rawBoardId : undefined;
   const timeoutMs = normalizeTimeout(args['timeoutMs']);
   if (signal.aborted) {
     throw signal.reason instanceof Error ? signal.reason : new Error('Kanban watch cancelled');
@@ -203,6 +204,7 @@ async function watchForKanbanMutation(
     };
 
     const eventOff = connection.subscribe((event) => {
+      if (typeof event.event !== 'string' || !event.event.startsWith('board.')) return;
       const changedBoardId = eventBoardId(event);
       if (boardId && changedBoardId !== boardId) return;
       finish({ changed: true, event: event.event, data: event.data });
@@ -215,8 +217,8 @@ async function watchForKanbanMutation(
     unsubscribeDisconnect = disconnectOff;
     if (settled) disconnectOff();
     if (signal.aborted) onAbort();
-    else signal.addEventListener('abort', onAbort, { once: true });
     if (settled) return;
+    signal.addEventListener('abort', onAbort, { once: true });
     timer = setTimeout(() => {
       finish({ changed: false, timedOut: true, timeoutMs });
     }, timeoutMs);

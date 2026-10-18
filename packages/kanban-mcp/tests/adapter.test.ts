@@ -505,4 +505,36 @@ describe('createKanbanMcpServer', () => {
     ) as { result: { messages: Array<{ content: { text: string } }> } };
     expect(rendered.result.messages[0]?.content.text).toContain('board-1');
   });
+
+  it('ignores non-board IPC events and trims boardId in kanban_watch', async () => {
+    let subscriber: ((event: { event: string; data?: unknown }) => void) | undefined;
+    const host = createKanbanMcpServer('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: async () => ({
+          subscribe: (cb) => {
+            subscriber = cb;
+            return () => {
+              subscriber = undefined;
+            };
+          },
+          onDisconnect: () => () => {},
+        }),
+      },
+    });
+    const pending = host.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 9,
+        method: 'tools/call',
+        params: { name: 'kanban_watch', arguments: { boardId: '  board-1  ', timeoutMs: 1000 } },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 10));
+    subscriber?.({ event: 'workflow.state.updated', data: { boardId: 'board-1' } });
+    subscriber?.({ event: 'board.updated', data: { boardId: 'board-1' } });
+    const raw = await pending;
+    expect(raw).toContain('board.updated');
+    expect(raw).not.toContain('workflow.state.updated');
+  });
 });
