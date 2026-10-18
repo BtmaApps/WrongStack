@@ -492,7 +492,7 @@ function buildResult(
       pairsEvaluated: pairResults.length,
       mergeYes: merges.length,
       overlap: overlaps.length,
-      mergeNo: pairResults.filter((r) => r.verdict === 'NO').length,
+      mergeNo: pairResults.filter((r) => r.ok && r.verdict === 'NO').length,
       errors,
     },
   };

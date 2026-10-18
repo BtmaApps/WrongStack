@@ -523,6 +523,7 @@ describe('detectMerges — empty LLM replies', () => {
     const m2 = makeMem('b', 'Auth module hashes passwords with bcrypt', { anchors });
     const result = await detectMerges([m1, m2], async () => '');
     expect(result.summary.errors).toBeGreaterThanOrEqual(1);
+    expect(result.summary.mergeNo).toBe(0);
     expect(result.merges).toHaveLength(0);
   });
 });
