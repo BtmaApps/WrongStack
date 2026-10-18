@@ -303,8 +303,10 @@ export function quotaExhaustionInMs(
   if (climb <= 0) return undefined;
   const perMs = climb / (last.at - first.at);
   const eta = (100 - window.usedPercent) / perMs;
-  const resetIn = quotaResetInMs(window, now);
-  if (resetIn !== undefined && eta >= resetIn) return undefined;
+  if (window.resetsAt !== undefined) {
+    const resetIn = quotaResetInMs(window, now);
+    if (resetIn === undefined || eta >= resetIn) return undefined;
+  }
   return eta;
 }
 

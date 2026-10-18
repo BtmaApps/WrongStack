@@ -362,6 +362,18 @@ describe('quotaExhaustionInMs (pace forecast)', () => {
     recordProviderQuota('openai-codex', [reading(40)], T0);
     const [flat] = withQuotaPace(getProviderQuota('openai-codex'), T0);
     expect(flat?.windows[0]).not.toHaveProperty('exhaustsAt');
+
+    // Once `now` passes `resetsAt`, a slow climb that did not exhaust before reset
+    // must not stamp an `exhaustsAt` after `resetsAt`.
+    resetProviderQuota();
+    const resetsAt = (T0 + 30 * MIN) / 1000;
+    recordProviderQuota('openai-codex', [reading(40, resetsAt)], T0);
+    recordProviderQuota('openai-codex', [reading(41, resetsAt)], T0 + 20 * MIN);
+    expect(
+      quotaExhaustionInMs('openai-codex', 'default', window(41, resetsAt), T0 + 31 * MIN),
+    ).toBeUndefined();
+    const [afterReset] = withQuotaPace(getProviderQuota('openai-codex'), T0 + 31 * MIN);
+    expect(afterReset?.windows[0]?.exhaustsAt).toBeUndefined();
   });
 });
 
