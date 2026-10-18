@@ -350,4 +350,20 @@ describe('automation control API', () => {
       await service.stop();
     }
   });
+
+  it('extracts JSON summary even when followed by a non-JSON line starting with {', async () => {
+    const { buildAutomationResult } = await import('../src/automation/result.js');
+    const output = [
+      JSON.stringify({
+        status: 'completed',
+        sessionId: 'sess-trail',
+        finalText: 'ok',
+        usage: { inputTokens: 10, outputTokens: 5, iterations: 1, costUsd: 0.001 },
+      }),
+      '{stderr diagnostic that is not valid JSON}',
+    ].join('\n');
+    const res = buildAutomationResult(output, null, 250);
+    expect(res.agentStatus).toBe('completed');
+    expect(res.sessionId).toBe('sess-trail');
+  });
 });

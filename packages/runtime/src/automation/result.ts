@@ -37,9 +37,7 @@ export function buildAutomationResult(
         payload = record;
         break;
       }
-    } catch {
-      break;
-    }
+    } catch {}
   }
   const usage =
     payload['usage'] && typeof payload['usage'] === 'object'
