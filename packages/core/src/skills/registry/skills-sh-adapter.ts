@@ -107,13 +107,17 @@ export function createSkillsShAdapter(opts: SkillsShAdapterOptions = {}): SkillR
           source: 'skills.sh.resolveInstallRef',
         });
       }
-      // Validate it looks like owner/repo (with optional @ref).
-      const atIdx = trimmed.indexOf('@');
-      const withoutSkill = trimmed.split('#')[0] ?? '';
+      // Validate it looks like owner/repo (with optional @ref and #skill).
+      const hashIdx = trimmed.indexOf('#');
+      const withoutSkill = hashIdx >= 0 ? trimmed.slice(0, hashIdx) : trimmed;
+      const skillFragment = hashIdx >= 0 ? trimmed.slice(hashIdx + 1) : '';
+      const atIdx = withoutSkill.indexOf('@');
       const repoPart = atIdx > 0 ? withoutSkill.slice(0, atIdx) : withoutSkill;
+      const refPart = atIdx > 0 ? withoutSkill.slice(atIdx + 1) : '';
       const segs = repoPart.split('/').filter(Boolean);
-      if (segs.length === 3 && !trimmed.includes('@') && !trimmed.includes('#'))
-        return `${segs[0]}/${segs[1]}#${segs[2]}`;
+      if (segs.length === 3 && !skillFragment) {
+        return `${segs[0]}/${segs[1]}${refPart ? `@${refPart}` : ''}#${segs[2]}`;
+      }
       if (segs.length !== 2) {
         throw new ParseError({
           message:

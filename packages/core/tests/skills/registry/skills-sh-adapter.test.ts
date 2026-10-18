@@ -171,6 +171,7 @@ describe('skills.sh adapter — resolveInstallRef', () => {
   it('throws ParseError on an id without owner/repo', () => {
     expect(() => a.resolveInstallRef('justoneword')).toThrow(ParseError);
     expect(a.resolveInstallRef('a/b/c')).toBe('a/b#c');
+    expect(a.resolveInstallRef('octo/repo/my-skill@v1.2.3')).toBe('octo/repo@v1.2.3#my-skill');
     expect(() => a.resolveInstallRef('a/b/c/d')).toThrow(ParseError);
   });
 });
