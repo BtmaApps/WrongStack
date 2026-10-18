@@ -223,6 +223,11 @@ export class DesktopAgentBridge extends EventEmitter {
 
       ws.once('open', () => {
         clearTimeout(timeout);
+        if (conversation.ws !== ws || conversation.socketGeneration !== myGeneration) {
+          ws.close();
+          resolve();
+          return;
+        }
         conversation.status = 'connected';
         conversation.error = undefined;
         conversation.connectPromise = null;
@@ -235,7 +240,10 @@ export class DesktopAgentBridge extends EventEmitter {
 
       ws.once('error', (err) => {
         clearTimeout(timeout);
-        if (conversation.ws !== ws) return;
+        if (conversation.ws !== ws || conversation.socketGeneration !== myGeneration) {
+          resolve();
+          return;
+        }
         conversation.status = 'error';
         conversation.error = err instanceof Error ? err.message : String(err);
         conversation.connectPromise = null;
@@ -262,9 +270,13 @@ export class DesktopAgentBridge extends EventEmitter {
         if (conversation.onMessage === onMessage) {
           conversation.onMessage = null;
         }
-        // A replaced endpoint can close after its successor starts connecting.
-        // Its late close must not clear that connect or schedule a retry.
-        if (conversation.ws !== ws) return;
+        // A replaced or explicitly closed endpoint can close while connect()
+        // is still awaiting handshake. Always settle our connect promise first,
+        // and only mutate conversation state if this socket is still current.
+        if (conversation.ws !== ws || conversation.socketGeneration !== myGeneration) {
+          resolve();
+          return;
+        }
         conversation.socketGeneration++;
         conversation.ws = null;
         conversation.connectPromise = null;
@@ -282,6 +294,7 @@ export class DesktopAgentBridge extends EventEmitter {
         ) {
           this.scheduleReconnect(conversation);
         }
+        resolve();
       });
     });
     conversation.connectPromise = promise;

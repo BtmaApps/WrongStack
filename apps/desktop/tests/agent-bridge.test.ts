@@ -727,3 +727,40 @@ describe('run.result final-text handling', () => {
     expect(conversation.activeAssistantMessageId).toBeNull();
   });
 });
+
+describe('DesktopAgentBridge in-flight connection lifecycle', () => {
+  it('settles ensureConnected and stays disconnected when close(runtimeId) races an in-flight WebSocket handshake', async () => {
+    const { WebSocketServer } = await import('ws');
+    const { DesktopAgentBridge } = await import('../src/main/agent-bridge.js');
+
+    let releaseHandshake!: () => void;
+    const handshakeEntered = new Promise<void>((resolve) => {
+      releaseHandshake = resolve;
+    });
+    let completeHandshake: ((accept: boolean) => void) | null = null;
+
+    const wss = new WebSocketServer({
+      port: 0,
+      verifyClient: (_info, cb) => {
+        completeHandshake = cb;
+        releaseHandshake();
+      },
+    });
+    const port = (wss.address() as { port: number }).port;
+    const bridge = new DesktopAgentBridge();
+
+    try {
+      const connecting = bridge.ensureConnected('rt-race', `ws://127.0.0.1:${port}`);
+      await handshakeEntered;
+      bridge.close('rt-race');
+      completeHandshake?.(true);
+
+      const snapshot = await connecting;
+      expect(snapshot.status).toBe('disconnected');
+      expect(bridge.snapshot('rt-race').status).toBe('disconnected');
+    } finally {
+      bridge.closeAll();
+      wss.close();
+    }
+  });
+});
