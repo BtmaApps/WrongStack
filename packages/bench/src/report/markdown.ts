@@ -336,7 +336,7 @@ function signedUsd(delta: number | undefined): string {
 }
 
 function signedMs(delta: number | undefined): string {
-  if (delta === undefined) return '—';
+  if (delta === undefined || !Number.isFinite(delta)) return '—';
   const formatted = delta >= 0 ? fmtMs(delta) : `-${fmtMs(-delta)}`;
   if (delta > 0) return `+${formatted}`;
   return formatted;

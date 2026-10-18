@@ -229,6 +229,23 @@ describe('renderMarkdownReport — conditionalPct edge cases', () => {
     expect(mdPct).toContain('-10.0pp');
     expect(mdPct).toContain('0.0pp');
     expect(mdPct).toContain('+10.0pp');
+
+    const mdNonFiniteMs = renderComparisonMarkdown({
+      comparable: true,
+      reasons: [],
+      baseline: { suite: 'smoke', finishedAt: 'now', fingerprint: FP },
+      candidate: { suite: 'smoke', finishedAt: 'now', fingerprint: FP },
+      cells: [
+        { label: 'nan-ms', p50ElapsedMsDelta: Number.NaN },
+        { label: 'pos-inf-ms', p50ElapsedMsDelta: Number.POSITIVE_INFINITY },
+        { label: 'neg-inf-ms', p50ElapsedMsDelta: Number.NEGATIVE_INFINITY },
+      ],
+      flipped: [],
+      sharedTaskCount: 1,
+      sharedCellCount: 3,
+    });
+    expect(mdNonFiniteMs).not.toContain('-—');
+    expect(mdNonFiniteMs).not.toContain('+—');
   });
 
   it('renders repeated rows with partially graded, zero graded, and undefined fallback fields', () => {
