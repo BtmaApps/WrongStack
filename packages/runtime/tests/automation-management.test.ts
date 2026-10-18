@@ -441,5 +441,8 @@ describe('GitHub conditions and launch plans', () => {
     expect(plan.credentialResolution).toBe('read-at-use');
     expect(plan.credentials[0]!.keyLabel).toBe('work');
     expect(() => createHeadlessLaunchPlan({ ...spec, envNames: ['NODE_OPTIONS'] })).toThrow();
+    expect(() =>
+      createHeadlessLaunchPlan({ ...spec, github: null as unknown as typeof spec.github }),
+    ).toThrow('Invalid GitHub automation trigger');
   });
 });

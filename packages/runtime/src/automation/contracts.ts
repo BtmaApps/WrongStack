@@ -58,7 +58,8 @@ export interface AutomationState {
 }
 
 export function validateJobSpec(spec: AutomationJobSpec): void {
-  if (!spec || typeof spec !== 'object') throw new Error('Invalid automation definition');
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec))
+    throw new Error('Invalid automation definition');
   const fields = new Set([
     'maxIterations',
     'template',
@@ -176,6 +177,8 @@ export function validateJobSpec(spec: AutomationJobSpec): void {
     )
       throw new Error('Invalid automation model reference');
   if (spec.github !== undefined) {
+    if (!spec.github || typeof spec.github !== 'object' || Array.isArray(spec.github))
+      throw new Error('Invalid GitHub automation trigger');
     if (
       Object.keys(spec.github).some(
         (key) => !['repository', 'events', 'secretEnv', 'filters'].includes(key),
