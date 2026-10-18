@@ -37,4 +37,12 @@ describe('single-dash password argv redaction', () => {
     const result = redactCommandArgs('tool', [`-password=${value}`, 'public']);
     expect(result.args).toEqual(['-password=[REDACTED]', 'public']);
   });
+
+  it('preserves uppercase -PASSWORD= and attached -password<value> in redactCommand and redactSecrets', async () => {
+    const { redactCommand, redactSecrets } = await import('../src/redact-command.js');
+    const value = ['hunter', '2'].join('');
+    expect(redactCommand(`tool -PASSWORD=${value}`)).toBe('tool -PASSWORD=[REDACTED]');
+    expect(redactSecrets(`tool -PASSWORD=${value}`)).toBe('tool -PASSWORD=[REDACTED]');
+    expect(redactCommand(`tool -password${value}`)).toBe('tool -password[REDACTED]');
+  });
 });

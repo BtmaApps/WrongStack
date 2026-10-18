@@ -65,7 +65,7 @@ export interface RedactionProfile {
  * bare name admits `-` so a header (`X-Api-Key: …`) is read whole: stopping at
  * the hyphen put `-` where the separator test looks and rendered `Ap[REDACTED]`.
  */
-const FLAG_NAME = /^--[\w-]+|^-(?:password|p|a|t|u)|^[A-Za-z_][\w-]*/;
+const FLAG_NAME = /^--[\w-]+|^-(?:password|p|a|t|u)|^[A-Za-z_][\w-]*/i;
 /**
  * Characters that may introduce a sensitive flag's value. `,` and `:` are
  * included because the pattern lists accept them as separators; leaving either
@@ -232,11 +232,9 @@ export const COMMAND_REDACTION_PROFILE: RedactionProfile = {
     // to wipe the token — `redactCommandArgs` relies on seeing the bare flag.
     match.startsWith('--')
       ? match
-      : // Glued short flag (-pVALUE, -tVALUE, -aVALUE): the flag name is the
-        // leading -X (2 chars) and everything after it is the value. A greedy
-        // [a-zA-Z0-9_-]* flag-name match would consume value characters into the
-        // "flag name" and let the secret survive.
-        `${match.slice(0, 2)}[REDACTED]`,
+      : // Glued short flag (-pVALUE, -tVALUE, -aVALUE, -passwordVALUE): the flag
+        // name is matched by FLAG_NAME and everything after it is the value.
+        `${FLAG_NAME.exec(match)?.[0] ?? match.slice(0, 2)}[REDACTED]`,
 };
 
 export const OUTBOUND_REDACTION_PROFILE: RedactionProfile = {
