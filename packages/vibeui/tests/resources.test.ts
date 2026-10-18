@@ -1,3 +1,6 @@
+import type { ProtocolEnvelope } from '@wrongstack/webui-protocol';
+import React from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
   fillPrompt,
@@ -5,7 +8,9 @@ import {
   promptVariables,
   resourceMatches,
 } from '../src/lib/resource-model';
-import { acceptsPanelReply } from '../src/lib/use-panel-requests';
+import { initialState } from '../src/lib/session';
+import { acceptsPanelReply, usePanelRequests } from '../src/lib/use-panel-requests';
+import type { SessionController } from '../src/lib/use-session';
 
 describe('shared resource workflows', () => {
   it('fills named prompt variables literally while retaining unknown placeholders', () => {
@@ -63,5 +68,43 @@ describe('shared resource workflows', () => {
     expect(acceptsPanelReply({ type: 'error', payload: {} }, 'skills.content', 'new', accept)).toBe(
       false,
     );
+  });
+  it('supersedes an in-flight panel request for the same expected frame type instead of dropping the newer request', async () => {
+    const listeners = new Set<(frame: ProtocolEnvelope) => void>();
+    const sent: Array<{ type: string; payload?: Record<string, unknown> }> = [];
+    const controller = {
+      state: { ...initialState(), id: 'sess-1' },
+      connection: 'connected',
+      send(type: string, payload?: Record<string, unknown>) {
+        sent.push({ type, payload });
+        return true;
+      },
+      subscribe(listener: (frame: ProtocolEnvelope) => void) {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+    } as unknown as SessionController;
+
+    let api: ReturnType<typeof usePanelRequests> | null = null;
+    function Harness() {
+      api = usePanelRequests(controller);
+      return null;
+    }
+    renderToString(React.createElement(Harness));
+
+    const first = api!.request('prompts.content', { slug: 'first' }, 'prompts.content');
+    const second = api!.request('prompts.content', { slug: 'second' }, 'prompts.content');
+
+    await expect(first).resolves.toBeNull();
+    const secondFrame = sent.find((f) => f.payload?.slug === 'second');
+    for (const listener of [...listeners]) {
+      listener({
+        type: 'prompts.content',
+        payload: { requestId: secondFrame?.payload?.requestId, slug: 'second', content: 'ok' },
+      });
+    }
+    await expect(second).resolves.toMatchObject({ slug: 'second', content: 'ok' });
   });
 });

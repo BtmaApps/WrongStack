@@ -40,15 +40,21 @@ export function usePanelRequests(controller: SessionController) {
       expected = type,
       accept?: (payload: Record<string, unknown>) => boolean,
     ): Promise<Record<string, unknown> | null> => {
-      if (pending.current.has(expected)) return Promise.resolve(null);
+      pending.current.get(expected)?.();
       const requestId = clientId();
       setError('');
       setBusy(true);
       return new Promise((resolve) => {
+        let settled = false;
+        const cancel = () => finish(null);
         const finish = (value: Record<string, unknown> | null) => {
+          if (settled) return;
+          settled = true;
           clearTimeout(timer);
           off();
-          pending.current.delete(expected);
+          if (pending.current.get(expected) === cancel) {
+            pending.current.delete(expected);
+          }
           setBusy(pending.current.size > 0);
           resolve(value);
         };
@@ -70,7 +76,7 @@ export function usePanelRequests(controller: SessionController) {
             finish(p);
           }
         });
-        pending.current.set(expected, () => finish(null));
+        pending.current.set(expected, cancel);
         if (!send(type, { sessionId: state.id, ...payload, requestId })) {
           setError('Reconnect to use this control.');
           finish(null);
