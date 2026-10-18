@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-17T23:26:23.810Z
+**Generated:** 2026-10-18T00:25:22.433Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5155 |
-| Production source lines | 1118675 |
-| Test files | 4461 |
+| Production source files | 5157 |
+| Production source lines | 1118884 |
+| Test files | 4462 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16955 |
+| Relative module edges | 16960 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 335 | 328 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 496 | 426 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/vibeui | 45 | 9 | @wrongstack/webui-protocol |
+| @wrongstack/vibeui | 47 | 10 | @wrongstack/webui-protocol |
 | @wrongstack/webui | 755 | 487 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
@@ -85,14 +85,13 @@ None.
 | Lines | File |
 |---:|---|
 | 1063 | `packages/vibeui/src/components/workspace.tsx` |
-| 856 | `packages/vibeui/src/lib/session.ts` |
+| 864 | `packages/vibeui/src/lib/session.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 700 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
 | 700 | `packages/core/src/execution/auto-compaction-middleware.ts` |
-| 700 | `packages/vibeui/src/lib/use-session.ts` |
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 699 | `packages/core/src/execution/design-verify.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
@@ -105,6 +104,7 @@ None.
 | 696 | `packages/webui/src/components/KanbanView.tsx` |
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
+| 695 | `packages/vibeui/src/lib/use-session.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |
@@ -137,7 +137,7 @@ None.
 
 ## Exports only tests reference
 
-- 958 runtime exports are referenced by tests and by no other production file.
+- 960 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

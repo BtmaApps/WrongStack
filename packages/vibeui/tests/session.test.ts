@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { composeMessage, draftKey, initialState, reduceFrame } from '../src/lib/session';
-import { socketUrl } from '../src/lib/transport';
+import { SessionSwitch } from '../src/lib/session-switch';
+import { STABLE_CONNECTION_MS, socketUrl, TOKEN_KEY, VibeTransport } from '../src/lib/transport';
 
 const start = (sessionId = 'one') => ({
   type: 'session.start',
@@ -229,6 +230,81 @@ describe('VibeUI conversation', () => {
     state = reduceFrame(state, { type: 'user.input_resolved', payload: { requestId: 'a' } });
     expect(state.inputs.map((r) => r.id)).toEqual(['b']);
   });
+  it('keeps live entry ids unique after the message and tool caps are reached', () => {
+    let state = reduceFrame(initialState(), start());
+    const seen = new Set<string>();
+    for (let turn = 0; turn < 650; turn++) {
+      state = reduceFrame(state, {
+        type: 'tool.started',
+        payload: { id: `tool-${turn}`, name: 'read', input: {} },
+      });
+      state = reduceFrame(state, {
+        type: 'provider.response',
+        payload: { content: [{ type: 'text', text: `answer ${turn}` }], stopReason: 'end_turn' },
+      });
+      const last = state.messages.at(-1);
+      if (last) {
+        expect(seen.has(last.id)).toBe(false);
+        seen.add(last.id);
+      }
+    }
+    expect(state.messages).toHaveLength(500);
+    expect(new Set(state.messages.map((m) => m.id)).size).toBe(state.messages.length);
+  });
+});
+
+describe('pending session open (use-session switch state)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('releases target and deadline together when an error ends a pending clear', () => {
+    const pending = new SessionSwitch();
+    const onTimeout = vi.fn();
+    pending.begin('one', 30_000, onTimeout);
+    expect(pending.accepts('two')).toBe(false);
+    // use-session handles an `error` frame while a switch/clear is pending.
+    expect(pending.cancel().pending).toBe(true);
+    expect(pending.active).toBe(false);
+    expect(pending.accepts('two')).toBe(true);
+    vi.advanceTimersByTime(60_000);
+    // The abandoned deadline must not fire later and re-lock the UI.
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it('does not keep filtering sessions after a failed resume on reconnect', () => {
+    const pending = new SessionSwitch();
+    pending.begin('one', 30_000, () => {});
+    // The server refuses the resume with an error frame.
+    pending.cancel();
+    expect(pending.desired).toBe('');
+    expect(pending.accepts('new-session')).toBe(true);
+  });
+
+  it('releases the target when a reconnect resume is never answered', () => {
+    const pending = new SessionSwitch();
+    const onTimeout = vi.fn();
+    pending.begin('one', 30_000, onTimeout);
+    vi.advanceTimersByTime(30_000);
+    expect(onTimeout).toHaveBeenCalledOnce();
+    expect(pending.active).toBe(false);
+    expect(pending.accepts('new-session')).toBe(true);
+  });
+
+  it('falls back to the attached session when a saved-session restore fails', () => {
+    const pending = new SessionSwitch<string>();
+    pending.begin('saved', 15_000, () => {});
+    pending.hold('attached-session-start');
+    expect(pending.cancel().held).toBe('attached-session-start');
+  });
+
+  it('a new open replaces the previous deadline instead of stacking it', () => {
+    const pending = new SessionSwitch();
+    const first = vi.fn();
+    pending.begin('one', 30_000, first);
+    pending.begin('two', 30_000, () => {});
+    vi.advanceTimersByTime(30_000);
+    expect(first).not.toHaveBeenCalled();
+  });
 });
 
 describe('composer and connection', () => {
@@ -247,5 +323,117 @@ describe('composer and connection', () => {
     const location = { protocol: 'http:', host: '127.0.0.1:3476', search: '' };
     expect(socketUrl(location, 'ws://127.0.0.1:3477').port).toBe('3477');
     expect(socketUrl(location, 'https://other.test').host).toBe(location.host);
+  });
+});
+
+describe('VibeTransport reconnect and stored credential', () => {
+  class FakeSocket {
+    static readonly OPEN = 1;
+    static instances: FakeSocket[] = [];
+    readyState = 0;
+    onopen: (() => void) | null = null;
+    onclose: (() => void) | null = null;
+    onmessage: ((event: { data: unknown }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor(readonly url: URL) {
+      FakeSocket.instances.push(this);
+    }
+    open() {
+      this.readyState = FakeSocket.OPEN;
+      this.onopen?.();
+    }
+    send() {}
+    close() {
+      if (this.readyState === 3) return;
+      this.readyState = 3;
+      this.onclose?.();
+    }
+  }
+  let storage: Map<string, string>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0.5); // jitter factor exactly 1
+    FakeSocket.instances = [];
+    storage = new Map();
+    vi.stubGlobal('WebSocket', FakeSocket);
+    vi.stubGlobal('document', { querySelector: () => null });
+    vi.stubGlobal('window', {
+      location: {
+        protocol: 'http:',
+        host: '127.0.0.1:3476',
+        search: '',
+        href: 'http://127.0.0.1:3476/',
+      },
+      history: { state: null, replaceState: () => {} },
+    });
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  const transport = () => new VibeTransport({ onState: () => {}, onMessage: () => {} });
+
+  it('keeps backing off when the server accepts and immediately drops the socket', async () => {
+    const client = transport();
+    await client.connect();
+    FakeSocket.instances[0]?.open();
+    FakeSocket.instances[0]?.close(); // first retry after 750 ms
+    await vi.advanceTimersByTimeAsync(750);
+    expect(FakeSocket.instances).toHaveLength(2);
+    FakeSocket.instances[1]?.open();
+    FakeSocket.instances[1]?.close(); // unstable open: next retry needs 1500 ms
+    await vi.advanceTimersByTimeAsync(750);
+    expect(FakeSocket.instances).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(750);
+    expect(FakeSocket.instances).toHaveLength(3);
+    client.close();
+  });
+
+  it('resets the backoff once a connection has stayed open', async () => {
+    const client = transport();
+    await client.connect();
+    FakeSocket.instances[0]?.close();
+    await vi.advanceTimersByTimeAsync(750);
+    FakeSocket.instances[1]?.open();
+    await vi.advanceTimersByTimeAsync(STABLE_CONNECTION_MS);
+    FakeSocket.instances[1]?.close();
+    await vi.advanceTimersByTimeAsync(750);
+    expect(FakeSocket.instances).toHaveLength(3);
+    client.close();
+  });
+
+  it('clears a stored token that /ws-auth rejects and does not resend it', async () => {
+    storage.set(TOKEN_KEY, 'stale-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 401 })),
+    );
+    const client = transport();
+    await client.connect();
+    expect(storage.has(TOKEN_KEY)).toBe(false);
+    expect(FakeSocket.instances[0]?.url.searchParams.has('token')).toBe(false);
+    client.close();
+  });
+
+  it('keeps a stored token when /ws-auth is merely unreachable', async () => {
+    storage.set(TOKEN_KEY, 'good-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline');
+      }),
+    );
+    const client = transport();
+    await client.connect();
+    expect(storage.get(TOKEN_KEY)).toBe('good-token');
+    client.close();
   });
 });

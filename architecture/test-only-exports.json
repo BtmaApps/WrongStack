@@ -1628,6 +1628,10 @@
     "packages/vector-memory/src/sage-fusion.ts": [
       "__testing"
     ],
+    "packages/vibeui/src/lib/transport.ts": [
+      "STABLE_CONNECTION_MS",
+      "TOKEN_KEY"
+    ],
     "packages/vibeui/src/lib/use-panel-requests.ts": [
       "acceptsPanelReply"
     ],

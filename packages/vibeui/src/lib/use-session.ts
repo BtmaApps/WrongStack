@@ -14,6 +14,7 @@ import {
   type SessionState,
   text,
 } from './session';
+import { SessionSwitch } from './session-switch';
 import { type Connection, VibeTransport } from './transport';
 
 export interface Attachment {
@@ -68,9 +69,8 @@ export function useSession() {
   const transport = useRef<VibeTransport | null>(null);
   const requestedModels = useRef(new Set<string>());
   const hasConnected = useRef(false);
-  const switching = useRef(false);
-  const desiredSession = useRef('');
-  const sessionTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // One owner for the pending open's target, lock and deadline (see SessionSwitch).
+  const pendingSwitch = useRef(new SessionSwitch<ProtocolEnvelope>());
   const previewTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pendingModel = useRef(false);
   const [modelPending, setModelPending] = useState(false);
@@ -109,7 +109,6 @@ export function useSession() {
 
   useEffect(() => {
     let attemptedRestore = false;
-    let initialFallback: ProtocolEnvelope | null = null;
     let savedSession: { id?: unknown; cwd?: unknown } = {};
     try {
       savedSession = record(
@@ -128,31 +127,34 @@ export function useSession() {
           savedSession.id &&
           savedSession.id !== p.sessionId
         ) {
-          initialFallback = frame;
-          desiredSession.current = savedSession.id;
-          switching.current = true;
+          // The server already attached `frame`; fall back to it if the saved one fails.
+          pendingSwitch.current.begin(savedSession.id, 15_000, (held) => {
+            if (held) handle(held);
+          });
+          pendingSwitch.current.hold(frame);
           send('session.resume', { id: savedSession.id, sessionId: text(p.sessionId) });
-          sessionTimeout.current = setTimeout(() => {
-            const fallback = initialFallback;
-            initialFallback = null;
-            desiredSession.current = '';
-            if (fallback) handle(fallback);
-          }, 15_000);
           return;
         }
       }
-      if (frame.type === 'error' && initialFallback) {
-        const fallback = initialFallback;
-        initialFallback = null;
-        desiredSession.current = '';
-        handle(fallback);
+      const foreignError =
+        typeof p.sessionId === 'string' &&
+        Boolean(current.current.id) &&
+        p.sessionId !== current.current.id &&
+        p.sessionId !== pendingSwitch.current.desired;
+      if (frame.type === 'error' && !foreignError) {
+        // An error while an open is pending abandons it as a whole: target,
+        // lock and deadline. A stale target would drop every later
+        // `session.start`; a stale deadline would re-lock the UI.
+        const { pending, held } = pendingSwitch.current.cancel();
+        if (pending) {
+          clearingSession.current = '';
+          transition.current = '';
+          setSessionTransition('');
+          setReady(true);
+        }
+        if (held) handle(held);
       }
-      if (
-        frame.type === 'session.start' &&
-        desiredSession.current &&
-        p.sessionId !== desiredSession.current
-      )
-        return;
+      if (frame.type === 'session.start' && !pendingSwitch.current.accepts(p.sessionId)) return;
       if (
         frame.type !== 'session.start' &&
         typeof p.sessionId === 'string' &&
@@ -212,7 +214,6 @@ export function useSession() {
           setDraftRequest(null);
           setClearGeneration((value) => value + 1);
         }
-        initialFallback = null;
         try {
           localStorage.setItem(
             'wrongstack.vibeui.active-session.v1',
@@ -221,9 +222,7 @@ export function useSession() {
         } catch {
           /* Optional preference. */
         }
-        desiredSession.current = '';
-        clearTimeout(sessionTimeout.current);
-        switching.current = false;
+        pendingSwitch.current.settle();
         setReady(true);
         if (transition.current) {
           notice(`Active session changed: ${transition.current}`);
@@ -237,7 +236,7 @@ export function useSession() {
         send('sessions.list', { sessionId: current.current.id, limit: 30 });
         refreshWorkspace();
       }
-      if (frame.type === 'session.run_state' && !switching.current) setReady(true);
+      if (frame.type === 'session.run_state' && !pendingSwitch.current.active) setReady(true);
       if (frame.type === 'provider.catalog') {
         for (const provider of current.current.providers)
           if (provider.configured) requestModels(provider.id);
@@ -257,13 +256,6 @@ export function useSession() {
         clearTimeout(modelTimeout.current);
       }
       if (frame.type === 'run.result' || frame.type === 'tool.executed') refreshWorkspace();
-      if (frame.type === 'error' && switching.current) {
-        clearingSession.current = '';
-        transition.current = '';
-        setSessionTransition('');
-        switching.current = false;
-        setReady(true);
-      }
     };
     const client = new VibeTransport({
       onMessage: handle,
@@ -280,8 +272,13 @@ export function useSession() {
         send('prefs.get');
         if (hasConnected.current && current.current.id) {
           // Replace the transcript with canonical replay after reconnect; never replay user writes.
-          desiredSession.current = current.current.id;
-          send('session.resume', { id: current.current.id });
+          // Tracked like any other open, so a failed resume (error or silence)
+          // releases the target instead of filtering out every later session.
+          if (send('session.resume', { id: current.current.id }))
+            pendingSwitch.current.begin(current.current.id, 30_000, () => {
+              setReady(true);
+              notice('The session could not be restored after reconnecting. Reload to retry.');
+            });
         }
         hasConnected.current = true;
       },
@@ -293,7 +290,7 @@ export function useSession() {
       hasConnected.current = false;
       client.close();
       clearTimeout(modelTimeout.current);
-      clearTimeout(sessionTimeout.current);
+      pendingSwitch.current.cancel();
       clearTimeout(previewTimeout.current);
       clearTimeout(treeTimeout.current);
       clearTimeout(compactTimeout.current);
@@ -303,7 +300,13 @@ export function useSession() {
   const dispatch = useCallback(
     (content: string, images: Attachment[], id = clientId()): boolean => {
       const s = current.current;
-      if (!s.id || s.running || switching.current || pendingModel.current || compacting.current)
+      if (
+        !s.id ||
+        s.running ||
+        pendingSwitch.current.active ||
+        pendingModel.current ||
+        compacting.current
+      )
         return false;
       const delivered = send('user_message', {
         sessionId: s.id,
@@ -346,7 +349,7 @@ export function useSession() {
       if (
         connection !== 'open' ||
         !ready ||
-        switching.current ||
+        pendingSwitch.current.active ||
         pendingModel.current ||
         compacting.current
       )
@@ -389,7 +392,7 @@ export function useSession() {
       !ready ||
       state.running ||
       modelPending ||
-      switching.current ||
+      pendingSwitch.current.active ||
       compactPending
     )
       return;
@@ -419,7 +422,7 @@ export function useSession() {
         current.current.agents.some((agent) =>
           ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
         ) ||
-        switching.current ||
+        pendingSwitch.current.active ||
         pendingModel.current ||
         compacting.current
       )
@@ -436,17 +439,13 @@ export function useSession() {
           : 'New session';
         transition.current = `${from} → ${to}`;
         setSessionTransition(transition.current);
-        desiredSession.current = id ?? '';
-        switching.current = true;
         setReady(false);
-        sessionTimeout.current = setTimeout(() => {
-          desiredSession.current = '';
-          switching.current = false;
+        pendingSwitch.current.begin(id ?? '', 30_000, () => {
           setReady(true);
           transition.current = '';
           setSessionTransition('');
           notice('Session did not open. Check the connection and try again.');
-        }, 30_000);
+        });
       }
     },
     [send, notice],
@@ -454,7 +453,8 @@ export function useSession() {
   const switchModel = useCallback(
     (provider: string, model: string) => {
       const s = current.current;
-      if (s.running || pendingModel.current || switching.current || compacting.current) return;
+      if (s.running || pendingModel.current || pendingSwitch.current.active || compacting.current)
+        return;
       if (send('model.switch', { sessionId: s.id, provider, model })) {
         pendingModel.current = true;
         setModelPending(true);
@@ -476,7 +476,7 @@ export function useSession() {
       ),
     stopAll: () => {
       const s = current.current;
-      if (!ready || connection !== 'open' || !s.id || switching.current) return false;
+      if (!ready || connection !== 'open' || !s.id || pendingSwitch.current.active) return false;
       // Pause before the abort acknowledgement: a queued turn must not restart the fleet.
       setQueuePaused(s.id, true);
       steering.current = null;
@@ -508,7 +508,7 @@ export function useSession() {
       const s = current.current;
       if (
         s.running ||
-        switching.current ||
+        pendingSwitch.current.active ||
         pendingModel.current ||
         compacting.current ||
         s.agents.some((agent) =>
@@ -518,21 +518,16 @@ export function useSession() {
         return false;
       if (!send('context.clear', { sessionId: s.id })) return false;
       clearingSession.current = s.id;
-      desiredSession.current = s.id;
-      switching.current = true;
       transition.current = `Clearing ${s.sessions.find((item) => item.id === s.id)?.title || 'current session'}`;
       setSessionTransition(transition.current);
       setReady(false);
-      clearTimeout(sessionTimeout.current);
-      sessionTimeout.current = setTimeout(() => {
+      pendingSwitch.current.begin(s.id, 30_000, () => {
         clearingSession.current = '';
-        switching.current = false;
-        desiredSession.current = '';
         transition.current = '';
         setSessionTransition('');
         setReady(false);
         notice('Clear was not confirmed. Reconnect before sending another message.');
-      }, 30000);
+      });
       return true;
     },
     state,
@@ -547,7 +542,7 @@ export function useSession() {
         current.current.running ||
         compacting.current ||
         pendingModel.current ||
-        switching.current
+        pendingSwitch.current.active
       )
         return;
       if (!send('context.compact', { sessionId: current.current.id })) return;

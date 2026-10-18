@@ -29,6 +29,14 @@ export const contentText = (value: unknown): string =>
         .map((block) => text(block.text))
         .join('\n\n');
 const bounded = (value: string) => value.slice(-500_000);
+/**
+ * Live entry ids come from a monotonic counter. Deriving them from list
+ * lengths repeated once the 500-message / 200-tool caps were reached, which
+ * duplicated React keys and let an outdated "continue" button match the
+ * latest assistant message by id.
+ */
+let liveEntrySequence = 0;
+const liveEntryId = (type: string): string => `${type}-${++liveEntrySequence}`;
 
 export interface ChatEntry {
   id: string;
@@ -335,7 +343,7 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     );
   }
   const chat = projectChatMessage(frame);
-  const id = `${frame.type}-${state.messages.length}-${state.tools.length}`;
+  const id = liveEntryId(frame.type);
   if (chat?.kind === 'text-delta' || chat?.kind === 'thinking-delta')
     return {
       ...state,

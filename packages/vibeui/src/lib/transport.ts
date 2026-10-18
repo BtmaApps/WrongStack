@@ -5,7 +5,13 @@ import {
 } from '@wrongstack/webui-protocol';
 
 export type Connection = 'connecting' | 'open' | 'closed';
-const TOKEN_KEY = 'wrongstack.vibeui.token.v1';
+export const TOKEN_KEY = 'wrongstack.vibeui.token.v1';
+/**
+ * A socket must stay open this long before the backoff resets. Resetting on
+ * `open` alone let a server that accepts and immediately drops the socket
+ * (e.g. a rejected session) drive a reconnect every 750 ms forever.
+ */
+export const STABLE_CONNECTION_MS = 10_000;
 
 export function socketUrl(
   location: Pick<Location, 'protocol' | 'host' | 'search'>,
@@ -31,6 +37,7 @@ export class VibeTransport {
   private socket: WebSocket | null = null;
   private retry: ReturnType<typeof setTimeout> | undefined;
   private heartbeat: ReturnType<typeof setInterval> | undefined;
+  private stable: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
   private generation = 0;
   private attempts = 0;
@@ -71,6 +78,18 @@ export class VibeTransport {
             cache: 'no-store',
             signal: AbortSignal.timeout(5000),
           });
+          if (response.status === 401 && token === stored) {
+            // `/ws-auth` answers 401 only for a token the server does not accept.
+            // A rejected stored credential would otherwise be resent on every
+            // reconnect; drop it so the next attempt can use the cookie or a
+            // fresh access link. A token from the page URL is left alone.
+            try {
+              localStorage.removeItem(TOKEN_KEY);
+            } catch {
+              /* Optional persistence. */
+            }
+            url.searchParams.delete('token');
+          }
           if (response.ok) {
             url.searchParams.delete('token');
             try {
@@ -93,7 +112,10 @@ export class VibeTransport {
       previous?.close();
       socket.onopen = () => {
         if (this.socket !== socket || this.stopped) return;
-        this.attempts = 0;
+        clearTimeout(this.stable);
+        this.stable = setTimeout(() => {
+          if (this.socket === socket && !this.stopped) this.attempts = 0;
+        }, STABLE_CONNECTION_MS);
         this.lastMessageAt = Date.now();
         clearInterval(this.heartbeat);
         this.heartbeat = setInterval(() => {
@@ -112,6 +134,7 @@ export class VibeTransport {
         if (this.socket !== socket || this.stopped) return;
         this.socket = null;
         clearInterval(this.heartbeat);
+        clearTimeout(this.stable);
         this.scheduleReconnect();
       };
       socket.onerror = () => socket.close();
@@ -140,6 +163,7 @@ export class VibeTransport {
     this.generation++;
     clearTimeout(this.retry);
     clearInterval(this.heartbeat);
+    clearTimeout(this.stable);
     this.socket?.close();
     this.socket = null;
   }
