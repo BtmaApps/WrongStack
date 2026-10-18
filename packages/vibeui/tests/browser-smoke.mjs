@@ -2374,86 +2374,122 @@ try {
       JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
   );
 
-  // A refused or unanswered session open must release the lock, the awaited
-  // session and its deadline together, so the user can keep switching.
-  const activeSession = () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id);
-  const newSessionButton = page.getByRole('button', { name: 'New session', exact: false });
-  const waitUnlocked = async (why) => {
-    await page.waitForFunction(
-      () => !document.body.textContent?.includes('Switching session:'),
-      undefined,
-      { timeout: 5000 },
-    );
-    await newSessionButton.waitFor();
-    assert.equal(await newSessionButton.isEnabled(), true, `${why}: New session is enabled`);
-    assert.ok((await page.locator('.session-row:enabled').count()) > 0, `${why}: rows enabled`);
-  };
+  // Fault scenarios run in their own page with their own fake clock. Playwright
+  // cannot uninstall a clock, and the 31 s jumps below fire every due timer in
+  // the page; isolating them keeps those jumps away from the main page's timers
+  // (reconnect backoff, notices, copy feedback) for the rest of the run.
+  {
+    const faultPage = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+    faultPage.setDefaultTimeout(10_000);
+    faultPage.on('pageerror', (error) => errors.push(error.message));
+    faultPage.on('console', (entry) => {
+      if (entry.type() === 'error') errors.push(entry.text());
+    });
+    try {
+      await faultPage.goto(origin);
+      await faultPage.getByText('Ready', { exact: true }).waitFor();
+      // Install after load, as the main page does: a clock installed before
+      // navigation also fakes the startup timers the app relies on.
+      await faultPage.clock.install();
+      // A refused or unanswered session open must release the lock, the awaited
+      // session and its deadline together, so the user can keep switching.
+      const activeSession = () =>
+        faultPage.evaluate(
+          () => JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id,
+        );
+      const newSessionButton = faultPage.getByRole('button', { name: 'New session', exact: false });
+      const waitUnlocked = async (why) => {
+        await faultPage.waitForFunction(
+          () => !document.body.textContent?.includes('Switching session:'),
+          undefined,
+          { timeout: 5000 },
+        );
+        await newSessionButton.waitFor();
+        assert.equal(await newSessionButton.isEnabled(), true, `${why}: New session is enabled`);
+        assert.ok(
+          (await faultPage.locator('.session-row:enabled').count()) > 0,
+          `${why}: rows enabled`,
+        );
+      };
 
-  // 1. The server refuses a resume with an error.
-  failNextResume = true;
-  await page.getByRole('button', { name: 'Second session', exact: false }).click();
-  await page.getByText('Fixture could not resume that session', { exact: true }).first().waitFor();
-  await waitUnlocked('Refused resume');
-  assert.equal(await activeSession(), 'session-one', 'A refused resume keeps the current session');
-  assert.equal(failNextResume, false, 'The fixture refused exactly one resume');
-  // The abandoned 30 s deadline must not fire later and disturb the UI.
-  await page.clock.fastForward(31_000);
-  await waitUnlocked('After the refused resume deadline');
-  assert.equal(
-    await page.getByText('Session did not open', { exact: false }).count(),
-    0,
-    'The abandoned switch deadline never fires',
-  );
-  // Switching still works and is not filtered by a stale awaited session.
-  await page.getByRole('button', { name: 'Second session', exact: false }).click();
-  await page.waitForFunction(
-    () =>
-      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-two',
-  );
-  await waitUnlocked('Switch after a refused resume');
+      // 1. The server refuses a resume with an error.
+      failNextResume = true;
+      await faultPage.getByRole('button', { name: 'Second session', exact: false }).click();
+      await faultPage
+        .getByText('Fixture could not resume that session', { exact: true })
+        .first()
+        .waitFor();
+      await waitUnlocked('Refused resume');
+      assert.equal(
+        await activeSession(),
+        'session-one',
+        'A refused resume keeps the current session',
+      );
+      assert.equal(failNextResume, false, 'The fixture refused exactly one resume');
+      // The abandoned 30 s deadline must not fire later and disturb the UI.
+      await faultPage.clock.fastForward(31_000);
+      await waitUnlocked('After the refused resume deadline');
+      assert.equal(
+        await faultPage.getByText('Session did not open', { exact: false }).count(),
+        0,
+        'The abandoned switch deadline never fires',
+      );
+      // Switching still works and is not filtered by a stale awaited session.
+      await faultPage.getByRole('button', { name: 'Second session', exact: false }).click();
+      await faultPage.waitForFunction(
+        () =>
+          JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id ===
+          'session-two',
+      );
+      await waitUnlocked('Switch after a refused resume');
 
-  // 2. The server never answers a clear, then reports an error for it.
-  silenceNextClear = true;
-  await page.getByRole('button', { name: 'Session actions', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Clear current context', exact: true }).click();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Clear current context', exact: true })
-    .click();
-  await page.getByText('Switching session:', { exact: false }).first().waitFor();
-  assert.equal(await newSessionButton.isDisabled(), true, 'Input is locked while clearing');
-  assert.equal(silenceNextClear, false, 'The fixture ignored exactly one clear');
-  for (const client of clients)
-    frame(client, 'error', { sessionId: 'session-two', message: 'Fixture clear failed' });
-  await page.getByText('Fixture clear failed', { exact: true }).first().waitFor();
-  await waitUnlocked('Clear ended by an error');
-  // Before the fix the clear deadline survived the error and re-locked the UI.
-  await page.clock.fastForward(31_000);
-  await waitUnlocked('After the abandoned clear deadline');
-  assert.equal(
-    await page.getByText('Clear was not confirmed', { exact: false }).count(),
-    0,
-    'The abandoned clear deadline never fires',
-  );
-  await page.getByRole('button', { name: /Focused workspace/ }).click();
-  await page.waitForFunction(
-    () =>
-      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
-  );
-  await waitUnlocked('Switch after an abandoned clear');
-  await newSessionButton.click();
-  await page.waitForFunction(() =>
-    JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id.startsWith(
-      'new-session-',
-    ),
-  );
-  await waitUnlocked('New session after the fault scenarios');
-  await page.getByRole('button', { name: /Focused workspace/ }).click();
-  await page.waitForFunction(
-    () =>
-      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
-  );
+      // 2. The server never answers a clear, then reports an error for it.
+      silenceNextClear = true;
+      await faultPage.getByRole('button', { name: 'Session actions', exact: true }).click();
+      await faultPage.getByRole('menuitem', { name: 'Clear current context', exact: true }).click();
+      await faultPage
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Clear current context', exact: true })
+        .click();
+      await faultPage.getByText('Switching session:', { exact: false }).first().waitFor();
+      assert.equal(await newSessionButton.isDisabled(), true, 'Input is locked while clearing');
+      assert.equal(silenceNextClear, false, 'The fixture ignored exactly one clear');
+      for (const client of clients)
+        frame(client, 'error', { sessionId: 'session-two', message: 'Fixture clear failed' });
+      await faultPage.getByText('Fixture clear failed', { exact: true }).first().waitFor();
+      await waitUnlocked('Clear ended by an error');
+      // Before the fix the clear deadline survived the error and re-locked the UI.
+      await faultPage.clock.fastForward(31_000);
+      await waitUnlocked('After the abandoned clear deadline');
+      assert.equal(
+        await faultPage.getByText('Clear was not confirmed', { exact: false }).count(),
+        0,
+        'The abandoned clear deadline never fires',
+      );
+      await faultPage.getByRole('button', { name: /Focused workspace/ }).click();
+      await faultPage.waitForFunction(
+        () =>
+          JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id ===
+          'session-one',
+      );
+      await waitUnlocked('Switch after an abandoned clear');
+      await newSessionButton.click();
+      await faultPage.waitForFunction(() =>
+        JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id.startsWith(
+          'new-session-',
+        ),
+      );
+      await waitUnlocked('New session after the fault scenarios');
+      await faultPage.getByRole('button', { name: /Focused workspace/ }).click();
+      await faultPage.waitForFunction(
+        () =>
+          JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id ===
+          'session-one',
+      );
+    } finally {
+      await faultPage.close();
+    }
+  }
 
   // Escape while typing belongs to the composer, not to the layout.
   const workspacePanel = page.locator('aside.workspace-panel');
