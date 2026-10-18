@@ -77,6 +77,9 @@ function appendCapped(buffer: string, chunk: string): string {
 export async function runOnce(
   options: Pick<MeasureOptions, 'command' | 'cwd' | 'timeoutMs' | 'env' | 'signal'>,
 ): Promise<PerfRunOutput & { timedOut: boolean }> {
+  if (options.signal?.aborted) {
+    return { stdout: '', stderr: '', wallMs: 0, exitCode: null, timedOut: true };
+  }
   const timeoutMs = options.timeoutMs ?? 300_000;
   const startedAt = Date.now();
 
@@ -166,6 +169,7 @@ export async function measure(options: MeasureOptions): Promise<PerfMeasurement>
   const startedAt = Date.now();
 
   for (let index = 0; index < warmup; index += 1) {
+    if (options.signal?.aborted) break;
     const result = await runOnce(options);
     if (result.exitCode !== 0 && !options.allowFailure) {
       notes.push(`warmup ${index + 1} exited ${String(result.exitCode)}`);

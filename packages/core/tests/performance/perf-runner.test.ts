@@ -162,6 +162,19 @@ describe('measure', () => {
       }),
     ).rejects.toThrow(/produced no metric value/);
   }, 30_000);
+
+  it('short-circuits runOnce without spawning when AbortSignal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const result = await runOnce({
+      command: 'node -e "process.stdout.write(\'should-not-run\')"',
+      cwd: process.cwd(),
+      signal: controller.signal,
+    });
+    expect(result.timedOut).toBe(true);
+    expect(result.exitCode).toBeNull();
+    expect(result.stdout).toBe('');
+  });
 });
 
 describe('describeMachine', () => {
