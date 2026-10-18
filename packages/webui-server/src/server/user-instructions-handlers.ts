@@ -10,10 +10,11 @@ import {
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from './types.js';
+import { withRequestId } from './ws-utils.js';
 
 export type UserInstructionsPayload =
-  | (UserInstructionsDocument & { saved?: boolean })
-  | { error: string };
+  | ((UserInstructionsDocument & { saved?: boolean }) & { requestId?: string })
+  | { error: string; requestId?: string };
 
 export async function handleUserInstructions(
   ws: WebSocket,
@@ -36,5 +37,8 @@ export async function handleUserInstructions(
   } catch (error) {
     reply = { error: toErrorMessage(error) };
   }
-  send(ws, { type: 'user_instructions', payload: reply });
+  send(ws, {
+    type: 'user_instructions',
+    payload: withRequestId({ payload }, { ...reply }) as UserInstructionsPayload,
+  });
 }

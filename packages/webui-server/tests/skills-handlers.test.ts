@@ -440,4 +440,13 @@ describe('handleSkillsEdit', () => {
     expect(p?.success).toBe(false);
     expect(p?.error).toMatch(/Bundled/i);
   });
+
+  it('echoes requestId on handleSkillsContent replies', async () => {
+    const ctx = makeCtx({ skillLoader: undefined });
+    const { ws, messages } = openWs();
+    await handleSkillsContent(ws, ctx, {
+      payload: { requestId: 'req-skill-content-1', name: 's1', source: 'user' },
+    });
+    expect(payloadOf(messages, 'skills.content')?.requestId).toBe('req-skill-content-1');
+  });
 });

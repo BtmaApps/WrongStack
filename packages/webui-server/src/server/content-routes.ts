@@ -148,7 +148,7 @@ export async function handleContentRoute(
       await handleSkillsExport(ws, ctx.getSkillsContext());
       return true;
     case 'prompts.list':
-      await handlePromptsList(ws, ctx.getPromptsContext());
+      await handlePromptsList(ws, ctx.getPromptsContext(), message);
       return true;
     case 'prompts.search':
       await handlePromptsSearch(ws, ctx.getPromptsContext(), message);
@@ -166,7 +166,7 @@ export async function handleContentRoute(
       await handlePromptsUsed(ws, ctx.getPromptsContext(), message);
       return true;
     case 'prompts.recent':
-      await handlePromptsRecent(ws, ctx.getPromptsContext());
+      await handlePromptsRecent(ws, ctx.getPromptsContext(), message);
       return true;
     case 'prompts.journal':
       await handlePromptsJournal(ws, message, ctx.getProjectRoot());

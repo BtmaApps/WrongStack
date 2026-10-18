@@ -126,7 +126,7 @@ export async function handleSkillsContent(
   if (!ctx.skillLoader) {
     send(ws, {
       type: 'skills.content',
-      payload: {
+      payload: withRequestId(msg, {
         name: '',
         body: '',
         path: '',
@@ -134,15 +134,15 @@ export async function handleSkillsContent(
         relatedFiles: [],
         references: [],
         error: 'Skills not enabled',
-      },
+      }),
     });
     return;
   }
-  const contentPayload = (msg as { payload: { name: string; source: string } }).payload;
+  const contentPayload = (msg as { payload?: { name?: string; source?: string } })?.payload;
   if (!contentPayload?.name) {
     send(ws, {
       type: 'skills.content',
-      payload: {
+      payload: withRequestId(msg, {
         name: '',
         body: '',
         path: '',
@@ -150,18 +150,18 @@ export async function handleSkillsContent(
         relatedFiles: [],
         references: [],
         error: 'Skill name is required',
-      },
+      }),
     });
     return;
   }
   try {
-    const { name, source } = contentPayload;
+    const { name, source = '' } = contentPayload;
     const entries = await ctx.skillLoader.listEntries();
     const entry = entries.find((e) => e.name.toLowerCase() === name.toLowerCase());
     if (!entry) {
       send(ws, {
         type: 'skills.content',
-        payload: {
+        payload: withRequestId(msg, {
           name,
           body: '',
           path: '',
@@ -169,7 +169,7 @@ export async function handleSkillsContent(
           relatedFiles: [],
           references: [],
           error: `Skill "${name}" not found`,
-        },
+        }),
       });
       return;
     }
@@ -208,20 +208,27 @@ export async function handleSkillsContent(
 
     send(ws, {
       type: 'skills.content',
-      payload: { name, body, path: entry.path, source, relatedFiles, references: refs },
+      payload: withRequestId(msg, {
+        name,
+        body,
+        path: entry.path,
+        source,
+        relatedFiles,
+        references: refs,
+      }),
     });
   } catch (err) {
     send(ws, {
       type: 'skills.content',
-      payload: {
+      payload: withRequestId(msg, {
         name: contentPayload.name,
         body: '',
         path: '',
-        source: contentPayload.source,
+        source: contentPayload.source ?? '',
         relatedFiles: [],
         references: [],
         error: errMessage(err),
-      },
+      }),
     });
   }
 }

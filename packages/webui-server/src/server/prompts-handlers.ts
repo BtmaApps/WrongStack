@@ -19,7 +19,7 @@
 import { getPromptJournalEntries, type PromptJournalFilter } from '@wrongstack/core/prompts';
 import type { PromptUsageStore } from '@wrongstack/core/storage';
 import type { PromptEntry, PromptLoader, PromptVariable } from '@wrongstack/core/types';
-import { errMessage, send } from './ws-utils.js';
+import { errMessage, send, withRequestId } from './ws-utils.js';
 
 /**
  * Normalize a client-supplied `variables` array into clean PromptVariable[].
@@ -72,9 +72,16 @@ function toMeta(e: PromptEntry) {
   };
 }
 
-export async function handlePromptsList(ws: WSLike, ctx: PromptsContext): Promise<void> {
+export async function handlePromptsList(
+  ws: WSLike,
+  ctx: PromptsContext,
+  msg?: unknown,
+): Promise<void> {
   if (!ctx.promptLoader) {
-    send(ws, { type: 'prompts.list', payload: { enabled: false, prompts: [], categories: [] } });
+    send(ws, {
+      type: 'prompts.list',
+      payload: withRequestId(msg, { enabled: false, prompts: [], categories: [] }),
+    });
     return;
   }
   try {
@@ -84,12 +91,17 @@ export async function handlePromptsList(ws: WSLike, ctx: PromptsContext): Promis
     ]);
     send(ws, {
       type: 'prompts.list',
-      payload: { enabled: true, prompts: all.map(toMeta), categories },
+      payload: withRequestId(msg, { enabled: true, prompts: all.map(toMeta), categories }),
     });
   } catch (err) {
     send(ws, {
       type: 'prompts.list',
-      payload: { enabled: true, prompts: [], categories: [], error: errMessage(err) },
+      payload: withRequestId(msg, {
+        enabled: true,
+        prompts: [],
+        categories: [],
+        error: errMessage(err),
+      }),
     });
   }
 }
@@ -100,7 +112,10 @@ export async function handlePromptsSearch(
   msg: unknown,
 ): Promise<void> {
   if (!ctx.promptLoader) {
-    send(ws, { type: 'prompts.search', payload: { enabled: false, prompts: [] } });
+    send(ws, {
+      type: 'prompts.search',
+      payload: withRequestId(msg, { enabled: false, prompts: [] }),
+    });
     return;
   }
   const payload = (msg as { payload?: { query?: string; category?: string } }).payload ?? {};
@@ -109,11 +124,14 @@ export async function handlePromptsSearch(
       ...(payload.category ? { category: payload.category } : {}),
       limit: 50,
     });
-    send(ws, { type: 'prompts.search', payload: { enabled: true, prompts: results.map(toMeta) } });
+    send(ws, {
+      type: 'prompts.search',
+      payload: withRequestId(msg, { enabled: true, prompts: results.map(toMeta) }),
+    });
   } catch (err) {
     send(ws, {
       type: 'prompts.search',
-      payload: { enabled: true, prompts: [], error: errMessage(err) },
+      payload: withRequestId(msg, { enabled: true, prompts: [], error: errMessage(err) }),
     });
   }
 }
@@ -127,7 +145,7 @@ export async function handlePromptsContent(
   if (!ctx.promptLoader || !slug) {
     send(ws, {
       type: 'prompts.content',
-      payload: { slug: slug ?? '', found: false, content: '', variables: [] },
+      payload: withRequestId(msg, { slug: slug ?? '', found: false, content: '', variables: [] }),
     });
     return;
   }
@@ -136,13 +154,13 @@ export async function handlePromptsContent(
     if (!entry) {
       send(ws, {
         type: 'prompts.content',
-        payload: { slug, found: false, content: '', variables: [] },
+        payload: withRequestId(msg, { slug, found: false, content: '', variables: [] }),
       });
       return;
     }
     send(ws, {
       type: 'prompts.content',
-      payload: {
+      payload: withRequestId(msg, {
         slug: entry.slug,
         found: true,
         title: entry.title,
@@ -150,12 +168,18 @@ export async function handlePromptsContent(
         variables: entry.variables ?? [],
         category: entry.category,
         source: entry.source,
-      },
+      }),
     });
   } catch (err) {
     send(ws, {
       type: 'prompts.content',
-      payload: { slug, found: false, content: '', variables: [], error: errMessage(err) },
+      payload: withRequestId(msg, {
+        slug,
+        found: false,
+        content: '',
+        variables: [],
+        error: errMessage(err),
+      }),
     });
   }
 }
@@ -169,7 +193,7 @@ export async function handlePromptsFavorite(
   if (!ctx.promptLoader || !payload?.slug) {
     send(ws, {
       type: 'prompts.favorite',
-      payload: { success: false, error: 'Prompt library unavailable' },
+      payload: withRequestId(msg, { success: false, error: 'Prompt library unavailable' }),
     });
     return;
   }
@@ -178,16 +202,23 @@ export async function handlePromptsFavorite(
     if (!updated) {
       send(ws, {
         type: 'prompts.favorite',
-        payload: { success: false, error: 'Prompt not found' },
+        payload: withRequestId(msg, { success: false, error: 'Prompt not found' }),
       });
       return;
     }
     send(ws, {
       type: 'prompts.favorite',
-      payload: { success: true, slug: updated.slug, favorite: updated.favorite },
+      payload: withRequestId(msg, {
+        success: true,
+        slug: updated.slug,
+        favorite: updated.favorite,
+      }),
     });
   } catch (err) {
-    send(ws, { type: 'prompts.favorite', payload: { success: false, error: errMessage(err) } });
+    send(ws, {
+      type: 'prompts.favorite',
+      payload: withRequestId(msg, { success: false, error: errMessage(err) }),
+    });
   }
 }
 
@@ -200,7 +231,7 @@ export async function handlePromptsCreate(
   if (!ctx.promptLoader || !p) {
     send(ws, {
       type: 'prompts.created',
-      payload: { success: false, error: 'Prompt library unavailable' },
+      payload: withRequestId(msg, { success: false, error: 'Prompt library unavailable' }),
     });
     return;
   }
@@ -209,7 +240,7 @@ export async function handlePromptsCreate(
   if (!title || !content) {
     send(ws, {
       type: 'prompts.created',
-      payload: { success: false, error: 'Title and content are required' },
+      payload: withRequestId(msg, { success: false, error: 'Title and content are required' }),
     });
     return;
   }
@@ -243,9 +274,12 @@ export async function handlePromptsCreate(
       updatedAt: now,
     };
     await ctx.promptLoader.save(entry);
-    send(ws, { type: 'prompts.created', payload: { success: true, slug } });
+    send(ws, { type: 'prompts.created', payload: withRequestId(msg, { success: true, slug }) });
   } catch (err) {
-    send(ws, { type: 'prompts.created', payload: { success: false, error: errMessage(err) } });
+    send(ws, {
+      type: 'prompts.created',
+      payload: withRequestId(msg, { success: false, error: errMessage(err) }),
+    });
   }
 }
 
@@ -257,28 +291,38 @@ export async function handlePromptsUsed(
 ): Promise<void> {
   const slug = (msg as { payload?: { slug?: string } }).payload?.slug;
   if (!ctx.promptUsage || !slug) {
-    send(ws, { type: 'prompts.used', payload: { success: false } });
+    send(ws, { type: 'prompts.used', payload: withRequestId(msg, { success: false }) });
     return;
   }
   try {
     await ctx.promptUsage.record(slug);
-    send(ws, { type: 'prompts.used', payload: { success: true, slug } });
+    send(ws, { type: 'prompts.used', payload: withRequestId(msg, { success: true, slug }) });
   } catch {
-    send(ws, { type: 'prompts.used', payload: { success: false } });
+    send(ws, { type: 'prompts.used', payload: withRequestId(msg, { success: false }) });
   }
 }
 
 /** Return recently-inserted prompt slugs (most-recent first) for the modal's Recent view. */
-export async function handlePromptsRecent(ws: WSLike, ctx: PromptsContext): Promise<void> {
+export async function handlePromptsRecent(
+  ws: WSLike,
+  ctx: PromptsContext,
+  msg?: unknown,
+): Promise<void> {
   if (!ctx.promptUsage) {
-    send(ws, { type: 'prompts.recent', payload: { slugs: [] } });
+    send(ws, { type: 'prompts.recent', payload: withRequestId(msg, { slugs: [] }) });
     return;
   }
   try {
     const recent = await ctx.promptUsage.recent(50);
-    send(ws, { type: 'prompts.recent', payload: { slugs: recent.map((r) => r.slug) } });
+    send(ws, {
+      type: 'prompts.recent',
+      payload: withRequestId(msg, { slugs: recent.map((r) => r.slug) }),
+    });
   } catch (err) {
-    send(ws, { type: 'prompts.recent', payload: { slugs: [], error: errMessage(err) } });
+    send(ws, {
+      type: 'prompts.recent',
+      payload: withRequestId(msg, { slugs: [], error: errMessage(err) }),
+    });
   }
 }
 
@@ -289,7 +333,10 @@ export async function handlePromptsJournal(
   projectRoot: string,
 ): Promise<void> {
   if (!projectRoot) {
-    send(ws, { type: 'prompts.journal', payload: { enabled: false, entries: [] } });
+    send(ws, {
+      type: 'prompts.journal',
+      payload: withRequestId(msg, { enabled: false, entries: [] }),
+    });
     return;
   }
   const payload = (msg as { payload?: { filter?: PromptJournalFilter } | undefined }).payload;
@@ -298,11 +345,14 @@ export async function handlePromptsJournal(
       ...(payload?.filter ?? {}),
       limit: payload?.filter?.limit ?? 200,
     });
-    send(ws, { type: 'prompts.journal', payload: { enabled: true, entries } });
+    send(ws, {
+      type: 'prompts.journal',
+      payload: withRequestId(msg, { enabled: true, entries }),
+    });
   } catch (err) {
     send(ws, {
       type: 'prompts.journal',
-      payload: { enabled: true, entries: [], error: errMessage(err) },
+      payload: withRequestId(msg, { enabled: true, entries: [], error: errMessage(err) }),
     });
   }
 }

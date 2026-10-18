@@ -57,4 +57,13 @@ describe('handleUserInstructions', () => {
     expect(lastPayload(send)['error']).toMatch(/Invalid instructions revision/);
     await expect(fs.stat(path.join(home, 'AGENTS.md'))).rejects.toThrow();
   });
+
+  it('echoes requestId on both success and error replies for panel request correlation', async () => {
+    const send = vi.fn();
+    await handleUserInstructions(ws, 'get', { requestId: 'req-get-1' }, send);
+    expect(lastPayload(send)['requestId']).toBe('req-get-1');
+
+    await handleUserInstructions(ws, 'save', { requestId: 'req-err-1', text: 42 }, send);
+    expect(lastPayload(send)['requestId']).toBe('req-err-1');
+  });
 });

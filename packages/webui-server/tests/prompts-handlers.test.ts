@@ -14,19 +14,19 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { recordPromptJournalEntry } from '@wrongstack/core/prompts';
 import type { PromptEntry, PromptLoader } from '@wrongstack/core/types';
-import { describe, expect, it } from 'vitest';
-import type { WebSocket } from 'ws';
 import {
   handlePromptsContent,
   handlePromptsCreate,
   handlePromptsFavorite,
   handlePromptsJournal,
   handlePromptsList,
+  handlePromptsRecent,
   handlePromptsSearch,
   handlePromptsUsed,
-  handlePromptsRecent,
   type PromptsContext,
 } from '@wrongstack/webui-server';
+import { describe, expect, it } from 'vitest';
+import type { WebSocket } from 'ws';
 import type { WSServerMessage } from '../../src/types.js';
 
 function entry(slug: string, over: Partial<PromptEntry> = {}): PromptEntry {
@@ -325,5 +325,19 @@ describe('handlePromptsCreate', () => {
       { name: 'flavor', required: true, enum: ['PCRE', 'JS'] },
       { name: 'code', required: true, multiline: true },
     ]);
+  });
+
+  it('echoes requestId across prompt handlers for panel reply correlation', async () => {
+    const { ws, messages } = openWs();
+    const loader = fakeLoader([]);
+    await handlePromptsList(ws, { promptLoader: loader }, { payload: { requestId: 'req-list-1' } });
+    expect(payloadOf(messages, 'prompts.list')?.['requestId']).toBe('req-list-1');
+
+    await handlePromptsContent(
+      ws,
+      { promptLoader: loader },
+      { payload: { requestId: 'req-content-1', slug: 'missing' } },
+    );
+    expect(payloadOf(messages, 'prompts.content')?.['requestId']).toBe('req-content-1');
   });
 });
