@@ -50,7 +50,15 @@ export async function rollback(
 }
 
 export function retryTask(host: SddParallelControlsHost, taskId: string): boolean {
-  if (!host.opts.tracker.getNode(taskId)) return false;
+  const node = host.opts.tracker.getNode(taskId);
+  if (
+    !node ||
+    node.status === 'in_progress' ||
+    node.status === 'completed' ||
+    host.taskSubagents.has(taskId)
+  ) {
+    return false;
+  }
   host.retryMap.delete(taskId);
   host.persistRetries(taskId, 0);
   // Clear any cancel marker so a previously-cancelled task can run again.
