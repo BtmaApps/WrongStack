@@ -212,7 +212,7 @@ export class AnnotationsStore {
               .sort((x, y) => {
                 // resolved=false wins (keep unresolved); among same resolved state, oldest first.
                 /* v8 ignore next -- scale+tiebreak: needs >1000 annotations with mixed resolved states */
-                if (x.a.resolved !== y.a.resolved) return x.a.resolved ? 1 : -1;
+                if (x.a.resolved !== y.a.resolved) return x.a.resolved ? -1 : 1;
                 return x.a.createdAt.localeCompare(y.a.createdAt);
               });
             const evictCount = all.length - this.maxAnnotations;

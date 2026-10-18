@@ -58,4 +58,29 @@ describe('annotations-store — extra coverage', () => {
     await fs.writeFile(path.join(dir, 'c.annotations.json'), '{ not json', 'utf8');
     expect(await store.list('c')).toEqual([]);
   });
+
+  it('evicts resolved annotations before unresolved annotations when maxAnnotations is exceeded', async () => {
+    const capped = new AnnotationsStore({ dir, maxAnnotations: 2 });
+    const a1 = await capped.add({
+      sessionId: 's1',
+      atEventIndex: 0,
+      authorId: 'u1',
+      text: 'first-resolved',
+    });
+    await capped.resolve({ sessionId: 's1', annotationId: a1.id, resolvedBy: 'u1' });
+    const a2 = await capped.add({
+      sessionId: 's1',
+      atEventIndex: 1,
+      authorId: 'u1',
+      text: 'second-unresolved',
+    });
+    const a3 = await capped.add({
+      sessionId: 's1',
+      atEventIndex: 2,
+      authorId: 'u1',
+      text: 'third-unresolved',
+    });
+    const remainingIds = (await capped.list('s1')).map((a) => a.id);
+    expect(remainingIds).toEqual([a2.id, a3.id]);
+  });
 });
