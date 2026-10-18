@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-18T16:38:53.043Z
+**Generated:** 2026-10-18T19:35:37.750Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5163 |
-| Production source lines | 1119670 |
-| Test files | 4470 |
+| Production source lines | 1120226 |
+| Test files | 4482 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16995 |
+| Relative module edges | 16998 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 6 |
@@ -30,32 +30,32 @@
 | @wrongstack/acp | 52 | 60 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
 | @wrongstack/cli | 668 | 654 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
-| @wrongstack/client | 7 | 1 | @wrongstack/webui-protocol |
+| @wrongstack/client | 7 | 2 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1147 | 990 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
-| @wrongstack/kanban | 109 | 83 | @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/kanban | 109 | 84 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 7 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 63 | 77 | @wrongstack/core |
+| @wrongstack/mcp | 63 | 78 | @wrongstack/core |
 | @wrongstack/persistence | 9 | 21 | — |
-| @wrongstack/plug-lsp | 52 | 56 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/plug-lsp | 52 | 57 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 12 | 10 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 152 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 11 | 14 | — |
 | @wrongstack/providers | 136 | 114 | @wrongstack/core |
-| @wrongstack/requirement-intake | 18 | 19 | @wrongstack/core |
+| @wrongstack/requirement-intake | 18 | 20 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 6 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
-| @wrongstack/runtime | 28 | 24 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
-| @wrongstack/sage | 148 | 140 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/runtime | 28 | 25 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
+| @wrongstack/sage | 148 | 141 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
-| @wrongstack/sdd | 45 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
-| @wrongstack/security-scanner | 21 | 33 | @wrongstack/core |
+| @wrongstack/sdd | 45 | 42 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
+| @wrongstack/security-scanner | 21 | 34 | @wrongstack/core |
 | @wrongstack/simpleui | 127 | 94 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
-| @wrongstack/techstack | 55 | 62 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
-| @wrongstack/telegram | 28 | 42 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 335 | 328 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/techstack | 55 | 63 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
+| @wrongstack/telegram | 28 | 43 | @wrongstack/core, @wrongstack/primitives |
+| @wrongstack/tools | 335 | 329 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 496 | 426 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 53 | 14 | @wrongstack/webui-protocol |
@@ -92,9 +92,9 @@ None.
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 708 | `packages/vibeui/src/lib/use-session.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
+| 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 700 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
-| 700 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 699 | `packages/core/src/execution/design-verify.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
@@ -125,11 +125,11 @@ None.
 | 689 | `packages/core/src/storage/file-session-writer.ts` |
 | 688 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 688 | `packages/core/src/execution/eternal-autonomy.ts` |
+| 687 | `packages/client/src/client.ts` |
 | 687 | `packages/core/src/chronicle/project-server-client.ts` |
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |
 | 686 | `apps/desktop/src/main/runtime-manager.ts` |
-| 686 | `packages/client/src/client.ts` |
 | 686 | `packages/core/src/coordination/provider-status-tracker.ts` |
 | 686 | `packages/webui-server/src/server/session-handler-helpers.ts` |
 | 685 | `packages/core/src/session-catalog/session-registry.ts` |
@@ -138,7 +138,7 @@ None.
 
 ## Exports only tests reference
 
-- 960 runtime exports are referenced by tests and by no other production file.
+- 961 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

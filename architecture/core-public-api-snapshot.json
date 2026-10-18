@@ -1624,7 +1624,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 94,
-      "sourceLines": 22900
+      "sourceLines": 22903
     },
     {
       "directory": "extension",
@@ -1750,7 +1750,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 39,
-      "sourceLines": 10940
+      "sourceLines": 10971
     },
     {
       "directory": "session-catalog",
@@ -1813,7 +1813,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 91,
-      "sourceLines": 15344
+      "sourceLines": 15354
     },
     {
       "directory": "vcs",

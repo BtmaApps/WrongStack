@@ -155,8 +155,14 @@ export function sanitizeNodeOptions(value: string): string {
   const kept: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i] as string;
-    if (NODE_OPTIONS_INJECTION_FLAG_EQ.test(tok)) continue; // --require=./x
-    if (NODE_OPTIONS_INJECTION_FLAG.test(tok)) {
+    // Node treats `_` and `-` as interchangeable in an option NAME
+    // (`--experimental_loader` ≡ `--experimental-loader`), so classify on the
+    // normalized name or the underscore spelling slips past the blocklist.
+    const eq = tok.indexOf('=');
+    const name = (eq === -1 ? tok : tok.slice(0, eq)).replace(/_/g, '-');
+    const normalized = eq === -1 ? name : name + tok.slice(eq);
+    if (NODE_OPTIONS_INJECTION_FLAG_EQ.test(normalized)) continue; // --require=./x
+    if (NODE_OPTIONS_INJECTION_FLAG.test(normalized)) {
       const next = tokens[i + 1];
       if (next && !next.startsWith('-')) {
         i++; // also drop the following path token (--require ./x)

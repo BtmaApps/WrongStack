@@ -118,6 +118,17 @@ export const COMMAND_STRING_FLAGS: ReadonlyMap<string, readonly string[]> = new 
   ['cmd', ['/c', '/k']],
 ]);
 
+/** Launchers in {@link COMMAND_STRING_FLAGS} that group short options (`-lc`). */
+export const POSIX_SHELLS: ReadonlySet<string> = new Set([
+  'sh',
+  'bash',
+  'zsh',
+  'dash',
+  'ksh',
+  'ash',
+  'fish',
+]);
+
 /** Bound on nested command-string values (`sh -c "env -S 'x'"`). */
 const MAX_COMMAND_STRING_DEPTH = 4;
 
@@ -179,7 +190,16 @@ function expandCommandStrings(tokens: readonly string[], depth: number): string[
     const flagToken = tokens[i + 1];
     if (flagToken === undefined || SHELL_OPERATORS.has(flagToken)) continue;
     const lower = flagToken.toLowerCase();
-    const flag = flags.find((candidate) => lower === candidate || lower.startsWith(candidate));
+    // POSIX shells take options as a cluster: `bash -lc "<cmd>"`, `sh -ec`,
+    // `zsh -xc` carry -c inside the cluster and the NEXT word is the command
+    // string — never a glued value. `bash -lc` is the usual login-shell
+    // spelling, and reading only the exact `-c` left its payload an inert
+    // token while `bash -c` was gated.
+    const clustered =
+      POSIX_SHELLS.has(normalizeCommandToken(token)) && /^-[a-z]*c[a-z]*$/.test(lower);
+    const flag = clustered
+      ? lower
+      : flags.find((candidate) => lower === candidate || lower.startsWith(candidate));
     if (flag === undefined) continue;
     let value: string | undefined;
     let consumed = 1;

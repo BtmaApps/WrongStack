@@ -23,6 +23,31 @@ export const flagLetters = (args: readonly string[]): Set<string> => {
   return seen;
 };
 
+/** git's global options that take the NEXT argv entry as their value. */
+const GIT_GLOBAL_VALUE_OPTIONS: readonly string[] = [
+  '-C',
+  '-c',
+  '--git-dir',
+  '--work-tree',
+  '--namespace',
+  '--config-env',
+];
+
+/**
+ * The git subcommand and its arguments, with git's global options (`-C dir`,
+ * `-c k=v`, `--no-pager`, …) skipped. Keying a rule on `args.includes('x')`
+ * would also fire on a branch or path NAMED `x`; the real subcommand is the
+ * first positional once the leading options are consumed.
+ */
+export function gitSubcommand(args: readonly string[]): { sub?: string; rest: string[] } {
+  let i = 0;
+  while (i < args.length && args[i]!.startsWith('-')) {
+    i += GIT_GLOBAL_VALUE_OPTIONS.includes(args[i]!) ? 2 : 1;
+  }
+  const sub = args[i];
+  return sub === undefined ? { rest: [] } : { sub, rest: args.slice(i + 1) };
+}
+
 export const isPowerShellCmd = (cmd: string): boolean =>
   /^(?:powershell|pwsh)(?:\.exe)?$/i.test(cmd);
 

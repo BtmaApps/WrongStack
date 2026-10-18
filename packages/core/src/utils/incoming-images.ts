@@ -53,7 +53,11 @@ export function isValidImageBase64(base64: string): boolean {
 /** Decoded byte count for a base64 payload, for comparison against
  *  {@link MAX_INCOMING_IMAGE_BYTES}. */
 export function base64DecodedBytes(base64: string): number {
-  return Math.floor((base64.length * 3) / 4);
+  // Trailing `=` characters are padding, not data: 4 chars always carry 3
+  // bytes, minus one per `=`. Ignoring them over-counted by up to 2 bytes, so a
+  // payload of exactly the cap (or cap - 1) was rejected as oversized.
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+  return Math.floor((base64.length * 3) / 4) - padding;
 }
 
 /** Validation failure on user-supplied image payloads. The message is safe to

@@ -463,6 +463,46 @@ describe('isClearlyDestructiveBashCommand — destructive detection (P2 #12)', (
     });
   });
 
+  // POSIX shells take short options as a CLUSTER: `bash -lc "<cmd>"` (login
+  // shell, the usual spelling in container and CI wrappers), `sh -ec`, `zsh -xc`.
+  // The command-string flag was matched only as the exact token `-c`, so the
+  // payload of a clustered flag stayed one inert token: `bash -c "rm -rf ~/data"`
+  // was gated while `bash -lc "rm -rf ~/data"` was not gated at all, and YOLO ran
+  // it unprompted. Both the token-stream expansion (delete / vcs / state /
+  // bulk families) and the string regexes (halt, inline payload) read the flag.
+  describe('a command string handed to a shell through a clustered -c flag is gated', () => {
+    it.each([
+      ['bash -lc "rm -rf ~/data"', 'delete-outside'],
+      ['bash -ec "rm -rf ~/data"', 'delete-outside'],
+      ['sh -ec "rm -rf ~/data"', 'delete-outside'],
+      ['zsh -xc "rm -rf ~/data"', 'delete-outside'],
+      ['bash -lic "rm -rf ~/data"', 'delete-outside'],
+      ["bash -lc 'rm -rf ~/data'", 'delete-outside'],
+      ['bash -lc "shutdown now"', 'system-halt'],
+      ['sh -ec "reboot"', 'system-halt'],
+      ['dash -ec "poweroff"', 'system-halt'],
+      ['bash -ec "git push --force origin main"', 'git-history'],
+    ])('%j → kind=%s', (cmd, kind) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe(kind);
+    });
+
+    // The plain `-c` spelling and harmless clustered payloads are unchanged, and
+    // a LONG option or a script operand is never read as a clustered `-c`.
+    it.each([
+      ['bash -c "rm -rf ~/data"', 'delete-outside'],
+      ['bash -c "shutdown now"', 'system-halt'],
+      ['bash -lc "echo hello"', undefined],
+      ['bash -lc "npm test"', undefined],
+      ['bash -ec "grep -r shutdown src/"', undefined],
+      ['bash --norc -c "echo hi"', undefined],
+      ['bash -l script.sh', undefined],
+      ['bash -x deploy.sh', undefined],
+      ['grep -lc "rm -rf" notes.txt', undefined],
+    ])('%j → kind=%s (unchanged)', (cmd, kind) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe(kind);
+    });
+  });
+
   // Probe-verified gap (2026-09-22): the launcher prefix accepted flags, env
   // assignments and NUMERIC operands, so `nice -n 5 shutdown` and
   // `timeout -k 5 10 shutdown` happened to work — while a flag whose value is a

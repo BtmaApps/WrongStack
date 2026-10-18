@@ -53,9 +53,11 @@ export async function checkExecKillCommand(
 
   // node -e "process.kill(12345)" — eval-based kill
   if (cmdLower === 'node' || cmdLower === 'bun') {
-    if (args.includes('-e') || args.includes('--eval')) {
-      const evalIdx = args.indexOf('-e') !== -1 ? args.indexOf('-e') : args.indexOf('--eval');
-      const evalCode = args[evalIdx + 1] ?? '';
+    // Every eval spelling counts, not just `-e` / `--eval`: `-p` / `--print`
+    // evaluate (and print), `-pe` is the cluster, and `--eval=<code>` /
+    // `--print=<code>` glue the code to the flag. All run `process.kill(pid)`
+    // identically, so recognising one spelling made the others a bypass.
+    for (const evalCode of evalPayloads(args)) {
       if (/\bprocess\.kill\s*\(/.test(evalCode)) {
         // Extract the PID from process.kill(...)
         const pidMatch = evalCode.match(/process\.kill\s*\(\s*(\d+)/);
@@ -115,6 +117,16 @@ export async function checkExecKillCommand(
         if (a.toUpperCase() === '/FI' || a.toUpperCase() === '-FI') {
           const filterArg = args[i + 1];
           if (filterArg) {
+            // `/FI "PID eq <n>"` kills <n> exactly like `/PID <n>`.
+            const pidFilter = /^\s*PID\s+eq\s+(\d+)\s*$/i.exec(filterArg)?.[1];
+            if (pidFilter) {
+              const result = await checkKillTarget({
+                pid: parseInt(pidFilter, 10),
+                signal,
+                cmd: fullCommand,
+              });
+              if (result.blocked) return result;
+            }
             const nameMatch = filterArg.match(/IMAGENAME\s+eq\s+"?([^"\s]+)/i);
             if (nameMatch?.[1]) {
               const result = await checkKillTarget({
@@ -251,6 +263,20 @@ export async function checkExecKillCommand(
           cmd: fullCommand,
         });
         if (result.blocked) return result;
+      } else {
+        // `tskill <process name>` kills EVERY process with that image name
+        // (live-verified; `/A` and `/V` are switches, and a name may sit on
+        // either side of them). Only the numeric form was checked, so naming
+        // the runtime's own image walked past the guard.
+        const nameArg = args.find((a) => !a.startsWith('/') && a !== '');
+        if (nameArg) {
+          const result = await checkKillTarget({
+            name: nameArg.replace(/^['"]|['"]$/g, ''),
+            signal: 'TERM',
+            cmd: fullCommand,
+          });
+          if (result.blocked) return result;
+        }
       }
     }
 
@@ -309,6 +335,26 @@ export async function checkExecKillCommand(
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * The code strings a `node` / `bun` argv asks the runtime to evaluate: the
+ * argument after `-e` / `--eval` / `-p` / `--print` / `-pe`, and the value glued
+ * to `--eval=` / `--print=`. Everything after a bare `--` is script arguments.
+ */
+function evalPayloads(args: readonly string[]): string[] {
+  const payloads: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (arg === '--') break;
+    const glued = /^--(?:eval|print)=([\s\S]*)$/.exec(arg);
+    if (glued) {
+      payloads.push(glued[1] ?? '');
+    } else if (arg === '--eval' || arg === '--print' || /^-[ep]+$/.test(arg)) {
+      payloads.push(args[i + 1] ?? '');
+    }
+  }
+  return payloads;
+}
 
 /** PowerShell launcher flags that consume their own value (skipped with it). */
 const POWERSHELL_LAUNCHER_VALUE_FLAGS = new Set([

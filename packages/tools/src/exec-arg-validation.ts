@@ -47,6 +47,12 @@ const BLOCKED_ARG_PATTERNS: Record<string, RegExp[]> = {
 };
 
 /**
+ * Commands whose {@link BLOCKED_ARG_PATTERNS} entries match the PATH operands
+ * they act on, so the operands after a `--` terminator must be checked too.
+ */
+const PATH_OPERAND_COMMANDS: ReadonlySet<string> = new Set(['rm']);
+
+/**
  * Options blocked by NAME, independent of how the value is attached.
  *
  * `BLOCKED_ARG_PATTERNS` above is prefix-anchored on `--opt=`, but every
@@ -184,7 +190,12 @@ export function validateArgs(
   if (!blocked) return null;
 
   for (const [index, arg] of args.entries()) {
-    if (arg === '--') break;
+    // After `--` git/find read pathspecs, so an option-shaped operand is not an
+    // option and the scan stops. `rm`'s patterns are the opposite: they name the
+    // PATHS being deleted, and `--` is exactly how those arrive when they could
+    // be mistaken for options — `rm -rf -- /` is `rm -rf /`. Scanning on past
+    // `--` for rm is what keeps its path block from being a one-token bypass.
+    if (arg === '--' && !PATH_OPERAND_COMMANDS.has(cmd)) break;
     if (cmd === 'git' && options.validatedGitArgumentIndexes?.has(index)) continue;
     // The rm path patterns are written with `/`; Windows also separates with
     // `\`, so `..\outside`, `\\host\share` and `\Windows` walked past every

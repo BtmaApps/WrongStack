@@ -55,6 +55,24 @@ describe('sanitizeNodeOptions', () => {
     const result = sanitizeNodeOptions('--no-warnings --require=x.js --max-old-space-size=2048');
     expect(result).toBe('--no-warnings --max-old-space-size=2048');
   });
+
+  // Node treats `_` and `-` as interchangeable in an option name, so the
+  // underscore spellings are the same preload directives and must be stripped.
+  it.each([
+    '--experimental_loader=hack.mjs',
+    '--experimental-loader=hack.mjs',
+    '--experimental_loader hack.mjs',
+    '--experimental_loader=hack.mjs --no-warnings',
+  ])('should strip the underscore-spelled loader directive %s', (input) => {
+    expect(sanitizeNodeOptions(input).replace('--no-warnings', '').trim()).toBe('');
+    expect(sanitizeNodeOptions(input)).not.toContain('hack.mjs');
+  });
+
+  it('should keep benign underscore-spelled flags verbatim', () => {
+    expect(sanitizeNodeOptions('--max_old_space_size=4096 --experimental_loader=x.mjs')).toBe(
+      '--max_old_space_size=4096',
+    );
+  });
 });
 
 // ============================================================================

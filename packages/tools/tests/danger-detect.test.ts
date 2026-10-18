@@ -280,6 +280,54 @@ describe('an inline interpreter payload is read as the command it is', () => {
   it('does not treat a non-interpreter -c flag as a payload', () => {
     expect(detectDanger('gcc', ['-c', 'rm -rf /']).level).toBe('safe');
   });
+
+  // POSIX shells take short options as a CLUSTER: `bash -lc "<cmd>"` (login
+  // shell, the usual spelling in container and CI wrappers), `sh -ec`, `zsh -xc`.
+  // Both the payload reader and the `inline-eval` rule matched the exact token
+  // `-c`, so a clustered flag left its command string unread and the banner said
+  // `safe` for the very command `bash -c` reports as destructive (the shape-
+  // variance rule: a clustered spelling must classify like the pure one).
+  describe('a clustered -c on a POSIX shell is the same inline payload', () => {
+    it.each([
+      ['bash', ['-lc', 'rm -rf ~/data'], 'destructive'],
+      ['sh', ['-ec', 'rm -rf ~/data'], 'destructive'],
+      ['zsh', ['-xc', 'rm -rf ~/data'], 'destructive'],
+      ['bash', ['-lic', 'rm -rf ~/data'], 'destructive'],
+      ['/bin/bash', ['-lc', 'rm -rf ~/data'], 'destructive'],
+      ['bash', ['-lc', 'git push --force origin main'], 'destructive'],
+      ['sh', ['-ec', 'git clean -xdf'], 'destructive'],
+      ['bash', ['-lc', 'npm publish'], 'destructive'],
+      ['bash', ['-lc', 'echo rm -rf /'], 'caution'],
+      ['bash', ['-lc', 'echo hello world'], 'caution'],
+    ])('%s %j → %s', (cmd, args, level) => {
+      expect(detectDanger(cmd, args).level).toBe(level);
+    });
+
+    it('keeps the interpreter inline-eval reason beside the payload reason', () => {
+      const r = detectDanger('bash', ['-lc', 'rm -rf ~/data']);
+      expect(r.reasons).toContain('recursive force-delete');
+      expect(r.reasons).toContain('inline script evaluation (-c / -e / --eval)');
+    });
+
+    // Not every cluster or program: no `c` in the cluster, a long option, a
+    // script operand, a non-shell host, or an interpreter that takes no clusters.
+    it.each([
+      ['bash', ['-l', 'script.sh']],
+      ['bash', ['-x', 'deploy.sh']],
+      ['bash', ['--norc', 'script.sh']],
+      ['gcc', ['-lc', 'rm -rf /']],
+      ['grep', ['-lc', 'rm -rf x']],
+      ['powershell', ['-lc', 'Remove-Item -Recurse -Force ./build']],
+      ['node', ['-lc', 'rm -rf /']],
+    ])('%s %j → safe (not a command-string flag)', (cmd, args) => {
+      expect(detectDanger(cmd, args).level).toBe('safe');
+    });
+
+    it('still reads the unclustered spellings the same way', () => {
+      expect(detectDanger('bash', ['-c', 'rm -rf ~/data']).level).toBe('destructive');
+      expect(detectDanger('bash', ['-l', '-c', 'rm -rf ~/data']).level).toBe('destructive');
+    });
+  });
 });
 
 describe('detectDanger — rm / rmdir recursive force', () => {
@@ -738,6 +786,59 @@ describe('detectDanger — git reset --hard', () => {
   it('does NOT flag `git reset HEAD~1` (mixed reset, no --hard)', () => {
     const r = detectDanger('git', ['reset', 'HEAD~1']);
     expect(r.level).toBe('safe');
+  });
+});
+
+// `git filter-branch` / `git filter-repo` rewrite every commit in place — the
+// one pair of commands that can destroy a repository's whole history. The YOLO
+// gate's `git-history` kind lists them beside `reset --hard`, `clean -f` and
+// `push --force` (core yolo-vcs-risk), and this module already classified the
+// other three, so the exec banner said `safe` for the most damaging one.
+describe('detectDanger — git filter-branch / filter-repo', () => {
+  it.each([
+    ['git', ['filter-branch', '--tree-filter', 'rm -f secrets.txt', 'HEAD']],
+    ['git', ['filter-branch', '--all']],
+    ['git', ['filter-repo', '--path', 'src']],
+    ['git', ['filter-repo', '--invert-paths', '--path', 'big.bin']],
+    // Global options precede the subcommand and must not hide it.
+    ['git', ['-C', '/work/repo', 'filter-branch', '--all']],
+    ['git', ['-c', 'core.x=1', 'filter-repo', '--force']],
+    ['git', ['--no-pager', 'filter-branch', 'HEAD']],
+    ['git', ['--git-dir', '/x/.git', 'filter-branch', 'HEAD']],
+  ])('%s %j → destructive (git-history-rewrite)', (cmd, args) => {
+    const r = detectDanger(cmd, args);
+    expect(r.level).toBe('destructive');
+    expect(r.matchedRule).toBe('git-history-rewrite');
+    expect(r.reasons).toContain(
+      'git filter-branch / filter-repo (rewrites every commit in the history)',
+    );
+  });
+
+  // The word is only dangerous as the SUBCOMMAND: a branch, path, commit
+  // message or search term named after it stays safe, as do unrelated commands.
+  it.each([
+    ['git', ['commit', '-m', 'filter-branch notes']],
+    ['git', ['log', '--grep', 'filter-branch']],
+    ['git', ['branch', '-d', 'filter-branch']],
+    ['git', ['checkout', 'filter-repo']],
+    ['git', ['status']],
+    ['git', ['rebase', '-i', 'HEAD~3']],
+    ['echo', ['filter-branch']],
+    ['svn', ['filter-branch']],
+  ])('%s %j → safe (not the subcommand)', (cmd, args) => {
+    expect(detectDanger(cmd, args).level).toBe('safe');
+  });
+
+  it('can be bypassed per rule id like every other rule', () => {
+    expect(
+      detectDanger('git', ['filter-branch', '--all'], new Set(['git-history-rewrite'])).level,
+    ).toBe('safe');
+  });
+
+  it('still reads the sibling history rules unchanged', () => {
+    expect(detectDanger('git', ['reset', '--hard']).level).toBe('destructive');
+    expect(detectDanger('git', ['clean', '-fd']).level).toBe('destructive');
+    expect(detectDanger('git', ['push', '--force']).level).toBe('destructive');
   });
 });
 

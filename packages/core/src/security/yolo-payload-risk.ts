@@ -1,4 +1,4 @@
-import { COMMAND_STRING_FLAGS, splitShellSegments } from './yolo-shell-scan.js';
+import { COMMAND_STRING_FLAGS, POSIX_SHELLS, splitShellSegments } from './yolo-shell-scan.js';
 
 // Best-effort heuristic detection of destructive shell commands — NOT a
 // complete security boundary. Static analysis of shell strings is inherently defeatable
@@ -39,7 +39,9 @@ export const CMD_START = String.raw`(?:^|[;&|(){}\n"'\x60]\s*|\b(?:sudo|doas)\s+
 // fetches code off the network and runs it — the one case where the damage is
 // unknowable in advance because the code is not in front of us.
 export const INLINE_PAYLOAD_INTERPRETERS: RegExp[] = [
-  /\b(?:bash|sh|zsh|ksh|fish|pwsh|powershell)\b[\s\S]{0,200}-c\s*[\s$"'(]/i,
+  // `-c` may sit inside a short-option cluster (`bash -lc`, `sh -ec`); the
+  // leading whitespace keeps a long option such as `--norc` from reading as one.
+  /\b(?:bash|sh|zsh|ksh|fish|pwsh|powershell)\b[\s\S]{0,200}\s-[A-Za-z]*c\s*[\s$"'(]/i,
   /\b(?:node|python[0-9.]*|perl|ruby)\b[\s\S]{0,200}-[ecE]\b/i,
 ];
 
@@ -225,7 +227,7 @@ export function hasRiskyInlinePayload(command: string): boolean {
  * never in command position and the check declined it.
  */
 const INLINE_PAYLOAD_AFTER_EVAL_FLAG =
-  /\b(?:bash|sh|zsh|ksh|fish|pwsh|powershell|node|python[0-9.]*|perl|ruby)(?:\.exe)?\b[^\n]{0,200}?\s-(?:c|e|E|-eval|Command|command)\s+(.+)$/i;
+  /\b(?:bash|sh|zsh|ksh|fish|pwsh|powershell|node|python[0-9.]*|perl|ruby)(?:\.exe)?\b[^\n]{0,200}?\s-(?:[A-Za-z]*c|e|E|-eval|Command|command)\s+(.+)$/i;
 
 function inlineEvalPayload(segment: string): string | undefined {
   const payload = INLINE_PAYLOAD_AFTER_EVAL_FLAG.exec(segment)?.[1];
@@ -276,7 +278,10 @@ const COMMAND_STRING_PAYLOAD = new RegExp(
       ([cmd, flags]) =>
         `${cmd}\\s+(?:${[...flags]
           .sort((a, b) => b.length - a.length)
-          .map((flag) => flag.replace(/[\\^-]/g, '\\$&'))
+          // A POSIX shell's `-c` may sit inside a short-option cluster (`-lc`).
+          .map((flag) =>
+            POSIX_SHELLS.has(cmd) && flag === '-c' ? '-[a-z]*c' : flag.replace(/[\\^-]/g, '\\$&'),
+          )
           .join('|')})(?:=|\\s+)`,
     )
     .join('|')})(.+)$`,

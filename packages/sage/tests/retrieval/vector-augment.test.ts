@@ -322,4 +322,41 @@ describe('augmentLexicalWithVectorRecall — vector-only materialization', () =>
     expect(aWith.finalScore).toBe(aWithout.finalScore);
     expect(withDead.some((r) => r.memory.id === 'z')).toBe(false);
   });
+
+  describe('non-finite numeric options', () => {
+    const lexical = [fakeSage('a', 'apple'), fakeSage('b', 'banana')];
+    const provider = fakeProvider([{ id: 'vb', score: 0.9, text: 'banana', sageId: 'b' }]);
+
+    it('uses a finite explicit limit (control)', async () => {
+      const result = await augmentLexicalWithVectorRecall('q', lexical, {
+        vectorRecall: provider,
+        limit: 1,
+      });
+      expect(result).toHaveLength(1);
+    });
+
+    it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+      'falls back to the default limit instead of dropping every hit for limit=%s',
+      async (limit) => {
+        const result = await augmentLexicalWithVectorRecall('q', lexical, {
+          vectorRecall: provider,
+          limit,
+        });
+        expect(result.map((r) => r.memory.id).sort()).toEqual(['a', 'b']);
+      },
+    );
+
+    it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+      'keeps finalScore finite for rrfK=%s',
+      async (rrfK) => {
+        const result = await augmentLexicalWithVectorRecall('q', lexical, {
+          vectorRecall: provider,
+          rrfK,
+        });
+        expect(result).toHaveLength(2);
+        for (const hit of result) expect(Number.isFinite(hit.finalScore)).toBe(true);
+        expect(result.every((hit) => hit.finalScore > 0)).toBe(true);
+      },
+    );
+  });
 });

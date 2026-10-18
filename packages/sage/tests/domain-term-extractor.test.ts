@@ -183,6 +183,53 @@ describe('SageDomainTermExtractor — detection', () => {
     expect(run('`TaskGraph` first, then **`TaskGraph`** later.')?.mentionCount).toBe(2);
   });
 
+  it('keeps distinct non-ASCII terms as distinct glossary entries', () => {
+    // `normalizeTerm` folded its key with an ASCII-only `[a-z0-9]` class,
+    // which DELETED every non-ASCII character instead of folding it away. A
+    // term with no ASCII alphanumerics therefore normalised to "" and EVERY
+    // such term shared that one key, so `mergeTerm` collapsed them into a
+    // single entry and the mirror silently lost the later terms. Only the
+    // bold channel is not ASCII-restricted, so bold is the reachable path.
+    const names = ex
+      .extractFromConversation({
+        messages: [
+          { role: 'user', text: '**日本語** is the glossary language and **한국어** too.' },
+        ],
+      })
+      .map((r) => r.term);
+
+    expect(names).toContain('日本語');
+    expect(names).toContain('한국어');
+    expect(names).toHaveLength(2);
+
+    // The key itself must distinguish them, and must not be the empty key —
+    // an empty key is what merged unrelated terms in the first place.
+    expect(normalizeTerm('日本語')).not.toBe('');
+    expect(normalizeTerm('한국어')).not.toBe('');
+    expect(normalizeTerm('日本語')).not.toBe(normalizeTerm('한국어'));
+
+    // Boundary: diacritics are preserved rather than split into separators.
+    // 'günlük' used to become 'g n l k', which could collide with a
+    // genuinely spaced term.
+    expect(normalizeTerm('günlük')).toBe('günlük');
+    expect(normalizeTerm('günlük')).not.toBe(normalizeTerm('gun luk'));
+
+    // Control: ASCII key behaviour is unchanged. A repeat of the SAME term
+    // must still merge (one entry, mentionCount 2), and case-folding still
+    // applies so the ASCII key stays locale-independent.
+    const ascii = ex
+      .extractFromConversation({
+        messages: [{ role: 'user', text: '**TaskGraph** and then **TaskGraph** again.' }],
+      })
+      .filter((r) => r.term === 'TaskGraph');
+    expect(ascii).toHaveLength(1);
+    expect(ascii[0]?.mentionCount).toBe(2);
+
+    expect(normalizeTerm('Mailbox Bridge')).toBe('mailbox bridge');
+    expect(normalizeTerm('MAILBOX BRIDGE')).toBe('mailbox bridge');
+    expect(normalizeTerm('foo.bar')).toBe('foo bar');
+  });
+
   it('captures inline "TERM is DEFINITION" hints as the definition field', () => {
     const result = ex.extractFromConversation({
       messages: [

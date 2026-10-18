@@ -252,6 +252,37 @@ describe('looksLikeSecret', () => {
     expect(looksLikeSecret('api_key=abcdef1234567890abcdef1234567890abcdef12')).toBe(true);
   });
 
+  it('detects SCREAMING_SNAKE_CASE env-var credentials', () => {
+    // `\b` is an ASCII word boundary and `_` IS a word character, so the
+    // env-style alternative could not match a keyword joined to its neighbours
+    // by `_` — the exact spelling every env var uses. `api[_-]?key` in the
+    // pattern shows underscore spelling was always the intent. Each name is
+    // assembled at runtime so no credential-shaped literal is committed.
+    const value = 'ZXCVBNMasdfghjklQWERTYuiop123';
+    const names = [
+      'AWS' + '_SECRET' + '_ACCESS' + '_KEY', // keyword mid-name
+      'GITHUB' + '_TOKEN', // keyword as trailing segment
+      'MY' + '_API' + '_KEY', // the [_-]?key alternative, underscored
+      'DB' + '_PASSWORD',
+    ];
+    for (const name of names) {
+      expect(looksLikeSecret(name + '=' + value), name).toBe(true);
+    }
+    // Colon-separated form too, not only `=`.
+    expect(looksLikeSecret('DB' + '_SECRET' + ': ' + value)).toBe(true);
+  });
+
+  it('keeps the keyword a whole segment (no over-relaxation)', () => {
+    // The boundary fix must not turn ordinary words that merely CONTAIN a
+    // keyword into credentials. These were clean before and must stay clean.
+    const value = 'ZXCVBNMasdfghjklQWERTYuiop123';
+    for (const word of ['secretly', 'tokenizer', 'passwords', 'mytoken', 'api_keys2']) {
+      expect(looksLikeSecret(word + '=' + value), word).toBe(false);
+    }
+    // Benign prose that merely mentions the word must not trip the guard.
+    expect(looksLikeSecret('the token was rotated last Tuesday by the release team')).toBe(false);
+  });
+
   it('detects JWT-like tokens (three segments 20+ chars)', () => {
     // Must match /\b[A-Za-z0-9_]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b/
     const jwtFake =

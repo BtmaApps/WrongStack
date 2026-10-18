@@ -26,6 +26,18 @@ const INLINE_PAYLOAD_HOSTS = new Set([
   'ruby',
 ]);
 
+/**
+ * Hosts whose short options may be CLUSTERED: `bash -lc "<cmd>"`, `sh -ec`,
+ * `zsh -xc` carry `-c` inside the cluster and the next argv entry is still the
+ * command string. PowerShell and the script interpreters take no clusters.
+ */
+const CLUSTERED_FLAG_HOSTS = new Set(['bash', 'sh', 'zsh', 'ksh', 'fish']);
+
+/** True when `flag` (lowercased) is a short-option cluster that includes `-c`. */
+export function isClusteredCommandStringFlag(host: string, flag: string): boolean {
+  return CLUSTERED_FLAG_HOSTS.has(host) && /^-[a-z]*c[a-z]*$/.test(flag.toLowerCase());
+}
+
 /** Shell/PowerShell operators that end one command in a line and start the next. */
 const PAYLOAD_SEPARATORS = new Set([';', '&&', '||', '|', '&', '\n']);
 
@@ -77,7 +89,12 @@ export function inlinePayloadPairs(
   if (!INLINE_PAYLOAD_HOSTS.has(base)) return [];
   for (let i = 0; i < args.length; i += 1) {
     const flag = args[i]?.toLowerCase();
-    if (flag === undefined || !INLINE_PAYLOAD_FLAGS.has(flag)) continue;
+    if (
+      flag === undefined ||
+      !(INLINE_PAYLOAD_FLAGS.has(flag) || isClusteredCommandStringFlag(base, flag))
+    ) {
+      continue;
+    }
     const payload = args[i + 1];
     // Only a payload that actually looks like a command LINE is worth
     // re-reading: a single bare token is already visible to every rule.

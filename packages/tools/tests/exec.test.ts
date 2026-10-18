@@ -193,6 +193,59 @@ describe('execTool', () => {
     ).rejects.toThrow(/Blocked argument/);
   });
 
+  // After `--`, rm treats EVERY argument as a path, so `rm -rf -- /` is the same
+  // catastrophic delete as `rm -rf /`. The path block stopped scanning at the
+  // `--` terminator (correct for git/find, whose tables name OPTIONS), which made
+  // the terminator a one-token bypass of every rm path pattern.
+  describe('rm path block applies to operands after the `--` terminator', () => {
+    const blocked: readonly (readonly string[])[] = [
+      ['-rf', '--', '/'],
+      ['-rf', '--', '/etc'],
+      ['-rf', '--', '~'],
+      ['-rf', '--', '~/'],
+      ['-rf', '--', '.'],
+      ['-rf', '--', '..'],
+      ['-rf', '--', './*'],
+      ['-rf', '--', 'C:\\'],
+      ['-rf', '--', '..\\..'],
+      ['-rf', '--', 'build', '/'],
+      ['--', '/'],
+    ];
+    for (const args of blocked) {
+      it(`blocks rm ${args.join(' ')}`, async () => {
+        await expect(
+          execTool.execute({ command: 'rm', args: [...args] }, makeCtx(), makeOpts()),
+        ).rejects.toThrow(/Blocked argument/);
+      });
+    }
+
+    it('still allows an ordinary operand after `--`', async () => {
+      for (const args of [
+        ['-rf', '--', 'build'],
+        ['--', '-rf'],
+        ['-f', '--', 'a.txt', 'b.txt'],
+      ]) {
+        const outcome = await settle(
+          execTool.execute({ command: 'rm', args }, makeCtx(), makeOpts()),
+        );
+        expect(outcome.error?.message ?? '').not.toMatch(/Blocked argument/);
+      }
+    });
+
+    it('keeps git/find option-name scanning stopped at `--` (pathspecs, not options)', async () => {
+      for (const [command, args] of [
+        ['git', ['log', '--', '-c']],
+        ['git', ['log', '--', '--exec']],
+        ['find', ['.', '--', '-exec']],
+      ] as const) {
+        const outcome = await settle(
+          execTool.execute({ command, args: [...args] }, makeCtx(), makeOpts()),
+        );
+        expect(outcome.error?.message ?? '').not.toMatch(/Blocked (option|argument)/);
+      }
+    });
+  });
+
   // Security scan 2026-08-04, finding M3. The git table was prefix-anchored on
   // `--opt=`, but git's parse-options accepts `--opt value` just as happily, so
   // the space-separated spelling of every blocked option walked through. The

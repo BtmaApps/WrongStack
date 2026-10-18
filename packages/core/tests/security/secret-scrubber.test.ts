@@ -415,6 +415,43 @@ describe('SecretScrubber', () => {
       expect(() => JSON.parse(scrubbed)).not.toThrow();
     });
 
+    // JSON.stringify escapes a quote, backslash or control character inside a
+    // credential. The value class used to stop at the first escape, so such a
+    // value never reached the closing quote and went out verbatim.
+    it.each([
+      ['a double quote', `pa"ss-${secret}`],
+      ['a backslash', `C:\\secret\\${secret}`],
+      ['a newline', `line1\nline2-${secret}`],
+      ['a control character', `ctl\u0001-${secret}`],
+      ['an escape after a long plain prefix', `${secret}${secret}"x`],
+      ['a trailing escape', `${secret}\\`],
+    ])('redacts a JSON-escaped credential containing %s', (_label, value) => {
+      for (const key of ['password', 'apiKey']) {
+        const payload = JSON.stringify({ [key]: value });
+        const scrubbed = s.scrub(payload);
+        expect(scrubbed).toBe(`{"${key}":"[REDACTED:json_credential_key]"}`);
+        expect(scrubbed).not.toContain(secret);
+      }
+    });
+
+    it('redacts only the credential field when escaped values sit among other fields', () => {
+      const payload = JSON.stringify({
+        user: 'a"b',
+        password: `p"w-${secret}`,
+        note: 'keep "me"',
+      });
+      expect(JSON.parse(s.scrub(payload))).toEqual({
+        user: 'a"b',
+        password: '[REDACTED:json_credential_key]',
+        note: 'keep "me"',
+      });
+    });
+
+    it('still leaves a short escaped value untouched (8-char floor counts escapes as chars)', () => {
+      const payload = JSON.stringify({ password: 'a\nb' });
+      expect(s.scrub(payload)).toBe(payload);
+    });
+
     it.each([
       ['a numeric token counter', '{"tokenCount": 1234, "maxTokens": 8000}'],
       ['a short enum value', '{"authorization":"none"}'],

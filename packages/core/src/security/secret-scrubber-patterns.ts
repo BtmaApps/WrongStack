@@ -301,8 +301,14 @@ export const PATTERNS: Pattern[] = [
     // tests/security/redaction-api-key-parity.test.ts.
     // Value floor of 8 chars keeps enum-ish values (`"authorization":"none"`)
     // out. Capture groups: 1=key + punctuation, 2=value, 3=closing quote.
+    // The value is a run of plain characters and whole JSON escape pairs
+    // (`\"`, `\\`, `\n`, `\uXXXX`'s lead): JSON.stringify escapes any quote,
+    // backslash or control character in a credential, and a plain-only class
+    // stopped at the first escape, so such a value never reached the 8-char
+    // floor / closing quote and went out verbatim. The two alternatives are
+    // disjoint (the first excludes `\`), so matching stays linear.
     regex:
-      /("[A-Za-z0-9_-]*(?:api[-_]?key|token|secret|password|authorization|bearer|private_key|access_token|refresh_token|client_secret)"\s*:\s*")([^"\\]{8,512})(")/gi,
+      /("[A-Za-z0-9_-]*(?:api[-_]?key|token|secret|password|authorization|bearer|private_key|access_token|refresh_token|client_secret)"\s*:\s*")((?:[^"\\]|\\[\s\S]){8,512})(")/gi,
     anchor: JSON_CREDENTIAL_KEY_ANCHORS,
   },
 

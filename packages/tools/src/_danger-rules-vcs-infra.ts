@@ -1,4 +1,4 @@
-import { kubectlDeleteResource } from './_danger-rule-utils.js';
+import { gitSubcommand, kubectlDeleteResource } from './_danger-rule-utils.js';
 import type { DangerRule } from './_danger-types.js';
 
 export const VCS_INFRA_DANGER_RULES: readonly DangerRule[] = [
@@ -109,6 +109,24 @@ export const VCS_INFRA_DANGER_RULES: readonly DangerRule[] = [
       );
     },
     reason: 'git clean -f (deletes untracked files)',
+  },
+
+  // ----- git history rewriters (destructive) -----
+  // `filter-branch` and `filter-repo` rewrite every commit in place — the one
+  // pair of commands that can destroy a repository's whole history — and the
+  // YOLO gate's `git-history` kind lists them beside `reset --hard`,
+  // `clean -f` and `push --force`, which this module already classifies. Keyed
+  // on the real subcommand so a branch or path named `filter-branch` (or a
+  // commit message mentioning it) does not fire.
+  {
+    id: 'git-history-rewrite',
+    level: 'destructive',
+    test: (cmd, args) => {
+      if (cmd !== 'git') return false;
+      const { sub } = gitSubcommand(args);
+      return sub === 'filter-branch' || sub === 'filter-repo';
+    },
+    reason: 'git filter-branch / filter-repo (rewrites every commit in the history)',
   },
 
   // ----- git: other irreversible discards of local work (destructive) -----

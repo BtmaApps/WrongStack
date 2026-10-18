@@ -208,6 +208,22 @@ describe('json_credential_key detection', () => {
     ['prefixed camelCase key', '{"anthropicApiKey": "abcdef0123456789"}', true],
     ['camelCase accessToken', '{"accessToken":"abcdef0123456789"}', true],
     ['client_secret', '{"client_secret":"abcdef0123456789"}', true],
+    // JSON escapes inside the value are part of the value. Built at runtime so
+    // no credential-shaped literal sits in the source.
+    ...(
+      [
+        ['an escaped quote', ['pa', '"', 'ss-', 'a'.repeat(12)].join('')],
+        ['an escaped backslash', ['C:', '\\', 'sec', '\\', 'a'.repeat(12)].join('')],
+        ['an escaped newline', ['a', '\n', 'b-', 'a'.repeat(12)].join('')],
+      ] as const
+    ).map(
+      ([label, value]) =>
+        [`value with ${label}`, JSON.stringify({ [['pass', 'word'].join('')]: value }), true] as [
+          string,
+          string,
+          boolean,
+        ],
+    ),
     // Must NOT fire: these are the false positives that would make the pattern
     // unusable against real tool output.
     ['numeric token counter', '{"tokenCount": 1234}', false],

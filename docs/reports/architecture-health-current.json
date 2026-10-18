@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T16:38:53.043Z",
+  "generatedAt": "2026-10-18T19:35:37.750Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5163,
-    "testFiles": 4470,
-    "sourceLines": 1119670,
+    "testFiles": 4482,
+    "sourceLines": 1120226,
     "workspaceEdges": 139,
-    "moduleEdges": 16995,
+    "moduleEdges": 16998,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 6,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 960
+    "testOnlyExports": 961
   },
   "errors": [
     "1 unexcepted module cycle(s)"
@@ -207,7 +207,7 @@
       "name": "@wrongstack/client",
       "dir": "packages/client",
       "sourceFiles": 7,
-      "testFiles": 1,
+      "testFiles": 2,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -220,7 +220,7 @@
         {
           "path": "packages/client/tsconfig.test.json",
           "error": null,
-          "testFiles": 1
+          "testFiles": 2
         }
       ]
     },
@@ -319,7 +319,7 @@
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
       "sourceFiles": 109,
-      "testFiles": 83,
+      "testFiles": 84,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -333,7 +333,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 83
+          "testFiles": 84
         }
       ]
     },
@@ -388,7 +388,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 63,
-      "testFiles": 77,
+      "testFiles": 78,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -401,7 +401,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 77
+          "testFiles": 78
         }
       ]
     },
@@ -428,7 +428,7 @@
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
       "sourceFiles": 52,
-      "testFiles": 56,
+      "testFiles": 57,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -442,7 +442,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 56
+          "testFiles": 57
         }
       ]
     },
@@ -536,7 +536,7 @@
       "name": "@wrongstack/requirement-intake",
       "dir": "packages/requirement-intake",
       "sourceFiles": 18,
-      "testFiles": 19,
+      "testFiles": 20,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -549,7 +549,7 @@
         {
           "path": "packages/requirement-intake/tsconfig.test.json",
           "error": null,
-          "testFiles": 19
+          "testFiles": 20
         }
       ]
     },
@@ -580,7 +580,7 @@
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
       "sourceFiles": 28,
-      "testFiles": 24,
+      "testFiles": 25,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/governance",
@@ -600,7 +600,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 24
+          "testFiles": 25
         }
       ]
     },
@@ -608,7 +608,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 148,
-      "testFiles": 140,
+      "testFiles": 141,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -623,7 +623,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 140
+          "testFiles": 141
         }
       ]
     },
@@ -654,7 +654,7 @@
       "name": "@wrongstack/sdd",
       "dir": "packages/sdd",
       "sourceFiles": 45,
-      "testFiles": 41,
+      "testFiles": 42,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -670,7 +670,7 @@
         {
           "path": "packages/sdd/tsconfig.test.json",
           "error": null,
-          "testFiles": 41
+          "testFiles": 42
         }
       ]
     },
@@ -678,7 +678,7 @@
       "name": "@wrongstack/security-scanner",
       "dir": "packages/security-scanner",
       "sourceFiles": 21,
-      "testFiles": 33,
+      "testFiles": 34,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -691,7 +691,7 @@
         {
           "path": "packages/security-scanner/tsconfig.test.json",
           "error": null,
-          "testFiles": 33
+          "testFiles": 34
         }
       ]
     },
@@ -728,7 +728,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 55,
-      "testFiles": 62,
+      "testFiles": 63,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -743,7 +743,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 62
+          "testFiles": 63
         }
       ]
     },
@@ -751,7 +751,7 @@
       "name": "@wrongstack/telegram",
       "dir": "packages/telegram",
       "sourceFiles": 28,
-      "testFiles": 42,
+      "testFiles": 43,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -765,7 +765,7 @@
         {
           "path": "packages/telegram/tsconfig.test.json",
           "error": null,
-          "testFiles": 42
+          "testFiles": 43
         }
       ]
     },
@@ -773,7 +773,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 335,
-      "testFiles": 328,
+      "testFiles": 329,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -789,7 +789,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 328
+          "testFiles": 329
         }
       ]
     },
@@ -5972,6 +5972,12 @@
       },
       {
         "file": "packages/client/tests/client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/client/tests/waiter-drop-on-reconnect.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12271,6 +12277,12 @@
         ]
       },
       {
+        "file": "packages/kanban/tests/completion-gate-soft-clears-park.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/kanban/tests/completion-gate.test.ts",
         "projects": [
           "root-node"
@@ -13045,6 +13057,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/streamable-connect-sse.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/streamable-cr-event-delimiter.test.ts",
         "projects": [
           "root-node"
@@ -13430,6 +13448,12 @@
       },
       {
         "file": "packages/plug-lsp/tests/unit/diagnostics-verification.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plug-lsp/tests/unit/document-tracker-force-close-events.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15247,6 +15271,12 @@
         ]
       },
       {
+        "file": "packages/requirement-intake/tests/answer-field-sources.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/requirement-intake/tests/answer-question-normalization.test.ts",
         "projects": [
           "root-node"
@@ -15362,6 +15392,12 @@
       },
       {
         "file": "packages/runtime/tests/automation-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/automation-reenable-schedule.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15979,6 +16015,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/remember-bad-validity-sibling-row.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/remember-exact-match-corrupt-row.test.ts",
         "projects": [
           "root-node"
@@ -16441,6 +16483,12 @@
         ]
       },
       {
+        "file": "packages/sdd/tests/parallel-controls-retry-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sdd/tests/plan-decompose.test.ts",
         "projects": [
           "root-node"
@@ -16706,6 +16754,12 @@
       },
       {
         "file": "packages/security-scanner/tests/orchestrator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/security-scanner/tests/package-audit-advisory-fix-available.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17641,6 +17695,12 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/remediation-dedup-upgrade-plan.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/remediation.test.ts",
         "projects": [
           "root-node"
@@ -17905,6 +17965,12 @@
         ]
       },
       {
+        "file": "packages/telegram/tests/unit/outbound-queue-manual-evicts-notification.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/telegram/tests/unit/outbound-queue.test.ts",
         "projects": [
           "root-node"
@@ -18164,6 +18230,12 @@
       },
       {
         "file": "packages/tools/tests/bash-kill-guard-paths.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/bash-kill-guard-runtime-image.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28171,6 +28243,11 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/core/src/execution/auto-compaction-middleware.ts",
+      "lines": 703,
+      "relativeImports": 22
+    },
+    {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
@@ -28238,6 +28315,11 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/core/src/execution/auto-compaction-middleware.ts",
+      "lines": 703,
+      "relativeImports": 22
+    },
+    {
       "file": "packages/core/src/chronicle/project-server.ts",
       "lines": 700,
       "relativeImports": 21
@@ -28246,11 +28328,6 @@
       "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
       "lines": 700,
       "relativeImports": 15
-    },
-    {
-      "file": "packages/core/src/execution/auto-compaction-middleware.ts",
-      "lines": 700,
-      "relativeImports": 22
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
@@ -28403,6 +28480,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/client/src/client.ts",
+      "lines": 687,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/core/src/chronicle/project-server-client.ts",
       "lines": 687,
       "relativeImports": 5
@@ -28421,11 +28503,6 @@
       "file": "apps/desktop/src/main/runtime-manager.ts",
       "lines": 686,
       "relativeImports": 10
-    },
-    {
-      "file": "packages/client/src/client.ts",
-      "lines": 686,
-      "relativeImports": 5
     },
     {
       "file": "packages/core/src/coordination/provider-status-tracker.ts",
@@ -31581,6 +31658,10 @@
     {
       "file": "packages/webui-hq/src/domain/use-session-transcript.ts",
       "name": "coalesceStreamedText"
+    },
+    {
+      "file": "packages/webui-hq/src/domain/use-session-transcript.ts",
+      "name": "mergeSubagentTranscriptEntries"
     },
     {
       "file": "packages/webui-hq/src/views/events.tsx",

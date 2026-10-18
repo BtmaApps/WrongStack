@@ -25,10 +25,18 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   // `/PID:1234` (colon-attached) binds identically to `/PID 1234`.
   // taskkill accepts `/PID` more than once and kills every one; reading only
   // the first let `taskkill /PID <other> /PID <protected>` through.
+  // `/FI "PID eq <n>"` is the filter spelling of the same kill (live-verified:
+  // "SUCCESS: The process with PID <n> has been terminated"), so it names a PID
+  // exactly like `/PID <n>` and must reach the same protected-PID check.
   const taskkillPids = isSimpleTaskkill
-    ? [...normalized.matchAll(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/gi)].map((m) =>
-        parseInt(m[1] ?? m[2] ?? '', 10),
-      )
+    ? [
+        ...[...normalized.matchAll(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/gi)].map((m) =>
+          parseInt(m[1] ?? m[2] ?? '', 10),
+        ),
+        ...[...normalized.matchAll(/(?:^|\s)\/FI\s+"\s*PID\s+eq\s+(\d+)\s*"(?=\s|$)/gi)].map((m) =>
+          parseInt(m[1] ?? '', 10),
+        ),
+      ]
     : [];
   const firstTaskkillPid = taskkillPids[0];
   if (firstTaskkillPid !== undefined) {
@@ -87,6 +95,27 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
       isAllKill: false,
       originalCommand: command,
     };
+  }
+
+  // ── tskill <process name> ────────────────────────────────────────
+  // tskill also accepts an image name and kills every process that has it
+  // (live-verified); `/A` and `/V` are switches that may sit on either side.
+  // Only the numeric form above was parsed, so a name target had no entry in
+  // the guard at all. `tskill /?` and a bare `tskill` name no target.
+  const tskillNameMatch = /^tskill(?:\.exe)?\s+(.+)$/i.exec(normalized);
+  if (tskillNameMatch?.[1]) {
+    const nameToken = tskillNameMatch[1]
+      .split(' ')
+      .find((token) => token !== '' && !token.startsWith('/'));
+    if (nameToken) {
+      return {
+        name: nameToken.replace(/^['"]|['"]$/g, ''),
+        signal: 'TERM',
+        isGroupKill: false,
+        isAllKill: false,
+        originalCommand: command,
+      };
+    }
   }
 
   // ── PowerShell Stop-Process -Id 1234 / kill -Id 1234 ─────────────

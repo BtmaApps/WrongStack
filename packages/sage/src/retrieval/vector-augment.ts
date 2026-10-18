@@ -149,8 +149,21 @@ export async function augmentLexicalWithVectorRecall(
   options: VectorAugmentOptions = {},
 ): Promise<VectorAugmentHit[]> {
   const weight = clamp01(options.vectorWeight ?? DEFAULT_VECTOR_WEIGHT, DEFAULT_VECTOR_WEIGHT);
-  const k = Math.max(1, options.rrfK ?? DEFAULT_RRF_K);
-  const limit = Math.max(1, options.limit ?? DEFAULT_LIMIT);
+  // `Math.max(1, NaN)` is NaN: a non-finite option used to poison the RRF
+  // scores (`rrfK`) or empty the result via `slice(0, NaN)` (`limit`). Fall
+  // back to the defaults, as the vector-memory sibling `fuseWithVectorMemory` does.
+  const k = Math.max(
+    1,
+    typeof options.rrfK === 'number' && Number.isFinite(options.rrfK)
+      ? options.rrfK
+      : DEFAULT_RRF_K,
+  );
+  const limit = Math.max(
+    1,
+    typeof options.limit === 'number' && Number.isFinite(options.limit)
+      ? Math.floor(options.limit)
+      : DEFAULT_LIMIT,
+  );
   const vectorOnlyThreshold = options.materializeVectorOnly
     ? (options.vectorOnlyThreshold ?? DEFAULT_VECTOR_ONLY_THRESHOLD)
     : (options.vectorOnlyThreshold ?? 0);

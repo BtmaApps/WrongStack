@@ -6,6 +6,10 @@
       "lines": 707,
       "relativeImports": 23
     },
+    "packages/core/src/execution/auto-compaction-middleware.ts": {
+      "lines": 703,
+      "relativeImports": 22
+    },
     "packages/plugins/src/audit/index.ts": {
       "lines": 715,
       "relativeImports": 0

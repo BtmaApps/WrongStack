@@ -1,3 +1,4 @@
+import { isClusteredCommandStringFlag } from './_danger-payload.js';
 import type { DangerRule } from './_danger-types.js';
 
 export const EXECUTION_DANGER_RULES: readonly DangerRule[] = [
@@ -28,6 +29,8 @@ export const EXECUTION_DANGER_RULES: readonly DangerRule[] = [
       return args.some(
         (a) =>
           a === '-c' ||
+          // `bash -lc` / `sh -ec`: -c inside a short-option cluster.
+          isClusteredCommandStringFlag(cmd, a) ||
           a === '-e' ||
           a === '--eval' ||
           a === '-eval' ||

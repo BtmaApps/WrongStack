@@ -1679,7 +1679,8 @@
       "derivePendingApprovals"
     ],
     "packages/webui-hq/src/domain/use-session-transcript.ts": [
-      "coalesceStreamedText"
+      "coalesceStreamedText",
+      "mergeSubagentTranscriptEntries"
     ],
     "packages/webui-hq/src/views/events.tsx": [
       "groupEventChains"

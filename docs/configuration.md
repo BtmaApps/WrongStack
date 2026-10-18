@@ -2368,6 +2368,7 @@ The current rule set is documented in `packages/tools/src/_danger-detect.ts`. St
 | `git-push-force` | destructive | `git push --force`, `-f`, `--force-with-lease` |
 | `git-reset-hard` | destructive | `git reset --hard` |
 | `git-clean-force` | destructive | `git clean -f` / `-fd` / `--force` |
+| `git-history-rewrite` | destructive | `git filter-branch` / `git filter-repo` (git's global options such as `-C dir` are skipped) |
 | `npm-publish` | destructive | `npm`/`pnpm`/`yarn`/`bun` `publish`, `cargo publish` / `yank` |
 | `kubectl-delete-namespace` | destructive | `kubectl delete namespace/ns` |
 | `kubectl-drain` | destructive | `kubectl drain` |

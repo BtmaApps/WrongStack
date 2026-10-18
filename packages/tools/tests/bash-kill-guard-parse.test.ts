@@ -6,6 +6,7 @@
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { parseKillCommand } from '../src/bash-kill-guard.js';
+import { parseWindowsKillCommand } from '../src/bash-kill-parse-windows.js';
 
 const isWin = os.platform() === 'win32';
 
@@ -242,6 +243,83 @@ describe('parseKillCommand', () => {
     expect(result!.pid).toBe(1234);
   });
 
+  // ── taskkill /FI "PID eq <n>" (platform-independent parser) ────────────
+  // `taskkill /FI "PID eq <n>"` terminates <n> like `/PID <n>` (live-verified),
+  // but only the IMAGENAME filter was parsed, so the bash guard saw no target at
+  // all. Tested on the Windows parser directly so it runs on every host.
+  describe('taskkill /FI "PID eq <n>" names a PID', () => {
+    const parse = (line: string) => parseWindowsKillCommand(line, line.replace(/\s+/g, ' ').trim());
+
+    it.each([
+      ['taskkill /F /FI "PID eq 4242"', 4242],
+      ['taskkill /F /FI "pid eq 4242"', 4242],
+      ['taskkill /F /FI "PID EQ 4242"', 4242],
+      ['taskkill /FI "PID eq 4242" /F', 4242],
+      ['taskkill /F /FI "PID  eq  4242"', 4242],
+      ['taskkill /F /T /FI "PID eq 4242"', 4242],
+    ])('%s → pid %i', (line, pid) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.pid).toBe(pid);
+      expect(r!.signal).toBe(/\/F\b/i.test(line) ? 'FORCE' : 'TERM');
+    });
+
+    it('collects every PID when /PID and /FI are mixed', () => {
+      const r = parse('taskkill /PID 111 /FI "PID eq 222"');
+      expect(r!.pid).toBe(111);
+      expect(r!.pids).toEqual([111, 222]);
+    });
+
+    it.each([
+      'taskkill /F /FI "STATUS eq RUNNING"',
+      'taskkill /F /FI "PID eq notanumber"',
+      'taskkill /F /FI "PID gt 100"',
+    ])('%s → no PID target', (line) => {
+      expect(parse(line)?.pid).toBeUndefined();
+    });
+
+    it('still reads the IMAGENAME filter and the plain /PID form', () => {
+      expect(parse('taskkill /F /FI "IMAGENAME eq node.exe"')?.name).toBe('node.exe');
+      expect(parse('taskkill /F /PID 4242')?.pid).toBe(4242);
+    });
+  });
+
+  // ── tskill <process name> (platform-independent parser) ────────────────
+  // `tskill <name>` kills every process with that image name (live-verified on a
+  // renamed copy of ping); `/A` and `/V` are switches on either side of it. Only
+  // `tskill <pid>` was parsed, so a name target had no entry in the guard at all.
+  describe('tskill <process name> names a process', () => {
+    const parse = (line: string) => parseWindowsKillCommand(line, line.replace(/\s+/g, ' ').trim());
+
+    it.each([
+      ['tskill node', 'node'],
+      ['tskill NODE', 'NODE'],
+      ['tskill wrongstack', 'wrongstack'],
+      ['tskill /A node', 'node'],
+      ['tskill node /A', 'node'],
+      ['tskill node /V', 'node'],
+      ['tskill /A /V node', 'node'],
+      ['tskill "node"', 'node'],
+      ['tskill.exe node', 'node'],
+    ])('%s → name %s', (line, name) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.name).toBe(name);
+      expect(r!.pid).toBeUndefined();
+      expect(r!.signal).toBe('TERM');
+    });
+
+    it.each(['tskill /?', 'tskill /A', 'tskill /A /V', 'tskill'])('%s → no name target', (line) => {
+      const r = parse(line);
+      expect(r === null || r.name === undefined).toBe(true);
+    });
+
+    it('still prefers the numeric PID form', () => {
+      const r = parse('tskill 5678');
+      expect(r!.pid).toBe(5678);
+      expect(r!.name).toBeUndefined();
+    });
+  });
   // ── non-kill commands ──────────────────────────────────────────────────
 
   it('returns null for non-kill commands', () => {

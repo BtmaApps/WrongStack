@@ -44,6 +44,7 @@
  */
 
 import * as os from 'node:os';
+import * as path from 'node:path';
 import { compileUserRegex } from './_regex.js';
 import {
   extractKillCommand,
@@ -214,6 +215,31 @@ export function parseKillCommand(command: string): KillCommand | null {
 }
 
 /**
+ * True when a process NAME (optionally `.exe`-suffixed, optionally a Windows
+ * wildcard) selects the image this very process runs from. Mirrors the
+ * current-runtime rule in exec-kill-guard so the two guards agree.
+ */
+function nameTargetsCurrentRuntime(name: string): boolean {
+  const currentImage = path
+    .basename(process.execPath)
+    .toLowerCase()
+    .replace(/\.exe$/, '');
+  // The parsers can leave option words in `name` (`pkill -9 bun` files the
+  // numeric signal under the name: "-9 bun"), so test every non-option word.
+  for (const word of name.split(/\s+/)) {
+    if (!word || word.startsWith('-')) continue;
+    const target = word
+      .replace(/^['"]|['"]$/g, '')
+      .toLowerCase()
+      .replace(/\.exe$/, '');
+    if (!target) continue;
+    if (target === currentImage) return true;
+    if (/[*?[]/.test(target) && wildcardNameMatches(target, currentImage)) return true;
+  }
+  return false;
+}
+
+/**
  * Get all protected process entries from the registry.
  */
 async function getProtectedEntries(): Promise<PersistentProcessEntry[]> {
@@ -258,6 +284,13 @@ async function isKillProtected(kill: KillCommand): Promise<boolean> {
     if (killNameLower.includes('wrongstack')) {
       return true;
     }
+    // The guard runs inside the current WrongStack process, which may not have
+    // reached the persistent registry yet (fresh CLI/test sessions, or a
+    // registry nobody refreshed in 30s). An image-name kill that matches THIS
+    // runtime would kill WrongStack regardless, so protect it by name — the same
+    // rule exec-kill-guard applies (`taskkill /IM bun.exe`, `Stop-Process -Name
+    // bun`, `tskill bun` with an empty registry were allowed here).
+    if (nameTargetsCurrentRuntime(kill.name)) return true;
     if (killNameLower.includes('node') && entries.length > 0) {
       // Conservative: block pkill node if we have protected node processes
       return true;

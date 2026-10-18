@@ -92,6 +92,55 @@ describe('exec-kill-guard', () => {
       expect((await checkExecKillCommand(cmd, [...args])).blocked).toBe(true);
     });
 
+    // `tskill <process name>` kills EVERY process with that image name (live-
+    // verified on a renamed copy of ping: `tskill r9proc`, `/A` and `/V` before or
+    // after the name, any case; tskill itself rejects a `.exe` suffix). Only the
+    // numeric `tskill <pid>` form was checked, so naming the runtime's own image
+    // or "wrongstack" walked past the guard.
+    describe('tskill <process name> is a name kill', () => {
+      // beforeEach re-points process.execPath, so the runtime image is resolved
+      // at test time (a collection-time value would name a different binary).
+      const IMAGE = '$IMAGE';
+      const currentImage = () =>
+        path
+          .basename(process.execPath)
+          .toLowerCase()
+          .replace(/\.exe$/, '');
+      const resolve = (args: readonly string[]) =>
+        args.map((a) => a.replace(IMAGE, currentImage()).replace(`"${IMAGE}"`, currentImage()));
+
+      it.each([
+        [IMAGE],
+        ['/A', IMAGE],
+        [IMAGE, '/A'],
+        [IMAGE, '/V'],
+        ['/A', '/V', IMAGE],
+        [`"${IMAGE}"`],
+        ['wrongstack'],
+        ['WrongStack'],
+        ['/A', 'wrongstack'],
+      ])('blocks tskill %j', async (...args) => {
+        expect((await checkExecKillCommand('tskill', resolve(args))).blocked).toBe(true);
+      });
+
+      it('is case-insensitive for the runtime image', async () => {
+        const r = await checkExecKillCommand('tskill', [currentImage().toUpperCase()]);
+        expect(r.blocked).toBe(true);
+      });
+
+      it('names the target in the reason', async () => {
+        const r = await checkExecKillCommand('tskill', ['wrongstack']);
+        expect(r.reason).toMatch(/wrongstack/i);
+      });
+
+      it.each([['notepad'], ['/A', 'notepad'], ['notepad', '/V'], ['/?'], ['/A'], [], ['4242']])(
+        'still allows tskill %j',
+        async (...args) => {
+          expect((await checkExecKillCommand('tskill', args)).blocked).toBe(false);
+        },
+      );
+    });
+
     it('blocks taskkill /PID targeting current process (dash flags)', async () => {
       const result = await checkExecKillCommand('taskkill', ['-F', '-PID', String(process.pid)]);
       expect(result.blocked).toBe(true);
@@ -107,6 +156,39 @@ describe('exec-kill-guard', () => {
       expect(result.blocked).toBe(true);
     });
 
+    // `taskkill /FI "PID eq <n>"` terminates <n> exactly like `/PID <n>` (live-
+    // verified: "SUCCESS: The process with PID <n> has been terminated"). Only
+    // the IMAGENAME filter was parsed, so the PID filter walked past the guard.
+    describe('taskkill /FI "PID eq <n>" is a PID kill', () => {
+      const self = String(process.pid);
+      it.each([
+        ['/F', '/FI', `PID eq ${self}`],
+        ['/F', '/FI', `pid eq ${self}`],
+        ['/F', '/FI', `PID EQ ${self}`],
+        ['/FI', `PID eq ${self}`, '/F'],
+        ['/F', '/FI', `PID  eq  ${self}`],
+        ['/F', '/T', '/FI', `PID eq ${self}`],
+        ['-F', '-FI', `PID eq ${self}`],
+      ])('blocks taskkill %j', async (...args) => {
+        expect((await checkExecKillCommand('taskkill', args)).blocked).toBe(true);
+      });
+
+      it('reports the same reason as the /PID spelling', async () => {
+        const viaFilter = await checkExecKillCommand('taskkill', ['/F', '/FI', `PID eq ${self}`]);
+        const viaPid = await checkExecKillCommand('taskkill', ['/F', '/PID', self]);
+        expect(viaFilter.reason).toBe(viaPid.reason);
+        expect(viaFilter.reason).toMatch(/current WrongStack process/);
+      });
+
+      it.each([
+        ['/F', '/FI', 'PID eq 4242'],
+        ['/F', '/FI', 'STATUS eq RUNNING'],
+        ['/F', '/FI', 'IMAGENAME eq notepad.exe'],
+        ['/F', '/FI', 'PID eq notanumber'],
+      ])('still allows taskkill %j', async (...args) => {
+        expect((await checkExecKillCommand('taskkill', args)).blocked).toBe(false);
+      });
+    });
     it('still checks other /PID args when /IM does not match', async () => {
       // /IM with a non-node name should still check /PID later
       const result = await checkExecKillCommand('taskkill', [
@@ -281,6 +363,51 @@ describe('exec-kill-guard', () => {
     it('blocks node --eval process.kill() (PID extractable)', async () => {
       const result = await checkExecKillCommand('node', ['--eval', `process.kill(${process.pid})`]);
       expect(result.blocked).toBe(true);
+    });
+
+    // `-p` / `--print` evaluate (and print) exactly like `-e`, `-pe` is the cluster,
+    // and `--eval=<code>` / `--print=<code>` glue the code to the flag. Only `-e` /
+    // `--eval <code>` were recognised, so every other spelling of the same eval-kill
+    // walked past the check.
+    describe('every node/bun eval spelling is an eval-kill', () => {
+      const kill = `process.kill(${process.pid})`;
+      it.each([
+        ['node', ['-p', kill]],
+        ['node', ['--print', kill]],
+        ['node', ['-pe', kill]],
+        ['node', [`--eval=${kill}`]],
+        ['node', [`--print=${kill}`]],
+        ['node', ['--no-warnings', '-p', kill]],
+        ['node', ['-p', 'process.kill(someVar)']], // PID not extractable → still blocked
+        ['node', ['-p', 'process.kill(process.pid)']],
+        ['bun', ['-p', kill]],
+        ['bun', ['--print', kill]],
+        ['bun', [`--eval=${kill}`]],
+        ['/usr/bin/node', ['-p', kill]],
+      ])('%s %j → blocked', async (cmd, args) => {
+        expect((await checkExecKillCommand(cmd, args)).blocked).toBe(true);
+      });
+
+      it.each([
+        ['node', ['-p', '1+1']],
+        ['node', ['--print', '"process is fine"']],
+        ['node', ['-pe', '2']],
+        ['node', ['--eval=console.log(1)']],
+        ['node', ['-e', 'console.log(1)']],
+        ['node', ['script.js']],
+        ['node', ['-r', 'dotenv/config', 'app.js']],
+        // after a bare `--` the words belong to the script, not the runtime
+        ['node', ['app.js', '--', '-p', 'process.kill(1)']],
+        ['bun', ['run', 'app.ts']],
+      ])('%s %j → allowed (no eval-kill)', async (cmd, args) => {
+        expect((await checkExecKillCommand(cmd, args)).blocked).toBe(false);
+      });
+
+      it('keeps the unextractable-PID reason', async () => {
+        const r = await checkExecKillCommand('node', ['--print=process.kill(someVar)']);
+        expect(r.blocked).toBe(true);
+        expect(r.reason).toMatch(/process\.kill/);
+      });
     });
 
     it('blocks node -e process.kill() even when PID not extractable', async () => {
