@@ -463,11 +463,14 @@ describe('LLMSelector with OneShotOrchestrator', () => {
       provider: {} as Provider,
       oneShotOrchestrator: { call } as never,
     });
-    const result = await selector.select(makeMessages(3), 10);
-    // With tiny budget, fallbackSelect keeps nothing.
+    const result = await selector.select(
+      Array.from({ length: 3 }, () => ({ role: 'user' as const, content: 'x'.repeat(200) })),
+      10,
+    );
+    // With tiny budget, fallbackSelect keeps nothing and must not emit an inverted range.
     expect(call).toHaveBeenCalledTimes(1);
-    expect(Array.isArray(result.kept)).toBe(true);
-    expect(Array.isArray(result.collapsed)).toBe(true);
+    expect(result.kept).toEqual([]);
+    expect(result.collapsed).toEqual([{ from: 0, to: 2 }]);
   });
 
   it('parses orchestrator response text via parseSelectorOutput', async () => {

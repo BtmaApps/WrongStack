@@ -215,7 +215,9 @@ export class LLMSelector implements MessageSelector {
     if (startIdx > 0) {
       toCollapse.push({ from: 0, to: startIdx - 1 });
     }
-    toKeep.push({ from: startIdx, to: messages.length - 1, importance: 'high' });
+    if (startIdx < messages.length) {
+      toKeep.push({ from: startIdx, to: messages.length - 1, importance: 'high' });
+    }
 
     return {
       kept: toKeep,
