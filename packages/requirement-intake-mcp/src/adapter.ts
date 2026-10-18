@@ -233,6 +233,7 @@ export function createRequirementIntakeMcpToolHost(
     );
     throwIfAborted(signal);
     const submitted = await service.submitIntake(result.record.id, ctx);
+    throwIfAborted(signal);
     return {
       content: {
         intakeId: submitted.record.id,

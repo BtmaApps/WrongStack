@@ -429,6 +429,48 @@ describe('createRequirementIntakeMcpToolHost — default project wiring', () => 
     expect(listIntakesMock).toHaveBeenCalledWith('proj_alpha', expect.anything(), {
       statuses: ['submitted'],
     });
+
+    const submitAbortCtrl = new AbortController();
+    const abortAfterSubmitHost = createRequirementIntakeMcpToolHost(root, {
+      writable: true,
+      dependencies: {
+        resolveProjectId: async () => 'proj_alpha',
+        service: {
+          createIntake: vi.fn(async () => ({
+            created: true,
+            idempotent: false,
+            record: {
+              id: 'reqi_1',
+              title: 'Reset',
+              requestType: 'feature',
+              status: 'draft',
+            },
+          })),
+          submitIntake: vi.fn(async () => {
+            submitAbortCtrl.abort(new Error('aborted-after-submit'));
+            return {
+              idempotent: false,
+              record: {
+                id: 'reqi_1',
+                title: 'Reset',
+                requestType: 'feature',
+                status: 'submitted',
+              },
+            };
+          }),
+        } as unknown as RequirementIntakeService,
+      },
+    });
+    await expect(
+      abortAfterSubmitHost.callTool(
+        'requirement_intake_submit',
+        { request: REQUEST_TEXT },
+        { signal: submitAbortCtrl.signal },
+      ),
+    ).resolves.toEqual({
+      content: 'aborted-after-submit',
+      isError: true,
+    });
   });
 });
 
