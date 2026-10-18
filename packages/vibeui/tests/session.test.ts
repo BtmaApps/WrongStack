@@ -466,4 +466,31 @@ describe('VibeTransport reconnect and stored credential', () => {
     expect(storage.get(TOKEN_KEY)).toBe('good-token');
     client.close();
   });
+
+  it('reduces model.switch_result failure into notice and success into active provider/model', () => {
+    const base = { ...initialState(), provider: 'openai', model: 'gpt-4o' };
+    const failed = reduceFrame(base, {
+      type: 'model.switch_result',
+      payload: {
+        success: false,
+        provider: 'unknown',
+        model: 'bad',
+        message: 'Unknown provider: unknown',
+      },
+    });
+    expect(failed.notice).toBe('Unknown provider: unknown');
+    expect(failed.provider).toBe('openai');
+    expect(failed.model).toBe('gpt-4o');
+
+    const succeeded = reduceFrame(base, {
+      type: 'model.switch_result',
+      payload: {
+        success: true,
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+      },
+    });
+    expect(succeeded.provider).toBe('anthropic');
+    expect(succeeded.model).toBe('claude-sonnet-4-6');
+  });
 });

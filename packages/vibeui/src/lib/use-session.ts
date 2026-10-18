@@ -143,10 +143,13 @@ export function useSession() {
         Boolean(current.current.id) &&
         p.sessionId !== current.current.id &&
         p.sessionId !== pendingSwitch.current.desired;
-      if (frame.type === 'error' && !foreignError) {
-        // An error while an open is pending abandons it as a whole: target,
-        // lock and deadline. A stale target would drop every later
-        // `session.start`; a stale deadline would re-lock the UI.
+      const opFailed =
+        frame.type === 'error' || (frame.type === 'key.operation_result' && p.success === false);
+      if (opFailed && !foreignError) {
+        // An error or failed key.operation_result while an open is pending
+        // abandons it as a whole: target, lock and deadline. A stale target
+        // would drop every later `session.start`; a stale deadline would
+        // re-lock the UI.
         const { pending, held } = pendingSwitch.current.cancel();
         if (pending) {
           clearingSession.current = '';
@@ -182,11 +185,7 @@ export function useSession() {
             };
       });
       for (const listener of listeners.current) listener(frame);
-      if (
-        frame.type === 'context.compacted' ||
-        (frame.type === 'key.operation_result' && p.success === false) ||
-        frame.type === 'error'
-      ) {
+      if (frame.type === 'context.compacted' || opFailed) {
         compacting.current = false;
         setCompactPending(false);
         clearTimeout(compactTimeout.current);
@@ -253,8 +252,9 @@ export function useSession() {
       }
       if (
         frame.type === 'provider.model_switched' ||
+        frame.type === 'model.switch_result' ||
         frame.type === 'session.start' ||
-        (frame.type === 'error' && pendingModel.current)
+        (opFailed && pendingModel.current)
       ) {
         pendingModel.current = false;
         setModelPending(false);

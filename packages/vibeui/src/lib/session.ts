@@ -31,10 +31,7 @@ export const contentText = (value: unknown): string =>
         .join('\n\n');
 const bounded = (value: string) => value.slice(-500_000);
 /**
- * Live entry ids come from a monotonic counter. Deriving them from list
- * lengths repeated once the 500-message / 200-tool caps were reached, which
- * duplicated React keys and let an outdated "continue" button match the
- * latest assistant message by id.
+ * Live entry ids use a monotonic counter so 500-message / 200-tool caps never repeat React keys or match stale assistant ids.
  */
 let liveEntrySequence = 0;
 const liveEntryId = (type: string): string => `${type}-${++liveEntrySequence}`;
@@ -563,8 +560,11 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
             })),
         },
       };
-    case 'provider.model_switched': {
-      const target = record(p.to);
+    case 'provider.model_switched':
+    case 'model.switch_result': {
+      const target = frame.type === 'provider.model_switched' ? record(p.to) : p;
+      if (p.success === false)
+        return { ...state, notice: text(p.message) || 'Model switch failed.' };
       return {
         ...state,
         provider: text(target.provider) || state.provider,
