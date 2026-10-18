@@ -57,11 +57,13 @@ export function createAttachedSageMcp(
   const idleMs = opts.idleReleaseMs ?? DEFAULT_IDLE_RELEASE_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let inFlight = 0;
+  let disposed = false;
   const armRelease = () => {
+    if (disposed || inFlight > 0) return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = undefined;
-      if (inFlight === 0) port.releaseConnection();
+      if (!disposed && inFlight === 0) port.releaseConnection();
     }, idleMs);
     timer.unref?.();
   };
@@ -88,6 +90,7 @@ export function createAttachedSageMcp(
     server,
     host,
     dispose: () => {
+      disposed = true;
       if (timer) clearTimeout(timer);
       timer = undefined;
     },

@@ -160,5 +160,16 @@ describe('attached SAGE MCP (external coding agents)', () => {
     dispose();
     await vi.advanceTimersByTimeAsync(1_500);
     expect(port.releaseConnection).not.toHaveBeenCalled();
+
+    // Disposing while a callTool invocation is still in flight must not re-arm the timer in finally
+    const second = createAttachedSageMcp(port, {
+      projectRoot: dir,
+      idleReleaseMs: 1_000,
+    });
+    const inFlightCall = second.host.callTool('memory_search', { query: 'inflight' });
+    second.dispose();
+    await inFlightCall;
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(port.releaseConnection).not.toHaveBeenCalled();
   });
 });
