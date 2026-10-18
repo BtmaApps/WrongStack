@@ -173,6 +173,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (!connection) throw new Error('Kanban project server is disabled');
     await connection.request('ping', {});
   } catch (error) {
+    closeKanbanServerConnections();
     process.stderr.write(
       `${SERVER_INFO.name}: cannot attach to Kanban project server for ${projectRoot}: ${
         error instanceof Error ? error.message : String(error)
@@ -181,39 +182,41 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 3;
   }
 
-  const server = createKanbanMcpServer(projectRoot, {
-    writable: args.writable,
-    destructive: args.destructive,
-    ...(args.actor ? { actor: args.actor } : {}),
-  });
-  const policyText = `writable=${String(args.writable)} destructive=${String(args.destructive)}`;
-
-  if (args.transport === 'http') {
-    const handle = await serveHttp(server, {
-      port: args.httpPort,
-      host: args.httpHost,
-      ...(args.httpToken ? { token: args.httpToken } : {}),
-      logger: { warn: (message) => process.stderr.write(`[kanban-mcp] ${message}\n`) },
+  try {
+    const server = createKanbanMcpServer(projectRoot, {
+      writable: args.writable,
+      destructive: args.destructive,
+      ...(args.actor ? { actor: args.actor } : {}),
     });
+    const policyText = `writable=${String(args.writable)} destructive=${String(args.destructive)}`;
+
+    if (args.transport === 'http') {
+      const handle = await serveHttp(server, {
+        port: args.httpPort,
+        host: args.httpHost,
+        ...(args.httpToken ? { token: args.httpToken } : {}),
+        logger: { warn: (message) => process.stderr.write(`[kanban-mcp] ${message}\n`) },
+      });
+      process.stderr.write(
+        `${SERVER_INFO.name}: ready at ${handle.url} — projectRoot=${projectRoot} transport=http ${policyText}${
+          args.httpToken ? ' [token auth]' : ''
+        }\n`,
+      );
+      await new Promise<void>((resolve) => {
+        process.once('SIGINT', resolve);
+        process.once('SIGTERM', resolve);
+      });
+      await handle.close();
+      return 0;
+    }
+
+    const handle = serveStdio(server);
     process.stderr.write(
-      `${SERVER_INFO.name}: ready at ${handle.url} — projectRoot=${projectRoot} transport=http ${policyText}${
-        args.httpToken ? ' [token auth]' : ''
-      }\n`,
+      `${SERVER_INFO.name}: ready on stdio — projectRoot=${projectRoot} transport=stdio ${policyText}\n`,
     );
-    await new Promise<void>((resolve) => {
-      process.once('SIGINT', resolve);
-      process.once('SIGTERM', resolve);
-    });
-    await handle.close();
-    closeKanbanServerConnections();
+    await handle.done;
     return 0;
+  } finally {
+    closeKanbanServerConnections();
   }
-
-  const handle = serveStdio(server);
-  process.stderr.write(
-    `${SERVER_INFO.name}: ready on stdio — projectRoot=${projectRoot} transport=stdio ${policyText}\n`,
-  );
-  await handle.done;
-  closeKanbanServerConnections();
-  return 0;
 }
