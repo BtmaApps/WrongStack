@@ -272,4 +272,13 @@ describe('/sdd spec catalog commands', () => {
       'No task graph found. Generate tasks first.',
     );
   });
+
+  it('matchTaskNode falls back to title substring matching for fractional numeric queries like "1.5"', async () => {
+    const { matchTaskNode } = await import('../src/services/sdd/task-manager.js');
+    const nodes = [
+      { id: 't1', title: '1.0 Initial setup' },
+      { id: 't2', title: '1.5 Release migration' },
+    ];
+    expect(matchTaskNode(nodes, '1.5')).toEqual(nodes[1]);
+  });
 });

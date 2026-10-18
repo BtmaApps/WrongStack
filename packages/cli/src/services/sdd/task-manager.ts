@@ -215,7 +215,7 @@ export function matchTaskNode<T extends { id: string; title: string }>(
   const trimmed = query.trim();
   if (!trimmed) return null;
   const num = Number(trimmed);
-  if (!Number.isNaN(num) && num >= 1 && num <= nodes.length) {
+  if (Number.isInteger(num) && num >= 1 && num <= nodes.length) {
     return nodes[num - 1] ?? null;
   }
   const q = trimmed.toLowerCase();
