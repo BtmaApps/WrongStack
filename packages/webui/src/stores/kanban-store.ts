@@ -118,6 +118,7 @@ export const useKanbanStore = create<KanbanState>()((set, get) => ({
       queueHealth: null,
       supervisorSnapshot: null,
       verificationActivity: {},
+      boardHistory: [],
     }),
   setError: (error) => set({ error }),
   setQueueHealth: (health) => set({ queueHealth: health }),
@@ -214,6 +215,7 @@ export const useKanbanStore = create<KanbanState>()((set, get) => ({
             removed && state.activeBoardId === removedBoardId ? null : state.activeBoardId,
           activeBoard:
             removed && state.activeBoard?.id === removedBoardId ? null : state.activeBoard,
+          boardHistory: removed && state.activeBoardId === removedBoardId ? [] : state.boardHistory,
           loading: false,
           error: null,
         };
@@ -261,9 +263,11 @@ export const useKanbanStore = create<KanbanState>()((set, get) => ({
     if (type === 'kanban.board.history') {
       // Board history is an array of KanbanBoardHistoryEntry; store it so the
       // history panel can render the board's lifecycle.
-      if (Array.isArray(data)) {
-        set({ boardHistory: data as KanbanBoardHistoryEntry[] });
-      }
+      set({
+        ...(Array.isArray(data) ? { boardHistory: data as KanbanBoardHistoryEntry[] } : {}),
+        loading: false,
+        error: null,
+      });
       return;
     }
     if (type === 'kanban.task.verification_started') {

@@ -111,4 +111,28 @@ describe('kanban-store outbound dispatch integration', () => {
     const state = useKanbanStore.getState();
     expect(state.loading).toBe(false);
   });
+
+  it('clears loading and error on kanban.board.history result and resets boardHistory when switching boards', () => {
+    useKanbanStore.setState({ error: 'stale error', boardHistory: [] });
+    useKanbanStore.getState().fetchBoardHistory('board-1');
+    expect(useKanbanStore.getState().loading).toBe(true);
+
+    useKanbanStore.getState().handleResult('kanban.board.history', {
+      success: true,
+      data: [
+        {
+          id: 'h1',
+          boardId: 'board-1',
+          action: 'board.created',
+          timestamp: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    expect(useKanbanStore.getState().loading).toBe(false);
+    expect(useKanbanStore.getState().error).toBeNull();
+    expect(useKanbanStore.getState().boardHistory).toHaveLength(1);
+
+    useKanbanStore.getState().setActiveBoardId('board-2');
+    expect(useKanbanStore.getState().boardHistory).toEqual([]);
+  });
 });
