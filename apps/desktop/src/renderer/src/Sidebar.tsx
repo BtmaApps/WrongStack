@@ -282,8 +282,8 @@ const SessionRow = memo(function SessionRow({
   busy: boolean;
 }) {
   const open = useCallback(() => {
-    void actions.focusSession(entry.runtimeId, entry.id, entry.title);
-  }, [entry.id, entry.runtimeId, entry.title]);
+    void actions.focusSession(entry.runtimeId, entry.id);
+  }, [entry.id, entry.runtimeId]);
 
   return (
     <li>
@@ -295,6 +295,14 @@ const SessionRow = memo(function SessionRow({
         disabled={busy}
         aria-current={entry.active ? 'page' : undefined}
       >
+        {/*
+         * `starting`, not `running`, on purpose. A session's `running` is the
+         * WebUI tab's `isRunning` (chat.isLoading): an agent turn is in flight.
+         * That is exactly the state `.dot.starting` animates for; the static
+         * green `.dot.running` means "process up", which every listed session
+         * already is. An idle session reads as a quiet dot, a working one
+         * pulses — the same cue the WebUI tab bar gives with its spinner.
+         */}
         <span className={`dot ${entry.running ? 'starting' : 'stopped'}`} aria-hidden="true" />
         <span className="session-title">{entry.title}</span>
         <span className="session-meta">{entry.slot + 1}</span>

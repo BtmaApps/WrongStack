@@ -24,13 +24,6 @@ import type {
 } from '../../shared/types.js';
 import { t } from './i18n.js';
 
-export interface LauncherFeedback {
-  state: 'pending' | 'success' | 'error';
-  label: string;
-  commandKey: string;
-  message?: string | undefined;
-}
-
 export interface ShellState {
   desktop: DesktopStateSnapshot;
   webuiStatus: DesktopWebuiStatusSnapshot;
@@ -43,7 +36,6 @@ export interface ShellState {
   filter: string;
   busy: boolean;
   error: string | null;
-  launcher: LauncherFeedback | null;
 }
 
 export type DesktopShellSession = DesktopOpenSessionEntry & { runtimeId: string };
@@ -65,7 +57,6 @@ let state: ShellState = {
   filter: '',
   busy: false,
   error: null,
-  launcher: null,
 };
 let openSessionsRevision = 0;
 
@@ -98,7 +89,6 @@ export function __resetStore(): void {
     filter: '',
     busy: false,
     error: null,
-    launcher: null,
   };
   openSessionsRevision = 0;
   listeners.clear();
@@ -116,10 +106,6 @@ export function clearError(): void {
 
 export function setError(error: string): void {
   set({ error });
-}
-
-export function setLauncher(launcher: LauncherFeedback | null): void {
-  set({ launcher });
 }
 
 /**
@@ -178,8 +164,8 @@ export const actions = {
   registerProject: () => withBusy(() => api().registerProject()),
   unregisterProject: (root: string) => withBusy(() => api().unregisterProject(root)),
   newSession: (runtimeId?: string) => withBusy(() => api().openProjectSession(runtimeId)),
-  focusSession: (runtimeId: string, sessionId: string, title: string) =>
-    actions.webuiCommand({ sessionId }, title, runtimeId),
+  focusSession: (runtimeId: string, sessionId: string) =>
+    actions.webuiCommand({ sessionId }, runtimeId),
   openSettings: () => withBusy(() => api().openSettings()),
   activate: (runtimeId: string) => withBusy(() => api().activateRuntime(runtimeId)),
   resume: (runtimeId: string, root: string) =>
@@ -214,41 +200,18 @@ export const actions = {
   },
 
   /**
-   * Send a navigation command to the embedded WebUI, reporting progress in the
-   * launcher strip. `runtimeId` activates that runtime first, for commands
-   * fired from a row that is not the active one.
+   * Send a navigation command to the embedded WebUI. `runtimeId` activates
+   * that runtime first, for commands fired from a row that is not the active
+   * one. Failure surfaces in the shell's error strip; the busy flag covers the
+   * in-flight state.
    */
-  async webuiCommand(
-    command: DesktopWebuiCommand,
-    label: string,
-    runtimeId?: string,
-  ): Promise<void> {
+  async webuiCommand(command: DesktopWebuiCommand, runtimeId?: string): Promise<void> {
     return withBusy(async () => {
-      const commandKey = runtimeId ? `${runtimeId}:${label}` : label;
-      set({ launcher: { state: 'pending', label, commandKey } });
-      try {
-        if (runtimeId) {
-          const next = await api().activateRuntime(runtimeId);
-          set({ desktop: next });
-        }
-        const ok = await api().navigateWebui(command);
-        if (ok) {
-          set({ launcher: { state: 'success', label, commandKey } });
-          return;
-        }
-        set({
-          launcher: {
-            state: 'error',
-            label,
-            commandKey,
-            message: t('sessionLauncherError'),
-          },
-          error: t('sessionLauncherError'),
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        set({ launcher: { state: 'error', label, commandKey, message }, error: message });
+      if (runtimeId) {
+        const next = await api().activateRuntime(runtimeId);
+        set({ desktop: next });
       }
+      if (!(await api().navigateWebui(command))) throw new Error(t('sessionLauncherError'));
     });
   },
 };

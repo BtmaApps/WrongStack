@@ -136,10 +136,25 @@ function safeOpenExternal(target: string): void {
       risk: 'elevated',
       origin: 'user',
       metadata: { operation: 'open-external' },
-    }).then((authorization) => {
-      if (authorization.allowed) return shell.openExternal(target);
-      return undefined;
-    });
+    })
+      .then((authorization) => {
+        if (authorization.allowed) return shell.openExternal(target);
+        return undefined;
+      })
+      // openExternal rejects when the OS has no handler for the URL (e.g. a
+      // `mailto:` link with no mail client). Every caller fires this and
+      // forgets it, so without this the rejection is unhandled in the main
+      // process — the same fix as DesktopWebuiController.openExternal.
+      .catch((error: unknown) => {
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'desktop.open_external_failed',
+            message: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      });
   }
 }
 

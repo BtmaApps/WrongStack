@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T07:22:14.655Z",
+  "generatedAt": "2026-10-18T08:28:25.812Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5157,
-    "testFiles": 4462,
-    "sourceLines": 1118952,
+    "testFiles": 4464,
+    "sourceLines": 1118975,
     "workspaceEdges": 139,
     "moduleEdges": 16962,
     "nonCommandSlashImports": 0,
@@ -272,7 +272,7 @@
       "name": "@wrongstack/desktop",
       "dir": "apps/desktop",
       "sourceFiles": 48,
-      "testFiles": 33,
+      "testFiles": 35,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/webui",
@@ -288,7 +288,7 @@
         {
           "path": "apps/desktop/tsconfig.test.json",
           "error": null,
-          "testFiles": 33
+          "testFiles": 35
         }
       ]
     },
@@ -1190,6 +1190,12 @@
         ]
       },
       {
+        "file": "apps/desktop/tests/idle-sweep-errors.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop/tests/ipc-handlers.test.ts",
         "projects": [
           "root-node"
@@ -1215,6 +1221,12 @@
       },
       {
         "file": "apps/desktop/tests/no-bare-core-imports.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop/tests/open-external-errors.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28124,6 +28136,11 @@
       "file": "packages/vibeui/src/lib/session.ts",
       "lines": 878,
       "relativeImports": 2
+    },
+    {
+      "file": "apps/desktop/src/main/main.ts",
+      "lines": 713,
+      "relativeImports": 20
     }
   ],
   "hotspots": [
@@ -28146,6 +28163,11 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "apps/desktop/src/main/main.ts",
+      "lines": 713,
+      "relativeImports": 20
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -28181,11 +28203,6 @@
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
-    },
-    {
-      "file": "apps/desktop/src/main/main.ts",
-      "lines": 698,
-      "relativeImports": 20
     },
     {
       "file": "packages/core/src/coordination/subagent-budget.ts",
@@ -28343,6 +28360,11 @@
       "relativeImports": 6
     },
     {
+      "file": "apps/desktop/src/main/runtime-manager.ts",
+      "lines": 686,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/client/src/client.ts",
       "lines": 686,
       "relativeImports": 5
@@ -28371,11 +28393,6 @@
       "file": "packages/webui-server/src/server/provider-routes.ts",
       "lines": 685,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/webui/src/components/SkillDetailView.tsx",
-      "lines": 685,
-      "relativeImports": 4
     }
   ],
   "testOnlyExports": [

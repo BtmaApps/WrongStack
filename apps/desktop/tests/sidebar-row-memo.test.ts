@@ -60,7 +60,6 @@ function shell(desktop: DesktopStateSnapshot, over: Partial<ShellState> = {}): S
     filter: '',
     busy: false,
     error: null,
-    launcher: null,
     ...over,
   } as ShellState;
 }

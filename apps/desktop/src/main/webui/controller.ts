@@ -61,8 +61,22 @@ export class DesktopWebuiController {
       origin: 'remote-client',
       metadata: { operation: 'webui-navigation' },
     })
-      .then((decision) => (decision.allowed ? void shell.openExternal(target) : undefined))
-      .catch(() => undefined);
+      // Return the openExternal promise instead of `void`-ing it: it rejects when
+      // the OS has no handler for the URL (a `mailto:` link with no mail client
+      // is the everyday case), and only a returned promise reaches the `.catch`
+      // below. `void` inside the `.then` left that rejection unhandled in the
+      // Electron main process.
+      .then((decision) => (decision.allowed ? shell.openExternal(target) : undefined))
+      .catch((error: unknown) => {
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'desktop.open_external_failed',
+            message: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      });
   }
 
   private publishStatus(next: DesktopWebuiStatusSnapshot): void {

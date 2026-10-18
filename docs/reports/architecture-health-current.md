@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-18T07:22:14.655Z
+**Generated:** 2026-10-18T08:28:25.812Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5157 |
-| Production source lines | 1118952 |
-| Test files | 4462 |
+| Production source lines | 1118975 |
+| Test files | 4464 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 16962 |
 | Non-command slash imports | 0 |
@@ -33,7 +33,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/client | 7 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1147 | 990 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop | 48 | 33 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 109 | 83 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
@@ -88,6 +88,7 @@ None.
 | 878 | `packages/vibeui/src/lib/session.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 715 | `packages/plugins/src/audit/index.ts` |
+| 713 | `apps/desktop/src/main/main.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 700 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
@@ -95,7 +96,6 @@ None.
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 699 | `packages/core/src/execution/design-verify.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
-| 698 | `apps/desktop/src/main/main.ts` |
 | 698 | `packages/core/src/coordination/subagent-budget.ts` |
 | 698 | `packages/vibeui/src/lib/use-session.ts` |
 | 697 | `packages/core/src/security/secret-vault.ts` |
@@ -127,13 +127,13 @@ None.
 | 687 | `packages/core/src/chronicle/project-server-client.ts` |
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |
+| 686 | `apps/desktop/src/main/runtime-manager.ts` |
 | 686 | `packages/client/src/client.ts` |
 | 686 | `packages/core/src/coordination/provider-status-tracker.ts` |
 | 686 | `packages/webui-server/src/server/session-handler-helpers.ts` |
 | 685 | `packages/core/src/session-catalog/session-registry.ts` |
 | 685 | `packages/tools/src/browser/tools.ts` |
 | 685 | `packages/webui-server/src/server/provider-routes.ts` |
-| 685 | `packages/webui/src/components/SkillDetailView.tsx` |
 
 ## Exports only tests reference
 

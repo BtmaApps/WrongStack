@@ -87,6 +87,18 @@ const START_TIMEOUT_MS = 30_000;
 const DEFAULT_IDLE_MINUTES = 15;
 const IDLE_SWEEP_INTERVAL_MS = 60_000;
 
+function logIdleSweepFailure(runtimeId: string | null, error: unknown): void {
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      event: 'desktop.idle_sweep_failed',
+      runtimeId,
+      message: toErrorMessage(error),
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
 export function resolveIdleTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
   const raw = Number.parseFloat(env.WRONGSTACK_DESKTOP_IDLE_MINUTES ?? '');
   if (Number.isFinite(raw)) return raw > 0 ? raw * 60_000 : 0;
@@ -612,7 +624,12 @@ export class DesktopRuntimeManager extends EventEmitter {
     this.idleTimeoutMs = options.idleTimeoutMs ?? resolveIdleTimeoutMs();
     if (this.idleTimeoutMs <= 0) return;
     this.idleSweepTimer = setInterval(() => {
-      void this.sweepIdleRuntimes();
+      // A timer has no caller to hand a rejection to. `sweepIdleRuntimes`
+      // already isolates each close; this is the backstop so nothing it does
+      // can surface as an unhandled rejection in the main process.
+      void this.sweepIdleRuntimes().catch((error: unknown) => {
+        logIdleSweepFailure(null, error);
+      });
     }, IDLE_SWEEP_INTERVAL_MS);
     this.idleSweepTimer.unref?.();
   }
@@ -633,7 +650,15 @@ export class DesktopRuntimeManager extends EventEmitter {
     for (const id of ids) {
       // The workspace record is left alone on purpose: the project should come
       // back on the next launch, and it is only the process being reclaimed.
-      await this.closeRuntimeInternal(id, { persistWorkspace: false });
+      //
+      // Each close is isolated: `closeRuntimeInternal` ends in a synchronous
+      // `'changed'` emit into main-process listeners, and one of them throwing
+      // must not strand every idle runtime queued after it.
+      try {
+        await this.closeRuntimeInternal(id, { persistWorkspace: false });
+      } catch (error) {
+        logIdleSweepFailure(id, error);
+      }
     }
     return ids;
   }

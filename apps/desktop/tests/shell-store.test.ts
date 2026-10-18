@@ -111,9 +111,9 @@ describe('shell store', () => {
     );
     const navigateWebui = vi.fn(async () => true);
     installBridge({ activateRuntime, navigateWebui });
-    const first = store.actions.focusSession('first', 'session-first', 'First');
+    const first = store.actions.focusSession('first', 'session-first');
     expect(store.getSnapshot().busy).toBe(true);
-    await store.actions.focusSession('second', 'session-second', 'Second');
+    await store.actions.focusSession('second', 'session-second');
     expect(activateRuntime).toHaveBeenCalledTimes(1);
     expect(navigateWebui).not.toHaveBeenCalled();
     finish(snapshot({ activeRuntimeId: 'first' }));
@@ -129,14 +129,22 @@ describe('shell store', () => {
       .mockResolvedValue(snapshot({ activeRuntimeId: 'second' }));
     const navigateWebui = vi.fn(async () => true);
     installBridge({ activateRuntime, navigateWebui });
-    await store.actions.focusSession('first', 'session-first', 'First');
+    await store.actions.focusSession('first', 'session-first');
     expect(store.getSnapshot().busy).toBe(false);
     expect(store.getSnapshot().error).toBe('runtime disconnected');
     expect(navigateWebui).not.toHaveBeenCalled();
-    await store.actions.focusSession('second', 'session-second', 'Second');
+    await store.actions.focusSession('second', 'session-second');
     expect(store.getSnapshot().error).toBeNull();
     expect(navigateWebui).toHaveBeenCalledWith({ sessionId: 'session-second' });
-    expect(store.getSnapshot().launcher?.state).toBe('success');
+  });
+
+  it('reports a session the WebUI did not handle in the error strip', async () => {
+    const navigateWebui = vi.fn(async () => false);
+    installBridge({ navigateWebui });
+    await store.actions.focusSession('first', 'session-first');
+    expect(navigateWebui).toHaveBeenCalledWith({ sessionId: 'session-first' });
+    expect(store.getSnapshot().error).toBeTruthy();
+    expect(store.getSnapshot().busy).toBe(false);
   });
 
   it('reopens a stopped project only after its previous runtime is closed', async () => {

@@ -154,8 +154,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 206,
-      "typeOnly": 29,
+      "files": 207,
+      "typeOnly": 30,
       "runtimeOrMixed": 179
     },
     "@wrongstack/core/session-catalog": {
@@ -11410,6 +11410,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "apps/desktop/tests/desktop-privileged-actions.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "apps/desktop/tests/open-external-errors.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

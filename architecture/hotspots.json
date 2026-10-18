@@ -21,6 +21,10 @@
     "packages/vibeui/src/lib/session.ts": {
       "lines": 878,
       "relativeImports": 2
+    },
+    "apps/desktop/src/main/main.ts": {
+      "lines": 713,
+      "relativeImports": 20
     }
   }
 }
