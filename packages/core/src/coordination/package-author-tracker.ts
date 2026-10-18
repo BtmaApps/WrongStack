@@ -176,6 +176,7 @@ export async function getPackageAuthor(
     const e = log.entries[i];
     if (
       e &&
+      e.agentId !== 'outdated-checker' &&
       e.manifestPath.replace(/\\/g, '/') === normalizedManifest &&
       e.packageName === packageName
     ) {
@@ -208,10 +209,13 @@ export async function getPackagesByAgent(
   const log = await loadLog(opts.storageDir, opts.projectRoot);
   const map = new Map<string, PackageAuthorEntry>();
   for (const e of log.entries) {
+    if (e.agentId === 'outdated-checker') continue;
+    const normPath = e.manifestPath.replace(/\\/g, '/');
+    const key = `${normPath}|${e.packageName}`;
     if (e.agentId === agentId) {
-      const normPath = e.manifestPath.replace(/\\/g, '/');
-      const key = `${normPath}|${e.packageName}`;
       map.set(key, e);
+    } else {
+      map.delete(key);
     }
   }
   return map;

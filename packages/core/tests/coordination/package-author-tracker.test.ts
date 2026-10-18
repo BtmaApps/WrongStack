@@ -1,14 +1,14 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  recordPackageAction,
-  getPackageAuthor,
-  getManifestPackages,
-  getPackagesByAgent,
-  getFullPackageLog,
-  updatePackageOutdatedStatus,
   detectEcosystem,
+  getFullPackageLog,
+  getManifestPackages,
+  getPackageAuthor,
+  getPackagesByAgent,
+  recordPackageAction,
+  updatePackageOutdatedStatus,
 } from '../../src/coordination/package-author-tracker.js';
 
 function tempDir(): string {
@@ -328,6 +328,38 @@ describe('package-author-tracker', () => {
 
       expect(entry).toBeDefined();
       expect(entry!.packageName).toBe('zod');
+    });
+
+    it('preserves human/agent author after updatePackageOutdatedStatus and drops superseded packages from getPackagesByAgent', async () => {
+      const opts = { storageDir: dir, projectRoot: '/test' };
+      await recordPackageAction(opts, {
+        manifestPath: 'package.json',
+        packageName: 'vitest',
+        versionSpec: '^2.0.0',
+        ecosystem: 'npm',
+        agentId: 'leader',
+      });
+      await updatePackageOutdatedStatus(opts, 'package.json', 'vitest', true, '2.1.0');
+      const author = await getPackageAuthor(opts, 'package.json', 'vitest');
+      expect(author?.agentId).toBe('leader');
+      expect(author?.versionSpec).toBe('^2.0.0');
+
+      await recordPackageAction(opts, {
+        manifestPath: 'package.json',
+        packageName: 'prettier',
+        versionSpec: '2.0.0',
+        ecosystem: 'npm',
+        agentId: 'agent-a',
+      });
+      await recordPackageAction(opts, {
+        manifestPath: 'package.json',
+        packageName: 'prettier',
+        versionSpec: '3.0.0',
+        ecosystem: 'npm',
+        agentId: 'agent-b',
+      });
+      const aPkgs = await getPackagesByAgent(opts, 'agent-a');
+      expect(aPkgs.size).toBe(0);
     });
   });
 });
