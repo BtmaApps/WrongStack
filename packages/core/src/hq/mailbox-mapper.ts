@@ -31,10 +31,6 @@ function previewText(
 ): string | undefined {
   if (value === undefined || value.length === 0) return undefined;
   if (policy?.rawContent === false) return '[REDACTED:hq_raw_content]';
-  if (policy?.rawContent === true) {
-    if (value.length <= maxLength) return value;
-    return `${value.slice(0, maxLength)}…`;
-  }
   return scrubAndTruncateHqPreview(value, maxLength);
 }
 
