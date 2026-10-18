@@ -589,4 +589,32 @@ describe('createMailboxMcpServer', () => {
     expect(called.result.content[0]).toMatchObject({ type: 'text' });
     expect(called.result.content[0]?.text).toContain('sqlite');
   });
+
+  it('forwards identity fields on heartbeat_self so pruned agent presence rows can be rebuilt', async () => {
+    const heartbeat = vi.fn().mockResolvedValue(undefined);
+    const host = createMailboxMcpToolHost(backend({ heartbeat }), new MailboxEventEmitter(), {
+      actor: 'agent-1',
+      sessionId: 'sess-1',
+      actorName: 'Worker One',
+      actorRole: 'builder',
+      writable: true,
+    });
+    const res = await host.callTool('mailbox_manage', {
+      action: 'heartbeat_self',
+      status: 'running',
+      currentTask: 'task-42',
+    });
+    expect(res).toEqual({ isError: false, content: { heartbeat: true, agentId: 'agent-1' } });
+    expect(heartbeat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 'agent-1',
+        sessionId: 'sess-1',
+        name: 'Worker One',
+        role: 'builder',
+        source: 'mcp',
+        status: 'running',
+        currentTask: 'task-42',
+      }),
+    );
+  });
 });

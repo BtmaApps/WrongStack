@@ -388,21 +388,27 @@ async function executeManage(
       };
     case 'restore':
       return { message: await mailbox.restore(requiredString(args, 'messageId')) };
-    case 'register_self':
+    case 'register_self': {
+      const role = optionalString(args, 'role')?.trim() || identity.actorRole;
       await mailbox.registerAgent({
         agentId: identity.actor,
         sessionId: identity.sessionId,
         name: optionalString(args, 'name')?.trim() || identity.actorName,
-        ...((optionalString(args, 'role') ?? identity.actorRole)
-          ? { role: optionalString(args, 'role') ?? identity.actorRole }
-          : {}),
+        ...(role ? { role } : {}),
         pid: process.pid,
         source: 'mcp',
       });
       return { registered: true, agentId: identity.actor };
-    case 'heartbeat_self':
+    }
+    case 'heartbeat_self': {
+      const role = optionalString(args, 'role')?.trim() || identity.actorRole;
       await mailbox.heartbeat({
         agentId: identity.actor,
+        sessionId: identity.sessionId,
+        name: optionalString(args, 'name')?.trim() || identity.actorName,
+        ...(role ? { role } : {}),
+        pid: process.pid,
+        source: 'mcp',
         ...(optionalEnum(args, 'status', HEARTBEAT_STATUSES) !== undefined
           ? { status: optionalEnum(args, 'status', HEARTBEAT_STATUSES) }
           : {}),
@@ -420,6 +426,7 @@ async function executeManage(
           : {}),
       });
       return { heartbeat: true, agentId: identity.actor };
+    }
     case 'deregister_self':
       await mailbox.deregisterAgent(identity.actor);
       return { deregistered: true, agentId: identity.actor };
