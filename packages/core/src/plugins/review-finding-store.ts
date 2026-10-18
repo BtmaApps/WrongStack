@@ -191,8 +191,8 @@ export class JsonlFindingStore implements FindingStore {
             const relinkEvent = this._makeEvent(
               match.finding.id,
               'relinked',
-              match.finding.status,
-              match.finding.status,
+              materialized.status,
+              materialized.status,
               context,
             );
             match.events.push(relinkEvent);
@@ -260,6 +260,8 @@ export class JsonlFindingStore implements FindingStore {
           resolvedBy: actor.id,
           notes: opts.reason,
         };
+      } else if (to !== 'resolved') {
+        entry.finding.resolution = undefined;
       }
 
       // Re-persist the finding record so non-event fields (resolution, etc.)

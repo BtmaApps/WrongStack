@@ -321,4 +321,20 @@ describe('getEvents', () => {
   it('returns empty array for unknown finding', async () => {
     expect(await store.getEvents('no-such')).toEqual([]);
   });
+
+  it('clears resolution metadata when a resolved finding is reopened via transition', async () => {
+    const f = makeFinding({ fingerprint: 'fp-reopen-transition' });
+    await store.upsert([f], { sessionId: 's1', reportId: 'r1', agentId: 'a1', model: 'm1' });
+    await store.transition(f.id, 'resolved', { id: 'op', kind: 'operator' }, { outcome: 'fixed' });
+    const reopened = await store.transition(
+      f.id,
+      'active',
+      { id: 'op', kind: 'operator' },
+      { reason: 'regression' },
+    );
+    expect(reopened.status).toBe('active');
+    expect(reopened.resolution).toBeUndefined();
+    const persisted = await store.get(f.id);
+    expect(persisted?.resolution).toBeUndefined();
+  });
 });
