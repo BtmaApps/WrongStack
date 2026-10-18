@@ -293,7 +293,7 @@ export class SlashCommandRegistry {
     // hazard `callerOwner` was introduced for is a bare key resolving to
     // someone else's entry, and that "someone else" can be another plugin just
     // as easily as a built-in.
-    if (entry && callerOwner !== undefined && callerOwner !== entry.owner) {
+    if (callerOwner !== undefined && (!entry || callerOwner !== entry.owner)) {
       // The caller's own command, if it still has one indexed here.
       const own = this.cmds.get(`${callerOwner}:${name}`);
       if (!own) return false;

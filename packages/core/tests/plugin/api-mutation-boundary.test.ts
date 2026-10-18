@@ -131,9 +131,10 @@ describe('an external plugin may not remove another owner’s slash command', ()
   });
 
   it('still allows unregistering its own command by either name form', () => {
-    const { api } = makeApi({ owner: 'p' });
+    const { api, scr } = makeApi({ owner: 'p' });
     api.slashCommands.register({
       name: 'plugcmd',
+      aliases: ['pc'],
       description: 'd',
       run: async () => ({}),
     } as never);
@@ -141,6 +142,17 @@ describe('an external plugin may not remove another owner’s slash command', ()
     // The registry indexes plugin commands under `<owner>:<name>`; both forms
     // must remain acceptable to the owner.
     expect(api.slashCommands.unregister('p:plugcmd')).toBe(true);
+    expect(scr.get('p:plugcmd')).toBeUndefined();
+
+    api.slashCommands.register({
+      name: 'plugcmd2',
+      aliases: ['pc2'],
+      description: 'd',
+      run: async () => ({}),
+    } as never);
+    expect(api.slashCommands.unregister('plugcmd2')).toBe(true);
+    expect(scr.get('p:plugcmd2')).toBeUndefined();
+    expect(scr.get('p:pc2')).toBeUndefined();
   });
 
   it('is a no-op rather than a throw for a command that does not exist', () => {
