@@ -115,10 +115,40 @@ describe('plan path scope with dot segments', () => {
 
   it.each([
     '/etc/passwd',
+    '/',
+    '\\',
+    '/etc/..',
+    '.',
+    './',
+    'src/..',
     'C:\\Windows\\System32\\x.dll',
     'C:/Users/u/.npmrc',
     '\\\\server\\share\\x',
-  ])('refuses the absolute path %s even under a ** scope', (expectedPath) => {
+  ])('refuses the absolute or root-resolving path %s even under a ** scope', (expectedPath) => {
     expect(valid(expectedPath, contract(['**'], []))).toBe(false);
+  });
+
+  it('normalizes allowedPaths and deniedPaths in validateTaskContractV1 and treats focused_check as read-only', async () => {
+    const { validateTaskContractV1 } = await import('../src/index.js');
+    const dotConflict = validateTaskContractV1(
+      contract(['packages/governance/**'], ['packages/./governance/**']),
+    );
+    expect(dotConflict.valid).toBe(false);
+    if (!dotConflict.valid) {
+      expect(dotConflict.issues.some((i) => i.code === 'path_scope_conflict')).toBe(true);
+    }
+
+    const base = contract([], []);
+    const readVerify = validateTaskContractV1({
+      ...base,
+      autonomy: {
+        ...base.autonomy,
+        tier: 'A1',
+        allowedOperations: ['repository_read', 'focused_check'],
+        allowedPaths: [],
+        deniedPaths: [],
+      },
+    });
+    expect(readVerify.valid).toBe(true);
   });
 });

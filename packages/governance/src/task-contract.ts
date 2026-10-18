@@ -1,3 +1,4 @@
+import { posix } from 'node:path';
 import {
   type AutonomyEnvelope,
   compareAutonomyTiers,
@@ -219,11 +220,13 @@ function validateOperationEnvelope(
 }
 
 function hasMutatingOperation(operations: readonly GovernedOperation[]): boolean {
-  return operations.some((operation) => operation !== 'repository_read');
+  return operations.some(
+    (operation) => operation !== 'repository_read' && operation !== 'focused_check',
+  );
 }
 
 function normalizePath(value: string): string {
-  return value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$/, '');
+  return posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '').replace(/\/+$/, '');
 }
 
 export function validateTaskContractV1(contract: TaskContractV1): ContractValidationResult {

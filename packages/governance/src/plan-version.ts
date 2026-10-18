@@ -167,8 +167,14 @@ function normalizePath(value: string): string {
  * `**` matched those too.
  */
 function escapesRoot(value: string): boolean {
-  const normalized = normalizePath(value);
+  const raw = value.replaceAll('\\', '/').trim();
+  if (raw.length === 0 || raw.startsWith('/') || /^[A-Za-z]:/.test(raw)) {
+    return true;
+  }
+  const normalized = normalizePath(raw);
   return (
+    normalized.length === 0 ||
+    normalized === '.' ||
     normalized === '..' ||
     normalized.startsWith('../') ||
     normalized.startsWith('/') ||
