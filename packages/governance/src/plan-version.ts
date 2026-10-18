@@ -185,7 +185,8 @@ function escapesRoot(value: string): boolean {
 function pathMatchesPattern(value: string, pattern: string): boolean {
   const path = normalizePath(value);
   const normalizedPattern = normalizePath(pattern);
-  if (normalizedPattern === '*' || normalizedPattern === '**') return true;
+  if (normalizedPattern === '**') return true;
+  if (normalizedPattern === '*') return path.length > 0 && !path.includes('/');
   if (normalizedPattern.endsWith('/**')) {
     const prefix = normalizedPattern.slice(0, -3);
     return path === prefix || path.startsWith(`${prefix}/`);

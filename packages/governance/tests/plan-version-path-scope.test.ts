@@ -151,4 +151,11 @@ describe('plan path scope with dot segments', () => {
     });
     expect(readVerify.valid).toBe(true);
   });
+
+  it('restricts single-segment root wildcard * to root-level files without matching nested paths', () => {
+    expect(valid('README.md', contract(['*'], []))).toBe(true);
+    expect(valid('packages/governance/src/plan-version.ts', contract(['*'], []))).toBe(false);
+    expect(valid('packages/governance/src/plan-version.ts', contract(['**'], ['*']))).toBe(true);
+    expect(valid('README.md', contract(['**'], ['*']))).toBe(false);
+  });
 });
