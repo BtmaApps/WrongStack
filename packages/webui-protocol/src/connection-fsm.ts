@@ -126,8 +126,12 @@ export function isConnectionHeartbeatTimedOut(
   now = Date.now(),
 ): boolean {
   if (state.phase !== 'open' || state.lastActivityAt === null) return false;
-  if (config.heartbeatIntervalMs <= 0) return false;
-  return now - state.lastActivityAt > config.heartbeatIntervalMs + config.heartbeatTimeoutMs;
+  if (!Number.isFinite(config.heartbeatIntervalMs) || config.heartbeatIntervalMs <= 0) return false;
+  const timeoutMs = finiteNonNegative(
+    config.heartbeatTimeoutMs,
+    DEFAULT_SURFACE_CONNECTION_CONFIG.heartbeatTimeoutMs,
+  );
+  return now - state.lastActivityAt > config.heartbeatIntervalMs + timeoutMs;
 }
 
 export function enqueueBounded<T>(

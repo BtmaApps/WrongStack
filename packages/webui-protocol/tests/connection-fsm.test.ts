@@ -246,6 +246,28 @@ describe('isConnectionHeartbeatTimedOut', () => {
     expect(isConnectionHeartbeatTimedOut(state, cfg, 2500)).toBe(false);
     expect(isConnectionHeartbeatTimedOut(state, cfg, 2501)).toBe(true);
   });
+
+  it('normalizes negative or non-finite heartbeatTimeoutMs and rejects non-finite heartbeatIntervalMs', () => {
+    const state = {
+      ...createSurfaceConnectionState(),
+      phase: 'open' as const,
+      lastActivityAt: 1000,
+    };
+    expect(
+      isConnectionHeartbeatTimedOut(
+        state,
+        { ...cfg, heartbeatIntervalMs: 1000, heartbeatTimeoutMs: -5000 },
+        1500,
+      ),
+    ).toBe(false);
+    expect(
+      isConnectionHeartbeatTimedOut(
+        state,
+        { ...cfg, heartbeatIntervalMs: Number.POSITIVE_INFINITY, heartbeatTimeoutMs: 500 },
+        5000,
+      ),
+    ).toBe(false);
+  });
 });
 
 describe('enqueueBounded', () => {
