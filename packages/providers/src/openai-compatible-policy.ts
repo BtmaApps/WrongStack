@@ -47,7 +47,8 @@ function applyOpenRouter(body: Record<string, unknown>, req: Request): void {
   if (!input) return;
 
   const reasoning: Record<string, unknown> = {};
-  if (input.effort !== undefined) reasoning['effort'] = input.effort;
+  if (input.enabled === false || input.effort === 'none') reasoning['enabled'] = false;
+  else if (input.effort !== undefined) reasoning['effort'] = input.effort;
   else if (input.enabled !== undefined) reasoning['enabled'] = input.enabled;
   if (input.display === 'omitted') reasoning['exclude'] = true;
   else if (input.display === 'summarized') reasoning['exclude'] = false;
@@ -216,7 +217,11 @@ function applyGroq(body: Record<string, unknown>, req: Request): void {
     ) {
       body['reasoning_format'] = 'parsed';
     }
-  } else if (model.includes('gpt-oss') && isOneOf(effort, ['low', 'medium', 'high'])) {
+  } else if (
+    model.includes('gpt-oss') &&
+    req.reasoning?.enabled !== false &&
+    isOneOf(effort, ['low', 'medium', 'high'])
+  ) {
     body['reasoning_effort'] = effort;
     body['include_reasoning'] = true;
   }

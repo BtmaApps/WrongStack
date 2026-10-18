@@ -250,4 +250,22 @@ describe('OpenAI-compatible provider policy', () => {
     );
     expect(plain).toEqual({});
   });
+
+  it('honors reasoning.enabled === false even when effort is configured on OpenRouter and Groq gpt-oss', () => {
+    const openRouterBody: Record<string, unknown> = { reasoning_effort: 'high' };
+    applyOpenAICompatiblePolicy(
+      openRouterBody,
+      request('anthropic/claude-sonnet-4', { reasoning: { enabled: false, effort: 'high' } }),
+      'openrouter',
+    );
+    expect(openRouterBody).toEqual({ reasoning: { enabled: false } });
+
+    const groqGptOssBody: Record<string, unknown> = { reasoning_effort: 'high' };
+    applyOpenAICompatiblePolicy(
+      groqGptOssBody,
+      request('openai/gpt-oss-120b', { reasoning: { enabled: false, effort: 'high' } }),
+      'groq',
+    );
+    expect(groqGptOssBody).toEqual({});
+  });
 });
