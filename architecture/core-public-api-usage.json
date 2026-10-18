@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 277,
+      "files": 278,
       "typeOnly": 106,
-      "runtimeOrMixed": 235
+      "runtimeOrMixed": 236
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 56
     },
     "@wrongstack/core/kernel": {
-      "files": 375,
+      "files": 376,
       "typeOnly": 162,
-      "runtimeOrMixed": 233
+      "runtimeOrMixed": 234
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1452,
-      "typeOnly": 1279,
+      "files": 1453,
+      "typeOnly": 1280,
       "runtimeOrMixed": 429
     },
     "@wrongstack/core/types/limits": {
@@ -3756,6 +3756,12 @@
       "file": "packages/cli/tests/fleet/memory-companion.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/shadow-pass-unhandled.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -7828,6 +7834,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet/memory-companion.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/shadow-pass-unhandled.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -16714,6 +16726,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/memory-companion.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/shadow-pass-unhandled.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

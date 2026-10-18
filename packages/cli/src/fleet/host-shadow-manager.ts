@@ -95,6 +95,18 @@ function emptySessionState(heartbeatIntervalMs: number): ShadowSessionState {
   };
 }
 
+function logShadowFailure(event: string, sessionId: string, error: unknown): void {
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      event: `fleet.${event}`,
+      sessionId,
+      message: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
 /** An entry with nothing in flight and nothing to remember is free to evict. */
 function isDisposable(state: ShadowSessionState): boolean {
   return (
@@ -203,7 +215,11 @@ export class HostShadowManager {
     const state = this.peek(sessionId);
     state?.outstandingTaskIds.delete(taskId);
     if (state?.stopAfterTaskIds.delete(taskId)) {
-      void this.stopShadowAfterTask(subagentId, this.resolve(sessionId));
+      const owner = this.resolve(sessionId);
+      // Same fire-and-forget shape: coordinator.stop() can reject.
+      void this.stopShadowAfterTask(subagentId, owner).catch((error: unknown) =>
+        logShadowFailure('shadow_stop_failed', owner, error),
+      );
     }
   }
 
@@ -338,8 +354,15 @@ export class HostShadowManager {
 
   requestShadowPass(reason: string, sessionId?: string | undefined): void {
     const id = this.resolve(sessionId);
+    // Fired from event handlers, so nothing awaits it. `runHostShadowPass`
+    // only swallows FleetSpawnBudgetError; the director also refuses a spawn
+    // on the cost/token caps and leader context pressure, and assignment can
+    // fail. A reviewer that could not start is a missed review, not a reason
+    // to raise an unhandled rejection in the host process.
     queueMicrotask(() => {
-      void this.runShadowPass(reason, id);
+      void this.runShadowPass(reason, id).catch((error: unknown) =>
+        logShadowFailure('shadow_pass_failed', id, error),
+      );
     });
   }
 

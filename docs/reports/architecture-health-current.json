@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T09:20:38.867Z",
+  "generatedAt": "2026-10-18T09:28:12.933Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5157,
-    "testFiles": 4464,
-    "sourceLines": 1118996,
+    "testFiles": 4465,
+    "sourceLines": 1119019,
     "workspaceEdges": 139,
     "moduleEdges": 16962,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 668,
-      "testFiles": 653,
+      "testFiles": 654,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 653
+          "testFiles": 654
         }
       ]
     },
@@ -3045,6 +3045,12 @@
       },
       {
         "file": "packages/cli/tests/fleet/memory-companion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/fleet/shadow-pass-unhandled.test.ts",
         "projects": [
           "root-node"
         ]
