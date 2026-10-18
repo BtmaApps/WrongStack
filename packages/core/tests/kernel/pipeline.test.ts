@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Pipeline, type Middleware } from '../../src/kernel/pipeline.js';
+import { type Middleware, Pipeline } from '../../src/kernel/pipeline.js';
 
 function useMiddleware<T>(pipeline: Pipeline<T>, middleware: Middleware<T>): void {
   pipeline.use(middleware);
@@ -110,6 +110,20 @@ describe('Pipeline', () => {
     });
     expect(await p.run('')).toBe('AB');
     expect(order).toEqual(['a-before', 'b-before', 'b-after', 'a-after']);
+  });
+
+  it('identifies the offending middleware when next() is called multiple times', async () => {
+    const p = new Pipeline<number>();
+    useMiddleware(p, {
+      name: 'double-caller',
+      handler: async (v, next) => {
+        await next(v);
+        return next(v);
+      },
+    });
+    await expect(p.run(1)).rejects.toThrow(
+      'Pipeline: next() called multiple times in "double-caller"',
+    );
   });
 
   describe('error boundary (L1-F)', () => {

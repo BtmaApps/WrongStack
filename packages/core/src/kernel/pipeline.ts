@@ -191,7 +191,7 @@ export class Pipeline<T> {
 
     const dispatch = async (i: number, value: T): Promise<T> => {
       if (i <= index) {
-        const offender = chain[index]?.name;
+        const offender = chain[i - 1]?.name;
         throw new WrongStackError({
           message: `Pipeline: next() called multiple times in "${offender}"`,
           code: ERROR_CODES.VALIDATION_ERROR,
