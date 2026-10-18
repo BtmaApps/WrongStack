@@ -479,5 +479,19 @@ describe('digestAtlas', () => {
       ],
     };
     expect(digestAtlas(boundaryThrashAtlas as never)?.selfThrashWorkspaces).toEqual([]);
+
+    const negConflict = summarizeFriction({
+      total_collisions: 10,
+      edges: [
+        {
+          author_model: 'claude',
+          overwriter_model: 'claude',
+          conflict_count: -4,
+          is_self_thrash: true,
+        },
+      ],
+    } as never);
+    expect(negConflict.selfThrashRatioPct).toBeGreaterThanOrEqual(0);
+    expect(summarizeFriction({ total_collisions: -5, edges: [] } as never).totalCollisions).toBe(0);
   });
 });

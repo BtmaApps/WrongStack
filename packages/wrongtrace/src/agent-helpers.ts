@@ -221,15 +221,16 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
   // second arm could never be taken once the first was false — dead code that
   // pinned the package's 100% branch threshold below 100%. One read suffices.
   const rawTotal = (friction as { total_collisions?: unknown }).total_collisions;
-  const total = typeof rawTotal === 'number' ? rawTotal : edges.length;
-  if (total === 0) return empty;
+  const hasValidTotal = typeof rawTotal === 'number' && Number.isFinite(rawTotal) && rawTotal >= 0;
+  const total = hasValidTotal ? rawTotal : edges.length;
+  if (total <= 0) return empty;
 
   // Find top pair by total conflict_count across both directions.
   const pairTotals = new Map<string, { count: number; a: string; b: string }>();
   for (const e of edges) {
     const key = [e.author_model, e.overwriter_model].sort().join('|');
     const raw = (e as { conflict_count?: unknown }).conflict_count;
-    const c = typeof raw === 'number' ? raw : 1;
+    const c = typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 1;
     const cur = pairTotals.get(key);
     if (cur) cur.count = cur.count + c;
     else pairTotals.set(key, { count: c, a: e.author_model, b: e.overwriter_model });
@@ -247,17 +248,17 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
   // correct unit. Percentages are clamped to [0,100] so a self-thrash
   // collision sum bigger than the daemon's windowed total renders 100%,
   // never 1433%.
-  const collisionUnits = typeof rawTotal === 'number';
+  const collisionUnits = hasValidTotal;
   const selfThrash = edges.reduce((acc, e) => {
     const isSelf = e.is_self_thrash ?? e.author_model === e.overwriter_model;
     if (!isSelf) return acc;
     if (!collisionUnits) return acc + 1;
     const raw = (e as { conflict_count?: unknown }).conflict_count;
-    return acc + (typeof raw === 'number' ? raw : 1);
+    return acc + (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 1);
   }, 0);
   const crossAgent = Math.max(0, total - selfThrash);
-  const crossAgentRatioPct = Math.min(100, Math.round((crossAgent / total) * 100));
-  const selfThrashRatioPct = Math.min(100, Math.round((selfThrash / total) * 100));
+  const crossAgentRatioPct = Math.max(0, Math.min(100, Math.round((crossAgent / total) * 100)));
+  const selfThrashRatioPct = Math.max(0, Math.min(100, Math.round((selfThrash / total) * 100)));
 
   const prose =
     (topPair ? `Top friction pair: ${topPair}. ` : '') +
