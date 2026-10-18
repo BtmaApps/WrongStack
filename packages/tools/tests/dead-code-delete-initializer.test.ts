@@ -52,4 +52,22 @@ describe('dead-code fix keeps delete initializers', () => {
     );
     expect(out).toBe('export const k = 1;\n');
   });
+
+  it('cascade does not delete pure assignments to shadowed parameter bindings in surviving functions', () => {
+    const original =
+      'let state = "init";\n' +
+      'export function deadReader(): string {\n  return state;\n}\n' +
+      'export function reset(): void {\n  state = "idle";\n}\n' +
+      'export function live(state: string): string {\n  state = "normalized";\n  return state;\n}\n';
+    const current = computeFileEdit(
+      ts,
+      'a.ts',
+      original,
+      ops({ removeDeclarations: ['deadReader'] }),
+    );
+    expect(cascadeCleanup(ts, 'a.ts', original, current)).toBe(
+      'export function reset(): void {\n}\n' +
+        'export function live(state: string): string {\n  state = "normalized";\n  return state;\n}\n',
+    );
+  });
 });

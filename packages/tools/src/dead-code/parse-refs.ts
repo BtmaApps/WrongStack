@@ -187,7 +187,7 @@ function blockDeclarations(ts: Ts, statements: readonly TS.Statement[], out: str
  * reference inside the node to one of these names is NOT a use of a
  * top-level binding of the same name.
  */
-function innerScopeNames(ts: Ts, node: TS.Node): string[] {
+export function innerScopeNames(ts: Ts, node: TS.Node): string[] {
   if (ts.isSourceFile(node)) return [];
   const out: string[] = [];
   if (isFunctionLike(ts, node)) {

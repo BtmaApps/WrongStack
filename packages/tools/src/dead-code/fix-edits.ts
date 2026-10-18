@@ -4,7 +4,13 @@
  */
 
 import type * as TS from '@typescript/typescript6';
-import { buildRefIndex, createSource, extractModuleFacts, isWriteOnlyPosition } from './parse.js';
+import {
+  buildRefIndex,
+  createSource,
+  extractModuleFacts,
+  innerScopeNames,
+  isWriteOnlyPosition,
+} from './parse.js';
 
 type Ts = typeof import('@typescript/typescript6');
 
@@ -364,9 +370,15 @@ function isPureExpression(ts: Ts, e: TS.Expression): boolean {
 function pureAssignmentStatements(ts: Ts, sf: TS.SourceFile, name: string): TS.Statement[] | null {
   const out: TS.Statement[] = [];
   let impure = false;
-  const visit = (node: TS.Node): void => {
+  const visit = (node: TS.Node, shadowed: boolean): void => {
     if (impure) return;
-    if (ts.isIdentifier(node) && node.text === name && isWriteOnlyPosition(ts, node)) {
+    const nextShadowed = shadowed || innerScopeNames(ts, node).includes(name);
+    if (
+      !nextShadowed &&
+      ts.isIdentifier(node) &&
+      node.text === name &&
+      isWriteOnlyPosition(ts, node)
+    ) {
       const write = node.parent;
       const stmt = write.parent;
       if (
@@ -381,9 +393,9 @@ function pureAssignmentStatements(ts: Ts, sf: TS.SourceFile, name: string): TS.S
       }
       return;
     }
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, (child) => visit(child, nextShadowed));
   };
-  visit(sf);
+  visit(sf, false);
   return impure ? null : out;
 }
 

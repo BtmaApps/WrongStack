@@ -41,7 +41,7 @@ export type {
   ModuleFacts,
   ReExportFact,
 } from './parse-facts.js';
-export { buildRefIndex, createSource, isWriteOnlyPosition } from './parse-refs.js';
+export { buildRefIndex, createSource, innerScopeNames, isWriteOnlyPosition } from './parse-refs.js';
 
 const ENV_PRAGMA = /@(?:vitest|jest)-environment\s+([\w@./-]+)/g;
 
