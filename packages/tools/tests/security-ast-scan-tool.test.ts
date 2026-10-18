@@ -132,14 +132,14 @@ const emailRegex = /^([a-zA-Z0-9_]+)+@domain.com$/;
         { signal: new AbortController().signal },
       );
 
-    it('does not report clean for a Swift file; it says the code was not checked', async () => {
+    it('does not report clean for an unsupported-language file; it says the code was not checked', async () => {
       const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ast-scan-swift-'));
       try {
         await fs.mkdir(path.join(dir, 'Sources'));
-        await fs.writeFile(path.join(dir, 'Sources', 'Foo.swift'), swift);
-        const res = await run({ file: 'Sources/Foo.swift' }, dir);
+        await fs.writeFile(path.join(dir, 'Sources', 'Foo.zig'), swift);
+        const res = await run({ file: 'Sources/Foo.zig' }, dir);
         expect(res.status).toBe('unsupported_language');
-        expect(res.language).toBe('swift');
+        expect(res.language).toBe('zig');
         expect(res.languageSupported).toBe(false);
         expect(res.summary).toContain('NOT CHECKED');
         expect(res.summary).not.toContain('CLEAN');
@@ -149,13 +149,13 @@ const emailRegex = /^([a-zA-Z0-9_]+)+@domain.com$/;
     });
 
     it('names inline content after the declared language instead of assuming .ts', async () => {
-      const res = await run({ content: swift, language: 'swift' });
+      const res = await run({ content: swift, language: 'zig' });
       expect(res.status).toBe('unsupported_language');
-      expect(res.summary).toContain('inline-code.swift');
+      expect(res.summary).toContain('inline-code.zig');
     });
 
     it('does not apply the JS rules to non-JS content', async () => {
-      const res = await run({ content: 'eval("x")', language: 'python' });
+      const res = await run({ content: 'eval("x")', language: 'zig' });
       expect(res.findings.some((f) => f.ruleId === 'sec/unsafe-dynamic-exec')).toBe(false);
       expect(res.status).toBe('unsupported_language');
     });
@@ -163,7 +163,7 @@ const emailRegex = /^([a-zA-Z0-9_]+)+@domain.com$/;
     it('still reports secrets in an unsupported language and flags the partial coverage', async () => {
       const res = await run({
         content: 'let key = "AKIAIOSFODNN7EXAMPLE"',
-        language: '.swift',
+        language: '.zig',
       });
       expect(res.status).toBe('findings_detected');
       expect(res.findings.map((f) => f.ruleId)).toEqual(['sec/hardcoded-secret']);

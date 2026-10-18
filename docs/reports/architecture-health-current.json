@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T21:03:01.709Z",
+  "generatedAt": "2026-10-18T21:29:02.214Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5163,
-    "testFiles": 4482,
-    "sourceLines": 1120350,
+    "sourceFiles": 5164,
+    "testFiles": 4484,
+    "sourceLines": 1120754,
     "workspaceEdges": 139,
-    "moduleEdges": 16997,
+    "moduleEdges": 16999,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -770,8 +770,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 335,
-      "testFiles": 329,
+      "sourceFiles": 336,
+      "testFiles": 330,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 329
+          "testFiles": 330
         }
       ]
     },
@@ -795,7 +795,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 496,
-      "testFiles": 426,
+      "testFiles": 427,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -818,7 +818,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 426
+          "testFiles": 427
         }
       ]
     },
@@ -19742,6 +19742,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/security-scan-languages.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/session-kanban-completed-churn.test.ts",
         "projects": [
           "root-node"
@@ -20307,6 +20313,12 @@
       },
       {
         "file": "packages/tui/tests/clipboard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/code-block-diff-count.test.ts",
         "projects": [
           "root-node"
         ]

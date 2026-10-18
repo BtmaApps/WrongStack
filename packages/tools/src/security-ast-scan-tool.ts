@@ -9,32 +9,26 @@
  * 5. ReDoS (Regular Expression Denial of Service) nested backtracking
  * 6. Unsafe dynamic execution (eval, new Function, unsanitized child_process.exec)
  *
- * Rules 2-6 are JavaScript/TypeScript line heuristics. Any other language only
- * gets the language-agnostic secret scan, and a result with no findings says so
- * (`unsupported_language`) instead of reporting `clean`.
+ * Rules 2-6 are JavaScript/TypeScript line heuristics. Other languages with a
+ * profile (see security-scan-languages.ts) run that profile's rules, and every
+ * other language only gets the language-agnostic secret scan: a result with no
+ * findings there says so (`unsupported_language`) instead of reporting `clean`.
  */
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
 import { safeResolveProjectPath } from './_util.js';
+import {
+  analyzeWithProfile,
+  profileRuleIds,
+  resolveScanLanguage,
+  type SecurityFinding,
+  type SecurityRuleId,
+} from './security-scan-languages.js';
 
-export interface SecurityFinding {
-  ruleId:
-    | 'perf/n-plus-one-query'
-    | 'sec/sql-injection'
-    | 'sec/hardcoded-secret'
-    | 'sec/prototype-pollution'
-    | 'sec/redos-vulnerable-regex'
-    | 'sec/unsafe-dynamic-exec';
-  category: 'security' | 'performance';
-  severity: 'critical' | 'warning' | 'info';
-  file: string;
-  line: number;
-  message: string;
-  snippet: string;
-  recommendation: string;
-}
+export type { ResolvedScanLanguage, SecurityFinding } from './security-scan-languages.js';
+export { resolveScanLanguage };
 
 export interface SecurityScanInput {
   /** File path to scan (relative to project root or absolute). */
@@ -56,8 +50,10 @@ export interface SecurityScanOutput {
   status: 'clean' | 'findings_detected' | 'unsupported_language';
   /** Language the scan resolved for this input. */
   language?: string | undefined;
-  /** False when the code rules (everything but secrets) do not cover `language`. */
+  /** False when no code rules exist for `language` (only the secret scan ran). */
   languageSupported?: boolean | undefined;
+  /** Rule ids that were evaluated, so a clean result says what it actually covered. */
+  rulesChecked?: SecurityRuleId[] | undefined;
   filesScanned: number;
   totalFindings: number;
   criticalCount: number;
@@ -94,56 +90,14 @@ const SQL_INTERPOLATION_REGEX = /(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN)
 
 const RAW_SQL_CONCAT_REGEX = /(?:SELECT|INSERT|UPDATE|DELETE).+['"]\s*\+\s*[a-zA-Z0-9_]/i;
 
-const LANGUAGE_BY_EXTENSION: Record<string, 'typescript' | 'javascript'> = {
-  ts: 'typescript',
-  tsx: 'typescript',
-  mts: 'typescript',
-  cts: 'typescript',
-  js: 'javascript',
-  jsx: 'javascript',
-  mjs: 'javascript',
-  cjs: 'javascript',
-};
-
-const LANGUAGE_ALIASES: Record<string, 'typescript' | 'javascript'> = {
-  typescript: 'typescript',
-  javascript: 'javascript',
-  node: 'javascript',
-  nodejs: 'javascript',
-};
-
-export interface ResolvedScanLanguage {
-  /** Canonical id for supported languages, otherwise the normalised hint or extension. */
-  id: string;
-  supported: boolean;
-}
-
-function normaliseLanguageHint(hint: string): string {
-  return hint
-    .trim()
-    .toLowerCase()
-    .replace(/^\./, '')
-    .replace(/[^a-z0-9+#_-]/g, '');
-}
-
-/** Resolve the scan language from an explicit hint, then the file extension, then the TS default. */
-export function resolveScanLanguage(
-  file: string | undefined,
-  language: string | undefined,
-): ResolvedScanLanguage {
-  const hint = language ? normaliseLanguageHint(language) : '';
-  if (hint) {
-    const known = LANGUAGE_BY_EXTENSION[hint] ?? LANGUAGE_ALIASES[hint];
-    return known ? { id: known, supported: true } : { id: hint, supported: false };
-  }
-  if (file) {
-    const ext = path.extname(file).slice(1).toLowerCase();
-    const known = LANGUAGE_BY_EXTENSION[ext];
-    if (known) return { id: known, supported: true };
-    return { id: ext || 'unknown', supported: false };
-  }
-  return { id: 'typescript', supported: true };
-}
+const JS_TS_RULE_IDS: SecurityRuleId[] = [
+  'sec/hardcoded-secret',
+  'sec/prototype-pollution',
+  'sec/unsafe-dynamic-exec',
+  'sec/sql-injection',
+  'sec/redos-vulnerable-regex',
+  'perf/n-plus-one-query',
+];
 
 export function analyzeSecurityAndPerformance(
   filePath: string,
@@ -319,7 +273,7 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
   description:
     'Scan source code for contract-based security vulnerabilities and performance bottlenecks ' +
     '(N+1 SQL queries, SQL injection, hardcoded secrets, prototype pollution, ReDoS, and unsafe eval). ' +
-    'Code rules cover JavaScript/TypeScript only; other languages get the secret scan and report `unsupported_language`.',
+    'Code rules cover JavaScript/TypeScript plus Python, Go, Rust, Java, Kotlin, Scala, C#, PHP, Ruby, Swift, C/C++ and shell; any other language gets the secret scan and reports `unsupported_language`.',
   usageHint:
     'RUN AFTER WRITING OR REFACTORING CODE TO CATCH HIDDEN DEFECTS:\n\n' +
     '- Pass `file: "src/user-service.ts"` or direct `content: "..."` (add `language` for non-TS content).\n' +
@@ -357,7 +311,8 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
   async execute(input, ctx) {
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
     const resolved = resolveScanLanguage(input.file, input.language);
-    let targetFile = input.file ?? `inline-code.${resolved.supported ? 'ts' : resolved.id}`;
+    const inlineExt = resolved.profile?.extensions[0] ?? (resolved.supported ? 'ts' : resolved.id);
+    let targetFile = input.file ?? `inline-code.${inlineExt}`;
     let content = input.content;
 
     if (!content && input.file) {
@@ -383,13 +338,24 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
       };
     }
 
+    // JS/TS run the dedicated rules; other supported languages run their profile
+    // table on top of the language-agnostic secret scan; the rest get secrets only.
     let findings = analyzeSecurityAndPerformance(targetFile, content, {
-      secretsOnly: !resolved.supported,
+      secretsOnly: resolved.profile !== undefined || !resolved.supported,
     });
+    if (resolved.profile) {
+      findings = [...findings, ...analyzeWithProfile(targetFile, content, resolved.profile)];
+    }
+    let rulesChecked: SecurityRuleId[] = !resolved.supported
+      ? ['sec/hardcoded-secret']
+      : resolved.profile
+        ? ['sec/hardcoded-secret', ...profileRuleIds(resolved.profile)]
+        : JS_TS_RULE_IDS;
 
     if (input.rules && input.rules.length > 0) {
       const ruleSet = new Set(input.rules);
       findings = findings.filter((f) => ruleSet.has(f.ruleId));
+      rulesChecked = rulesChecked.filter((id) => ruleSet.has(id));
     }
 
     const criticalCount = findings.filter((f) => f.severity === 'critical').length;
@@ -404,18 +370,19 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
           : 'unsupported_language';
     const unsupportedNote = resolved.supported
       ? ''
-      : ` Only the secret scan ran: the code rules cover JavaScript/TypeScript, not "${resolved.id}".`;
+      : ` Only the secret scan ran: no code rules exist for "${resolved.id}".`;
     const summary =
       status === 'unsupported_language'
         ? `Security & Performance AST Scan: NOT CHECKED (${targetFile}). Unsupported language "${resolved.id}": only the secret scan ran and found nothing. This is not a clean result.`
         : status === 'clean'
-          ? `Security & Performance AST Scan: CLEAN (${targetFile})`
+          ? `Security & Performance AST Scan: CLEAN (${targetFile}), checked: ${rulesChecked.join(', ')}`
           : `Security & Performance AST Scan: ${totalFindings} issue(s) detected (${criticalCount} critical, ${warningCount} warning).${unsupportedNote}`;
 
     return {
       status,
       language: resolved.id,
       languageSupported: resolved.supported,
+      rulesChecked,
       filesScanned: 1,
       totalFindings,
       criticalCount,
