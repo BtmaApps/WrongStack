@@ -394,6 +394,27 @@ describe('createCodebaseIndexMcpServer', () => {
     expect(observedSignal?.aborted).toBe(true);
     await expect(pending).resolves.toContain('client stopped');
   });
+
+  it('forbids preferLsp on codebase_search and rejects empty or blank langs on codebase_index', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ ok: true });
+    const host = createCodebaseIndexMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: { executeTool },
+    });
+    const searchTool = host.listTools().find((t) => t.name === 'codebase_search');
+    expect(searchTool?.inputSchema).toMatchObject({ additionalProperties: false });
+
+    await expect(
+      host.callTool('codebase_search', { query: 'symbol', preferLsp: true }),
+    ).resolves.toMatchObject({ isError: true });
+    await expect(host.callTool('codebase_index', { langs: [] })).resolves.toMatchObject({
+      isError: true,
+    });
+    await expect(host.callTool('codebase_index', { langs: ['   '] })).resolves.toMatchObject({
+      isError: true,
+    });
+    expect(executeTool).not.toHaveBeenCalled();
+  });
 });
 
 function skeletonOutput(dir: string, skeleton: string) {

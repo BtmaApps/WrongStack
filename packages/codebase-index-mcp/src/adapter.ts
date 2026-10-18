@@ -134,6 +134,7 @@ function cloneToolSchema(name: CodebaseIndexMcpToolName, tool: Tool): Record<str
   if (name === 'codebase_search') {
     const properties = schema.properties as Record<string, unknown> | undefined;
     if (properties) delete properties['preferLsp'];
+    (schema as unknown as Record<string, unknown>)['additionalProperties'] = false;
   }
   return schema as unknown as Record<string, unknown>;
 }
@@ -204,8 +205,13 @@ function validateArgs(
   name: CodebaseIndexMcpToolName,
   args: Record<string, unknown>,
 ): string | null {
-  if (name === 'codebase_search' && !nonEmptyString(args['query'])) {
-    return 'codebase_search requires a non-empty string "query"';
+  if (name === 'codebase_search') {
+    if (!nonEmptyString(args['query'])) {
+      return 'codebase_search requires a non-empty string "query"';
+    }
+    if (args['preferLsp'] !== undefined) {
+      return 'codebase_search does not accept "preferLsp" over MCP';
+    }
   }
   if (name === 'codebase_file_graph' && !nonEmptyString(args['package'])) {
     return 'codebase_file_graph requires a non-empty string "package"';
@@ -232,7 +238,9 @@ function validateArgs(
     }
     if (
       args['langs'] !== undefined &&
-      (!Array.isArray(args['langs']) || !args['langs'].every((lang) => typeof lang === 'string'))
+      (!Array.isArray(args['langs']) ||
+        args['langs'].length === 0 ||
+        !args['langs'].every((lang) => nonEmptyString(lang)))
     ) {
       return 'codebase_index "langs" must be an array of language strings';
     }
