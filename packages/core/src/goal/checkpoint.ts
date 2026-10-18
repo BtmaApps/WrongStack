@@ -65,10 +65,11 @@ export class CheckpointManager {
     // Save the graph first.
     await this.store.save(graph);
 
-    // Extract checkpoint information from the active phase.
-    const activePhase = Array.from(graph.phases.values()).find(
-      (p) => p.status === 'running' || p.status === 'paused',
-    );
+    // Extract checkpoint information from the active phase (falling back to the root phase).
+    const activePhase =
+      Array.from(graph.phases.values()).find(
+        (p) => p.status === 'running' || p.status === 'paused',
+      ) ?? (graph.rootPhaseIds[0] ? graph.phases.get(graph.rootPhaseIds[0]) : undefined);
 
     const checkpoint: Checkpoint = {
       id: crypto.randomUUID(),

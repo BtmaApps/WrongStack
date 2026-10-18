@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CheckpointManager } from '../../src/goal/checkpoint.js';
-import { PhaseStore } from '../../src/goal/phase-store.js';
 import { PhaseGraphBuilder } from '../../src/goal/phase-graph-builder.js';
+import { PhaseStore } from '../../src/goal/phase-store.js';
 
 describe('CheckpointManager', () => {
   let tmpDir: string;
@@ -53,11 +53,21 @@ describe('CheckpointManager', () => {
     expect(checkpoint.id).toBeDefined();
     expect(checkpoint.graphId).toBe(graph.id);
     expect(checkpoint.label).toBe('Before risky task');
+    expect(checkpoint.taskStatuses).toHaveLength(1);
+
+    const rootPhase = graph.phases.get(graph.rootPhaseIds[0]!)!;
+    const firstTask = Array.from(rootPhase.taskGraph.nodes.values())[0]!;
+    firstTask.status = 'failed';
+    rootPhase.status = 'failed';
+    await store.save(graph);
 
     // Restore
     const restored = await manager.restoreCheckpoint(checkpoint.id);
     expect(restored).not.toBeNull();
     expect(restored!.id).toBe(graph.id);
+    expect(
+      restored!.phases.get(graph.rootPhaseIds[0]!)?.taskGraph.nodes.get(firstTask.id)?.status,
+    ).toBe('pending');
   });
 
   it('should list checkpoints sorted by timestamp', async () => {
