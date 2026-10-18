@@ -176,16 +176,26 @@ export class OutboundQueue {
         );
       }
     } else if (lane.pending.length + (lane.running ? 1 : 0) >= this.#opts.maxPerChat) {
-      // Manual overflow: surface a real error instead of silently dropping.
-      // Per the P1.4 acceptance criterion, manual sends are never
-      // silently dropped or coalesced.
-      // Counts both pending and in-flight entries since `running` means one
-      // entry has been dequeued from pending but is still being sent.
-      return Promise.reject(
-        new Error(
-          `Telegram outbound queue per-chat limit reached for chat ${entry.chatId} (max ${this.#opts.maxPerChat})`,
-        ),
-      );
+      while (lane.pending.length + (lane.running ? 1 : 0) >= this.#opts.maxPerChat) {
+        const dropIndex = lane.pending.findIndex((e) => e.kind === 'notification');
+        if (dropIndex === -1) {
+          // Manual overflow: surface a real error instead of silently dropping.
+          // Per the P1.4 acceptance criterion, manual sends are never
+          // silently dropped or coalesced.
+          // Counts both pending and in-flight entries since `running` means one
+          // entry has been dequeued from pending but is still being sent.
+          return Promise.reject(
+            new Error(
+              `Telegram outbound queue per-chat limit reached for chat ${entry.chatId} (max ${this.#opts.maxPerChat})`,
+            ),
+          );
+        }
+        const dropped = lane.pending.splice(dropIndex, 1)[0]!;
+        this.#dropped += 1;
+        this.#opts.log?.debug(
+          `Telegram outbound queue evicted a pending notification for chat ${dropped.chatId} to admit manual send (per-chat limit ${this.#opts.maxPerChat})`,
+        );
+      }
     }
     lane.pending.push(internal);
     this.#enqueued += 1;
