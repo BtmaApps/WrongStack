@@ -164,4 +164,17 @@ describe('tool_daily rollup + underusedTools()', () => {
     const rows = store.underusedTools({ limit: 100 });
     expect(rows).toHaveLength(0);
   });
+
+  it('folds tool.executed with ok: false into failures rather than invocations in tool_daily', () => {
+    const ingester = (
+      store as unknown as { ingester: { ingestEvent: (e: ChronicleEvent) => void } }
+    ).ingester;
+    ingester.ingestEvent(
+      toolEvent('tool.executed', 'bash', '2026-07-01T10:00:01.000Z', { ok: false }),
+    );
+    const row = store['db']
+      .prepare('SELECT invocations, failures FROM tool_daily WHERE tool_name = ?')
+      .get('bash') as { invocations: number; failures: number } | undefined;
+    expect(row).toEqual({ invocations: 0, failures: 1 });
+  });
 });

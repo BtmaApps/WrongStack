@@ -85,7 +85,9 @@ function ingestDailyCounters(stmt: StatementCache, event: ChronicleEvent): void 
       dur,
       durationCount,
     );
-    ingestToolDaily(stmt, event, day, 'invocation', dur);
+    const kind =
+      event.attributes?.['ok'] === false || event.outcome === 'failure' ? 'failure' : 'invocation';
+    ingestToolDaily(stmt, event, day, kind, dur);
   } else if (type === 'tool.failed') {
     // tool.failed is terminal: the matching tool.started already
     // counted the invocation, so here we only bump failures + duration.
