@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFileMention } from '../src/hooks/use-file-mention.js';
-import type { FileMention } from '../src/lib/file-mention.js';
+import { type FileMention, removeFileMention } from '../src/lib/file-mention.js';
 
 interface Captured {
   current: ReturnType<typeof useFileMention>;
@@ -17,7 +17,7 @@ interface MockSocket {
 const roots: Root[] = [];
 
 function makeMention(query: string): FileMention {
-  return { start: 0, end: query.length + 1, query };
+  return { start: 0, query };
 }
 
 function renderHookViaRoot(captured: Captured, socket: MockSocket): Root {
@@ -134,5 +134,12 @@ describe('useFileMention — selectFile', () => {
     const r1 = captured.current.selectFile('src/app.tsx', '@app', []);
     const r2 = captured.current.selectFile('src/app.tsx', r1.draft, r1.fileRefs);
     expect(r2.fileRefs).toEqual(['src/app.tsx', 'src/app.tsx']);
+  });
+
+  it('preserves line breaks when removing a mention adjacent to a newline', () => {
+    expect(removeFileMention('line1\n@foo line2', { start: 6, query: 'foo' })).toBe('line1\nline2');
+    expect(removeFileMention('line1 @foo\n  line2', { start: 6, query: 'foo' })).toBe(
+      'line1\n  line2',
+    );
   });
 });

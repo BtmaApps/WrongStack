@@ -21,7 +21,8 @@ export function removeFileMention(input: string, mention: FileMention): string {
   const after = input.slice(mention.start + mention.query.length + 1);
   const head = before.replace(/[ \t]+$/, '');
   const tail = after.replace(/^[ \t]+/, '');
-  return head && tail ? `${head} ${tail}` : head + tail;
+  const needsSpace = Boolean(head && tail) && !/[\r\n]$/.test(head) && !/^[\r\n]/.test(tail);
+  return needsSpace ? `${head} ${tail}` : head + tail;
 }
 
 /** Match the canonical Full WebUI wire convention for whole-file references. */
