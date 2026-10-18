@@ -391,4 +391,30 @@ describe('AutoExecutor', () => {
 
     await expect(executor.execute(graph, makeSpec())).resolves.toMatchObject({ completed: 2 });
   });
+
+  it('counts skipped downstream tasks, preserves retried count on terminal failure, and invokes onTaskFail on final attempt', async () => {
+    const graph = makeGraph([makeNode('a'), makeNode('b')], [{ from: 'a', to: 'b' }]);
+    await store.saveGraph(graph);
+    await tracker.loadGraph(graph.id);
+    const onTaskFail = vi.fn();
+    const executor = new AutoExecutor({
+      tracker,
+      events,
+      maxRetries: 1,
+      onTaskFail,
+      executeTask: async () => {
+        throw new Error('fatal failure');
+      },
+    });
+
+    const summary = await executor.execute(graph, makeSpec());
+    expect(summary).toMatchObject({
+      total: 2,
+      completed: 0,
+      failed: 1,
+      skipped: 1,
+      retried: 1,
+    });
+    expect(onTaskFail).toHaveBeenCalledTimes(2);
+  });
 });

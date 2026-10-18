@@ -85,7 +85,6 @@ export class AutoExecutor {
     const critical = analyzeCriticalPath(graph);
     let completed = 0;
     let failed = 0;
-    const skipped = 0;
     let retried = 0;
 
     while (!this.stopped) {
@@ -123,11 +122,8 @@ export class AutoExecutor {
             completed++;
             if (retries > 0) retried++;
             this.opts.onTaskComplete?.(task, execResult);
-          } else if (execResult.retry) {
-            retried++;
-            this.opts.tracker.updateNodeStatus(task.id, 'failed', execResult.error);
-            failed++;
           } else {
+            if (retries > 0 || execResult.retry) retried++;
             this.opts.tracker.updateNodeStatus(task.id, 'failed', execResult.error);
             failed++;
           }
@@ -139,6 +135,9 @@ export class AutoExecutor {
       }
     }
 
+    const skipped = Array.from(graph.nodes.values()).filter(
+      (n) => n.status !== 'completed' && n.status !== 'failed',
+    ).length;
     const duration = Date.now() - startTime;
     const summary: ExecutionSummary = {
       total: graph.nodes.size,
@@ -219,27 +218,32 @@ export class AutoExecutor {
           return { result, retries: retriesForTask };
         }
 
+        const failError = new Error(result.error ?? 'Task failed');
         if (result.retry && retryCount < maxRetries) {
           retryCount++;
           this.retryMap.set(task.id, retryCount);
           this.opts.tracker.updateNodeStatus(task.id, 'pending');
+          this.opts.onTaskFail?.(task, failError, retryCount);
           continue;
         }
 
+        this.opts.onTaskFail?.(task, failError, retryCount);
         return { result, retries: retryCount };
       } catch (error) {
+        const errObj = error instanceof Error ? error : new Error(String(error));
         if (retryCount < maxRetries) {
           retryCount++;
           this.retryMap.set(task.id, retryCount);
           this.opts.tracker.updateNodeStatus(task.id, 'pending');
-          this.opts.onTaskFail?.(task, error as Error, retryCount);
+          this.opts.onTaskFail?.(task, errObj, retryCount);
           continue;
         }
 
+        this.opts.onTaskFail?.(task, errObj, retryCount);
         return {
           result: {
             success: false,
-            error: error instanceof Error ? error.message : String(error),
+            error: errObj.message,
           },
           retries: retryCount,
         };
