@@ -591,6 +591,7 @@ export class WrongStackClient {
       this.finish(error);
       return;
     }
+    for (const waiter of [...this.waiters]) waiter.reject(error);
     this.setState('reconnecting', error);
     void this.reconnect(error);
   }
