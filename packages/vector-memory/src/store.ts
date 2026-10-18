@@ -397,11 +397,16 @@ export class VectorMemoryStore {
     // second line of defense across processes.
     let existing = this.findByContentHash(contentHash, scope);
     const sageId = input.metadata?.['sageId'];
-    // Same text owned by ANOTHER SAGE memory (SAGE dedups per scope/audience) is not
-    // this one's mirror: returning it left this memory row-less, so key its own row.
-    if (existing && typeof sageId === 'string' && existing.metadata?.['sageId'] !== sageId) {
-      contentHash = sageKeyedContentHash(input.text, sageId);
-      existing = this.findByContentHash(contentHash, scope);
+    // Key by sageId when the rawHash slot belongs to another SAGE memory, or when the
+    // rawHash slot is free and this sageId already has a keyed row from an earlier collision.
+    if (typeof sageId === 'string' && sageId.length > 0) {
+      if (existing && existing.metadata?.['sageId'] !== sageId) {
+        contentHash = sageKeyedContentHash(input.text, sageId);
+        existing = this.findByContentHash(contentHash, scope);
+      } else if (!existing) {
+        const keyed = this.findByContentHash(sageKeyedContentHash(input.text, sageId), scope);
+        if (keyed) ({ contentHash } = existing = keyed);
+      }
     }
     if (existing) {
       if (

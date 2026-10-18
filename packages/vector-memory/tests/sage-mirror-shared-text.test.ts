@@ -66,4 +66,17 @@ describe('SAGE mirrors that share text', () => {
     expect(store.findBySageId('sage-B')).toBeDefined();
     expect(await store.syncFromSage(source)).toMatchObject({ indexed: 0, skipped: 2, failed: 0 });
   });
+
+  it('re-remembering a secondary SAGE mirror after the primary holder is deleted stays idempotent', async () => {
+    const a = await mirror('sage-A');
+    const b = await mirror('sage-B');
+    await store.forget(a.id);
+
+    const bRetry = await mirror('sage-B');
+    expect(bRetry.id).toBe(b.id);
+    const bRows = store
+      .list({ limit: 20 })
+      .filter((entry) => entry.metadata?.['sageId'] === 'sage-B');
+    expect(bRows).toHaveLength(1);
+  });
 });
