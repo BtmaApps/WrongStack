@@ -91,4 +91,22 @@ describe('SQLite Unicode text index', () => {
       db.close();
     }
   });
+
+  it('preserves the primary error if savepoint rollback/release fails after savepoint loss', () => {
+    const Database = loadRuntimeDatabaseSync();
+    const db = new Database(':memory:');
+    try {
+      db.exec('CREATE TABLE records(id TEXT PRIMARY KEY, data TEXT NOT NULL)');
+      initializeSqliteTextIndex(db, index);
+      const primaryError = new Error('primary read callback error');
+      expect(() =>
+        withSqliteTextIndex(db.prepare.bind(db), index, String, () => {
+          db.exec('RELEASE ws_text_index');
+          throw primaryError;
+        }),
+      ).toThrow(primaryError);
+    } finally {
+      db.close();
+    }
+  });
 });

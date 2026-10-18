@@ -72,8 +72,16 @@ export function withSqliteTextIndex<T>(
     stmt(`RELEASE ${savepoint}`).run();
     return result;
   } catch (error) {
-    stmt(`ROLLBACK TO ${savepoint}`).run();
-    stmt(`RELEASE ${savepoint}`).run();
+    try {
+      stmt(`ROLLBACK TO ${savepoint}`).run();
+    } catch {
+      // Preserve the primary error if SQLite already unwound the savepoint.
+    }
+    try {
+      stmt(`RELEASE ${savepoint}`).run();
+    } catch {
+      // Preserve the primary error if savepoint release fails after rollback.
+    }
     throw error;
   }
 }
