@@ -29,6 +29,7 @@
 
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { shellCommandLinesFromInput } from '@wrongstack/core/security';
 import type { Plugin } from '@wrongstack/core/types';
 import { parseInstallCommands } from '../dep-guard/index.js';
 
@@ -403,16 +404,20 @@ const plugin: Plugin = {
       if (input.toolResult?.isError) return;
 
       const ti = (input.toolInput ?? {}) as Record<string, unknown>;
-      const command =
-        (typeof ti['command'] === 'string' ? ti['command'] : undefined) ??
-        (typeof ti['CommandLine'] === 'string' ? ti['CommandLine'] : undefined) ??
-        (typeof ti['cmd'] === 'string' ? ti['cmd'] : undefined) ??
-        (typeof ti['script'] === 'string' ? ti['script'] : undefined) ??
-        '';
+      const { lines: cmdLines } = shellCommandLinesFromInput(ti);
+      for (const key of ['CommandLine', 'input']) {
+        const legacy = ti[key];
+        if (typeof legacy === 'string' && legacy) cmdLines.push(legacy);
+      }
+      const command = cmdLines.join('\n');
       if (!command) return;
 
       state.invocations += 1;
-      const targets = auditTargets(command, process.cwd());
+      const baseCwd =
+        typeof ti['cwd'] === 'string' && ti['cwd'].trim()
+          ? resolve(process.cwd(), ti['cwd'].trim())
+          : process.cwd();
+      const targets = auditTargets(command, baseCwd);
       if (targets.length === 0) return;
 
       state.installsSeen += 1;

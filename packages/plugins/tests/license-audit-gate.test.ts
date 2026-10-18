@@ -443,5 +443,19 @@ describe('license-audit-gate plugin', () => {
       expect(result?.reason).toContain('gpl-pkg');
       expect(result?.reason).not.toContain('requests');
     });
+
+    it('audits and blocks disallowed packages installed via exec tool { command, args }', () => {
+      mockPackage('gpl-pkg', { name: 'gpl-pkg', license: 'GPL-3.0-only' });
+      const api = makeApi();
+      licenseAuditPlugin.setup(api as never);
+      const hook = getHook(api);
+      const result = hook({
+        toolName: 'exec',
+        toolInput: { command: 'npm', args: ['install', 'gpl-pkg'] },
+        toolResult: { content: '', isError: false },
+      }) as HookResult;
+      expect(result?.decision).toBe('block');
+      expect(result?.reason).toContain('gpl-pkg');
+    });
   });
 });
