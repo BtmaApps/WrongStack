@@ -384,6 +384,8 @@ export function summarizeHqToolArgs(value: unknown, options: HqRedactOptions = {
   for (const [key, item] of entries.slice(0, 20)) {
     if (isSensitiveKey(key)) {
       summary[key] = SENSITIVE_FIELD_REPLACEMENT;
+    } else if (!policy.rawContent && isRawContentKey(key)) {
+      summary[key] = RAW_CONTENT_REPLACEMENT;
     } else if (typeof item === 'string') {
       summary[key] = isPathKey(key)
         ? redactPath(item, options.projectRoot, policy)

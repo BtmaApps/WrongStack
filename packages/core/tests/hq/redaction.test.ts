@@ -387,4 +387,16 @@ describe('HQ redaction covers built-in tool input fields', () => {
     expect(summary.bodyPreview).not.toContain('sk_live_');
     expect(summary.outcomePreview).not.toContain('abcdefghijklmnopqrstuvwxyz123456');
   });
+
+  it('redacts rawContent keys in summarizeHqToolArgs when rawContent is false and toolArgs is summary', () => {
+    const summary = summarizeHqToolArgs(
+      { command: 'rm -rf /', old_string: 'const secret = 1;', toolName: 'bash' },
+      { policy: { rawContent: false, toolArgs: 'summary' } },
+    );
+    expect(summary).toEqual({
+      command: '[REDACTED:hq_raw_content]',
+      old_string: '[REDACTED:hq_raw_content]',
+      toolName: 'bash',
+    });
+  });
 });
