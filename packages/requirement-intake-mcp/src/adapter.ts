@@ -37,6 +37,7 @@ import {
   REQUEST_TYPES,
   RequirementIntakeService,
   RequirementIntakeStore,
+  validateCreateInput,
 } from '@wrongstack/requirement-intake';
 import {
   type RequirementIntakeMcpPolicyOptions,
@@ -210,6 +211,20 @@ export function createRequirementIntakeMcpToolHost(
         isError: true,
       };
     }
+    const optionalFields = {
+      ...(args['title'] !== undefined ? { title: args['title'] as string } : {}),
+      ...(args['requestType'] !== undefined ? { requestType: args['requestType'] as string } : {}),
+      ...(args['priority'] !== undefined ? { priority: args['priority'] as IntakePriority } : {}),
+      ...(args['idempotencyKey'] !== undefined
+        ? { idempotencyKey: args['idempotencyKey'] as string }
+        : {}),
+    };
+    validateCreateInput({
+      projectId: 'preflight',
+      originalRequest: request,
+      requestedBy: actor,
+      ...optionalFields,
+    });
     const projectId = await resolveProjectId(true);
     throwIfAborted(signal);
     const ctx = intakeContext(projectId, actor);
@@ -218,16 +233,7 @@ export function createRequirementIntakeMcpToolHost(
         projectId,
         originalRequest: request,
         requestedBy: actor,
-        ...(typeof args['title'] === 'string' ? { title: args['title'] as string } : {}),
-        ...(typeof args['requestType'] === 'string'
-          ? { requestType: args['requestType'] as string }
-          : {}),
-        ...(typeof args['priority'] === 'string'
-          ? { priority: args['priority'] as IntakePriority }
-          : {}),
-        ...(typeof args['idempotencyKey'] === 'string'
-          ? { idempotencyKey: args['idempotencyKey'] as string }
-          : {}),
+        ...optionalFields,
       },
       ctx,
     );

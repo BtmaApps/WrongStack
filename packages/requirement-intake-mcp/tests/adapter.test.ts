@@ -472,6 +472,22 @@ describe('createRequirementIntakeMcpToolHost — default project wiring', () => 
       isError: true,
     });
   });
+
+  it('validates create inputs and non-string optionals before resolving project identity', async () => {
+    const resolveProjectId = vi.fn(async () => 'proj_alpha');
+    const host = createRequirementIntakeMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: { resolveProjectId },
+    });
+
+    await expect(
+      host.callTool('requirement_intake_submit', { request: REQUEST_TEXT, priority: 'urgent' }),
+    ).resolves.toMatchObject({ isError: true });
+    await expect(
+      host.callTool('requirement_intake_submit', { request: REQUEST_TEXT, priority: 123 }),
+    ).resolves.toMatchObject({ isError: true });
+    expect(resolveProjectId).not.toHaveBeenCalled();
+  });
 });
 
 describe('createRequirementIntakeMcpServer', () => {
