@@ -417,5 +417,39 @@ describe('NotifierImpl', () => {
       expect(sickStatus).toMatchObject({ ok: false, error: 'rate limited' });
       expect(crashStatus).toMatchObject({ ok: false, error: 'ping threw' });
     });
+
+    it('isolates synchronous throws in channel.deliver() without aborting sibling channels', async () => {
+      notifier.registerChannel({
+        name: 'sync-crash',
+        type: 'webhook',
+        deliver() {
+          throw new Error('sync boom');
+        },
+        async ping() {
+          return { ok: true };
+        },
+      });
+      const healthy = mockChannel('healthy', 'webhook', {
+        ok: true,
+        channel: 'healthy',
+        deliveredAt: 'now',
+      });
+      notifier.registerChannel(healthy);
+
+      const results = await notifier.notify(['sync-crash', 'healthy'], SAMPLE_MSG);
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({
+        ok: false,
+        channel: 'sync-crash',
+        error: 'threw: sync boom',
+      });
+      expect(results[1]).toMatchObject({ ok: true, channel: 'healthy' });
+      expect(notifier.counters()).toEqual({
+        attempted: 2,
+        delivered: 1,
+        failed: 1,
+        suppressed: 0,
+      });
+    });
   });
 });

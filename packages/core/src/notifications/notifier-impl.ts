@@ -13,8 +13,8 @@
  * @public
  */
 
-import type { NotificationChannel, NotificationMessage, NotificationResult } from './types.js';
 import type { NotificationChannelStatus, Notifier, NotifierCounters } from './notifier.js';
+import type { NotificationChannel, NotificationMessage, NotificationResult } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Internal counter state
@@ -61,29 +61,31 @@ export class NotifierImpl implements Notifier {
       this.#counters.set(name, counters);
 
       results.push(
-        channel.deliver(message).then(
-          (result) => {
-            if (result.ok) {
-              counters.delivered += 1;
-            } else {
+        Promise.resolve()
+          .then(() => channel.deliver(message))
+          .then(
+            (result) => {
+              if (result.ok) {
+                counters.delivered += 1;
+              } else {
+                counters.failed += 1;
+              }
+              return result;
+            },
+            (err: unknown) => {
+              // Channel threw instead of returning { ok: false, error: "…" }.
+              // Catch the rejection to prevent a single crashing channel from
+              // tearing down every parallel delivery in the same notify() call.
               counters.failed += 1;
-            }
-            return result;
-          },
-          (err: unknown) => {
-            // Channel threw instead of returning { ok: false, error: "…" }.
-            // Catch the rejection to prevent a single crashing channel from
-            // tearing down every parallel delivery in the same notify() call.
-            counters.failed += 1;
-            const error = err instanceof Error ? err.message : 'unknown rejection';
-            return {
-              ok: false,
-              channel: name,
-              error: `threw: ${error}`,
-              deliveredAt: new Date().toISOString(),
-            } satisfies NotificationResult;
-          },
-        ),
+              const error = err instanceof Error ? err.message : 'unknown rejection';
+              return {
+                ok: false,
+                channel: name,
+                error: `threw: ${error}`,
+                deliveredAt: new Date().toISOString(),
+              } satisfies NotificationResult;
+            },
+          ),
       );
     }
 
