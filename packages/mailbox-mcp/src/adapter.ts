@@ -245,20 +245,34 @@ async function executeRead(
   args: Record<string, unknown>,
   actor: string,
   sessionId: string,
+  actorRole?: string | undefined,
 ): Promise<unknown> {
   switch (action) {
-    case 'query':
-      return { messages: await mailbox.query(queryFromArgs(args)) };
+    case 'query': {
+      const parsedQuery = queryFromArgs(args);
+      return {
+        messages: await mailbox.query({
+          ...(actorRole ? { readerRole: actorRole } : {}),
+          ...parsedQuery,
+        }),
+      };
+    }
     case 'unread':
       return { unread: await mailbox.unreadCount(actor, sessionId) };
     case 'inbox': {
-      const limit = queryFromArgs(args).limit ?? 20;
-      const targets = [actor, `@session:${sessionId}`];
+      const parsedQuery = queryFromArgs(args);
+      const limit = parsedQuery.limit ?? 20;
+      const isLeader = actor === 'leader' || actorRole?.trim().toLowerCase() === 'leader';
+      const targets = isLeader
+        ? Array.from(new Set([actor, 'leader', `@session:${sessionId}`]))
+        : [actor, `@session:${sessionId}`];
       const batches = await Promise.all(
         targets.map((to) =>
           mailbox.query({
+            ...parsedQuery,
             to,
             unreadBy: actor,
+            ...(actorRole ? { readerRole: actorRole } : {}),
             currentSessionId: sessionId,
             limit,
           }),
@@ -540,7 +554,14 @@ export function createMailboxMcpToolHost(
         }
         const content =
           name === 'mailbox_read'
-            ? await executeRead(mailbox, action, args, actor, identity.sessionId)
+            ? await executeRead(
+                mailbox,
+                action,
+                args,
+                actor,
+                identity.sessionId,
+                identity.actorRole,
+              )
             : name === 'mailbox_manage'
               ? await executeManage(mailbox, action, args, identity)
               : await executeAdmin(mailbox, action, args, actor);

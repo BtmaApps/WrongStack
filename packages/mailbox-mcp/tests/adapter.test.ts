@@ -478,6 +478,62 @@ describe('createMailboxMcpToolHost', () => {
       isError: false,
     });
   });
+
+  it('forwards actorRole as readerRole and includes leader target and query filters in inbox and query', async () => {
+    const query = vi.fn().mockImplementation(async (q: Record<string, unknown>) => {
+      if (q['to'] === 'leader' && q['readerRole'] === 'leader') {
+        return [
+          {
+            id: 'msg-leader-1',
+            from: 'worker-1',
+            to: 'leader',
+            type: 'ask',
+            priority: 'high',
+            subject: 'Escalation',
+            body: 'Need review',
+            timestamp: '2026-10-18T10:00:00.000Z',
+            readBy: [],
+          },
+        ];
+      }
+      return [];
+    });
+    const host = createMailboxMcpToolHost(backend({ query }), new MailboxEventEmitter(), {
+      actor: 'agent-alpha',
+      sessionId: 'sess-leader',
+      actorRole: 'leader',
+    });
+
+    const inboxRes = await host.callTool('mailbox_read', {
+      action: 'inbox',
+      minPriority: 'high',
+      incompleteOnly: true,
+    });
+    expect(inboxRes.isError).toBe(false);
+    expect((inboxRes.content as { messages: Array<{ id: string }> }).messages).toHaveLength(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'leader',
+        unreadBy: 'agent-alpha',
+        readerRole: 'leader',
+        minPriority: 'high',
+        incompleteOnly: true,
+        currentSessionId: 'sess-leader',
+      }),
+    );
+
+    query.mockClear();
+    await host.callTool('mailbox_read', {
+      action: 'query',
+      minPriority: 'high',
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readerRole: 'leader',
+        minPriority: 'high',
+      }),
+    );
+  });
 });
 
 describe('createMailboxMcpServer', () => {
