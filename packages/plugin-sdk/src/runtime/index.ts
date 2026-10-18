@@ -308,19 +308,27 @@ export function resolveRunnerCommand(
   // Path 3: launcher → subcommand → executable. e.g. "pnpm exec vitest run",
   // "pnpm exec tsc --noEmit", "npm exec tsc --pretty".
   if (launcher !== 'none' && head === launcher && runtime.subcommands.length > 0) {
-    const subcommand = runtime.subcommands[0]!;
     const exe = rest[0];
-    if (second === subcommand && exe === runtime.executable) {
+    if (
+      second !== undefined &&
+      runtime.subcommands.includes(second) &&
+      exe === runtime.executable
+    ) {
       const tail = rest.slice(1);
       if (!everyFlagAllowed(runtime.allowedFlags, tail)) return null;
-      return { cmd: head, args: [second, exe!, ...tail], display };
+      return { cmd: head, args: [second, exe, ...tail], display };
     }
   }
 
-  // Path 4: absolute-path launcher under the project.
+  // Path 4: absolute-path executable or launcher under the project.
   if (isAbsolute(head)) {
     if (!withinProjectPath(projectRoot, head)) return null;
     const base = basename(head);
+    if (base === runtime.executable && second !== runtime.executable) {
+      const tail = [second, ...rest].filter((v): v is string => Boolean(v));
+      if (!everyFlagAllowed(runtime.allowedFlags, tail)) return null;
+      return { cmd: head, args: tail, display };
+    }
     if (base !== runtime.executable && base !== launcher) return null;
     if (second !== runtime.executable) return null;
     if (!everyFlagAllowed(runtime.allowedFlags, rest)) return null;

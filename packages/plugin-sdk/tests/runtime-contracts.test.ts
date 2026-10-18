@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   BoundedMap,
   clearLocalBinCache,
+  type LanguageRuntime,
   resolveNodeBin,
+  resolveRunnerCommand,
   runRunnerCommand,
 } from '../src/runtime/index.js';
 
@@ -19,6 +21,30 @@ afterEach(async () => {
 });
 
 describe('runtime helper contracts', () => {
+  it('resolves secondary runtime subcommands and in-project absolute executable paths', () => {
+    const projectRoot = path.resolve('/tmp/plugin-sdk-project');
+    const runtime: LanguageRuntime = {
+      id: 'typescript',
+      packageManager: 'pnpm',
+      executable: 'tsc',
+      allowedFlags: new Set(['--noEmit', '--pretty']),
+      subcommands: ['exec', 'dlx'],
+      defaultCommand: 'tsc --noEmit',
+    };
+    const absExe = path.join(projectRoot, 'node_modules', '.bin', 'tsc');
+
+    expect(resolveRunnerCommand(runtime, `${absExe} --noEmit`, { projectRoot })).toEqual({
+      cmd: absExe,
+      args: ['--noEmit'],
+      display: `${absExe} --noEmit`,
+    });
+    expect(resolveRunnerCommand(runtime, 'pnpm dlx tsc --noEmit', { projectRoot })).toEqual({
+      cmd: 'pnpm',
+      args: ['dlx', 'tsc', '--noEmit'],
+      display: 'pnpm dlx tsc --noEmit',
+    });
+  });
+
   it('keeps the hard bound when undefined is a valid map key', () => {
     const map = new BoundedMap<string | undefined, number>({ max: 1 });
 
