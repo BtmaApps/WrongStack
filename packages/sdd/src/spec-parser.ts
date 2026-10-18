@@ -45,18 +45,41 @@ export class SpecParser {
     return '0.0.1';
   }
 
+  private updateFence(line: string, fence: string | undefined): string | undefined {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    const markerRun = marker?.[1];
+    if (fence) {
+      if (
+        markerRun &&
+        markerRun[0] === fence[0] &&
+        markerRun.length >= fence.length &&
+        !marker?.[2]?.trim()
+      ) {
+        return undefined;
+      }
+      return fence;
+    }
+    return markerRun;
+  }
+
   private extractOverview(lines: string[]): string {
     const overviewLines: string[] = [];
     let inOverview = false;
     let foundHeading = false;
+    let fence: string | undefined;
 
     for (const line of lines) {
-      if (/^##\s+Overview/i.test(line.trim())) {
-        inOverview = true;
-        foundHeading = true;
-        continue;
+      const nextFence = this.updateFence(line, fence);
+      const inFence = fence !== undefined || nextFence !== undefined;
+      fence = nextFence;
+      if (!inFence) {
+        if (/^##\s+Overview/i.test(line.trim())) {
+          inOverview = true;
+          foundHeading = true;
+          continue;
+        }
+        if (foundHeading && /^##\s+/.test(line.trim())) break;
       }
-      if (foundHeading && /^##\s+/.test(line.trim())) break;
       if (inOverview) overviewLines.push(line);
     }
 
@@ -68,29 +91,36 @@ export class SpecParser {
     let currentSection: Partial<SpecSection> | null = null;
     let currentLines: string[] = [];
     let depth = 1;
+    let fence: string | undefined;
 
     for (const line of lines) {
-      const h2 = /^##\s+(.+)/.exec(line.trim());
-      const h3 = /^###\s+(.+)/.exec(line.trim());
+      const nextFence = this.updateFence(line, fence);
+      const inFence = fence !== undefined || nextFence !== undefined;
+      fence = nextFence;
 
-      if (h2) {
-        if (currentSection && currentLines.length > 0) {
-          sections.push({
-            type: this.mapSectionType(currentSection.title!),
-            title: currentSection.title!,
-            level: depth,
-            content: currentLines.join('\n').trim(),
-          });
+      if (!inFence) {
+        const h2 = /^##\s+(.+)/.exec(line.trim());
+        const h3 = /^###\s+(.+)/.exec(line.trim());
+
+        if (h2) {
+          if (currentSection && currentLines.length > 0) {
+            sections.push({
+              type: this.mapSectionType(currentSection.title!),
+              title: currentSection.title!,
+              level: depth,
+              content: currentLines.join('\n').trim(),
+            });
+          }
+          currentSection = { title: h2[1]! };
+          currentLines = [];
+          depth = 2;
+          continue;
         }
-        currentSection = { title: h2[1]! };
-        currentLines = [];
-        depth = 2;
-        continue;
-      }
 
-      if (h3) {
-        currentLines.push(line);
-        continue;
+        if (h3) {
+          currentLines.push(line);
+          continue;
+        }
       }
 
       if (currentSection) {

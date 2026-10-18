@@ -425,6 +425,11 @@ Req 3`);
       const parsed = new SpecParser().parse(converted);
       expect(parsed.title).toBe('Payments');
       expect(parsed.overview).toBe('Card payments.');
+      expect(parsed.sections.map((s) => s.title)).toEqual([
+        'Overview',
+        'Requirements',
+        'Acceptance Criteria',
+      ]);
       for (const section of parsed.sections) expect(section.content).not.toContain('\r');
     });
   });
