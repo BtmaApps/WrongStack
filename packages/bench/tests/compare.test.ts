@@ -320,8 +320,17 @@ describe('renderMarkdownReport edge outcomes', () => {
     expect(insights.disagreements.map((d) => d.taskId)).toEqual(['t1']);
     expect(insights.unanimousPass).toEqual([]);
     // Attempt order must not matter: ungraded first, graded failure second.
-    const reversed = buildIntraRunInsights([exported('t2'), result('t2', opus, false)]);
+    const timedOutFail: TaskResult = {
+      ...result('t2', opus, false, { status: 'timeout' }),
+      grade: { passed: false, graded: true, detail: 'empty patch' },
+    };
+    const reversed = buildIntraRunInsights([
+      { ...exported('t2'), grade: { passed: false, graded: false, detail: 'patch exported' } },
+      timedOutFail,
+    ]);
     expect(reversed.matrix['t2']!['opus']!.passed).toBe(false);
+    expect(reversed.matrix['t2']!['opus']!.status).toBe('timeout');
+    expect(reversed.matrix['t2']!['opus']!.detail).toBe('empty patch');
     // No attempt graded at all: still no verdict.
     const none = buildIntraRunInsights([exported('t3'), exported('t3')]);
     expect(none.matrix['t3']!['opus']!.passed).toBeNull();

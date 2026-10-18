@@ -81,21 +81,16 @@ function mergeOutcomes(a: TaskOutcome, b: TaskOutcome): TaskOutcome {
       : a.passed === false || b.passed === false
         ? false
         : null;
+  const preferB = b.passed === true || (a.passed !== true && !a.graded && b.graded);
+  const preferA = a.passed === true || (b.passed !== true && a.graded && !b.graded);
   return {
     // A graded failure is a verdict even when another attempt went ungraded
     // (SWE-bench: an empty patch is graded, an exported one is not) — the
     // leaderboard's pass@k counts it as a failure, so the matrix must too.
     passed,
     graded: a.graded || b.graded,
-    status:
-      b.passed === true
-        ? b.status
-        : a.passed === true
-          ? a.status
-          : a.status === 'crashed'
-            ? b.status
-            : a.status,
-    detail: b.passed === true ? b.detail : a.passed === true ? a.detail : (a.detail ?? b.detail),
+    status: preferB ? b.status : preferA ? a.status : a.status === 'crashed' ? b.status : a.status,
+    detail: preferB ? b.detail : preferA ? a.detail : (a.detail ?? b.detail),
     costUsd: finiteNonNegative(a.costUsd + b.costUsd),
   };
 }
