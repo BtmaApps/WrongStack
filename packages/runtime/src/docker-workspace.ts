@@ -417,7 +417,24 @@ export async function runDockerWorkspace(
           timeoutMs: 120_000,
         });
         if (copied.code === 0) {
-          await rename(staged, options.conversationDirectory);
+          const targetDir = path.resolve(options.conversationDirectory);
+          const backupDir = `${staged}-prior`;
+          let hadPrior = false;
+          try {
+            await rename(targetDir, backupDir);
+            hadPrior = true;
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+          }
+          try {
+            await rename(staged, targetDir);
+          } catch (error) {
+            if (hadPrior) await rename(backupDir, targetDir).catch(() => undefined);
+            throw error;
+          }
+          if (hadPrior) {
+            await removeOwnedTemporary(backupDir, captureParent, '.wrongstack-conversation-');
+          }
         } else if (!/Could not find|no such|not found/i.test(copied.stderr))
           throw new Error('Conversation checkpoint export failed');
       } finally {

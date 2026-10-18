@@ -174,4 +174,32 @@ describe('Docker workspace ownership', () => {
       expect(calls).toHaveLength(0);
     },
   );
+  it('atomically replaces an existing non-empty conversationDirectory on subsequent runs', async () => {
+    const { dir, runner } = await fixture();
+    const conversationDir = path.join(dir, 'conversations', 'pr-42');
+    await rm(conversationDir, { recursive: true, force: true });
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(conversationDir, { recursive: true });
+    await writeFile(path.join(conversationDir, 'checkpoint.json'), '{"turn":1}');
+
+    const wrapped: DockerCommandRunner = async (args, opts) => {
+      if (args[0] === 'cp' && String(args[1]).includes(':/home/node/.wrongstack/.')) {
+        await writeFile(path.join(args[2]!, 'checkpoint.json'), '{"turn":2}');
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      return runner(args, opts);
+    };
+
+    const result = await runDockerWorkspace({
+      projectRoot: dir,
+      image: 'trusted:1',
+      command: 'wstack',
+      conversationDirectory: conversationDir,
+      runner: wrapped,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(await readFile(path.join(conversationDir, 'checkpoint.json'), 'utf8')).toBe(
+      '{"turn":2}',
+    );
+  });
 });
