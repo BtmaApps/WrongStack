@@ -217,6 +217,12 @@ export function parsePackageAuditOutput(output: string): {
     for (const [id, raw] of Object.entries(advisoryRecord)) {
       if (typeof raw !== 'object' || raw === null) continue;
       const advisory = raw as Record<string, unknown>;
+      const patchedVersions =
+        typeof advisory.patched_versions === 'string' ? advisory.patched_versions.trim() : '';
+      const fixAvailable =
+        advisory.fixAvailable !== undefined
+          ? Boolean(advisory.fixAvailable)
+          : patchedVersions !== '' && !/^<\s*0\.0\.0(?:-0)?$/.test(patchedVersions);
       vulnerabilities.push({
         name: typeof advisory.module_name === 'string' ? advisory.module_name : id,
         severity: normalizeSeverity(advisory.severity),
@@ -225,7 +231,7 @@ export function parsePackageAuditOutput(output: string): {
             ? advisory.vulnerable_versions
             : undefined,
         via: typeof advisory.title === 'string' ? [advisory.title] : [],
-        fixAvailable: false,
+        fixAvailable,
       });
     }
   }
