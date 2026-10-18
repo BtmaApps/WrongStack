@@ -122,4 +122,35 @@ describe('skill speed bump', () => {
     expect(skillSpeedBump(ctx, { id: 'e2', name: 'edit' })).toContain('debugging');
     expect(readSkillCompanionState(ctx)?.recommended.map((rec) => rec.name)).toEqual(['debugging']);
   });
+
+  it('does not treat a skill tool_use with an errored or elided tool_result as delivered', () => {
+    const ctx = holder();
+    ctx.messages.push(
+      assistantUses({ id: 'k-err', name: 'skill', input: { name: 'debugging' } }),
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'k-err',
+            content: 'Skill not found',
+            is_error: true,
+          },
+        ],
+      },
+      assistantUses({ id: 'k-elided', name: 'skill', input: { name: 'testing' } }),
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'k-elided',
+            content: '[elided: 3000 chars]',
+          },
+        ],
+      },
+    );
+    expect(isSkillRecommendable(ctx, 's1', 'debugging')).toBe(true);
+    expect(isSkillRecommendable(ctx, 's1', 'testing')).toBe(true);
+  });
 });

@@ -25,7 +25,7 @@
  */
 
 import type { Message } from '../types/messages.js';
-import { isElidedToolInput } from '../utils/elision-markers.js';
+import { isElidedResultContent, isElidedToolInput } from '../utils/elision-markers.js';
 import { REQUIRED_SKILLS_LOADER_TOOL } from './required-skill-gate.js';
 
 export const SKILL_COMPANION_META_KEY = 'skillCompanion';
@@ -130,19 +130,33 @@ function stateFor(ctx: MetaHolder, sessionId: string): SkillCompanionState {
   return { sessionId, recommended: [], loaded: [], declined: [], held: [] };
 }
 
+function toolResultReadable(messages: readonly Message[], toolUseId: string): boolean {
+  for (const message of messages) {
+    if (message.role !== 'user' || typeof message.content === 'string') continue;
+    for (const block of message.content) {
+      if (block.type !== 'tool_result' || block.tool_use_id !== toolUseId) continue;
+      return !block.is_error && !isElidedResultContent(block.content);
+    }
+  }
+  return true;
+}
+
 /** Whether a `skill` call naming this skill is still readable in the transcript. */
 export function skillDeliveredInTranscript(
   messages: readonly Message[] | undefined,
   name: string,
 ): boolean {
   if (!messages) return false;
+  const target = normalizeName(name);
   for (const message of messages) {
     if (message.role !== 'assistant' || typeof message.content === 'string') continue;
     for (const block of message.content) {
       if (block.type !== 'tool_use' || block.name !== REQUIRED_SKILLS_LOADER_TOOL) continue;
       if (isElidedToolInput(block.input)) continue;
       const loaded = (block.input as { name?: unknown } | undefined)?.name;
-      if (typeof loaded === 'string' && normalizeName(loaded) === name) return true;
+      if (typeof loaded === 'string' && normalizeName(loaded) === target) {
+        if (toolResultReadable(messages, block.id)) return true;
+      }
     }
   }
   return false;
