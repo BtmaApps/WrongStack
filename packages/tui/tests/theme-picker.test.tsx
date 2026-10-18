@@ -327,4 +327,17 @@ describe('ThemePicker', () => {
     expect(await waitForFrame(view, (f) => f.includes(second))).toContain(second);
     view.unmount();
   });
+
+  it('retains focused theme preset when exiting themePickerFilterMode', async () => {
+    const { reduceComposerPickers } = await import('../src/reducers/composer-pickers.js');
+    let state = {
+      themePicker: { open: true, selected: 0, filter: '', filtering: false },
+    } as never;
+    state = reduceComposerPickers(state, { type: 'themePickerFilterMode', on: true } as never);
+    state = reduceComposerPickers(state, { type: 'themePickerFilter', text: 'tokyo' } as never);
+    state = reduceComposerPickers(state, { type: 'themePickerFilterMode', on: false } as never);
+    const picker = (state as { themePicker: { selected: number; filter: string } }).themePicker;
+    expect(picker.filter).toBe('');
+    expect(THEME_OPTIONS[picker.selected]?.id).toBe('tokyo-night');
+  });
 });

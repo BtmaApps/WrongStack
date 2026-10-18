@@ -227,7 +227,14 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
           ...(action.on ? { previous: getActiveThemeName() } : {}),
         },
       };
-    case 'themePickerFilterMode':
+    case 'themePickerFilterMode': {
+      const currentFilter = state.themePicker.filter ?? '';
+      let selected = state.themePicker.selected;
+      if (!action.on && currentFilter) {
+        const previousId = filterThemeOptions(THEME_OPTIONS, currentFilter)[selected]?.id;
+        const retained = THEME_OPTIONS.findIndex((o) => o.id === previousId);
+        selected = retained >= 0 ? retained : 0;
+      }
       return {
         ...state,
         themePicker: {
@@ -236,8 +243,10 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
           // Leaving filter mode with `/` also drops the query, so the mode
           // flag and the visible list can never disagree about what is shown.
           filter: action.on ? state.themePicker.filter : '',
+          selected,
         },
       };
+    }
     case 'themePickerFilter': {
       // Keep the focused row pointing at the SAME preset across a query
       // change where possible: resolve the previously focused id against the
