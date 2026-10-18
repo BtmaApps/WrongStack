@@ -159,9 +159,10 @@ function extractArg(args: string[], key: string): string | null {
 }
 
 async function runHistory(args: string[], deps: SubcommandDeps): Promise<number> {
+  const profileConfigPath = activeProfileConfigPath(deps.paths, deps.config);
   const idFlag = extractArg(args, '--id');
   if (idFlag) {
-    const entry = await getHistoryEntry(idFlag);
+    const entry = await getHistoryEntry(idFlag, undefined, profileConfigPath);
     if (!entry) {
       deps.renderer.writeError(`History entry '${idFlag}' not found.\n`);
       return 1;
@@ -180,7 +181,7 @@ async function runHistory(args: string[], deps: SubcommandDeps): Promise<number>
     return 0;
   }
 
-  const entries = await listHistory();
+  const entries = await listHistory(undefined, profileConfigPath);
   if (entries.length === 0) {
     deps.renderer.write('No config history yet.\n');
     return 0;

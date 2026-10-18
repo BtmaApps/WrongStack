@@ -371,7 +371,11 @@ describe('configCmd', () => {
       snapshotMasked: {},
     });
     await configCmd(['history', '--id=h-1'], mkDeps());
-    expect(histMocks.getHistoryEntry).toHaveBeenCalledWith('h-1');
+    expect(histMocks.getHistoryEntry).toHaveBeenCalledWith(
+      'h-1',
+      undefined,
+      path.join(tmp, 'config.json'),
+    );
   });
 
   // ── config restore ────────────────────────────────────────────────────────
@@ -430,5 +434,37 @@ describe('configCmd', () => {
     const code = await configCmd(['restore', 'h-x'], mkDeps());
     expect(code).toBe(1);
     expect(errors[0]).toContain('no such id');
+  });
+
+  it('history forwards active profile config path to listHistory and getHistoryEntry', async () => {
+    histMocks.listHistory.mockResolvedValue([]);
+    histMocks.getHistoryEntry.mockResolvedValue({
+      id: 'h-prof',
+      timestamp: '2026-01-01T00:00:00.000Z',
+      description: 'profile change',
+      diffSummary: 'model: a -> b',
+      snapshotMasked: {},
+    });
+    const deps = mkDeps({
+      config: { activeProfile: 'work' },
+      paths: {
+        globalConfig: path.join(tmp, 'config.json'),
+        profileConfig: (name: string) => path.join(tmp, 'profiles', name, 'config.json'),
+        projectSessions: path.join(tmp, 'sessions'),
+      },
+    });
+
+    await configCmd(['history'], deps);
+    expect(histMocks.listHistory).toHaveBeenCalledWith(
+      undefined,
+      path.join(tmp, 'profiles', 'work', 'config.json'),
+    );
+
+    await configCmd(['history', '--id', 'h-prof'], deps);
+    expect(histMocks.getHistoryEntry).toHaveBeenCalledWith(
+      'h-prof',
+      undefined,
+      path.join(tmp, 'profiles', 'work', 'config.json'),
+    );
   });
 });
