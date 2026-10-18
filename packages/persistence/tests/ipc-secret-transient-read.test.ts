@@ -67,5 +67,28 @@ describe('transient IPC secret reads', () => {
       expect(ipcEndpointSecret()).toBe(secret);
       expect(fs.readFileSync(file, 'utf8')).toBe(secret);
     });
+
+    it(`${code}: a transient failure during initial secret creation retries and does not poison the cache with null`, () => {
+      const file = path.join(root, `created-${code}`);
+      _ipcEndpointSecretOps.file = () => file;
+      const realPid = process.pid;
+      let pidReads = 0;
+      Object.defineProperty(process, 'pid', {
+        configurable: true,
+        get() {
+          pidReads++;
+          if (pidReads <= 2) {
+            throw Object.assign(new Error('transient create failure'), { code });
+          }
+          return realPid;
+        },
+      });
+      try {
+        const created = ipcEndpointSecret();
+        expect(created).toMatch(/^[0-9a-f]{64}$/);
+      } finally {
+        Object.defineProperty(process, 'pid', { configurable: true, value: realPid });
+      }
+    });
   }
 });

@@ -52,6 +52,8 @@ function readSecret(file: string): string | null | undefined {
   }
 }
 
+const PERMANENT_CREATE_CODES = new Set(['EACCES', 'EPERM', 'EROFS', 'ENOENT', 'ENOTDIR', 'EISDIR']);
+
 /**
  * Create the secret once, race-free across processes: write a private temp
  * file, then hard-link it into place. `link` fails with EEXIST when another
@@ -78,9 +80,15 @@ function createSecret(file: string): string | null | undefined {
     } finally {
       fs.rmSync(tmp, { force: true });
     }
-  } catch {
+  } catch (err) {
     // Unwritable home (sandbox, read-only profile): fall through to a read,
-    // which returns null when nothing is there.
+    // which returns null when nothing is there. Transient errors (EBUSY,
+    // EMFILE, ENOSPC, EIO) return undefined unless a concurrent peer wrote a
+    // valid secret first.
+    const existing = readSecret(file);
+    if (existing !== null) return existing;
+    const code = (err as NodeJS.ErrnoException | undefined)?.code;
+    return code !== undefined && PERMANENT_CREATE_CODES.has(code) ? null : undefined;
   }
   return readSecret(file);
 }
@@ -95,7 +103,8 @@ export function ipcEndpointSecret(): string | null {
     return null;
   }
   if (cached?.file === file) return cached.secret;
-  let secret = readSecret(file) ?? createSecret(file);
+  let secret = readSecret(file);
+  if (secret === null) secret = createSecret(file);
   // "Unreadable right now" is not "no secret": callers memoize the endpoint
   // (a daemon computes it once at start), so falling back to the public name
   // on a transient EMFILE/EBUSY would bind or dial a different endpoint than
@@ -103,6 +112,7 @@ export function ipcEndpointSecret(): string | null {
   for (let attempt = 0; secret === undefined && attempt < TRANSIENT_RETRIES; attempt++) {
     Atomics.wait(retrySleep, 0, 0, TRANSIENT_RETRY_MS);
     secret = readSecret(file);
+    if (secret === null) secret = createSecret(file);
   }
   if (secret !== undefined) cached = { file, secret };
   return secret ?? null;
