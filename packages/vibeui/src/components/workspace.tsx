@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { uiVersion } from '../lib/build-info';
+import { escapeClosesPanels } from '../lib/component-guards';
 import { groupTranscript } from '../lib/transcript-view';
 import { useSession } from '../lib/use-session';
 import { ArtifactNavigation } from './artifact-navigation';
@@ -136,7 +137,8 @@ export function Workspace() {
         event.preventDefault();
         setSettings((open) => !open);
       }
-      if (event.key === 'Escape') {
+      // Escape while typing belongs to the field, not to the layout.
+      if (escapeClosesPanels(event)) {
         setSidebar(false);
         setPanel(false);
       }

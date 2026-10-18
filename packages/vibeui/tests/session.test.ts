@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { composeMessage, draftKey, initialState, reduceFrame } from '../src/lib/session';
+import {
+  composeMessage,
+  draftKey,
+  dropConnectionScopedPrompts,
+  initialState,
+  reduceFrame,
+} from '../src/lib/session';
 import { SessionSwitch } from '../src/lib/session-switch';
 import { STABLE_CONNECTION_MS, socketUrl, TOKEN_KEY, VibeTransport } from '../src/lib/transport';
 
@@ -229,6 +235,30 @@ describe('VibeUI conversation', () => {
     expect(state.inputs.map((r) => r.id)).toEqual(['a', 'b']);
     state = reduceFrame(state, { type: 'user.input_resolved', payload: { requestId: 'a' } });
     expect(state.inputs.map((r) => r.id)).toEqual(['b']);
+  });
+  it('drops approval prompts on disconnect so only re-sent pending ones return', () => {
+    let state = reduceFrame(initialState(), start());
+    for (const id of ['stale', 'queued'])
+      state = reduceFrame(state, {
+        type: 'tool.confirm_needed',
+        payload: { id, toolName: 'bash', input: {} },
+      });
+    state = reduceFrame(state, {
+      type: 'user.input_requested',
+      payload: { request: { id: 'question', title: 'Q', tabs: [] } },
+    });
+    state = dropConnectionScopedPrompts(state);
+    expect(state.confirm).toBeNull();
+    expect(state.confirmQueue).toEqual([]);
+    // Input requests are not re-sent by the server, so they must survive.
+    expect(state.inputs.map((input) => input.id)).toEqual(['question']);
+    // After reconnecting the server re-sends the one that is still pending.
+    state = reduceFrame(state, {
+      type: 'tool.confirm_needed',
+      payload: { id: 'queued', toolName: 'bash', input: {} },
+    });
+    expect(state.confirm?.id).toBe('queued');
+    expect(state.confirmQueue).toEqual([]);
   });
   it('keeps live entry ids unique after the message and tool caps are reached', () => {
     let state = reduceFrame(initialState(), start());

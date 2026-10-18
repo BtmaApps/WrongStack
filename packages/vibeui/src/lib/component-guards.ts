@@ -65,3 +65,29 @@ export function listReplyEffect(
   if (loadOwner !== loadEpoch) return 'ignore';
   return selectionOwner === selectionEpoch ? 'list-and-clear-selection' : 'list';
 }
+
+/** Tells the user more questions wait behind the one on screen. */
+export function inputQueueLabel(waiting: number): string {
+  if (waiting <= 0) return '';
+  return waiting === 1
+    ? '1 more question is waiting after this one.'
+    : `${waiting} more questions are waiting after this one.`;
+}
+
+/**
+ * Whether a document-level Escape should collapse the side panels. Escape that
+ * a field already handled, or that was pressed while typing, belongs to that
+ * field (closing a picker, cancelling a mention), not to the layout.
+ */
+export function escapeClosesPanels(event: {
+  key: string;
+  defaultPrevented: boolean;
+  target: unknown;
+}): boolean {
+  if (event.key !== 'Escape' || event.defaultPrevented) return false;
+  const target = event.target as { tagName?: unknown; isContentEditable?: unknown } | null;
+  if (!target) return true;
+  if (target.isContentEditable === true) return false;
+  const tag = typeof target.tagName === 'string' ? target.tagName.toUpperCase() : '';
+  return tag !== 'TEXTAREA' && tag !== 'INPUT' && tag !== 'SELECT';
+}

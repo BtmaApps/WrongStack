@@ -4,6 +4,7 @@ import { AlertCircle, Check, KeyRound, Moon, PanelTop, Settings2, Sun, X } from 
 import { Dialog } from 'radix-ui';
 import { useEffect, useState } from 'react';
 import { uiVersion } from '../lib/build-info';
+import { inputQueueLabel } from '../lib/component-guards';
 import type { InputRequest } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { DetailSwitch } from './presentation-mode';
@@ -248,7 +249,12 @@ export function PendingInteractions({ controller }: { controller: SessionControl
         </div>
       </Modal>
       {!confirm && state.inputs[0] && (
-        <InputDialog key={state.inputs[0].id} request={state.inputs[0]} controller={controller} />
+        <InputDialog
+          key={state.inputs[0].id}
+          request={state.inputs[0]}
+          waiting={state.inputs.length - 1}
+          controller={controller}
+        />
       )}
     </>
   );
@@ -256,9 +262,12 @@ export function PendingInteractions({ controller }: { controller: SessionControl
 
 function InputDialog({
   request,
+  waiting,
   controller,
 }: {
   request: InputRequest;
+  /** Further requests queued behind this one. */
+  waiting: number;
   controller: SessionController;
 }) {
   const { state, connection, send, notice } = controller;
@@ -313,6 +322,11 @@ function InputDialog({
       dismissible={false}
       description="The agent needs your input to continue."
     >
+      {waiting > 0 && (
+        <p className="fine-print" role="status">
+          {inputQueueLabel(waiting)}
+        </p>
+      )}
       <form
         onSubmit={(event) => {
           event.preventDefault();

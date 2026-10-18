@@ -6,6 +6,7 @@ import type { Artifact } from './artifacts';
 import { clientId } from './ids';
 import {
   draftKey,
+  dropConnectionScopedPrompts,
   initialState,
   record,
   reduceFrame,
@@ -264,6 +265,8 @@ export function useSession() {
         if (next !== 'open') {
           ownedRuns.current.clear();
           setReady(false);
+          // The server re-sends prompts that are still pending on reconnect.
+          update(dropConnectionScopedPrompts);
           return;
         }
         requestedModels.current.clear();

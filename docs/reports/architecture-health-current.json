@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T00:26:36.610Z",
+  "generatedAt": "2026-10-18T06:37:02.458Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,9 +14,9 @@
     "packages": 38,
     "sourceFiles": 5157,
     "testFiles": 4462,
-    "sourceLines": 1118884,
+    "sourceLines": 1118952,
     "workspaceEdges": 139,
-    "moduleEdges": 16960,
+    "moduleEdges": 16962,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -28117,24 +28117,24 @@
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1063,
-      "relativeImports": 22
+      "lines": 1074,
+      "relativeImports": 23
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 864,
+      "lines": 878,
       "relativeImports": 2
     }
   ],
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1063,
-      "relativeImports": 22
+      "lines": 1074,
+      "relativeImports": 23
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 864,
+      "lines": 878,
       "relativeImports": 2
     },
     {
@@ -28193,6 +28193,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/vibeui/src/lib/use-session.ts",
+      "lines": 698,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/core/src/security/secret-vault.ts",
       "lines": 697,
       "relativeImports": 11
@@ -28226,11 +28231,6 @@
       "file": "packages/core/src/storage/config-loader.ts",
       "lines": 695,
       "relativeImports": 28
-    },
-    {
-      "file": "packages/vibeui/src/lib/use-session.ts",
-      "lines": 695,
-      "relativeImports": 5
     },
     {
       "file": "packages/cli/src/slash-commands/fix-classifier.ts",

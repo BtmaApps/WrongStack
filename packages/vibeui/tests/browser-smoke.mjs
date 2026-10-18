@@ -38,6 +38,9 @@ const memoryRecords = [
   },
 ];
 let connections = 0;
+// One-shot server faults: refuse the next session.resume, ignore the next context.clear.
+let failNextResume = false;
+let silenceNextClear = false;
 let selectedModel = 'fixture-model';
 let effort = 'auto';
 let sessionName = 'A place to start';
@@ -161,6 +164,10 @@ wss.on('connection', (socket) => {
           ? { refreshed: [{ providerId: 'fixture', status: 'ok' }] }
           : {}),
       });
+    if (message.type === 'context.clear' && silenceNextClear) {
+      silenceNextClear = false;
+      return;
+    }
     if (message.type === 'context.clear') {
       setTimeout(
         () =>
@@ -605,6 +612,14 @@ wss.on('connection', (socket) => {
       });
     if (message.type === 'files.list')
       frame(socket, 'files.list', { files: ['src/app.tsx', 'src/styles.css'] });
+    if (message.type === 'session.resume' && failNextResume) {
+      failNextResume = false;
+      frame(socket, 'error', {
+        sessionId: p.sessionId,
+        message: 'Fixture could not resume that session',
+      });
+      return;
+    }
     if (message.type === 'session.resume')
       session(socket, p.id, [
         {
@@ -1101,6 +1116,22 @@ try {
       },
     });
   await page.getByRole('heading', { name: 'Choose a direction', exact: true }).waitFor();
+  // A second request queued behind the first is announced, not hidden.
+  for (const client of clients)
+    frame(client, 'user.input_requested', {
+      sessionId: 'session-one',
+      request: {
+        id: 'question-two',
+        title: 'Second question',
+        tabs: [{ id: 'tab', label: 'Tab', questions: [] }],
+      },
+    });
+  await page.getByText('1 more question is waiting after this one.', { exact: true }).waitFor();
+  for (const client of clients)
+    frame(client, 'user.input_resolved', { sessionId: 'session-one', requestId: 'question-two' });
+  await page
+    .getByText('1 more question is waiting after this one.', { exact: true })
+    .waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: 'Send answer', exact: true }).click();
   await page.getByText('Please answer the required questions.').waitFor();
   await page.getByRole('radio', { name: 'Keep it small', exact: true }).check();
@@ -1275,6 +1306,9 @@ try {
     'Running composer controls must fit mobile',
   );
   await page.setViewportSize({ width: 1512, height: 982 });
+  // Narrow viewports close the workspace panel; reopen it for the desktop checks below.
+  if (!(await page.locator('aside.workspace-panel').isVisible()))
+    await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
   await message.fill('Change direction now');
   await page.getByRole('button', { name: 'Steer message', exact: true }).click();
   await page.waitForFunction(
@@ -1924,10 +1958,22 @@ try {
       'Draft kept through reload',
   );
   // An ordinary remote close must reconnect and hydrate the canonical transcript.
+  // An approval the server resolved while the page was away must not survive it.
+  for (const client of clients)
+    frame(client, 'tool.confirm_needed', {
+      sessionId: 'session-one',
+      id: 'stale-permission',
+      toolName: 'write_file',
+      input: { path: 'src/stale.ts' },
+    });
+  await page.getByRole('heading', { name: 'Your permission is needed' }).waitFor();
   const before = connections;
   for (const client of clients) client.close(1000, 'fixture restart');
   await page.getByText('Restored answer', { exact: true }).waitFor({ timeout: 15000 });
   assert.ok(connections > before);
+  await page
+    .getByRole('heading', { name: 'Your permission is needed' })
+    .waitFor({ state: 'hidden', timeout: 5000 });
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
@@ -2324,6 +2370,110 @@ try {
     () =>
       JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
   );
+
+  // A refused or unanswered session open must release the lock, the awaited
+  // session and its deadline together, so the user can keep switching.
+  const activeSession = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id);
+  const newSessionButton = page.getByRole('button', { name: 'New session', exact: false });
+  const waitUnlocked = async (why) => {
+    await page.waitForFunction(
+      () => !document.body.textContent?.includes('Switching session:'),
+      undefined,
+      { timeout: 5000 },
+    );
+    await newSessionButton.waitFor();
+    assert.equal(await newSessionButton.isEnabled(), true, `${why}: New session is enabled`);
+    assert.ok((await page.locator('.session-row:enabled').count()) > 0, `${why}: rows enabled`);
+  };
+
+  // 1. The server refuses a resume with an error.
+  failNextResume = true;
+  await page.getByRole('button', { name: 'Second session', exact: false }).click();
+  await page.getByText('Fixture could not resume that session', { exact: true }).first().waitFor();
+  await waitUnlocked('Refused resume');
+  assert.equal(await activeSession(), 'session-one', 'A refused resume keeps the current session');
+  assert.equal(failNextResume, false, 'The fixture refused exactly one resume');
+  // The abandoned 30 s deadline must not fire later and disturb the UI.
+  await page.clock.fastForward(31_000);
+  await waitUnlocked('After the refused resume deadline');
+  assert.equal(
+    await page.getByText('Session did not open', { exact: false }).count(),
+    0,
+    'The abandoned switch deadline never fires',
+  );
+  // Switching still works and is not filtered by a stale awaited session.
+  await page.getByRole('button', { name: 'Second session', exact: false }).click();
+  await page.waitForFunction(
+    () =>
+      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-two',
+  );
+  await waitUnlocked('Switch after a refused resume');
+
+  // 2. The server never answers a clear, then reports an error for it.
+  silenceNextClear = true;
+  await page.getByRole('button', { name: 'Session actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Clear current context', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Clear current context', exact: true })
+    .click();
+  await page.getByText('Switching session:', { exact: false }).first().waitFor();
+  assert.equal(await newSessionButton.isDisabled(), true, 'Input is locked while clearing');
+  assert.equal(silenceNextClear, false, 'The fixture ignored exactly one clear');
+  for (const client of clients)
+    frame(client, 'error', { sessionId: 'session-two', message: 'Fixture clear failed' });
+  await page.getByText('Fixture clear failed', { exact: true }).first().waitFor();
+  await waitUnlocked('Clear ended by an error');
+  // Before the fix the clear deadline survived the error and re-locked the UI.
+  await page.clock.fastForward(31_000);
+  await waitUnlocked('After the abandoned clear deadline');
+  assert.equal(
+    await page.getByText('Clear was not confirmed', { exact: false }).count(),
+    0,
+    'The abandoned clear deadline never fires',
+  );
+  await page.getByRole('button', { name: /Focused workspace/ }).click();
+  await page.waitForFunction(
+    () =>
+      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
+  );
+  await waitUnlocked('Switch after an abandoned clear');
+  await newSessionButton.click();
+  await page.waitForFunction(() =>
+    JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id.startsWith(
+      'new-session-',
+    ),
+  );
+  await waitUnlocked('New session after the fault scenarios');
+  await page.getByRole('button', { name: /Focused workspace/ }).click();
+  await page.waitForFunction(
+    () =>
+      JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id === 'session-one',
+  );
+
+  // Escape while typing belongs to the composer, not to the layout.
+  const workspacePanel = page.locator('aside.workspace-panel');
+  const panelWasOpen = await workspacePanel.isVisible();
+  if (!panelWasOpen)
+    await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+  await workspacePanel.waitFor();
+  await message.fill('Draft with @src');
+  await message.press('Escape');
+  // Let React commit any panel change before asserting (two animation frames).
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  assert.equal(await workspacePanel.isVisible(), true, 'Escape in the composer keeps the panel');
+  await message.fill('');
+  // Outside text fields Escape still collapses the panel.
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('Escape');
+  await workspacePanel.waitFor({ state: 'hidden' });
+  if (panelWasOpen) {
+    await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+    await workspacePanel.waitFor();
+  }
 
   // Large code, tables and rapid clipboard operations stay contained and accessible.
   const largeCode = `const ready = true;\nconst longLine = "${'x'.repeat(1600)}";\n${Array.from({ length: 5000 }, (_, i) => `// line ${i + 1}: checked payload`).join('\n')}\n`;

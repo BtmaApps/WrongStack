@@ -847,6 +847,20 @@ export function draftKey(sessionId: string): string {
   return `wrongstack.vibeui.draft.v1:${sessionId}`;
 }
 
+/**
+ * Drops approval prompts when the connection ends. The server re-sends every
+ * still-pending `tool.confirm_needed` to each new socket, so the live ones
+ * come back immediately after a reconnect while prompts the server already
+ * resolved or timed out no longer linger on screen.
+ *
+ * Input requests are kept: the server does not re-send them, so clearing one
+ * would lose a question that is still waiting; a stale one can be cancelled.
+ */
+export function dropConnectionScopedPrompts(state: SessionState): SessionState {
+  if (!state.confirm && !state.confirmQueue.length) return state;
+  return { ...state, confirm: null, confirmQueue: [] };
+}
+
 export function resolveConfirmation(state: SessionState, id: string): SessionState {
   return state.confirm?.id === id
     ? {

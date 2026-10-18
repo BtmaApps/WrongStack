@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-18T00:26:36.610Z
+**Generated:** 2026-10-18T06:37:02.458Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5157 |
-| Production source lines | 1118884 |
+| Production source lines | 1118952 |
 | Test files | 4462 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 16960 |
+| Relative module edges | 16962 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -84,8 +84,8 @@ None.
 
 | Lines | File |
 |---:|---|
-| 1063 | `packages/vibeui/src/components/workspace.tsx` |
-| 864 | `packages/vibeui/src/lib/session.ts` |
+| 1074 | `packages/vibeui/src/components/workspace.tsx` |
+| 878 | `packages/vibeui/src/lib/session.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
@@ -97,6 +97,7 @@ None.
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 698 | `apps/desktop/src/main/main.ts` |
 | 698 | `packages/core/src/coordination/subagent-budget.ts` |
+| 698 | `packages/vibeui/src/lib/use-session.ts` |
 | 697 | `packages/core/src/security/secret-vault.ts` |
 | 696 | `packages/core/src/coordination/autonomous-brain.ts` |
 | 696 | `packages/core/src/coordination/fleet-manager.ts` |
@@ -104,7 +105,6 @@ None.
 | 696 | `packages/webui/src/components/KanbanView.tsx` |
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
-| 695 | `packages/vibeui/src/lib/use-session.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |

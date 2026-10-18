@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   canRestoreDraft,
   draftAfterSave,
+  escapeClosesPanels,
+  inputQueueLabel,
   listReplyEffect,
   readSavedDraft,
 } from '../src/lib/component-guards';
@@ -48,5 +50,34 @@ describe('memory list refresh (memory-browser.tsx)', () => {
   });
   it('drops a reply superseded by a newer list request', () => {
     expect(listReplyEffect(4, 5, 1, 1)).toBe('ignore');
+  });
+});
+
+describe('queued input requests (dialogs.tsx)', () => {
+  it('tells the user how many more questions are waiting', () => {
+    expect(inputQueueLabel(0)).toBe('');
+    expect(inputQueueLabel(1)).toBe('1 more question is waiting after this one.');
+    expect(inputQueueLabel(3)).toBe('3 more questions are waiting after this one.');
+  });
+});
+
+describe('Escape and the side panels (workspace.tsx)', () => {
+  const key = (target: unknown, defaultPrevented = false) => ({
+    key: 'Escape',
+    defaultPrevented,
+    target,
+  });
+  it('does not close panels when Escape is pressed while typing', () => {
+    expect(escapeClosesPanels(key({ tagName: 'TEXTAREA' }))).toBe(false);
+    expect(escapeClosesPanels(key({ tagName: 'input' }))).toBe(false);
+    expect(escapeClosesPanels(key({ tagName: 'DIV', isContentEditable: true }))).toBe(false);
+  });
+  it('does not close panels when a field already handled Escape', () => {
+    expect(escapeClosesPanels(key({ tagName: 'BUTTON' }, true))).toBe(false);
+  });
+  it('closes panels for Escape outside text fields', () => {
+    expect(escapeClosesPanels(key({ tagName: 'BUTTON' }))).toBe(true);
+    expect(escapeClosesPanels(key({ tagName: 'BODY' }))).toBe(true);
+    expect(escapeClosesPanels({ key: 'Enter', defaultPrevented: false, target: null })).toBe(false);
   });
 });
