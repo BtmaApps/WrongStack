@@ -193,6 +193,7 @@ export function verifyTotpCounter(
 
   for (let offset = -window; offset <= window; offset++) {
     const counter = currentCounter + offset;
+    if (counter < 0) continue;
     const expected = hotp(secret, counter, digits);
     if (timingSafeEqual(Buffer.from(expected), Buffer.from(code))) {
       return counter;

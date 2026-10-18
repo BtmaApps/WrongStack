@@ -227,4 +227,10 @@ describe('verifyTotp code-shape guard (WS-SEC-LOW)', () => {
   it('returns undefined rather than throwing from the counter variant', () => {
     expect(verifyTotpCounter('１２３４５６', secret)).toBeUndefined();
   });
+
+  it('does not throw RangeError when verifying at the Unix epoch (atMs = 0) with a negative window offset', () => {
+    const codeAtEpoch = generateTotp(secret, 0);
+    expect(verifyTotp(codeAtEpoch, secret, 0)).toBe(true);
+    expect(verifyTotpCounter('000000', secret, 0)).toBeUndefined();
+  });
 });
