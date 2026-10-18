@@ -9,6 +9,7 @@ import type {
   KanbanEventContext,
 } from '../types.js';
 import { clearGateRefusals } from '../verification/refusal-budget.js';
+import { stampAtomicityAssessment } from './_internal.js';
 import { nowIso } from './basic-helpers.js';
 import { createKanbanEvent, emitKanbanEvent } from './board-events.js';
 import { assertAcceptedContractUnchanged } from './lifecycle/accepted-contract.js';
@@ -54,6 +55,8 @@ export async function addCheckToTask(
     const criteria = [...(task.successCriteria ?? []), newCheck];
     assertAcceptedContractUnchanged(board, task, { ...task, successCriteria: criteria });
     task.successCriteria = criteria;
+    delete task.verificationReport;
+    stampAtomicityAssessment(board, task);
     // The card is now held to something it was not held to when the gate
     // refused it, so the refusal budget starts over.
     clearGateRefusals(task);
@@ -108,6 +111,7 @@ export async function updateCheckOnTask(
       check.checkedAt = patch.checkedAt;
       check.checkedBy = patch.checkedBy;
       delete task.verificationReport;
+      stampAtomicityAssessment(board, task);
     }
     if (patch.status && patch.status !== 'pending' && !check.checkedAt) {
       check.checkedAt = nowIso();
@@ -165,6 +169,8 @@ export async function removeCheckFromTask(
     });
     const [removed] = task.successCriteria!.splice(index, 1);
     if (task.successCriteria!.length === 0) delete task.successCriteria;
+    delete task.verificationReport;
+    stampAtomicityAssessment(board, task);
     // Dropping a criterion is the truthful escape this function exists for
     // (see above). Leaving a spent budget behind would defeat it: the card
     // would re-park on its very next refusal.

@@ -18,6 +18,7 @@ import {
   addTask,
   createBoard,
   getBoard,
+  removeCheckFromTask,
   updateCheckOnTask,
 } from './helpers/session-manager.js';
 
@@ -83,5 +84,42 @@ describe('updateCheckOnTask runtime validation', () => {
       `updateCheckOnTask persisted invalid status '${persisted}'; ` +
         'an IPC caller can strand a card in review forever.',
     ).toContain(persisted);
+  });
+
+  it('recomputes atomicityAssessment when adding and removing checks on a task', async () => {
+    const board = await createBoard(tmpDir, {
+      title: 'Atomicity recompute',
+      atomicity: { mode: 'enforce' },
+    });
+    const created = await addTask(
+      tmpDir,
+      board.id,
+      {
+        title: 'Implement auth flow',
+        description: 'step 1; step 2; step 3; step 4; step 5',
+        estimatedHours: 6,
+        expectedFileChanges: ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts', 'f.ts', 'g.ts', 'h.ts'],
+      },
+      { sessionId: 'test-session' },
+    );
+    const taskId = created!.task.id;
+    expect(created?.task.atomicityAssessment?.verdict).toBe('needs_decomposition');
+
+    const afterAdd = await addCheckToTask(
+      tmpDir,
+      board.id,
+      taskId,
+      { description: 'bun run test', type: 'test', command: 'bun run test' },
+      { sessionId: 'test-session' },
+    );
+    const taskAfterAdd = afterAdd?.tasks.find((t) => t.id === taskId);
+    expect(taskAfterAdd?.atomicityAssessment?.verdict).toBe('borderline');
+
+    const checkId = taskAfterAdd?.successCriteria?.[0]?.id;
+    const afterRemove = await removeCheckFromTask(tmpDir, board.id, taskId, checkId!, {
+      sessionId: 'test-session',
+    });
+    const taskAfterRemove = afterRemove?.tasks.find((t) => t.id === taskId);
+    expect(taskAfterRemove?.atomicityAssessment?.verdict).toBe('needs_decomposition');
   });
 });
