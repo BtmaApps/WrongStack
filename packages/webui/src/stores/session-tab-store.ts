@@ -170,9 +170,12 @@ export const useSessionTabStore = create<SessionTabState>((set, get) => ({
     // replacement, so no store ever holds two sessions' state under one slot.
     releaseTab(retiredId);
 
-    // Same slot, new session. Length never changes, so a full strip swaps
-    // without touching the four-slot ceiling an `openTab` would have hit.
-    const next = tabs.map((id, i) => (i === slot ? nextId : id));
+    // Same slot, new session — unless `nextId` already occupies another slot,
+    // in which case the retired slot collapses into the existing one so a
+    // session never sits in two slots at once.
+    const next = tabs.includes(nextId)
+      ? tabs.filter((id) => id !== retiredId)
+      : tabs.map((id, i) => (i === slot ? nextId : id));
     const { [retiredId]: _seen, ...lastSeenCounts } = get().lastSeenCounts;
     const { [retiredId]: _att, ...attention } = get().attention;
     set({ openTabIds: next, lastSeenCounts, attention });

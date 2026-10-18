@@ -112,4 +112,15 @@ describe('swapTabSession', () => {
 
     expect(readStoredTabs()).toEqual(['sess-fresh', 'sess-b']);
   });
+
+  it('collapses the retired slot when nextId already occupies another tab slot', () => {
+    useSessionTabStore.setState({ openTabIds: ['sess-a', 'sess-b'] });
+    setActiveLane('sess-a');
+    setActiveSessionLane('sess-a');
+
+    useSessionTabStore.getState().swapTabSession('sess-a', 'sess-b');
+
+    expect(useSessionTabStore.getState().openTabIds).toEqual(['sess-b']);
+    expect(activeSessionLaneId()).toBe('sess-b');
+  });
 });
