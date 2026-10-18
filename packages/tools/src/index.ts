@@ -475,6 +475,8 @@ export {
 } from './search.js';
 export {
   analyzeSecurityAndPerformance,
+  type ResolvedScanLanguage,
+  resolveScanLanguage,
   type SecurityFinding,
   type SecurityScanInput,
   type SecurityScanOutput,

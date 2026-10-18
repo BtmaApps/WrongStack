@@ -8,6 +8,10 @@
  * 4. Prototype Pollution vulnerabilities
  * 5. ReDoS (Regular Expression Denial of Service) nested backtracking
  * 6. Unsafe dynamic execution (eval, new Function, unsanitized child_process.exec)
+ *
+ * Rules 2-6 are JavaScript/TypeScript line heuristics. Any other language only
+ * gets the language-agnostic secret scan, and a result with no findings says so
+ * (`unsupported_language`) instead of reporting `clean`.
  */
 
 import * as fs from 'node:fs/promises';
@@ -39,10 +43,21 @@ export interface SecurityScanInput {
   content?: string | undefined;
   /** Specific rule IDs to enable or filter by. */
   rules?: string[] | undefined;
+  /**
+   * Language of `content` (`typescript`, `javascript`, `swift`, `py`, …) or of
+   * `file` when its extension is misleading. Defaults to the file extension;
+   * inline `content` with neither is treated as TypeScript.
+   */
+  language?: string | undefined;
 }
 
 export interface SecurityScanOutput {
-  status: 'clean' | 'findings_detected';
+  /** `unsupported_language`: only the secret scan ran, and it found nothing. */
+  status: 'clean' | 'findings_detected' | 'unsupported_language';
+  /** Language the scan resolved for this input. */
+  language?: string | undefined;
+  /** False when the code rules (everything but secrets) do not cover `language`. */
+  languageSupported?: boolean | undefined;
   filesScanned: number;
   totalFindings: number;
   criticalCount: number;
@@ -79,9 +94,61 @@ const SQL_INTERPOLATION_REGEX = /(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN)
 
 const RAW_SQL_CONCAT_REGEX = /(?:SELECT|INSERT|UPDATE|DELETE).+['"]\s*\+\s*[a-zA-Z0-9_]/i;
 
+const LANGUAGE_BY_EXTENSION: Record<string, 'typescript' | 'javascript'> = {
+  ts: 'typescript',
+  tsx: 'typescript',
+  mts: 'typescript',
+  cts: 'typescript',
+  js: 'javascript',
+  jsx: 'javascript',
+  mjs: 'javascript',
+  cjs: 'javascript',
+};
+
+const LANGUAGE_ALIASES: Record<string, 'typescript' | 'javascript'> = {
+  typescript: 'typescript',
+  javascript: 'javascript',
+  node: 'javascript',
+  nodejs: 'javascript',
+};
+
+export interface ResolvedScanLanguage {
+  /** Canonical id for supported languages, otherwise the normalised hint or extension. */
+  id: string;
+  supported: boolean;
+}
+
+function normaliseLanguageHint(hint: string): string {
+  return hint
+    .trim()
+    .toLowerCase()
+    .replace(/^\./, '')
+    .replace(/[^a-z0-9+#_-]/g, '');
+}
+
+/** Resolve the scan language from an explicit hint, then the file extension, then the TS default. */
+export function resolveScanLanguage(
+  file: string | undefined,
+  language: string | undefined,
+): ResolvedScanLanguage {
+  const hint = language ? normaliseLanguageHint(language) : '';
+  if (hint) {
+    const known = LANGUAGE_BY_EXTENSION[hint] ?? LANGUAGE_ALIASES[hint];
+    return known ? { id: known, supported: true } : { id: hint, supported: false };
+  }
+  if (file) {
+    const ext = path.extname(file).slice(1).toLowerCase();
+    const known = LANGUAGE_BY_EXTENSION[ext];
+    if (known) return { id: known, supported: true };
+    return { id: ext || 'unknown', supported: false };
+  }
+  return { id: 'typescript', supported: true };
+}
+
 export function analyzeSecurityAndPerformance(
   filePath: string,
   content: string,
+  options: { secretsOnly?: boolean } = {},
 ): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
   const lines = content.split('\n');
@@ -114,6 +181,9 @@ export function analyzeSecurityAndPerformance(
       }
     }
   }
+
+  // Rules 2-6 are JS/TS idioms; on other languages they would be noise at best.
+  if (options.secretsOnly) return findings;
 
   // 2. Prototype Pollution
   for (let i = 0; i < lines.length; i++) {
@@ -248,10 +318,12 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
   capabilities: ['fs.read'],
   description:
     'Scan source code for contract-based security vulnerabilities and performance bottlenecks ' +
-    '(N+1 SQL queries, SQL injection, hardcoded secrets, prototype pollution, ReDoS, and unsafe eval).',
+    '(N+1 SQL queries, SQL injection, hardcoded secrets, prototype pollution, ReDoS, and unsafe eval). ' +
+    'Code rules cover JavaScript/TypeScript only; other languages get the secret scan and report `unsupported_language`.',
   usageHint:
     'RUN AFTER WRITING OR REFACTORING CODE TO CATCH HIDDEN DEFECTS:\n\n' +
-    '- Pass `file: "src/user-service.ts"` or direct `content: "..."`.\n' +
+    '- Pass `file: "src/user-service.ts"` or direct `content: "..."` (add `language` for non-TS content).\n' +
+    '- `status: "unsupported_language"` means the code was NOT checked (only secrets were scanned), not that it is clean.\n' +
     '- Catches N+1 loops, hardcoded secrets, SQL injection, and prototype pollution before committing.\n' +
     '- Returns severity-ranked findings with line numbers and exact remediation recommendations.',
   inputSchema: {
@@ -270,6 +342,12 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
         items: { type: 'string' },
         description: 'Optional list of rule IDs to filter by.',
       },
+      language: {
+        type: 'string',
+        description:
+          'Language of `content` or `file` (e.g. typescript, javascript, swift, py). ' +
+          'Defaults to the file extension; inline content with neither is treated as TypeScript.',
+      },
     },
     additionalProperties: false,
   },
@@ -278,7 +356,8 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
   // call — for a scanner that reads as "ran fine", the worst possible lie.
   async execute(input, ctx) {
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
-    let targetFile = input.file ?? 'inline-code.ts';
+    const resolved = resolveScanLanguage(input.file, input.language);
+    let targetFile = input.file ?? `inline-code.${resolved.supported ? 'ts' : resolved.id}`;
     let content = input.content;
 
     if (!content && input.file) {
@@ -304,7 +383,9 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
       };
     }
 
-    let findings = analyzeSecurityAndPerformance(targetFile, content);
+    let findings = analyzeSecurityAndPerformance(targetFile, content, {
+      secretsOnly: !resolved.supported,
+    });
 
     if (input.rules && input.rules.length > 0) {
       const ruleSet = new Set(input.rules);
@@ -315,14 +396,26 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
     const warningCount = findings.filter((f) => f.severity === 'warning').length;
     const totalFindings = findings.length;
 
-    const status = totalFindings === 0 ? 'clean' : 'findings_detected';
+    const status: SecurityScanOutput['status'] =
+      totalFindings > 0
+        ? 'findings_detected'
+        : resolved.supported
+          ? 'clean'
+          : 'unsupported_language';
+    const unsupportedNote = resolved.supported
+      ? ''
+      : ` Only the secret scan ran: the code rules cover JavaScript/TypeScript, not "${resolved.id}".`;
     const summary =
-      totalFindings === 0
-        ? `Security & Performance AST Scan: CLEAN (${targetFile})`
-        : `Security & Performance AST Scan: ${totalFindings} issue(s) detected (${criticalCount} critical, ${warningCount} warning).`;
+      status === 'unsupported_language'
+        ? `Security & Performance AST Scan: NOT CHECKED (${targetFile}). Unsupported language "${resolved.id}": only the secret scan ran and found nothing. This is not a clean result.`
+        : status === 'clean'
+          ? `Security & Performance AST Scan: CLEAN (${targetFile})`
+          : `Security & Performance AST Scan: ${totalFindings} issue(s) detected (${criticalCount} critical, ${warningCount} warning).${unsupportedNote}`;
 
     return {
       status,
+      language: resolved.id,
+      languageSupported: resolved.supported,
       filesScanned: 1,
       totalFindings,
       criticalCount,

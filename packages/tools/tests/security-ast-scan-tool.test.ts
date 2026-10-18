@@ -2,7 +2,11 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { analyzeSecurityAndPerformance, securityAstScanTool } from '../src/index.js';
+import {
+  analyzeSecurityAndPerformance,
+  resolveScanLanguage,
+  securityAstScanTool,
+} from '../src/index.js';
 
 describe('security-ast-scan tool & analyzer', () => {
   it('detects N+1 database queries inside loops', () => {
@@ -113,5 +117,82 @@ const emailRegex = /^([a-zA-Z0-9_]+)+@domain.com$/;
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
+  });
+
+  describe('unsupported languages (issue #413)', () => {
+    const swift = [
+      'import Foundation',
+      'let k = ProcessInfo.processInfo.environment["X"]!',
+      'let p = Process(); p.launchPath = "/bin/sh"; p.arguments = ["-c", "rm -rf " + k]; try! p.run()',
+    ].join('\n');
+    const run = (input: Parameters<typeof securityAstScanTool.execute>[0], cwd?: string) =>
+      securityAstScanTool.execute(
+        input,
+        { projectRoot: cwd ?? process.cwd(), cwd: cwd ?? process.cwd() } as never,
+        { signal: new AbortController().signal },
+      );
+
+    it('does not report clean for a Swift file; it says the code was not checked', async () => {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ast-scan-swift-'));
+      try {
+        await fs.mkdir(path.join(dir, 'Sources'));
+        await fs.writeFile(path.join(dir, 'Sources', 'Foo.swift'), swift);
+        const res = await run({ file: 'Sources/Foo.swift' }, dir);
+        expect(res.status).toBe('unsupported_language');
+        expect(res.language).toBe('swift');
+        expect(res.languageSupported).toBe(false);
+        expect(res.summary).toContain('NOT CHECKED');
+        expect(res.summary).not.toContain('CLEAN');
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('names inline content after the declared language instead of assuming .ts', async () => {
+      const res = await run({ content: swift, language: 'swift' });
+      expect(res.status).toBe('unsupported_language');
+      expect(res.summary).toContain('inline-code.swift');
+    });
+
+    it('does not apply the JS rules to non-JS content', async () => {
+      const res = await run({ content: 'eval("x")', language: 'python' });
+      expect(res.findings.some((f) => f.ruleId === 'sec/unsafe-dynamic-exec')).toBe(false);
+      expect(res.status).toBe('unsupported_language');
+    });
+
+    it('still reports secrets in an unsupported language and flags the partial coverage', async () => {
+      const res = await run({
+        content: 'let key = "AKIAIOSFODNN7EXAMPLE"',
+        language: '.swift',
+      });
+      expect(res.status).toBe('findings_detected');
+      expect(res.findings.map((f) => f.ruleId)).toEqual(['sec/hardcoded-secret']);
+      expect(res.languageSupported).toBe(false);
+      expect(res.summary).toContain('Only the secret scan ran');
+    });
+
+    it('keeps the full rule set for TS/JS by extension, alias and the inline default', async () => {
+      for (const input of [
+        { content: 'eval("x")' },
+        { content: 'eval("x")', language: 'JavaScript' },
+        { content: 'eval("x")', language: 'tsx' },
+        { content: 'eval("x")', file: 'a.mjs' },
+      ]) {
+        const res = await run(input);
+        expect(res.status).toBe('findings_detected');
+        expect(res.languageSupported).toBe(true);
+      }
+    });
+
+    it('lets an explicit language override a misleading extension', () => {
+      expect(resolveScanLanguage('a.txt', 'typescript')).toEqual({
+        id: 'typescript',
+        supported: true,
+      });
+      expect(resolveScanLanguage('Makefile', undefined)).toEqual({
+        id: 'unknown',
+        supported: false,
+      });
+    });
   });
 });

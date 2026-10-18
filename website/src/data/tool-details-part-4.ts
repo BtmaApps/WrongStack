@@ -308,6 +308,12 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         type: 'string[]',
         description: 'Optional list of rule IDs to filter by.',
       },
+      {
+        name: 'language',
+        type: 'string',
+        description:
+          'Language of `content` or `file` (e.g. typescript, javascript, swift, py). Defaults to the file extension; inline content with neither is treated as TypeScript.',
+      },
     ],
     notes: ['Returns severity-ranked findings with line numbers and remediation guidance.'],
   },
