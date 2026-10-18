@@ -56,4 +56,28 @@ describe('Codebase Index MCP CLI — flag values', () => {
       await fs.rm(tmp, { recursive: true, force: true });
     }
   });
+
+  it('rejects blank or whitespace-only flag values instead of resolving to cwd or port 0', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseArgs(
+      [
+        '--project-root',
+        '   ',
+        '--index-dir',
+        '',
+        '--port',
+        '8080',
+        '--port',
+        '   ',
+        '--token',
+        '   ',
+      ],
+      { WRONGSTACK_MCP_TOKEN: 'env-token' },
+    );
+    expect(parsed.projectRoot).toBe('');
+    expect(parsed.indexDir).toBeUndefined();
+    expect(parsed.httpPort).toBe(8080);
+    expect(parsed.httpToken).toBe('env-token');
+    expect(warn).toHaveBeenCalledTimes(4);
+  });
 });
