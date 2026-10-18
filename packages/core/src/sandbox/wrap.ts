@@ -179,7 +179,16 @@ export function createSandboxExecWrapper(
     routed: SandboxRoute,
   ): Record<string, unknown> {
     if (name === 'bash') {
-      return routed.command === undefined ? input : { ...input, command: routed.command };
+      if (routed.command !== undefined) {
+        return { ...input, command: routed.command };
+      }
+      if (routed.argv && routed.argv.length > 0) {
+        const command = routed.argv
+          .map((arg) => (/[\s"]/u.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg))
+          .join(' ');
+        return { ...input, command };
+      }
+      return input;
     }
     if (routed.argv === undefined) return input;
     const [head = '', ...rest] = routed.argv;

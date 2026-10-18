@@ -160,4 +160,48 @@ describe('choke point selects the windows-native backend (plan 28 T5/T5.1)', () 
       wrapped.execute({ v: 7 }, {} as never, { signal: new AbortController().signal } as never),
     ).resolves.toEqual({ v: 7 });
   });
+
+  it('rewrites bash input.command when applyHelper returns an argv-based launcher route', async () => {
+    configureSandboxPolicy({
+      mode: 'enforced',
+      tier: 'workspace-write',
+      backend: 'windows-native',
+      writableRoots: ['D:/ws'],
+    });
+    let executedCommand = '';
+    const bashTool: Tool<{ command: string }, { command: string }> = {
+      name: 'bash',
+      description: 'bash',
+      permission: 'confirm',
+      mutating: true,
+      execute: async (input: { command: string }) => {
+        executedCommand = input.command;
+        return { command: input.command };
+      },
+    } as unknown as Tool<{ command: string }, { command: string }>;
+
+    const helper = createWindowsNativeSandboxBackend({
+      platform: 'win32',
+      helperRunner: async (route) => ({
+        ...route,
+        command: undefined,
+        argv: [
+          'powershell.exe',
+          '-File',
+          'C:\\Program Files\\helper.ps1',
+          '-EncodedPayload',
+          'abc',
+        ],
+      }),
+    });
+    const wrapped = createSandboxExecWrapper({ backend: helper })(bashTool);
+    await wrapped.execute(
+      { command: 'echo hi' },
+      { cwd: 'D:/ws' } as never,
+      { signal: new AbortController().signal } as never,
+    );
+    expect(executedCommand).toBe(
+      'powershell.exe -File "C:\\Program Files\\helper.ps1" -EncodedPayload abc',
+    );
+  });
 });
