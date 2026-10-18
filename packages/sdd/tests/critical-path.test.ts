@@ -45,7 +45,10 @@ function makeGraph(opts: {
 }
 
 function loadWebuiUxGraph(): TaskGraph {
-  const file = resolve(import.meta.dirname, '../../../docs/specs/webui-ux-improvements.task-graph.json');
+  const file = resolve(
+    import.meta.dirname,
+    '../../../docs/specs/webui-ux-improvements.task-graph.json',
+  );
   const parsed = JSON.parse(readFileSync(file, 'utf8')) as Omit<TaskGraph, 'nodes'> & {
     nodes: [string, TaskNode][];
   };
@@ -251,6 +254,20 @@ describe('Critical Path Analysis', () => {
       result.executionOrder.indexOf('WUX-S1.1'),
     );
     expect(result.parallelGroups[0]?.sort()).toEqual(['WUX-S0.1', 'WUX-S0.2']);
+  });
+
+  it('ignores dangling depends_on edges whose endpoints are missing from graph.nodes', () => {
+    const graph = makeGraph({
+      nodes: [makeNode('a', { status: 'pending', estimateHours: 2 })],
+      edges: [
+        { from: 'missing-upstream', to: 'a' },
+        { from: 'a', to: 'missing-downstream' },
+      ],
+    });
+    const result = analyzeCriticalPath(graph);
+    expect(result.readyTasks).toEqual(['a']);
+    expect(result.blockedTasks).toEqual([]);
+    expect(result.bottlenecks).toEqual([]);
   });
 });
 

@@ -45,6 +45,7 @@ export function analyzeCriticalPath(graph: TaskGraph): CriticalPathAnalysis {
 
   for (const edge of graph.edges) {
     if (edge.type === 'depends_on') {
+      if (!graph.nodes.has(edge.from) || !graph.nodes.has(edge.to)) continue;
       if (!blockedByMap.has(edge.to)) blockedByMap.set(edge.to, new Set());
       blockedByMap.get(edge.to)?.add(edge.from);
 
@@ -196,10 +197,7 @@ function getTransitiveBlocked(
 /**
  * Compute the critical path (longest path by estimated hours).
  */
-function computeCriticalPath(
-  graph: TaskGraph,
-  blocksMap: Map<string, Set<string>>,
-): string[] {
+function computeCriticalPath(graph: TaskGraph, blocksMap: Map<string, Set<string>>): string[] {
   // Use all nodes in the graph, not just topo-reachable ones
   const allIds = Array.from(graph.nodes.keys());
   if (allIds.length === 0) return [];
