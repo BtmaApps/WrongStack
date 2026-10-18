@@ -141,15 +141,20 @@ export class AutomationStore {
       const changedSchedule =
         previous.intervalMs !== spec.intervalMs ||
         JSON.stringify(previous.schedule) !== JSON.stringify(spec.schedule);
+      const reenabledWithStaleNextRun =
+        !previous.enabled &&
+        spec.enabled &&
+        (previous.nextRunAt === null || previous.nextRunAt <= now);
       const job = {
         ...structuredClone(spec),
         projectRoot,
         id,
         createdAt: previous.createdAt,
         revision: expectedRevision + 1,
-        nextRunAt: changedSchedule
-          ? (previewSchedule(spec, now, 1)[0] ?? null)
-          : previous.nextRunAt,
+        nextRunAt:
+          changedSchedule || reenabledWithStaleNextRun
+            ? (previewSchedule(spec, now, 1)[0] ?? null)
+            : previous.nextRunAt,
       };
       state.jobs[index] = job;
       return job;
@@ -160,6 +165,7 @@ export class AutomationStore {
     enabled: boolean,
     expectedRevision?: number,
     projectRoot?: string,
+    now = Date.now(),
   ): Promise<void> {
     await this.change((state) => {
       const job = state.jobs.find((item) => item.id === id);
@@ -168,6 +174,9 @@ export class AutomationStore {
         throw new Error('Automation job not found');
       if (expectedRevision !== undefined && (job.revision ?? 1) !== expectedRevision)
         throw new AutomationRevisionConflict();
+      if (!job.enabled && enabled && (job.nextRunAt === null || job.nextRunAt <= now)) {
+        job.nextRunAt = previewSchedule(job, now, 1)[0] ?? null;
+      }
       job.enabled = enabled;
       job.revision = (job.revision ?? 1) + 1;
     });
