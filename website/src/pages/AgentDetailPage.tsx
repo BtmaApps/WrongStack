@@ -56,7 +56,7 @@ export function AgentDetailPage() {
         }
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+      <section className="site-section site-section--compact site-container">
         <SectionIntro
           index="01"
           eyebrow="Role in the fleet"
@@ -140,7 +140,7 @@ export function AgentDetailPage() {
 
       {related.length > 0 && (
         <section className="border-t border-line bg-surface">
-          <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
+          <div className="site-container py-20">
             <h2 className="text-2xl font-black tracking-[-0.04em] text-fg">
               {agent.kind === 'phase' && agent.phaseLabel
                 ? `More ${agent.phaseLabel.toLowerCase()} roles`

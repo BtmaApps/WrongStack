@@ -9,6 +9,7 @@
     "typecheck": "bun ../scripts/bun-typecheck.mjs",
     "preview": "bun --bun run vite preview",
     "test": "bun --bun run vitest run",
+    "test:responsive": "bun --bun run playwright test --config playwright.config.ts",
     "typecheck:tests": "bun ../scripts/bun-typecheck.mjs --project tsconfig.tests.json",
     "format": "bun --bun run biome format --write .",
     "lint": "bun --bun run biome lint ."

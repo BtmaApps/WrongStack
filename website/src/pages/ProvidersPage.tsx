@@ -98,7 +98,7 @@ export function ProvidersPage() {
           <ExternalDoc path="docs/provider-author-guide.md">Open provider author guide</ExternalDoc>
         }
       />
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Wire families"
@@ -120,14 +120,14 @@ export function ProvidersPage() {
         </div>
       </section>
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <SectionIntro
             index="02"
             eyebrow="Provider gallery"
             title="Named providers, ready to connect."
             description="Quick-start providers surfaced in setup, plus first-class subscription sign-ins and local runtimes. Beyond these, any models.dev provider on a matching wire family works with a key."
           />
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="site-card-grid site-card-grid--roomy mt-12">
             {curatedProviders.map((provider) => (
               <article
                 key={provider.id}
@@ -211,7 +211,7 @@ export function ProvidersPage() {
         </div>
       </section>
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="03"
             eyebrow="Credentials"
@@ -297,7 +297,7 @@ export function ProvidersPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Model matrix"
@@ -329,7 +329,7 @@ export function ProvidersPage() {
         </div>
       </section>
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="05"
             eyebrow="One session, many models"
@@ -375,7 +375,7 @@ export function ProvidersPage() {
         </div>
       </section>
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="06"
             eyebrow="Failure path"

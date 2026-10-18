@@ -62,7 +62,7 @@ export function MailboxPage() {
         aside={<ExternalDoc path="docs/slash/mailbox.md">Open the operator reference</ExternalDoc>}
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="System model"
@@ -135,7 +135,7 @@ export function MailboxPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Identity & addressing"
@@ -181,7 +181,7 @@ export function MailboxPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Message language"
@@ -202,7 +202,7 @@ export function MailboxPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Message lifecycle"
@@ -260,7 +260,7 @@ export function MailboxPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Human controls"
@@ -316,7 +316,7 @@ export function MailboxPage() {
       </section>
 
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto grid max-w-[1380px] gap-7 px-4 py-20 sm:px-6 lg:grid-cols-[.7fr_1fr] lg:items-start lg:px-10">
+        <div className="site-container grid gap-7 py-20 lg:grid-cols-[.7fr_1fr] lg:items-start">
           <div>
             <MessageSquareMore className="size-7 text-brand" />
             <h2 className="mt-7 text-3xl font-black tracking-[-0.045em] text-fg">

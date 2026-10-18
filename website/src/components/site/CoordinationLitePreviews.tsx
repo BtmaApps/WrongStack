@@ -262,7 +262,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-[0.72fr_1.28fr] gap-2.5">
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)]">
         <motion.div
           animate={{ opacity: visibleStep >= 0 ? 1 : 0.35 }}
           className="rounded-xl border border-rose-300/12 bg-rose-300/[0.035] p-3"
@@ -422,8 +422,8 @@ export function CoordinationLitePreviews() {
   ];
 
   return (
-    <section className="border-b border-line bg-ink px-4 py-16 text-white sm:px-6 sm:py-24 lg:px-10 lg:py-28">
-      <div className="mx-auto max-w-[1380px]">
+    <section className="site-section site-section--demo border-b border-line bg-ink text-white">
+      <div className="site-container">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">

@@ -86,7 +86,7 @@ export function PluginDetailPage() {
       />
 
       <section className="border-b border-line bg-surface">
-        <div className="mx-auto grid max-w-[1380px] grid-cols-2 gap-px bg-line px-4 sm:px-6 lg:grid-cols-5 lg:px-10">
+        <div className="site-container grid grid-cols-2 gap-px bg-line lg:grid-cols-5">
           {[
             ['Execution', operational.executionLabel],
             ['Tools', String(operational.toolCount)],
@@ -106,7 +106,7 @@ export function PluginDetailPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+      <section className="site-section site-section--compact site-container">
         <SectionIntro index="01" eyebrow="What it does" title={`Inside ${plugin.name}.`} />
         <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_.72fr]">
           <article className="rounded-2xl border border-line bg-card p-6 sm:p-8">
@@ -258,7 +258,7 @@ export function PluginDetailPage() {
 
       {hasTools && (
         <section className="border-y border-line bg-surface">
-          <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+          <div className="site-section site-section--short site-container">
             <SectionIntro
               index="02"
               eyebrow="Registered tools"
@@ -312,7 +312,7 @@ export function PluginDetailPage() {
       )}
 
       {hasConfig && (
-        <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <section className="site-section site-section--compact site-container">
           <SectionIntro
             index={hasTools ? '03' : '02'}
             eyebrow="Configuration"
@@ -353,7 +353,7 @@ export function PluginDetailPage() {
       )}
 
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
+        <div className="site-container py-20">
           <div className="flex flex-wrap items-center justify-between gap-6">
             <h2 className="text-2xl font-black tracking-[-0.04em] text-fg">
               More {plugin.source} plugins

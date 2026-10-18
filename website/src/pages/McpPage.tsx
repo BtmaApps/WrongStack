@@ -29,7 +29,7 @@ export function McpPage() {
           <ExternalDoc path="docs/subcommands/mcp.md">Open MCP lifecycle reference</ExternalDoc>
         }
       />
-      <section className="mx-auto max-w-[1380px] px-4 pt-12 sm:px-6 lg:px-10">
+      <section className="site-container pt-12">
         <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
           <h2 className="text-2xl font-black text-fg">Consent before opening a page</h2>
           <p className="mt-4 text-sm leading-7 text-muted">
@@ -46,7 +46,7 @@ export function McpPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Transports"
@@ -86,7 +86,7 @@ export function McpPage() {
         </div>
       </section>
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Connection lifecycle"
@@ -119,7 +119,7 @@ export function McpPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Operate"
@@ -167,7 +167,7 @@ export function McpPage() {
         </div>
       </section>
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
+        <div className="site-container py-20">
           <SectionIntro
             index="04"
             eyebrow="Security"
@@ -210,7 +210,7 @@ export function McpPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Interoperability"

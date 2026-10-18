@@ -535,8 +535,8 @@ export function KanbanLiveDemo() {
   };
 
   return (
-    <section className="border-b border-line bg-ink px-4 py-16 text-white sm:px-6 sm:py-24 lg:px-10 lg:py-28">
-      <div className="mx-auto max-w-[1500px]">
+    <section className="site-section site-section--demo border-b border-line bg-ink text-white">
+      <div className="site-container">
         <div className="mb-9 grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
             <div className="flex items-center gap-2 font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">

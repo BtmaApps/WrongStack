@@ -213,8 +213,8 @@ export function TuiShowcase() {
     : Math.min(missions.length, Math.floor(tick / 2));
 
   return (
-    <section className="border-b border-line px-4 py-16 sm:px-6 sm:py-24 lg:px-10 lg:py-28">
-      <div className="mx-auto max-w-[1380px]">
+    <section className="site-section site-section--demo border-b border-line">
+      <div className="site-container">
         <div className="mb-9 grid gap-5 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
           <div>
             <div className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">

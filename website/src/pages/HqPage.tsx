@@ -37,7 +37,7 @@ export function HqPage() {
         aside={<ExternalDoc path="docs/hq.md">Open HQ operator guide</ExternalDoc>}
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 pt-12 sm:px-6 lg:px-10">
+      <section className="site-container pt-12">
         <div className="grid gap-5 lg:grid-cols-3">
           {[
             [
@@ -62,7 +62,7 @@ export function HqPage() {
       </section>
 
       {/* ── Architecture ────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Architecture"
@@ -106,7 +106,7 @@ export function HqPage() {
 
       {/* ── Connection flow ─────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Connection flow"
@@ -184,7 +184,7 @@ export function HqPage() {
       </section>
 
       {/* ── Dashboard panels ────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Dashboard panels"
@@ -242,7 +242,7 @@ export function HqPage() {
 
       {/* ── Command types ───────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Control plane"
@@ -305,7 +305,7 @@ export function HqPage() {
       </section>
 
       {/* ── Security model ──────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Security model"
@@ -417,7 +417,7 @@ export function HqPage() {
 
       {/* ── Telemetry bridges ───────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="06"
             eyebrow="Telemetry bridges"
@@ -469,7 +469,7 @@ export function HqPage() {
       </section>
 
       {/* ── Setup & commands ────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="07"
           eyebrow="Setup"

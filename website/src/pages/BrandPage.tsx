@@ -202,7 +202,7 @@ export function BrandPage() {
       />
 
       <section className="border-b border-line bg-ink text-white">
-        <div className="mx-auto grid max-w-[1380px] gap-px bg-white/10 lg:grid-cols-[1.25fr_.75fr]">
+        <div className="site-container grid gap-px bg-white/10 lg:grid-cols-[1.25fr_.75fr]">
           <div className="relative grid min-h-[430px] place-items-center overflow-hidden p-8 sm:p-14">
             <div className="manual-grid absolute inset-0 opacity-20" aria-hidden="true" />
             <div className="relative w-full max-w-3xl">
@@ -236,7 +236,7 @@ export function BrandPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+      <section className="site-section site-section--compact site-container">
         <SectionIntro
           index="01"
           eyebrow="Logo assets"
@@ -343,7 +343,7 @@ export function BrandPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <SectionIntro
             index="02"
             eyebrow="Color"
@@ -398,7 +398,7 @@ export function BrandPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+      <section className="site-section site-section--compact site-container">
         <SectionIntro
           index="03"
           eyebrow="Typography"
@@ -474,7 +474,7 @@ export function BrandPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <SectionIntro
             index="04"
             eyebrow="Name & voice"
@@ -546,9 +546,9 @@ export function BrandPage() {
       </section>
 
       <PageNext
-        label="Created by"
-        title="Meet the builder behind WrongStack."
-        body="See the principles, projects and wider open-source workshop behind the product."
+        label="Built by OxogNet"
+        title="Meet the studio behind WrongStack."
+        body="Explore OxogNet, its principles and the open-source ecosystem behind the product."
         href="/created-by"
       />
     </>

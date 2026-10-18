@@ -1,5 +1,6 @@
 import { ArrowRight, Check, Terminal } from 'lucide-react';
 import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
+import { WrongStackFamily } from '@/components/site/WrongStackFamily';
 import { ecosystemPillars } from '@/data/content';
 import { Link } from '@/lib/router';
 
@@ -8,21 +9,23 @@ export function EcosystemPage() {
     <>
       <PageHero
         index="07"
-        eyebrow="Ecosystem"
+        eyebrow="Family & ecosystem"
         title={
           <>
-            Make it yours.
+            One family.
             <br />
-            <span className="text-brand">Keep it legible.</span>
+            <span className="text-brand">Clear boundaries.</span>
           </>
         }
-        description="WrongStack has six extension boundaries. Pick the smallest one that fits: a prompt for reusable text, a skill for expert behavior, MCP for remote tools, hooks for policy, or a plugin for runtime code."
+        description="WrongStack orchestrates, WrongForge executes and WrongTrace observes. Explore the family, then extend your workflow with prompts, skills, MCP, hooks, plugins and provider adapters."
         aside={
           <ExternalDoc path="docs/plugin-author-guide.md">Open plugin author guide</ExternalDoc>
         }
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <WrongStackFamily />
+
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Choose an extension"
@@ -69,7 +72,7 @@ export function EcosystemPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <div className="grid gap-12 lg:grid-cols-[.48fr_1fr]">
             <div>
               <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
@@ -105,7 +108,7 @@ export function EcosystemPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="02"
           eyebrow="Discovery"
@@ -174,7 +177,7 @@ export function EcosystemPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+      <section className="site-section site-section--short site-container">
         <SectionIntro index="05" eyebrow="Related" title="Explore more ecosystem features." />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
@@ -213,7 +216,7 @@ export function EcosystemPage() {
           ))}
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Plugin development"

@@ -17,7 +17,7 @@ export function ToolFlowContribution() {
   if (!batched || !reduced) throw new Error('ToolFlow contribution snapshot is incomplete');
   return (
     <section className="border-y border-line bg-surface">
-      <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+      <div className="site-section site-section--short site-container">
         <SectionIntro
           index="TF"
           eyebrow="Measured contribution"

@@ -201,7 +201,7 @@ export function TroubleshootingPage() {
           </ExternalDoc>
         }
       />
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+      <section className="site-section site-section--compact site-container">
         <SectionIntro
           index="01"
           eyebrow="First response"
@@ -239,7 +239,7 @@ export function TroubleshootingPage() {
         </div>
       </section>
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Issue finder"
@@ -267,7 +267,7 @@ export function TroubleshootingPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Escalation packet"

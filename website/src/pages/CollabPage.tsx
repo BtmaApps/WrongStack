@@ -34,7 +34,7 @@ export function CollabPage() {
       />
 
       {/* ── The trio pipeline ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Pipeline"
@@ -103,7 +103,7 @@ export function CollabPage() {
 
       {/* ── FleetBus events ─────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="FleetBus events"
@@ -234,7 +234,7 @@ export function CollabPage() {
       </section>
 
       {/* ── SharedFileSnapshot ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="File snapshot"
@@ -309,7 +309,7 @@ export function CollabPage() {
 
       {/* ── Budget & alerts ─────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Budget & alerts"
@@ -393,7 +393,7 @@ export function CollabPage() {
       </section>
 
       {/* ── CollabDebugReport ───────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Final report"
@@ -505,7 +505,7 @@ export function CollabPage() {
 
       {/* ── Usage guide ─────────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="06"
             eyebrow="Usage guide"
@@ -568,7 +568,7 @@ export function CollabPage() {
       </section>
 
       {/* ── Commands & integration ──────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="07"
           eyebrow="Commands & integration"

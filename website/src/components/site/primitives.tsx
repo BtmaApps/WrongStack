@@ -44,10 +44,10 @@ const HERO_TITLE_DEFAULT = 'clamp(2.75rem, 5.6vw, 4.75rem)';
  * length of its widest single line. Applied inline (Tailwind can't JIT a
  * computed arbitrary value), so any length yields a real, size.
  *
- * Calibration is empirical: the hero's `lg` left column is ~635px at the 1024px
- * breakpoint and ~885px past 1380px, i.e. `col(vp) ≈ (min(vp,1380) − 120) × 0.70`.
- * We size so the widest line fits that column at every width — the 1024px point
- * is the tightest and sets the `vw` term; the wide cap sets the `max`. Pass the
+ * Calibration is conservative: allow ~600px at the 1024px breakpoint and an
+ * ~850px desktop reading measure. The fluid shell may provide more room, but
+ * the type cap keeps titles from growing just to fill it. The 1024px point
+ * sets the `vw` term; the reading measure sets the `max`. Pass the
  * longest line (for a two-line title, the longer half; for a single dynamic name
  * like a plugin slug, the name itself).
  */
@@ -64,7 +64,7 @@ export function heroTitleFontSize(
   // single line (a two-line title passes its longer half); pass 2 with the full
   // text for a long sentence that should wrap into two balanced lines.
   const tightUsable = 600 * lines; // ~col(1024px breakpoint) × lines
-  const wideUsable = 850 * lines; // ~col(≥1380px) × lines
+  const wideUsable = 850 * lines; // Conservative measure, independent of shell width.
   const vw = Math.min(VW_CEIL, (tightUsable / (K * n * 1024)) * 100);
   const capPx = Math.min(CAP_PX, wideUsable / (K * n));
   // Mobile floor, but low enough that long titles can still shrink to fit the
@@ -93,7 +93,7 @@ export function PageHero({
     <section className="relative overflow-hidden border-b border-line pt-28 sm:pt-32 lg:pt-40">
       <div className="manual-grid absolute inset-0 opacity-70" aria-hidden="true" />
       <BrandMark className="pointer-events-none absolute right-[4%] top-28 w-36 opacity-[0.08] sm:w-48 lg:top-36 lg:w-60" />
-      <div className="relative mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 sm:pb-20 lg:px-10 lg:pb-24">
+      <div className="site-container relative pb-16 sm:pb-20 lg:pb-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,.55fr)] lg:items-end">
           <div>
             <div className="page-hero-enter flex items-center gap-4">
@@ -237,7 +237,7 @@ export function PageNext({
     <section className="border-t border-line bg-surface">
       <Link
         href={href}
-        className="group mx-auto grid max-w-[1380px] gap-6 px-4 py-14 sm:px-6 lg:grid-cols-[.4fr_1fr_auto] lg:items-center lg:px-10 lg:py-20"
+        className="site-container group grid gap-6 py-14 lg:grid-cols-[.4fr_1fr_auto] lg:items-center lg:py-20"
       >
         <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand-2">
           Next / {label}

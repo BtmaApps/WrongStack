@@ -37,7 +37,7 @@ export function InterfacesPage() {
         aside={<ExternalDoc path="docs/webui.md">Read the WebUI guide</ExternalDoc>}
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 pt-12 sm:px-6 lg:px-10">
+      <section className="site-container pt-12">
         <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
           <h2 className="text-2xl font-black text-fg">Remote agent, local WebUI</h2>
           <p className="mt-4 text-sm leading-7 text-muted">
@@ -57,7 +57,7 @@ export function InterfacesPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 pt-8 sm:px-6 lg:px-10">
+      <section className="site-container pt-8">
         <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
           <h2 className="text-2xl font-black text-fg">Terminal details that follow the session.</h2>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-muted">
@@ -78,7 +78,7 @@ export function InterfacesPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Surface guide"
@@ -127,7 +127,7 @@ export function InterfacesPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Compare"
@@ -167,7 +167,7 @@ export function InterfacesPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Shared state"
@@ -196,7 +196,7 @@ export function InterfacesPage() {
           ))}
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+      <section className="site-section site-section--short site-container">
         <SectionIntro index="05" eyebrow="Related" title="Explore more interfaces and tools." />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
@@ -230,7 +230,7 @@ export function InterfacesPage() {
           ))}
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Quick comparison"

@@ -138,7 +138,7 @@ export function PluginsPage() {
       />
 
       <section className="border-b border-line bg-surface">
-        <div className="mx-auto grid max-w-[1380px] grid-cols-2 gap-px bg-line px-4 sm:grid-cols-4 sm:px-6 lg:grid-cols-8 lg:px-10">
+        <div className="site-container grid grid-cols-2 gap-px bg-line sm:grid-cols-4 lg:grid-cols-8">
           {[
             [String(catalogStats.total), 'managed plugins'],
             [String(catalogStats.suite), 'suite plugins'],
@@ -166,7 +166,7 @@ export function PluginsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Lifecycle"
@@ -238,7 +238,7 @@ export function PluginsPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Complete inventory"
@@ -294,7 +294,7 @@ export function PluginsPage() {
                     </div>
                     <p className="max-w-3xl text-sm leading-6 text-muted">{details.body}</p>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="site-card-grid">
                     {plugins.map((plugin) => {
                       const detail = pluginDetails[plugin.name];
                       const llm = pluginLlmProfile(plugin.name);
@@ -370,7 +370,7 @@ export function PluginsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Provider wire"
@@ -429,7 +429,7 @@ export function PluginsPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
+        <div className="site-container py-20">
           <SectionIntro
             index="04"
             eyebrow="Build your own"
@@ -485,7 +485,7 @@ export function PluginsPage() {
       </section>
 
       <section className="bg-ink text-white">
-        <div className="mx-auto grid max-w-[1380px] gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-10">
+        <div className="site-container grid gap-8 py-16 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
               OPEN SOURCE · FREE · MIT LICENSED

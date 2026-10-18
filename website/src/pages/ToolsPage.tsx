@@ -105,7 +105,7 @@ export function ToolsPage() {
         }
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-12 sm:px-6 lg:px-10">
+      <section className="site-container py-12">
         <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
           <h2 className="text-2xl font-black text-fg">
             Dead code: scan, preview, verify, restore.
@@ -130,7 +130,7 @@ export function ToolsPage() {
       </section>
 
       <section className="border-b border-line bg-surface">
-        <div className="mx-auto grid max-w-[1380px] grid-cols-2 gap-px bg-line px-4 sm:grid-cols-3 sm:px-6 lg:grid-cols-6 lg:px-10">
+        <div className="site-container grid grid-cols-2 gap-px bg-line sm:grid-cols-3 lg:grid-cols-6">
           {[
             [String(TOOL_COUNT), 'built-in tools'],
             [String(AUTO_COUNT), 'auto permission'],
@@ -156,7 +156,7 @@ export function ToolsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Execution contract"
@@ -196,7 +196,7 @@ export function ToolsPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Complete inventory"
@@ -253,7 +253,7 @@ export function ToolsPage() {
                     </div>
                     <span className="font-mono text-xs font-black text-faint">{tools.length}</span>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="site-card-grid">
                     {tools.map((tool) => (
                       <Link
                         key={tool.name}
@@ -299,7 +299,7 @@ export function ToolsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Context economics"
@@ -364,7 +364,7 @@ export function ToolsPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto grid max-w-[1380px] gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-10">
+        <div className="site-container grid gap-8 py-16 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand-2">
               OPEN SOURCE · FREE · MIT

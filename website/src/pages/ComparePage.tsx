@@ -258,7 +258,7 @@ function ProductSection({ product, index }: { product: ProductComparison; index:
   const sectionNumber = String(index + 3).padStart(2, '0');
   return (
     <section id={product.id} className="scroll-mt-24 border-t border-line py-16 sm:py-20 lg:py-28">
-      <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-10">
+      <div className="site-container ">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,.7fr)_minmax(0,1.3fr)] lg:items-start">
           <div className="lg:sticky lg:top-28">
             <div className="flex items-center gap-4">
@@ -350,7 +350,7 @@ export function ComparePage() {
       />
 
       <section className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-[1380px] gap-2 overflow-x-auto px-4 py-4 sm:px-6 lg:px-10">
+        <div className="site-container flex gap-2 overflow-x-auto py-4">
           <a
             href="#overview"
             className="shrink-0 rounded-full bg-fg px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.13em] text-bg"
@@ -370,7 +370,7 @@ export function ComparePage() {
       </section>
 
       <section id="overview" className="scroll-mt-24 py-16 sm:py-20 lg:py-28">
-        <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-10">
+        <div className="site-container ">
           <SectionIntro
             index="01"
             eyebrow="The short answer"
@@ -382,7 +382,7 @@ export function ComparePage() {
       </section>
 
       <section className="border-y border-line bg-surface py-16 sm:py-20 lg:py-28">
-        <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-10">
+        <div className="site-container ">
           <SectionIntro
             index="02"
             eyebrow="The WrongStack thesis"
@@ -415,7 +415,7 @@ export function ComparePage() {
       ))}
 
       <section className="border-t border-line bg-ink py-16 text-white sm:py-20 lg:py-24">
-        <div className="mx-auto grid max-w-[1380px] gap-10 px-4 sm:px-6 lg:grid-cols-[.85fr_1.15fr] lg:px-10">
+        <div className="site-container grid gap-10 lg:grid-cols-[.85fr_1.15fr]">
           <div>
             <div className="flex items-center gap-3 font-mono text-xs font-black uppercase tracking-[0.16em] text-brand-2">
               <BadgeCheck className="size-4" /> Claim standard
@@ -450,7 +450,7 @@ export function ComparePage() {
             ))}
           </div>
         </div>
-        <div className="mx-auto mt-10 flex max-w-[1380px] flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
+        <div className="site-container mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="inline-flex items-start gap-2 text-sm leading-6 text-zinc-400">
             <CircleHelp className="mt-1 size-4 shrink-0 text-brand" /> Products change quickly. Open
             the linked sources before making a purchasing or platform decision.

@@ -35,7 +35,7 @@ export function SagePage() {
       />
 
       {/* ── Three scopes ──────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Three scopes"
@@ -83,7 +83,7 @@ export function SagePage() {
 
       {/* ── Entry anatomy ─────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Entry anatomy"
@@ -165,7 +165,7 @@ export function SagePage() {
       </section>
 
       {/* ── Relevance scoring ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Relevance engine"
@@ -250,7 +250,7 @@ export function SagePage() {
 
       {/* ── Storage backends ───────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Storage backends"
@@ -307,7 +307,7 @@ export function SagePage() {
       </section>
 
       {/* ── Consolidation ──────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Consolidation"
@@ -348,7 +348,7 @@ export function SagePage() {
 
       {/* ── Auto-injection ─────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="06"
             eyebrow="Injection points"
@@ -379,7 +379,7 @@ export function SagePage() {
       </section>
 
       {/* ── Shared & verified ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="07"
           eyebrow="Shared and verified"
@@ -428,7 +428,7 @@ export function SagePage() {
       </section>
 
       {/* ── Tool integration ───────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="08"
           eyebrow="Operator surface"
@@ -495,7 +495,7 @@ export function SagePage() {
 
       {/* ── Configuration ──────────────────────────────────────────────── */}
       <section className="border-t border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
+        <div className="site-container py-20">
           <SectionIntro index="09" eyebrow="Configuration" title="Tune memory to your workflow." />
           <div className="mt-12 overflow-hidden rounded-2xl border border-white/10">
             <div className="border-b border-white/10 px-6 py-4">

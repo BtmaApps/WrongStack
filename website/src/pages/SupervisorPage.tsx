@@ -16,7 +16,7 @@ export function SupervisorPage() {
         aside={<ExternalDoc path="docs/slash/supervisor.md">Open Supervisor docs</ExternalDoc>}
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="How it works"
@@ -53,7 +53,7 @@ export function SupervisorPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="What it watches"
@@ -89,7 +89,7 @@ export function SupervisorPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Risk levels"
@@ -127,7 +127,7 @@ export function SupervisorPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro index="04" eyebrow="Commands" title="Status, enable, disable." />
           <div className="mt-12 grid gap-4 sm:grid-cols-3">
             {[

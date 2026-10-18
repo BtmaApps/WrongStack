@@ -17,7 +17,7 @@ export function ShadowAgentPage() {
       />
 
       {/* ── Responsibilities ────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Responsibilities"
@@ -58,7 +58,7 @@ export function ShadowAgentPage() {
 
       {/* ── Intervention ────────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Intervention"
@@ -119,7 +119,7 @@ export function ShadowAgentPage() {
       </section>
 
       {/* ── Commands ─────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro index="03" eyebrow="Commands" title="Start, inspect, stop, configure." />
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
           {[
@@ -158,7 +158,7 @@ export function ShadowAgentPage() {
 
       {/* ── Configuration ────────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Configuration"

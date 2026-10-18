@@ -139,7 +139,7 @@ export function CodingPlansPage() {
       />
 
       <section className="border-b border-line bg-card">
-        <div className="mx-auto max-w-[1380px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
+        <div className="site-container py-10 lg:py-14">
           <div className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line lg:grid-cols-3">
             {planQuestions.map((item) => (
               <a
@@ -162,10 +162,7 @@ export function CodingPlansPage() {
         </div>
       </section>
 
-      <section
-        id="chatgpt-codex"
-        className="scroll-mt-24 mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36"
-      >
+      <section id="chatgpt-codex" className="site-section site-container scroll-mt-24">
         <SectionIntro
           index="01"
           eyebrow="Start here"
@@ -244,7 +241,7 @@ export function CodingPlansPage() {
       </section>
 
       <section id="api-key-plans" className="scroll-mt-24 border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Connect with an API key"
@@ -353,7 +350,7 @@ export function CodingPlansPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Verify the connection"
@@ -434,7 +431,7 @@ export function CodingPlansPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Connection map"
@@ -478,7 +475,7 @@ export function CodingPlansPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="05"
             eyebrow="After connection"
@@ -517,7 +514,7 @@ export function CodingPlansPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="06"
           eyebrow="Affiliate disclosure"
@@ -528,7 +525,7 @@ export function CodingPlansPage() {
           {[
             [
               'What may happen',
-              'WrongStack or its creator may receive credit, commission or account benefits when you subscribe through a marked referral link.',
+              'OxogNet may receive credit, commission or account benefits when you subscribe through a marked referral link.',
             ],
             [
               'What does not change',
@@ -548,7 +545,7 @@ export function CodingPlansPage() {
       </section>
 
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="07"
             eyebrow="Connection FAQ"

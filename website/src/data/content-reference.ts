@@ -355,13 +355,39 @@ export const runtimeBadge = 'Single binary · no Node.js';
 export const license = 'MIT';
 
 /* =========================================================================
-   Creator — shared between the homepage "Created by" card and /created-by.
+   Studio — shared between the homepage, /created-by and the footer.
    ========================================================================= */
 
+export const studio = {
+  name: 'OXOGNET OÜ',
+  url: 'https://oxog.net',
+  projectsUrl: 'https://oxog.net/projects',
+  description:
+    'An independent technology company based in Estonia, building AI agents, developer tools and the infrastructure behind them.',
+  siblings: [
+    {
+      name: 'AGEZT',
+      description: 'An agentic operating system',
+      href: 'https://oxog.net/projects/agezt',
+    },
+    { name: 'NineDeploy', description: 'Self-hosted deployment', href: 'https://ninedeploy.com' },
+    {
+      name: 'WrongTrace',
+      description: 'Agent observability',
+      href: 'https://oxog.net/projects/wrongtrace',
+    },
+    {
+      name: 'UWAS',
+      description: 'Unified web app server',
+      href: 'https://oxog.net/projects/uwaserver',
+    },
+  ],
+} as const;
+
 export const creatorProfiles = [
-  { label: 'GitHub', handle: '@ersinkoc', href: 'https://github.com/ersinkoc' },
-  { label: 'X', handle: '@ersinkoc', href: 'https://x.com/ersinkoc' },
-  { label: 'Web', handle: 'ersinkoc.com', href: 'https://www.ersinkoc.com' },
+  { label: 'Web', handle: 'oxog.net', href: studio.url },
+  { label: 'Projects', handle: 'Our ecosystem', href: studio.projectsUrl },
+  { label: 'Contact', handle: 'info@oxog.net', href: 'mailto:info@oxog.net' },
 ] as const;
 
 export const creatorFeaturedProjects = [

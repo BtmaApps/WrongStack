@@ -57,6 +57,7 @@ export {
   creatorFeaturedProjects,
   creatorProfiles,
   creatorWorkshopProjects,
+  studio,
   docsUrl,
   ecosystemPillars,
   installCommand,
@@ -192,8 +193,8 @@ export const moreNav = [
   },
   {
     href: '/created-by',
-    label: 'Created by',
-    description: 'Ersin KOÇ and the open-source workshop',
+    label: 'Built by OxogNet',
+    description: 'OXOGNET OÜ and the open-source ecosystem',
     icon: Fingerprint,
     group: 'learn',
   },
@@ -343,7 +344,7 @@ export const moreNav = [
   {
     href: '/ecosystem',
     label: 'Ecosystem',
-    description: 'MCP, skills, plugins and hooks',
+    description: 'WrongStack family, MCP, skills, plugins and hooks',
     icon: Blocks,
     group: 'extend',
   },

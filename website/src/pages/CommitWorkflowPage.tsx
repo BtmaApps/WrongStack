@@ -33,7 +33,7 @@ export function CommitWorkflowPage() {
       />
 
       {/* ── The git command family ──────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Git commands"
@@ -101,7 +101,7 @@ export function CommitWorkflowPage() {
 
       {/* ── Conventional commits ────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Conventional commits"
@@ -217,7 +217,7 @@ export function CommitWorkflowPage() {
       </section>
 
       {/* ── Commit safety ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Safety"
@@ -302,7 +302,7 @@ export function CommitWorkflowPage() {
 
       {/* ── Auto-commit flow ────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Auto-commit"
@@ -446,7 +446,7 @@ export function CommitWorkflowPage() {
       </section>
 
       {/* ── Workflow integration ────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Integration"

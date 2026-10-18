@@ -1,6 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, ChevronDown, Menu, Moon, Sun, X } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { ArrowUpRight, ChevronDown, Menu, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrandMark } from '@/components/site/BrandMark';
 import { SiteSearch } from '@/components/site/SiteSearch';
@@ -9,6 +8,7 @@ import { GitHubIcon } from '@/components/ui/github-icon';
 import { moreNav, moreNavGroups, primaryNav, repoUrl } from '@/data/content';
 import { Link, useRouter } from '@/lib/router';
 import { cn } from '@/lib/utils';
+import { ThemeMenu } from './ThemeMenu';
 
 function Brand() {
   return (
@@ -18,31 +18,6 @@ function Brand() {
         WRONG<span className="text-brand">STACK</span>
       </span>
     </Link>
-  );
-}
-
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = resolvedTheme === 'dark';
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={isDark ? 'Use light theme' : 'Use dark theme'}
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="rounded-full text-muted hover:bg-card hover:text-fg"
-    >
-      {!mounted ? (
-        <span className="size-5" />
-      ) : isDark ? (
-        <Sun className="size-4.5" />
-      ) : (
-        <Moon className="size-4.5" />
-      )}
-    </Button>
   );
 }
 
@@ -119,7 +94,7 @@ export function Header() {
       )}
     >
       <div className="signal-line" aria-hidden="true" />
-      <nav className="mx-auto flex h-[70px] max-w-[1380px] items-center justify-between px-4 sm:px-6 lg:px-10">
+      <nav className="site-container flex h-[70px] items-center justify-between">
         <Brand />
 
         <div className="hidden items-center gap-0.5 lg:flex">
@@ -274,7 +249,7 @@ export function Header() {
 
         <div className="flex items-center gap-1">
           <SiteSearch />
-          <ThemeToggle />
+          <ThemeMenu />
           <Button
             variant="ghost"
             size="icon"
@@ -311,7 +286,7 @@ export function Header() {
             exit={{ opacity: 0, height: 0 }}
             className="max-h-[calc(100vh-70px)] overflow-y-auto border-t border-line bg-bg/98 backdrop-blur-xl lg:hidden"
           >
-            <div className="mx-auto max-w-[1380px] px-4 py-5 sm:px-6">
+            <div className="site-container py-5">
               <div className="grid gap-1 sm:grid-cols-2">
                 {primaryNav.map((item) => (
                   <Link

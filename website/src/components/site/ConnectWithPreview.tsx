@@ -6,7 +6,7 @@ import { Link } from '@/lib/router';
 export function ConnectWithPreview() {
   return (
     <section className="border-y border-line bg-surface">
-      <div className="mx-auto max-w-[1380px] px-4 py-14 sm:px-6 sm:py-16 lg:px-10 lg:py-20">
+      <div className="site-container py-14 sm:py-16 lg:py-20">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="font-mono text-xs font-black uppercase tracking-[0.18em] text-brand">

@@ -19,7 +19,7 @@ export function SecurityPage() {
         aside={<ExternalDoc path="SECURITY.md">Read the full security policy</ExternalDoc>}
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Defense in depth"
@@ -48,7 +48,7 @@ export function SecurityPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Permission decision"
@@ -117,7 +117,7 @@ export function SecurityPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Data and network"
@@ -160,7 +160,7 @@ export function SecurityPage() {
       </section>
 
       <section className="border-t border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <div className="grid gap-8 lg:grid-cols-[.65fr_1fr]">
             <div>
               <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
@@ -188,7 +188,7 @@ export function SecurityPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Secret vault"

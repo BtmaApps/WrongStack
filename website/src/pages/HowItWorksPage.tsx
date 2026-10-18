@@ -42,7 +42,7 @@ export function HowItWorksPage() {
         description="WrongStack is easiest to trust when you can trace it. Here is the complete path a request takes through the kernel, including where policy, recovery and persistence enter."
         aside={<ExternalDoc path="docs/architecture.md">Open engineering reference</ExternalDoc>}
       />
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="The loop"
@@ -81,7 +81,7 @@ export function HowItWorksPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <div className="grid gap-12 lg:grid-cols-[.55fr_1fr]">
             <div>
               <div className="flex items-center gap-3 font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
@@ -115,7 +115,7 @@ export function HowItWorksPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="02"
           eyebrow="What persists"

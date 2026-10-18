@@ -42,7 +42,7 @@ export function ArchitecturePage() {
         description="WrongStack is a monorepo, but not a mesh. The dependency graph points toward a small kernel; interfaces compose capabilities without leaking UI concerns back into core."
         aside={<ExternalDoc path="docs/architecture.md">Open architecture reference</ExternalDoc>}
       />
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Dependency map"
@@ -92,7 +92,7 @@ export function ArchitecturePage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Kernel"
@@ -116,7 +116,7 @@ export function ArchitecturePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Cross-cutting contracts"
@@ -156,7 +156,7 @@ export function ArchitecturePage() {
           ))}
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Pipelines"
@@ -197,7 +197,7 @@ export function ArchitecturePage() {
           ))}
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 lg:px-10">
+      <section className="site-container pb-16">
         <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
           <h2 className="text-2xl font-black text-fg">Focused modules, recorded contracts.</h2>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-muted">

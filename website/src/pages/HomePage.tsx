@@ -18,8 +18,10 @@ import { useEffect, useState } from 'react';
 import { ConnectWithPreview } from '@/components/site/ConnectWithPreview';
 import { CoordinationLitePreviews } from '@/components/site/CoordinationLitePreviews';
 import { FleetTopologyPreview } from '@/components/site/FleetTopologyPreview';
+import { OxogMark, OxogWordmark } from '@/components/site/OxogBrand';
 import { CopyCommand, Eyebrow, Reveal, SectionIntro } from '@/components/site/primitives';
 import { TuiShowcase } from '@/components/site/TuiShowcase';
+import { WrongStackFamily } from '@/components/site/WrongStackFamily';
 import {
   capabilityIndex,
   commands,
@@ -32,6 +34,7 @@ import {
   PLUGIN_COUNT,
   repoUrl,
   runtimeBadge,
+  studio,
   surfaces,
   TOOL_COUNT,
   version,
@@ -224,7 +227,7 @@ export function HomePage() {
           className="hero-orbit absolute right-[-18vw] top-[-18vw] size-[70vw] max-h-[900px] max-w-[900px] rounded-full border border-line"
           aria-hidden="true"
         />
-        <div className="relative mx-auto grid max-w-[1380px] gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,.9fr)_minmax(440px,1.1fr)] lg:items-center lg:gap-10 lg:px-10 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(0,.86fr)_minmax(520px,1.14fr)] xl:gap-14">
+        <div className="site-container relative grid gap-12 pb-16 pt-10 sm:pt-16 lg:grid-cols-[minmax(0,.9fr)_minmax(440px,1.1fr)] lg:items-center lg:gap-10 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(0,.86fr)_minmax(520px,1.14fr)] xl:gap-14">
           <div className="hero-copy min-w-0">
             <div className="mb-8 flex flex-wrap items-center gap-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted">
               <span className="flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5">
@@ -281,7 +284,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="relative border-t border-line bg-surface/70">
-          <div className="mx-auto grid max-w-[1380px] grid-cols-2 divide-x divide-line px-4 sm:px-6 lg:grid-cols-4 lg:px-10">
+          <div className="site-container grid grid-cols-2 divide-x divide-line lg:grid-cols-4">
             {[
               [String(TOOL_COUNT), 'built-in tools'],
               [String(commands.length), 'documented commands'],
@@ -300,7 +303,7 @@ export function HomePage() {
       </section>
 
       <section className="border-b border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-12 sm:px-6 lg:px-10">
+        <div className="site-container py-12">
           <div className="flex flex-col gap-6 rounded-2xl border border-line bg-card p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <Eyebrow>Release highlights · v{version}</Eyebrow>
@@ -357,6 +360,8 @@ export function HomePage() {
         </div>
       </section>
 
+      <WrongStackFamily />
+
       <FleetTopologyPreview />
 
       <CoordinationLitePreviews />
@@ -365,7 +370,7 @@ export function HomePage() {
 
       <TuiShowcase />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Find your way"
@@ -393,7 +398,7 @@ export function HomePage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <div className="grid gap-10 lg:grid-cols-[.55fr_1.2fr]">
             <div>
               <Eyebrow>One kernel</Eyebrow>
@@ -451,7 +456,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="02"
           eyebrow="Capability map"
@@ -489,7 +494,7 @@ export function HomePage() {
       </section>
 
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto grid max-w-[1380px] gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[1fr_.8fr] lg:items-center lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container grid gap-12 lg:grid-cols-[1fr_.8fr] lg:items-center">
           <div>
             <Eyebrow>Control is a feature</Eyebrow>
             <h2 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.025em] text-fg sm:text-6xl">
@@ -569,36 +574,28 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <Reveal>
           <div className="grid overflow-hidden rounded-2xl border border-line bg-card lg:grid-cols-2">
             <div className="flex flex-col p-7 sm:p-10">
               <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
-                Created by
+                Built by OxogNet
               </span>
               <div className="mt-7 flex items-start gap-5">
-                <div className="relative shrink-0">
-                  <div className="absolute -bottom-1.5 -right-1.5 size-full border border-brand-2/45 bg-brand-2/10" />
-                  <img
-                    src="/ersin-koc.png"
-                    alt="Ersin KOÇ, creator of WrongStack"
-                    width="112"
-                    height="112"
-                    loading="lazy"
-                    className="relative aspect-square w-24 border border-line-strong object-cover grayscale sm:w-28"
-                  />
+                <div className="w-24 shrink-0 sm:w-28">
+                  <OxogMark className="w-full" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black tracking-[-0.025em] text-fg">Ersin KOÇ</h2>
+                  <h2 className="text-3xl text-fg">
+                    <OxogWordmark />
+                  </h2>
                   <p className="mt-1 font-mono text-xs font-black uppercase tracking-[0.14em] text-brand-2">
-                    Independent builder
+                    {studio.name}
                   </p>
                 </div>
               </div>
               <p className="mt-6 max-w-xl text-sm leading-7 text-muted">
-                WrongStack is created and maintained by one independent developer building
-                production-ready open-source infrastructure — from the agent layer down to the
-                systems beneath it.
+                WrongStack is built and maintained by OxogNet. {studio.description}
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 {creatorProfiles.map((profile) => (
@@ -621,7 +618,7 @@ export function HomePage() {
                 href="/created-by"
                 className="group mt-auto inline-flex items-center gap-2 pt-8 text-sm font-black text-brand"
               >
-                Meet the creator
+                Meet the studio
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
@@ -674,7 +671,7 @@ export function HomePage() {
       </section>
 
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 text-center sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+        <div className="site-section site-container text-center">
           <Eyebrow>Run it locally</Eyebrow>
           <h2 className="mx-auto max-w-none text-[clamp(2.4rem,5vw,4.5rem)] font-black leading-[0.98] tracking-[-0.025em] text-fg lg:whitespace-nowrap">
             <span className="inline-block">Your code.</span>{' '}

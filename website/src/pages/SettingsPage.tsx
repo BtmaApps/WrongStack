@@ -58,7 +58,7 @@ export function SettingsPage() {
         }
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Precedence"
@@ -95,7 +95,7 @@ export function SettingsPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Reference"
@@ -139,7 +139,7 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Customization map"
@@ -183,7 +183,7 @@ export function SettingsPage() {
         </Link>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Trust boundary"
@@ -252,7 +252,7 @@ export function SettingsPage() {
       </section>
 
       <section className="border-t border-line bg-ink text-white">
-        <div className="mx-auto grid max-w-[1380px] gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[80px_1fr_auto] lg:items-center lg:px-10 lg:py-20">
+        <div className="site-container grid gap-8 py-16 lg:grid-cols-[80px_1fr_auto] lg:items-center lg:py-20">
           <span className="grid size-14 place-items-center rounded-full bg-brand/10 text-brand">
             <ShieldAlert className="size-6" />
           </span>
@@ -268,7 +268,7 @@ export function SettingsPage() {
           <ExternalDoc path="docs/configuration.md#secrets">Read secrets guide</ExternalDoc>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+      <section className="site-section site-section--short site-container">
         <SectionIntro index="08" eyebrow="Related" title="Explore more configuration options." />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[

@@ -21,7 +21,7 @@ export function CheckpointsPage() {
         }
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+      <section className="site-section site-section--short site-container">
         <SectionIntro index="01" eyebrow="Scope" title="Three kinds of recovery evidence." />
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {[
@@ -51,7 +51,7 @@ export function CheckpointsPage() {
       </section>
 
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
+        <div className="site-container py-20">
           <SectionIntro
             index="02"
             eyebrow="Session rewind"
@@ -92,7 +92,7 @@ export function CheckpointsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-16 sm:px-6 lg:px-10">
+      <section className="site-container py-16">
         <h2 className="text-2xl font-black text-fg">
           A restored file is a new verification point.
         </h2>

@@ -1,16 +1,17 @@
-import { ArrowUpRight, Globe2, Layers3, Terminal, UserRound } from 'lucide-react';
+import { ArrowUpRight, Globe2, Layers3, Mail, Terminal } from 'lucide-react';
+import { OxogMark, OxogWordmark } from '@/components/site/OxogBrand';
 import { PageHero, SectionIntro, heroTitleFontSize } from '@/components/site/primitives';
-import { GitHubIcon } from '@/components/ui/github-icon';
 import {
   creatorFeaturedProjects as featuredProjects,
   creatorProfiles,
   creatorWorkshopProjects as workshopProjects,
+  studio,
 } from '@/data/content';
 
 const profileIcons = {
-  GitHub: GitHubIcon,
-  X: Globe2,
-  Web: UserRound,
+  Web: Globe2,
+  Projects: Layers3,
+  Contact: Mail,
 } as const;
 
 const profiles = creatorProfiles.map((profile) => ({
@@ -41,16 +42,16 @@ export function CreatedByPage() {
     <>
       <PageHero
         index="19"
-        eyebrow="Created by"
-        titleFontSize={heroTitleFontSize('Independent builder.')}
+        eyebrow="Built by OxogNet"
+        titleFontSize={heroTitleFontSize('Independent technology.')}
         title={
           <>
-            Ersin KOÇ.
+            OxogNet.
             <br />
-            <span className="text-brand-2">Independent builder.</span>
+            <span className="text-brand-2">Independent technology.</span>
           </>
         }
-        description="WrongStack is created and maintained by Ersin KOÇ—an independent developer building production-ready open-source infrastructure from the agent layer down to the systems beneath it."
+        description={`WrongStack is built and maintained by ${studio.name}. ${studio.description}`}
         aside={
           <div className="flex flex-wrap gap-2">
             {profiles.map((profile) => (
@@ -70,37 +71,31 @@ export function CreatedByPage() {
         }
       />
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <div className="grid gap-12 lg:grid-cols-[minmax(300px,.72fr)_minmax(0,1.15fr)] lg:items-center">
-          <div className="relative mx-auto w-full max-w-[520px] lg:mx-0">
-            <div className="absolute -bottom-4 -right-4 size-full border border-brand-2/45 bg-brand-2/10" />
-            <div className="relative overflow-hidden border border-line-strong bg-card p-2">
-              <img
-                src="/ersin-koc.png"
-                alt="Ersin KOÇ, creator of WrongStack"
-                width="400"
-                height="400"
-                className="aspect-square w-full object-cover grayscale"
-                loading="eager"
-              />
-            </div>
-            <div className="absolute -bottom-7 left-6 bg-brand px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.16em] text-white shadow-xl">
-              Creator / maintainer
+          <div className="relative mx-auto grid aspect-square w-full max-w-[520px] place-items-center overflow-hidden rounded-[28px] border border-line-strong bg-card p-8 sm:p-12 lg:mx-0">
+            <div className="manual-grid absolute inset-0" aria-hidden="true" />
+            <div className="relative w-full text-center">
+              <OxogMark className="mx-auto w-full max-w-xs" />
+              <OxogWordmark className="mt-6 block text-4xl sm:text-5xl" />
+              <span className="mt-4 block font-mono text-xs uppercase tracking-[0.16em] text-muted">
+                {studio.name} · Estonia
+              </span>
             </div>
           </div>
 
           <div className="lg:pl-10">
             <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
-              Person behind the stack
+              The studio behind the stack
             </span>
             <blockquote className="mt-7 max-w-3xl text-4xl font-black leading-[1.06] tracking-[-0.025em] text-fg sm:text-5xl lg:text-6xl">
-              “I build production-ready open-source infrastructure from scratch.”
+              Independent by nature. Connected by code.
             </blockquote>
             <p className="mt-8 max-w-2xl text-lg leading-8 text-muted">
-              Ersin works across backend engineering, systems administration, DevOps and product
-              design. WrongStack is one expression of a broader workshop: ambitious infrastructure,
-              autonomous systems and developer tools that remain understandable after they become
-              powerful.
+              OxogNet builds AI agents, developer tools and open-source infrastructure. WrongStack
+              connects that work through coding orchestration, governed automation and clear
+              interfaces. The wider ecosystem brings the same approach to deployment, observability
+              and the systems beneath them.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               {profiles.map((profile) => (
@@ -122,12 +117,12 @@ export function CreatedByPage() {
       </section>
 
       <section className="border-y border-line bg-ink text-white">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <SectionIntro
             index="01"
             eyebrow="Working principles"
             title="Built on the wrong stack. Shipped anyway."
-            description="A working system is the argument. These principles connect WrongStack to the rest of Ersin's open-source work."
+            description="A working system is the argument. These principles connect WrongStack to the OxogNet ecosystem."
             className="border-white/10 [&_h2]:text-white [&_p]:text-zinc-400"
           />
           <div className="mt-14 grid gap-px overflow-hidden border border-white/10 bg-white/10 lg:grid-cols-3">
@@ -144,7 +139,7 @@ export function CreatedByPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="02"
           eyebrow="Featured projects"
@@ -184,7 +179,7 @@ export function CreatedByPage() {
       </section>
 
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+        <div className="site-section site-section--compact site-container">
           <SectionIntro
             index="03"
             eyebrow="The wider workshop"
@@ -211,12 +206,12 @@ export function CreatedByPage() {
             ))}
           </div>
           <a
-            href="https://github.com/ersinkoc"
+            href={studio.projectsUrl}
             target="_blank"
             rel="noreferrer"
             className="mt-8 inline-flex items-center gap-2 text-sm font-black text-brand"
           >
-            Explore all projects on GitHub <ArrowUpRight className="size-4" />
+            Explore the OxogNet ecosystem <ArrowUpRight className="size-4" />
           </a>
         </div>
       </section>

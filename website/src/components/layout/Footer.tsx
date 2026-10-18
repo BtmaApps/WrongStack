@@ -1,6 +1,8 @@
 import { ArrowUpRight } from 'lucide-react';
 import { BrandMark } from '@/components/site/BrandMark';
-import { docsUrl, license, repoUrl, runtimeBadge, version } from '@/data/content';
+import { OxogStudio } from '@/components/site/OxogStudio';
+import { docsUrl, license, repoUrl, runtimeBadge, studio, version } from '@/data/content';
+import { familyProducts } from '@/data/wrongstack-family';
 import { Link } from '@/lib/router';
 
 const columns = [
@@ -52,7 +54,7 @@ const columns = [
 export function Footer() {
   return (
     <footer className="border-t border-line bg-ink text-white">
-      <div className="mx-auto max-w-[1380px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
+      <div className="site-container py-14 lg:py-20">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.45fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3">
@@ -72,7 +74,7 @@ export function Footer() {
               href="/created-by"
               className="mt-5 inline-flex items-center gap-2 text-sm font-black text-white transition-colors hover:text-brand"
             >
-              Created by Ersin KOÇ <ArrowUpRight className="size-3.5" />
+              Built by OxogNet <ArrowUpRight className="size-3.5" />
             </Link>
             <div className="mt-7 flex flex-wrap gap-2 font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">
               <span className="rounded-full border border-white/10 px-3 py-1.5">v{version}</span>
@@ -112,12 +114,12 @@ export function Footer() {
           </p>
           <div className="flex gap-5">
             <a
-              href="https://x.com/ersinkoc"
+              href={studio.url}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 hover:text-white"
             >
-              @ersinkoc <ArrowUpRight className="size-3.5" />
+              oxog.net <ArrowUpRight className="size-3.5" />
             </a>
             <a
               href={docsUrl}
@@ -136,6 +138,49 @@ export function Footer() {
               GitHub <ArrowUpRight className="size-3.5" />
             </a>
           </div>
+        </div>
+        <section
+          aria-label="WrongStack family navigation"
+          className="mt-12 border-t border-white/10 pt-8"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">
+              WrongStack family
+            </h2>
+            <Link
+              href="/ecosystem"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-300 hover:text-white"
+            >
+              Explore the ecosystem <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {familyProducts.map((product) => (
+              <a
+                key={product.id}
+                href={product.href}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex items-center justify-between gap-3 rounded-xl border border-white/10 px-4 py-3 transition-colors hover:border-brand/50"
+              >
+                <span>
+                  <strong className="block text-sm text-zinc-200 group-hover:text-white">
+                    {product.name}
+                  </strong>
+                  <span className="mt-1 block text-xs text-zinc-500">{product.category}</span>
+                </span>
+                <ArrowUpRight className="size-4 shrink-0 text-zinc-500 group-hover:text-brand" />
+              </a>
+            ))}
+          </div>
+        </section>
+        <OxogStudio />
+        <div className="flex flex-col gap-3 pt-8 text-xs leading-6 text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {new Date().getFullYear()} {studio.name}. WrongStack is open source under the MIT
+            license.
+          </p>
+          <p>Made in Estonia, shipped worldwide.</p>
         </div>
       </div>
     </footer>

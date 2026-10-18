@@ -63,7 +63,7 @@ export function GettingStartedPage() {
         description="Set up WrongStack without guessing which credential, interface or safety mode you need. This path starts local, keeps project instructions explicit and leaves room to grow into fleets later."
         aside={<ExternalDoc path="docs/getting-started.md">Open first-session guide</ExternalDoc>}
       />
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro index="01" eyebrow="Setup path" title="Four steps. No hidden bootstrap." />
         <div className="mt-14 space-y-4">
           {setupSteps.map(([number, title, body, command]) => (
@@ -103,7 +103,7 @@ export function GettingStartedPage() {
         </div>
       </section>
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Authentication"
@@ -173,7 +173,7 @@ export function GettingStartedPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="First run recipes"
@@ -262,7 +262,7 @@ export function GettingStartedPage() {
         </div>
       </section>
       <section className="border-t border-line bg-ink text-white">
-        <div className="mx-auto grid max-w-[1380px] gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[.65fr_1fr] lg:px-10">
+        <div className="site-container grid gap-10 py-20 lg:grid-cols-[.65fr_1fr]">
           <div>
             <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
               Before the first mutation
@@ -303,7 +303,7 @@ export function GettingStartedPage() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="04"
           eyebrow="Quickstart"

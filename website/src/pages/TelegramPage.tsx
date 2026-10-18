@@ -32,7 +32,7 @@ export function TelegramPage() {
       />
 
       {/* ── How it works ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="How it works"
@@ -76,7 +76,7 @@ export function TelegramPage() {
 
       {/* ── Setup ───────────────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Setup"
@@ -117,7 +117,7 @@ export function TelegramPage() {
       </section>
 
       {/* ── Notification events ─────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Notifications"
@@ -178,7 +178,7 @@ export function TelegramPage() {
 
       {/* ── Approval prompts ────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Approvals"
@@ -214,7 +214,7 @@ export function TelegramPage() {
       </section>
 
       {/* ── Runtime commands ─────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Runtime commands"

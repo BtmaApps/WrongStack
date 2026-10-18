@@ -39,7 +39,7 @@ export function EnsemblePage() {
       />
 
       {/* ── How it works ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="01"
           eyebrow="Architecture"
@@ -83,7 +83,7 @@ export function EnsemblePage() {
 
       {/* ── Agent catalog ───────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="02"
             eyebrow="Agent catalog"
@@ -221,7 +221,7 @@ export function EnsemblePage() {
       </section>
 
       {/* ── Ensemble flow ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="03"
           eyebrow="Ensemble flow"
@@ -320,7 +320,7 @@ export function EnsemblePage() {
 
       {/* ── Protocol deep-dive ──────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="04"
             eyebrow="Protocol"
@@ -462,7 +462,7 @@ export function EnsemblePage() {
       </section>
 
       {/* ── Failure modes ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="05"
           eyebrow="Failure modes"
@@ -524,7 +524,7 @@ export function EnsemblePage() {
 
       {/* ── Commands ────────────────────────────────────────────────────── */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <div className="site-section site-section--short site-container">
           <SectionIntro
             index="06"
             eyebrow="Commands"
@@ -625,7 +625,7 @@ export function EnsemblePage() {
       </section>
 
       {/* ── What ships today ────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+      <section className="site-section site-container">
         <SectionIntro
           index="07"
           eyebrow="Coverage"

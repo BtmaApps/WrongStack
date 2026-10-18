@@ -39,6 +39,14 @@
 
 /* ---- Light (default) ---- */
 :root {
+  /* Shared content edges: 16px on phones, 24px on tablets, 40–48px on desktop. */
+  --site-content-max: 108rem;
+  --site-gutter: clamp(1rem, 2.8vw, 3rem);
+  --site-prose-max: 72ch;
+  --site-section-space: clamp(5rem, 7.8vw, 9rem);
+  --site-grid-gap: clamp(1rem, 1.4vw, 1.5rem);
+  --site-card-min: 18.5rem;
+  --site-edge: max(var(--site-gutter), calc((100% - var(--site-content-max)) / 2));
   --brand-pink: #d51f4d;
   --brand-pink-strong: #b91640;
   --brand-orange: #d97706;
@@ -53,6 +61,12 @@
   --ink: #121210;
   --grid: rgba(18, 18, 16, 0.045);
   color-scheme: light;
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  :root {
+    --site-gutter: 1.5rem;
+  }
 }
 
 /* ---- Dark ---- */
@@ -130,6 +144,117 @@
   }
   .no-scrollbar {
     scrollbar-width: none;
+  }
+}
+
+@layer components {
+  /* All page shells, navigation, demos and footer share the same content edges. */
+  .site-container {
+    width: min(var(--site-content-max), calc(100% - 2 * var(--site-gutter)));
+    min-width: 0;
+    margin-inline: auto;
+    overflow-wrap: anywhere;
+  }
+
+  /* A shell inside a shell must not add another pair of gutters. */
+  .site-container .site-container {
+    width: 100%;
+  }
+
+  .site-container :where(.grid, .flex) > * {
+    min-width: 0;
+  }
+
+  .site-container :where(p) {
+    max-width: var(--site-prose-max);
+    overflow-wrap: anywhere;
+  }
+
+  .site-section {
+    padding-block: var(--site-section-space);
+  }
+
+  .site-section--compact {
+    --site-section-space: clamp(5rem, 7.8vw, 8rem);
+  }
+
+  .site-section--short {
+    --site-section-space: clamp(5rem, 7.8vw, 7rem);
+  }
+
+  .site-section--demo {
+    --site-section-space: clamp(4rem, 6.25vw, 7rem);
+  }
+
+  /* Reserve tracks for short categories so a lone card never becomes a banner. */
+  .site-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--site-card-min)), 1fr));
+    gap: var(--site-grid-gap);
+  }
+
+  .site-card-grid--roomy {
+    --site-card-min: 20rem;
+  }
+}
+
+/* OxogNet's four signature strokes draw once when the footer enters view. */
+.oxog-mark {
+  --oxog-loop: #692d91;
+  display: block;
+}
+
+footer .oxog-mark,
+.dark .oxog-mark {
+  --oxog-loop: #a35adb;
+}
+
+.oxog-stroke--loop {
+  stroke: var(--oxog-loop);
+}
+
+.oxog-mark[data-animate="true"] .oxog-stroke {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+}
+
+.oxog-mark[data-animate="true"][data-seen="true"] .oxog-stroke {
+  animation: oxog-signature 1.6s var(--oxog-delay, 0s) cubic-bezier(0.6, 0.1, 0.2, 1) forwards;
+}
+
+.oxog-stroke--second {
+  --oxog-delay: 0.25s;
+}
+
+.oxog-stroke--loop {
+  --oxog-delay: 0.5s;
+}
+
+.oxog-stroke--slash {
+  --oxog-delay: 0.9s;
+}
+
+@keyframes oxog-signature {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.oxog-studio::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 100% 0, rgb(237 8 120 / 12%), transparent 45%),
+    radial-gradient(ellipse at 65% 100%, rgb(105 45 145 / 16%), transparent 45%);
+  content: "";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oxog-mark[data-animate="true"] .oxog-stroke,
+  .oxog-mark[data-animate="true"][data-seen="true"] .oxog-stroke {
+    animation: none;
+    stroke-dashoffset: 0;
   }
 }
 
@@ -338,11 +463,11 @@
 }
 
 .site-decor__rail--left {
-  left: max(24px, calc(50% - 720px));
+  left: calc(var(--site-edge) / 2);
 }
 
 .site-decor__rail--right {
-  right: max(24px, calc(50% - 720px));
+  right: calc(var(--site-edge) / 2);
 }
 
 .site-decor__orbit {
@@ -496,12 +621,12 @@
 }
 
 .site-decor__pulse--left {
-  left: calc(max(24px, 50% - 720px) - 1px);
+  left: calc(var(--site-edge) / 2 - 1px);
   animation: decor-pulse-run 12s linear infinite;
 }
 
 .site-decor__pulse--right {
-  right: calc(max(24px, 50% - 720px) - 1px);
+  right: calc(var(--site-edge) / 2 - 1px);
   animation: decor-pulse-run 17s linear 5s infinite;
 }
 

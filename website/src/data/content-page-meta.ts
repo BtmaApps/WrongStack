@@ -43,9 +43,9 @@ export const pageMeta: Record<SiteRoute, { title: string; description: string }>
       'Understand the kernel, package boundaries, execution pipeline, recovery and persistence model.',
   },
   '/ecosystem': {
-    title: 'MCP, skills, plugins & hooks — WrongStack',
+    title: 'WrongStack family & ecosystem — WrongStack',
     description:
-      'Extend WrongStack with MCP servers, reusable skills, plugins, prompts and lifecycle hooks.',
+      'Meet the WrongStack family: WrongStack for orchestration, WrongForge for agent execution and WrongTrace for observability. Explore prompts, skills, MCP, hooks, plugins and provider adapters.',
   },
   '/security': {
     title: 'Security model — WrongStack',
@@ -122,9 +122,9 @@ export const pageMeta: Record<SiteRoute, { title: string; description: string }>
       'Download the WrongStack logo and use the canonical colors, typography, naming and voice guidelines.',
   },
   '/created-by': {
-    title: 'Created by Ersin KOÇ — WrongStack',
+    title: 'Built by OxogNet — WrongStack',
     description:
-      'Meet WrongStack creator Ersin KOÇ and explore AGEZT, OwnPilot and the wider open-source project workshop.',
+      'WrongStack is built and maintained by OXOGNET OÜ. Explore the studio, its principles and its ecosystem of AI agents, developer tools and open-source infrastructure.',
   },
   '/sage': {
     title: 'SAGE — WrongStack',
