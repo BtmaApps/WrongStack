@@ -199,7 +199,7 @@ export function ModelAndPromptBar({
 }) {
   const fullChrome = useIsFullChrome();
   return (
-    <div className="flex flex-wrap items-center gap-2 px-1">
+    <div className="ws-composer-options flex min-w-0 flex-wrap items-center gap-1.5">
       {fullChrome ? (
         <>
           <button
@@ -251,11 +251,11 @@ export function ModelAndPromptBar({
       <button
         type="button"
         onClick={onOpenModelSwitcher}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-accent/50 transition-all duration-200"
+        className="inline-flex min-w-0 max-w-full items-center gap-1.5 border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-accent/50 transition-colors duration-150"
         title={t('chat:header.changeModelTitle')}
       >
-        <Cpu className="h-3.5 w-3.5" />
-        <span className="font-mono whitespace-nowrap">
+        <Cpu className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate font-mono">
           {(sessionProvider ?? fallbackProvider) || t('chat:header.noProvider')}
           {' / '}
           {(sessionModel ?? fallbackModel) || t('chat:header.noModel')}

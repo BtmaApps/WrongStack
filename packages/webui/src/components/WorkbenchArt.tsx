@@ -50,7 +50,8 @@ export function WorkbenchArt() {
 export function LauncherArt({ kind }: { kind: 'audit' | 'performance' }) {
   return (
     <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false">
-      <rect x="5" y="5" width="38" height="38" rx="11" fill="currentColor" opacity="0.08" />
+      <path d="M5 16V5h11M32 5h11v11M43 32v11H32M16 43H5V32" stroke="currentColor" opacity="0.35" />
+      <path d="M5 5h38v38H5z" fill="currentColor" opacity="0.04" />
       {kind === 'audit' ? (
         <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
           <circle cx="24" cy="24" r="11" strokeDasharray="3 4" />

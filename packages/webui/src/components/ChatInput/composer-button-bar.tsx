@@ -61,7 +61,7 @@ export function ComposerButtonBar({
   const showSteer = fullChrome || isLoading;
 
   return (
-    <div className="flex w-full justify-end gap-1 overflow-x-auto no-scrollbar sm:w-auto sm:overflow-visible">
+    <div className="ws-composer-actions flex w-full flex-wrap justify-end gap-1 lg:w-auto lg:max-w-[50%]">
       <ImageAttachControl
         imagePickerRef={imagePickerRef}
         disabled={disabled}
@@ -81,6 +81,7 @@ export function ComposerButtonBar({
           size="icon"
           variant={enhanceEnabled ? 'default' : 'outline'}
           disabled={disabled}
+          aria-pressed={enhanceEnabled}
           onClick={() => {
             const next = !enhanceEnabled;
             useLocalPrefs.getState().set({ enhanceEnabled: next });
@@ -106,9 +107,10 @@ export function ComposerButtonBar({
           size="icon"
           variant={isListening ? 'destructive' : 'outline'}
           disabled={disabled}
+          aria-pressed={isListening === true}
           onClick={onToggleSpeech}
           className={cn(
-            'h-[44px] w-[44px] shrink-0 rounded-md transition-all',
+            'h-[44px] w-[44px] shrink-0 transition-colors',
             isListening && 'animate-pulse bg-destructive text-destructive-foreground',
           )}
           title={

@@ -293,6 +293,10 @@
     "backToFleet": "Filoya dön"
   },
   "nextSteps": {
+    "customMessageLabel": "Kendi mesajınız",
+    "customMessagePlaceholder": "Ek bir talimat veya kendi sonraki adımınızı yazın…",
+    "customMessageHint": "Mesajınız seçtiğiniz adımlarla birlikte gönderilir.",
+    "batchHint": "Adımları seçin ve mesajınızı ekleyin",
     "header": "Sonraki adımlar",
     "autoSubmitting": "otomatik gönderiliyor",
     "clickToFill": "doldurmak için tıkla",

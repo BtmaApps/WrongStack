@@ -384,7 +384,7 @@ export function ChatInput({
         data-chat-started={chatStarted ? 'true' : 'false'}
         data-has-draft={input.trim() || pendingImages.length > 0 ? 'true' : 'false'}
         className={cn(
-          'ws-composer relative flex flex-col gap-2 border border-border/70 p-2 sm:flex-row sm:items-end',
+          'ws-composer relative flex flex-col gap-2 border border-border/70 p-2 lg:flex-row lg:items-end',
           isLoading && 'border-warning/45 bg-warning/5 shadow-warning/10',
           !chatStarted && !isLoading && 'border-border/60',
           draggingOver && 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5',
@@ -456,9 +456,8 @@ export function ChatInput({
                     : `${t('chat:inputPlaceholder')}  ·  $ skill · @ file`
             }
             className={cn(
-              'flex min-h-[64px] w-full resize-none overflow-y-auto rounded-lg border border-input bg-card/80 px-4 py-3 pr-12 shadow-sm sm:min-h-[44px]',
-              'text-sm ring-offset-background placeholder:text-muted-foreground',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'flex min-h-[64px] w-full resize-none overflow-y-auto border-0 bg-transparent px-3 py-2.5 pr-12',
+              'text-base leading-relaxed placeholder:text-muted-foreground sm:text-sm',
               'disabled:cursor-not-allowed disabled:opacity-50',
               'scrollbar-thin',
             )}

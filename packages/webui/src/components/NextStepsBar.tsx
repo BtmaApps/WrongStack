@@ -1,7 +1,7 @@
 import { type ParsedNextStep as NextStep, parseNextSteps } from '@wrongstack/tools/next-steps';
-import { ArrowRight, Check, Lightbulb, MousePointerClick, Timer } from 'lucide-react';
+import { ArrowRight, Check, Lightbulb, MousePointerClick, PencilLine, Timer } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 
 // Re-export the shared parser functions and types for back-compat with
@@ -60,7 +60,8 @@ function AutoCountdown({
 
 /**
  * Renders extracted next steps as a prominent, clickable action bar.
- * Each button fills the chat input with the suggestion text.
+ * Select suggestions and add a custom message to send them together.
+ * Without a batch callback, each suggestion fills the chat input instead.
  * Auto="true" items show a countdown timer when yolo+auto mode is active.
  *
  * Design goals:
@@ -141,14 +142,18 @@ export function NextStepsBar({
    *  the session-end auto-fill listener is suppressed to prevent duplicate
    *  handler registration across multiple bars. */
   isLatest?: boolean;
-  /** Callback to submit multiple selected step texts together (bypasses refine) */
-  onBatchSubmit?: (texts: string[]) => void;
+  /** Submit selected steps and the custom message together. Return false to retain the draft. */
+  onBatchSubmit?: (texts: string[]) => boolean | void;
 }): React.ReactElement | null {
   const { t } = useAppTranslation();
 
   // ── Multi-select state ──────────────────────────────────────────────
+  const customMessageId = useId();
+  const [customMessage, setCustomMessage] = useState('');
+  const [manualInteraction, setManualInteraction] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const toggleIndex = useCallback((idx: number) => {
+    setManualInteraction(true);
     setSelectedIndices((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
@@ -156,11 +161,11 @@ export function NextStepsBar({
       return next;
     });
   }, []);
-  const hasSelection = selectedIndices.size > 0;
-  const batchTexts = useMemo(
-    () => steps.filter((s) => selectedIndices.has(s.index)).map((s) => s.text),
-    [steps, selectedIndices],
-  );
+  const batchTexts = useMemo(() => {
+    const texts = steps.filter((s) => selectedIndices.has(s.index)).map((s) => s.text);
+    const extra = customMessage.trim();
+    return extra ? [...texts, extra] : texts;
+  }, [steps, selectedIndices, customMessage]);
 
   // ── Session-end auto-fill countdown ──────────────────────────────────
   // Listens for the custom event dispatched after the completion chime and
@@ -169,7 +174,7 @@ export function NextStepsBar({
   const [autoFillActive, setAutoFillActive] = useState(false);
   const autoFillFired = useRef(false);
   useEffect(() => {
-    if (!isLatest || !sessionEndAutoFill) return;
+    if (!isLatest || !sessionEndAutoFill || manualInteraction) return;
     if (autoFillActive || autoFillFired.current) return;
     const handler = () => {
       if (steps.length > 0) {
@@ -179,7 +184,11 @@ export function NextStepsBar({
     };
     document.addEventListener('chat:next-step-countdown', handler);
     return () => document.removeEventListener('chat:next-step-countdown', handler);
-  }, [steps.length, autoFillActive, isLatest, sessionEndAutoFill]);
+  }, [steps.length, autoFillActive, isLatest, sessionEndAutoFill, manualInteraction]);
+
+  useEffect(() => {
+    if (manualInteraction) setAutoFillActive(false);
+  }, [manualInteraction]);
 
   // Cancel any in-flight session-end auto-fill when the autonomy gate CLOSES
   // mid-countdown. The trigger for arming the countdown is the `chat:next-step-
@@ -219,6 +228,7 @@ export function NextStepsBar({
   // (showAutoCountdown) so a closed gate at the fire site never auto-submits.
   const gateOpen = yoloMode && autoMode && canAutoSubmitProp;
   const handleAutoFill = useCallback(() => {
+    if (manualInteraction) return;
     if (steps.length > 0) {
       const step = steps[0]!;
       if (step.auto && onAutoSubmit && gateOpen) {
@@ -228,7 +238,7 @@ export function NextStepsBar({
       }
     }
     setAutoFillActive(false);
-  }, [steps, onAutoSubmit, gateOpen]);
+  }, [steps, onAutoSubmit, gateOpen, manualInteraction]);
 
   // Clear multi-selection when steps structurally change (new response, new indices).
   // Use a structural key to avoid Zalgo — step objects are new refs on every render
@@ -238,17 +248,19 @@ export function NextStepsBar({
   const stepsKey = steps.map((s) => `${s.index}:${s.text}`).join('|');
   useEffect(() => {
     setSelectedIndices(new Set());
+    setCustomMessage('');
+    setManualInteraction(false);
   }, [stepsKey]);
 
   if (steps.length === 0) return null;
 
   // Don't show YOLO countdown if the consecutive auto-submit cap has been reached
-  const showAutoCountdown = yoloMode && autoMode && canAutoSubmitProp;
+  const showAutoCountdown = yoloMode && autoMode && canAutoSubmitProp && !manualInteraction;
   const autoStep = showAutoCountdown ? steps.find((s) => s.auto) : undefined;
 
   // When auto mode is active but no step carries the auto="true" marker,
   // we still want the user to notice that auto mode is engaged.
-  const autoModeUnmet = autoMode && !steps.some((s) => s.auto);
+  const autoModeUnmet = autoMode && !manualInteraction && !steps.some((s) => s.auto);
 
   return (
     <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.03] overflow-hidden animate-message">
@@ -283,32 +295,14 @@ export function NextStepsBar({
                 <Timer className="h-3 w-3" />
                 {t('activity:nextSteps.autoModeIdle', 'Auto — waiting for auto="true" marker')}
               </span>
+            ) : onBatchSubmit ? (
+              t('activity:nextSteps.batchHint', 'Select steps and add your message')
             ) : (
               t('activity:nextSteps.clickToFill', 'Click to fill')
             )}
           </span>
         )}
       </div>
-
-      {/* ── Multi-select batch submit bar ── */}
-      {hasSelection && onBatchSubmit && batchTexts.length > 0 && (
-        <div className="flex items-center justify-end gap-2 px-3.5 py-1.5 border-b border-primary/10 bg-primary/[0.06]">
-          <span className="text-xs text-muted-foreground">
-            {t('activity:nextSteps.nSelected', { count: batchTexts.length })}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              onBatchSubmit(batchTexts);
-              setSelectedIndices(new Set());
-            }}
-            className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <ArrowRight className="h-3 w-3" />
-            {t('activity:nextSteps.submitN', { count: batchTexts.length })}
-          </button>
-        </div>
-      )}
 
       {/* ── Steps ── */}
       <div className="flex flex-col p-2 gap-1">
@@ -399,6 +393,58 @@ export function NextStepsBar({
           );
         })}
       </div>
+      {onBatchSubmit && (
+        <div className="grid gap-3 border-t border-primary/10 px-3.5 py-3">
+          <label htmlFor={customMessageId} className="flex items-center gap-2 text-xs font-medium">
+            <PencilLine className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            {t('activity:nextSteps.customMessageLabel', 'Your message')}
+          </label>
+          <textarea
+            id={customMessageId}
+            aria-describedby={`${customMessageId}-hint`}
+            rows={3}
+            value={customMessage}
+            onFocus={() => setManualInteraction(true)}
+            onChange={(event) => {
+              setManualInteraction(true);
+              setCustomMessage(event.target.value);
+            }}
+            placeholder={t(
+              'activity:nextSteps.customMessagePlaceholder',
+              'Add another instruction or write your own next step…',
+            )}
+            className="min-h-20 min-w-0 w-full resize-y border border-border bg-background px-3 py-2 text-base leading-relaxed placeholder:text-muted-foreground sm:text-sm"
+          />
+          <p
+            id={`${customMessageId}-hint`}
+            className="text-xs leading-relaxed text-muted-foreground"
+          >
+            {t(
+              'activity:nextSteps.customMessageHint',
+              'Your message will be sent together with the selected steps.',
+            )}
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground" role="status">
+              {t('activity:nextSteps.nSelected', { count: batchTexts.length })}
+            </span>
+            <button
+              type="button"
+              data-testid="next-steps-submit"
+              disabled={batchTexts.length === 0}
+              onClick={() => {
+                if (batchTexts.length === 0 || onBatchSubmit(batchTexts) === false) return;
+                setSelectedIndices(new Set());
+                setCustomMessage('');
+              }}
+              className="ws-button inline-flex min-h-9 items-center justify-center gap-2 bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('activity:nextSteps.submitN', { count: batchTexts.length })}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

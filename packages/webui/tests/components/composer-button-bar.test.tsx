@@ -39,6 +39,34 @@ describe('ComposerButtonBar component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useLocalPrefs.setState({ chromeLevel: 'calm', enhanceEnabled: false });
+  });
+
+  it('announces the refine toggle state and persists changes', () => {
+    render(<ComposerButtonBar {...defaultProps} />);
+    const refine = screen.getByRole('button', { name: 'chat:input.refineDisabledTitle' });
+    expect(refine.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(refine);
+    expect(refine.getAttribute('aria-pressed')).toBe('true');
+    expect(defaultProps.updatePrefs).toHaveBeenCalledWith({ enhanceEnabled: true });
+    fireEvent.click(refine);
+    expect(refine.getAttribute('aria-pressed')).toBe('false');
+    expect(defaultProps.updatePrefs).toHaveBeenLastCalledWith({ enhanceEnabled: false });
+  });
+
+  it('announces whether voice input is listening', () => {
+    const { rerender } = render(<ComposerButtonBar {...defaultProps} />);
+    expect(
+      screen
+        .getByRole('button', { name: 'Voice input (Speech to text)' })
+        .getAttribute('aria-pressed'),
+    ).toBe('false');
+    rerender(<ComposerButtonBar {...defaultProps} isListening />);
+    expect(
+      screen
+        .getByRole('button', { name: 'Listening... (Click to stop)' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 
   it('renders speech recognition mic button when supported', () => {

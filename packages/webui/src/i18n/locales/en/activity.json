@@ -301,6 +301,10 @@
     "backToFleet": "Back to Fleet"
   },
   "nextSteps": {
+    "customMessageLabel": "Your message",
+    "customMessagePlaceholder": "Add another instruction or write your own next step…",
+    "customMessageHint": "Your message will be sent together with the selected steps.",
+    "batchHint": "Select steps and add your message",
     "header": "Next steps",
     "autoSubmitting": "auto-submitting in",
     "clickToFill": "click to fill input",

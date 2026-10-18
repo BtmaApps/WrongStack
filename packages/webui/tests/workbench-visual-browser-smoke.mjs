@@ -7,6 +7,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect } from '@playwright/test';
 import { createServer } from 'vite';
+import { checkComposerLayout } from './fixtures/composer-layout-checks.mjs';
+import { checkNextSteps } from './fixtures/next-steps-checks.mjs';
 import { checkProviderBrands } from './fixtures/provider-brand-checks.mjs';
 import { assertSquareCorners } from './fixtures/square-corner-check.mjs';
 import { checkWorkbenchInteractions } from './fixtures/workbench-interaction-checks.mjs';
@@ -16,7 +18,9 @@ const output = path.resolve(root, '../../.temp_files/webui-workbench-visual');
 const requestedViews = process.env.WEBUI_VISUAL_VIEWS?.split(',').filter(Boolean);
 const interactionsOnly = process.env.WEBUI_VISUAL_INTERACTIONS_ONLY === '1';
 const providersOnly = process.env.WEBUI_VISUAL_PROVIDERS_ONLY === '1';
-const skipGeneral = interactionsOnly || providersOnly;
+const composerOnly = process.env.WEBUI_VISUAL_COMPOSER_ONLY === '1';
+const nextStepsOnly = process.env.WEBUI_VISUAL_NEXT_STEPS_ONLY === '1';
+const skipGeneral = interactionsOnly || providersOnly || composerOnly || nextStepsOnly;
 const virtualId = 'virtual:workbench-visual-smoke';
 const source = `
 import React from 'react';
@@ -35,27 +39,31 @@ import { VIEW_REGISTRY } from '/src/components/view-registry.ts';
 import { seedWorkbenchVisualData } from '/tests/fixtures/workbench-visual.ts';
 import { InteractionWorkbench, seedInteractionWorkbench } from '/tests/fixtures/InteractionWorkbench.tsx';
 import { ProviderBrandWorkbench } from '/tests/fixtures/ProviderBrandWorkbench.tsx';
+import { NextStepsWorkbench, seedNextStepsWorkbench } from '/tests/fixtures/NextStepsWorkbench.tsx';
 import { ChatInput } from '/src/components/ChatInput.tsx';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '/src/components/ui/dialog.tsx';
 import { Button } from '/src/components/ui/button.tsx';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '/src/components/ui/tabs.tsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '/src/components/ui/dropdown-menu.tsx';
 import { PanelSuspense } from '/src/components/PanelSuspense.tsx';
-import { useConfigStore, useSessionStore, useUIStore } from '/src/stores/index.ts';
+import { useChatStore, useConfigStore, useSessionStore, useUIStore } from '/src/stores/index.ts';
 import { useLocalPrefs } from '/src/stores/local-prefs.ts';
 import { getWSClient } from '/src/lib/ws-client.ts';
-await i18n.changeLanguage('en');
+await i18n.changeLanguage(new URLSearchParams(location.search).get('lang') || 'en');
 await i18n.loadNamespaces(['activity', 'common', 'setup', 'chat', 'settings']);
 const client = getWSClient();
-client.send = () => true;
+const sent = [];
+client.send = (message) => { sent.push(message); return true; };
 client.listSavedProviders = () => {};
 useConfigStore.setState({ provider: 'WrongForge', model: 'workspace-model', wsConnected: true, wsStatus: { state: 'open' } });
 useSessionStore.getState().setEnv({ projectName: 'WrongStack', cwd: 'D:/Codebox/PROJECTS/WrongStack' });
 useLocalPrefs.getState().set({ chromeLevel: 'calm' });
 const params = new URLSearchParams(location.search);
+if (params.has('composer') || params.has('nextsteps')) Object.defineProperty(client, 'isConnected', { get: () => useConfigStore.getState().wsConnected });
 if (params.has('interactions')) seedInteractionWorkbench();
+if (params.has('nextsteps')) seedNextStepsWorkbench();
 useUIStore.setState({ currentView: params.get('view') || 'chat', sidebarOpen: false });
-window.fixture = { ui: useUIStore, prefs: useLocalPrefs, views: ['chat', ...Object.keys(VIEW_REGISTRY)], ...(params.has('dense') ? seedWorkbenchVisualData() : {}) };
+window.fixture = { ui: useUIStore, prefs: useLocalPrefs, config: useConfigStore, chat: useChatStore, sent, views: ['chat', ...Object.keys(VIEW_REGISTRY)], ...(params.has('dense') ? seedWorkbenchVisualData() : {}) };
 const theme = params.get('theme') || 'dark';
 function Fixture() {
   const currentView = useUIStore(s => s.currentView);
@@ -64,7 +72,7 @@ function Fixture() {
       <ActivityBar />
       <main id="main-content" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <WorkbenchTopbar currentView={currentView} projectName="WrongStack" isLoading={false} iteration={null} onPalette={() => {}} onSettings={() => useUIStore.getState().setCurrentView('settings')} />
-        {params.has('provider-brands') ? <ProviderBrandWorkbench /> : params.has('interactions') ? <InteractionWorkbench /> : params.has('views') ? <div className="relative flex min-h-0 min-w-0 flex-1 flex-col"><ViewRouter sessionId={null} desktopShell={false} /></div> : <>
+        {params.has('nextsteps') ? <NextStepsWorkbench /> : params.has('provider-brands') ? <ProviderBrandWorkbench /> : params.has('interactions') ? <InteractionWorkbench /> : params.has('views') ? <div className="relative flex min-h-0 min-w-0 flex-1 flex-col"><ViewRouter sessionId={null} desktopShell={false} /></div> : <>
         <div className="ws-chat-surface mx-3 mt-3 flex-1 min-h-0 overflow-auto border border-border">
           <WelcomeScreen />
           <div className="mx-auto flex max-w-4xl flex-wrap gap-3 px-6 pb-6" data-testid="primitives">
@@ -336,22 +344,42 @@ try {
       await page.close();
     }
   }
-  const interactions = providersOnly
-    ? []
-    : await checkWorkbenchInteractions(
-        browser,
-        `http://127.0.0.1:${address.port}/__workbench_visual`,
-        output,
-        errors,
-      );
-  const providers = interactionsOnly
-    ? []
-    : await checkProviderBrands(
-        browser,
-        `http://127.0.0.1:${address.port}/__workbench_visual`,
-        output,
-        errors,
-      );
+  const interactions =
+    providersOnly || composerOnly || nextStepsOnly
+      ? []
+      : await checkWorkbenchInteractions(
+          browser,
+          `http://127.0.0.1:${address.port}/__workbench_visual`,
+          output,
+          errors,
+        );
+  const providers =
+    interactionsOnly || composerOnly || nextStepsOnly
+      ? []
+      : await checkProviderBrands(
+          browser,
+          `http://127.0.0.1:${address.port}/__workbench_visual`,
+          output,
+          errors,
+        );
+  const composer =
+    interactionsOnly || providersOnly || nextStepsOnly
+      ? []
+      : await checkComposerLayout(
+          browser,
+          `http://127.0.0.1:${address.port}/__workbench_visual`,
+          output,
+          errors,
+        );
+  const nextSteps =
+    interactionsOnly || providersOnly || composerOnly
+      ? []
+      : await checkNextSteps(
+          browser,
+          `http://127.0.0.1:${address.port}/__workbench_visual`,
+          output,
+          errors,
+        );
   assert.deepEqual(errors, [], 'Browser runtime errors');
   console.log(
     JSON.stringify(
@@ -359,6 +387,8 @@ try {
         results,
         interactions,
         providers,
+        composer,
+        nextSteps,
         routedChecks: routed.length,
         registeredViews: [...new Set(routed.map((item) => item.view))],
         errors,

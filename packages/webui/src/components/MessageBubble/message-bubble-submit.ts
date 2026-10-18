@@ -67,17 +67,19 @@ export function createMessageBubbleSubmitters({
   /** Batch-submit callback for multi-select: joins selected step texts and
    *  sends as a single user message, bypassing the refine/enhance panel. */
   const handleBatchSubmit = (texts: string[]) => {
-    if (useChatStore.getState().isLoading) return;
+    if (useChatStore.getState().isLoading) return false;
     const combined = texts.join('\n');
+    if (!combined.trim()) return false;
     const client = getWSClient(wsUrl);
     if (!client.isConnected) {
       toast.error(t('common:status.notConnectedRetry'));
-      return;
+      return false;
     }
     addMessage({ role: 'user', content: combined });
     setLoading(true);
     client.sendMessage(combined);
     fillInput('');
+    return true;
   };
 
   return { handleAutoSubmit, handleBatchSubmit };

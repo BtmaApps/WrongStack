@@ -293,6 +293,10 @@
     "backToFleet": "Volver a la flota"
   },
   "nextSteps": {
+    "customMessageLabel": "Tu mensaje",
+    "customMessagePlaceholder": "Añade otra instrucción o escribe tu propio siguiente paso…",
+    "customMessageHint": "Tu mensaje se enviará junto con los pasos seleccionados.",
+    "batchHint": "Selecciona pasos y añade tu mensaje",
     "header": "Próximos pasos",
     "autoSubmitting": "envío automático en",
     "clickToFill": "clic para rellenar",
