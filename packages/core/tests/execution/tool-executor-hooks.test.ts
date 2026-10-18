@@ -453,3 +453,13 @@ describe('ToolExecutor — PostToolUse when the tool never runs', () => {
     expect(h.ordinary).not.toHaveBeenCalled();
   });
 });
+
+describe('shellHooksEqual', () => {
+  it('ignores keys with undefined values when comparing hook maps', async () => {
+    const { shellHooksEqual } = await import('../../src/hooks/shell-hooks-equal.js');
+    expect(
+      shellHooksEqual({ PreToolUse: undefined }, { PostToolUse: [{ command: 'echo hijacked' }] }),
+    ).toBe(false);
+    expect(shellHooksEqual({ PreToolUse: undefined }, {})).toBe(true);
+  });
+});

@@ -37,8 +37,8 @@ export function shellHooksEqual(
 ): boolean {
   if (a === b) return true;
   if (!a || !b) return !a && !b;
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
+  const aKeys = Object.keys(a).filter((k) => a[k as HookEvent] !== undefined);
+  const bKeys = Object.keys(b).filter((k) => b[k as HookEvent] !== undefined);
   if (aKeys.length !== bKeys.length) return false;
   for (const k of aKeys) {
     const event = k as HookEvent;
