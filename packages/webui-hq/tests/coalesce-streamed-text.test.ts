@@ -76,15 +76,15 @@ describe('coalesceStreamedText', () => {
 
   it('mergeSubagentTranscriptEntries deduplicates seed overlap without dropping repeated live deltas or same-timestamp tools', () => {
     const seed: HqTranscriptEntry[] = [
-      E({ role: 'user', text: 'Count 00', ts: 1000, agentId: 'sub-1' }),
-      E({ role: 'assistant', text: 'seed ', ts: 1001, agentId: 'sub-1' }),
+      E({ role: 'user', text: 'Count 00', ts: '1000', agentId: 'sub-1' }),
+      E({ role: 'assistant', text: 'seed ', ts: '1001', agentId: 'sub-1' }),
     ];
     const live: HqTranscriptEntry[] = [
-      E({ role: 'assistant', text: 'seed ', ts: 1001, agentId: 'sub-1' }),
-      E({ role: 'assistant', text: '0', ts: 1002, agentId: 'sub-1' }),
-      E({ role: 'assistant', text: '0', ts: 1002, agentId: 'sub-1' }),
-      E({ role: 'tool', tool: 'Read', text: '', ts: 1003, agentId: 'sub-1' }),
-      E({ role: 'tool', tool: 'Grep', text: '', ts: 1003, agentId: 'sub-1' }),
+      E({ role: 'assistant', text: 'seed ', ts: '1001', agentId: 'sub-1' }),
+      E({ role: 'assistant', text: '0', ts: '1002', agentId: 'sub-1' }),
+      E({ role: 'assistant', text: '0', ts: '1002', agentId: 'sub-1' }),
+      E({ role: 'tool', tool: 'Read', text: '', ts: '1003', agentId: 'sub-1' }),
+      E({ role: 'tool', tool: 'Grep', text: '', ts: '1003', agentId: 'sub-1' }),
     ];
     const merged = mergeSubagentTranscriptEntries(seed, live);
     expect(merged.find((e) => e.role === 'assistant')?.text).toBe('seed 00');

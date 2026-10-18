@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/core/kernel';
+import type { Logger } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { DocumentTracker } from '../../src/document-tracker.js';
 import type { LSPServer } from '../../src/server/lsp-server.js';
@@ -30,7 +31,7 @@ describe('DocumentTracker.forceCloseAll event emission', () => {
       info: () => {},
       warn: () => {},
       error: () => {},
-    };
+    } as unknown as Logger;
 
     const s1 = makeServer('ts-1', 'ready');
     const s2 = makeServer('ts-2', 'ready');

@@ -753,7 +753,7 @@ describe('DesktopAgentBridge in-flight connection lifecycle', () => {
       const connecting = bridge.ensureConnected('rt-race', `ws://127.0.0.1:${port}`);
       await handshakeEntered;
       bridge.close('rt-race');
-      completeHandshake?.(true);
+      (completeHandshake as ((accept: boolean) => void) | null)?.(true);
 
       const snapshot = await connecting;
       expect(snapshot.status).toBe('disconnected');

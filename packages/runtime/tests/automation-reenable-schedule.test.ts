@@ -2,8 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { AutomationJobSpec } from '../src/automation/contracts.js';
 import { AutomationStore } from '../src/automation/store.js';
-import type { AutomationJobSpec } from '../src/automation/types.js';
 
 describe('AutomationStore re-enable schedule recomputation', () => {
   const dirs: string[] = [];

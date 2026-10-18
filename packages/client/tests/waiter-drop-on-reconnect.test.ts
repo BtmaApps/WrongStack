@@ -87,7 +87,7 @@ describe('WrongStackClient control waiters on socket drop with reconnect', () =>
         kind: 'connection',
       });
       await new Promise((r) => setTimeout(r, 60));
-      expect(client.current?.sessionId).toBe('sess_1');
+      expect(client.session.sessionId).toBe('sess_1');
 
       await expect(client.listSessions(99)).rejects.toBeInstanceOf(WrongStackError);
       await new Promise((r) => setTimeout(r, 60));

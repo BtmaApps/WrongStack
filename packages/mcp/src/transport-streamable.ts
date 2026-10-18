@@ -72,7 +72,9 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         total += value.byteLength;
         if (total > MAX_MCP_HTTP_BODY_BYTES) {
           await reader.cancel().catch(() => undefined);
-          throw new Error(`MCP response stream exceeded ${MAX_MCP_HTTP_BODY_BYTES} bytes`);
+          throw new Error(
+            `MCP response stream exceeded ${MAX_MCP_HTTP_BODY_BYTES} bytes — refusing to buffer`,
+          );
         }
         pending += decoder.decode(value, { stream: true });
         const cut = completeEventsEnd(pending);

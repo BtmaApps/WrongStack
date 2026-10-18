@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1453,
-      "typeOnly": 1280,
+      "files": 1454,
+      "typeOnly": 1281,
       "runtimeOrMixed": 429
     },
     "@wrongstack/core/types/limits": {
@@ -17878,6 +17878,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/tests/unit/diagnostics-verification.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/tests/unit/document-tracker-force-close-events.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

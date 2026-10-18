@@ -12,7 +12,6 @@ describe('Requirement intake answer fieldSources canonical mapping', () => {
       id: 'user-1',
       type: 'user',
       projectId: 'proj-1',
-      roles: ['contributor'],
     };
 
     const record = buildNewIntakeRecord(

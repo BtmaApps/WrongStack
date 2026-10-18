@@ -18,7 +18,7 @@ describe('retryTask status and active subagent guard', () => {
     const cancelledTasks = new Set<string>(['failed-1']);
     const taskSubagents = new Map<string, string>([['pending-active', 'sub-1']]);
 
-    const host: SddParallelControlsHost = {
+    const host = {
       opts: {
         tracker: {
           getNode: (id: string) => nodes.get(id) as never,
@@ -33,7 +33,7 @@ describe('retryTask status and active subagent guard', () => {
           updateNode: () => {},
         } as never,
         worktrees: undefined,
-      },
+      } as never,
       retryMap,
       cancelledTasks,
       taskSubagents,
@@ -41,7 +41,7 @@ describe('retryTask status and active subagent guard', () => {
       baseBranch: undefined,
       isRunning: () => true,
       persistRetries: () => {},
-    };
+    } as unknown as SddParallelControlsHost;
 
     expect(retryTask(host, 'failed-1')).toBe(true);
     expect(nodes.get('failed-1')?.status).toBe('pending');
