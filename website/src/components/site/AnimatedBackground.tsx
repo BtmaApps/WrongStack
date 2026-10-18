@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { AMBIENT_NODES, startAmbientBackground } from './ambient-engine';
 import './animated-background.css';
@@ -60,7 +60,6 @@ function Geometry({ kind }: { kind: number }) {
 /** Bounded SVG decoration; all motion lives in one imperative, pausable loop. */
 export function AnimatedBackground({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const glowId = `ambient-glow-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
   useEffect(() => (ref.current ? startAmbientBackground(ref.current) : undefined), []);
   return (
     <div
@@ -96,13 +95,6 @@ export function AnimatedBackground({ className }: { className?: string }) {
         focusable="false"
         aria-hidden="true"
       >
-        <defs>
-          <radialGradient id={glowId}>
-            <stop stopColor="var(--brand-pink)" stopOpacity="0.22" />
-            <stop offset="0.38" stopColor="var(--brand-orange)" stopOpacity="0.12" />
-            <stop offset="1" stopColor="var(--brand-orange)" stopOpacity="0" />
-          </radialGradient>
-        </defs>
         {AMBIENT_NODES.map((node, index) => (
           <g
             key={node.phase}
@@ -115,18 +107,25 @@ export function AnimatedBackground({ className }: { className?: string }) {
           </g>
         ))}
         {Array.from({ length: 12 }, (_, index) => (
-          <circle key={index} data-ambient-trail="" r="22" fill={`url(#${glowId})`} opacity="0" />
+          <circle
+            key={index}
+            data-ambient-trail=""
+            data-tone="pink"
+            r="1.2"
+            fill="currentColor"
+            stroke="none"
+            opacity="0"
+          />
         ))}
         <g data-pointer-field="" opacity="0">
-          <circle r="165" fill={`url(#${glowId})`} />
           <circle
             data-pointer-orbit=""
-            r="42"
+            r="11"
             data-tone="pink"
-            strokeDasharray="12 30 3 45"
-            opacity="0.35"
+            strokeDasharray="3 14"
+            opacity="0.2"
           />
-          <circle r="5" data-tone="orange" opacity="0.45" />
+          <circle r="1.3" data-tone="orange" fill="currentColor" stroke="none" opacity="0.25" />
         </g>
         {[0, 1, 2, 3].map((slot) => (
           <g

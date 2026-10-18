@@ -184,7 +184,7 @@ export function startAmbientBackground(root: HTMLDivElement) {
     }
     for (const trail of trails) {
       const t = (now - trail.born) / 900;
-      const opacity = !coarsePointer && t >= 0 && t < 1 ? (mobile ? 0.4 : 0.8) * (1 - t) ** 2 : 0;
+      const opacity = !coarsePointer && t >= 0 && t < 1 ? (mobile ? 0.08 : 0.16) * (1 - t) ** 2 : 0;
       trail.element.setAttribute('opacity', String(opacity));
       if (!opacity) continue;
       trail.element.setAttribute(
