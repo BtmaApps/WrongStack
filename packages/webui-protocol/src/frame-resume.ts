@@ -206,8 +206,14 @@ export class FrameResume<T extends SequencedFrame & { type: string }> {
       return msg;
     }
     const payload = msg.payload as Record<string, unknown>;
-    if (typeof payload.eventEpoch === 'string')
+    if (typeof payload.eventEpoch === 'string') {
       this.apply(this.gate.adoptEpoch(payload.eventEpoch));
+      if (this.timer && !this.requested.some((id) => this.gate.isResuming(id))) {
+        timers.clearTimeout(this.timer);
+        this.timer = null;
+        this.requested = [];
+      }
+    }
     const sessionId = payload.sessionId;
     if (typeof sessionId !== 'string' || !this.gate.isResuming(sessionId)) return msg;
     const kept = { ...payload };

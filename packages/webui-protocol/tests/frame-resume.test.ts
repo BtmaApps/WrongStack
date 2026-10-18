@@ -264,4 +264,25 @@ describe('FrameResume', () => {
       clearTimeoutSpy.mockRestore();
     }
   });
+
+  it('disarms the pending give-up timer when adoptEpoch ends resume on server restart', () => {
+    vi.useFakeTimers();
+    const applied: Frame[] = [];
+    const resume = new FrameResume<Frame>((frames) => applied.push(...frames), 1_000);
+    resume.onSessionStart(start('s1', { eventEpoch: 'e1' }));
+    resume.gate.accept(f(1, 's1', 'a1'));
+    resume.request(['s1']);
+
+    vi.advanceTimersByTime(400);
+    // Server restarts with new epoch e2
+    resume.onSessionStart(start('s1', { eventEpoch: 'e2' }));
+    resume.gate.accept(f(1, 's1', 'b1'));
+    resume.gate.beginResume(['s1']);
+    resume.gate.accept(f(3, 's1', 'b3-held'));
+
+    // Advance past the old e1 1000ms timer deadline
+    vi.advanceTimersByTime(700);
+    expect(resume.gate.isResuming('s1')).toBe(true);
+    expect(texts(applied)).not.toContain('b3-held');
+  });
 });
