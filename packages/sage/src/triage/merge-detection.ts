@@ -449,12 +449,19 @@ function buildResult(
           superseded = dateA >= dateB ? memoryB : memoryA;
         }
 
+        const keeperPreview = keeper.text.slice(0, 80);
+        for (const prior of merges) {
+          if (prior.keeperId === superseded.id) {
+            prior.keeperId = keeper.id;
+            prior.keeperText = keeperPreview;
+          }
+        }
         supersededThisRun.add(superseded.id);
         merges.push({
           supersededId: superseded.id,
           keeperId: keeper.id,
           supersededText: superseded.text.slice(0, 80),
-          keeperText: keeper.text.slice(0, 80),
+          keeperText: keeperPreview,
         });
         break;
       }

@@ -406,6 +406,22 @@ describe('merge detection — supersession graph stays acyclic', () => {
     const survivors = memories.filter((m) => !supersededIds.includes(m.id));
     expect(survivors.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('re-points prior merge entries when an intermediate keeper loses a later comparison', async () => {
+    const anchor = [{ type: 'file' as const, path: 'src/cycle.ts' }];
+    const memories = [
+      makeMem('m_1', 'same fact aaa', { anchors: anchor, createdAt: '2026-06-01T00:00:00.000Z' }),
+      makeMem('m_2', 'same fact bbb', { anchors: anchor, createdAt: '2026-07-01T00:00:00.000Z' }),
+      makeMem('m_3', 'same fact ccc', { anchors: anchor, createdAt: '2026-08-01T00:00:00.000Z' }),
+    ];
+
+    const result = await detectMerges(memories, async () => 'YES');
+    const supersededIds = new Set(result.merges.map((m) => m.supersededId));
+    for (const merge of result.merges) {
+      expect(supersededIds.has(merge.keeperId)).toBe(false);
+      expect(merge.keeperId).toBe('m_3');
+    }
+  });
 });
 
 // ── Summary correctness ─────────────────────────────────────────────────
