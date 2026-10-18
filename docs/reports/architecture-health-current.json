@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T08:28:25.812Z",
+  "generatedAt": "2026-10-18T09:20:38.867Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 38,
     "sourceFiles": 5157,
     "testFiles": 4464,
-    "sourceLines": 1118975,
+    "sourceLines": 1118996,
     "workspaceEdges": 139,
     "moduleEdges": 16962,
     "nonCommandSlashImports": 0,
@@ -28139,7 +28139,7 @@
     },
     {
       "file": "apps/desktop/src/main/main.ts",
-      "lines": 713,
+      "lines": 734,
       "relativeImports": 20
     }
   ],
@@ -28155,6 +28155,11 @@
       "relativeImports": 2
     },
     {
+      "file": "apps/desktop/src/main/main.ts",
+      "lines": 734,
+      "relativeImports": 20
+    },
+    {
       "file": "packages/vibeui/src/components/provider-manager.tsx",
       "lines": 733,
       "relativeImports": 6
@@ -28163,11 +28168,6 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
-    },
-    {
-      "file": "apps/desktop/src/main/main.ts",
-      "lines": 713,
-      "relativeImports": 20
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",

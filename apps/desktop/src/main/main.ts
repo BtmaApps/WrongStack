@@ -691,18 +691,39 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  if (mainWindow) {
-    mainWindow.removeAllListeners('close');
-    void windowStateController.save();
+/** Upper bound on quit-time cleanup, so a stuck write or child can never hang quit. */
+const QUIT_CLEANUP_TIMEOUT_MS = 6_000;
+let quitCleanupStarted = false;
+
+app.on('before-quit', (event) => {
+  // before-quit is synchronous, but the cleanup is not: the window-state save
+  // is fs.mkdir + atomicWrite, and closeAll() terminates child processes.
+  // Fire-and-forgetting them let the process exit ~8 ms later, before the
+  // write landed — proven in a real Electron run: geometry changed and then
+  // Ctrl+Q / File > Quit never reached desktop.json (0/3). So hold the quit
+  // once, let the work settle, then exit. app.exit() does not re-emit
+  // before-quit, and the flag covers a second quit request while we wait.
+  if (quitCleanupStarted) {
+    event.preventDefault();
+    return;
   }
+  quitCleanupStarted = true;
+  event.preventDefault();
+  const window = mainWindow;
+  if (window) window.removeAllListeners('close');
   bridge.closeAll();
   webuiController.disposeAll();
   manager.stopIdleSweep();
-  // Terminate WebUI child processes so they don't become orphans after the
-  // desktop app exits. closeAll() is async but before-quit is synchronous —
-  // we fire-and-forget and rely on OS process-group cleanup for stragglers.
-  void manager.closeAll({ persistWorkspace: false });
+  // Save BEFORE the windows are torn down: save() reads the live bounds.
+  const cleanup = Promise.allSettled([
+    window ? windowStateController.save() : Promise.resolve(),
+    // Terminate WebUI child processes so they don't outlive the app.
+    manager.closeAll({ persistWorkspace: false }),
+  ]);
+  const deadline = new Promise<void>((resolve) => {
+    setTimeout(resolve, QUIT_CLEANUP_TIMEOUT_MS).unref?.();
+  });
+  void Promise.race([cleanup, deadline]).finally(() => app.exit(0));
 });
 
 app.on('activate', () => {
