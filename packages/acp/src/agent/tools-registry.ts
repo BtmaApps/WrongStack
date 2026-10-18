@@ -23,7 +23,9 @@ export class ACPToolsRegistry {
 
   /**
    * Register one or more tools.
-   * Throws on duplicate name unless force=true.
+   * A tool whose name is already registered replaces the existing entry, so
+   * re-registering a name is how an implementation is swapped. Registering
+   * never throws; use {@link setTools} to replace the whole set at once.
    */
   register(tools: Tool[]): void {
     for (const tool of tools) {

@@ -345,9 +345,10 @@ interface SidebarKanbanColumn {
 }
 
 /**
- * Load the kanban board summary for the sidebar. Uses `listBoards()` to
- * find the most recently used board, then fetches its column counts.
- * Refreshes every 10 seconds (only while `enabled`).
+ * Load the kanban board summary for the sidebar. Uses `listBoards()` and
+ * takes the FIRST board it returns (most recently created), then fetches
+ * that board's column counts.
+ * Refreshes every 30 seconds (only while `enabled`).
  */
 export function useSidebarKanban(
   projectRoot: string,

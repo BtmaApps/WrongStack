@@ -419,11 +419,22 @@ export function pickBetter(a: string, b: string): string {
  *   - lowercased
  *   - collapsed whitespace
  *   - trailing/leading punctuation stripped
+ *
+ * Letters and numbers are matched with the Unicode property escapes
+ * (`\p{L}`/`\p{N}`), the same token-character rule `memory-text.ts#tokenize`
+ * and the hashing embedder use. An ASCII-only class (`[a-z0-9]`) DELETED
+ * every non-ASCII character instead of folding it away, so two distinct
+ * non-ASCII terms both normalised to the empty key "" and `mergeTerm`
+ * collapsed them into a single glossary entry; a diacritic-bearing term was
+ * also split on its accent ('günlük' → 'g n l k'), which could collide with
+ * an unrelated spaced term. Keeping Unicode letters makes distinct terms
+ * yield distinct keys. ASCII behaviour is unchanged: after `toLowerCase()`
+ * `\p{L}`/`\p{N}` cover exactly `a-z`/`0-9`.
  */
 export function normalizeTerm(term: string): string {
   return term
     .toLowerCase()
-    .replace(/[^a-z0-9\s\-_]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s\-_]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

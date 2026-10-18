@@ -152,7 +152,10 @@ export class AutoCompactionMiddleware {
    *                         for accurate full-request token counting (messages +
    *                         systemPrompt + toolDefs).
    * @param thresholds       Threshold fractions (0-1) of maxContext.
-   * @param opts             Optional behavior. By default, failures at the
+   * @param optsOrAggressiveOn
+   *                         Optional behavior. Accepts either this options
+   *                         object or the legacy ContextWindowAggressiveOn
+   *                         string (e.g. '50pct'). By default, failures at the
    *                         hard threshold throw AGENT_CONTEXT_OVERFLOW so
    *                         the agent does not continue into a likely
    *                         provider context overflow. Warn/soft failures

@@ -16,8 +16,8 @@
 //
 // `phase` is the per-frame tick from the spinner interval (0..N-1).
 // `tick` is a coarser time tick (0..∞) used by styles that need seconds-scale
-// pacing (cycle). The status bar ticks `phase` every ~250ms and `tick` every
-// ~1s.
+// pacing (cycle). The status bar ticks `phase` every SPINNER_INTERVAL_MS
+// (currently 1000ms — see status-bar-icons.ts) and `tick` every ~1s.
 //
 // Pastel Catppuccin Mocha loop for `rainbow`. The animation samples only this
 // palette (and blends between adjacent stops), so it never drifts into the

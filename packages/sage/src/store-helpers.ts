@@ -126,7 +126,16 @@ const SECRET_PATTERN = new RegExp(
   [
     // ` BLOCK`: a PGP armor header ends in `PRIVATE KEY BLOCK` plus dashes.
     '-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----',
-    '\\b(?:api[_-]?key|secret|token|password)\\b\\s*[:=]\\s*[\'"]?[A-Za-z0-9_\\-./+=]{16,}',
+    // Env-style `KEY = VALUE`. The keyword boundaries are lookarounds over
+    // ALPHANUMERICS rather than `\b`, because `_` is a word character: with
+    // `\b` there is no boundary inside `AWS_SECRET_ACCESS_KEY`, so the
+    // alternative could not match the env-var spelling of its own keywords —
+    // and `api[_-]?key` shows underscore spelling was the intent. The trailing
+    // `[A-Za-z0-9_.-]*` consumes the rest of an env-var name so `=` can still
+    // be reached (`..._ACCESS_KEY=`). The keyword must remain a whole segment:
+    // an alphanumeric on either side still disqualifies the match, so
+    // `mytoken=`/`secretly=` stay clean.
+    '(?<![A-Za-z0-9])(?:api[_-]?key|secret|token|password)(?![A-Za-z0-9])[A-Za-z0-9_.-]*\\s*[:=]\\s*[\'"]?[A-Za-z0-9_\\-./+=]{16,}',
     '\\b[A-Za-z0-9_]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\b',
     '\\b(?:sk-(?:ant-)?|gh[pousr]_|github_pat_|xox[baprs]-)[A-Za-z0-9_-]{16,}\\b',
     '\\bAKIA[0-9A-Z]{16}\\b',

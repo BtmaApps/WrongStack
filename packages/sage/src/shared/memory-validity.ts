@@ -35,6 +35,27 @@ export function normalizeValidity(value: unknown): MemoryValidity | undefined {
   return { statement: v.statement.trim(), ...(checks?.length ? { checks } : {}) };
 }
 
+/**
+ * Canonical equality key for a validity, used to decide whether a decoded
+ * memory and an incoming one describe the same applicability conditions.
+ *
+ * Unlike {@link normalizeValidity} this NEVER throws. It is called on rows
+ * decoded out of the database as well as on validated input, and a stored
+ * validity can violate today's rules — an older schema accepted an absolute
+ * check path, a hand-edit can introduce one, and `validateMemoryShape`
+ * deliberately does not inspect optional fields. Throwing escaped the
+ * caller's skip-corrupt-row loop (e.g. `rememberSqliteSage`) and failed an
+ * unrelated write, which is exactly what that loop exists to prevent.
+ *
+ * An unusable value therefore falls back to a raw-shape key. It is prefixed
+ * and array-shaped so it can never equal a normalized key (`normalizeValidity`
+ * only ever yields an object or `null`): the row then simply does not match
+ * for dedupe, instead of failing the operation.
+ */
 export function validityKey(value: MemoryValidity | undefined): string {
-  return JSON.stringify(normalizeValidity(value) ?? null);
+  try {
+    return JSON.stringify(normalizeValidity(value) ?? null);
+  } catch {
+    return JSON.stringify(['\u0000invalid', value ?? null]);
+  }
 }
