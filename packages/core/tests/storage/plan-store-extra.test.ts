@@ -45,6 +45,18 @@ describe('plan-store — extra coverage', () => {
     expect(removePlanItem(plan, '1').items).toHaveLength(2);
     expect(setPlanItemStatus(plan, 'b', 'done').items[1]?.status).toBe('done');
     expect(setPlanItemStatus(plan, 'thir', 'pending').items[2]?.status).toBe('pending');
+
+    const withDigitTitle: PlanFile = {
+      ...plan,
+      items: [
+        { id: 'item_a', title: 'Implement 2FA login', status: 'pending' },
+        { id: 'item_b', title: 'Write documentation', status: 'pending' },
+      ],
+    };
+    const updated = setPlanItemStatus(withDigitTitle, '2FA login', 'done');
+    expect(updated.items[0]?.status).toBe('done');
+    expect(updated.items[1]?.status).toBe('pending');
+    expect(removePlanItem(withDigitTitle, '   ')).toBe(withDigitTitle);
   });
 
   it('clearPlan empties items; formatPlan renders title, marks and details', () => {

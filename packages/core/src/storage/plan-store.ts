@@ -276,11 +276,15 @@ export function formatPlan(plan: PlanFile): string {
 }
 
 function matchIndex(plan: PlanFile, idOrIndex: string): number {
-  const asNum = Number.parseInt(idOrIndex, 10);
-  if (!Number.isNaN(asNum) && asNum >= 1 && asNum <= plan.items.length) return asNum - 1;
-  const byId = plan.items.findIndex((it) => it.id === idOrIndex);
+  const trimmed = idOrIndex.trim();
+  if (!trimmed) return -1;
+  if (/^\d+$/.test(trimmed)) {
+    const asNum = Number.parseInt(trimmed, 10);
+    if (asNum >= 1 && asNum <= plan.items.length) return asNum - 1;
+  }
+  const byId = plan.items.findIndex((it) => it.id === idOrIndex || it.id === trimmed);
   if (byId !== -1) return byId;
-  const lower = idOrIndex.toLowerCase();
+  const lower = trimmed.toLowerCase();
   return plan.items.findIndex((it) => it.title.toLowerCase().includes(lower));
 }
 
