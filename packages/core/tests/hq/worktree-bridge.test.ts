@@ -178,4 +178,38 @@ describe('startWorktreeTelemetryBridge', () => {
     ).not.toThrow();
     stop();
   });
+
+  it('mergeBranch detects squash merge conflicts even when git merge --squash exits 0', async () => {
+    const { WorktreeManager } = await import('../../src/worktree/worktree-manager.js');
+    const calls: string[][] = [];
+    const wm = new WorktreeManager({
+      projectRoot: '/tmp/wt-repo',
+      run: async (args) => {
+        calls.push(args);
+        if (args[0] === 'status') return { code: 0, stdout: '', stderr: '' };
+        if (args[0] === 'checkout') return { code: 0, stdout: '', stderr: '' };
+        if (args[0] === 'config') return { code: 0, stdout: 'Test\n', stderr: '' };
+        if (args.includes('merge') && args.includes('--squash')) {
+          return {
+            code: 0,
+            stdout: 'Auto-merging a.txt\nCONFLICT (content): Merge conflict in a.txt\n',
+            stderr: '',
+          };
+        }
+        if (args[0] === 'diff' && args.includes('--diff-filter=U')) {
+          return { code: 0, stdout: 'a.txt\0', stderr: '' };
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      },
+    });
+
+    const res = await wm.mergeBranch('wstack/ap/feat', 'main');
+    expect(res).toEqual({
+      ok: false,
+      conflict: true,
+      conflictFiles: ['a.txt'],
+      reason: 'merge conflict',
+    });
+    expect(calls.some((c) => c.includes('commit'))).toBe(false);
+  });
 });

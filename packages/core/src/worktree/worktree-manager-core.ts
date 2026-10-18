@@ -137,10 +137,10 @@ export abstract class WorktreeManagerCore {
     // Identity fallback on the merge too: see merge() — a squash still needs it.
     const idArgs = await this.identityArgs(this.projectRoot);
     const merged = await this.runGit([...idArgs, 'merge', '--squash', branch], this.projectRoot);
-    if (merged.code !== 0) {
-      const fromOutput = parseConflictPaths(`${merged.stdout}\n${merged.stderr}`);
-      const fromIndex = await this.unmergedFiles();
-      const conflictFiles = [...new Set([...fromOutput, ...fromIndex])];
+    const fromOutput = parseConflictPaths(`${merged.stdout}\n${merged.stderr}`);
+    const fromIndex = await this.unmergedFiles();
+    const conflictFiles = [...new Set([...fromOutput, ...fromIndex])];
+    if (merged.code !== 0 || conflictFiles.length > 0) {
       // `merge --squash` leaves no MERGE_HEAD — hard-reset to undo cleanly.
       await this.runGit(['reset', '--hard', 'HEAD'], this.projectRoot).catch(() => undefined);
       return {
