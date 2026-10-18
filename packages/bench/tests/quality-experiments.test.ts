@@ -85,6 +85,26 @@ describe('evidence-based bench experiments', () => {
         ?.recommended,
     ).toBeNull();
   });
+  it('avoids pipe-delimiter cell collisions and rejects candidates missing multi-attempt task runs', () => {
+    const report = fixture();
+    const partial = report.results.filter(
+      (r) => !(r.cell.model === 'cheap' && (r.attempt === 2 || r.attempt === 3)),
+    );
+    partial.push({
+      ...report.results[0]!,
+      taskId: 'core/other',
+      attempt: 1,
+    });
+    const partialReport: BenchReport = { ...report, results: partial };
+    const rec = routingExperiment(partialReport, {
+      version: 1,
+      minAttempts: 2,
+      categories: { all: ['core/fix', 'core/other'] },
+    });
+    const cheapCandidate = rec.categories[0]?.candidates.find((c) => c.cell.model === 'cheap');
+    expect(cheapCandidate?.eligible).toBe(false);
+    expect(cheapCandidate?.reasons).toContain('incomplete-category-corpus');
+  });
   it('compares only paired task/model/attempt evidence and rejects fixed harness drift', () => {
     const base = fixture();
     const next = structuredClone(base);

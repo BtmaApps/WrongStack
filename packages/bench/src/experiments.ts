@@ -58,7 +58,12 @@ export function routingExperiment(report: BenchReport, policy: RoutingPolicy) {
       );
       for (const row of report.results)
         if (ids.has(row.taskId)) {
-          const key = JSON.stringify([row.cell.provider, row.cell.model]);
+          const key = JSON.stringify([
+            row.cell.label,
+            row.cell.provider,
+            row.cell.model,
+            row.cell.reasoningEffort ?? null,
+          ]);
           const rows = grouped.get(key) ?? [];
           rows.push(row);
           grouped.set(key, rows);
@@ -151,7 +156,14 @@ export function compareQualityExperiment(
   )
     throw new Error('Experiment changed fixed harness fields');
   const key = (row: TaskResult) =>
-    JSON.stringify([row.taskId, row.cell.provider, row.cell.model, row.attempt ?? 1]);
+    JSON.stringify([
+      row.taskId,
+      row.cell.label,
+      row.cell.provider,
+      row.cell.model,
+      row.cell.reasoningEffort ?? null,
+      row.attempt ?? 1,
+    ]);
   const index = (report: BenchReport) => {
     const rows = new Map<string, TaskResult>();
     for (const row of report.results) {
