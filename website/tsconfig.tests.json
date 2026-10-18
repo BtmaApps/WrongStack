@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "include": [
+    "src/declarations.d.ts",
     "tests/**/*.test.tsx",
     "tests/browser/**/*.ts",
     "vitest.config.ts",

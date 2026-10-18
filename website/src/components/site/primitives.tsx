@@ -6,23 +6,7 @@ import { Link } from '@/lib/router';
 import { cn } from '@/lib/utils';
 import { BrandMark } from './BrandMark';
 
-export function SiteDecor() {
-  return (
-    <div className="site-decor" aria-hidden="true">
-      <span className="site-decor__aurora" />
-      <span className="site-decor__rail site-decor__rail--left" />
-      <span className="site-decor__rail site-decor__rail--right" />
-      <span className="site-decor__pulse site-decor__pulse--left" />
-      <span className="site-decor__pulse site-decor__pulse--right" />
-      <span className="site-decor__orbit site-decor__orbit--primary" />
-      <span className="site-decor__orbit site-decor__orbit--secondary" />
-      <span className="site-decor__object site-decor__object--signal" />
-      <span className="site-decor__object site-decor__object--node" />
-      <span className="site-decor__object site-decor__object--diamond" />
-      <span className="site-decor__object site-decor__object--packet" />
-    </div>
-  );
-}
+export { AnimatedBackground as SiteDecor } from './AnimatedBackground';
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (

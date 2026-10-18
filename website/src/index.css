@@ -46,7 +46,6 @@
   --site-section-space: clamp(5rem, 7.8vw, 9rem);
   --site-grid-gap: clamp(1rem, 1.4vw, 1.5rem);
   --site-card-min: 18.5rem;
-  --site-edge: max(var(--site-gutter), calc((100% - var(--site-content-max)) / 2));
   --brand-pink: #d51f4d;
   --brand-pink-strong: #b91640;
   --brand-orange: #d97706;
@@ -414,251 +413,6 @@ footer .oxog-mark,
   }
 }
 
-/* Persistent engineering marks shared by every route. */
-.site-decor {
-  position: fixed;
-  z-index: 0;
-  inset: 0;
-  display: block;
-  overflow: clip;
-  pointer-events: none;
-  contain: strict;
-}
-
-.site-decor__rail {
-  position: absolute;
-  display: none;
-  top: 70px;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    color-mix(in oklab, var(--line-strong) 68%, transparent) 12%,
-    color-mix(in oklab, var(--line) 72%, transparent) 88%,
-    transparent
-  );
-}
-
-.site-decor__rail::before,
-.site-decor__rail::after {
-  position: absolute;
-  left: 50%;
-  width: 7px;
-  height: 7px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--bg);
-  content: "";
-  transform: translateX(-50%);
-}
-
-.site-decor__rail::before {
-  top: 22%;
-}
-
-.site-decor__rail::after {
-  top: 68%;
-  border-color: color-mix(in oklab, var(--color-brand-2) 45%, var(--line));
-}
-
-.site-decor__rail--left {
-  left: calc(var(--site-edge) / 2);
-}
-
-.site-decor__rail--right {
-  right: calc(var(--site-edge) / 2);
-}
-
-.site-decor__orbit {
-  position: absolute;
-  display: block;
-  border: 1px solid color-mix(in oklab, var(--line-strong) 62%, transparent);
-  border-radius: 999px;
-  opacity: 0.55;
-  will-change: transform;
-}
-
-.site-decor__orbit::before,
-.site-decor__orbit::after {
-  position: absolute;
-  border-radius: inherit;
-  content: "";
-}
-
-.site-decor__orbit::before {
-  inset: 18%;
-  border: 1px dashed color-mix(in oklab, var(--color-brand) 28%, var(--line));
-  animation: decor-orbit-spin 64s linear infinite;
-}
-
-@keyframes decor-orbit-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-.site-decor__orbit::after {
-  top: 20%;
-  right: 7%;
-  width: 8px;
-  height: 8px;
-  background: var(--color-brand-2);
-  box-shadow: 0 0 0 5px color-mix(in oklab, var(--color-brand-2) 10%, transparent);
-}
-
-.site-decor__orbit--primary {
-  right: -88px;
-  top: 62%;
-  width: 176px;
-  height: 176px;
-  opacity: 0.28;
-  animation: decor-drift-primary 18s ease-in-out infinite alternate;
-}
-
-.site-decor__orbit--secondary {
-  top: 31%;
-  left: -94px;
-  display: none;
-  width: 210px;
-  height: 210px;
-  opacity: 0.36;
-  animation: decor-drift-secondary 22s ease-in-out infinite alternate;
-}
-
-.site-decor__object {
-  position: absolute;
-  display: block;
-  will-change: transform, opacity;
-}
-
-.site-decor__object--signal {
-  top: 18%;
-  right: 7vw;
-  width: 12px;
-  height: 12px;
-  border: 1px solid color-mix(in oklab, var(--color-brand) 58%, var(--line));
-  background: color-mix(in oklab, var(--color-brand) 10%, transparent);
-  box-shadow: 0 0 0 5px color-mix(in oklab, var(--color-brand) 5%, transparent);
-  animation: decor-signal-float 13s ease-in-out infinite alternate;
-}
-
-.site-decor__object--node {
-  top: 76%;
-  left: 5vw;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--color-brand-2);
-  box-shadow:
-    0 0 0 6px color-mix(in oklab, var(--color-brand-2) 8%, transparent),
-    0 0 20px color-mix(in oklab, var(--color-brand-2) 20%, transparent);
-  animation: decor-node-float 15s ease-in-out infinite alternate;
-}
-
-.site-decor__object--diamond {
-  top: 43%;
-  right: 3.5vw;
-  display: none;
-  width: 15px;
-  height: 15px;
-  border: 1px solid color-mix(in oklab, var(--color-brand-2) 48%, var(--line));
-  animation: decor-diamond-float 19s ease-in-out infinite alternate;
-}
-
-.site-decor__object--packet {
-  top: 88%;
-  left: 4vw;
-  display: none;
-  width: 42px;
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    var(--color-brand) 0 24%,
-    transparent 24% 38%,
-    var(--line-strong) 38% 68%,
-    transparent 68% 82%,
-    var(--color-brand-2) 82%
-  );
-  animation: decor-packet-float 17s ease-in-out infinite alternate;
-}
-
-/* Barely-there brand wash breathing behind every route. */
-.site-decor__aurora {
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(
-      ellipse 46% 34% at 84% 6%,
-      color-mix(in oklab, var(--color-brand) 6%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 40% 32% at 6% 92%,
-      color-mix(in oklab, var(--color-brand-2) 5%, transparent),
-      transparent 70%
-    );
-  animation: decor-aurora-drift 26s ease-in-out infinite alternate;
-  will-change: transform, opacity;
-}
-
-/* Data packet streaking down a rail. */
-.site-decor__pulse {
-  position: absolute;
-  display: none;
-  top: 70px;
-  width: 3px;
-  height: 72px;
-  border-radius: 99px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    color-mix(in oklab, var(--color-brand) 65%, transparent),
-    transparent
-  );
-  opacity: 0;
-  will-change: transform, opacity;
-}
-
-.site-decor__pulse--left {
-  left: calc(var(--site-edge) / 2 - 1px);
-  animation: decor-pulse-run 12s linear infinite;
-}
-
-.site-decor__pulse--right {
-  right: calc(var(--site-edge) / 2 - 1px);
-  animation: decor-pulse-run 17s linear 5s infinite;
-}
-
-@keyframes decor-aurora-drift {
-  from {
-    opacity: 0.75;
-    transform: translate3d(-1.2%, -0.8%, 0) scale(1);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(1.4%, 1%, 0) scale(1.03);
-  }
-}
-
-@keyframes decor-pulse-run {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, -80px, 0);
-  }
-  7% {
-    opacity: 0.55;
-  }
-  60% {
-    opacity: 0.55;
-  }
-  78%,
-  100% {
-    opacity: 0;
-    transform: translate3d(0, 92vh, 0);
-  }
-}
-
 .page-hero-enter {
   animation: page-hero-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -669,68 +423,6 @@ footer .oxog-mark,
 
 .page-hero-enter--aside {
   animation-delay: 140ms;
-}
-
-@keyframes decor-drift-primary {
-  to {
-    transform: translate3d(-8px, -7px, 0) rotate(8deg);
-  }
-}
-
-@keyframes decor-drift-secondary {
-  to {
-    transform: translate3d(7px, 6px, 0) rotate(-6deg);
-  }
-}
-
-@keyframes decor-signal-float {
-  0% {
-    opacity: 0.34;
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  55% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 0.42;
-    transform: translate3d(-28px, 38px, 0) rotate(90deg);
-  }
-}
-
-@keyframes decor-node-float {
-  0% {
-    opacity: 0.42;
-    transform: translate3d(0, 0, 0) scale(0.82);
-  }
-  60% {
-    opacity: 0.9;
-  }
-  100% {
-    opacity: 0.52;
-    transform: translate3d(34px, -44px, 0) scale(1);
-  }
-}
-
-@keyframes decor-diamond-float {
-  0% {
-    opacity: 0.28;
-    transform: translate3d(0, 0, 0) rotate(45deg);
-  }
-  100% {
-    opacity: 0.66;
-    transform: translate3d(-44px, -31px, 0) rotate(135deg);
-  }
-}
-
-@keyframes decor-packet-float {
-  0% {
-    opacity: 0.25;
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    opacity: 0.62;
-    transform: translate3d(58px, -24px, 0);
-  }
 }
 
 @keyframes page-hero-enter {
@@ -757,24 +449,6 @@ footer .oxog-mark,
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@media (min-width: 1024px) {
-  .site-decor__rail,
-  .site-decor__pulse,
-  .site-decor__orbit--secondary,
-  .site-decor__object--diamond,
-  .site-decor__object--packet {
-    display: block;
-  }
-
-  .site-decor__orbit--primary {
-    right: -150px;
-    top: 58%;
-    width: 360px;
-    height: 360px;
-    opacity: 0.55;
   }
 }
 
@@ -1142,23 +816,11 @@ footer .oxog-mark,
    Respect reduced motion — kill all decorative animation
    ========================================================================= */
 @media (prefers-reduced-motion: reduce) {
-  .site-decor__orbit,
-  .site-decor__orbit::before,
-  .site-decor__object,
-  .site-decor__aurora,
-  .site-decor__pulse,
   .hero-noise::before,
   .hero-orbit::after,
   .page-hero-enter {
     animation: none;
     transform: none;
-  }
-
-  .site-decor__orbit,
-  .site-decor__object,
-  .site-decor__aurora,
-  .site-decor__pulse {
-    will-change: auto;
   }
 
   *,
@@ -1172,17 +834,5 @@ footer .oxog-mark,
     transition-duration: 0.001ms !important;
     /* biome-ignore lint/complexity/noImportantStyles: reduced-motion override must win over component scroll styles */
     scroll-behavior: auto !important;
-  }
-}
-
-@media (forced-colors: active) {
-  .site-decor {
-    display: none;
-  }
-}
-
-@media print {
-  .site-decor {
-    display: none;
   }
 }

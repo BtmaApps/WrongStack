@@ -195,7 +195,7 @@ function ScrollProgress() {
 function NotFound() {
   const { navigate } = useRouter();
   return (
-    <div className="grid min-h-[80vh] place-items-center px-4 pt-24">
+    <div className="site-foreground grid min-h-[80vh] place-items-center px-4 pt-24">
       <div className="max-w-xl text-center">
         <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
           404 / route not found
@@ -331,12 +331,12 @@ export default function App() {
       </a>
       <ScrollProgress />
       <SiteDecor />
-      <div className="relative z-10">
+      <div className="site-content">
         <Header />
         <main id="main">
           <Suspense
             fallback={
-              <div className="grid min-h-[75vh] place-items-center pt-24">
+              <div className="site-foreground grid min-h-[75vh] place-items-center pt-24">
                 <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
                   Loading manual…
                 </span>
