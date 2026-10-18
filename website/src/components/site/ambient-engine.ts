@@ -12,7 +12,10 @@ const INTERACTIVE =
   'a,button,input,select,textarea,summary,label,dialog,audio,video,[role="dialog"],[role="button"],[role="link"],[role="menuitem"],[role="radio"],[role="checkbox"],[role="tab"],[role="slider"],[tabindex]:not([tabindex="-1"]),[contenteditable]:not([contenteditable="false"]),[data-ambient-ignore]';
 
 /** One bounded imperative loop; React owns the SVG structure, never the frames. */
-export function startAmbientBackground(root: HTMLDivElement) {
+export function startAmbientBackground(
+  root: HTMLDivElement,
+  options: { interactionsEnabled?: boolean; overrideReducedMotion?: boolean } = {},
+) {
   const svgs = [...root.querySelectorAll<SVGSVGElement>('svg')];
   const nodes = [...root.querySelectorAll<SVGGElement>('[data-ambient-node]')];
   const echoes = [...root.querySelectorAll<SVGGElement>('[data-ambient-echo]')];
@@ -36,7 +39,10 @@ export function startAmbientBackground(root: HTMLDivElement) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const coarse = window.matchMedia('(pointer: coarse)');
   // Frames consume cached preferences; media changes use their own event lifecycle.
-  let reduceMotion = reduced.matches;
+  let systemReduced = reduced.matches;
+  let overrideReducedMotion = options.overrideReducedMotion ?? false;
+  let reduceMotion = systemReduced && !overrideReducedMotion;
+  let interactionsEnabled = options.interactionsEnabled ?? true;
   let coarsePointer = coarse.matches;
   const offsets = nodes.map(() => ({ x: 0, y: 0, orbit: 0 }));
   const positions = nodes.map(() => ({ x: 0, y: 0 }));
@@ -66,6 +72,8 @@ export function startAmbientBackground(root: HTMLDivElement) {
   const clearEffects = () => {
     pointer.at = -Infinity;
     pointerField.setAttribute('opacity', '0');
+    for (const echo of echoes) echo.setAttribute('opacity', '0');
+    for (const ring of relayRings) ring.setAttribute('opacity', '0');
     for (const trail of trails) {
       trail.born = -Infinity;
       trail.element.setAttribute('opacity', '0');
@@ -89,7 +97,7 @@ export function startAmbientBackground(root: HTMLDivElement) {
       const offset = offsets[index]!;
       const x = model.x * width + Math.sin(elapsed * 0.00013 + model.phase) * 17 * model.depth;
       const period = height + 180;
-      const rawY = model.y * height - scroll * model.depth * 0.055;
+      const rawY = model.y * height - (systemReduced ? 0 : scroll * model.depth * 0.055);
       const y =
         ((((rawY + 90) % period) + period) % period) -
         90 +
@@ -231,7 +239,7 @@ export function startAmbientBackground(root: HTMLDivElement) {
     const delta = lastFrame ? now - lastFrame : 0;
     if (!lastFrame || delta >= (mobile ? 32 : 16)) {
       lastFrame = now;
-      elapsed += Math.min(delta, 50);
+      if (!systemReduced) elapsed += Math.min(delta, 50);
       draw(now, Math.min(delta / 1000, 0.05));
     }
     frame = requestAnimationFrame(tick);
@@ -277,7 +285,7 @@ export function startAmbientBackground(root: HTMLDivElement) {
   const interactive = (event: Event) =>
     event.composedPath().some((target) => target instanceof Element && target.matches(INTERACTIVE));
   const move = (event: PointerEvent) => {
-    if (!isRunning() || coarsePointer || event.pointerType === 'touch') {
+    if (!interactionsEnabled || !isRunning() || coarsePointer || event.pointerType === 'touch') {
       pointer.at = -Infinity;
       return;
     }
@@ -298,6 +306,7 @@ export function startAmbientBackground(root: HTMLDivElement) {
   const click = (event: MouseEvent) => {
     const now = performance.now();
     if (
+      !interactionsEnabled ||
       !isRunning() ||
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -386,13 +395,47 @@ export function startAmbientBackground(root: HTMLDivElement) {
     sync();
   };
   const motionChange = (event: MediaQueryListEvent) => {
-    reduceMotion = event.matches;
+    systemReduced = event.matches;
+    reduceMotion = systemReduced && !overrideReducedMotion;
     sync();
   };
   const densityChange = (event: MediaQueryListEvent) => {
     coarsePointer = event.matches;
     resize();
     sync();
+  };
+  const attachInput = () => {
+    window.addEventListener('pointermove', move, { passive: true, capture: true });
+    window.addEventListener('pointerleave', leave, { passive: true });
+    window.addEventListener('blur', leave);
+    window.addEventListener('click', click, { passive: true });
+  };
+  const detachInput = () => {
+    window.removeEventListener('pointermove', move, true);
+    window.removeEventListener('pointerleave', leave);
+    window.removeEventListener('blur', leave);
+    window.removeEventListener('click', click);
+  };
+  const setInteractionsEnabled = (enabled: boolean, override = false) => {
+    if (disposed || (enabled === interactionsEnabled && override === overrideReducedMotion)) return;
+    if (enabled !== interactionsEnabled) {
+      interactionsEnabled = enabled;
+      if (enabled) attachInput();
+      else detachInput();
+    }
+    overrideReducedMotion = override;
+    const nextReduced = systemReduced && !override;
+    clearEffects();
+    for (const offset of offsets) {
+      offset.x = 0;
+      offset.y = 0;
+      offset.orbit = 0;
+    }
+    // Input changes leave the quiet field's clock and existing frame untouched.
+    if (nextReduced !== reduceMotion) {
+      reduceMotion = nextReduced;
+      sync();
+    } else draw(performance.now(), 0);
   };
   const observer =
     typeof IntersectionObserver === 'undefined'
@@ -406,10 +449,7 @@ export function startAmbientBackground(root: HTMLDivElement) {
   observer?.observe(svgs[0]!);
   window.addEventListener('resize', resize, { passive: true });
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('pointermove', move, { passive: true, capture: true });
-  window.addEventListener('pointerleave', leave, { passive: true });
-  window.addEventListener('blur', leave);
-  window.addEventListener('click', click, { passive: true });
+  if (interactionsEnabled) attachInput();
   window.addEventListener('pagehide', pageHide);
   window.addEventListener('pageshow', pageShow);
   document.addEventListener('visibilitychange', sync);
@@ -418,21 +458,25 @@ export function startAmbientBackground(root: HTMLDivElement) {
   resize();
   sync();
 
-  return () => {
+  const dispose = () => {
     disposed = true;
     if (frame !== null) cancelAnimationFrame(frame);
     observer?.disconnect();
     window.removeEventListener('resize', resize);
     window.removeEventListener('scroll', onScroll);
-    window.removeEventListener('pointermove', move, true);
-    window.removeEventListener('pointerleave', leave);
-    window.removeEventListener('blur', leave);
-    window.removeEventListener('click', click);
+    detachInput();
     window.removeEventListener('pagehide', pageHide);
     window.removeEventListener('pageshow', pageShow);
     document.removeEventListener('visibilitychange', sync);
     reduced.removeEventListener('change', motionChange);
     coarse.removeEventListener('change', densityChange);
     clearEffects();
+    for (const offset of offsets) {
+      offset.x = 0;
+      offset.y = 0;
+      offset.orbit = 0;
+    }
+    draw(performance.now(), 0);
   };
+  return { dispose, setInteractionsEnabled };
 }

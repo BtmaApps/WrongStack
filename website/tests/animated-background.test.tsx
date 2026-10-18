@@ -2,6 +2,11 @@ import { act, Profiler } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AnimatedBackground } from '../src/components/site/AnimatedBackground';
+import { AmbientMotionToggle } from '../src/components/layout/AmbientMotionToggle';
+import {
+  AMBIENT_MOTION_STORAGE_KEY,
+  AmbientMotionProvider,
+} from '../src/components/site/AmbientMotionProvider';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -45,6 +50,7 @@ function click(target: Element = document.body, detail = 1) {
 }
 
 beforeEach(async () => {
+  localStorage.clear();
   now = 100;
   sequence = 0;
   commits = 0;
@@ -83,6 +89,134 @@ afterEach(async () => {
   container.remove();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  localStorage.clear();
+});
+
+async function renderControls() {
+  await act(async () =>
+    root.render(
+      <AmbientMotionProvider>
+        <AmbientMotionToggle />
+        <AnimatedBackground />
+      </AmbientMotionProvider>,
+    ),
+  );
+  return container.querySelector('button')!;
+}
+
+it('clears mouse effects and input listeners while keeping ambient motion continuous', async () => {
+  const add = vi.spyOn(window, 'addEventListener');
+  const remove = vi.spyOn(window, 'removeEventListener');
+  const disconnect = vi.fn();
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      disconnect = disconnect;
+    },
+  );
+  const button = await renderControls();
+  const move = add.mock.calls.find(([name]) => name === 'pointermove')![1];
+  click();
+  expect(background().dataset.activeBursts).toBe('1');
+  const ambientFrame = [...frames.keys()][0];
+  await act(async () => button.click());
+  expect(button.getAttribute('aria-pressed')).toBe('false');
+  expect(button.getAttribute('aria-label')).toBe('Fare efektlerini aç');
+  expect(button.getAttribute('title')).toBe('Fare efektlerini aç');
+  expect(frames.size).toBe(1);
+  expect([...frames.keys()][0]).toBe(ambientFrame);
+  expect(remove).toHaveBeenCalledWith('pointermove', move, true);
+  for (const name of ['click', 'pointerleave', 'blur']) {
+    const handler = add.mock.calls.find(([event]) => event === name)![1];
+    expect(remove).toHaveBeenCalledWith(name, handler);
+  }
+  expect(disconnect).not.toHaveBeenCalled();
+  for (const name of ['scroll', 'resize', 'pagehide', 'pageshow']) {
+    const handler = add.mock.calls.find(([event]) => event === name)![1];
+    expect(remove).not.toHaveBeenCalledWith(name, handler);
+  }
+  expect(background().dataset.activeBursts).toBe('0');
+  const still = container.querySelector('[data-ambient-node]')!.getAttribute('transform');
+  click();
+  for (let index = 0; index < 90; index++) advance();
+  expect(background().dataset.activeBursts).toBe('0');
+  expect(container.querySelector('[data-ambient-node]')!.getAttribute('transform')).not.toBe(still);
+  for (const effect of container.querySelectorAll(
+    '[data-ambient-echo],[data-relay-ring],[data-ambient-trail],[data-pointer-field]',
+  )) {
+    expect(effect.getAttribute('opacity')).toBe('0');
+  }
+  await act(async () => button.click());
+  expect(frames.size).toBe(1);
+  expect(button.getAttribute('aria-label')).toBe('Fare efektlerini kapat');
+  expect(background().dataset.activeBursts).toBe('0');
+  click();
+  expect(background().dataset.activeBursts).toBe('1');
+});
+
+it('honors reduced motion initially and remembers an explicit opt-in across remounts', async () => {
+  reduced.matches = true;
+  const button = await renderControls();
+  expect(frames.size).toBe(0);
+  expect(background().dataset.motion).toBe('reduced');
+  const quiet = container.querySelector('[data-ambient-node]')!.getAttribute('transform');
+  await act(async () => button.click());
+  expect(localStorage.getItem(AMBIENT_MOTION_STORAGE_KEY)).toBe('on');
+  expect(frames.size).toBe(1);
+  expect(background().dataset.motion).toBe('running');
+  for (let index = 0; index < 90; index++) advance();
+  expect(container.querySelector('[data-ambient-node]')!.getAttribute('transform')).toBe(quiet);
+  await act(async () => root.render(null));
+  const restored = await renderControls();
+  expect(restored.getAttribute('aria-pressed')).toBe('true');
+  expect(frames.size).toBe(1);
+  await act(async () => restored.click());
+  await act(async () => root.render(null));
+  await renderControls();
+  expect(frames.size).toBe(0);
+  expect(background().dataset.motion).toBe('reduced');
+  expect(background().dataset.interactions).toBe('off');
+});
+
+it('follows system changes until a manual choice and synchronizes stored preference changes', async () => {
+  const button = await renderControls();
+  expect(frames.size).toBe(1);
+  reduced.matches = true;
+  await act(async () => notifyMotion());
+  expect(frames.size).toBe(0);
+  await act(async () => button.click());
+  reduced.matches = false;
+  await act(async () => notifyMotion());
+  expect(frames.size).toBe(1);
+  await act(async () =>
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: AMBIENT_MOTION_STORAGE_KEY,
+        newValue: 'off',
+      }),
+    ),
+  );
+  expect(frames.size).toBe(1);
+  expect(background().dataset.interactions).toBe('off');
+  await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: null })));
+  expect(frames.size).toBe(1);
+});
+
+it('keeps the control usable when localStorage is blocked', async () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('blocked');
+  });
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('blocked');
+  });
+  const button = await renderControls();
+  expect(frames.size).toBe(1);
+  await act(async () => button.click());
+  expect(frames.size).toBe(1);
+  expect(background().dataset.interactions).toBe('off');
+  await act(async () => button.click());
+  expect(frames.size).toBe(1);
 });
 
 it('animates SVG without committing React on each frame', () => {

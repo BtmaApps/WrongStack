@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { AMBIENT_NODES, startAmbientBackground } from './ambient-engine';
+import { useAmbientMotion } from './AmbientMotionProvider';
 import './animated-background.css';
 
 function Geometry({ kind }: { kind: number }) {
@@ -60,13 +61,28 @@ function Geometry({ kind }: { kind: number }) {
 /** Bounded SVG decoration; all motion lives in one imperative, pausable loop. */
 export function AnimatedBackground({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => (ref.current ? startAmbientBackground(ref.current) : undefined), []);
+  const engine = useRef<ReturnType<typeof startAmbientBackground> | null>(null);
+  const { enabled, preference } = useAmbientMotion();
+  useEffect(() => {
+    if (!ref.current) return;
+    const controller = startAmbientBackground(ref.current, { interactionsEnabled: false });
+    engine.current = controller;
+    return () => {
+      controller.dispose();
+      engine.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    engine.current?.setInteractionsEnabled(enabled, preference === 'on');
+  }, [enabled, preference]);
   return (
     <div
       ref={ref}
       className={cn('ambient-background', className)}
       aria-hidden="true"
       data-motion="static"
+      data-interactions={enabled ? 'on' : 'off'}
+      data-motion-preference={preference}
       data-active-bursts="0"
     >
       <svg

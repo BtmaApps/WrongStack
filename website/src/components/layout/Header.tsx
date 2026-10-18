@@ -9,12 +9,13 @@ import { moreNav, moreNavGroups, primaryNav, repoUrl } from '@/data/content';
 import { Link, useRouter } from '@/lib/router';
 import { cn } from '@/lib/utils';
 import { ThemeMenu } from './ThemeMenu';
+import { AmbientMotionToggle } from './AmbientMotionToggle';
 
 function Brand() {
   return (
     <Link href="/" aria-label="WrongStack home" className="group flex items-center gap-2.5">
       <BrandMark className="w-12 transition-transform duration-300 group-hover:-translate-y-0.5 sm:w-14" />
-      <span className="font-mono text-[16px] font-black tracking-[-0.06em] text-fg sm:text-[17px]">
+      <span className="font-mono text-[16px] font-black tracking-[-0.06em] text-fg max-[359px]:hidden sm:text-[17px]">
         WRONG<span className="text-brand">STACK</span>
       </span>
     </Link>
@@ -103,7 +104,7 @@ export function Header() {
               key={item.href}
               href={item.href}
               className={cn(
-                'rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
+                'rounded-full px-2 py-2 text-xs font-semibold transition-colors xl:px-3.5 xl:text-sm',
                 path === item.href ? 'bg-card text-fg' : 'text-muted hover:text-fg',
               )}
             >
@@ -125,7 +126,7 @@ export function Header() {
               }}
               aria-expanded={moreOpen}
               className={cn(
-                'flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
+                'flex items-center gap-1 rounded-full px-2 py-2 text-xs font-semibold transition-colors xl:px-3.5 xl:text-sm',
                 moreNav.some((item) => item.href === path)
                   ? 'bg-card text-fg'
                   : 'text-muted hover:text-fg',
@@ -250,6 +251,7 @@ export function Header() {
         <div className="flex items-center gap-1">
           <SiteSearch />
           <ThemeMenu />
+          <AmbientMotionToggle />
           <Button
             variant="ghost"
             size="icon"

@@ -75,9 +75,13 @@ footer .site-container,
     opacity: 0.65;
   }
 
-  .ambient-effects {
+  .ambient-background:not([data-motion-preference="on"]) .ambient-effects {
     visibility: hidden;
   }
+}
+
+.ambient-background[data-interactions="off"] .ambient-effects {
+  visibility: hidden;
 }
 
 @media print, (forced-colors: active) {

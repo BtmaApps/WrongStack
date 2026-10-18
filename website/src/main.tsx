@@ -2,6 +2,7 @@ import { ThemeProvider } from 'next-themes';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { AmbientMotionProvider } from './components/site/AmbientMotionProvider';
 import './index.css';
 import { RouterProvider } from './lib/router';
 
@@ -16,9 +17,11 @@ ReactDOM.createRoot(rootEl).render(
       storageKey="theme"
       disableTransitionOnChange
     >
-      <RouterProvider>
-        <App />
-      </RouterProvider>
+      <AmbientMotionProvider>
+        <RouterProvider>
+          <App />
+        </RouterProvider>
+      </AmbientMotionProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );
