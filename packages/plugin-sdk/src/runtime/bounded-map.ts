@@ -106,7 +106,10 @@ export class BoundedMap<K, V> {
   }
 
   delete(key: K): boolean {
-    return this.map.delete(key);
+    const entry = this.map.get(key);
+    if (entry === undefined) return false;
+    this.map.delete(key);
+    return !this.expired(entry);
   }
 
   clear(): void {

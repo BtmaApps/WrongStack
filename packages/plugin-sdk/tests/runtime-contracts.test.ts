@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   BoundedMap,
+  BoundedSet,
   clearLocalBinCache,
   type LanguageRuntime,
   resolveNodeBin,
@@ -21,6 +22,18 @@ afterEach(async () => {
 });
 
 describe('runtime helper contracts', () => {
+  it('returns false when deleting an already-expired entry from BoundedMap or BoundedSet', () => {
+    let clock = 1_000;
+    const map = new BoundedMap<string, number>({ max: 10, ttlMs: 100, now: () => clock });
+    const set = new BoundedSet<string>({ max: 10, ttlMs: 100, now: () => clock });
+    map.set('alpha', 1);
+    set.add('alpha');
+
+    clock = 1_200;
+    expect(map.delete('alpha')).toBe(false);
+    expect(set.delete('alpha')).toBe(false);
+  });
+
   it('resolves secondary runtime subcommands and in-project absolute executable paths', () => {
     const projectRoot = path.resolve('/tmp/plugin-sdk-project');
     const runtime: LanguageRuntime = {
