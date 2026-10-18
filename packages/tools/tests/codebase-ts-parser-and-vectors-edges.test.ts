@@ -78,3 +78,23 @@ describe('file vector search — cosine, not raw dot product', () => {
     }
   });
 });
+
+describe('buildIndexableText — generic and union object return types', () => {
+  it('preserves object-shaped return types inside generics and unions before the body brace', async () => {
+    const { buildIndexableText } = await import('../src/codebase-index/bm25.js');
+    const genericText = buildIndexableText(
+      'fetchSession',
+      'export async function fetchSession(id: string): Promise<{ sessionToken: string }> { return { sessionToken: id }; }',
+      '',
+    );
+    const unionText = buildIndexableText(
+      'parseConfig',
+      'export function parseConfig(raw: string): ConfigOk | { validationError: string } { return { validationError: raw }; }',
+      '',
+    );
+    expect(genericText).toContain('sessionToken');
+    expect(genericText).not.toContain('return');
+    expect(unionText).toContain('validationError');
+    expect(unionText).not.toContain('return');
+  });
+});

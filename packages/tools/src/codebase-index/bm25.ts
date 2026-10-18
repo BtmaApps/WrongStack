@@ -117,6 +117,7 @@ function ftsSignature(signature: string): string {
  */
 function declarationBodyStart(s: string): number {
   let parenDepth = 0;
+  let angleDepth = 0;
   let paramsClosed = false;
   let i = 0;
   while (i < s.length) {
@@ -130,10 +131,21 @@ function declarationBodyStart(s: string): number {
       i++;
       continue;
     }
+    if (ch === '<') {
+      angleDepth++;
+      i++;
+      continue;
+    }
+    if (ch === '>' && s[i - 1] !== '=') {
+      angleDepth = Math.max(0, angleDepth - 1);
+      i++;
+      continue;
+    }
     if (ch === '{') {
       let j = i - 1;
       while (j >= 0 && /\s/.test(s[j] ?? '')) j--;
-      if (s[j] === ':') {
+      const prev = s[j];
+      if (angleDepth > 0 || prev === ':' || prev === '|' || prev === '&') {
         // Object-shaped return type: skip the balanced pair, keep searching.
         let braceDepth = 1;
         i++;
