@@ -331,6 +331,12 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
       };
     }
 
+    if (!registry.beforeCall()) {
+      throw new Error(
+        'exec: circuit breaker is open — too many consecutive failures. Use /kill reset to recover.',
+      );
+    }
+
     return runCommand(cmd, args, cwd, timeout, signal, ctx.session?.id, danger);
   },
 

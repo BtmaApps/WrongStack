@@ -432,4 +432,18 @@ describe('CircuitBreaker', () => {
     cb.afterCall(1, false); // the probe succeeds
     expect(cb.snapshot().state).toBe('closed');
   });
+
+  it('canProceed returns false while a half-open probe is already in flight', () => {
+    const cb = new CircuitBreaker({ maxConsecutiveFailures: 1, cooldownMs: 1_000 });
+    cb.afterCall(5, true); // trip to open
+    expect(cb.canProceed).toBe(false);
+
+    vi.advanceTimersByTime(1_000); // transition to half-open
+    expect(cb.canProceed).toBe(true); // first probe may proceed
+    expect(cb.beforeCall()).toBe(true); // probe claimed
+    expect(cb.canProceed).toBe(false); // concurrent callers (e.g. exec) must wait for probe
+
+    cb.afterCall(5, false); // probe succeeds -> closed
+    expect(cb.canProceed).toBe(true);
+  });
 });

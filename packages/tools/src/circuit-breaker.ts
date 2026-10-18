@@ -160,7 +160,9 @@ export class CircuitBreaker {
   get canProceed(): boolean {
     if (!this.enabled) return true;
     this._checkStateTransition();
-    return this.state !== 'open';
+    if (this.state === 'open') return false;
+    if (this.state === 'half-open' && this.halfOpenProbeInFlight) return false;
+    return true;
   }
 
   /**
