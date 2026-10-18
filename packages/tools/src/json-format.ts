@@ -105,12 +105,30 @@ function safeYamlKey(key: string): string {
     : key;
 }
 
+/**
+ * Render a number as a YAML 1.2 scalar.
+ *
+ * `String(n)` is not YAML for the non-finite doubles: it yields the bare words
+ * `Infinity` / `-Infinity` / `NaN`, and YAML resolves none of those as a number
+ * — the core-schema spellings are `.inf` / `-.inf` / `.nan`. Anything else
+ * resolves as a STRING, so an overflowed JSON number (`{"big":1e999}`, whose
+ * strict-JSON parse products really is `Infinity`) silently reached the reader
+ * of `format: 'yaml'` as the text "Infinity": the same silent type change this
+ * module already prevents for `"123"` and `"true"`.
+ */
+function toYamlNumber(value: number): string {
+  if (Number.isNaN(value)) return '.nan';
+  if (value === Infinity) return '.inf';
+  if (value === -Infinity) return '-.inf';
+  return String(value);
+}
+
 function toYaml(data: unknown, indent = 0): string {
   if (data === null) return 'null\n';
   /* v8 ignore next -- parsed JSON never contains `undefined`; defensive for recursive calls. */
   if (data === undefined) return '';
   if (typeof data === 'boolean') return String(data) + '\n';
-  if (typeof data === 'number') return String(data) + '\n';
+  if (typeof data === 'number') return toYamlNumber(data) + '\n';
   if (typeof data === 'string') {
     if (
       data === '' ||

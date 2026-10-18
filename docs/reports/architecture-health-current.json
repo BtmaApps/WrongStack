@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T21:29:02.214Z",
+  "generatedAt": "2026-10-18T23:09:51.112Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5164,
-    "testFiles": 4484,
-    "sourceLines": 1120754,
+    "testFiles": 4485,
+    "sourceLines": 1121114,
     "workspaceEdges": 139,
-    "moduleEdges": 16999,
+    "moduleEdges": 17000,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 961
+    "testOnlyExports": 962
   },
   "errors": [],
   "packageCycles": [],
@@ -771,7 +771,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 336,
-      "testFiles": 330,
+      "testFiles": 331,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 330
+          "testFiles": 331
         }
       ]
     },
@@ -19124,6 +19124,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/json-format-yaml-numbers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/json-ordering-filter.test.ts",
         "projects": [
           "root-node"
@@ -29893,6 +29899,10 @@
     {
       "file": "packages/core/src/utils/wstack-paths.ts",
       "name": "bootstrapProfileName"
+    },
+    {
+      "file": "packages/core/src/vcs/vcs-adapter.ts",
+      "name": "normalizeVcsPath"
     },
     {
       "file": "packages/core/src/wiring/proxy-rewrite.ts",

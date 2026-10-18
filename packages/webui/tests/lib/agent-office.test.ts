@@ -84,6 +84,83 @@ describe('agent office tool model', () => {
     expect(buildAgentToolCalls(events, 'agent-a')[0]?.summary).toBe('+3 / −2 lines');
   });
 
+  it('counts an in-hunk ---/+++ content pair instead of treating it as a header', () => {
+    // Removed `-- old comment` → diff line `--- old comment`; added
+    // `++ new comment` → `+++ new comment`. Declared counts (1/1) put the
+    // pair inside the hunk body, so both lines are content — the same rule
+    // core's countUnifiedDiffLines enforces.
+    const events = [
+      event('tool:executed', 2_000, {
+        id: 'tu-pair',
+        agentId: 'agent-a',
+        name: 'apply_patch',
+        ok: true,
+        input: {
+          file_path: 'src/store.ts',
+          patch: ['@@ -1,2 +1,2 @@', '--- old comment', '+++ new comment', ''].join('\n'),
+        },
+      }),
+    ];
+    expect(buildAgentToolCalls(events, 'agent-a')[0]?.summary).toBe('+1 / −1 lines');
+  });
+
+  it('counts a --- content line inside a mixed hunk alongside its neighbours', () => {
+    const events = [
+      event('tool:executed', 2_000, {
+        id: 'tu-mixed',
+        agentId: 'agent-a',
+        name: 'apply_patch',
+        ok: true,
+        input: {
+          file_path: 'src/store.ts',
+          patch: ['@@ -3,3 +3,3 @@', '-a', '--- old comment', '+++ new comment', ''].join('\n'),
+        },
+      }),
+    ];
+    expect(buildAgentToolCalls(events, 'agent-a')[0]?.summary).toBe('+1 / −2 lines');
+  });
+
+  it('ignores +/- lines before the first hunk, such as a commit message', () => {
+    const events = [
+      event('tool:executed', 2_000, {
+        id: 'tu-preamble',
+        agentId: 'agent-a',
+        name: 'apply_patch',
+        ok: true,
+        input: {
+          file_path: 'src/store.ts',
+          patch: [
+            'commit message',
+            '- bullet about the fix',
+            '--- a/f.txt',
+            '+++ b/f.txt',
+            '@@ -1,1 +1,1 @@',
+            '-a',
+            '+b',
+            '',
+          ].join('\n'),
+        },
+      }),
+    ];
+    expect(buildAgentToolCalls(events, 'agent-a')[0]?.summary).toBe('+1 / −1 lines');
+  });
+
+  it('skips the patch(1) header pair that precedes the first hunk', () => {
+    const events = [
+      event('tool:executed', 2_000, {
+        id: 'tu-header',
+        agentId: 'agent-a',
+        name: 'apply_patch',
+        ok: true,
+        input: {
+          file_path: 'src/store.ts',
+          patch: ['--- a/f.txt', '+++ b/f.txt', '@@ -1,1 +1,1 @@', '-a', '+b', ''].join('\n'),
+        },
+      }),
+    ];
+    expect(buildAgentToolCalls(events, 'agent-a')[0]?.summary).toBe('+1 / −1 lines');
+  });
+
   it('keeps calls scoped to the selected session', () => {
     const events = [
       event('tool:executed', 2_000, {

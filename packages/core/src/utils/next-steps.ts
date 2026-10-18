@@ -340,9 +340,15 @@ function parseWithHeading(raw: string): ParseNextStepsResult {
   const stripped = content === raw ? raw : content.replace(/\n{3,}/g, '\n\n').trim();
   const empty: ParseNextStepsResult = { steps: [], texts: [], stripped, autoTexts: [] };
   const spans = fenceSpans(content);
-  // The opening tag ends its line, unless `<nextstep>` items follow inline.
+  // The opening tag ends its line, unless items follow inline. Inline forms
+  // are `<nextstep>` elements and list-item markers (`1.`, `1)`, `- `): a
+  // single-line block is the same <nextsteps> block written without newlines,
+  // so requiring a line break dropped its suggestions AND left the raw XML in
+  // the rendered body. The lookahead mirrors ITEM_RE's own alternatives.
   const headings = [
-    ...content.matchAll(/<nextsteps\b[^<>]*>(?:\s*\n+|[ \t]*(?=<nextstep\b))/gi),
+    ...content.matchAll(
+      /<nextsteps\b[^<>]*>(?:\s*\n+|[ \t]*(?=<nextstep\b|\d+[.)](?!\d)|[-*•]\s))/gi,
+    ),
   ].filter(
     (match) =>
       !match[0].trimEnd().endsWith('/>') &&

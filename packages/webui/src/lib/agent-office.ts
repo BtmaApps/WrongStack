@@ -103,19 +103,52 @@ function lineCount(value: string): number {
 }
 
 function patchDelta(value: string): { added: number; removed: number } | null {
+  // A `--- `/`+++ ` pair is a file header only OUTSIDE a hunk body: the
+  // hunk-declared line counts tell it apart from header-shaped content such
+  // as a removed `--- old comment` followed by an added `+++ new comment`.
+  // Same rule as core's countUnifiedDiffLines (and the codemap extractor's
+  // patch branch), so the office view cannot disagree with them; pre-hunk
+  // lines (commit message, patch(1) headers) are not content either.
   let added = 0;
   let removed = 0;
+  let sawHunk = false;
+  let oldRemaining = 0;
+  let newRemaining = 0;
   const lines = value.split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? '';
-    // Only a `--- ` line directly followed by `+++ ` is a file header; a
-    // removed `-- comment` (`--- comment`) or an added `++i` (`+++i`) is content.
-    if (line.startsWith('--- ') && lines[index + 1]?.startsWith('+++ ')) {
+    if (line.startsWith('@@')) {
+      sawHunk = true;
+      const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+      oldRemaining = hunk ? Number(hunk[1] ?? 1) : 0;
+      newRemaining = hunk ? Number(hunk[2] ?? 1) : 0;
+      continue;
+    }
+    if (line.startsWith('diff --git ')) {
+      oldRemaining = 0;
+      newRemaining = 0;
+      continue;
+    }
+    if (!sawHunk) continue;
+    if (
+      oldRemaining <= 0 &&
+      newRemaining <= 0 &&
+      line.startsWith('--- ') &&
+      lines[index + 1]?.startsWith('+++ ')
+    ) {
       index += 1;
       continue;
     }
-    if (line.startsWith('+')) added += 1;
-    if (line.startsWith('-')) removed += 1;
+    if (line.startsWith('+')) {
+      added += 1;
+      newRemaining -= 1;
+    } else if (line.startsWith('-')) {
+      removed += 1;
+      oldRemaining -= 1;
+    } else if (line.startsWith(' ')) {
+      oldRemaining -= 1;
+      newRemaining -= 1;
+    }
   }
   return added || removed ? { added, removed } : null;
 }

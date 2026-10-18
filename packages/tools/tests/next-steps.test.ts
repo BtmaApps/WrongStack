@@ -387,6 +387,42 @@ Some commentary
     const { steps } = parseNextSteps(content);
     expect(steps.map((s) => s.text)).toEqual(['First']);
   });
+
+  // Regression: `<nextsteps>1. Run the tests</nextsteps>` written without
+  // line breaks after the opening tag is the same block, but the heading
+  // match only accepted a following newline (or an inline `<nextstep>`).
+  // It was therefore parsed as prose: no suggestions, and the raw XML
+  // survived in `stripped` straight into the rendered message body.
+  it('parses a canonical block whose items start on the opening-tag line', () => {
+    const content = 'All set.\n<nextsteps>1. Run the tests</nextsteps>';
+    const { texts, stripped } = parseNextSteps(content);
+    expect(texts).toEqual(['Run the tests']);
+    expect(stripped).toBe('All set.');
+  });
+
+  it('accepts the single-line form for bullets and alt numbering', () => {
+    expect(parseNextSteps('Done.\n<nextsteps>- Run the tests</nextsteps>').texts).toEqual([
+      'Run the tests',
+    ]);
+    expect(parseNextSteps('Done.\n<nextsteps>1) Review the diff</nextsteps>').texts).toEqual([
+      'Review the diff',
+    ]);
+  });
+
+  it('ignores attributes on the opening tag of a single-line block', () => {
+    const { texts, autoTexts } = parseNextSteps(
+      'Done.\n<nextsteps auto="true">1. Run the tests</nextsteps>',
+    );
+    expect(texts).toEqual(['Run the tests']);
+    expect(autoTexts).toEqual([]);
+  });
+
+  // Guard against the widened lookahead: prose on the opening-tag line is
+  // still not a suggestion list.
+  it('still ignores a single-line block whose body is not a list item', () => {
+    const content = 'Done.\n<nextsteps>2024 budget review</nextsteps>';
+    expect(parseNextSteps(content).steps).toEqual([]);
+  });
 });
 
 describe('stripNextStepsBlock', () => {

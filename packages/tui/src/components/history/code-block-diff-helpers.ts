@@ -44,27 +44,49 @@ export function countUnifiedDiffChanges(diff: string): { added: number; removed:
 
   // Lines before the first hunk (commit message, format-patch `---`) are not
   // content, and a file header is a `--- ` line directly followed by `+++ `.
-  // Skipping every `--- `/`+++ ` line dropped removed `-- comment` lines
-  // (SQL/Lua/Haskell) and added `++ x` lines — same rule as core's
-  // countUnifiedDiffLines. A hunkless snippet (`-a` / `+b`) counts from line 1.
+  // The hunk's declared line counts tell that header pair apart from adjacent
+  // CONTENT (`--- x` / `+++ y`) inside an active hunk body, which must both
+  // count — same rule as core's countUnifiedDiffLines. Skipping the pair
+  // unconditionally dropped removed `-- comment` lines (SQL/Lua/Haskell) and
+  // the added `++ x` lines that follow them. A hunkless snippet (`-a` / `+b`)
+  // counts from line 1.
   let sawHunk = !/^@@/m.test(diff);
+  let oldRemaining = 0;
+  let newRemaining = 0;
   let skipHeaderPlus = false;
   const processLine = (end: number): void => {
     const found = startsWithAny(['diff --git ', '@@'], end);
     if (found === 'diff --git ') {
-      /* outside hunk - reset is implicit via the next @@ */
+      oldRemaining = 0;
+      newRemaining = 0;
     } else if (found === '@@') {
       sawHunk = true;
+      const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(diff.slice(lineStart, end));
+      oldRemaining = hunk ? Number(hunk[1] ?? 1) : 0;
+      newRemaining = hunk ? Number(hunk[2] ?? 1) : 0;
     } else if (skipHeaderPlus) {
       skipHeaderPlus = false;
     } else if (sawHunk) {
-      if (startsWithAny(['--- '], end) && diff.startsWith('+++ ', end + 1)) {
+      if (
+        oldRemaining <= 0 &&
+        newRemaining <= 0 &&
+        startsWithAny(['--- '], end) &&
+        diff.startsWith('+++ ', end + 1)
+      ) {
         skipHeaderPlus = true;
         return;
       }
       const first = diff.charCodeAt(lineStart);
-      if (first === 43) added++;
-      else if (first === 45) removed++;
+      if (first === 43) {
+        added++;
+        newRemaining -= 1;
+      } else if (first === 45) {
+        removed++;
+        oldRemaining -= 1;
+      } else if (first === 32) {
+        oldRemaining -= 1;
+        newRemaining -= 1;
+      }
     }
   };
 
