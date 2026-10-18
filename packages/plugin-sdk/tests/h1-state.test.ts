@@ -102,4 +102,17 @@ describe('H1 releaseAll reentrancy', () => {
     expect(() => h1.releaseAll()).not.toThrow();
     expect(h1.size()).toBe(0);
   });
+
+  it('releases reentrant handles registered during release(key)', () => {
+    const h1 = createH1State<{ calls: string[] }>({ calls: [] });
+    h1.register('hook', () => {
+      h1.state.calls.push('outer');
+      h1.register('hook', () => {
+        h1.state.calls.push('reentrant');
+      });
+    });
+    h1.release('hook');
+    expect(h1.state.calls).toEqual(['outer', 'reentrant']);
+    expect(h1.size()).toBe(0);
+  });
 });

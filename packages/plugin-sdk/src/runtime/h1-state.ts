@@ -106,10 +106,7 @@ export function createH1State<T>(initial: T): H1State<T> {
     },
 
     release(key) {
-      const prior = handles.get(key);
-      if (!prior) return;
-      handles.delete(key);
-      safeRelease(prior);
+      h1.register(key, null);
     },
 
     releaseAll() {
