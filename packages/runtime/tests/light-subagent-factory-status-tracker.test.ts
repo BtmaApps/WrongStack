@@ -20,8 +20,9 @@
  *
  * See SAGE memory `01KYSCC8A49TS9ENCVCS2J3WJ8` for the gap analysis.
  */
-import { Container, TOKENS } from '@wrongstack/core/kernel';
+
 import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
+import { Container, TOKENS } from '@wrongstack/core/kernel';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { DefaultConfigStore } from '@wrongstack/core/storage';
@@ -158,7 +159,7 @@ interface Deps {
   modelsRegistry: ModelsRegistry;
 }
 
-function makeDeps(): Deps {
+function makeDeps(extraConfig?: Record<string, unknown>): Deps {
   const config = {
     version: 1,
     provider: 'primary',
@@ -170,6 +171,7 @@ function makeDeps(): Deps {
     },
     features: {},
     tools: {},
+    ...extraConfig,
   } as never as Config;
 
   const container = new Container();
@@ -358,5 +360,30 @@ describe('makeLightSubagentFactory — ProviderModelStatusTracker wiring', () =>
     // that haven't migrated yet.
     const factory = makeLightSubagentFactory(makeDeps());
     expect(factory).toBeDefined();
+  });
+
+  it('skips quarantined modelMatrix targets when statusTracker marks them blocked', async () => {
+    const deps = makeDeps({
+      modelMatrix: {
+        executor: { provider: 'backup', model: 'quarantined-model' },
+      },
+    });
+
+    const tracker = new ProviderModelStatusTracker();
+    tracker.recordFailure('backup', 'quarantined-model', 'rate_limit', 429, 'rate limited', {
+      retryAfterMs: 60_000,
+    });
+
+    const factory = makeLightSubagentFactory({
+      ...deps,
+      statusTracker: tracker,
+    });
+    const spawned = await factory({
+      name: 'exec',
+      id: 'exec-1',
+      role: 'executor',
+    } as SubagentConfig);
+    expect(spawned.agent.ctx.provider.id).toBe('primary');
+    expect(spawned.agent.ctx.model).toBe('primary-model');
   });
 });
