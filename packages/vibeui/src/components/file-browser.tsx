@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SessionController } from '../lib/use-session';
 import { type FileNode, matchingFiles } from '../lib/workspace-model';
+import { CodePanel } from './code-panel';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
 import { EmptyArtwork } from './vibe-visuals';
@@ -130,9 +131,12 @@ export function FileBrowser({
       ) : /\.md$/i.test(preview.artifact.path) && mode === 'simple' ? (
         <MarkdownContent text={preview.content} basePath={preview.artifact.path} />
       ) : (
-        <pre className="source-preview">
-          <code>{preview.content}</code>
-        </pre>
+        <CodePanel
+          value={preview.content}
+          label="Source"
+          language={preview.artifact.path}
+          className="source-preview"
+        />
       )}
     </>
   );

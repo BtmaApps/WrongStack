@@ -15,6 +15,7 @@ import {
 import { rows, text } from '../lib/session';
 import { usePanelRequests } from '../lib/use-panel-requests';
 import type { SessionController } from '../lib/use-session';
+import { CodePanel } from './code-panel';
 import { Modal } from './dialogs';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
@@ -418,11 +419,14 @@ export function ResourceHub({
                         </p>
                         <details className="hub-technical" key={mode} open={mode === 'extended'}>
                           <summary>Parameters</summary>
-                          <pre className="context-raw">
-                            {Array.isArray(row.params)
-                              ? row.params.join(', ') || 'No parameters'
-                              : 'Not reported'}
-                          </pre>
+                          <CodePanel
+                            label="Parameters"
+                            value={
+                              Array.isArray(row.params)
+                                ? row.params.join(', ') || 'No parameters'
+                                : 'Not reported'
+                            }
+                          />
                         </details>
                         <p className="fine-print">
                           Tool availability is shared by this runtime. Changes are available after
@@ -457,12 +461,15 @@ export function ResourceHub({
                         {text(row.error) && <p className="form-error">{text(row.error)}</p>}
                         <details className="hub-technical" key={mode} open={mode === 'extended'}>
                           <summary>Available tools</summary>
-                          <pre className="context-raw">
-                            {Array.isArray(row.tools)
-                              ? row.tools.filter((tool) => typeof tool === 'string').join('\n') ||
-                                'No tools reported'
-                              : 'No tools reported'}
-                          </pre>
+                          <CodePanel
+                            label="Available tools"
+                            value={
+                              Array.isArray(row.tools)
+                                ? row.tools.filter((tool) => typeof tool === 'string').join('\n') ||
+                                  'No tools reported'
+                                : 'No tools reported'
+                            }
+                          />
                         </details>
                         <p className="fine-print">MCP connections are shared by the runtime.</p>
                         <div className="hub-actions">

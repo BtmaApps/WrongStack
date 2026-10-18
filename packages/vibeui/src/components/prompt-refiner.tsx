@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { clientId } from '../lib/ids';
 import { record, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
+import { CodePanel } from './code-panel';
 import { Modal } from './dialogs';
 import { usePresentation } from './presentation-mode';
 import { RunSignal } from './vibe-visuals';
@@ -90,7 +91,7 @@ export function PromptRefiner({
     >
       <details className="refiner-original" key={mode} open={mode === 'extended'}>
         <summary>Original prompt</summary>
-        <pre>{original}</pre>
+        <CodePanel label="Original prompt" value={original} />
       </details>
       {loading && (
         <div className="refiner-loading" role="status">

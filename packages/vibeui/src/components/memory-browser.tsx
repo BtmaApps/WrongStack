@@ -8,6 +8,7 @@ import { directMemoryEdges, memoryDate } from '../lib/memory-view';
 import { record, rows, text } from '../lib/session';
 import { usePanelRequests } from '../lib/use-panel-requests';
 import type { SessionController } from '../lib/use-session';
+import { CodePanel } from './code-panel';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
 import { EmptyArtwork } from './vibe-visuals';
@@ -345,7 +346,11 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
                   {mode === 'extended' && (
                     <>
                       <h3>Stored metadata</h3>
-                      <pre className="context-raw">{JSON.stringify(selected, null, 2)}</pre>
+                      <CodePanel
+                        label="Memory record"
+                        value={JSON.stringify(selected, null, 2)}
+                        defaultView="tree"
+                      />
                     </>
                   )}
                 </>
@@ -472,7 +477,11 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
                   {mode === 'extended' && graph && (
                     <details>
                       <summary>Relationship metadata · {direct.length} direct edges</summary>
-                      <pre className="context-raw">{JSON.stringify(direct, null, 2)}</pre>
+                      <CodePanel
+                        label="Memory relationships"
+                        value={JSON.stringify(direct, null, 2)}
+                        defaultView="tree"
+                      />
                     </details>
                   )}
                 </>

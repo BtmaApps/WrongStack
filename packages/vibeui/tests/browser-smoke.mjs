@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
 import { WebSocketServer } from 'ws';
 import { createHttpServer } from '../../webui-server/src/server/http-server.ts';
 
@@ -1369,6 +1369,9 @@ try {
   await toolDialog.getByRole('button', { name: 'Copy tool result', exact: true }).click();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'File inspected.');
   await toolDialog.getByRole('tab', { name: 'Arguments', exact: true }).click();
+  await toolDialog.getByRole('region', { name: 'Arguments JSON tree', exact: true }).waitFor();
+  await toolDialog.getByText('"src/app.tsx"', { exact: true }).waitFor();
+  await toolDialog.getByRole('button', { name: 'Formatted', exact: true }).click();
   await toolDialog.locator('pre').filter({ hasText: 'src/app.tsx' }).waitFor();
   await toolDialog.getByRole('button', { name: 'Extended', exact: true }).click();
   await toolDialog.getByText(/Call ID · tool-/).waitFor();
@@ -1380,6 +1383,106 @@ try {
   await captureNarrowDialog('tool-inspector');
   await toolDialog.getByRole('button', { name: 'Simple', exact: true }).click();
   await toolDialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
+
+  // Structured tool results render as a lossless JSON tree, with formatted/raw alternatives.
+  const structuredResult =
+    '{"path":"src/app.tsx","ok":true,"count":9007199254740993,"files":[{"name":"a.ts","lines":42}],"message":"first\\nsecond","empty":[]}';
+  for (const client of clients) {
+    frame(client, 'tool.started', {
+      sessionId: 'session-one',
+      id: 'structured-proof',
+      name: 'structured_result',
+      input: { query: 'readable results' },
+    });
+    frame(client, 'tool.executed', {
+      sessionId: 'session-one',
+      id: 'structured-proof',
+      name: 'structured_result',
+      ok: true,
+      output: structuredResult,
+      durationMs: 3,
+    });
+  }
+  const structuredCard = page.locator('.tool-card').filter({ hasText: 'structured_result' });
+  await structuredCard.locator('summary').click();
+  await structuredCard.getByRole('button', { name: 'Inspect call', exact: true }).click();
+  const structuredDialog = page.getByRole('dialog');
+  const jsonTree = structuredDialog.getByRole('region', {
+    name: 'Tool result JSON tree',
+    exact: true,
+  });
+  await jsonTree.getByText('9007199254740993', { exact: true }).waitFor();
+  await jsonTree.locator('summary').filter({ hasText: 'files' }).click();
+  await jsonTree.locator('summary').filter({ hasText: '0 { 2 fields }' }).click();
+  await jsonTree.getByText('"a.ts"', { exact: true }).waitFor();
+  await structuredDialog.getByRole('button', { name: 'Copy tool result', exact: true }).click();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), structuredResult);
+  await page.screenshot({
+    path: join(output, 'json-tool-tree.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  for (const width of [320, 390, 1512]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await structuredDialog.evaluate((element) => element.scrollWidth > element.clientWidth),
+      false,
+      `JSON tree fits at ${width}px`,
+    );
+    await structuredDialog.getByRole('button', { name: 'Formatted', exact: true }).click();
+    const formatted = await structuredDialog.locator('pre').textContent();
+    assert.ok(formatted.includes('\n  "path": "src/app.tsx",'));
+    assert.ok(formatted.includes('9007199254740993'));
+    assert.ok((await structuredDialog.locator('code .hljs-attr').count()) > 0);
+    await structuredDialog.getByRole('button', { name: 'Raw', exact: true }).click();
+    assert.equal(await structuredDialog.locator('pre').textContent(), structuredResult);
+    await structuredDialog.getByRole('button', { name: 'Tree', exact: true }).click();
+  }
+  await captureNarrowDialog('json-tool-tree');
+  await page.setViewportSize({ width: 1512, height: 982 });
+  const markdownResult =
+    '# Inspection report\n\n**Ready** to review.\n\n| File | Status |\n| --- | --- |\n| app.tsx | Passed |\n\n```typescript\nconst ready: boolean = true;\n```';
+  for (const client of clients)
+    frame(client, 'tool.executed', {
+      sessionId: 'session-one',
+      id: 'structured-proof',
+      name: 'structured_result',
+      ok: true,
+      output: markdownResult,
+      durationMs: 4,
+    });
+  await structuredDialog.getByRole('heading', { name: 'Inspection report', exact: true }).waitFor();
+  await structuredDialog.getByRole('table').waitFor();
+  assert.ok((await structuredDialog.locator('code .hljs-keyword').count()) > 0);
+  await structuredDialog.getByRole('button', { name: 'Copy tool result', exact: true }).click();
+  assert.equal(
+    (await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n'),
+    markdownResult,
+  );
+  await page.screenshot({
+    path: join(output, 'markdown-tool-result.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await structuredDialog.getByRole('button', { name: 'Source', exact: true }).click();
+  assert.equal(
+    await structuredDialog.locator('.content-view > .code-panel pre').textContent(),
+    markdownResult,
+  );
+  await structuredDialog.getByRole('button', { name: 'Rendered', exact: true }).click();
+  await captureNarrowDialog('markdown-tool-result');
+  for (const client of clients)
+    frame(client, 'tool.executed', {
+      sessionId: 'session-one',
+      id: 'structured-proof',
+      name: 'structured_result',
+      ok: false,
+      output: '{"incomplete":',
+      durationMs: 5,
+    });
+  await structuredDialog.locator('pre').filter({ hasText: '{"incomplete":' }).waitFor();
+  assert.equal(await structuredDialog.locator('pre').textContent(), '{"incomplete":');
+  await structuredDialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
   for (const client of clients) {
     frame(client, 'subagent.event', {
       sessionId: 'session-one',
@@ -1490,13 +1593,86 @@ try {
   await page.getByRole('dialog').getByRole('button', { name: 'Close dialog', exact: true }).click();
   // The leader has finished, but its worker still owns live work.
   for (const client of clients)
-    frame(client, 'session.run_state', { sessionId: 'session-one', isRunning: false });
+    frame(client, 'run.result', { sessionId: 'session-one', status: 'done', iterations: 1 });
+  const workStatus = page.getByRole('region', { name: 'Session work status', exact: true });
+  await workStatus
+    .getByText('Leader finished · 1 agent is still working', { exact: true })
+    .waitFor();
+  assert.equal(await page.locator('.connection-chip').textContent(), 'Working');
+  for (const width of [320, 390, 1512]) {
+    await page.setViewportSize({ width, height: 844 });
+    await workStatus.scrollIntoViewIfNeeded();
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+      `Worker status fits at ${width}px`,
+    );
+    await page.screenshot({
+      path: join(output, `leader-finished-agents-running-${width}.png`),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  }
+  await workStatus.getByRole('button', { name: 'Watch agents', exact: true }).click();
+  await page.getByRole('tabpanel', { name: 'Agents', exact: true }).waitFor();
+  const refreshesBeforeWorkerFinished = received.filter(
+    (entry) => entry.type === 'git.changes',
+  ).length;
+  for (const client of clients) {
+    frame(client, 'agent.status_changed', {
+      sessionId: 'session-one',
+      subagentId: 'worker-review',
+      status: 'running',
+      partialText: 'Stale streaming excerpt.',
+    });
+    frame(client, 'subagent.event', {
+      sessionId: 'session-one',
+      subagentId: 'worker-review',
+      kind: 'task_completed',
+      status: 'done',
+      finalText: 'Review completed and saved.',
+    });
+  }
+  await workStatus.getByText('All work finished', { exact: true }).waitFor();
+  await expect
+    .poll(() => received.filter((entry) => entry.type === 'git.changes').length)
+    .toBeGreaterThan(refreshesBeforeWorkerFinished);
+  await page.getByText('All agents finished. Showing recent results.', { exact: true }).waitFor();
+  assert.equal(await page.locator('.connection-chip').textContent(), 'Ready');
+  await page.getByRole('button', { name: /Reviewer.*Inspect the project/ }).click();
+  await page
+    .getByRole('dialog')
+    .locator('.agent-latest')
+    .getByText('Review completed and saved.', { exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole('dialog')
+      .locator('.agent-latest')
+      .getByText('Stale streaming excerpt.', { exact: true })
+      .count(),
+    0,
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.screenshot({
+    path: join(output, 'all-work-finished.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  // Restart a worker to exercise the chat's session-wide stop control.
+  for (const client of clients)
+    frame(client, 'subagent.event', {
+      sessionId: 'session-one',
+      subagentId: 'worker-review',
+      kind: 'task_started',
+    });
+  await workStatus.getByRole('button', { name: 'Stop all agents', exact: true }).waitFor();
   assert.equal(
     await page.getByRole('button', { name: 'New session', exact: false }).isDisabled(),
     true,
   );
   const abortsBeforeWorkerStop = received.filter((entry) => entry.type === 'abort').length;
-  await page.getByRole('button', { name: 'Stop all', exact: true }).click();
+  await workStatus.getByRole('button', { name: 'Stop all agents', exact: true }).click();
   await page.waitForFunction(() => document.body.textContent.includes('Stop requested'));
   assert.equal(
     received.filter((entry) => entry.type === 'abort').length,
@@ -2129,7 +2305,12 @@ try {
   await page.getByRole('button', { name: 'Provider usage and quotas', exact: true }).click();
   await page.getByText('75% remaining', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Extended', exact: true }).click();
-  await page.getByRole('dialog').locator('pre').filter({ hasText: 'usedPercent' }).waitFor();
+  const quotaTree = page
+    .getByRole('dialog')
+    .getByRole('region', { name: 'Quota details JSON tree', exact: true });
+  await quotaTree.locator('summary').filter({ hasText: 'windows' }).click();
+  await quotaTree.locator('summary').filter({ hasText: /^0 / }).click();
+  await quotaTree.getByText('usedPercent', { exact: true }).waitFor();
   await page.screenshot({
     path: join(output, 'provider-quotas.png'),
     fullPage: true,
@@ -2513,6 +2694,121 @@ try {
     await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
     await workspacePanel.waitFor();
   }
+
+  // A live, compact list rotates the last three calls without exposing payloads.
+  if (!(await workspacePanel.isVisible()))
+    await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
+  await page.getByRole('tab', { name: /Changes/ }).click();
+  for (const client of clients) {
+    frame(client, 'provider.text_delta', {
+      sessionId: 'session-one',
+      messageId: 'recent-activity-proof',
+      text: 'Inspecting workspace activity.',
+    });
+    for (const [index, name] of [
+      'read_file',
+      'search_files',
+      'run_tests',
+      'apply_patch',
+    ].entries()) {
+      frame(client, 'tool.started', {
+        sessionId: 'session-one',
+        id: `recent-proof-${index}`,
+        name,
+        input: { secret: 'hidden activity argument' },
+      });
+      if (index < 3)
+        frame(client, 'tool.executed', {
+          sessionId: 'session-one',
+          id: `recent-proof-${index}`,
+          name,
+          ok: index !== 2,
+          output: index === 2 ? 'Test process exited with code 1.' : 'hidden activity result',
+          durationMs: 4,
+        });
+    }
+  }
+  const recentTools = page.getByRole('list', { name: 'Recent tool calls', exact: true });
+  await recentTools
+    .getByRole('button', { name: 'Inspect apply_patch · Running', exact: true })
+    .waitFor();
+  assert.deepEqual(await recentTools.locator('.recent-tool-name').allTextContents(), [
+    'apply_patch',
+    'run_tests',
+    'search_files',
+  ]);
+  assert.equal((await recentTools.textContent()).includes('hidden activity'), false);
+  await page.getByRole('button', { name: 'View activity', exact: true }).click();
+  await page.getByRole('tabpanel', { name: 'Activity', exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole('tab', { name: 'Activity', exact: true }).getAttribute('data-state'),
+    'active',
+  );
+  for (const client of clients)
+    frame(client, 'tool.executed', {
+      sessionId: 'session-one',
+      id: 'recent-proof-1',
+      name: 'search_files',
+      ok: true,
+      output: 'hidden activity result',
+      durationMs: 5,
+    });
+  await page.waitForFunction(
+    () => document.querySelector('.recent-tool-name')?.textContent === 'search_files',
+  );
+  assert.deepEqual(await recentTools.locator('.recent-tool-name').allTextContents(), [
+    'search_files',
+    'apply_patch',
+    'run_tests',
+  ]);
+  await page
+    .getByRole('navigation', { name: 'Workspace shortcuts', exact: true })
+    .getByRole('button', { name: /^Agents/ })
+    .click();
+  await page.getByRole('tabpanel', { name: 'Agents', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'View activity', exact: true }).click();
+  await page.getByRole('tabpanel', { name: 'Activity', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close workspace', exact: true }).click();
+  for (const width of [320, 390, 1512]) {
+    await page.setViewportSize({ width, height: 844 });
+    await recentTools.scrollIntoViewIfNeeded();
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+      `Recent tools fit at ${width}px`,
+    );
+    assert.equal(await recentTools.locator('li').count(), 3);
+    assert.equal(
+      await recentTools.evaluate((element) => element.getBoundingClientRect().height <= 100),
+      true,
+      'Three calls stay compact',
+    );
+    await page.screenshot({
+      path: join(output, `recent-tools-${width}.png`),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  }
+  await recentTools
+    .getByRole('button', { name: 'Inspect run_tests · Failed', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByText('Test process exited with code 1.', { exact: true })
+    .waitFor();
+  for (const client of clients)
+    frame(client, 'run.result', { sessionId: 'session-one', status: 'done', iterations: 1 });
+  await page.locator('.working-activity').waitFor({ state: 'hidden' });
+  assert.equal(
+    await page.getByRole('dialog').isVisible(),
+    true,
+    'Inspect stays open when the run finishes',
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.setViewportSize({ width: 1512, height: 982 });
+  if (panelWasOpen)
+    await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
 
   // Large code, tables and rapid clipboard operations stay contained and accessible.
   const largeCode = `const ready = true;\nconst longLine = "${'x'.repeat(1600)}";\n${Array.from({ length: 5000 }, (_, i) => `// line ${i + 1}: checked payload`).join('\n')}\n`;

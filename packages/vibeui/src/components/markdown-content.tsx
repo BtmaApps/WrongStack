@@ -1,10 +1,11 @@
 'use client';
 
-import { createContext, memo, type ReactNode, useContext } from 'react';
+import { createContext, memo, type ReactNode, useContext, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { jsonContent } from '../lib/code-content';
 import { localArtifactPath, useArtifactNavigation } from './artifact-navigation';
-import { MarkdownCodeBlock } from './code-panel';
+import { CodePanel, MarkdownCodeBlock } from './code-panel';
 
 const MarkdownBasePath = createContext('');
 
@@ -58,12 +59,17 @@ export const MarkdownContent = memo(function MarkdownContent({
   text: string;
   basePath?: string;
 }) {
+  const json = useMemo(() => jsonContent(text), [text]);
   return (
     <MarkdownBasePath.Provider value={basePath}>
       <div className="markdown">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-          {text}
-        </ReactMarkdown>
+        {json ? (
+          <CodePanel value={text} label="JSON" defaultView="tree" />
+        ) : (
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+            {text}
+          </ReactMarkdown>
+        )}
       </div>
     </MarkdownBasePath.Provider>
   );

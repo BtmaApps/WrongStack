@@ -4,6 +4,7 @@ import { TerminalSquare } from 'lucide-react';
 import { Tabs } from 'radix-ui';
 import type { ToolEntry } from '../lib/session';
 import { CodePanel } from './code-panel';
+import { ContentView } from './content-view';
 import { Modal } from './dialogs';
 import { usePresentation } from './presentation-mode';
 
@@ -43,7 +44,7 @@ export function ToolInspector({ tool, onClose }: { tool: ToolEntry; onClose: () 
         </Tabs.List>
         <Tabs.Content value="output" className="tool-inspector-content">
           {tool.output ? (
-            <CodePanel value={tool.output} label="Tool result" copyLabel="Copy tool result" />
+            <ContentView value={tool.output} label="Tool result" copyLabel="Copy tool result" />
           ) : (
             <p className="panel-hint">
               {tool.status === 'running'
@@ -57,6 +58,7 @@ export function ToolInspector({ tool, onClose }: { tool: ToolEntry; onClose: () 
             value={JSON.stringify(tool.input, null, 2) ?? 'No arguments reported.'}
             label="Arguments"
             copyLabel="Copy tool arguments"
+            defaultView="tree"
           />
         </Tabs.Content>
       </Tabs.Root>

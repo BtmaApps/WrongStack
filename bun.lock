@@ -593,6 +593,7 @@
       "dependencies": {
         "@wrongstack/webui-protocol": "workspace:*",
         "@xyflow/react": "12.12.0",
+        "lowlight": "3.3.0",
         "lucide-react": "1.45.0",
         "radix-ui": "1.8.1",
         "react": "19.3.1",

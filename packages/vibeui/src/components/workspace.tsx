@@ -35,6 +35,7 @@ import { ArtifactNavigation } from './artifact-navigation';
 import { AssistantContent } from './assistant-content';
 import { CommandPalette, type WorkspaceCommand } from './command-palette';
 import { Composer } from './composer';
+import { ContentView } from './content-view';
 import { ContextDialog } from './context-dialog';
 import { ConversationSearch } from './conversation-search';
 import { Modal, PendingInteractions, Settings } from './dialogs';
@@ -47,7 +48,10 @@ import { ProviderManager } from './provider-manager';
 import { ProviderQuotas } from './provider-quotas';
 import { ResourceHub, type ResourceTab } from './resource-hub';
 import { SessionActions } from './session-actions';
-import { RunSignal, VibeMark, WorkspaceArtwork } from './vibe-visuals';
+import { SessionWorkStatus } from './session-work-status';
+import { ToolInspector } from './tool-inspector';
+import { VibeMark, WorkspaceArtwork } from './vibe-visuals';
+import { WorkingActivity } from './working-activity';
 import { WorkspaceNotes } from './workspace-notes';
 import { WorkspacePanel } from './workspace-panel';
 
@@ -58,6 +62,7 @@ export function Workspace() {
     controller;
   const [sidebar, setSidebar] = useState(false);
   const [panel, setPanel] = useState(true);
+  const [inspectedToolId, setInspectedToolId] = useState('');
   const [settings, setSettings] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [agentView, setAgentView] = useState(0);
@@ -126,10 +131,11 @@ export function Workspace() {
   }, [palette]);
   useEffect(() => {
     if (stick.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
-  }, [state.messages, state.running]);
+  }, [state.messages, state.running, state.tools, state.agents, state.runOutcome]);
   useEffect(() => {
     stick.current = true;
     setShowLatest(false);
+    setInspectedToolId('');
   }, [state.id]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -172,7 +178,7 @@ export function Workspace() {
     ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(a.status),
   );
   const activeSession = state.sessions.find((s) => s.id === state.id);
-  const activeTools = state.tools.filter((tool) => tool.status === 'running');
+  const inspectedTool = state.tools.find((tool) => tool.id === inspectedToolId);
   const commands: WorkspaceCommand[] = [
     {
       id: 'chat',
@@ -541,9 +547,13 @@ export function Workspace() {
               />
               <span className="connection-chip">
                 <span
-                  className={`status-dot ${connection !== 'open' ? 'error' : state.running ? 'busy' : ''}`}
+                  className={`status-dot ${connection !== 'open' ? 'error' : controller.hasActiveWork ? 'busy' : ''}`}
                 />
-                {connection !== 'open' ? 'Reconnecting' : state.running ? 'Working' : 'Ready'}
+                {connection !== 'open'
+                  ? 'Reconnecting'
+                  : controller.hasActiveWork
+                    ? 'Working'
+                    : 'Ready'}
               </span>
               <button
                 type="button"
@@ -876,7 +886,7 @@ export function Workspace() {
                             WrongStack
                           </summary>
                           {message.runtimeContext.map((note, index) => (
-                            <pre key={index}>{note}</pre>
+                            <ContentView key={index} value={note} label="Runtime context" />
                           ))}
                         </details>
                       )}
@@ -884,19 +894,28 @@ export function Workspace() {
                   );
                 })}
                 {state.running && (
-                  <div className="working-line" role="status">
-                    <RunSignal />
-                    {activeTools.length
-                      ? `${activeTools.at(-1)?.name} is running`
-                      : 'Working on it'}
-                    <button type="button" onClick={() => setPanel(true)}>
-                      View activity
-                      <ArrowUpRight size={12} />
-                    </button>
-                  </div>
+                  <WorkingActivity
+                    tools={state.tools}
+                    onInspect={setInspectedToolId}
+                    onViewActivity={() => {
+                      setPanel(true);
+                      setAgentView(0);
+                      setPanelRequest((v) => ({ tab: 'activity', key: v.key + 1 }));
+                    }}
+                  />
                 )}
               </div>
             )}
+            <SessionWorkStatus
+              state={state}
+              connected={connection === 'open'}
+              canStop={ready && !controller.sessionTransition}
+              onStop={controller.stopAll}
+              onWatch={() => {
+                setPanel(true);
+                setAgentView((value) => value + 1);
+              }}
+            />
           </main>
           {showLatest && (
             <button
@@ -924,6 +943,13 @@ export function Workspace() {
             revealAgents={agentView}
             requestedView={panelRequest}
             onClose={() => setPanel(false)}
+          />
+        )}
+        {inspectedTool && (
+          <ToolInspector
+            key={inspectedTool.id}
+            tool={inspectedTool}
+            onClose={() => setInspectedToolId('')}
           />
         )}
         <Settings

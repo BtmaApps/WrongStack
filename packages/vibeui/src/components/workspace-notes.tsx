@@ -2,6 +2,7 @@
 
 import { ChevronRight, Layers } from 'lucide-react';
 import type { ChatEntry } from '../lib/session';
+import { ContentView } from './content-view';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
 
@@ -31,7 +32,7 @@ export function WorkspaceNotes({ notes }: { notes: ChatEntry[] }) {
               <MarkdownContent text={note.text} />
             )}
             {note.runtimeContext?.map((text, index) => (
-              <pre key={index}>{text}</pre>
+              <ContentView key={index} label="Runtime context" value={text} />
             ))}
           </article>
         ))}

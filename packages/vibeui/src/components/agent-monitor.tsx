@@ -2,21 +2,30 @@
 
 import { Users } from 'lucide-react';
 import { useState } from 'react';
+import { isActiveAgent as active, hasAgentWork } from '../lib/agent-state';
 import type { AgentEntry } from '../lib/session';
+import { ContentView } from './content-view';
 import { Modal } from './dialogs';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
 import { EmptyArtwork, RunSignal } from './vibe-visuals';
 
-const active = (status: string) =>
-  ['running', 'busy', 'working', 'active', 'starting', 'spawned'].includes(status);
 export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; connected: boolean }) {
   const { mode } = usePresentation();
   const [selected, setSelected] = useState('');
   const [showInactive, setShowInactive] = useState(false);
-  const visible = agents.filter((item) => showInactive || active(item.status));
+  const activeCount = agents.filter((item) => active(item.status)).length;
+  const finished = agents.filter((item) => !active(item.status) && hasAgentWork(item));
+  const visible = showInactive
+    ? agents
+    : activeCount
+      ? agents.filter((item) => active(item.status))
+      : finished.slice(-3);
   const agent = agents.find((item) => item.id === selected);
   const lastOutput =
+    (agent && !active(agent.status)
+      ? agent.entries.filter((entry) => ['result', 'error'].includes(entry.kind)).at(-1)?.content
+      : '') ||
     agent?.partialText ||
     agent?.entries.filter((entry) => ['text', 'result', 'error'].includes(entry.kind)).at(-1)
       ?.content;
@@ -24,8 +33,13 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
     <section className="agent-monitor" aria-label="Subagents">
       <div className="panel-section-heading">
         <h2>Agents</h2>
-        <span>{agents.filter((item) => active(item.status)).length} active</span>
+        <span>{activeCount} active</span>
       </div>
+      {connected && !activeCount && finished.length > 0 && (
+        <p className="agent-finished-summary" role="status">
+          All agents finished. Showing recent results.
+        </p>
+      )}
       <label className="inactive-toggle">
         <input
           type="checkbox"
@@ -151,7 +165,7 @@ export function AgentMonitor({ agents, connected }: { agents: AgentEntry[]; conn
                       {entry.toolName ? ` - ${entry.toolName}` : ''}
                       {entry.ts && <time>{new Date(entry.ts).toLocaleTimeString()}</time>}
                     </summary>
-                    <pre>{entry.content}</pre>
+                    <ContentView label={entry.toolName || entry.kind} value={entry.content} />
                   </details>
                 ))}
               </div>

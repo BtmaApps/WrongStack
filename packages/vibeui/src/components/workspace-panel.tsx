@@ -17,6 +17,8 @@ import { compareLines } from '../lib/diff';
 import { record, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { AgentMonitor } from './agent-monitor';
+import { CodePanel } from './code-panel';
+import { ContentView } from './content-view';
 import { Modal } from './dialogs';
 import { ToolInspector } from './tool-inspector';
 import { EmptyArtwork } from './vibe-visuals';
@@ -169,10 +171,20 @@ export function WorkspacePanel({
                       </div>
                     </Tabs.Content>
                     <Tabs.Content value="before">
-                      <FileLines value={state.diff.oldText} />
+                      <CodePanel
+                        value={state.diff.oldText}
+                        label="Before"
+                        language={selectedPath}
+                        formatJson={false}
+                      />
                     </Tabs.Content>
                     <Tabs.Content value="after">
-                      <FileLines value={state.diff.newText} />
+                      <CodePanel
+                        value={state.diff.newText}
+                        label="After"
+                        language={selectedPath}
+                        formatJson={false}
+                      />
                     </Tabs.Content>
                   </Tabs.Root>
                 )}
@@ -259,7 +271,7 @@ export function WorkspacePanel({
               ) : state.preview.artifact.kind === 'image' ? (
                 <img src={state.preview.content} alt={state.preview.artifact.title} />
               ) : (
-                <pre>{state.preview.content}</pre>
+                <ContentView value={state.preview.content} label="Output" />
               )}
             </section>
           )}
@@ -327,22 +339,6 @@ export function WorkspacePanel({
   );
 }
 
-function FileLines({ value }: { value: string }) {
-  const lines = value.split('\n');
-  return (
-    <div className="file-lines">
-      <pre>
-        {lines.slice(0, 2000).map((line, i) => (
-          <span className="code-line" key={i}>
-            <span>{i + 1}</span>
-            {line || ' '}
-          </span>
-        ))}
-      </pre>
-      {lines.length > 2000 && <p className="panel-hint">Showing the first 2,000 lines.</p>}
-    </div>
-  );
-}
 function PanelEmpty({
   kind,
   title,

@@ -3,6 +3,7 @@ import { Gauge, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { record, rows, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
+import { CodePanel } from './code-panel';
 import { Modal } from './dialogs';
 import { usePresentation } from './presentation-mode';
 
@@ -204,7 +205,11 @@ export function ProviderQuotas({ controller }: { controller: SessionController }
                       {now - Number(meter.capturedAt) > 900000 ? ' · may be stale' : ''}
                     </small>
                     {mode === 'extended' && (
-                      <pre className="context-raw">{JSON.stringify(meter, null, 2)}</pre>
+                      <CodePanel
+                        label="Quota details"
+                        value={JSON.stringify(meter, null, 2)}
+                        defaultView="tree"
+                      />
                     )}
                   </div>
                 ))}
@@ -215,7 +220,11 @@ export function ProviderQuotas({ controller }: { controller: SessionController }
         {mode === 'extended' && outcomes.length > 0 && (
           <details>
             <summary>Account refresh results</summary>
-            <pre className="context-raw">{JSON.stringify(outcomes, null, 2)}</pre>
+            <CodePanel
+              label="Refresh results"
+              value={JSON.stringify(outcomes, null, 2)}
+              defaultView="tree"
+            />
           </details>
         )}
       </Modal>

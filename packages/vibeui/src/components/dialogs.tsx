@@ -7,6 +7,7 @@ import { uiVersion } from '../lib/build-info';
 import { inputQueueLabel } from '../lib/component-guards';
 import type { InputRequest } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
+import { CodePanel } from './code-panel';
 import { DetailSwitch } from './presentation-mode';
 import { RuntimeControls } from './runtime-controls';
 import { SettingsSearch } from './settings-search';
@@ -225,7 +226,7 @@ export function PendingInteractions({ controller }: { controller: SessionControl
         dismissible={false}
         description={`${confirm?.tool || 'A tool'} is waiting for your decision.`}
       >
-        <pre className="permission-input">{confirm?.input}</pre>
+        <CodePanel label="Tool arguments" value={confirm?.input ?? ''} defaultView="tree" />
         {expired && (
           <p role="status">This request has expired. Waiting for the agent to continue.</p>
         )}

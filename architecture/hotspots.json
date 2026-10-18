@@ -15,12 +15,16 @@
       "relativeImports": 6
     },
     "packages/vibeui/src/components/workspace.tsx": {
-      "lines": 1074,
-      "relativeImports": 23
+      "lines": 1100,
+      "relativeImports": 27
     },
     "packages/vibeui/src/lib/session.ts": {
-      "lines": 878,
-      "relativeImports": 2
+      "lines": 911,
+      "relativeImports": 3
+    },
+    "packages/vibeui/src/lib/use-session.ts": {
+      "lines": 708,
+      "relativeImports": 6
     },
     "apps/desktop/src/main/main.ts": {
       "lines": 734,

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T09:28:12.933Z",
+  "generatedAt": "2026-10-18T13:47:54.846Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,21 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5157,
-    "testFiles": 4465,
-    "sourceLines": 1119019,
+    "sourceFiles": 5163,
+    "testFiles": 4470,
+    "sourceLines": 1119670,
     "workspaceEdges": 139,
-    "moduleEdges": 16962,
+    "moduleEdges": 16995,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 5,
+    "typeModuleCycles": 6,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 960
   },
-  "errors": [],
+  "errors": [
+    "1 unexcepted module cycle(s)"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -848,8 +850,8 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 47,
-      "testFiles": 10,
+      "sourceFiles": 53,
+      "testFiles": 14,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -862,7 +864,7 @@
         {
           "path": "packages/vibeui/tsconfig.test.json",
           "error": null,
-          "testFiles": 10
+          "testFiles": 14
         }
       ]
     },
@@ -870,7 +872,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 755,
-      "testFiles": 487,
+      "testFiles": 488,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +895,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 487
+          "testFiles": 488
         }
       ]
     },
@@ -1104,6 +1106,13 @@
           "packages/core/src/types/token-counter.ts",
           "packages/core/src/types/tool.ts"
         ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/vibeui/src/lib/agent-state.ts",
+          "packages/vibeui/src/lib/session.ts"
+        ]
       }
     ],
     "matchedExceptions": [
@@ -1113,7 +1122,15 @@
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-29"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/vibeui/src/lib/agent-state.ts",
+          "packages/vibeui/src/lib/session.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -22688,7 +22705,19 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/agent-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/artifacts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/code-panel.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22730,6 +22759,12 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/session-work-status.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/session.test.ts",
         "projects": [
           "root-node"
@@ -22737,6 +22772,12 @@
       },
       {
         "file": "packages/vibeui/tests/transcript-view.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/working-activity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25766,6 +25807,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/next-steps-bar-batch.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/next-steps-parser.test.ts",
         "projects": [
           "webui-jsdom"
@@ -28135,13 +28182,18 @@
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1074,
-      "relativeImports": 23
+      "lines": 1100,
+      "relativeImports": 27
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 878,
-      "relativeImports": 2
+      "lines": 911,
+      "relativeImports": 3
+    },
+    {
+      "file": "packages/vibeui/src/lib/use-session.ts",
+      "lines": 708,
+      "relativeImports": 6
     },
     {
       "file": "apps/desktop/src/main/main.ts",
@@ -28152,13 +28204,13 @@
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1074,
-      "relativeImports": 23
+      "lines": 1100,
+      "relativeImports": 27
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 878,
-      "relativeImports": 2
+      "lines": 911,
+      "relativeImports": 3
     },
     {
       "file": "apps/desktop/src/main/main.ts",
@@ -28174,6 +28226,11 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/vibeui/src/lib/use-session.ts",
+      "lines": 708,
+      "relativeImports": 6
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -28214,11 +28271,6 @@
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
-    },
-    {
-      "file": "packages/vibeui/src/lib/use-session.ts",
-      "lines": 698,
-      "relativeImports": 5
     },
     {
       "file": "packages/core/src/security/secret-vault.ts",

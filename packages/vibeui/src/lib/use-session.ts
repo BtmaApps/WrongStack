@@ -2,6 +2,7 @@
 
 import type { ProtocolEnvelope } from '@wrongstack/webui-protocol';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isActiveAgent } from './agent-state';
 import type { Artifact } from './artifacts';
 import { clientId } from './ids';
 import {
@@ -163,6 +164,9 @@ export function useSession() {
         p.sessionId !== current.current.id
       )
         return;
+      const activeAgentsBefore = current.current.agents.filter((agent) =>
+        isActiveAgent(agent.status),
+      ).length;
       update((s) => {
         const next = reduceFrame(s, frame);
         if (frame.type !== 'run.result') return next;
@@ -256,7 +260,12 @@ export function useSession() {
         setModelPending(false);
         clearTimeout(modelTimeout.current);
       }
-      if (frame.type === 'run.result' || frame.type === 'tool.executed') refreshWorkspace();
+      const agentFinished =
+        (frame.type === 'subagent.event' && p.kind === 'task_completed') ||
+        activeAgentsBefore >
+          current.current.agents.filter((agent) => isActiveAgent(agent.status)).length;
+      if (frame.type === 'run.result' || frame.type === 'tool.executed' || agentFinished)
+        refreshWorkspace();
     };
     const client = new VibeTransport({
       onMessage: handle,
@@ -328,6 +337,7 @@ export function useSession() {
       update((previous) => ({
         ...previous,
         running: true,
+        runOutcome: null,
         notice: '',
         runFailure: '',
         messages: [

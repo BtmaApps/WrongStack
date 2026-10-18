@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { contentText, record, rows, text } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
+import { CodePanel } from './code-panel';
+import { ContentView } from './content-view';
 import { Modal } from './dialogs';
 import { usePresentation } from './presentation-mode';
 
@@ -217,10 +219,13 @@ export function ContextDialog({
             </p>
             <details className="context-tools">
               <summary>System instructions</summary>
-              <pre className="context-raw">
-                {contentText(record(snapshot.readonlyContent).systemPrompt) ||
-                  'Instruction content was not included by this backend.'}
-              </pre>
+              <ContentView
+                label="System instructions"
+                value={
+                  contentText(record(snapshot.readonlyContent).systemPrompt) ||
+                  'Instruction content was not included by this backend.'
+                }
+              />
             </details>
             <details className="context-tools">
               <summary>{Number(metrics.toolCount ?? 0)} tool schemas</summary>
@@ -233,7 +238,11 @@ export function ContextDialog({
               {rows(record(snapshot.readonlyContent).tools).map((tool, index) => (
                 <details key={index}>
                   <summary>{text(tool.name)} · schema</summary>
-                  <pre className="context-raw">{JSON.stringify(tool, null, 2)}</pre>
+                  <CodePanel
+                    label="Tool schema"
+                    value={JSON.stringify(tool, null, 2)}
+                    defaultView="tree"
+                  />
                 </details>
               ))}
             </details>
@@ -252,7 +261,7 @@ export function ContextDialog({
                     <span>{message.content.slice(0, 110)}</span>
                     <small>#{message.index + 1}</small>
                   </summary>
-                  <pre>{message.content}</pre>
+                  <ContentView label={`${message.role} message`} value={message.content} />
                 </details>
               ))}
               {!messages.length && <p>No matching context messages.</p>}
@@ -262,8 +271,10 @@ export function ContextDialog({
         {debug && (
           <details className="context-tools">
             <summary>Request residency and history retention</summary>
-            <pre className="context-raw">
-              {JSON.stringify(
+            <CodePanel
+              label="Request details"
+              defaultView="tree"
+              value={JSON.stringify(
                 {
                   residency: debug.residency ?? 'Not reported',
                   retention: debug.retention ?? 'Not reported',
@@ -271,7 +282,7 @@ export function ContextDialog({
                 null,
                 2,
               )}
-            </pre>
+            />
           </details>
         )}
       </section>

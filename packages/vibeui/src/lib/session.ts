@@ -9,6 +9,7 @@ import {
   type SessionMarker,
   type SessionToolMeta,
 } from '@wrongstack/webui-protocol';
+import { isActiveAgent } from './agent-state';
 import { type Artifact, parseArtifact } from './artifacts';
 import { type FileNode, parseFileTree } from './workspace-model';
 
@@ -76,6 +77,7 @@ export interface Confirmation {
   deadlineAt: number;
 }
 export interface AgentEntry {
+  hasWorked?: boolean;
   sequence: number;
   id: string;
   name: string;
@@ -93,6 +95,7 @@ export interface AgentEntry {
   entries: { id: string; kind: string; content: string; ts: string; toolName: string }[];
 }
 export interface SessionState {
+  runOutcome: 'done' | 'aborted' | 'error' | null;
   id: string;
   project: string;
   appVersion: string;
@@ -166,6 +169,7 @@ export const initialState = (): SessionState => ({
   tokens: 0,
   load: 0,
   running: false,
+  runOutcome: null,
   messages: [],
   tools: [],
   sessions: [],
@@ -298,6 +302,7 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
       projectEffort: text(p.projectReasoningEffort),
       maxContext: session.maxContext,
       running: session.isRunning,
+      runOutcome: session.isRunning || changed ? null : state.runOutcome,
       tokens: number(p.lastInputTokens),
       load: session.maxContext > 0 ? number(p.lastInputTokens) / session.maxContext : 0,
       messages: timeline ? messages.slice(-500) : changed ? [] : state.messages,
@@ -348,6 +353,7 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     return {
       ...state,
       running: true,
+      runOutcome: null,
       messages: appendDelta(
         state.messages,
         chat.kind === 'text-delta' ? 'assistant' : 'thinking',
@@ -420,6 +426,16 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     return {
       ...state,
       running: false,
+      runOutcome:
+        chat.kind === 'run-result'
+          ? chat.status === 'done'
+            ? 'done'
+            : chat.status === 'aborted'
+              ? 'aborted'
+              : 'error'
+          : state.running
+            ? 'error'
+            : state.runOutcome,
       messages: messages.slice(-500),
       tools: state.tools.map((t) => (t.status === 'running' ? { ...t, status: 'interrupted' } : t)),
       notice: failure || state.notice,
@@ -565,7 +581,11 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     case 'ctx.max_context':
       return { ...state, maxContext: number(p.maxContext) };
     case 'session.run_state':
-      return { ...state, running: p.isRunning === true };
+      return {
+        ...state,
+        running: p.isRunning === true,
+        runOutcome: p.isRunning === true ? null : state.runOutcome,
+      };
     case 'provider.retry':
       return {
         ...state,
@@ -697,8 +717,17 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
       );
     case 'sessions.status_update': {
       const own = rows(p.sessions).find((s) => s.sessionId === state.id);
-      if (!own) return state;
-      return rows(own.agents).reduce(
+      if (!own || !Array.isArray(own.agents)) return state;
+      const ids = new Set(rows(own.agents).map((agent) => text(agent.id)));
+      const reconciled: SessionState = {
+        ...state,
+        agents: state.agents.map((agent) =>
+          isActiveAgent(agent.status) && !ids.has(agent.id)
+            ? { ...agent, status: 'stopped', currentTool: '' }
+            : agent,
+        ),
+      };
+      return rows(own.agents).reduce<SessionState>(
         (s, agent) =>
           updateAgent(
             s,
@@ -711,7 +740,7 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
             },
             'agent.status_changed',
           ),
-        state,
+        reconciled,
       );
     }
     case 'tool.confirm_needed': {
@@ -803,8 +832,11 @@ function updateAgent(state: SessionState, p: Record<string, unknown>, type: stri
   if (kind === 'task_completed') {
     agent.status = text(p.status) || 'completed';
     agent.currentTool = '';
+    agent.partialText = '';
   }
   if (type === 'agent.timeline.message' && !previous) agent.status = 'running';
+  if (isActiveAgent(agent.status) || kind === 'task_completed' || type === 'agent.timeline.message')
+    agent.hasWorked = true;
   if (typeof p.iteration === 'number' || typeof p.iterations === 'number')
     agent.iterations = number(p.iteration ?? p.iterations);
   if (typeof p.toolCalls === 'number') agent.toolCalls = number(p.toolCalls);
@@ -813,6 +845,7 @@ function updateAgent(state: SessionState, p: Record<string, unknown>, type: stri
   if (typeof p.maxContext === 'number') agent.maxContext = number(p.maxContext);
   if (typeof p.currentTool === 'string') agent.currentTool = p.currentTool;
   if (typeof p.partialText === 'string') agent.partialText = p.partialText.slice(-20_000);
+  if (!isActiveAgent(agent.status)) agent.currentTool = '';
   const content =
     type === 'agent.timeline.message'
       ? text(p.content)
