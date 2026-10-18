@@ -197,12 +197,13 @@ export class DocumentTracker {
         /* v8 ignore next -- close only applies to ready servers that saw the doc. */
         if (server.state === 'ready' && doc.serverNames.has(server.name)) {
           server.notifyDidClose(doc.uri);
-          this.events?.emit('lsp.document.closed', { path: doc.path });
         }
       }
+      this.events?.emit('lsp.document.closed', { path: doc.path });
     }
     this.docs.clear();
     this.lastUsed.clear();
+    this.documentOperations.clear();
     this.trackedBytes = 0;
   }
 
