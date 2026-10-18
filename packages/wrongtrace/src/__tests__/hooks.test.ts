@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetWrongTraceGate } from '../gate.js';
-import { createWrongTraceHookPair } from '../hooks.js';
+import {
+  createWrongTraceHookPair,
+  createWrongTracePostToolUseHook,
+  createWrongTracePreToolUseHook,
+} from '../hooks.js';
 
 /**
  * Hermetic hook-pair contract tests. Overrides globalThis.fetch with a stub
@@ -303,6 +307,30 @@ describe('createWrongTraceHookPair gate events', () => {
     // Session 2 finishes. Stale owner from sess-1 must NOT block unlock
     await pair.postToolUse({ toolName: 'edit', toolInput: { path: 'src/foo.ts' } });
     expect(unlockCalls).toBe(2);
+
+    // Legacy single-phase pre/post hooks: when our own session already holds a leaked
+    // lock on the daemon (so lockFile returns 409 ok:false), preToolUse records the
+    // caller's owner in claimedOwnerSetFor so legacy postToolUse (built with `() => ''`)
+    // still recognizes and unlocks our own leaked lock.
+    currentSession = 'sess-legacy-self';
+    currentLockOwner = 'wrongstack:sess-legacy-self';
+    const origFetch2 = globalThis.fetch;
+    globalThis.fetch = makeFetch(async (url, init) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/guardrail/lock') {
+        return jsonResponse(
+          { ok: false, status: 'conflict', owner: 'wrongstack:sess-legacy-self' },
+          409,
+        );
+      }
+      return origFetch2(url, init);
+    });
+    const preLegacy = createWrongTracePreToolUseHook(() => 'sess-legacy-self');
+    const postLegacy = createWrongTracePostToolUseHook();
+    await preLegacy({ toolName: 'edit', toolInput: { path: 'src/foo.ts' } });
+    globalThis.fetch = origFetch2;
+    await postLegacy({ toolName: 'edit', toolInput: { path: 'src/foo.ts' } });
+    expect(unlockCalls).toBe(3);
   });
 
   it('claims for the session in the payload when one pair serves several sessions', async () => {

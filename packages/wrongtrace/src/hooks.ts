@@ -273,6 +273,9 @@ export function createWrongTraceHookPair(
             // claim and release the daemon lock mid-edit (the refcount
             // contract: only the LAST finisher releases).
             acquireLock(counters, key);
+            if (!claimedOwnerSetFor(counters).has(key)) {
+              claimedOwnerSetFor(counters).set(key, owner);
+            }
             racedSetFor(counters).add(key);
             emitSafe(emit, { kind: 'lock-conflict-race', path });
           }
