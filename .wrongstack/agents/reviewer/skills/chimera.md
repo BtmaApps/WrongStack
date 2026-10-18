@@ -1,21 +1,34 @@
-## Browser policy
+## Verify before verdict
 
-- In `packages/tools/src/browser/tools.ts`, treat `browserPrivateOrigins(root)` from `./policy.js` as the merged source for project `/browser allow` origins and `WRONGSTACK_BROWSER_PRIVATE_ORIGINS`.
-- Before assessing “takes effect immediately in existing sessions” in `docs/browser-automation.md`, trace whether the sibling slash command or `BrowserSessionManager` in `packages/tools/src/browser/manager.ts` refreshes `managerFor`’s per-root cached snapshot; `tools.ts` alone is insufficient.
-- Accept `timeoutMs` with `managesOwnTimeout: true` for browser tools as the established multi-minute subprocess convention used by `packages/tools/src/exec.ts`, `bash.ts`, and `pwsh.ts`.
+- Before reviewing claimed work, run `git status -- <target paths>` plus an `rg` for feature identifiers (e.g. `selectionMode`). If the result is `aborted_by_parent` with zero target-path changes and zero symbol matches, the verdict is `request changes` (deliverable absent). Reserve `needs verification` for code that is present but unchecked.
+- For exhaustive usage checks in large files such as `packages/vibeui/src/lib/use-session.ts`, do not trust a single `grep` render. It reports `count=N` but may show only 3 groups. Before concluding that stale references are gone, either grep the saved log under `C:\Users\ersin\.wrongstack\tool-output\` or re-`read` with `offset` windows.
 
-## Dependencies and exports
+## vibeui
 
-- For dependency removal from `package.json`, attribute surviving lockfile references by their owning importer block, never line proximity. Confirm that importer’s dependency set against the relevant package, using siblings such as select/separator/tabs. pnpm removes fully unused resolutions, while references owned by another package are legitimate.
-- Treat `pnpm-workspace.yaml` `overrides:` as authoritative. Root `package.json` top-level `overrides` is inert under pnpm unless expressed as `pnpm.overrides`. Pair same-day release floors with `minimumReleaseAgeExclude` under `minimumReleaseAge`.
-- Before removing an entry from `architecture/test-only-exports.json`, grep the symbol repo-wide for static imports. Dynamic access such as `linuxGuard.getBlockedKillMessage(...)` in `packages/tools/tests/bash-kill-guard-targets.test.ts` does not make the export statically imported, so allowlist removal can be required bookkeeping.
-- Before crediting `treeKill` from `@wrongstack/core/utils/tree-kill`, inspect both its source export and `packages/core/package.json` `exports`; if either remains unread, identify it as remaining work rather than issuing an unqualified verdict.
+- Before flagging unhandled rejections or double-submits, trace `request(...)` call sites to `packages/vibeui/src/lib/use-panel-requests.ts`. It resolves `null`, dedupes by frame type, and cancels in-flight requests via `[state.id, connection]` cleanup. Sends guarded by `busy` that clear drafts with functional comparisons are race-safe.
+- For new ws calls like `mailbox.send`:
+  - Check fields against all 12 branches of `validateMailboxSendPayload` in `packages/webui-server/src/server/ws-mailbox-validation.ts`.
+  - Confirm a `mailbox.sent` reply carrying `requestId` + `success`, so `acceptsPanelReply` matches.
+- For `SessionSwitch` (`packages/vibeui/src/lib/session-switch.ts`), confirm every exit (`settle`, `cancel`, timeout) releases target, lock, timer and `held` together. A leaked `held` lets `cancel()` replay a stale `session.start`.
 
-## Timers and event rollouts
+## tui
 
-- Require env-configured `setTimeout`/`setInterval` durations to follow `Number.isFinite(x) && x >= min ? Math.min(x, 2_147_483_647) : DEFAULT`. Node converts larger delays to 1 ms. Compare `mailbox-project-server*.ts`, `session-catalog/project-server.ts`, `kanban/src/server/project-server.ts`, `sage/src/project-server.ts`, and `tools/src/codebase-index/project-server.ts`.
-- For new `SessionEvent` literals such as `enhance_usage`, grep repo-wide and verify one writer per surface and one fold per consumer. Check `packages/core/src/types/session-events.ts`, `packages/tui/src/submit-prompt-refinement.ts`, `packages/webui-server/src/server/model-operations.ts`, `session-summary-tracker.ts`, `session-store/summary-builder.ts`, and `session-store/load-session-data.ts`; full-replay and legacy branches must be mutually exclusive.
+- When `SettingsPickerValues` (`packages/tui/src/settings-contracts.ts`) gains a required key:
+  - Find missed fixtures by grepping `packages/tui/tests` for a sibling key like `toolResultViewMode`, not the new key.
+  - Verify `Object.keys(SETTINGS_DEFAULTS).toHaveLength(N)` by counting the literal in `packages/tui/src/components/settings-picker-model.ts`, skipping comments.
+- In `packages/tui/src/app-view.tsx`, treat the `localX` + `selectionSaveQueue` + `selectionSaveVersion` trio as intentional and race-safe. Do not flag superseded-save failures. Check `historyScrollRef` against `packages/tui/src/components/history/scroll-controller-types.ts`.
+
+## Tools, dependencies, timers
+
+- Browser:
+  - `browserPrivateOrigins(root)` merges `/browser allow` with `WRONGSTACK_BROWSER_PRIVATE_ORIGINS`.
+  - Accept "takes effect immediately" only after tracing the `managerFor` cache refresh in `packages/tools/src/browser/manager.ts`.
+  - `timeoutMs` + `managesOwnTimeout: true` is the accepted convention.
+- Lockfile: attribute surviving references by their owning importer block, never by line proximity. `pnpm-workspace.yaml` `overrides:` is authoritative; root `package.json` `overrides` is inert under pnpm.
+- Before removing an entry from `architecture/test-only-exports.json`, grep for static imports. Dynamic access does not count.
+- Env-configured timer durations must follow `Number.isFinite(x) && x >= min ? Math.min(x, 2_147_483_647) : DEFAULT`.
+- For new `SessionEvent` literals (`packages/core/src/types/session-events.ts`), require one writer per surface and one fold per consumer. Replay and legacy branches must be mutually exclusive.
 
 ## Output
 
-- Return `{"findings": []}` only after these project-specific checks pass.
+- Return `{"findings": []}` only after these checks pass.
