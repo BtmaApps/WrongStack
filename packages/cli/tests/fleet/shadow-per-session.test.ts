@@ -234,4 +234,15 @@ describe('HostShadowManager keeps one review per conversation', () => {
     await flush();
     expect(h.spawns).toHaveLength(before);
   });
+
+  it('does not wipe an active replacement shadow agent when clearing a retired shadow agent id', () => {
+    h.manager.recordShadowAgent('shadow-old', 'task-old', 30_000, TAB_A);
+    h.manager.recordShadowAgent('shadow-new', 'task-new', 30_000, TAB_A);
+
+    h.manager.clearShadowAgent('shadow-old');
+
+    expect(h.manager.isShadowAgent('shadow-old')).toBe(false);
+    expect(h.manager.isShadowAgent('shadow-new')).toBe(true);
+    expect(h.manager.getAgentId(TAB_A)).toBe('shadow-new');
+  });
 });

@@ -38,10 +38,10 @@
  * @module fleet/host-shadow-manager
  */
 
-import type { Config, SubagentConfig } from '@wrongstack/core/types';
 import { areSubagentsAllowedForSession, type Director } from '@wrongstack/core/coordination';
-import type { MultiAgentDeps, MultiAgentHostOptions } from './host-types.js';
+import type { Config, SubagentConfig } from '@wrongstack/core/types';
 import { runHostShadowPass, stopHostShadowAfterTask } from './host-shadow-pass.js';
+import type { MultiAgentDeps, MultiAgentHostOptions } from './host-types.js';
 
 interface HostShadowManagerContext {
   deps: MultiAgentDeps;
@@ -165,6 +165,9 @@ export class HostShadowManager {
       if (sessionId === keep) continue;
       if (!isDisposable(state)) continue;
       this.sessions.delete(sessionId);
+      for (const [taskId, owner] of this.taskSessions) {
+        if (owner === sessionId) this.taskSessions.delete(taskId);
+      }
       return;
     }
     // Every tracked conversation is still busy. Growing past the cap is the
@@ -256,6 +259,9 @@ export class HostShadowManager {
   ): void {
     const id = this.resolve(sessionId);
     const state = this.stateFor(id);
+    if (state.agentId && state.agentId !== subagentId) {
+      this.agentSessions.delete(state.agentId);
+    }
     state.agentId = subagentId;
     state.taskId = taskId;
     state.heartbeatIntervalMs = intervalMs ?? state.heartbeatIntervalMs;
@@ -274,8 +280,13 @@ export class HostShadowManager {
   clearShadowAgent(subagentId?: string): void {
     if (subagentId) {
       const sessionId = this.agentSessions.get(subagentId);
+      this.agentSessions.delete(subagentId);
       if (!sessionId) return;
-      this.clearSessionShadowAgent(sessionId);
+      if (this.sessions.get(sessionId)?.agentId === subagentId) {
+        this.clearSessionShadowAgent(sessionId);
+      } else {
+        this.ctx.opts.onShadowAgentStopped?.(subagentId);
+      }
       return;
     }
     for (const sessionId of [...this.sessions.keys()]) this.clearSessionShadowAgent(sessionId);
