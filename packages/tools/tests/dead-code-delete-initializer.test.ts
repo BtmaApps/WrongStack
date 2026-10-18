@@ -70,4 +70,17 @@ describe('dead-code fix keeps delete initializers', () => {
         'export function live(state: string): string {\n  state = "normalized";\n  return state;\n}\n',
     );
   });
+
+  it('surfaces signature types from exported arrow function initializers', async () => {
+    const { collectSignatureTypeNames } = await import('../src/dead-code/parse-type-surface.js');
+    const source = [
+      'export interface Entry { at: number }',
+      'interface Result { ring: Entry[] }',
+      'export const wire = (): Result => ({ ring: [] });',
+    ].join('\n');
+    const sf = ts.createSourceFile('src/wiring.ts', source, ts.ScriptTarget.Latest, true);
+    const names = collectSignatureTypeNames(ts, sf, new Set());
+    expect(names.has('Result')).toBe(true);
+    expect(names.has('Entry')).toBe(true);
+  });
 });

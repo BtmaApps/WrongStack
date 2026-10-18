@@ -62,13 +62,21 @@ export function collectSignatureTypeNames(
         ts.isPropertyAssignment(node)) &&
       'initializer' in node
     ) {
-      // Visit the declared type, not the initializer.
-      const typed = node as { type?: TS.TypeNode | undefined };
+      // Visit the declared type, and also visit arrow/function expression
+      // initializers so exported arrow functions surface their signature types.
+      const typed = node as { type?: TS.TypeNode | undefined; initializer?: TS.Expression };
       if (typed.type) visit(typed.type);
+      if (
+        typed.initializer &&
+        (ts.isArrowFunction(typed.initializer) || ts.isFunctionExpression(typed.initializer))
+      ) {
+        visit(typed.initializer);
+      }
       if (ts.isParameter(node) || ts.isVariableDeclaration(node)) visit(node.name);
       return;
     }
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+      for (const tp of node.typeParameters ?? []) visit(tp);
       for (const p of node.parameters) visit(p);
       if (node.type) visit(node.type);
       return;
@@ -94,9 +102,14 @@ export function collectSignatureTypeNames(
       ((ts.isFunctionDeclaration(stmt) ||
         ts.isClassDeclaration(stmt) ||
         ts.isInterfaceDeclaration(stmt) ||
-        ts.isTypeAliasDeclaration(stmt)) &&
+        ts.isTypeAliasDeclaration(stmt) ||
+        ts.isEnumDeclaration(stmt)) &&
         stmt.name !== undefined &&
-        exportedLocals.has(stmt.name.text));
+        exportedLocals.has(stmt.name.text)) ||
+      (ts.isVariableStatement(stmt) &&
+        stmt.declarationList.declarations.some(
+          (d) => ts.isIdentifier(d.name) && exportedLocals.has(d.name.text),
+        ));
     if (exported) {
       ts.forEachChild(stmt, visit);
     } else if (
