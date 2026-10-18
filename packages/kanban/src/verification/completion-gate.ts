@@ -323,6 +323,7 @@ export async function finalizeTaskCompletion(
       // Soft enforcement: complete anyway, but leave a durable warning trail.
       task.status = 'completed';
       task.completedAt = task.assignment?.completedAt ?? task.completedAt ?? now;
+      clearGateRefusals(task);
       events.push(
         createKanbanEvent(board.id, task, 'task.completion.gate_soft_failed', {
           ...options.eventContext,
