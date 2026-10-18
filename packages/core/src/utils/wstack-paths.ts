@@ -76,7 +76,9 @@ export interface WstackPaths {
   /**
    * Per-project codebase symbol index (SQLite). Lives under the global project
    * dir — NOT inside the repo — so it never clutters the working tree or needs
-   * gitignoring. `~/.wrongstack/projects/<hash>/codebase-index`.
+   * gitignoring. `~/.wrongstack/projects/<hash>/codebase-index`; a linked git
+   * worktree gets its own `codebase-index-worktrees/<checkout>` beside it,
+   * because the index holds absolute paths of exactly one checkout.
    */
   projectCodebaseIndex: string;
   /** ~/.wrongstack/profiles/<activeProfile>/history — REPL line history. */
@@ -205,6 +207,23 @@ function gitIdentityRoot(checkoutRoot: string): string {
     // fail. Falling back preserves the pre-canonicalization behavior.
     return checkoutRoot;
   }
+}
+
+/**
+ * Directory for the codebase symbol index of one checkout.
+ *
+ * The index stores absolute file paths, so it cannot be shared the way session,
+ * mail and presence state are: a linked worktree that indexed last would make
+ * the main checkout's `codebase-search` return paths inside the worktree (and
+ * vice versa). The main checkout keeps `<projectDir>/codebase-index`; every
+ * linked worktree gets its own directory below the same project dir, keyed by
+ * the worktree's own on-disk path.
+ */
+function codebaseIndexDir(projectDir: string, checkoutRoot: string): string {
+  const own = onDiskCase(path.resolve(checkoutRoot));
+  if (own === canonicalProjectRoot(own)) return path.join(projectDir, 'codebase-index');
+  const key = `${slugify(path.basename(own))}-${createHash('sha256').update(own).digest('hex').slice(0, 6)}`;
+  return path.join(projectDir, 'codebase-index-worktrees', key);
 }
 
 export function projectHash(absRoot: string): string {
@@ -360,7 +379,7 @@ export function resolveWstackPaths(opts: WstackPathOptions): WstackPaths {
     historyFile: path.join(profileDir, 'history'),
     logFile: path.join(globalRoot, 'logs', 'wrongstack.log'),
     projectDir,
-    projectCodebaseIndex: path.join(projectDir, 'codebase-index'),
+    projectCodebaseIndex: codebaseIndexDir(projectDir, opts.projectRoot),
     projectMemory: path.join(projectDir, 'memory.md'),
     projectSessions: path.join(projectDir, 'sessions'),
     projectTrust: path.join(projectDir, 'trust.json'),

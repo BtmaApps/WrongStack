@@ -1813,7 +1813,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 91,
-      "sourceLines": 15354
+      "sourceLines": 15373
     },
     {
       "directory": "vcs",

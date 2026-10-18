@@ -70,6 +70,45 @@ describe('wstack-paths', () => {
     }
   });
 
+  it('keys the path-bearing codebase index by checkout, not by shared project identity (#414)', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-worktree-index-'));
+    const main = path.join(tmp, 'main-repo');
+    const globalRoot = path.join(tmp, 'home');
+    try {
+      const linkWorktree = async (name: string): Promise<string> => {
+        const checkout = path.join(tmp, name);
+        const gitDir = path.join(main, '.git', 'worktrees', name);
+        await fs.mkdir(gitDir, { recursive: true });
+        await fs.mkdir(checkout, { recursive: true });
+        await fs.writeFile(path.join(checkout, '.git'), `gitdir: ${gitDir}\n`);
+        await fs.writeFile(path.join(gitDir, 'commondir'), '../..\n');
+        return checkout;
+      };
+      const featureX = await linkWorktree('repo-feature-x');
+      const featureY = await linkWorktree('repo-feature-y');
+      const indexOf = (root: string) =>
+        resolveWstackPaths({ projectRoot: root, globalRoot }).projectCodebaseIndex;
+
+      // The main checkout keeps its existing location, so current indexes stay valid.
+      expect(indexOf(main)).toBe(
+        path.join(
+          resolveWstackPaths({ projectRoot: main, globalRoot }).projectDir,
+          'codebase-index',
+        ),
+      );
+      // Each linked worktree gets a distinct index of its own.
+      const dirs = new Set([indexOf(main), indexOf(featureX), indexOf(featureY)]);
+      expect(dirs.size).toBe(3);
+      // Stable for the same checkout, and still under the shared project dir.
+      expect(indexOf(featureX)).toBe(indexOf(featureX));
+      expect(path.dirname(path.dirname(indexOf(featureX)))).toBe(
+        resolveWstackPaths({ projectRoot: main, globalRoot }).projectDir,
+      );
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
   it('keeps Git submodules distinct from their superproject identity', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-submodule-identity-'));
     const main = path.join(tmp, 'main-repo');
