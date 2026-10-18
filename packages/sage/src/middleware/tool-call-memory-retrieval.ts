@@ -39,10 +39,7 @@ export function pathAnchorRelation(
     // target the same path.
     if (!anchor.path) continue;
     const anchorNorm = anchor.path.replace(/\\/g, '/').replace(/^\.\//, '');
-    if (
-      (anchor.type === 'file' || anchor.type === 'symbol' || anchor.type === 'command') &&
-      anchorNorm === relPath
-    ) {
+    if (anchorNorm === relPath) {
       const exact = anchor.type === 'symbol' || anchor.type === 'command' ? 0.98 : 0.95;
       if (!best || exact > best.strength) {
         best = {

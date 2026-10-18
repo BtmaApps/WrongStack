@@ -193,4 +193,22 @@ describe('tool-call-memory rejectedDetail (A4)', () => {
     expect(belowScoreCount).toBe(payload.rejected.belowScore);
     expect(budgetCount).toBe(payload.rejected.budget);
   });
+
+  it('pathAnchorRelation matches exact paths for test, git, directory, and package anchors', async () => {
+    const { pathAnchorRelation } = await import(
+      '../../src/middleware/tool-call-memory-retrieval.js'
+    );
+    const relation = pathAnchorRelation(
+      {
+        id: 'mem-test-anchor',
+        content: 'Reset fake timers in tests/auth.test.ts',
+        anchors: [{ type: 'test', path: 'tests/auth.test.ts' }],
+      } as never,
+      'tests/auth.test.ts',
+    );
+    expect(relation).toEqual({
+      strength: 0.95,
+      reason: 'anchor:exact-test:tests/auth.test.ts',
+    });
+  });
 });
