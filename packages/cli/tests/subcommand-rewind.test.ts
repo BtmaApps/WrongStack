@@ -348,6 +348,27 @@ describe('rewindCmd', () => {
     expect(all).toContain('perm denied');
   });
 
+  it('returns 1, reports errors, and skips journal truncation when all file reverts fail', async () => {
+    rewindInstance.rewindToStart.mockResolvedValue({
+      revertedFiles: [],
+      errors: ['src/a.ts: permission denied'],
+      toPromptIndex: 0,
+    });
+    const truncate = vi.fn().mockResolvedValue(0);
+    storeInstance.resume.mockResolvedValue({
+      writer: { truncateToCheckpoint: truncate, close: vi.fn() },
+    });
+    const deps = fakeDeps();
+    const code = await rewindCmd(['--all', '--resume'], deps);
+    expect(code).toBe(1);
+    expect(truncate).not.toHaveBeenCalled();
+    const all = (deps.renderer.write as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => c[0])
+      .join('');
+    expect(all).toContain('src/a.ts: permission denied');
+    expect(all).not.toContain('No files to revert.');
+  });
+
   it('catches and reports thrown errors', async () => {
     rewindInstance.rewindToStart.mockRejectedValue(new Error('disk full'));
     const deps = fakeDeps();

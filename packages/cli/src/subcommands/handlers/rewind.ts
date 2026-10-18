@@ -146,7 +146,7 @@ export const rewindCmd: SubcommandHandler = async (args, deps) => {
       return 1;
     }
 
-    if (result.revertedFiles.length === 0) {
+    if (result.revertedFiles.length === 0 && result.errors.length === 0) {
       deps.renderer.write('No files to revert.\n');
       if (flags.resume) {
         // Still truncate even if no files changed
@@ -160,9 +160,19 @@ export const rewindCmd: SubcommandHandler = async (args, deps) => {
       return 0;
     }
 
-    deps.renderer.write(`\nReverted ${result.revertedFiles.length} file(s):\n`);
-    for (const f of result.revertedFiles) {
-      deps.renderer.write(`  ${color.green('✓')} ${f}\n`);
+    if (result.revertedFiles.length > 0) {
+      deps.renderer.write(`\nReverted ${result.revertedFiles.length} file(s):\n`);
+      for (const f of result.revertedFiles) {
+        deps.renderer.write(`  ${color.green('✓')} ${f}\n`);
+      }
+    }
+
+    if (result.errors.length > 0) {
+      deps.renderer.write(`\n${result.errors.length} error(s):\n`);
+      for (const e of result.errors) {
+        deps.renderer.write(`  ${color.red('✗')} ${e}\n`);
+      }
+      return 1;
     }
 
     if (flags.resume) {
@@ -184,13 +194,6 @@ export const rewindCmd: SubcommandHandler = async (args, deps) => {
       );
     }
 
-    if (result.errors.length > 0) {
-      deps.renderer.write(`\n${result.errors.length} error(s):\n`);
-      for (const e of result.errors) {
-        deps.renderer.write(`  ${color.red('✗')} ${e}\n`);
-      }
-      return 1;
-    }
     return 0;
   } catch (err) {
     deps.renderer.writeError(toErrorMessage(err));
