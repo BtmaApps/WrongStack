@@ -42,8 +42,8 @@ export function cloneJsonMetadata(metadata: Record<string, unknown>): Record<str
 }
 
 export function jsonValuesEqual(left: unknown, right: unknown): boolean {
-  if (left === right) return true;
   if (typeof left === 'number' && typeof right === 'number') return Object.is(left, right);
+  if (left === right) return true;
   if (Array.isArray(left)) {
     return (
       Array.isArray(right) &&

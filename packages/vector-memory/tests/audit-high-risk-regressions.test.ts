@@ -168,4 +168,10 @@ describe('high-risk audit regressions', () => {
     expect(store.get(entry.id)?.vector).toBeUndefined();
     store.close();
   });
+
+  it('distinguishes -0 from +0 in jsonValuesEqual and rejects lossy -0 metadata', async () => {
+    const { cloneJsonMetadata, jsonValuesEqual } = await import('../src/store-values.js');
+    expect(jsonValuesEqual(-0, 0)).toBe(false);
+    expect(() => cloneJsonMetadata({ direction: -0 })).toThrow(/lossless JSON values/);
+  });
 });
