@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.7 → 1.0.0).
+// Changelog — 1.x era (1.1.8 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -11,11 +11,25 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.8',
+    date: '2026-10-18',
+    tagline: 'A hardening release: audit fixes across the daemon, MCP, security gates and VibeUI',
+    latest: true,
+    highlights: [
+      'The YOLO payload scan closes secret-scrub, shell-cluster, kill-guard and rm bypasses, and the license and dependency-vulnerability gates now inspect exec args and cwd',
+      'Governance rejects plan paths that resolve to the root and normalizes task-contract path scopes, and the regex guard handles character-class brace escapes under the unicode flag',
+      'VibeUI gains a syntax-highlighted code panel, JSON tree, content view and live working-activity status, and drops stale approvals on reconnect, keeps drafts through racing updates and handles model switch results',
+      'The WebUI can submit next-step suggestions as a batch with a custom message',
+      'MCP stream-reads an SSE initialize response under the body cap and closes pooled Kanban connections on failed setup; the client rejects pending waiters when the socket drops into reconnecting',
+      'Desktop persists window geometry and closes runtimes before quitting, ACP keeps replay updates during session load, and re-enabling an automation job recomputes a stale next run',
+      'The website gets a continuous ambient background with a motion toggle, a fluid site shell and a refreshed social preview',
+    ],
+  },
+  {
     version: '1.1.7',
     date: '2026-10-18',
     tagline:
       'VibeUI joins as the seventh interface, with TUI text selection and a WebUI visual refresh',
-    latest: true,
     highlights: [
       'VibeUI, launched with wstack vibeui or wstack --vibeui on port 3476, is a focused coding workspace between SimpleUI and the full WebUI, served as prebuilt static assets by the existing WrongStack host and bundled in npm and standalone binaries',
       'VibeUI streams chat with a per-session queue you can pause, reorder and edit, and brings sessions, the provider/model picker, @file and $skill completion, diffs, plan and task views, live agent transcripts, quota and SAGE memory with a relationship graph',
