@@ -8,6 +8,7 @@ import {
   wireRollupsToChronicle,
 } from '../../src/chronicle/index.js';
 import { EventBus } from '../../src/kernel/events.js';
+
 const dirs: string[] = [];
 afterEach(async () =>
   Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))),
@@ -264,5 +265,32 @@ describe('Chronicle rollups', () => {
     expect(recorded.filter((event) => event.eventType === 'tool.resource.observed')).toHaveLength(
       0,
     );
+  });
+
+  it('flushes tool.progress bucket immediately on tool.failed even when sessionId is omitted', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-rollup-fail-nosession-'));
+    dirs.push(dir);
+    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
+    const events = new EventBus();
+    const context = createChronicleContext({ installationId: 'i', machineId: 'm' }, 'trace');
+    const off = wireRollupsToChronicle({ events, journal, context, windowMs: 60_000 });
+    events.emit('tool.progress', {
+      id: 'call-no-session',
+      name: 'bash',
+      event: { type: 'stdout', text: 'partial output' },
+    } as never);
+    events.emit('tool.failed', {
+      id: 'call-no-session',
+      name: 'bash',
+      error: 'exit code 1',
+    } as never);
+    await journal.flush();
+    const recordedBeforeDispose = await journal.readAll();
+    off();
+    expect(recordedBeforeDispose).toHaveLength(1);
+    expect(recordedBeforeDispose[0]?.attributes).toMatchObject({
+      signal: 'tool.progress',
+      samples: 1,
+    });
   });
 });

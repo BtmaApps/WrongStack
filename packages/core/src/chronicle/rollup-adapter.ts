@@ -261,7 +261,7 @@ export function wireRollupsToChronicle(options: ChronicleRollupAdapterOptions): 
       }
     }),
     options.events.on('tool.failed', (event) =>
-      flush(`tool.progress\0${event.sessionId}\0${event.id}`),
+      flush(`tool.progress\0${event.sessionId ?? ''}\0${event.id ?? ''}`),
     ),
     options.events.on('ctx.pct', (event) => gauge('ctx.pct', event)),
     options.events.on('subagent.ctx_pct', (event) =>
