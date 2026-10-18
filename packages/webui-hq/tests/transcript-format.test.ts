@@ -169,12 +169,16 @@ describe('formatDuration', () => {
     expect(formatDuration(119_500)).toBe('2m0s');
     expect(formatDuration(179_500)).toBe('3m0s');
     expect(formatDuration(239_999)).toBe('4m0s');
+    expect(formatDuration(999.7)).toBe('1.0s');
+    expect(formatDuration(9960)).toBe('10s');
   });
 });
 
 describe('toolDisplayName', () => {
   it('rewrites mcp prefixes and defaults empty to "tool"', () => {
     expect(toolDisplayName('mcp__github__list_prs')).toBe('github:list_prs');
+    expect(toolDisplayName('mcp__my_server__foo__bar')).toBe('my_server:foo__bar');
+    expect(classifyTool('mcp__filesystem__read_file')).toBe('read');
     expect(toolDisplayName(undefined)).toBe('tool');
   });
 });

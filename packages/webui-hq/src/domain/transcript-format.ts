@@ -17,7 +17,7 @@ export type ToolKind = 'edit' | 'write' | 'bash' | 'read' | 'search' | 'fetch' |
 
 /** Classify a tool by name into a rendering family. Case-insensitive. */
 export function classifyTool(toolName: string | undefined): ToolKind {
-  const n = (toolName ?? '').toLowerCase().replace(/^mcp__[^_]+__/, '');
+  const n = (toolName ?? '').toLowerCase().replace(/^mcp__(?:.+?)__/, '');
   if (/^(edit|str_replace|edit_file|patch|apply_patch|multiedit)$/.test(n)) return 'edit';
   if (/^(write|write_file|create_file|new_file)$/.test(n)) return 'write';
   if (/^(bash|shell|exec|run|run_command|run_shell|powershell|terminal)$/.test(n)) return 'bash';
@@ -105,9 +105,10 @@ export function extractTodos(input: string | undefined): TodoItem[] | null {
 /** Human-friendly duration for a tool call (e.g. `820ms`, `2.4s`, `1m3s`). */
 export function formatDuration(ms: number | undefined): string {
   if (ms === undefined || !Number.isFinite(ms) || ms < 0) return '';
-  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const roundedMs = Math.round(ms);
+  if (roundedMs < 1000) return `${roundedMs}ms`;
   if (ms < 60_000) {
-    const secs = (ms / 1000).toFixed(ms < 10_000 ? 1 : 0);
+    const secs = (ms / 1000).toFixed(ms < 9950 ? 1 : 0);
     // 59.5 s rounds to "60": past the unit, so it renders as minutes below.
     if (Number(secs) < 60) return `${secs}s`;
   }
@@ -122,7 +123,7 @@ export function formatDuration(ms: number | undefined): string {
 /** Short display label for a tool name, stripping the `mcp__server__` prefix. */
 export function toolDisplayName(toolName: string | undefined): string {
   if (!toolName) return 'tool';
-  return toolName.replace(/^mcp__([^_]+)__/, '$1:');
+  return toolName.replace(/^mcp__(.+?)__/, '$1:');
 }
 
 /** Format a timestamp string as a local `HH:MM:SS`, or '' when unparseable. */
