@@ -157,8 +157,10 @@ export class TaskDAG {
     let hasUnblocked = false;
     for (const depId of node.dependents) {
       const dep = this.nodes.get(depId);
+      if (!dep) continue;
+      dep.deps = dep.deps.filter((d) => d !== id);
       if (
-        dep?.deps.every((d) => {
+        dep.deps.every((d) => {
           if (!this.nodes.has(d)) return true;
           const s = this.nodes.get(d)!.status;
           return s === 'done' || s === 'skipped';
@@ -168,7 +170,7 @@ export class TaskDAG {
         hasUnblocked = true;
       }
     }
-    if (hasUnblocked) this._emitReady();
+    if (hasUnblocked || this.isDone() || this.hasDeadlock()) this._emitReady();
   }
 
   // ── State transitions ──────────────────────────────────────────────────

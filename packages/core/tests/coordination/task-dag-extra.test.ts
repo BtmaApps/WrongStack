@@ -187,5 +187,21 @@ describe('task-dag — extra coverage', () => {
 
     // Now both deps are satisfied (one done, one removed) → child is ready.
     expect(dag.getNode('child')!.status).toBe('ready');
+    expect(dag.getNode('child')!.deps).toEqual(['done']);
+  });
+
+  it('removeNode emits graph:done when removing the last remaining incomplete node', () => {
+    const dag = new TaskDAG();
+    const events: string[] = [];
+    dag.onEvent((e) => events.push(e.type));
+
+    dag.addNode('a', 'Step A');
+    dag.addNode('b', 'Step B', ['a']);
+    dag.start('a', 'worker-1');
+    dag.complete('a', 'ok');
+
+    dag.removeNode('b');
+    expect(dag.isDone()).toBe(true);
+    expect(events).toContain('graph:done');
   });
 });
