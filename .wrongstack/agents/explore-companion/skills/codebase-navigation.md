@@ -1,16 +1,18 @@
-## Test Surfaces
-
-- Map test files in order: repo-wide filename grep; collection through BOTH `packages/<pkg>/vitest.config.ts` `include` and root `vitest.config.ts` (`packages/**/tests/**/*.test.{ts,tsx}`); then edit gates in `packages/<pkg>/package.json` (`test`, `typecheck:tests`), coverage `thresholds`, and `architecture/test-typecheck-baseline/packages-<pkg>.json`. Do not use `codebase-incoming-calls`/`impact-analysis` to establish consumers of exportless tests.
-- For `packages/kanban/src/verification/*`, pair module-path grep with `codebase-incoming-calls` on each export and a glob of `packages/kanban/tests/verification/`. Trace behavioral seams through `command-security.ts` (`validateCommand`) and `verification-context.ts` (`VerificationContext.runCommand`): `desktop-vitest-command.test.ts` exercises `desktop-vitest-command.js` without importing it.
-
 ## Consumer Closure
 
-- For `packages/kanban/src/server/client.ts`, pair `codebase-incoming-calls` with repo-wide greps for `getKanbanServerConnection`, `closeKanbanServerConnections`, and `isKanbanServerAvailable`. `server/client(\.js)?["']` misses `./client.js` imports in `kanban-store.ts`, `remote-storage.ts`, and `kanban-supervisor-bridge.ts`; single-line import regexes miss multiline barrel imports.
-- Check the exact specifier `from '@wrongstack/kanban';` AND subpaths `/test-support`, `/manager/lifecycle`, `/contract-graph`, `/queue-anomalies`. These bypass `packages/kanban/src/index.ts`; barrel edits do not reach them.
-- For `packages/tui/src/cell-selection.ts`, grep every exported symbol repo-wide: `selectionText`, `selectedRuns`, `mountedTextRuns`, `screenOrigin`. Neither `cell-selection(\.js)?["']` nor indexed callers alone closes consumers; the index has missed `screenOrigin`. Report an otherwise-unimported consumer hook, such as `useComposerPointer` in `packages/tui/src/hooks/use-composer-pointer.ts`, as a dead-code signal, not closure.
-- Resolve `packages/tui/src/components/settings-picker-model.ts` through its star re-exports using `codebase-search`: `SETTINGS_FIELD_COUNT` belongs to `settings-picker-constants.ts`; `resolveSettingsFieldValue` to `settings-picker-resolver.ts`. Check direct model-path imports and `architecture/test-only-exports.json`.
+- For React components, grep rendered CSS classes as well as symbols: `.workspace-notes` is selected by `packages/vibeui/tests/browser-smoke.mjs`, outside `codebase-incoming-calls`.
+- Read exact exports with `codebase-skeleton` before querying callers: `packages/cli/src/vibeui-dist.ts` exports `resolveVibeUiDistDir`, not `resolveVibeuiDist`.
+- For `packages/vibeui/src/lib/*`, combine per-export `codebase-incoming-calls`, module-path grep, and per-symbol repo-wide grep. Verify unexpected zeros with file-scoped grep and `packages/<pkg>/tests/<module-stem>.test.ts`; indexed callers and repo-wide searches have missed live imports and tests.
+- Search type-only consumers separately. For `packages/vibeui/src/lib/use-session.ts`, grep `SessionController` (`ReturnType<typeof hook>`), `Attachment`, and `DraftRequest`; runtime callers such as `workspace.tsx:55` do not close the contract.
+- For `packages/vibeui/src/lib/session.ts`, include `record`, `text`, `rows`, `contentText`, `SessionState`, `ChatEntry`, `ToolEntry`, `AgentEntry`, and `InputRequest`, not just `reduceFrame`. Read `use-session.ts` around lines 150–200 for session filtering and run-ownership post-processing before describing reducer boundaries.
+- For `packages/kanban/src/server/client.ts`, grep `getKanbanServerConnection`, `closeKanbanServerConnections`, and `isKanbanServerAvailable`; path regexes miss `./client.js` and multiline barrel imports. Check `@wrongstack/kanban` subpaths `/test-support`, `/manager/lifecycle`, `/contract-graph`, and `/queue-anomalies` independently of `src/index.ts`.
 
-## Unindexed and Build Surfaces
+## Scratch and Build Surfaces
 
-- Map `.temp_files/<round>/vitest.config.ts` with direct `read`, `tree`, and repo-wide round-name grep, not incoming edges: root excludes `**/.temp_files/**`. Trace `...base`, plugin `load`/`resolveId`, and cwd-relative `include`/`setupFiles` without `test.root`. Run `glob packages/<pkg>/vitest.config.*`: a stale `.js` twin can satisfy a `.js` import instead of TypeScript.
-- Trace `apps/desktop` through `scripts/build-package.mjs` `entries` and `apps/desktop/package.json` `"main"`, not import counts. For preload consumers, grep the `contextBridge.exposeInMainWorld` name (`wrongstackDesktop`) and inspect `runtime-manager-paths.ts`; classify architecture reports and `.wrongstack/atlas/*` as metadata.
+- For `.temp_files/<round>/`, combine `tree`, repo-wide round-name grep, and path-scoped `grep`; inspect sibling `run.mjs`, `run.ps1`, and Vitest configs. Verify traversal using a known target string: `.gitignore`, root `rg`, and `codebase-*` exclusions make zero hits inconclusive. Read JSONL match context before treating filename mentions as invocations.
+- Trace `apps/desktop` through `scripts/build-package.mjs` `entries`, package `"main"`, and `contextBridge.exposeInMainWorld` name `wrongstackDesktop`, not import counts.
+
+## Test Configuration
+
+- Compare package and root `vitest.config.ts` collection and setup before classifying failures. `packages/webui-server/vitest.config.ts` omits root `setupFiles` (`./vitest.setup.ts`, hermetic `WRONGSTACK_HOME`) and `globalSetup` (`./vitest.globalTeardown.ts`, daemon reaping); package-local `bun run test` therefore differs from root execution.
+- Glob `packages/<pkg>/vitest.config.*` for stale `.js` twins; inspect package `test`, `typecheck:tests`, coverage `thresholds`, and `architecture/test-typecheck-baseline/packages-<pkg>.json` for edit gates.
