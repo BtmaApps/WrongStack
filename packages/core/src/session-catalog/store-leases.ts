@@ -291,7 +291,9 @@ export function executeHeartbeat(
   const row = verifyLeaseCredential(db, credential);
   const expiresAt = Date.now() + SESSION_CATALOG_DEFAULT_LEASE_MS;
   const nextStatus =
-    status ?? (row.status === 'closing' ? 'closing' : row.status === 'lost' ? 'idle' : row.status);
+    row.status === 'closing'
+      ? 'closing'
+      : (status ?? (row.status === 'lost' ? 'idle' : row.status));
   const entry = parseJson<SessionRegistryEntry>(row.entry_json);
   entry.status = nextStatus;
   entry.lastHeartbeatAt = new Date().toISOString();

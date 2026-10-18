@@ -553,4 +553,18 @@ describe('SessionCatalogStore', () => {
     store.release(live);
     store.close();
   });
+
+  it('preserves terminal closing status when heartbeat is called with an explicit status', async () => {
+    const { store } = await fixture();
+    const id = '2026-08-08/sess_closing_terminal';
+    const cred = store.claimNew(entry(id), 'owner-a');
+    store.markClosing(cred);
+    expect(store.getLive(id)?.status).toBe('closing');
+
+    store.heartbeat(cred, 'active');
+    expect(store.getLive(id)?.status).toBe('closing');
+
+    store.release(cred);
+    store.close();
+  });
 });
