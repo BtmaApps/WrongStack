@@ -1,5 +1,6 @@
 import type { Capabilities, ReasoningEffort, Request } from '@wrongstack/core/types';
 import type { CompatibilityQuirks } from './compatibility-quirks.js';
+import { isEffortRejected } from './effort-support.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import { OpenAIProvider } from './openai.js';
@@ -116,7 +117,9 @@ export class OpenAICompatibleProvider extends OpenAIProvider {
     // OpenAI accepts (none/low/medium/high); the broader internal levels —
     // `minimal`, `xhigh`, `max` — were silently dropped, so picking `max` on a
     // generic compatible model (MiniMax, DeepSeek, …) sent no effort at all.
-    applyGenericReasoningEffort(body, req, this.opts.quirks?.thinkingParam);
+    if (!isEffortRejected(this.id, req.model)) {
+      applyGenericReasoningEffort(body, req, this.opts.quirks?.thinkingParam);
+    }
     // Many OpenAI-compatible servers (Together, Fireworks, DeepSeek, etc.)
     // accept the `top_k` parameter even though real OpenAI rejects it.
     if (req.topK !== undefined) body['top_k'] = req.topK;

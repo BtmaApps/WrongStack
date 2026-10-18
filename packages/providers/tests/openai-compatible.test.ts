@@ -594,6 +594,15 @@ describe('OpenAICompatibleProvider', () => {
     await p.complete(req, { signal: new AbortController().signal });
     expect(bodies).toHaveLength(3);
     expect(bodies[2]).not.toHaveProperty('reasoning_effort');
+
+    // Out-of-set effort ('max' -> 'xhigh') with tools also honors the learned refusal
+    // and is stripped when retrying a gateway that rejected 'xhigh' with tools on first contact.
+    await p.complete(
+      { ...req, reasoning: { effort: 'max' } },
+      { signal: new AbortController().signal },
+    );
+    expect(bodies).toHaveLength(4);
+    expect(bodies[3]).not.toHaveProperty('reasoning_effort');
   });
 
   it('the suppressEffortWithTools quirk omits the field without probing', async () => {
