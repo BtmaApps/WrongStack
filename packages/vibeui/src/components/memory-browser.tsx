@@ -3,6 +3,7 @@
 import { Background, Controls, type Edge, type Node, Position, ReactFlow } from '@xyflow/react';
 import { ArrowLeft, RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { listReplyEffect } from '../lib/component-guards';
 import { directMemoryEdges, memoryDate } from '../lib/memory-view';
 import { record, rows, text } from '../lib/session';
 import { usePanelRequests } from '../lib/use-panel-requests';
@@ -34,7 +35,7 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
   const load = useCallback(
     async (cursor?: string) => {
       const owner = ++epoch.current;
-      selectionEpoch.current++;
+      const selectionOwner = ++selectionEpoch.current;
       const result = await request('memory.sage.listPage', {
         query,
         kind,
@@ -45,12 +46,17 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
         limit: 30,
         cursor,
       });
-      if (!result || owner !== epoch.current || result.error) return;
+      if (!result || result.error) return;
+      const effect = listReplyEffect(owner, epoch.current, selectionOwner, selectionEpoch.current);
+      if (effect === 'ignore') return;
       setItems(rows(result.memories));
       setTotal(Number(result.total) || 0);
       setNext(typeof result.nextCursor === 'string' ? result.nextCursor : null);
-      setSelected(null);
-      setGraph(null);
+      // A record opened while this page was loading stays open.
+      if (effect === 'list-and-clear-selection') {
+        setSelected(null);
+        setGraph(null);
+      }
     },
     [request, query, kind, status],
   );

@@ -13,8 +13,9 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { canRestoreDraft, readSavedDraft } from '../lib/component-guards';
 import { clientId } from '../lib/ids';
-import { composeMessage, draftKey, record, text } from '../lib/session';
+import { composeMessage, draftKey } from '../lib/session';
 import { usePanelRequests } from '../lib/use-panel-requests';
 import type { Attachment, SessionController } from '../lib/use-session';
 import { useSkillPicker } from '../lib/use-skill-picker';
@@ -70,6 +71,7 @@ export function Composer({
   const imageInput = useRef<HTMLInputElement>(null);
   const mounted = useRef(true);
   const appliedDraft = useRef('');
+  const blockedDraft = useRef('');
   const mention = /(?:^|\s)@([^\s@]*)$/.exec(draft);
   const query = mention?.[1];
   const hasDraft = Boolean(draft.trim() || references.length || images.length);
@@ -83,17 +85,17 @@ export function Composer({
 
   useEffect(() => {
     mounted.current = true;
+    // Always replace the draft: an unreadable stored draft yields an empty one
+    // rather than keeping (and persisting) the previous session's text here.
+    let raw: string | null = null;
     try {
-      const saved = record(JSON.parse(localStorage.getItem(draftKey(state.id)) ?? '{}'));
-      setDraft(text(saved.text));
-      setReferences(
-        Array.isArray(saved.references)
-          ? saved.references.filter((r): r is string => typeof r === 'string')
-          : [],
-      );
+      raw = localStorage.getItem(draftKey(state.id));
     } catch {
-      /* A malformed draft must not prevent composing. */
+      /* Storage unavailable: start empty. */
     }
+    const saved = readSavedDraft(raw);
+    setDraft(saved.text);
+    setReferences(saved.references);
     setLoaded(true);
     return () => {
       mounted.current = false;
@@ -116,15 +118,21 @@ export function Composer({
       appliedDraft.current === request.id
     )
       return;
-    appliedDraft.current = request.id;
-    if (images.length + (request.images?.length ?? 0) > 4)
-      notice('Remove attached images before restoring this message.');
-    else {
-      if (request.text) setDraft((value) => [value, request.text].filter(Boolean).join('\n\n'));
-      if (request.reference) setReferences((items) => [...new Set([...items, request.reference!])]);
-      if (request.images?.length) setImages((items) => [...items, ...request.images!]);
-      textarea.current?.focus();
+    if (!canRestoreDraft(images.length, request.images?.length ?? 0)) {
+      // Leave the request pending: this effect re-runs when images are removed
+      // and restores it then. Notify once per request, not on every re-run.
+      if (blockedDraft.current !== request.id) {
+        blockedDraft.current = request.id;
+        notice('Remove attached images before restoring this message.');
+      }
+      return;
     }
+    appliedDraft.current = request.id;
+    blockedDraft.current = '';
+    if (request.text) setDraft((value) => [value, request.text].filter(Boolean).join('\n\n'));
+    if (request.reference) setReferences((items) => [...new Set([...items, request.reference!])]);
+    if (request.images?.length) setImages((items) => [...items, ...request.images!]);
+    textarea.current?.focus();
     controller.consumeDraft(request.id);
   }, [controller.draftRequest, controller.consumeDraft, state.id, loaded, images.length, notice]);
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { draftAfterSave } from '../lib/component-guards';
 import { text } from '../lib/session';
 import { usePanelRequests } from '../lib/use-panel-requests';
 import type { SessionController } from '../lib/use-session';
@@ -15,7 +16,13 @@ export function InstructionsEditor({
 }) {
   const { request, busy, error } = usePanelRequests(controller);
   const [document, setDocument] = useState<Record<string, unknown> | null>(null);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraftState] = useState('');
+  // Latest editor text, readable after an await (the closure's `draft` is stale).
+  const latestDraft = useRef('');
+  const setDraft = (value: string) => {
+    latestDraft.current = value;
+    setDraftState(value);
+  };
   const [saved, setSaved] = useState(false);
   const load = async () => {
     const p = await request('user_instructions.get', {}, 'user_instructions');
@@ -67,15 +74,20 @@ export function InstructionsEditor({
         onSubmit={async (event) => {
           event.preventDefault();
           setSaved(false);
+          const submitted = draft;
           const p = await request(
             'user_instructions.save',
-            { text: draft, baseMtimeMs: document?.mtimeMs ?? null },
+            { text: submitted, baseMtimeMs: document?.mtimeMs ?? null },
             'user_instructions',
           );
           if (p?.saved === true && !p.error) {
             setDocument(p);
-            setDraft(text(p.text));
-            setSaved(true);
+            // Edits typed while the save was in flight are kept, not replaced
+            // by the server's copy of the older text.
+            const next = draftAfterSave(submitted, latestDraft.current, text(p.text));
+            latestDraft.current = next;
+            setDraft(next);
+            setSaved(next === text(p.text));
           }
         }}
       >
