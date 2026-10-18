@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { AMBIENT_NODES, startAmbientBackground } from './ambient-engine';
 import './animated-background.css';
@@ -60,6 +60,7 @@ function Geometry({ kind }: { kind: number }) {
 /** Bounded SVG decoration; all motion lives in one imperative, pausable loop. */
 export function AnimatedBackground({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const glowId = `ambient-glow-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
   useEffect(() => (ref.current ? startAmbientBackground(ref.current) : undefined), []);
   return (
     <div
@@ -69,7 +70,13 @@ export function AnimatedBackground({ className }: { className?: string }) {
       data-motion="static"
       data-active-bursts="0"
     >
-      <svg viewBox="0 0 1440 900" fill="none" focusable="false" aria-hidden="true">
+      <svg
+        className="ambient-layer ambient-field"
+        viewBox="0 0 1440 900"
+        fill="none"
+        focusable="false"
+        aria-hidden="true"
+      >
         {AMBIENT_NODES.map((node, index) => (
           <g
             key={node.phase}
@@ -81,6 +88,46 @@ export function AnimatedBackground({ className }: { className?: string }) {
             <Geometry kind={index} />
           </g>
         ))}
+      </svg>
+      <svg
+        className="ambient-layer ambient-effects"
+        viewBox="0 0 1440 900"
+        fill="none"
+        focusable="false"
+        aria-hidden="true"
+      >
+        <defs>
+          <radialGradient id={glowId}>
+            <stop stopColor="var(--brand-pink)" stopOpacity="0.22" />
+            <stop offset="0.38" stopColor="var(--brand-orange)" stopOpacity="0.12" />
+            <stop offset="1" stopColor="var(--brand-orange)" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {AMBIENT_NODES.map((node, index) => (
+          <g
+            key={node.phase}
+            data-ambient-echo=""
+            data-tone={index % 4 === 0 ? 'pink' : index % 3 === 0 ? 'orange' : 'neutral'}
+            opacity="0"
+          >
+            <Geometry kind={index} />
+            <circle data-relay-ring="" r="1" opacity="0" />
+          </g>
+        ))}
+        {Array.from({ length: 12 }, (_, index) => (
+          <circle key={index} data-ambient-trail="" r="22" fill={`url(#${glowId})`} opacity="0" />
+        ))}
+        <g data-pointer-field="" opacity="0">
+          <circle r="165" fill={`url(#${glowId})`} />
+          <circle
+            data-pointer-orbit=""
+            r="42"
+            data-tone="pink"
+            strokeDasharray="12 30 3 45"
+            opacity="0.35"
+          />
+          <circle r="5" data-tone="orange" opacity="0.45" />
+        </g>
         {[0, 1, 2, 3].map((slot) => (
           <g
             key={slot}
@@ -89,6 +136,7 @@ export function AnimatedBackground({ className }: { className?: string }) {
             style={{ display: 'none' }}
           >
             <circle data-ring="" r="1" />
+            <circle data-ring-secondary="" r="1" opacity="0.4" strokeDasharray="3 5" />
             {[0, 1, 2, 3, 4, 5].map((particle) => (
               <path key={particle} data-particle="" d="M-2 0h4" />
             ))}

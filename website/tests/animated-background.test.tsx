@@ -167,6 +167,64 @@ it('reduces mobile density and caps the mobile effect pool at two', () => {
   expect(Number(background().dataset.activeBursts)).toBeLessThanOrEqual(2);
 });
 
+it('keeps proximity tracking active over linked cards and their text', () => {
+  const node = background().querySelector('[data-ambient-node]')!;
+  const position = () =>
+    node
+      .getAttribute('transform')!
+      .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
+      .slice(1)
+      .map(Number);
+  advance();
+  const before = position();
+  const card = document.createElement('a');
+  card.href = '#test-card';
+  const text = document.createElement('span');
+  text.textContent = 'Selectable card copy';
+  card.append(text);
+  container.append(card);
+  text.dispatchEvent(
+    new MouseEvent('pointermove', { bubbles: true, clientX: before[0]! + 40, clientY: before[1]! }),
+  );
+  for (let i = 0; i < 25; i++) advance();
+  const after = position();
+  expect(Math.hypot(after[0]! - before[0]!, after[1]! - before[1]!)).toBeGreaterThan(12);
+  click(text);
+  expect(background().dataset.activeBursts).toBe('0');
+});
+
+it('spreads a short click impulse into nearby objects without pointer movement', () => {
+  const node = background().querySelector('[data-ambient-node]')!;
+  const position = () =>
+    node
+      .getAttribute('transform')!
+      .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
+      .slice(1)
+      .map(Number);
+  advance();
+  const before = position();
+  document.body.dispatchEvent(
+    new MouseEvent('click', {
+      bubbles: true,
+      detail: 1,
+      clientX: before[0]! + 40,
+      clientY: before[1]!,
+    }),
+  );
+  let displacement = 0;
+  for (let i = 0; i < 35; i++) {
+    advance();
+    const after = position();
+    displacement = Math.max(
+      displacement,
+      Math.hypot(after[0]! - before[0]!, after[1]! - before[1]!),
+    );
+  }
+  expect(displacement).toBeGreaterThan(15);
+  advance(2500);
+  expect(background().dataset.activeBursts).toBe('0');
+});
+
 it('stops frames and interactions for reduced motion, then resumes', () => {
   click();
   reduced.matches = true;
@@ -180,6 +238,71 @@ it('stops frames and interactions for reduced motion, then resumes', () => {
   reduced.matches = false;
   notifyMotion();
   expect(frames.size).toBe(1);
+});
+
+it('carries nearby objects along a smooth arc around a stationary pointer', () => {
+  const node = background().querySelector('[data-ambient-node]')!;
+  const position = () =>
+    node
+      .getAttribute('transform')!
+      .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
+      .slice(1)
+      .map(Number);
+  advance();
+  const start = position();
+  const px = start[0]! + 45;
+  const py = start[1]!;
+  let lastAngle = Math.PI;
+  let sweep = 0;
+  let largestStep = 0;
+  let previous = start;
+  for (let i = 0; i < 120; i++) {
+    if (i % 6 === 0)
+      document.body.dispatchEvent(
+        new MouseEvent('pointermove', { bubbles: true, clientX: px, clientY: py }),
+      );
+    advance();
+    const current = position();
+    const angle = Math.atan2(current[1]! - py, current[0]! - px);
+    sweep += Math.atan2(Math.sin(angle - lastAngle), Math.cos(angle - lastAngle));
+    largestStep = Math.max(
+      largestStep,
+      Math.hypot(current[0]! - previous[0]!, current[1]! - previous[1]!),
+    );
+    lastAngle = angle;
+    previous = current;
+  }
+  expect(Math.abs(sweep)).toBeGreaterThan(Math.PI / 3);
+  expect(largestStep).toBeLessThan(12);
+});
+
+it('relays a click through a bounded sequence of shapes and fades the entire chain', () => {
+  const node = background().querySelector('[data-ambient-node]')!;
+  advance();
+  const [x, y] = node
+    .getAttribute('transform')!
+    .match(/translate\(([-\d.]+) ([-\d.]+)\)/)!
+    .slice(1)
+    .map(Number);
+  document.body.dispatchEvent(
+    new MouseEvent('click', { bubbles: true, detail: 1, clientX: x!, clientY: y! }),
+  );
+  const activated = new Map<Element, number>();
+  const domSize = background().querySelectorAll('*').length;
+  for (let i = 0; i < 100; i++) {
+    advance();
+    for (const ring of background().querySelectorAll('[data-relay-ring]')) {
+      if (Number(ring.getAttribute('opacity')) > 0.01 && !activated.has(ring))
+        activated.set(ring, now);
+    }
+  }
+  expect(activated.size).toBeGreaterThanOrEqual(3);
+  expect(activated.size).toBeLessThanOrEqual(6);
+  expect(Math.max(...activated.values()) - Math.min(...activated.values())).toBeGreaterThan(150);
+  advance(2400);
+  expect(background().querySelectorAll('*')).toHaveLength(domSize);
+  expect(background().dataset.activeBursts).toBe('0');
+  for (const ring of activated.keys()) expect(Number(ring.getAttribute('opacity'))).toBe(0);
 });
 
 it('suspends hidden pages and removes the loop and listeners on unmount', async () => {
