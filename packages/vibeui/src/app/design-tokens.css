@@ -1,0 +1,21 @@
+/* VibeUI type + corner scale.
+   Single source for the compact instrument scale; referenced as
+   var(--type-*) and var(--corner-*). Color, shadow and surface tokens
+   stay in globals.css :root blocks because they are theme/palette-scoped.
+   Names deliberately avoid Tailwind's --text-* / --radius-* namespaces
+   so the two token systems cannot collide. */
+:root {
+  --type-2xs: 11px; /* meta labels, kbd, badges — the legibility floor */
+  --type-xs: 12px; /* secondary UI text, dense readouts */
+  --type-sm: 13px; /* UI workhorse: rows, buttons, toolbars */
+  --type-md: 14px; /* inputs and form labels */
+  --type-body: 15px; /* conversation body, matches body */
+  --type-lg: 16px; /* panel headers */
+  --type-xl: 18px; /* section titles */
+  --type-2xl: 21px; /* in-app headings below the welcome display size */
+  --corner-sm: 4px; /* chips, kbd, small checks */
+  --corner-md: 7px; /* rows, inputs, buttons, tabs */
+  --corner-lg: 10px; /* cards, panels, composer, callouts */
+  --corner-xl: 14px; /* modals, dialogs, large surfaces */
+  --corner-pill: 999px; /* switches, pills, progress tracks */
+}

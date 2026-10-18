@@ -100,6 +100,15 @@ export function Workspace() {
     return () => clearTimeout(copyTimer.current);
   }, []);
   useEffect(() => {
+    const query = window.matchMedia('(max-width: 1099px)');
+    const onChange = (event: MediaQueryListEvent) => {
+      // Keep the panel while a dialog is open; yanking it mid-read is worse than overflow.
+      if (event.matches && !document.querySelector('.modal-content')) setPanel(false);
+    };
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
       localStorage.setItem('wrongstack.vibeui.theme', theme);

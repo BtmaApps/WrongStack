@@ -1983,7 +1983,10 @@ try {
     animations: 'disabled',
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Close workspace', exact: true }).click();
+  // Crossing below 1100px with no dialog open closes the workspace panel.
+  await page.waitForFunction(() => document.querySelector('.workspace-panel') === null, undefined, {
+    timeout: 5000,
+  });
   await page.getByRole('button', { name: 'Open sessions', exact: true }).click();
   await page.waitForFunction(
     () => document.querySelector('.session-sidebar')?.getBoundingClientRect().left >= 0,
