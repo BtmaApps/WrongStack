@@ -126,6 +126,18 @@ function nextPoolName(): string {
  *
  *  Once assigned, the name is cached per agent id — reordering the agent list
  *  or re-rendering never changes an existing agent's display name. */
+function disambiguateName(base: string, id: string): string {
+  let unique = base;
+  for (let length = 4; usedNames.has(unique); length++) {
+    unique = `${base} #${id.slice(0, length)}`;
+    if (length >= id.length) {
+      // Even the full id did not separate them: number the label instead.
+      for (let n = 2; usedNames.has(unique); n++) unique = `${base} #${id} ${n}`;
+    }
+  }
+  return unique;
+}
+
 function assignName(id: string, name: string, task?: string | undefined): string {
   if (nameCache.has(id)) return nameCache.get(id)!;
 
@@ -135,22 +147,16 @@ function assignName(id: string, name: string, task?: string | undefined): string
     !UUID_RE.test(explicitName) &&
     explicitName.toLowerCase() !== id.toLowerCase()
   ) {
-    nameCache.set(id, explicitName);
-    usedNames.add(explicitName);
-    return explicitName;
+    const unique = disambiguateName(explicitName, id);
+    nameCache.set(id, unique);
+    usedNames.add(unique);
+    return unique;
   }
 
   if (task?.trim()) {
     const derived = taskToName(task.trim());
     // Avoid collisions with pool names by appending a suffix if needed.
-    let unique = derived;
-    for (let length = 4; usedNames.has(unique); length++) {
-      unique = `${derived} #${id.slice(0, length)}`;
-      if (length >= id.length) {
-        // Even the full id did not separate them: number the label instead.
-        for (let n = 2; usedNames.has(unique); n++) unique = `${derived} #${id} ${n}`;
-      }
-    }
+    const unique = disambiguateName(derived, id);
     nameCache.set(id, unique);
     usedNames.add(unique);
     return unique;

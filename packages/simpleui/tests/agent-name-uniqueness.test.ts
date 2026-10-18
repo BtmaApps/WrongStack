@@ -62,4 +62,12 @@ describe('agent display names are unique', () => {
     ]);
     expect(names).toEqual(['Build', 'Build #w1', 'Build #w1 2']);
   });
+
+  it('separates workers that share an explicit non-UUID role name', () => {
+    const names = workerNames([
+      { id: 'aaaa1111', name: 'bug-hunter', status: 'running' },
+      { id: 'bbbb2222', name: 'bug-hunter', status: 'running' },
+    ]);
+    expect(names).toEqual(['bug-hunter', 'bug-hunter #bbbb']);
+  });
 });
