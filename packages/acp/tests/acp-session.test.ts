@@ -1380,4 +1380,54 @@ describe('ACPSession', () => {
     await answer('session/close');
     await closeP;
   });
+
+  it('accepts replayed session/update notifications streamed during session/load and resets scratch on session/resume', async () => {
+    const session = await startSession({
+      protocolVersion: 1,
+      agentCapabilities: {
+        loadSession: true,
+        sessionCapabilities: { close: {}, resume: {} },
+      },
+    });
+    const t = lastTransport();
+
+    const loadP = session.loadSession('sess_replay' as never);
+    await new Promise((r) => setImmediate(r));
+    const loadReq = t.sent.find((m) => m.method === 'session/load')!;
+    expect(loadReq).toBeDefined();
+
+    // Agent streams replayed history before returning the session/load response
+    t.emit({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        sessionId: 'sess_replay',
+        update: {
+          sessionUpdate: 'agent_message_chunk',
+          content: { type: 'text', text: 'replayed-turn' },
+        },
+      },
+    } as never as ACPMessage);
+    t.respond(loadReq.id!, 'session/load', { sessionId: 'sess_replay' });
+    await loadP;
+
+    const internal = session as unknown as { scratch: { text: string } };
+    expect(internal.scratch.text).toBe('replayed-turn');
+
+    const resumeP = session.resumeSession('sess_resumed' as never);
+    await new Promise((r) => setImmediate(r));
+    const closeReq = t.sent.find((m) => m.method === 'session/close')!;
+    t.respond(closeReq.id!, 'session/close', {});
+    await new Promise((r) => setImmediate(r));
+    const resumeReq = t.sent.find((m) => m.method === 'session/resume')!;
+    t.respond(resumeReq.id!, 'session/resume', { sessionId: 'sess_resumed' });
+    await resumeP;
+
+    expect(internal.scratch.text).toBe('');
+    const closeP = session.close();
+    await new Promise((r) => setImmediate(r));
+    const finalCloseReq = t.sent.filter((m) => m.method === 'session/close').at(-1)!;
+    t.respond(finalCloseReq.id!, 'session/close', {});
+    await closeP;
+  });
 });

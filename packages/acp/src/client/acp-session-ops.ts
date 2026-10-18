@@ -50,19 +50,32 @@ export async function executeLoadSession(
   }
 
   if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
+  const previousSessionId = ctx.sessionId;
   ctx.resetScratch();
+  ctx.setSessionId(sessionId);
   const servers = filterMcpServers(ctx.agentCapabilities, mcpServers ?? ctx.opts.mcpServers);
   const id = ctx.allocId();
-  const result = await ctx.sendRequest(id, 'session/load', {
-    sessionId,
-    cwd: cwd ?? ctx.opts.cwd ?? ctx.opts.projectRoot,
-    mcpServers: servers,
-  });
+  let result: unknown;
+  try {
+    result = await ctx.sendRequest(id, 'session/load', {
+      sessionId,
+      cwd: cwd ?? ctx.opts.cwd ?? ctx.opts.projectRoot,
+      mcpServers: servers,
+    });
+  } catch (err) {
+    ctx.setSessionId(previousSessionId);
+    ctx.resetScratch();
+    throw err;
+  }
   if (isJsonRpcError(result)) {
+    ctx.setSessionId(previousSessionId);
+    ctx.resetScratch();
     throw new ACPSessionError('prompt_failed', `session/load failed: ${result.message}`, result);
   }
-  if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
-  ctx.setSessionId(sessionId);
+  if (ctx.closed) {
+    ctx.setSessionId(null);
+    throw new ACPSessionError('closed', 'session is closed');
+  }
 }
 
 export async function executeResumeSession(
@@ -83,6 +96,7 @@ export async function executeResumeSession(
   }
 
   if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
+  ctx.resetScratch();
   const servers = filterMcpServers(ctx.agentCapabilities, mcpServers ?? ctx.opts.mcpServers);
   const id = ctx.allocId();
   const result = await ctx.sendRequest(id, 'session/resume', {
