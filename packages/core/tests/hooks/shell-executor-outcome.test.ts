@@ -156,4 +156,10 @@ describe('parseHookOutcome', () => {
     const result = parseHookOutcome('  {"action": "allow"}  ');
     expect(result).toEqual({ action: 'allow' });
   });
+
+  it('returns null for unrecognized action, decision, or non-object modifiedInput', () => {
+    expect(parseHookOutcome('{"action": "block", "reason": "forbidden"}')).toBeNull();
+    expect(parseHookOutcome('{"decision": "deny", "reason": "forbidden"}')).toBeNull();
+    expect(parseHookOutcome('{"decision": "allow", "modifiedInput": [1, 2]}')).toBeNull();
+  });
 });

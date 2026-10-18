@@ -447,7 +447,10 @@ export function parseHookOutcome(stdout: string): AnyHookOutcome | null {
         ? { contextAs: obj['contextAs'] as 'inline' | 'separate' }
         : {}),
     };
-    if (obj['action'] === 'allow' || obj['action'] === 'deny' || obj['action'] === 'mutate') {
+    if ('action' in obj && obj['action'] !== undefined) {
+      if (obj['action'] !== 'allow' && obj['action'] !== 'deny' && obj['action'] !== 'mutate') {
+        return null;
+      }
       if (obj['action'] === 'deny') {
         if (typeof obj['reason'] !== 'string' || !obj['reason'].trim()) return null;
         return { action: 'deny', reason: obj['reason'], ...common };
@@ -464,14 +467,22 @@ export function parseHookOutcome(stdout: string): AnyHookOutcome | null {
       }
       return { action: 'allow', ...common };
     }
-    if (obj['decision'] === 'block' || obj['decision'] === 'allow') {
+    if ('decision' in obj && obj['decision'] !== undefined) {
+      if (obj['decision'] !== 'block' && obj['decision'] !== 'allow') return null;
       outcome.decision = obj['decision'];
     }
     if (typeof obj['reason'] === 'string') outcome.reason = obj['reason'];
     if (typeof obj['additionalContext'] === 'string') {
       outcome.additionalContext = obj['additionalContext'];
     }
-    if (obj['modifiedInput'] && typeof obj['modifiedInput'] === 'object') {
+    if ('modifiedInput' in obj && obj['modifiedInput'] !== undefined) {
+      if (
+        !obj['modifiedInput'] ||
+        typeof obj['modifiedInput'] !== 'object' ||
+        Array.isArray(obj['modifiedInput'])
+      ) {
+        return null;
+      }
       outcome.modifiedInput = obj['modifiedInput'] as Record<string, unknown>;
     }
     if (obj['contextAs'] === 'inline' || obj['contextAs'] === 'separate') {
