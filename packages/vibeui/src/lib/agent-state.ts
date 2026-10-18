@@ -1,9 +1,17 @@
-import type { AgentEntry } from './session';
+// Structural view of AgentEntry: importing the type from ./session closes a module cycle.
+interface AgentWorkSignals {
+  hasWorked?: boolean;
+  partialText: string;
+  entries: readonly unknown[];
+  iterations: number;
+  toolCalls: number;
+  status: string;
+}
 
 export const isActiveAgent = (status: string) =>
   ['running', 'busy', 'working', 'active', 'starting', 'spawned'].includes(status);
 
-export const hasAgentWork = (agent: AgentEntry) =>
+export const hasAgentWork = (agent: AgentWorkSignals) =>
   Boolean(
     agent.hasWorked ||
       agent.partialText ||
