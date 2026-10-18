@@ -85,6 +85,34 @@ describe('createToolUsageSource', () => {
     const candidates = await source.candidates({ idleDays: 30, minInvocations: 0 });
     expect(candidates[0]?.source).toBe('in-process');
   });
+
+  it('falls back to in-process bridge when chronicle has 0 rows in the requested window', async () => {
+    const now = Date.parse('2026-07-15T00:00:00.000Z');
+    const day = 86_400_000;
+    const bridge = new Map<string, ToolUsageRecord>([
+      [
+        'stale-bridge-tool',
+        {
+          invocations: 1,
+          failures: 0,
+          durationMsTotal: 5,
+          lastInvokedAt: now - 60 * day,
+          firstInvokedAt: now - 60 * day,
+        },
+      ],
+    ]);
+    const source = createToolUsageSource({
+      chronicle: {
+        refresh: async () => {},
+        underusedTools: () => [],
+      } as never,
+      bridge,
+      now: () => now,
+    });
+    const candidates = await source.candidates({ idleDays: 30, minInvocations: 3 });
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ name: 'stale-bridge-tool', source: 'in-process' });
+  });
 });
 
 describe('filterUnderused', () => {

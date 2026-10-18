@@ -124,7 +124,10 @@ export function createToolUsageSource(deps: CreateToolUsageSourceDeps): ToolUsag
       kind: 'chronicle',
       async candidates(opts: UnderusedQueryOptions): Promise<UnderusedToolCandidate[]> {
         await store.refresh();
-        return chronicleCandidates(store, opts, now());
+        const currentNow = now();
+        const rows = chronicleCandidates(store, opts, currentNow);
+        if (rows.length > 0 || !deps.bridge) return rows;
+        return inProcessCandidates(deps.bridge, opts, currentNow);
       },
       async refresh(): Promise<void> {
         await store.refresh();
