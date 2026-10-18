@@ -95,7 +95,12 @@ function splitTopLevelBranches(inner: string): string[] {
 /** Original pairwise overlap test extended in round 13: two branches that
  * are equal, prefix-related, empty, zero-width-only, or whose single-char
  * token sets intersect can consume the same text. */
-function branchesOverlap(branches: string[], foldCase: boolean, dotAll: boolean): boolean {
+function branchesOverlap(
+  branches: string[],
+  foldCase: boolean,
+  dotAll: boolean,
+  unicode = false,
+): boolean {
   // Round 13 compared ONLY the unwrap-normalized branches, which replaced
   // the raw textual comparisons instead of extending them: `((\w)x|(\w))+`
   // has raw branches where one is a strict prefix of the other (clear
@@ -120,8 +125,8 @@ function branchesOverlap(branches: string[], foldCase: boolean, dotAll: boolean)
         // the string rules cannot see. Only single-character tokens are set-
         // compared: a 1-char branch can never equal a 2+-char branch, so
         // multi-token branches correctly stay out of this check.
-        const sx0 = singleTokenCharSet(x, dotAll);
-        const sy0 = singleTokenCharSet(y, dotAll);
+        const sx0 = singleTokenCharSet(x, dotAll, unicode);
+        const sy0 = singleTokenCharSet(y, dotAll, unicode);
         // `i`: fold BEFORE intersecting — the modeled sets stay ⊆ the real
         // flagged languages, so an intersection proves a real overlap.
         const sx = sx0 && foldCase ? foldForCompare(sx0) : sx0;
@@ -132,8 +137,8 @@ function branchesOverlap(branches: string[], foldCase: boolean, dotAll: boolean)
         // intersect, so 'ab' is matchable by both branches; a length mismatch
         // or any single disjoint position (`(\w\d|ab)+`: \d∩{b}=∅) means no
         // common string exists and the pair stays allowed.
-        const fx0 = fixedTokenSets(x, dotAll);
-        const fy0 = fixedTokenSets(y, dotAll);
+        const fx0 = fixedTokenSets(x, dotAll, unicode);
+        const fy0 = fixedTokenSets(y, dotAll, unicode);
         const fx = fx0 && foldCase ? fx0.map(foldForCompare) : fx0;
         const fy = fy0 && foldCase ? fy0.map(foldForCompare) : fy0;
         if (
@@ -163,12 +168,17 @@ function branchesOverlap(branches: string[], foldCase: boolean, dotAll: boolean)
  * stay allowed, and unquantified wrappers (`((a|a))`) are never analysed —
  * only groups reached from a quantifier are.
  */
-function hasAmbiguousBranches(content: string, foldCase: boolean, dotAll: boolean): boolean {
+function hasAmbiguousBranches(
+  content: string,
+  foldCase: boolean,
+  dotAll: boolean,
+  unicode = false,
+): boolean {
   const branches = splitTopLevelBranches(content);
-  if (branches.length >= 2 && branchesOverlap(branches, foldCase, dotAll)) return true;
+  if (branches.length >= 2 && branchesOverlap(branches, foldCase, dotAll, unicode)) return true;
   for (const branch of branches) {
     for (const child of directChildGroupContents(branch)) {
-      if (hasAmbiguousBranches(stripGroupPrefix(child), foldCase, dotAll)) return true;
+      if (hasAmbiguousBranches(stripGroupPrefix(child), foldCase, dotAll, unicode)) return true;
     }
   }
   return false;
@@ -177,11 +187,11 @@ function hasAmbiguousBranches(content: string, foldCase: boolean, dotAll: boolea
 function hasAmbiguousQuantifiedAlternation(pattern: string, flags: string): boolean {
   // Flags participate in the analysis: `i` folds ASCII case into every char
   // set (`(ab|aB)+` is identical branches under i), `s` widens dot to every
-  // code point (`(.a|\na)+` overlaps under s). Other flags (g, m, y) do not
-  // change branch languages; `u` only changes pattern VALIDITY, which the
-  // engine check below already handles.
+  // code point (`(.a|\na)+` overlaps under s), and `u`/`v` enables `\u{...}`
+  // Unicode code point escapes.
   const foldCase = /i/.test(flags);
   const dotAll = /s/.test(flags);
+  const unicode = /[uv]/.test(flags);
   // Character-class and escape state tracked across the WHOLE scan, not just
   // per group probe. A `(` inside `[...]` is literal — a probe started there
   // runs off the end of the pattern and aborts the scan with `false` before
@@ -244,7 +254,7 @@ function hasAmbiguousQuantifiedAlternation(pattern: string, flags: string): bool
     }
     const inner = pattern.slice(i + 1, j);
     const stripped = stripGroupPrefix(inner);
-    if (hasAmbiguousBranches(stripped, foldCase, dotAll)) {
+    if (hasAmbiguousBranches(stripped, foldCase, dotAll, unicode)) {
       return true;
     }
     // ADR-004 semantic layer — additive final check. Answers the ambiguity

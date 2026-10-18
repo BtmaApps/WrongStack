@@ -203,7 +203,7 @@ export function hexAt(s: string, start: number, len: number): number | null {
 /** Parse the escape sequence starting AT the backslash `s[i]`. Returns the
  * token and the index just past it, or null for unknown escapes (`\p`, `\k`,
  * `\c`, …) — callers treat null as "not comparable" (sound under-rejection). */
-export function parseEscape(s: string, i: number): EscapedToken | null {
+export function parseEscape(s: string, i: number, unicode = false): EscapedToken | null {
   const ch = s[i + 1];
   if (ch === undefined) return null;
   if (NAMED_CLASS_SETS[ch] !== undefined) {
@@ -235,6 +235,7 @@ export function parseEscape(s: string, i: number): EscapedToken | null {
   }
   if (ch === 'u') {
     if (s[i + 2] === '{') {
+      if (!unicode) return null;
       const close = s.indexOf('}', i + 3);
       if (close === -1 || close - (i + 3) > 6) return null;
       const cp = hexAt(s, i + 3, close - (i + 3));
@@ -313,7 +314,7 @@ export function matchesEmptyToken(branch: string): boolean {
 /** Parse `[...]` (the branch must be exactly one class) into a char set.
  * Supports negation, ranges, named and literal escapes, a leading literal
  * `]`, and literal `-` at the edges; anything else yields null. */
-export function parseCharClass(s: string): CharSet | null {
+export function parseCharClass(s: string, unicode = false): CharSet | null {
   if (!s.startsWith('[') || !s.endsWith(']') || s.length < 3) return null;
   let i = 1;
   let negated = false;
@@ -333,7 +334,7 @@ export function parseCharClass(s: string): CharSet | null {
     let lo: number;
     let width: number;
     if (ch === '\\') {
-      const tok = parseEscape(s, i);
+      const tok = parseEscape(s, i, unicode);
       if (!tok) return null;
       if (tok.kind === 'named') {
         // No cast: `Record<string, CharSet>` under noUncheckedIndexedAccess
@@ -366,7 +367,7 @@ export function parseCharClass(s: string): CharSet | null {
       const hiStart = i + width + 1;
       let hi: number;
       if (s[hiStart] === '\\') {
-        const tok = parseEscape(s, hiStart);
+        const tok = parseEscape(s, hiStart, unicode);
         if (tok?.kind !== 'literal') return null;
         hi = tok.cp;
         i = tok.next;
@@ -393,10 +394,14 @@ export function parseCharClass(s: string): CharSet | null {
  * token: `.`, a literal, an escape, or a `[...]` class. Null for anything
  * else (multi-token, quantified, zero-width, unknown escape) — callers then
  * skip the set comparison, which can only under-reject, never over-reject. */
-export function singleTokenCharSet(branch: string, dotAll: boolean): CharSet | null {
+export function singleTokenCharSet(
+  branch: string,
+  dotAll: boolean,
+  unicode = false,
+): CharSet | null {
   if (branch === '.') return dotAll ? DOT_ALL_SET : DOT_SET;
   if (branch.startsWith('\\')) {
-    const tok = parseEscape(branch, 0);
+    const tok = parseEscape(branch, 0, unicode);
     if (!tok || tok.next !== branch.length) return null;
     if (tok.kind === 'named') return NAMED_CLASS_SETS[tok.name] ?? null;
     return [[tok.cp, tok.cp]];
@@ -405,7 +410,7 @@ export function singleTokenCharSet(branch: string, dotAll: boolean): CharSet | n
     const cp = branch.codePointAt(0);
     return cp === undefined ? null : [[cp, cp]];
   }
-  if (branch.startsWith('[')) return parseCharClass(branch);
+  if (branch.startsWith('[')) return parseCharClass(branch, unicode);
   return null;
 }
 
@@ -417,7 +422,7 @@ export function singleTokenCharSet(branch: string, dotAll: boolean): CharSet | n
  * sequence comparison, which can only under-reject, never over-reject. For
  * two such sequences language intersection is EXACT: they match a common
  * string iff lengths are equal and every position's sets intersect. */
-export function fixedTokenSets(branch: string, dotAll: boolean): CharSet[] | null {
+export function fixedTokenSets(branch: string, dotAll: boolean, unicode = false): CharSet[] | null {
   const sets: CharSet[] = [];
   let i = 0;
   while (i < branch.length) {
@@ -428,7 +433,7 @@ export function fixedTokenSets(branch: string, dotAll: boolean): CharSet[] | nul
       set = dotAll ? DOT_ALL_SET : DOT_SET;
       next = i + 1;
     } else if (ch === '\\') {
-      const tok = parseEscape(branch, i);
+      const tok = parseEscape(branch, i, unicode);
       if (!tok) return null;
       set = tok.kind === 'named' ? (NAMED_CLASS_SETS[tok.name] ?? null) : [[tok.cp, tok.cp]];
       next = tok.next;
@@ -441,7 +446,7 @@ export function fixedTokenSets(branch: string, dotAll: boolean): CharSet[] | nul
         end++;
       }
       if (end >= branch.length) return null; // unclosed class
-      set = parseCharClass(branch.slice(i, end + 1));
+      set = parseCharClass(branch.slice(i, end + 1), unicode);
       next = end + 1;
     } else if ('^$()*+?{|'.includes(ch)) {
       return null; // anchors, groups, quantifier starters — out of scope

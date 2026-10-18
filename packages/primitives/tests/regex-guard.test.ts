@@ -241,6 +241,9 @@ describe('compileUserRegex — rejected patterns', () => {
 
   it('rejects greedy quantifiers inside lookarounds', () => {
     expect(compileUserRegex('(?=(a+))', '').ok).toBe(false);
+    // Without the u flag, [\u{41}] is a literal character class disjoint from A; with u it is 'A' and overlaps.
+    expect(compileUserRegex(String.raw`([\u{41}]|A)+`, '').ok).toBe(true);
+    expect(compileUserRegex(String.raw`([\u{41}]|A)+`, 'u').ok).toBe(false);
   });
 
   it('rejects ambiguous quantified alternations with identical branches', () => {

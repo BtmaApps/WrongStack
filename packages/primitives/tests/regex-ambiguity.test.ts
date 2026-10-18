@@ -58,9 +58,12 @@ describe('detectQuantifiedAmbiguity — out-of-subset escapes (ADR-004 never ove
   // doctrine. Out-of-subset content must allow.
   it('treats non-u identity escapes as out-of-subset: never over-rejects', () => {
     expect(detectQuantifiedAmbiguity(String.raw`\u{41}|A`).verdict).toBe('unparsable');
+    expect(detectQuantifiedAmbiguity(String.raw`[\u{41}]|A`).verdict).toBe('unparsable');
+    expect(detectQuantifiedAmbiguity(String.raw`[\p{ASCII}]|A`).verdict).toBe('unparsable');
     // With the u flag the modeled codepoint IS the real language: the branches
     // genuinely both match 'A', so 'ambiguous' is correct and must stay.
     expect(detectQuantifiedAmbiguity(String.raw`\u{41}|A`, 'u').verdict).toBe('ambiguous');
+    expect(detectQuantifiedAmbiguity(String.raw`[\u{41}]|A`, 'u').verdict).toBe('ambiguous');
   });
 });
 
