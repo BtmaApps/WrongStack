@@ -18,7 +18,6 @@ import {
   assertMatchingJsonRpcResult,
   encodeJsonRpcMessage,
   extractJsonRpcEnvelopes,
-  extractJsonRpcResults,
   isJsonRpcResult,
   type JsonRpcResult,
 } from './transport-jsonrpc.js';
@@ -219,18 +218,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         throw new Error(`initialize HTTP ${initRes.status}: ${initRes.statusText}`);
       }
 
-      const contentType = initRes.headers.get('content-type') ?? '';
-      let data: JsonRpcResult | undefined;
-
-      if (contentType.includes('application/json')) {
-        // Capped read — connect() used to call initRes.json() here, which
-        // buffered the whole body; every other request path enforces the cap.
-        const parsed = JSON.parse(await readBodyCapped(initRes));
-        if (isJsonRpcResult(parsed)) data = parsed;
-      } else {
-        // text/event-stream or NDJSON — handle SSE `data:` framing.
-        data = extractJsonRpcResults(await readBodyCapped(initRes))[0];
-      }
+      let data = await this.readResponse(initRes, initializeId);
 
       assertCurrent();
       if (!data) {
