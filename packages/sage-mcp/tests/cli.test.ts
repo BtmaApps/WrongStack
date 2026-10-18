@@ -123,4 +123,30 @@ describe('parseArgs', () => {
     await expect(main([])).resolves.toBe(2);
     expect(stderrSpy).toHaveBeenCalled();
   });
+
+  it('ignores whitespace-only flag values and preserves env token fallback', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseArgs(
+      [
+        '--project-root',
+        '   ',
+        '--storage-dir',
+        '   ',
+        '--host',
+        '   ',
+        '--token',
+        '   ',
+        '--port',
+        '   ',
+      ],
+      { WRONGSTACK_MCP_TOKEN: 'env-token' },
+    );
+    expect(parsed).toMatchObject({
+      projectRoot: '',
+      httpHost: '127.0.0.1',
+      httpToken: 'env-token',
+    });
+    expect(parsed.storageDirectory).toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(5);
+  });
 });

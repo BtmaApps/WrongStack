@@ -112,7 +112,12 @@ export function parseArgs(
         return undefined;
       }
       i++;
-      return next;
+      const trimmed = next.trim();
+      if (!trimmed) {
+        warn('mcp_cli_flag_empty_value', `${arg} expects a non-empty value; ignoring it.`);
+        return undefined;
+      }
+      return trimmed;
     };
     switch (arg) {
       case '--project-root': {
@@ -177,7 +182,19 @@ export function parseArgs(
 
 /** Convert the parsed absolute override back to SAGE's project-relative path contract. */
 export function projectRelativeStorageDirectory(projectRoot: string, directory: string): string {
-  const relative = path.relative(path.resolve(projectRoot), path.resolve(directory));
+  const canonicalRoot = canonicalProjectRoot(projectRoot);
+  const resolvedDir = path.resolve(directory);
+  let canonicalDir = resolvedDir;
+  try {
+    canonicalDir = realpathSync(resolvedDir);
+  } catch {
+    try {
+      canonicalDir = path.join(realpathSync(path.dirname(resolvedDir)), path.basename(resolvedDir));
+    } catch {
+      canonicalDir = resolvedDir;
+    }
+  }
+  const relative = path.relative(canonicalRoot, canonicalDir);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error('--storage-dir must stay inside the project root');
   }
@@ -198,7 +215,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   const projectRoot = canonicalProjectRoot(args.projectRoot);
   const storageDirectory = args.storageDirectory
-    ? projectRelativeStorageDirectory(args.projectRoot, args.storageDirectory)
+    ? projectRelativeStorageDirectory(projectRoot, args.storageDirectory)
     : undefined;
   const port = new ProjectSageMemoryPort({
     projectRoot,
