@@ -8,7 +8,7 @@
  * `parseStreamEvent` body changes.
  */
 import { createHash } from 'node:crypto';
-import type { Request, StopReason, StreamEvent } from '@wrongstack/core/types';
+import type { Request, StopReason, StreamEvent, Usage } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from '../_tool-input.js';
 import { providerErrorFromStreamPayload } from '../error-parse.js';
@@ -24,6 +24,8 @@ interface MistralStreamState {
   model: string;
   started: boolean;
   inThinking: boolean;
+  usage: Usage;
+  stopReason?: StopReason | undefined;
   // OpenAI-style tool_call accumulators keyed by `index`
   toolCalls: Map<
     number,
@@ -103,12 +105,15 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     model: fallbackModel,
     started: false,
     inThinking: false,
+    usage: { input: 0, output: 0 },
     toolCalls: new Map(),
   }),
   parseStreamEvent: (msg, state): StreamEvent[] => {
     if (msg.data === '[DONE]') {
       state.sawTerminal = true;
-      return [];
+      return state.started && !state.stopped
+        ? closeMessage(state, state.stopReason ?? 'end_turn', state.usage)
+        : [];
     }
     if (!msg.data) return [];
     const parsed = safeParse<{
@@ -149,6 +154,9 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     if (!state.started) {
       state.started = true;
       out.push({ type: 'message_start', model: state.model });
+    }
+    if (ev.usage) {
+      state.usage = normalizeOpenAIChatUsage(ev.usage, state.usage);
     }
     const choice = ev.choices?.[0];
     const content = choice?.delta?.content;
@@ -204,17 +212,9 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
         out.push({ type: 'tool_use_input_delta', id: block.id, partial });
       }
     }
-    if (choice?.finish_reason && !state.stopped) {
+    if (choice?.finish_reason) {
       state.sawTerminal = true;
-      out.push(
-        ...closeMessage(
-          state,
-          mapStopReason(choice.finish_reason),
-          ev.usage
-            ? normalizeOpenAIChatUsage(ev.usage, { input: 0, output: 0 })
-            : { input: 0, output: 0 },
-        ),
-      );
+      state.stopReason = mapStopReason(choice.finish_reason);
     }
     return out;
   },
@@ -224,13 +224,15 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
   isTruncated: (state) => state.started && !state.sawTerminal,
   // `[DONE]` without a `finish_reason` still ends the turn properly.
   finalizeStream: (state): StreamEvent[] =>
-    state.started && !state.stopped ? closeMessage(state, 'end_turn', { input: 0, output: 0 }) : [],
+    state.started && !state.stopped
+      ? closeMessage(state, state.stopReason ?? 'end_turn', state.usage)
+      : [],
 });
 
 function closeMessage(
   state: MistralStreamState,
   stopReason: StopReason,
-  usage: { input: number; output: number },
+  usage: Usage,
 ): StreamEvent[] {
   const out: StreamEvent[] = [];
   state.stopped = true;

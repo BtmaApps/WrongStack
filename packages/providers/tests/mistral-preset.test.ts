@@ -122,6 +122,27 @@ describe('Mistral preset', () => {
       | { usage: Record<string, number> }
       | undefined;
     expect(stop?.usage).toMatchObject({ input: 500, output: 5, cacheRead: 3500 });
+
+    const trailingUsageEvents = await collectEvents(
+      sseBody([
+        JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }),
+        JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+        JSON.stringify({
+          choices: [],
+          usage: {
+            prompt_tokens: 100,
+            completion_tokens: 25,
+            prompt_tokens_details: { cached_tokens: 30 },
+          },
+        }),
+        '[DONE]',
+      ]),
+    );
+    const trailingStop = trailingUsageEvents.find((e) => e.type === 'message_stop') as
+      | { stopReason: string; usage: Record<string, number> }
+      | undefined;
+    expect(trailingStop?.stopReason).toBe('end_turn');
+    expect(trailingStop?.usage).toMatchObject({ input: 70, output: 25, cacheRead: 30 });
   });
 
   it('parses text-only completion', async () => {
