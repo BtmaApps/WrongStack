@@ -54,6 +54,8 @@ export const ANSWER_FIELD_MAPPING: Readonly<
       set: (record: RequirementIntakeRecord, value: string) => void;
       /** The list an append-only answer feeds; an update takes its old items back out. */
       list?: (record: RequirementIntakeRecord) => string[];
+      /** Canonical fieldSources key to mark as `'user'` when this answer applies. */
+      sourceField?: keyof RequirementIntakeRecord['fieldSources'];
     }
   >
 > = {
@@ -61,45 +63,53 @@ export const ANSWER_FIELD_MAPPING: Readonly<
     set: (record, value) => {
       record.businessGoal = value;
     },
+    sourceField: 'business_goal',
   },
   expected_outcome: {
     set: (record, value) => {
       record.expectedOutcome = value;
     },
+    sourceField: 'expected_outcome',
   },
   scope_notes: {
     set: (record, value) => {
       record.scopeNotes = value;
     },
+    sourceField: 'scope_notes',
   },
   description_scope: {
     set: (record, value) => {
       record.scopeNotes = value;
     },
+    sourceField: 'scope_notes',
   },
   target_users: {
     set: (record, value) => {
       appendItems(record.targetUsers, value);
     },
     list: (record) => record.targetUsers,
+    sourceField: 'target_users',
   },
   constraints: {
     set: (record, value) => {
       appendItems(record.constraints, value);
     },
     list: (record) => record.constraints,
+    sourceField: 'constraints',
   },
   provided_context: {
     set: (record, value) => {
       appendItems(record.providedContext, value);
     },
     list: (record) => record.providedContext,
+    sourceField: 'provided_context',
   },
   project_component: {
     set: (record, value) => {
       appendItems(record.providedContext, value);
     },
     list: (record) => record.providedContext,
+    sourceField: 'provided_context',
   },
   priority: {
     set: (record, value) => {
@@ -380,8 +390,9 @@ export function applyAnswerToRecord(
         (item) => !before.includes(item),
       );
     }
-    const sourceKey = validated.field as keyof RequirementIntakeRecord['fieldSources'];
-    record.fieldSources[sourceKey] = 'user';
+    if (mapping.sourceField) {
+      record.fieldSources[mapping.sourceField] = 'user';
+    }
   }
   return answer;
 }
@@ -433,8 +444,9 @@ export function applyAnswerUpdateToRecord(
   if (mapping) {
     mapping.set(record, newAnswer);
     if (contribution) answer.contributedItems = contribution;
-    const sourceKey = answer.field as keyof RequirementIntakeRecord['fieldSources'];
-    record.fieldSources[sourceKey] = 'user';
+    if (mapping.sourceField) {
+      record.fieldSources[mapping.sourceField] = 'user';
+    }
   }
 }
 

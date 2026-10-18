@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import {
+  applyAnswerToRecord,
+  applyAnswerUpdateToRecord,
+  buildNewIntakeRecord,
+} from '../src/service-helpers.js';
+import type { IntakeContext } from '../src/types.js';
+
+describe('Requirement intake answer fieldSources canonical mapping', () => {
+  it('maps alias fields to canonical fieldSources keys and preserves priority source on invalid priority answers', () => {
+    const ctx: IntakeContext = {
+      id: 'user-1',
+      type: 'user',
+      projectId: 'proj-1',
+      roles: ['contributor'],
+    };
+
+    const record = buildNewIntakeRecord(
+      {
+        projectId: 'proj-1',
+        originalRequest: 'Add SSO login support for enterprise tenants',
+        requestedBy: 'user-1',
+      },
+      ctx,
+      1_000,
+      [],
+    );
+
+    const compAns = applyAnswerToRecord(
+      record,
+      { field: 'project_component', answer: 'packages/requirement-intake' },
+      'user-1',
+      2_000,
+    );
+    const scopeAns = applyAnswerToRecord(
+      record,
+      { field: 'description_scope', answer: 'service-helpers.ts' },
+      'user-1',
+      2_100,
+    );
+
+    expect(record.fieldSources.provided_context).toBe('user');
+    expect(record.fieldSources.scope_notes).toBe('user');
+    expect('project_component' in record.fieldSources).toBe(false);
+    expect('description_scope' in record.fieldSources).toBe(false);
+
+    const prioAns = applyAnswerToRecord(
+      record,
+      { field: 'priority', answer: 'needs-triage' },
+      'user-1',
+      2_200,
+    );
+    expect(record.priority).toBe('unspecified');
+    expect(record.fieldSources.priority).toBe('deterministic');
+
+    applyAnswerUpdateToRecord(record, prioAns.id, 'HIGH');
+    expect(record.priority).toBe('high');
+    expect(record.fieldSources.priority).toBe('user');
+
+    applyAnswerUpdateToRecord(record, compAns.id, 'packages/requirement-intake\npackages/core');
+    applyAnswerUpdateToRecord(record, scopeAns.id, 'Updated scope');
+    expect('project_component' in record.fieldSources).toBe(false);
+    expect('description_scope' in record.fieldSources).toBe(false);
+  });
+});
