@@ -146,7 +146,14 @@ function singleRevision(result: VcsRunResult): string | undefined {
 
 /** A VCS path as a root-relative, `/`-separated path; null if it leaves the root. */
 export function normalizeVcsPath(input: string): string | null {
-  if (!input || path.isAbsolute(input) || path.win32.isAbsolute(input)) return null;
+  if (
+    !input ||
+    path.isAbsolute(input) ||
+    path.win32.isAbsolute(input) ||
+    path.win32.parse(input).root
+  ) {
+    return null;
+  }
   const normalized = input.replace(/\\/g, '/').replace(/^\.\//, '');
   const resolved = path.posix.normalize(normalized);
   if (!resolved || resolved === '.' || resolved === '..' || resolved.startsWith('../')) return null;

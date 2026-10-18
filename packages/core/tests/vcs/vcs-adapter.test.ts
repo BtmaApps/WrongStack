@@ -335,4 +335,10 @@ describe('adapters against the real binaries', () => {
     ) as { entries: Array<{ path: string }> };
     expect(manifest.entries.map((e) => e.path)).toEqual(['src/a.ts']);
   });
+
+  it('rejects Windows drive-relative paths in normalizeVcsPath', async () => {
+    const { normalizeVcsPath } = await import('../../src/vcs/vcs-adapter.js');
+    expect(normalizeVcsPath('C:../outside')).toBeNull();
+    expect(normalizeVcsPath('C:secret.txt')).toBeNull();
+  });
 });
