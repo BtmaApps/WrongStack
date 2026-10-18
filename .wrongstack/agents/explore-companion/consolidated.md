@@ -4,57 +4,57 @@
 
 - Use `codebase-skeleton`, `codebase-impact-analysis`, `codebase-incoming-calls`, and `codebase-search` for discovery; verify conclusions against source, imports, runtime wiring, configuration, and tests.
 - Revalidate consumer and absence claims on every invocation. Concurrent edits, ignored paths, stale indexes, truncated output, and tool errors can invalidate findings.
-- Treat zero-hit searches as inconclusive until traversal is validated. Distinguish inaccessible paths and failed searches from genuinely missing files or consumers.
-- If `grep` reports `count=N matches, showing 3` despite `truncated=false`, treat the display as truncated; after two identical displays, use ranged `read` and reconcile the claimed match count against the evidence read.
-- Close exhaustive searches with `files_with_matches` or verified untruncated output. Separate runtime consumers, type-only consumers, behavioral coupling, configuration references, documentation, and generated metadata.
-- If truncated output is archived under `~/.wrongstack/tool-output/*.log`, inspect that log for omitted evidence and preserve its exact path.
+- Treat zero hits as inconclusive until traversal is validated. Distinguish failed or inaccessible searches from genuinely absent files or consumers.
+- Close exhaustive searches with `files_with_matches` or verified untruncated output. If reported counts exceed displayed matches despite `truncated=false`, use ranged reads or archived `~/.wrongstack/tool-output/*.log` output; preserve the exact log path.
+- Separate runtime consumers, type-only consumers, behavioral coupling, configuration references, documentation, and generated metadata.
 - Submit findings through `submit_result`, including `suggested_next_steps`; use an empty array when no follow-up is needed.
 - Never retry or bypass denied reads of `.npmrc`, `.env*`, `.pypirc`, or `.netrc`; report the restriction.
 
 ## Task Orientation
 
-- Resolve task-named files using literal stems, exact filenames, labels, or distinctive runtime strings before mapping impact.
+- Resolve task-named files using exact filenames, literal stems, labels, or distinctive runtime strings before mapping impact.
 - For vague tasks without file hints, inspect an mtime-descending `glob` over `packages/**/src/**` and `packages/**/tests/**`, then examine candidate clusters with `codebase-skeleton`.
 - Read the owning `packages/core/skills/**/SKILL.md` when acceptance wording matters.
-- Classify targets before tracing them: modules, suites, scripts, configurations, baselines, generated artifacts, and data require different evidence.
+- Classify targets as modules, suites, scripts, configurations, baselines, generated artifacts, or data before selecting analysis tools.
 
 ## Consumer and Public-API Closure
 
-- Read exact exported spellings with `codebase-skeleton` before incoming-call analysis; guessed names or filename stems can produce misleading zero-caller results.
-- Pair incoming-call analysis with module-path and per-export repo-wide searches; verify unexpected omissions with file-scoped searches and sibling tests such as `packages/<pkg>/tests/<module-stem>.test.ts`.
-- Search type-only exports and `ReturnType<typeof hook>` aliases separately; runtime call graphs do not capture their prop and import consumers.
-- Search rendered CSS class names when mapping React component impact; browser tests such as `packages/vibeui/tests/browser-smoke.mjs` may select classes without importing component symbols.
-- Read caller wrappers around reducers and state models to identify filtering, ownership checks, and post-processing that define the behavioral boundary.
-- Cover relative imports, aliases, barrels, multiline imports, dynamic imports, mocks, tests, and non-TypeScript harnesses. Match complete specifiers and exclude comments, lockfiles, generated indexes, duplicate names, and package-prefix collisions.
-- Inspect actual re-exports and `package.json` `exports` before claiming public availability. Resolve facade symbols with `codebase-search` rather than assuming the importing file defines them.
-- Trace behavioral seams beyond imports: environment variables, subprocess arguments, runtime strings, snapshots, and assertions. A sole caller is not a reason to stop tracing.
-- For `@wrongstack/kanban`, distinguish root imports from subpaths such as `/test-support`, `/manager/lifecycle`, `/contract-graph`, and `/queue-anomalies`, which bypass `packages/kanban/src/index.ts`.
-- For `packages/kanban/src/verification/*`, inspect `packages/kanban/tests/verification/`; tests may exercise modules indirectly through `validateCommand` or `VerificationContext.runCommand`.
+- Read exact exported names before incoming-call analysis; pair graph results with module-specifier and per-export searches, including sibling tests.
+- Match complete import specifiers rather than bare filename prefixes; cover relative paths, aliases, barrels, multiline imports, dynamic `import()`, `require()`, mocks, and non-TypeScript harnesses.
+- Content searches do not match filenames automatically; reconcile importer results against actual import specifiers, not the target module’s presence in results.
+- Read match context to distinguish executable calls from comments, template-generated source, duplicate names, and metadata.
+- Inspect actual re-exports and `package.json` `exports` before claiming public availability; resolve facade symbols rather than assuming the importing file defines them.
+- Search type-only exports and `ReturnType<typeof hook>` aliases separately; runtime call graphs omit these consumers.
+- Trace behavioral seams beyond imports: rendered CSS selectors, environment variables, subprocess arguments, runtime strings, snapshots, and assertions.
+- Read caller wrappers around reducers and state models to identify filtering, ownership checks, and post-processing.
+- Treat `codebase-impact-analysis` results with `totalCallSites=0`, `symbolFound=true`, and huge unrelated `line:0` closures as noise; verify exact exports and barrel imports directly, especially under `packages/sage/src` and `store-helpers.ts`.
+- For `packages/webui-server/src/server/start-webui.ts`, combine module-specifier and `\bstartWebUI\s*\(` searches with context reads; account for `src/server/index.ts`, `scripts/build-package.mjs`, and generated smoke-harness source.
+- For `packages/kanban/src/manager/*` helpers, search both direct specifiers and `manager/_internal(\.js)?`; distinguish root `@wrongstack/kanban` imports from package subpaths.
+- For `packages/mcp/src/manifest-cache.ts`, prefer its module specifier, `manifestConfigHash`, or capability-manifest names over collision-prone `readManifest`/`writeManifest`.
 - For `packages/core/src/utils/*`, inspect `utils/index.ts` and `architecture/core-public-api-snapshot.json` alongside symbol searches.
-- Trace desktop main/preload entry points through `scripts/build-package.mjs`, `apps/desktop/package.json`’s `main`, `runtime-manager-paths.ts`, and `contextBridge.exposeInMainWorld`.
-- Inspect dependencies under `node_modules/.bun/<pkg>@<ver>+<hash>/node_modules/<pkg>/` through direct reads, package metadata, and `bun.lock`, not index tools; trace launchers through `scripts` and `bin`.
+- Trace desktop main/preload wiring through `scripts/build-package.mjs`, `apps/desktop/package.json`’s `main`, `runtime-manager-paths.ts`, and `contextBridge.exposeInMainWorld`.
+- Inspect installed dependencies through direct reads, package metadata, and `bun.lock`; index tools may omit `node_modules/.bun/<pkg>@<ver>+<hash>/node_modules/<pkg>/`.
 
 ## Test Discovery and Edit Gates
 
-- Map tests through filename references, collection in package-local and root `vitest.config.ts`, then package scripts, coverage `thresholds`, and `architecture/test-typecheck-baseline/packages-<pkg>.json`; tests usually have no exports for incoming-call analysis.
-- Compare local and root `setupFiles` and `globalSetup` before predicting behavior: `packages/webui-server/vitest.config.ts` omits root `./vitest.setup.ts` (`WRONGSTACK_HOME` isolation) and `./vitest.globalTeardown.ts` (daemon reaping), so package-local `bun run test` can behave differently.
-- Root Vitest includes `packages/**/tests/**/*.test.{ts,tsx}` and `apps/**/tests/**/*.test.{ts,tsx}`; `apps/desktop` also has local collection. Verify both runners when applicable.
-- Check whether package-local configuration exists rather than assuming it does; `packages/core` uses the root Vitest configuration.
-- Inspect `test`, `typecheck:tests`, architecture ratchets, and `docs/reports/architecture-health-current.json` before describing edit impact; path constraints and new test-typecheck diagnostics can block release independently of runtime consumers.
-- Root collection excludes scratch tests under `tmp/` and `.temp_files/`; an explicit path does not override collection rules. Verify a dedicated config or alternative runner actually collects tests.
-- Treat version pins such as `.bun-version` as data: read directly and search both filename and literal value.
+- Map tests through filename references, package-local and root Vitest collection, package scripts, coverage thresholds, and architecture ratchets; tests usually have no exports for incoming-call analysis.
+- Verify configuration existence and inheritance rather than assuming package-local configuration; `packages/core` uses root Vitest configuration.
+- Compare `setupFiles` and `globalSetup`: `packages/webui-server/vitest.config.ts` omits root `vitest.setup.ts` isolation and `vitest.globalTeardown.ts` daemon reaping.
+- Verify both root and local runners when applicable, including `apps/desktop`; root collection covers `packages/**/tests/**/*.test.{ts,tsx}` and `apps/**/tests/**/*.test.{ts,tsx}`.
+- CLI verification requires both `bun run test` and `bun run test:hqdash` in `packages/cli`; the main config excludes `tests/hq-dashboard.test.ts`.
+- Check `architecture/test-typecheck-baseline/packages-<pkg>.json`; a missing baseline means zero tolerated diagnostics, not exemption.
+- Inspect `test`, `typecheck:tests`, architecture constraints, and `docs/reports/architecture-health-current.json` before predicting release impact.
+- For `packages/kanban/src/verification/*`, inspect `packages/kanban/tests/verification/`; indirect coverage may flow through `validateCommand` or `VerificationContext.runCommand`.
 
 ## Ignored Paths and Scratch Harnesses
 
-- Use `tree` or direct `read`, not `glob`, to establish existence under `.temp_files/**` and `packages/*/dist/*`; ignore-suppressed zero results do not establish absence.
-- Validate search traversal into `.temp_files/**` with a known-present string and a path-scoped `grep`; root `rg` and `codebase-*` indexes exclude these paths.
-- On first inspection of `.temp_files/<round>/`, capture the target’s contents and directory `tree`; concurrent cleanup may remove supporting files, in which case label inferred wiring explicitly.
-- Close scratch-script invocations with directory inspection, a repo-wide round-name search, and a path-scoped scratch search; read match context to reject coincidental JSONL log matches.
-- Read sibling Electron runners such as `run.ps1`; `PROVE_MODE`, `PROVE_LOG`, `PROVE_DESKTOP_DIST`, kill timeouts, and log-parsing fields define the harness contract.
-- Trace scratch configuration through base spreads, plugin `load`/`resolveId` hooks, and cwd-relative `include`/`setupFiles`; verify directory-depth assumptions and `root` before predicting collection.
-- When a config imports a `.js` base, check for a compiled twin with `glob packages/<pkg>/vitest.config.*`; it may load instead of the TypeScript source.
-- Verify every include, copied dependency, alias, environment requirement, and explicit hook import when `globals: false`; zero collected tests are not a passing baseline.
-- Read harness `catch`, `finally`, and script tails before interpreting exit codes; swallowed assertions may appear only in `evidence/results.json`. Inspect artifacts and side-effect directories before recommending reruns.
-- Verify `process.cwd()`-relative paths and Electron `executablePath`; hash-pinned `.bun` paths can break after `bun install`.
-- In Playwright harnesses, confirm shared page globals are assigned inside `page.evaluate`; returned objects belong to Node, and spreading an unset page global can silently produce empty evidence.
-- Follow `packages/core/skills/verify-before-done/SKILL.md` for starting-state evidence, including revision, dirty paths, and pre-existing failures.
+- Establish existence under `.temp_files/**` and `packages/*/dist/*` with `tree` or direct reads; validate path-scoped grep traversal with a known-present string before interpreting index or glob zeros.
+- Capture scratch contents and inventory early; concurrent cleanup can remove evidence, so label inferred wiring explicitly.
+- Close scratch invocations with directory inventory, a path-scoped file-stem search, and a repo-wide round-name search; reject coincidental log matches.
+- A `.temp_files/proof-driven-bug-hunter/<round>/proof.ts` without `run.mjs`, `vitest.proof.config.mjs`, or `describe`/`it` blocks runs via `bun .temp_files/proof-driven-bug-hunter/<round>/proof.ts`; stdout `FAIL:` lines and exit status define its result contract.
+- Root Vitest excludes `tmp/` and `.temp_files/`; an explicit path does not override collection rules, and zero collected tests are not a passing baseline.
+- Trace scratch configuration through base spreads, compiled `.js` twins, plugin hooks, cwd-relative paths, aliases, setup files, environment requirements, and explicit hook imports when `globals: false`.
+- Read harness `catch`, `finally`, script tails, and result artifacts before interpreting exit codes or recommending reruns; swallowed assertions may appear only in `evidence/results.json`.
+- Verify Electron runner environment, executable paths, timeout and log contracts; hash-pinned `.bun` paths can break after installation.
+- In Playwright harnesses, confirm shared page globals are assigned inside `page.evaluate`; returned objects belong to Node.
+- Follow `packages/core/skills/verify-before-done/SKILL.md` for starting-state revision, dirty paths, and pre-existing failures.

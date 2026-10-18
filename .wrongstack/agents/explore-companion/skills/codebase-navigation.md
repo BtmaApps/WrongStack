@@ -1,18 +1,19 @@
+## Test Boundaries
+
+- Verify the CLI suite with both `bun run test` in `packages/cli` and `bun run test:hqdash`: `packages/cli/vitest.config.ts` excludes `tests/hq-dashboard.test.ts`; `vitest.hqdash.config.ts` collects it.
+- Check `architecture/test-typecheck-baseline/packages-<pkg>.json` before predicting ratchet impact. A missing baseline, including `packages-sage.json`, means zero tolerated diagnostics—not exemption.
+- Distinguish package-local from root tests: `packages/webui-server/vitest.config.ts` omits root `setupFiles` (`./vitest.setup.ts`, hermetic `WRONGSTACK_HOME`) and `globalSetup` (`./vitest.globalTeardown.ts`, daemon reaping).
+
 ## Consumer Closure
 
-- For React components, grep rendered CSS classes as well as symbols: `.workspace-notes` is selected by `packages/vibeui/tests/browser-smoke.mjs`, outside `codebase-incoming-calls`.
-- Read exact exports with `codebase-skeleton` before querying callers: `packages/cli/src/vibeui-dist.ts` exports `resolveVibeUiDistDir`, not `resolveVibeuiDist`.
-- For `packages/vibeui/src/lib/*`, combine per-export `codebase-incoming-calls`, module-path grep, and per-symbol repo-wide grep. Verify unexpected zeros with file-scoped grep and `packages/<pkg>/tests/<module-stem>.test.ts`; indexed callers and repo-wide searches have missed live imports and tests.
-- Search type-only consumers separately. For `packages/vibeui/src/lib/use-session.ts`, grep `SessionController` (`ReturnType<typeof hook>`), `Attachment`, and `DraftRequest`; runtime callers such as `workspace.tsx:55` do not close the contract.
-- For `packages/vibeui/src/lib/session.ts`, include `record`, `text`, `rows`, `contentText`, `SessionState`, `ChatEntry`, `ToolEntry`, `AgentEntry`, and `InputRequest`, not just `reduceFrame`. Read `use-session.ts` around lines 150–200 for session filtering and run-ownership post-processing before describing reducer boundaries.
-- For `packages/kanban/src/server/client.ts`, grep `getKanbanServerConnection`, `closeKanbanServerConnections`, and `isKanbanServerAvailable`; path regexes miss `./client.js` and multiline barrel imports. Check `@wrongstack/kanban` subpaths `/test-support`, `/manager/lifecycle`, `/contract-graph`, and `/queue-anomalies` independently of `src/index.ts`.
+- For prefix-colliding modules such as `cli-main.ts`, use `from\s+["'][^"']*\b<module>(\.js)?["']` plus `import()`/`require()` variants. Avoid bare-name searches polluted by `cli-main-helpers.ts`, `cli-main-boot.ts`, and `docs/reports/*.json`.
+- In `packages/cli/src/slash-commands/`, reconcile matches with `from './<stem>.js'`; `rg`/`files_with_matches` searches content, so `memory-compact.ts` need not match itself (`/memory compact` differs).
+- For `packages/webui-server/src/server/start-webui.ts`, combine module-specifier search (`from '...start-webui.js'`), `\bstartWebUI\s*\(`, and context reads. Follow `src/server/entry.ts` through `src/server/index.ts` and `scripts/build-package.mjs` to `@wrongstack/webui-server`; distinguish generated-source strings in `packages/webui-server/tests/auth-live-browser-smoke.mjs` and `packages/webui/tests/kanban-start-webui-smoke.mjs` from direct calls.
+- Treat `codebase-impact-analysis` output with `totalCallSites=0`, `symbolFound=true`, and unrelated `line:0` closures as noise. For `@wrongstack/sage`, search exact exports under `packages/sage/src`, module specifiers, and `store-helpers.ts`; unrelated `apps/desktop` entries do not establish callers.
+- For `packages/kanban/src/manager/*`, search direct specifiers and `manager/_internal(\.js)?`: `_internal.ts` mediates verification and test consumers.
+- For React components, search rendered selectors too: `.workspace-notes` is consumed by `packages/vibeui/tests/browser-smoke.mjs`, outside `codebase-incoming-calls`.
 
-## Scratch and Build Surfaces
+## Scratch Evidence
 
-- For `.temp_files/<round>/`, combine `tree`, repo-wide round-name grep, and path-scoped `grep`; inspect sibling `run.mjs`, `run.ps1`, and Vitest configs. Verify traversal using a known target string: `.gitignore`, root `rg`, and `codebase-*` exclusions make zero hits inconclusive. Read JSONL match context before treating filename mentions as invocations.
-- Trace `apps/desktop` through `scripts/build-package.mjs` `entries`, package `"main"`, and `contextBridge.exposeInMainWorld` name `wrongstackDesktop`, not import counts.
-
-## Test Configuration
-
-- Compare package and root `vitest.config.ts` collection and setup before classifying failures. `packages/webui-server/vitest.config.ts` omits root `setupFiles` (`./vitest.setup.ts`, hermetic `WRONGSTACK_HOME`) and `globalSetup` (`./vitest.globalTeardown.ts`, daemon reaping); package-local `bun run test` therefore differs from root execution.
-- Glob `packages/<pkg>/vitest.config.*` for stale `.js` twins; inspect package `test`, `typecheck:tests`, coverage `thresholds`, and `architecture/test-typecheck-baseline/packages-<pkg>.json` for edit gates.
+- Close callers under `.temp_files/proof-driven-bug-hunter/<round>/` using path-scoped stem grep, repo-wide round-name grep, and `tree`. `codebase-*` excludes `.temp_files/**`; zero hits prove nothing. Without `run.mjs`/`vitest.proof.config.mjs`, treat probes as manual direct-runs via `bun`, not sibling-invoked tests.
+- Resume floating-promise audits from `.temp_files/core_fire_and_forget_scan/scan.mjs`, not a rebuilt scanner. Use `--all` for out-of-window `[trace-caller]` hits and reuse `.temp_files/audit-all--round*/logs/{<pkg>-scope.json,F*-before/after/verify*.json,repo-typecheck.json}`.
