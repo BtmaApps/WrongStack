@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] — 2026-10-18
+
+A hardening release: a broad round of audit fixes across the daemon, MCP, SAGE,
+security gates and the VibeUI and Desktop surfaces, plus VibeUI and website polish.
+
+### Added
+
+- **VibeUI.** A syntax-highlighted code panel, JSON tree, content view and a live working-activity status. Type and corner tokens, larger touch targets, and the side panel closes below 1100px.
+- **WebUI.** Next-step suggestions can be submitted as a batch with a custom message, and composer actions wrap.
+- **Website.** A canvas ambient background that stays continuous across navigation, with a motion toggle, a fluid site shell, OxogNet studio branding and a refreshed social preview.
+
+### Security
+
+- Close secret-scrub, shell-cluster, kill-guard and `rm` bypasses in the YOLO payload scan.
+- The license and dependency-vulnerability gates now inspect exec args and cwd.
+- Governance rejects plan paths that resolve to the root and normalizes task-contract path scopes.
+- The regex guard gates character-class brace escapes on the unicode flag.
+
+### Fixed
+
+- **ACP.** Replay updates are kept during `session/load`; scratch state resets on `session/resume`.
+- **Client.** Pending one-shot waiters are rejected when the socket drops into reconnecting.
+- **MCP.** The SSE initialize response in `StreamableHTTPTransport.connect` is stream-read under the body cap; pooled Kanban server connections close when ping or transport setup fails; the mailbox bridge forwards `actorRole` and query filters.
+- **Desktop.** Window geometry persists and runtimes close before quitting; a close during connect settles the handshake; `openExternal` and idle-sweep rejections are absorbed.
+- **VibeUI.** Stale approvals drop on reconnect, queued questions show, drafts survive racing updates, session switching releases state together, and `model.switch_result` frames are handled.
+- **Kanban, SDD, runtime.** Completing a card clears a parked gate refusal under soft enforcement; `retryTask` refuses running or completed tasks; re-enabling an automation job recomputes a past `nextRunAt`.
+- **Other.** `lsp.document.closed` is emitted once per document in `forceCloseAll`; Telegram evicts queued notifications at `maxPerChat`; the circuit breaker allows a single half-open probe; fleet shadow-pass spawn rejections are absorbed; `requestId` is propagated across skills, prompts and user-instructions replies; provider effort refusals are honored for out-of-set levels; vector-memory checks the secondary content hash; TechStack upgrade plans deduplicate by dependency; requirement-intake records canonical `fieldSources` keys; the security scanner derives `fixAvailable` from `patched_versions`.
+
 ## [1.1.7] — 2026-10-18
 
 VibeUI arrives as a seventh interface: a focused coding workspace between

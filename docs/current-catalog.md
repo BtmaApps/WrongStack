@@ -6,7 +6,7 @@ tools in an individual session or verified external-service availability.
 
 ## Workspace packages
 
-35 packages, 2 applications, plus the private website.
+36 packages, 2 applications, plus the private website.
 
 | Package | Manifest | Publication |
 |---|---|---|
@@ -41,6 +41,7 @@ tools in an individual session or verified external-service availability.
 | `@wrongstack/tools` | [packages/tools/package.json](../packages/tools/package.json) | public |
 | `@wrongstack/tui` | [packages/tui/package.json](../packages/tui/package.json) | public |
 | `@wrongstack/vector-memory` | [packages/vector-memory/package.json](../packages/vector-memory/package.json) | public |
+| `@wrongstack/vibeui` | [packages/vibeui/package.json](../packages/vibeui/package.json) | public |
 | `@wrongstack/webui` | [packages/webui/package.json](../packages/webui/package.json) | public |
 | `@wrongstack/webui-hq` | [packages/webui-hq/package.json](../packages/webui-hq/package.json) | public |
 | `@wrongstack/webui-protocol` | [packages/webui-protocol/package.json](../packages/webui-protocol/package.json) | public |
