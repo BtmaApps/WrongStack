@@ -181,7 +181,23 @@ function suggestCommand(
  */
 export function generateUpgradePlan(snapshot: Snapshot): UpgradePlan {
   const findings = snapshot.findings as readonly Finding[];
-  const items: UpgradePlanItem[] = [];
+  const severityOrder = new Map([
+    ['critical', 0],
+    ['high', 1],
+    ['medium', 2],
+    ['low', 3],
+    ['info', 4],
+  ]);
+  const actionRank = new Map<Finding['action'], number>([
+    ['remove', 6],
+    ['replace', 5],
+    ['investigate', 4],
+    ['upgrade_major', 3],
+    ['upgrade_minor', 2],
+    ['upgrade_patch', 1],
+    ['none', 0],
+  ]);
+  const byDepId = new Map<string, { item: UpgradePlanItem; rationales: string[] }>();
 
   for (const finding of findings) {
     if (finding.action === 'none') continue;
@@ -192,29 +208,50 @@ export function generateUpgradePlan(snapshot: Snapshot): UpgradePlan {
     if (!dep) continue;
 
     const targetVersion = dep.latestStable ?? dep.resolvable ?? dep.wanted;
+    const existing = byDepId.get(dep.id);
 
-    items.push({
-      dependencyName: dep.name,
-      ecosystem: dep.ecosystem,
-      workspaceId: dep.workspaceId,
-      currentVersion: dep.locked ?? dep.installed ?? dep.requested,
-      targetVersion,
-      action: finding.action,
-      severity: finding.severity,
-      rationale: finding.rationale,
-      breakingRisk: finding.breakingRisk,
-      suggestedCommand: suggestCommand(dep.ecosystem, dep.name, finding.action, targetVersion),
-    });
+    if (!existing) {
+      const item: UpgradePlanItem = {
+        dependencyName: dep.name,
+        ecosystem: dep.ecosystem,
+        workspaceId: dep.workspaceId,
+        currentVersion: dep.locked ?? dep.installed ?? dep.requested,
+        targetVersion,
+        action: finding.action,
+        severity: finding.severity,
+        rationale: finding.rationale,
+        breakingRisk: finding.breakingRisk,
+        suggestedCommand: suggestCommand(dep.ecosystem, dep.name, finding.action, targetVersion),
+      };
+      byDepId.set(dep.id, { item, rationales: [finding.rationale] });
+      continue;
+    }
+
+    const prevItem = existing.item;
+    const nextSeverity =
+      (severityOrder.get(finding.severity) ?? 5) < (severityOrder.get(prevItem.severity) ?? 5)
+        ? finding.severity
+        : prevItem.severity;
+    const nextAction =
+      (actionRank.get(finding.action) ?? 0) > (actionRank.get(prevItem.action) ?? 0)
+        ? finding.action
+        : prevItem.action;
+    if (!existing.rationales.includes(finding.rationale)) {
+      existing.rationales.push(finding.rationale);
+    }
+    existing.item = {
+      ...prevItem,
+      action: nextAction,
+      severity: nextSeverity,
+      rationale: existing.rationales.join('; '),
+      breakingRisk: prevItem.breakingRisk || finding.breakingRisk,
+      suggestedCommand: suggestCommand(dep.ecosystem, dep.name, nextAction, targetVersion),
+    };
   }
 
+  const items: UpgradePlanItem[] = [...byDepId.values()].map((entry) => entry.item);
+
   // Sort by severity (critical first, then high, medium, low, info)
-  const severityOrder = new Map([
-    ['critical', 0],
-    ['high', 1],
-    ['medium', 2],
-    ['low', 3],
-    ['info', 4],
-  ]);
   items.sort((a, b) => {
     const sa = severityOrder.get(a.severity) ?? 5;
     const sb = severityOrder.get(b.severity) ?? 5;
