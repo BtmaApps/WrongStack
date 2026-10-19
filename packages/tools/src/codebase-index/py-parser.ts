@@ -7,7 +7,7 @@
  * Extracts: class, function, method, property, const, var, type
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { resolveWin32Command } from '../_win32-resolve.js';
 import { parseGeneric } from './generic-parser.js';
 import { parseParserOutput, toIndexSymbols } from './parser-output.js';
@@ -79,17 +79,30 @@ async function resolvePython(): Promise<string | null> {
 function commandIsAvailable(command: string): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
-    const proc = spawn(command, ['--version'], {
-      stdio: 'ignore',
-      windowsHide: true,
-    });
     const finish = (available: boolean) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       resolve(available);
     };
-    const timer = setTimeout(() => {
+    let proc: ChildProcess;
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      proc = spawn(command, ['--version'], {
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+    } catch {
+      // uv_spawn can throw SYNCHRONOUSLY on Windows — observed (2026-10-20)
+      // as `EPERM ... uv_spawn ...WindowsApps\python3.exe` from the Store App
+      // Execution Alias stub. In that case the 'error' event below never
+      // fires and an uncaught throw here would reject resolvePythonBinary
+      // instead of falling through to the next candidate (and eventually the
+      // no-python generic parser). Treat as unavailable.
+      finish(false);
+      return;
+    }
+    timer = setTimeout(() => {
       proc.kill('SIGKILL');
       finish(false);
     }, 5_000);

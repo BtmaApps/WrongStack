@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T22:20:02.222Z",
+  "generatedAt": "2026-10-19T23:53:01.872Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5191,
-    "testFiles": 4526,
-    "sourceLines": 1129115,
+    "sourceFiles": 5192,
+    "testFiles": 4529,
+    "sourceLines": 1129232,
     "workspaceEdges": 139,
-    "moduleEdges": 17075,
+    "moduleEdges": 17078,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -770,8 +770,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 339,
-      "testFiles": 334,
+      "sourceFiles": 340,
+      "testFiles": 337,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 334
+          "testFiles": 337
         }
       ]
     },
@@ -18452,6 +18452,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/browser-manager-origin-refresh.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/browser-manager-shared-launch.test.ts",
         "projects": [
           "root-node"
@@ -18483,6 +18489,12 @@
       },
       {
         "file": "packages/tools/tests/browser-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/browser-private-origin-prompt.test.ts",
         "projects": [
           "root-node"
         ]
@@ -19833,6 +19845,12 @@
       },
       {
         "file": "packages/tools/tests/pwsh.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/py-parser-probe-eperm.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28662,6 +28680,11 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/tools/src/browser/tools.ts",
+      "lines": 693,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
@@ -28710,11 +28733,6 @@
       "file": "packages/core/src/coordination/autonomous-coordinator.ts",
       "lines": 690,
       "relativeImports": 20
-    },
-    {
-      "file": "packages/tools/src/browser/tools.ts",
-      "lines": 690,
-      "relativeImports": 3
     },
     {
       "file": "packages/tui/src/reducers/settings-value-cycle.ts",
