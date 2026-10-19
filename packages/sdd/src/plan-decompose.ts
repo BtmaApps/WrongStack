@@ -12,13 +12,13 @@
  * the same pass, and `maxDecompositions` caps LLM spend per graph.
  */
 
-import {
-  assessAtomicity,
-  type AtomicityRuleSetConfig,
-  type KanbanAtomicityAssessment,
-} from '@wrongstack/kanban';
 import type { TaskTracker } from '@wrongstack/core/tasking';
 import type { TaskNode } from '@wrongstack/core/types';
+import {
+  type AtomicityRuleSetConfig,
+  assessAtomicity,
+  type KanbanAtomicityAssessment,
+} from '@wrongstack/kanban';
 import type { PlanningDecomposer } from './decompose-task.js';
 import { splitGraphNode } from './graph-split.js';
 import type { SddSubtaskSpec } from './sdd-parallel-run.js';
@@ -63,10 +63,14 @@ export function assessTaskNodeAtomicity(
   node: TaskNode,
   config?: AtomicityRuleSetConfig,
 ): KanbanAtomicityAssessment {
-  const criteriaCount = countAcceptanceCriteria(node.description ?? '');
+  const descriptionText = node.description ?? '';
+  const criteriaCount = countAcceptanceCriteria(descriptionText);
+  const descriptionLines = descriptionText
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*]\s+/, ''));
   const verificationCommand =
     (node.metadata?.['verificationCommand'] as string | undefined) ??
-    extractVerificationCommand([node.description ?? '']);
+    extractVerificationCommand(descriptionLines);
   return assessAtomicity(
     {
       title: node.title,

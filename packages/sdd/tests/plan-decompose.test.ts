@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import { DefaultTaskStore } from '@wrongstack/core/tasking';
-import { TaskTracker } from '../src/task-tracker.js';
-import { decomposeNonAtomicTasks, assessTaskNodeAtomicity } from '../src/plan-decompose.js';
+import { describe, expect, it } from 'vitest';
 import { splitGraphNode } from '../src/graph-split.js';
+import { assessTaskNodeAtomicity, decomposeNonAtomicTasks } from '../src/plan-decompose.js';
 import type { SddSubtaskSpec } from '../src/sdd-parallel-run.js';
+import { TaskTracker } from '../src/task-tracker.js';
 
 async function makeTracker() {
   const tracker = new TaskTracker({ store: new DefaultTaskStore() });
@@ -43,8 +43,10 @@ describe('assessTaskNodeAtomicity', () => {
     expect(assessTaskNodeAtomicity(tracker, tracker.getNode(big.id)!).verdict).toBe(
       'needs_decomposition',
     );
-    const smallVerdict = assessTaskNodeAtomicity(tracker, tracker.getNode(small.id)!).verdict;
-    expect(['atomic', 'borderline']).toContain(smallVerdict);
+    const smallAssessment = assessTaskNodeAtomicity(tracker, tracker.getNode(small.id)!);
+    expect(['atomic', 'borderline']).toContain(smallAssessment.verdict);
+    const failingReasons = smallAssessment.criteria.filter((c) => c.score < 1).map((c) => c.reason);
+    expect(failingReasons.some((r) => r.includes('none deterministically verifiable'))).toBe(false);
   });
 });
 
