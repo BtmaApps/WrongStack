@@ -260,6 +260,10 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
    * exactly once and never outlives the resolution it describes.
    */
   const grantExpiries = new Map<string, number>();
+  // The id most recently announced as resolved by the synchronous
+  // `tool.confirm_resolved` listener. `resolve()` checks it so a registered
+  // approval whose resolver emits that event is not announced twice.
+  let busAnnouncedId: string | undefined;
   const listeners = new Set<(change: ApprovalChange) => void>();
   // Declared BEFORE subscribing: the guard in `waitForConfirm` reads this
   // count, and a window where the listener exists but is not yet declared
@@ -301,6 +305,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
     const e = raw as ConfirmResolvedEvent;
     const held = pending.get(e.toolUseId);
     pending.delete(e.toolUseId);
+    busAnnouncedId = e.toolUseId;
     // W6 #9: read and cleared here so a grant is announced exactly once, and
     // only as part of the resolution that produced it.
     const grantedUntil = grantExpiries.get(e.toolUseId);
@@ -343,9 +348,13 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
   const sweep = (): void => {
     const now = Date.now();
     for (const [id, approval] of pending) {
-      if (approval.deadlineAt <= now) pending.delete(id);
+      if (approval.deadlineAt <= now) {
+        pending.delete(id);
+        registeredIds.delete(id);
+      }
     }
   };
+  const registeredIds = new Set<string>();
 
   return {
     list() {
@@ -383,6 +392,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
       // that event synchronously, but a second HQ command racing this one must
       // not find the entry either way.
       pending.delete(toolUseId);
+      const wasRegistered = registeredIds.delete(toolUseId);
       // W6 #9: an `always` answered from HQ records when it lapses, so the
       // dashboard can render the expiry and an audit row can say why the prompt
       // came back. The default is applied HERE rather than inside the helper:
@@ -400,10 +410,27 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
         if (grantedUntil !== undefined) grantExpiries.set(toolUseId, grantedUntil);
       }
       approval.resolve(decision);
+      // `wasRegistered` alone is not enough: if this resolver emits
+      // `tool.confirm_resolved` synchronously, the listener above already
+      // announced it — announcing again would double-report one decision.
+      if (wasRegistered && busAnnouncedId !== toolUseId) {
+        const grantedUntil = grantExpiries.get(toolUseId);
+        grantExpiries.delete(toolUseId);
+        notify({
+          kind: 'resolved',
+          toolUseId,
+          toolName: approval.toolName,
+          sessionId: approval.sessionId,
+          decision,
+          source: 'user',
+          ...(grantedUntil !== undefined ? { grantedUntil } : {}),
+        });
+      }
       return true;
     },
     register(approval) {
       pending.set(approval.toolUseId, approval);
+      registeredIds.add(approval.toolUseId);
       notify({ kind: 'requested', approval });
       return (decision = 'no') => {
         // Only announce if this entry is still ours. An HQ answer deletes it
@@ -411,6 +438,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
         // the dashboard the prompt was refused right after it was allowed.
         if (!pending.has(approval.toolUseId)) return;
         pending.delete(approval.toolUseId);
+        registeredIds.delete(approval.toolUseId);
         notify({
           kind: 'resolved',
           toolUseId: approval.toolUseId,

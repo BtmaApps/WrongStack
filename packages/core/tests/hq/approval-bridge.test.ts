@@ -324,4 +324,36 @@ describe('startApprovalTelemetryBridge', () => {
     expect(registry.resolve('toolu_1', 'yes')).toBe(true);
     expect(resolve).toHaveBeenCalledWith('yes');
   });
+
+  it('publishes approval.resolved when a prompt registered via registry.register is resolved from HQ (F150)', () => {
+    const events = new EventBus();
+    const registry = make(events);
+    const spy = vi.fn();
+    const stop = startApprovalTelemetryBridge({
+      registry,
+      publisher: fakePublisher(spy),
+      sessionId: 'sess-1',
+    });
+
+    const finish = registry.register({
+      toolUseId: 'repl:1',
+      toolName: 'bash',
+      sessionId: 'sess-1',
+      deadlineAt: Date.now() + 60_000,
+      input: { command: 'rm -rf dist' },
+      suggestedPattern: 'bash:rm',
+      destructive: true,
+      resolve: vi.fn(),
+    });
+
+    expect(registry.resolve('repl:1', 'yes')).toBe(true);
+    finish('no');
+
+    const resolved = spy.mock.calls.filter((c) => c[0].type === 'approval.resolved');
+    expect(resolved).toHaveLength(1);
+    const payload = resolved[0]![0].payload as HqApprovalResolvedPayload;
+    expect(payload.toolUseId).toBe('repl:1');
+    expect(payload.decision).toBe('yes');
+    stop();
+  });
 });
