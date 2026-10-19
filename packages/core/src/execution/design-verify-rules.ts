@@ -218,6 +218,8 @@ export const DESIGN_RULE_IDS: readonly string[] = [
   ...FILE_RULES.map((r) => r.id),
 ];
 
+const KNOWN_IDS: ReadonlySet<string> = new Set(DESIGN_RULE_IDS);
+
 export function ruleContext(tokens: DesignKitTokens): RuleContext {
   const values = [...Object.values(tokens.light ?? {}), ...Object.values(tokens.dark ?? {})];
   return { gradientKit: values.some((v) => classifyTokenValue(v) === 'gradient') };
@@ -241,7 +243,8 @@ export function parseWaivers(lines: readonly string[]): Waivers {
     const ids = (m[2] ?? '')
       .split(/[\s,]+/)
       .map((s) => s.trim())
-      .filter((s) => s === '*' || /^[a-z0-9]+\.[a-z0-9-]+$/.test(s));
+      // Only real rule ids: a misspelt waiver must not look like it worked.
+      .filter((s) => s === '*' || KNOWN_IDS.has(s));
     if (ids.length === 0) return;
     if (m[1] === '-file') {
       for (const id of ids) out.file.add(id);

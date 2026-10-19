@@ -149,5 +149,7 @@ describe('waivers', () => {
     expect(ids(`${line} {/* design-ignore: * */}`)).toEqual([]);
     // A waiver without an id waives nothing.
     expect(ids(`${line} {/* design-ignore: */}`)).toHaveLength(2);
+    // Nor does a misspelt one.
+    expect(ids(`${line} {/* design-ignore: motion.transition-al */}`)).toHaveLength(2);
   });
 });
