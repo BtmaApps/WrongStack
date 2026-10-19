@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f30-command-palette",
+  "slug": "fluidflow-features-f30-command-palette",
+  "title": "Command Palette",
+  "description": "FluidFlow · Command Palette",
+  "content": "Build command palette interface. Trigger: Ctrl/Cmd+K opens modal. Search: filter commands as user types. Categories: group commands by type. Fuzzy matching: find commands despite typos. Recent: show recently used commands. Keyboard nav: arrow keys to navigate, Enter to execute. Icons: icon per command. Shortcuts: show keyboard shortcut alongside command. Nested: support sub-menus for complex commands.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1f0122f763c6d23de1ba6975d79933797230cfc7d660be8aa8bf242433fe211a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add searchable command palette for quick actions.",
+    "detailed": "Build command palette interface. Trigger: Ctrl/Cmd+K opens modal. Search: filter commands as user types. Categories: group commands by type. Fuzzy matching: find commands despite typos. Recent: show recently used commands. Keyboard nav: arrow keys to navigate, Enter to execute. Icons: icon per command. Shortcuts: show keyboard shortcut alongside command. Nested: support sub-menus for complex commands.",
+    "advanced": "Build comprehensive command palette (like VS Code or Notion). Trigger: Ctrl/Cmd+K opens palette, Escape closes. Structure: modal with search input auto-focused, scrollable results list below. Search implementation: fuzzy matching for typo tolerance (use fuse.js or similar), search command names, descriptions, and keywords, highlight matching characters in results. Categories: group commands by type (Navigation, Actions, Settings, Recent), category headers in results, filter by category prefix (>Settings). Command definition: {id, label, description, icon, shortcut, action, keywords, category, enabled}. Results display: icon, label, description, keyboard shortcut aligned right, hover highlight, selected highlight with keyboard nav. Keyboard navigation: arrow up/down moves selection (wrap around), Enter executes selected, Tab might switch category, type continues searching. Recent commands: track usage in localStorage, show recent section at top when search empty. Contextual commands: filter available commands based on current page/state, disable unavailable commands with reason tooltip. Sub-menus: some commands open nested palette (e.g., \"Go to file\" opens file search), back button or Escape to return. Actions: navigate to page, trigger action, open modal, insert content. Animations: smooth open/close (scale + fade), results animate in on search. No results: helpful message (\"No commands found\"), suggest alternatives. Extensible: allow features to register commands dynamically. Analytics: track command usage for optimization."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

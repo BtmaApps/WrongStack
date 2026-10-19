@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d22-newspaper-editorial",
+  "slug": "fluidflow-design-d22-newspaper-editorial",
+  "title": "Newspaper/Editorial",
+  "description": "FluidFlow · Newspaper/Editorial",
+  "content": "Apply editorial/newspaper design with classic typography focus. Use serif fonts for headings (Georgia, Playfair Display, Times). Implement multi-column text layouts (columns-2 or columns-3) for articles. Create strong typographic hierarchy: large headlines, subheadings, body text, captions. Add drop caps for article beginnings (first-letter:text-5xl float-left). Use thin dividers and rules between sections. Include pull quotes with larger italic text. Monochrome palette with one accent color. Grid-based layouts mimicking print design.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "880672afdbbd529a90146880538c2a0c197bb311d1f24e754472375c0a3dde9a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create classic newspaper-inspired typography and multi-column layouts.",
+    "detailed": "Apply editorial/newspaper design with classic typography focus. Use serif fonts for headings (Georgia, Playfair Display, Times). Implement multi-column text layouts (columns-2 or columns-3) for articles. Create strong typographic hierarchy: large headlines, subheadings, body text, captions. Add drop caps for article beginnings (first-letter:text-5xl float-left). Use thin dividers and rules between sections. Include pull quotes with larger italic text. Monochrome palette with one accent color. Grid-based layouts mimicking print design.",
+    "advanced": "Apply editorial/newspaper design with focus on typography and content hierarchy. Typography: serif fonts for headlines (Playfair Display, Merriweather, Georgia) paired with readable sans-serif for body (Inter, Source Sans). Headline sizing: dramatic scale from text-6xl hero to text-xl section heads. Multi-column layouts: use CSS columns (columns-2 md:columns-3 gap-8) for article text with column-rule for dividers. Drop caps: first-letter pseudo-element with text-6xl font-serif float-left mr-3 mt-1. Pull quotes: extracted quotes in larger text (text-2xl italic) with decorative quotation marks, border-l-4 or centered with rules above/below. Section dividers: thin horizontal rules (h-px bg-gray-300 my-8) or decorative ornaments. Bylines and datelines: text-sm text-gray-500 uppercase tracking-wide. Image treatment: full-bleed images, captioned images with credit lines (text-xs text-gray-400). Sidebar elements: related articles, key facts boxes with bg-gray-50 p-4. Color: primarily black/white/gray with single accent color for links and highlights. Grid: asymmetric layouts with main content + sidebar pattern. Print consideration: proper typographic conventions - hanging punctuation, proper em dashes, smart quotes. Responsive: single column on mobile, progressive enhancement to multi-column on larger screens."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

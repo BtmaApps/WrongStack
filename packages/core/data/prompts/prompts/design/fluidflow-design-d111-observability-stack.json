@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d111-observability-stack",
+  "slug": "fluidflow-design-d111-observability-stack",
+  "title": "Observability Stack",
+  "description": "FluidFlow · Observability Stack",
+  "content": "Apply observability aesthetic with monitoring platform feel. Three-pillar layout (logs, metrics, traces). Log search with filter bars. Metric dashboards with alert thresholds. Distributed trace waterfalls. Service health overview grids. Alerting rule editors. On-call schedule displays. Incident timeline views. SLO/SLI tracking. Correlation analysis panels.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d111"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3822ba91413e78802f67fb4596f71c694ebdd99148605c563c87a8113f817a9d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create observability interface with logs, metrics, traces unified view and alerting.",
+    "detailed": "Apply observability aesthetic with monitoring platform feel. Three-pillar layout (logs, metrics, traces). Log search with filter bars. Metric dashboards with alert thresholds. Distributed trace waterfalls. Service health overview grids. Alerting rule editors. On-call schedule displays. Incident timeline views. SLO/SLI tracking. Correlation analysis panels.",
+    "advanced": "Apply observability aesthetic with Datadog/Grafana patterns. Three-column or tab layout for logs/metrics/traces correlation. Log viewer: query bar, level filters (ERROR, WARN, INFO), JSON expansion, tail mode. Metric panels: line charts with alert threshold line (red), anomaly band. Trace waterfall: service spans as horizontal bars with timing, error highlighting. Service grid: tiles with health score, request rate, error rate, p99 latency. Alert rule: metric condition, threshold, duration, severity, notify channels. On-call: rotation schedule with current, next, escalation path. Incident: timeline with events, status (investigating, mitigating, resolved). SLO card: 99.9% target, current %, error budget burn. Correlation: click log→see trace→see related metrics."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

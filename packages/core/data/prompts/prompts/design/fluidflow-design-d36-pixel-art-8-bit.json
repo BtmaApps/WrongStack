@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d36-pixel-art-8-bit",
+  "slug": "fluidflow-design-d36-pixel-art-8-bit",
+  "title": "Pixel Art/8-bit",
+  "description": "FluidFlow · Pixel Art/8-bit",
+  "content": "Apply pixel art/8-bit aesthetic reminiscent of retro games. Use blocky, pixelated graphics - apply image-rendering: pixelated. Limited color palettes (8-16 colors max). Pixel-style fonts for text. Include retro game UI elements: health bars, score displays, button prompts. Chiptune-inspired visual rhythm. Dithering patterns for gradients. CRT screen effects optional. Nostalgic 80s-90s gaming atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d36"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ad2817cf20555da27793c560c9c4c28cd7b6cedcdcada7b3ae193270d4b960fb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create retro pixel art aesthetic with blocky graphics, limited colors, and nostalgic gaming feel.",
+    "detailed": "Apply pixel art/8-bit aesthetic reminiscent of retro games. Use blocky, pixelated graphics - apply image-rendering: pixelated. Limited color palettes (8-16 colors max). Pixel-style fonts for text. Include retro game UI elements: health bars, score displays, button prompts. Chiptune-inspired visual rhythm. Dithering patterns for gradients. CRT screen effects optional. Nostalgic 80s-90s gaming atmosphere.",
+    "advanced": "Apply pixel art/8-bit aesthetic with retro gaming nostalgia. Pixel rendering: image-rendering: pixelated (or crisp-edges) on images and icons, scale up small pixel art. Color palettes: use authentic retro palettes - NES (54 colors), Game Boy (4 greens), C64, or custom limited palette (8-16 colors). Dithering: simulate gradients using dot patterns (CSS repeating patterns or SVG). Pixel fonts: use bitmap-style fonts (Press Start 2P, VT323, Silkscreen) at appropriate sizes (multiples of base). UI elements: chunky borders (border-4), blocky buttons, health/progress bars with segments. Game UI patterns: score displays, lives counters, menu boxes with thick borders. Animation: step-based animations (animation-timing-function: steps()), avoid smooth transitions. Sound visualization: represent audio with bouncing bars or waveforms. Sprites: character or mascot elements in pixel art style. CRT effects (optional): scan lines, slight curvature, color fringing using CSS filters and pseudo-elements. Screen bezel: optional frame suggesting old monitor or handheld device. Tile patterns: repeating background tiles like classic games. Interactive: 8-bit style hover states, pixel explosions, collectible animations. Implementation: CSS custom properties for palette colors, SVG for scalable pixel graphics. Accessibility: pixel fonts can be hard to read - provide size options, ensure sufficient contrast."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q1-beautify-design",
+  "slug": "fluidflow-quick-actions-q1-beautify-design",
+  "title": "✨ Beautify Design",
+  "description": "FluidFlow · ✨ Beautify Design",
+  "content": "Transform the design to be more polished and professional. Apply consistent spacing using Tailwind scale (p-4, p-6, gap-4, gap-6). Add subtle shadows (shadow-sm, shadow-md) to cards and elevated elements. Improve visual hierarchy with proper heading sizes (text-xl, text-2xl, text-3xl) and weights. Use a cohesive color palette with proper contrast. Add rounded corners (rounded-lg, rounded-xl) for modern feel. Include hover states on interactive elements. Ensure generous whitespace for breathing room.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0bc4d0ef472b0137c1f5ef543c01cf1a90f609cca14e57a9c38ebfcea431d509",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Polish the design with consistent spacing, shadows, and better visual hierarchy.",
+    "detailed": "Transform the design to be more polished and professional. Apply consistent spacing using Tailwind scale (p-4, p-6, gap-4, gap-6). Add subtle shadows (shadow-sm, shadow-md) to cards and elevated elements. Improve visual hierarchy with proper heading sizes (text-xl, text-2xl, text-3xl) and weights. Use a cohesive color palette with proper contrast. Add rounded corners (rounded-lg, rounded-xl) for modern feel. Include hover states on interactive elements. Ensure generous whitespace for breathing room.",
+    "advanced": "Transform the design to be polished and professional with systematic improvements. Spacing: establish consistent rhythm using Tailwind scale - use p-4/p-6 for content, gap-4/gap-6 for grids, my-8/my-12 for section separation. Elevation: shadow-sm for subtle cards, shadow-md for interactive, shadow-lg for modals/dropdowns - add hover:shadow-lg transitions. Typography hierarchy: text-3xl font-bold for h1, text-2xl font-semibold for h2, text-lg font-medium for h3, text-base for body, text-sm text-gray-600 for secondary. Color palette: establish primary (blue-600), secondary (gray-600), accent (amber-500), success/error/warning states. Corners: rounded-lg for cards, rounded-xl for modals, rounded-full for avatars/badges. Interactive states: hover:bg-gray-50 for list items, focus-visible:ring-2 focus-visible:ring-offset-2, active:scale-95 for buttons. Whitespace: min-h-screen for sections, space-y-8 for content blocks. Add subtle dividers with border-gray-200. Ensure 4.5:1 contrast ratios. Test visual balance at all breakpoints."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

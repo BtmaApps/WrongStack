@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c38-add-empty-state",
+  "slug": "fluidflow-components-c38-add-empty-state",
+  "title": "Add Empty State",
+  "description": "FluidFlow · Add Empty State",
+  "content": "Create empty state component for no-data scenarios. Container: flex flex-col items-center justify-center py-12 px-4 text-center. Illustration: large icon or image (w-24 h-24 text-gray-300) - InboxIcon, SearchIcon, FileIcon depending on context. Heading: text-lg font-medium text-gray-900 mt-4. Description: text-sm text-gray-500 mt-2 max-w-sm. Action button: mt-6 primary button \"Create your first item\" or \"Try different search\". Secondary action link optional. Create variants: no results, no data, no permission, error state.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c38"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e3bf93e02abe0b3ea0516eb311425e16e8628e38f415ad15ab88b28a079dc800",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create an empty state component for when there is no data to display.",
+    "detailed": "Create empty state component for no-data scenarios. Container: flex flex-col items-center justify-center py-12 px-4 text-center. Illustration: large icon or image (w-24 h-24 text-gray-300) - InboxIcon, SearchIcon, FileIcon depending on context. Heading: text-lg font-medium text-gray-900 mt-4. Description: text-sm text-gray-500 mt-2 max-w-sm. Action button: mt-6 primary button \"Create your first item\" or \"Try different search\". Secondary action link optional. Create variants: no results, no data, no permission, error state.",
+    "advanced": "Create versatile empty state component for various scenarios. Layout: flex flex-col items-center justify-center py-16 px-6 text-center max-w-md mx-auto. Illustration options: icon (w-16 h-16 text-gray-300), custom SVG illustration (max-w-[200px]), Lottie animation for delight. Heading: text-xl font-semibold text-gray-900 mt-6. Description: text-sm text-gray-500 mt-2 leading-relaxed. Action area: mt-6 flex flex-col sm:flex-row gap-3 items-center justify-center. Primary action: solid button (Create, Add, Upload, etc). Secondary action: text link or ghost button (Learn more, Go back, etc). Variants by context: noData (Inbox icon, \"No items yet\", \"Create your first...\"), noResults (Search icon, \"No results found\", \"Try different keywords\"), noPermission (Lock icon, \"Access restricted\", \"Request access\"), error (AlertCircle icon, \"Something went wrong\", \"Try again\"), maintenance (Wrench icon, \"Under maintenance\", expected time). Animation: subtle entrance animation (fade + scale up). Compact mode: smaller spacing/icons for inline empty states (tables, lists). Props: icon/illustration, title, description, primaryAction {label, onClick, icon}, secondaryAction, variant (preset configurations). Accessibility: role=\"status\" or appropriate live region, action buttons clearly labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q11-add-dashboard",
+  "slug": "fluidflow-quick-actions-q11-add-dashboard",
+  "title": "📊 Add Dashboard",
+  "description": "FluidFlow · 📊 Add Dashboard",
+  "content": "Create complete dashboard layout. Add sidebar navigation (w-64) with icons, labels, and collapsible sections. Include header with search, notifications, and user menu. Build metrics cards row showing KPIs with trend indicators (TrendingUp/Down icons). Add line chart for trends over time and bar chart for comparisons. Create recent activity feed with avatars and timestamps. Build data table with sorting, pagination, and search. Add status overview showing counts by state. Include quick stats with sparkline mini-charts. Ensure responsive design with collapsible sidebar on mobile.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7a7ae3db7c12f4e257b1508c2b39d9db36d1224c41c0a274de5bda26dc5e8927",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dashboard layout with sidebar navigation, metrics cards, and data tables.",
+    "detailed": "Create complete dashboard layout. Add sidebar navigation (w-64) with icons, labels, and collapsible sections. Include header with search, notifications, and user menu. Build metrics cards row showing KPIs with trend indicators (TrendingUp/Down icons). Add line chart for trends over time and bar chart for comparisons. Create recent activity feed with avatars and timestamps. Build data table with sorting, pagination, and search. Add status overview showing counts by state. Include quick stats with sparkline mini-charts. Ensure responsive design with collapsible sidebar on mobile.",
+    "advanced": "Create complete dashboard layout with all essential components. Sidebar: fixed left w-64 h-screen bg-gray-900 text-white, logo/brand at top (h-16), nav sections with group labels (text-xs uppercase text-gray-500 px-4 py-2), nav items (flex items-center gap-3 px-4 py-2 hover:bg-gray-800 rounded-lg), icons from lucide-react, active state (bg-gray-800 text-white), collapsible on mobile (Sheet component or transform -translate-x-full). Header: fixed top w-full h-16 bg-white border-b, flex items-center justify-between px-6, hamburger on mobile, search input (w-64), notifications (Bell icon with red badge), user menu dropdown (avatar, name, dropdown with Profile/Settings/Logout). Metrics cards: grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4, each card shows label, value (text-3xl font-bold), trend (TrendingUp/Down with green/red text), vs previous period. Charts: use recharts library, line chart for trends (ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip), bar chart for comparisons. Activity feed: space-y-4, each item with avatar, description, timestamp (relative time), action link. Data table: full-width, sortable columns (click header to sort, ChevronUp/Down indicators), search filter, pagination (Previous/Next, page numbers), row actions dropdown. Status cards: counts by status with colored badges. Mobile: sidebar off-canvas, stack cards vertically, horizontal scroll for tables."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

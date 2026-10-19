@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec11-checkout-flow",
+  "slug": "fluidflow-ecommerce-ec11-checkout-flow",
+  "title": "Checkout Flow",
+  "description": "FluidFlow · Checkout Flow",
+  "content": "Build multi-step checkout process. Steps: Information, Shipping, Payment, Review. Progress indicator: step numbers with labels, completed steps have check marks. Step 1: email input, guest or login option. Step 2: address form, shipping method selection. Step 3: credit card form, PayPal/Apple Pay options, billing address. Step 4: order summary, edit links. Navigation: Back/Continue buttons. Order summary sidebar: sticky on desktop. Express checkout options. Error handling and validation.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9b14abd28a824d7d9b77e00f0fc268ef51c22247717e5b7abf2da41a70a8c37c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create multi-step checkout with shipping, payment, and order review.",
+    "detailed": "Build multi-step checkout process. Steps: Information, Shipping, Payment, Review. Progress indicator: step numbers with labels, completed steps have check marks. Step 1: email input, guest or login option. Step 2: address form, shipping method selection. Step 3: credit card form, PayPal/Apple Pay options, billing address. Step 4: order summary, edit links. Navigation: Back/Continue buttons. Order summary sidebar: sticky on desktop. Express checkout options. Error handling and validation.",
+    "advanced": "Build multi-step checkout process with excellent UX and conversion optimization. Steps: 1) Information/Contact, 2) Shipping, 3) Payment, 4) Review & Place Order. Progress indicator: horizontal stepper at top, step numbers in circles connected by lines. States: completed (bg-green-500 with Check icon), current (bg-black with number), upcoming (bg-gray-200 with number). Labels below circles. Responsive: show abbreviated on mobile (\"1. Info\" vs \"1. Contact Information\"). Step 1 - Contact Information: email input (autocomplete=\"email\"), \"Continue as guest\" or \"Log in for faster checkout\" toggle, \"Create account\" checkbox with password field (optional). Express checkout: prominent PayPal, Apple Pay, Google Pay buttons at top before form (\"Express Checkout\" section). Step 2 - Shipping: saved addresses dropdown for logged-in users, address form with Google Places autocomplete (street, apt/suite, city, state dropdown, ZIP, country), phone number, shipping method selection (radio cards with carrier logo, name, delivery estimate \"Arrives by Mon, Jan 20\", price or \"FREE\"). Save address checkbox. Step 3 - Payment: payment method tabs/cards (Credit Card, PayPal, Klarna/Affirm). Credit card: card number with type detection icon, expiry MM/YY, CVV, name on card. Use hosted fields for PCI compliance (Stripe Elements). Billing address: \"Same as shipping\" checkbox (default checked), or expand address form. \"Save card for future purchases\" checkbox. Step 4 - Review: all sections summarized (Contact, Shipping address, Shipping method, Payment method) each with \"Edit\" link returning to that step. Order items list with images, names, variants, quantities, prices. Apply any final promo code. Terms checkbox: \"I agree to Terms of Service and Privacy Policy\". \"Place Order\" primary button with total. Navigation: \"Back\" secondary button (left, hidden on step 1), \"Continue to [Next Step]\" primary button (right). Validate current step before proceeding, show inline errors. Order summary sidebar: sticky position on desktop (w-80), contains items, subtotal, shipping, taxes, discounts, total. Collapsible \"Show order summary\" on mobile with total. Loading: skeleton during step transitions, button loading state. Place Order: submit, show loading overlay, redirect to confirmation page. Error handling: inline validation, step-level error summary at top, payment errors shown clearly with retry option. Save progress: persist form state to localStorage, offer \"Resume checkout\" if abandoned. Analytics: track funnel conversion per step."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

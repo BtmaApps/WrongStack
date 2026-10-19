@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f20-keyboard-shortcuts",
+  "slug": "fluidflow-features-f20-keyboard-shortcuts",
+  "title": "Keyboard Shortcuts",
+  "description": "FluidFlow · Keyboard Shortcuts",
+  "content": "Implement keyboard shortcut system. Common shortcuts: Ctrl+S save, Ctrl+K search, Escape close. Registration: central shortcut registry. Display: show shortcuts in tooltips and menus. Help modal: show all available shortcuts. Scope: different shortcuts for different contexts. Conflict prevention: warn on duplicate shortcuts. OS detection: show Cmd for Mac, Ctrl for Windows. Customizable: optionally let users remap shortcuts.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1e82f0bb046410c010c3e0c3bf381ba32d738ede1ec005ce5388411938280c96",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add keyboard shortcuts for common actions.",
+    "detailed": "Implement keyboard shortcut system. Common shortcuts: Ctrl+S save, Ctrl+K search, Escape close. Registration: central shortcut registry. Display: show shortcuts in tooltips and menus. Help modal: show all available shortcuts. Scope: different shortcuts for different contexts. Conflict prevention: warn on duplicate shortcuts. OS detection: show Cmd for Mac, Ctrl for Windows. Customizable: optionally let users remap shortcuts.",
+    "advanced": "Implement comprehensive keyboard shortcut system with discoverability. Shortcut registry: central Map or object storing shortcut definitions {keys, action, description, scope, enabled}. Key parsing: support modifiers (ctrl, alt, shift, meta/cmd), multiple keys (ctrl+shift+k), sequences (g then h for GitHub-style). Event handling: useEffect with keydown listener on document, check modifiers and key, prevent default on match, call action. OS-aware display: detect navigator.platform or userAgent, show \"Cmd\" for Mac, \"Ctrl\" for Windows/Linux in UI. Display in UI: show shortcuts in tooltips (title=\"Save (Ctrl+S)\"), menu items (flex justify-between with shortcut right-aligned), and command palette. Help modal: \"?\" key or menu item opens modal listing all shortcuts, grouped by category (Navigation, Editing, etc.), searchable. Scope management: global shortcuts always active, contextual shortcuts active only in certain UI (e.g., editor shortcuts only when editor focused). Focus-based scoping: use context to track current focus area, filter shortcuts by scope. Conflict detection: warn in dev mode when duplicate shortcuts registered. Sequence shortcuts: track key sequence with timeout reset (g pressed, within 500ms i pressed = go to inbox). Reserved shortcuts: do not override browser shortcuts (Ctrl+T, Ctrl+W) or screen reader shortcuts. Customization: store user-customized shortcuts in localStorage, settings UI for remapping with conflict check. Visual hint mode: hold modifier key to show available shortcut hints overlaid on UI (like Mac Cheatsheet). Disable shortcuts: respect input focus (do not trigger shortcuts when typing in input/textarea unless explicitly handling). Integration: expose useKeyboardShortcut hook for easy registration in components."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T21:13:23.398Z",
+  "generatedAt": "2026-10-19T21:16:36.195Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5189,
+    "sourceFiles": 5190,
     "testFiles": 4522,
-    "sourceLines": 1128511,
+    "sourceLines": 1128787,
     "workspaceEdges": 139,
-    "moduleEdges": 17069,
+    "moduleEdges": 17073,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,7 +248,7 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1159,
+      "sourceFiles": 1160,
       "testFiles": 997,
       "workspaceDependencies": [
         "@wrongstack/kanban",

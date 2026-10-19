@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r25-foldable-device-support",
+  "slug": "fluidflow-responsive-r25-foldable-device-support",
+  "title": "Foldable Device Support",
+  "description": "FluidFlow · Foldable Device Support",
+  "content": "Support foldable devices (Samsung Fold, Surface Duo). Detect fold using viewport segments API. Avoid placing critical content on the fold line. Create dual-pane layouts for unfolded state. Single pane for folded. Use CSS spanning media features. Test with foldable device emulators. Handle dynamic viewport changes on fold/unfold.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "94b3955b9a141e8f6dc4a0d4ac1983e146160a1476d063d381eabe6841285e1d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Support foldable devices with appropriate layouts for fold states.",
+    "detailed": "Support foldable devices (Samsung Fold, Surface Duo). Detect fold using viewport segments API. Avoid placing critical content on the fold line. Create dual-pane layouts for unfolded state. Single pane for folded. Use CSS spanning media features. Test with foldable device emulators. Handle dynamic viewport changes on fold/unfold.",
+    "advanced": "Support foldable devices with appropriate layouts. Detection: use viewport segments API (visualViewport.segments), horizontal-viewport-segments and vertical-viewport-segments media features. Fold awareness: avoid placing interactive elements, text, or images across the fold line. Dual-pane layout: when unfolded, create side-by-side layout (list + detail, navigation + content), use CSS multi-column spanning or Grid with spanning. Single pane: normal layout when folded. Dynamic changes: handle fold/unfold events, smooth transitions between layouts, preserve state. CSS spanning: @media (horizontal-viewport-segments: 2) for side-by-side fold, @media (vertical-viewport-segments: 2) for top-bottom. Environment variables: env(viewport-segment-width), env(viewport-segment-left) for positioning. Posture: detect device posture (folded, flat, laptop) with device-posture media feature. Testing: Chrome DevTools foldable device emulation, actual device testing. Fallback: works as normal responsive layout when folding not detected. Patterns: master-detail (list left, detail right), extended canvas (content spans both screens), companion mode (controls on one screen, content on other)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

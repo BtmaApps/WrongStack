@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c45-add-avatar-stack",
+  "slug": "fluidflow-components-c45-add-avatar-stack",
+  "title": "Add Avatar Stack",
+  "description": "FluidFlow · Add Avatar Stack",
+  "content": "Create avatar stack for showing multiple users in compact space. Container: flex -space-x-2 (negative margin for overlap). Avatar: w-10 h-10 rounded-full border-2 border-white object-cover. Order: later avatars have higher z-index (use inline style or Tailwind z-10, z-20, etc). Limit display: show first 3-5 avatars. Overflow indicator: +5 more badge after visible avatars, same size as avatars with bg-gray-200 text-gray-600 text-sm font-medium. Hover: optional tooltip showing all names. Scale up on hover for individual avatar.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c45"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "116a610397a452abbf19def691b00ae57d7b648a4630deeb5a80801171466789",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create overlapping avatar stack showing multiple users.",
+    "detailed": "Create avatar stack for showing multiple users in compact space. Container: flex -space-x-2 (negative margin for overlap). Avatar: w-10 h-10 rounded-full border-2 border-white object-cover. Order: later avatars have higher z-index (use inline style or Tailwind z-10, z-20, etc). Limit display: show first 3-5 avatars. Overflow indicator: +5 more badge after visible avatars, same size as avatars with bg-gray-200 text-gray-600 text-sm font-medium. Hover: optional tooltip showing all names. Scale up on hover for individual avatar.",
+    "advanced": "Create flexible avatar stack component with interaction support. Container: flex items-center. Avatar group: flex -space-x-3 (adjustable overlap). Individual avatar: relative inline-block ring-2 ring-white rounded-full transition-transform hover:z-50 hover:scale-110. Avatar sizes: xs (w-6 h-6), sm (w-8 h-8), md (w-10 h-10), lg (w-12 h-12). Avatar content: img with object-cover rounded-full, fallback to initials (flex items-center justify-center bg-gray-200 text-gray-600 font-medium). Z-index management: first avatar highest z-index, decreasing for overlap effect, or reverse for \"stack on right\" look. Max display: prop for max visible (default 5), remaining count shown in overflow indicator. Overflow indicator: same size as avatars, rounded-full bg-gray-100 text-gray-600 font-medium flex items-center justify-center, shows \"+{count}\". Hover expansion: on stack hover, expand to show all with animation, or show tooltip with full list. Tooltip content: list of names, \"and X others\" if too many. Click handling: onClick for individual avatar (go to profile), onClick for stack (show full member list). Add button: optional \"+\" avatar at end to add new member. Accessibility: each avatar has alt text with name, stack has aria-label \"Team members\" or similar. Props: users array [{id, name, image}], max, size, onUserClick, onAddClick, showAddButton, expandOnHover. Animation: staggered reveal on hover using transition-delay."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

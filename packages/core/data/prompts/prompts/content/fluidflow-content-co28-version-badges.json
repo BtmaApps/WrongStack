@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co28-version-badges",
+  "slug": "fluidflow-content-co28-version-badges",
+  "title": "Version Badges",
+  "description": "FluidFlow · Version Badges",
+  "content": "Create version and status badge displays. Version format: v1.2.3, v2.0.0-beta. Status badges: stable, beta, alpha, deprecated, latest. Colors: green for stable/latest, yellow for beta, orange for alpha, red for deprecated. Shield style: shields.io style badges. NPM/package style: name@version format. Comparison: current vs latest indicator. Changelog link: badge links to release notes. Update indicator: \"New version available\" notice. Auto-fetch: fetch latest version from npm/GitHub. Copy version: click to copy version string.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "39dc3d4372eafa25bd5d03b0c122fd3d264fc829cba79976f6e38bdde155b7da",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Display version numbers and status badges consistently.",
+    "detailed": "Create version and status badge displays. Version format: v1.2.3, v2.0.0-beta. Status badges: stable, beta, alpha, deprecated, latest. Colors: green for stable/latest, yellow for beta, orange for alpha, red for deprecated. Shield style: shields.io style badges. NPM/package style: name@version format. Comparison: current vs latest indicator. Changelog link: badge links to release notes. Update indicator: \"New version available\" notice. Auto-fetch: fetch latest version from npm/GitHub. Copy version: click to copy version string.",
+    "advanced": "Create version and status badge display system for packages and software. Version formats: semantic versioning (1.2.3), with prefix (v1.2.3), with tag (1.2.3-beta.1), full package (@scope/package@1.2.3). Status badges: stable (bg-green-100 text-green-800), beta (bg-yellow-100 text-yellow-800), alpha (bg-orange-100 text-orange-800), deprecated (bg-red-100 text-red-800), latest (green outline), dev/nightly (gray). Shield.io style: two-part badge with label (gray) and value (colored), mimics shields.io design (rounded-l-full on left, rounded-r-full on right). Size variants: small (text-xs), default (text-sm), large (text-base). Comparison display: \"1.2.0 to 1.3.0\" showing upgrade path, current version vs latest indicator. Update available: banner or notice when new version exists, with changelog link. Interactive: click to copy version (navigator.clipboard), brief \"Copied!\" feedback. Link to changelog: badge links to GitHub release or changelog URL. Auto-fetch latest: optional API call to npm registry or GitHub releases to get latest version, cache result. Build status integration: can display alongside CI badge (passing/failing). Platform badges: OS compatibility (macOS, Windows, Linux), browser support. Release date: optional \"Released Dec 15, 2024\" below version. Pre-release indicator: \"Pre-release\" warning badge for alpha/beta. Documentation: link to version-specific docs."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

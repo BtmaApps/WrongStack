@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da19-funnel-analysis",
+  "slug": "fluidflow-dashboard-da19-funnel-analysis",
+  "title": "Funnel Analysis",
+  "description": "FluidFlow · Funnel Analysis",
+  "content": "Build funnel visualization for conversions. Steps: horizontal or vertical funnel stages. Metrics: show count and percentage at each step. Drop-off: highlight drop-off between steps. Comparison: compare funnels for different segments. Time period: select date range for analysis. Drill down: click step for detailed breakdown. Benchmarks: show industry or historical benchmarks.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f88171dd52b765f85dadc6e880a6ad392303f578230e8eb8afd1a97e6c66b10d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Visualize conversion funnel with step metrics.",
+    "detailed": "Build funnel visualization for conversions. Steps: horizontal or vertical funnel stages. Metrics: show count and percentage at each step. Drop-off: highlight drop-off between steps. Comparison: compare funnels for different segments. Time period: select date range for analysis. Drill down: click step for detailed breakdown. Benchmarks: show industry or historical benchmarks.",
+    "advanced": "Build comprehensive funnel analysis visualization. Funnel structure: horizontal bars narrowing left to right, or vertical stacked segments. Step data: step name, count at step, percentage of previous step, percentage of total (entry). Drop-off highlighting: show drop-off percentage between steps (red text or bar), visualize lost users at each transition. Funnel shape: proportional widths based on actual numbers, or fixed step heights with overlay fill. Step details: hover for tooltip with full metrics, click for drilldown to user list or sub-funnel. Time-based: select date range, see funnel for that period, compare to previous period. Segmentation: compare funnels side by side (mobile vs desktop, new vs returning), segment selector dropdown. Cohort funnels: track specific cohort through funnel over time. Step timing: average time between steps, time distribution histogram. Goal conversion rate: overall funnel conversion rate prominently displayed, trend vs previous period. Breakdowns: within each step, see breakdown by dimension (source, device, campaign). User paths: show alternate paths users take (not just linear). Exclusions: ability to exclude segments from funnel. Annotations: mark events that affected funnel (feature launch, bug). Benchmarks: optional benchmark line showing target or industry average. Export: funnel data as CSV, funnel image as PNG. Interactive: click and drag to reorder steps for ad-hoc analysis. A/B comparison: compare funnel between experiment variants. Alerts: notify when step conversion drops below threshold."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

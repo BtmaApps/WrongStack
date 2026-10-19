@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a34-animated-icons",
+  "slug": "fluidflow-animation-a34-animated-icons",
+  "title": "Animated Icons",
+  "description": "FluidFlow · Animated Icons",
+  "content": "Create animated icon states for feedback. Loading spinner with rotation. Success checkmark with draw effect. Error X with shake or draw. Warning triangle with pulse. Transition between states smoothly. Use SVG for crisp animations. Add color transitions. Support icon size variants. Create morphing between icon states.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "41a208a489d92b70fbc97f0e21de73e22bee3b936f097058dc778477230edc00",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create animated versions of common icons (loading, success, error).",
+    "detailed": "Create animated icon states for feedback. Loading spinner with rotation. Success checkmark with draw effect. Error X with shake or draw. Warning triangle with pulse. Transition between states smoothly. Use SVG for crisp animations. Add color transitions. Support icon size variants. Create morphing between icon states.",
+    "advanced": "Create animated icon states for clear visual feedback. Loading spinner: circular stroke with stroke-dasharray gap, animate rotation (transform: rotate) or stroke-dashoffset for spinning arc. Checkmark draw: SVG path with stroke-dasharray equal to path length, animate stroke-dashoffset from length to 0, reveals stroke. Error X: two diagonal lines, animate each with draw or fade-in, add subtle shake (translateX oscillation) on complete. Warning pulse: scale 1 to 1.1 with opacity pulse, draws attention. State transitions: morph between icons (loading → success/error), or crossfade with scale. SVG structure: viewBox=\"0 0 24 24\" for consistent sizing, stroke icons for draw animations, currentColor for theme inheritance. Draw animation timing: 500-800ms for satisfying reveal, ease-out for natural deceleration. Color transitions: animate stroke or fill color alongside shape (gray loading, green success, red error). Size variants: scale SVG or adjust stroke-width proportionally. Looping states: loading loops infinitely, success/error play once and hold. Sequencing: for multi-element icons (like list checkmarks), stagger animation across items. Implementation: CSS keyframes for rotation, stroke-dashoffset for draw, React state for conditional rendering. Libraries: Lottie for designer-created animations, react-icons with custom animation wrapper. Morphing icons: same point count for smooth morph, or use Flubber/GSAP for path interpolation. ACCESSIBILITY: use aria-label to describe state (\"Loading\", \"Success\", \"Error\"), dont rely solely on animation for communication. Reduced motion: show static icon in final state without animation. Performance: SVG animations are efficient, prefer CSS over JS animation when possible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

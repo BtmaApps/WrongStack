@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u32-micro-copy",
+  "slug": "fluidflow-ux-u32-micro-copy",
+  "title": "Micro-copy",
+  "description": "FluidFlow · Micro-copy",
+  "content": "Craft thoughtful micro-copy throughout the interface. Write action-oriented button labels (Save Changes not Submit). Use friendly, human error messages. Add helpful placeholder text in inputs. Include instructional helper text below complex fields. Write encouraging empty states. Use consistent terminology throughout. Match brand voice and tone. Consider internationalization. A/B test critical copy.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fc0248744000792895f8a0daf81a287f6e16db50a4482242144bc2528740f915",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Write helpful, friendly UI text for buttons, labels, and messages.",
+    "detailed": "Craft thoughtful micro-copy throughout the interface. Write action-oriented button labels (Save Changes not Submit). Use friendly, human error messages. Add helpful placeholder text in inputs. Include instructional helper text below complex fields. Write encouraging empty states. Use consistent terminology throughout. Match brand voice and tone. Consider internationalization. A/B test critical copy.",
+    "advanced": "Craft thoughtful micro-copy that guides and reassures users. Button labels: action-oriented and specific (\"Save Changes\" not \"Submit\", \"Send Invite\" not \"OK\"), indicate outcome. Error messages: friendly, specific, actionable (\"Couldnt save. Check your connection and try again\" not \"Error 500\"). Placeholder text: helpful examples (\"Enter your email\"), disappears on focus, never critical info. Helper text: appears below complex fields, explains format/requirements (\"Password must be 8+ characters with a number\"). Empty states: encouraging and actionable (\"No projects yet. Create your first one to get started!\"). Confirmation messages: acknowledge action completed (\"Changes saved\", \"Email sent to 3 recipients\"). Loading messages: reduce anxiety (\"Loading your dashboard...\" not just spinner). Tooltips: concise explanations, no redundant info. Terminology: create glossary, use consistently (always \"project\" not sometimes \"project\" sometimes \"workspace\"). Brand voice: match overall brand tone (professional, friendly, playful), documented guidelines. Internationalization: write copy that translates well, avoid idioms and culturally specific references. A/B testing: test button copy, error messages, CTAs for conversion. Character limits: consider mobile, truncation, translation expansion (German is ~30% longer). ACCESSIBILITY: screen reader friendly, avoid placeholder as label."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

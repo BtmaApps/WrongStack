@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec30-return-request-flow",
+  "slug": "fluidflow-ecommerce-ec30-return-request-flow",
+  "title": "Return Request Flow",
+  "description": "FluidFlow · Return Request Flow",
+  "content": "Build return request flow. Order selection: list of eligible items from recent orders, select items to return. Reason: dropdown (Too small, Too large, Changed mind, Defective, Wrong item). Condition: confirm item is unworn/unused. Resolution: refund or exchange option. Summary: return shipping info, refund timeline. Confirmation: return label and instructions.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1632fb869b83e57c9b48007a341782984d8a42231df86b56160126e1e8dbf244",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create return request form with reason selection and instructions.",
+    "detailed": "Build return request flow. Order selection: list of eligible items from recent orders, select items to return. Reason: dropdown (Too small, Too large, Changed mind, Defective, Wrong item). Condition: confirm item is unworn/unused. Resolution: refund or exchange option. Summary: return shipping info, refund timeline. Confirmation: return label and instructions.",
+    "advanced": "Build comprehensive return request flow as multi-step process. Entry points: \"Start Return\" in order history, \"Return Item\" per item in order detail, dedicated returns page. Step 1 - Select Order: if not pre-selected, show eligible orders list (within return window), each order shows: date, order number, item count, thumbnail images of items, \"Not eligible\" badge for orders outside window. Step 2 - Select Items: display all items from order, checkbox per item to select for return, each item: image, name, variant, original quantity, return quantity selector (if bought multiple), eligibility status (eligible, final sale, past window). Step 3 - Return Reason: for each selected item, reason dropdown (Size too small, Size too large, Changed my mind, Damaged/Defective, Wrong item received, Item not as described, Better price found, Other), free-text field for details especially if Defective/Other, optional photo upload for defective claims. Step 4 - Item Condition: checkboxes confirming items are: unused/unworn, in original packaging, all tags attached, not final sale, warning if conditions not met about potential rejection. Step 5 - Resolution preference: refund to original payment method (show amount), refund to store credit/gift card (often processed faster), exchange for different size/color (if available), bonus incentive for store credit (\"Get 10% bonus as store credit\"). Step 6 - Return Method: prepaid shipping label (deducted from refund or free), drop off at partner location (list nearby locations), schedule pickup (premium option), in-store return (if applicable), QR code for label-free return at supported carriers. Step 7 - Review: summary of return request showing all selections, expected refund amount and timeline (\"Refund processed within 3-5 business days of receipt\"), terms and conditions checkbox. Confirmation page: return confirmation number, return label (download/print/email options), QR code if applicable, packing instructions, list of return steps, tracking link, estimated refund timeline. Email: send confirmation with all details and label. Return tracking: status updates (Return Initiated, In Transit, Received, Processing, Refund Issued), notification emails at each stage. Return history: list of past returns with status. Mobile: step indicator, mobile-optimized form controls. Accessibility: multi-step progress communicated, form fields properly labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

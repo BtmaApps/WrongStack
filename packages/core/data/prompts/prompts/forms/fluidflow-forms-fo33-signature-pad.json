@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo33-signature-pad",
+  "slug": "fluidflow-forms-fo33-signature-pad",
+  "title": "Signature Pad",
+  "description": "FluidFlow · Signature Pad",
+  "content": "Build signature capture component. Canvas: drawing area for signature. Drawing: pen/touch input creates signature. Clear: button to reset and try again. Save: capture as image data. Type: optional typed signature alternative. Upload: option to upload signature image. Validation: ensure signature is not empty. Preview: show captured signature.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c3f6a8d5a19985c588614ea20cc4a57b3bd3bb14cdb85b57316288a6dc134a45",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create signature input with drawing canvas.",
+    "detailed": "Build signature capture component. Canvas: drawing area for signature. Drawing: pen/touch input creates signature. Clear: button to reset and try again. Save: capture as image data. Type: optional typed signature alternative. Upload: option to upload signature image. Validation: ensure signature is not empty. Preview: show captured signature.",
+    "advanced": "Build comprehensive signature capture component. Canvas element: HTML5 canvas for drawing, responsive sizing (full width, aspect ratio ~3:1). Drawing input: mouse drawing (mousedown, mousemove, mouseup), touch support (touchstart, touchmove, touchend), pressure sensitivity if available. Stroke styling: smooth line with variable width (based on speed or pressure), anti-aliased, appropriate color (dark gray or blue). Clear button: reset canvas to empty, confirm if signature exists. Undo: optional undo last stroke. Type alternative: toggle to typed signature mode, cursive/signature font rendering, text input field. Upload option: allow uploading existing signature image, crop/resize to fit. Save format: toDataURL() as PNG or JPEG base64, or toBlob() for upload. Empty validation: check if canvas has been drawn on (track drawing events or check canvas pixels). Preview: after save, show signature preview with option to redo. Placeholder: light watermark text \"Sign here\" that disappears on first stroke. Line smoothing: bezier curve smoothing for natural strokes. Mobile optimization: prevent scroll while signing, adequate canvas size for finger. Date stamp: optionally add date below signature automatically. Annotation: optional name or title text field below signature. Legal text: checkbox for agreement before signing, timestamp capture. Signature comparison: optional overlay of previous signature for verification. Accessibility: keyboard alternative for those unable to draw, describe interaction. Download: option to download signature as PNG file. Storage: save signature data URL to form state for submission."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

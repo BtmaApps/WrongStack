@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c53-add-pricing-table",
+  "slug": "fluidflow-components-c53-add-pricing-table",
+  "title": "Add Pricing Table",
+  "description": "FluidFlow · Add Pricing Table",
+  "content": "Create pricing section. Container: py-16 px-4. Header: text-center, title text-3xl font-bold, subtitle text-gray-600. Toggle: monthly/annual switch with discount badge. Cards: grid md:grid-cols-3 gap-8 max-w-5xl mx-auto. Card: bg-white rounded-2xl shadow-lg p-8, popular card has ring-2 ring-blue-500 and \"Popular\" badge. Card content: plan name, price (large), billing period, feature list with checkmarks, CTA button. Popular card: different button color, larger scale.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c53"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ba7dc5c349a8e9b668cd2ceabd23c9b668716a3694f49268946466389a67e3e7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create pricing comparison table with plan cards.",
+    "detailed": "Create pricing section. Container: py-16 px-4. Header: text-center, title text-3xl font-bold, subtitle text-gray-600. Toggle: monthly/annual switch with discount badge. Cards: grid md:grid-cols-3 gap-8 max-w-5xl mx-auto. Card: bg-white rounded-2xl shadow-lg p-8, popular card has ring-2 ring-blue-500 and \"Popular\" badge. Card content: plan name, price (large), billing period, feature list with checkmarks, CTA button. Popular card: different button color, larger scale.",
+    "advanced": "Create comprehensive pricing component. Billing toggle: monthly/annual with animated switch, annual shows savings (e.g., \"Save 20%\"). Plan cards: 3-4 columns, recommended plan highlighted (scale-105, border, badge). Card structure: plan name, description, price with original crossed out if discount, feature list with check/x icons, CTA button, \"Most popular\" or \"Best value\" badge. Feature list: checkmark for included (text-green-500), X for excluded (text-gray-300), some features have tooltip for explanation. Feature comparison table: expandable section showing all features across plans in table format. Enterprise/Custom: separate card or row for custom pricing with \"Contact us\" CTA. Currency selector: dropdown to switch currencies. FAQ section: accordion below pricing for common questions. Guarantee badge: money-back guarantee callout. Trust signals: customer logos, testimonial quote. Mobile: stack cards vertically, swipeable carousel option. Animation: cards fade/slide in on scroll. A/B ready: props for different layouts/copy."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

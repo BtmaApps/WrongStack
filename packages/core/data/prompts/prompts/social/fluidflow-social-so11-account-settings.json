@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so11-account-settings",
+  "slug": "fluidflow-social-so11-account-settings",
+  "title": "Account Settings",
+  "description": "FluidFlow · Account Settings",
+  "content": "Build account settings section. Profile section: avatar with change button, display name input, username input (with availability check), bio textarea with character count. Email section: current email display, change email flow. Password section: current password, new password (with strength meter), confirm password. Connected accounts: linked social accounts with connect/disconnect. Sessions: list of active sessions. Account deletion: delete with confirmation.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8fb78fb7d4e2fa52e39428140619c625e6530b98e793734356daca32b4c8d024",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create account settings form with profile, email, and password sections.",
+    "detailed": "Build account settings section. Profile section: avatar with change button, display name input, username input (with availability check), bio textarea with character count. Email section: current email display, change email flow. Password section: current password, new password (with strength meter), confirm password. Connected accounts: linked social accounts with connect/disconnect. Sessions: list of active sessions. Account deletion: delete with confirmation.",
+    "advanced": "Build account settings section with comprehensive account management. Profile section card: Avatar: large preview (w-20 h-20 rounded-full), \"Change photo\" button below opens file picker (accept images), crop modal, upload progress, remove option. Display name input: text input with validation (2-50 chars). Username input: text input with @ prefix, debounced availability check (show green check or red X with \"Username taken\"), format validation (lowercase, no spaces). Bio textarea: with character count (160/160), resize-y. Location input: optional, text with autocomplete. Website input: optional, URL validation. Email section card: Current email display: email shown with \"Verified\" badge or \"Verify\" button if unverified. Change email: \"Change\" button opens flow - enter new email, verify via code sent to new email, confirmation. Resend verification option. Password section card: Change password form: current password input (required), new password input with visibility toggle and strength meter (weak/fair/strong with color bar), confirm password input with match validation. \"Forgot current password?\" link to reset flow. Phone/2FA: Add phone number for SMS 2FA, verify with code, toggle to enable/disable 2FA, show backup codes (reveal once, download option). Connected accounts card: List of social providers (Google, GitHub, Apple, Twitter) each showing connected email or \"Connect\" button. Connected accounts show \"Disconnect\" with confirmation (\"You will not be able to log in with this account\"). Sessions card: List of active sessions showing device (Desktop Chrome on macOS), location (approximate), last active timestamp, current session badge. \"Log out\" per session, \"Log out of all other devices\" button. Data section: \"Download your data\" button (GDPR compliance), request initiates export process, email when ready. Account deletion: Red destructive section at bottom, \"Delete Account\" button opens confirmation modal explaining consequences (data deletion, username release), require password confirmation, optional reason dropdown, 14-day grace period mention. Save changes: per-section save buttons or auto-save with toast feedback. Validation: inline errors for all fields (red border, error text below). Loading states: spinner during saves. Accessibility: proper form labels, error announcements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

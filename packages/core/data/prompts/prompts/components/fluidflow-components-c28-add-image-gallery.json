@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c28-add-image-gallery",
+  "slug": "fluidflow-components-c28-add-image-gallery",
+  "title": "Add Image Gallery",
+  "description": "FluidFlow · Add Image Gallery",
+  "content": "Create image gallery with responsive grid and lightbox. Grid: grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4. Image items: aspect-square overflow-hidden rounded-lg cursor-pointer group. Image: w-full h-full object-cover group-hover:scale-105 transition-transform duration-300. Lightbox modal: fixed inset-0 z-50 bg-black/90 flex items-center justify-center. Lightbox image: max-w-[90vw] max-h-[90vh] object-contain. Navigation: prev/next buttons (absolute left-4/right-4), keyboard arrows support. Close: X button top-right, click backdrop, Escape key. Image counter: \"3 of 12\" indicator. Thumbnails strip optionally at bottom.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "26ed45f392dc55f7362cba0197c1aa9df68a02e3e517674695bfd5f209cb5888",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create an image gallery with grid layout and lightbox preview.",
+    "detailed": "Create image gallery with responsive grid and lightbox. Grid: grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4. Image items: aspect-square overflow-hidden rounded-lg cursor-pointer group. Image: w-full h-full object-cover group-hover:scale-105 transition-transform duration-300. Lightbox modal: fixed inset-0 z-50 bg-black/90 flex items-center justify-center. Lightbox image: max-w-[90vw] max-h-[90vh] object-contain. Navigation: prev/next buttons (absolute left-4/right-4), keyboard arrows support. Close: X button top-right, click backdrop, Escape key. Image counter: \"3 of 12\" indicator. Thumbnails strip optionally at bottom.",
+    "advanced": "Create feature-rich image gallery with lightbox and advanced features. Grid layout: masonry or uniform grid using grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 or CSS columns for masonry. Image items: relative overflow-hidden rounded-lg cursor-pointer group. Image styling: w-full h-full object-cover transition-all duration-300 group-hover:scale-105. Overlay on hover: absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors with zoom icon centered. Lazy loading: loading=\"lazy\" on images, or IntersectionObserver for more control. Lightbox implementation: fixed inset-0 z-50 bg-black/95, image centered with max-w-[90vw] max-h-[85vh] object-contain. Navigation: prev/next ChevronLeft/ChevronRight buttons with hover states, keyboard arrow support, touch swipe on mobile. Close: X button fixed top-4 right-4, click outside image, Escape key. Image info: title, description, EXIF data panel (toggleable). Zoom: double-click or pinch to zoom, pan when zoomed. Counter: \"3 / 12\" with thumbnails strip at bottom (horizontal scroll, current highlighted). Transitions: fade + scale for image changes, smooth transitions between images. Preloading: preload adjacent images for smooth navigation. Accessibility: focus trap in lightbox, aria-label on buttons, role=\"dialog\". Loading states: skeleton or blur placeholder while loading. Component props: images array [{src, thumbnail, alt, title, description}], initialIndex, onClose, enableZoom, showThumbnails."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

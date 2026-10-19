@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c31-add-file-upload",
+  "slug": "fluidflow-components-c31-add-file-upload",
+  "title": "Add File Upload",
+  "description": "FluidFlow · Add File Upload",
+  "content": "Create file upload component with drag-and-drop zone. Drop zone: border-2 border-dashed border-gray-300 rounded-lg p-8 text-center. Drag active state: border-blue-500 bg-blue-50. Content: Upload icon, \"Drag files here or click to browse\" text, accepted file types info. Hidden file input triggered by click. Preview uploaded files: list with filename, size, remove button. Progress bar for upload status. Validation: file type, max size, max files. Error states with red border and message. Support single or multiple file selection.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1aa8cddba0ea4b8ebb566c3eb9485bb6189b05e0aa4be48d0263d62a1b23d0be",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a file upload component with drag and drop support.",
+    "detailed": "Create file upload component with drag-and-drop zone. Drop zone: border-2 border-dashed border-gray-300 rounded-lg p-8 text-center. Drag active state: border-blue-500 bg-blue-50. Content: Upload icon, \"Drag files here or click to browse\" text, accepted file types info. Hidden file input triggered by click. Preview uploaded files: list with filename, size, remove button. Progress bar for upload status. Validation: file type, max size, max files. Error states with red border and message. Support single or multiple file selection.",
+    "advanced": "Create comprehensive file upload component with drag-and-drop and previews. Drop zone container: relative border-2 border-dashed rounded-xl p-8 transition-colors. States: default (border-gray-300 bg-gray-50), drag-over (border-blue-500 bg-blue-50 scale-[1.02]), drag-reject (border-red-500 bg-red-50), disabled (opacity-50 cursor-not-allowed). Center content: flex flex-col items-center gap-4 - Upload cloud icon (w-12 h-12 text-gray-400), primary text \"Drag and drop files here\", secondary text \"or click to browse\", accepted formats text (text-xs text-gray-500). Hidden input: type=\"file\" with accept, multiple attributes, sr-only positioning. File previews: grid or list below drop zone. Image files: thumbnail preview with object-cover. Other files: icon based on type (FileText, FileSpreadsheet, etc). Preview item: flex items-center gap-3 p-3 bg-gray-50 rounded-lg - thumbnail/icon, filename (truncate), file size, remove X button, upload progress bar. Progress: h-1 absolute bottom-0 bg-blue-600 transition-all. Validation: accept prop for file types, maxSize (show error for too large), maxFiles (disable when reached). Error display: red border, error message below. Upload states per file: pending, uploading (with progress %), complete (checkmark), error (retry button). Accessibility: proper labels, keyboard accessible, focus states. Props: accept, maxSize, maxFiles, onFilesSelected, onFileRemove, uploading, progress, disabled. Drag events: onDragEnter, onDragOver, onDragLeave, onDrop with file validation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

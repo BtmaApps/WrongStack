@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so15-notification-feed",
+  "slug": "fluidflow-social-so15-notification-feed",
+  "title": "Notification Feed",
+  "description": "FluidFlow · Notification Feed",
+  "content": "Build notifications feed page/dropdown. Notification types: likes, comments, follows, mentions, reposts with distinct icons. Structure: icon, avatar, text, timestamp, unread dot. Grouping: \"UserA and 3 others liked your post\". Tabs: All, Mentions, Follows, Likes. Mark all read button. Click navigates to relevant content. Empty state for each tab.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b9a7c03bceede8c52a9177eed87cdce1e2113cb9787701a4ebeb4ddf5f38a6c3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create notifications list with types, timestamps, and read status.",
+    "detailed": "Build notifications feed page/dropdown. Notification types: likes, comments, follows, mentions, reposts with distinct icons. Structure: icon, avatar, text, timestamp, unread dot. Grouping: \"UserA and 3 others liked your post\". Tabs: All, Mentions, Follows, Likes. Mark all read button. Click navigates to relevant content. Empty state for each tab.",
+    "advanced": "Build comprehensive notifications feed with filtering and grouping. Container: can be dropdown (max-h-[480px] w-96) or full page. Header: \"Notifications\" title, \"Mark all as read\" button (disabled if none unread), settings gear icon linking to notification preferences. Tabs/filters: All, Mentions, Follows, Likes/Reactions (horizontal pills or tabs), badge counts on tabs with unread items. Notification list: space-y-1. Notification row: flex gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg. Structure: icon indicating type (Heart for like, MessageCircle for comment, UserPlus for follow, AtSign for mention, Repeat for repost), avatar of actor (or stacked avatars for grouped), notification text with bold actor names and regular action text, timestamp (relative: 2h, 1d), unread indicator (w-2 h-2 rounded-full bg-blue-500 absolute). Grouped notifications: \"Sarah, John, and 5 others liked your post\" with stacked avatars (up to 3 visible with +N badge). Click on grouped expands to see all or navigates to post. Notification types with templates: Like - \"[User] liked your [post/comment]\", Comment - \"[User] commented on your post: [preview]\", Follow - \"[User] started following you\" with Follow Back button inline, Mention - \"[User] mentioned you: [preview]\", Reply - \"[User] replied to your comment\", Repost - \"[User] reposted your post\", Tag - \"[User] tagged you in a post\". Action buttons: some notifications have inline actions (Follow Back, Reply, View) without navigating. Click behavior: navigate to relevant content (post, profile, comment), mark as read on click. Real-time updates: new notifications appear at top with subtle animation, \"X new notifications\" badge if scrolled down. Mark as read: clicking marks individual as read, \"Mark all as read\" clears all. Filtering: unread only toggle. Pagination: infinite scroll or \"Load more\" button. Empty states: per-tab empty state with appropriate message and illustration. Settings link: \"Manage notification preferences\" link to settings. Sound/vibration: optional notification sounds with setting. Accessibility: list navigable by keyboard, notification content announced, live region for new notifications."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

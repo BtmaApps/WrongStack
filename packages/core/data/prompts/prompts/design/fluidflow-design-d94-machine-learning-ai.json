@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d94-machine-learning-ai",
+  "slug": "fluidflow-design-d94-machine-learning-ai",
+  "title": "Machine Learning/AI",
+  "description": "FluidFlow · Machine Learning/AI",
+  "content": "Apply machine learning aesthetic with AI research feel. Neural network layer visualizations. Training progress with loss curves. Confusion matrix displays. Feature importance charts. Model comparison tables. Hyperparameter tuning interfaces. Dataset preview cards. Prediction confidence bars. GPU utilization monitors. Experiment tracking layouts.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d94"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9c193dccc92d1306a92a8dadcffe2e01cbe6bb94e4bfaf980e8100df0b98edd8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create ML/AI interface with model training visualizations, neural network diagrams, and prediction displays.",
+    "detailed": "Apply machine learning aesthetic with AI research feel. Neural network layer visualizations. Training progress with loss curves. Confusion matrix displays. Feature importance charts. Model comparison tables. Hyperparameter tuning interfaces. Dataset preview cards. Prediction confidence bars. GPU utilization monitors. Experiment tracking layouts.",
+    "advanced": "Apply ML/AI aesthetic with research lab patterns. Neural network SVG with layer nodes and connections. Training charts with loss/accuracy curves (epochs on x-axis). Confusion matrix heatmaps with precision/recall. Feature importance horizontal bars. Model cards with architecture, params, performance. Hyperparameter sliders with value displays. Dataset samples in grid with labels. Prediction outputs with confidence percentages. GPU memory bars. MLflow-style experiment tables. Tensorboard-inspired metric dashboards."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

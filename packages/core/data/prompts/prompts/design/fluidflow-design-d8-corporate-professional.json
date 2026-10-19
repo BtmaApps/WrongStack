@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d8-corporate-professional",
+  "slug": "fluidflow-design-d8-corporate-professional",
+  "title": "Corporate/Professional",
+  "description": "FluidFlow · Corporate/Professional",
+  "content": "Create professional corporate design with trustworthy blue palette (blue-600 to blue-800) complemented by neutral grays. Use clean, readable typography - system fonts or professional sans-serif. Implement structured grid layouts with consistent spacing. Add subtle shadows for depth without being flashy. Include proper visual hierarchy for scanning. Use formal iconography from lucide-react. Ensure all interactive elements have clear hover and focus states. Keep decorative elements minimal - focus on content clarity and credibility.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c33054e956d47cfb19c89e2fb80d09a7ff63cbc94f6a1f167e354884c52e7422",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create clean, trustworthy business design with blue tones and structured layouts.",
+    "detailed": "Create professional corporate design with trustworthy blue palette (blue-600 to blue-800) complemented by neutral grays. Use clean, readable typography - system fonts or professional sans-serif. Implement structured grid layouts with consistent spacing. Add subtle shadows for depth without being flashy. Include proper visual hierarchy for scanning. Use formal iconography from lucide-react. Ensure all interactive elements have clear hover and focus states. Keep decorative elements minimal - focus on content clarity and credibility.",
+    "advanced": "Create professional corporate design with trustworthy blue palette (blue-600 to blue-800) complemented by neutral grays. Use clean, readable typography - system-ui font stack for performance or Inter/Roboto for brand consistency. Implement structured 12-column grid layouts with consistent 8px spacing scale. Add subtle shadows (shadow-sm to shadow-md) for depth without being flashy. Create clear visual hierarchy optimized for F-pattern scanning. Use formal, consistent iconography from lucide-react with proper sizing (w-5 h-5 for inline, w-6 h-6 for standalone). Ensure all interactive elements have distinct hover, focus, active, and disabled states. Keep decorative elements minimal - focus on content clarity and credibility. Implement proper data table design with zebra striping, sortable columns, and proper cell padding. Add professional loading states and empty states. Include proper form validation styling. Ensure print stylesheets for reports. Meet WCAG 2.1 AA compliance for enterprise accessibility requirements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

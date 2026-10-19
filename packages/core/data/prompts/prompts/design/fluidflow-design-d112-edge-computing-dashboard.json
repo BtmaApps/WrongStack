@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d112-edge-computing-dashboard",
+  "slug": "fluidflow-design-d112-edge-computing-dashboard",
+  "title": "Edge Computing Dashboard",
+  "description": "FluidFlow · Edge Computing Dashboard",
+  "content": "Apply edge computing aesthetic with distributed infrastructure feel. Edge node cards with location and status. Global deployment map visualization. Latency heatmaps by region. Edge function deployment controls. Cache hit ratio displays. Bandwidth consumption graphs. Node health monitoring. Failover configuration panels. CDN purge controls. Real-time request routing displays.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d112"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dcea0e0cbb1c2067f0f114c1cf61040fc4e4dd843e31968a677c34a07bebf470",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create edge computing interface with edge node status, deployment distribution, and latency maps.",
+    "detailed": "Apply edge computing aesthetic with distributed infrastructure feel. Edge node cards with location and status. Global deployment map visualization. Latency heatmaps by region. Edge function deployment controls. Cache hit ratio displays. Bandwidth consumption graphs. Node health monitoring. Failover configuration panels. CDN purge controls. Real-time request routing displays.",
+    "advanced": "Apply edge computing aesthetic with Cloudflare/Fastly patterns. Node cards: location flag, status LED, CPU/memory bars, request rate. World map SVG with node markers, connection lines to users, color-coded latency. Latency heatmap: region grid with ms values, green→yellow→red scale. Function deployment: region multi-select, version dropdown, deploy button with progress. Cache panel: hit/miss pie chart, TTL settings, vary headers. Bandwidth: stacked area chart by region over time. Health: uptime percentage, last incident, synthetic check status. Failover: primary/secondary region config, automatic toggle. Purge: URL pattern input, tag selector, instant/soft purge buttons. Request flow: animated dots from user→nearest edge→origin."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

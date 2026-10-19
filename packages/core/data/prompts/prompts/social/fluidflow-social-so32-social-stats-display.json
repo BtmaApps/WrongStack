@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so32-social-stats-display",
+  "slug": "fluidflow-social-so32-social-stats-display",
+  "title": "Social Stats Display",
+  "description": "FluidFlow · Social Stats Display",
+  "content": "Build social stats component. Metrics: followers, following, posts, likes received. Display: large numbers with labels. Trends: growth indicators (up/down arrows with percentages). Comparison: week over week or month over month. Visualization: mini charts for trends. Click: navigate to detailed analytics.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e2744f4588f0c5d62e521c6d64b5b26a2c9ee6a7a3005c45b2cc4a1de43495c0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create social statistics display with counts and trends.",
+    "detailed": "Build social stats component. Metrics: followers, following, posts, likes received. Display: large numbers with labels. Trends: growth indicators (up/down arrows with percentages). Comparison: week over week or month over month. Visualization: mini charts for trends. Click: navigate to detailed analytics.",
+    "advanced": "Build comprehensive social statistics display for profiles and analytics. Stats bar component (for profile header): flex justify-around or gap-8 py-4. Each stat: text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2. Number: text-xl font-bold (formatted: 1.2K, 12.4M). Label: text-sm text-gray-500. Stats: Posts, Followers, Following, Likes (platform-dependent). Click behavior: Posts opens posts tab, Followers/Following opens respective modal. Analytics dashboard version: grid-cols-2 md:grid-cols-4 gap-4. Stat cards: bg-white rounded-lg shadow-sm p-4. Card content: label (text-sm text-gray-500), value (text-2xl font-bold), trend indicator (flex items-center gap-1 text-sm, TrendingUp icon green for positive, TrendingDown red for negative, percentage change \"+12.5%\"), comparison period (\"vs last week\"). Metrics tracked: Total Followers (with growth), Total Following, Total Posts, Total Likes Received, Total Comments, Profile Views, Reach/Impressions, Engagement Rate. Mini sparkline: small line chart showing trend over time (last 7 or 30 days). Top performing content: card showing best post with preview and stats. Growth chart: larger chart showing follower growth over time (line chart). Engagement breakdown: pie or bar chart showing engagement types (likes, comments, shares). Best posting times: heatmap of when followers are most active. Audience insights: demographics if available (location, age range). Comparison: toggle between time periods (7 days, 30 days, 90 days, Year). Export: \"Download Report\" button generating PDF or CSV. Goals: if set, progress toward follower goal shown. Milestones: celebration UI when hitting milestones (1K, 10K, 100K). Real-time: live follower count updates for large accounts. Historical: access past analytics data. Accessibility: numbers have proper context announced, charts have data table alternatives, interactive elements labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

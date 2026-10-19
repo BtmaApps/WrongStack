@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d126-calm-meditation-app",
+  "slug": "fluidflow-design-d126-calm-meditation-app",
+  "title": "Calm/Meditation App",
+  "description": "FluidFlow · Calm/Meditation App",
+  "content": "Apply Calm aesthetic with meditation app feel. Nature-inspired backgrounds (mountains, water, forests). Soft gradients and muted colors. Gentle animations and transitions. Audio player for meditations. Daily quotes and reflections. Progress tracking (streaks, minutes). Sleep stories section. Breathing exercises with animations. Journal and mood tracking.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d126"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5295ac62c182849b3c1e0fc7ee29351dee3f12a9aec5952efc46da678f379b42",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create wellness app with serene imagery, gentle animations, and mindful content.",
+    "detailed": "Apply Calm aesthetic with meditation app feel. Nature-inspired backgrounds (mountains, water, forests). Soft gradients and muted colors. Gentle animations and transitions. Audio player for meditations. Daily quotes and reflections. Progress tracking (streaks, minutes). Sleep stories section. Breathing exercises with animations. Journal and mood tracking.",
+    "advanced": "Apply Calm aesthetic with wellness patterns. Backgrounds: large nature photos (mountains, ocean, forest), subtle Ken Burns animation, overlay gradient for text contrast. Colors: muted blues, greens, and earth tones, avoid harsh contrasts. Typography: serif for headings (warmth), sans-serif for body, generous line-height. Cards: soft shadows, rounded-2xl, imagery bleed edge-to-edge. Audio player: prominent play button, progress ring around icon, waveform optional. Session cards: image background, duration badge, title overlay at bottom. Daily content: quote cards, daily calm highlight. Streaks: flame or calendar visualization, milestone celebrations. Categories: grid with icon tiles (sleep, anxiety, focus). Sleep: night mode with darker theme, stars background, bedtime stories. Breathing: animated circle that expands/contracts with pace, haptic optional. Sounds: nature sounds mixer with volume sliders per track. Journal: lined or clean input, date stamps, mood emoji picker. Progress: minutes meditated, sessions completed, current streak. Onboarding: goal setting, preference selection. Reminders: gentle notification scheduling. Premium: feature badges, unlock animations. Accessibility: voice guidance, screen reader friendly."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec8-size-selector",
+  "slug": "fluidflow-ecommerce-ec8-size-selector",
+  "title": "Size Selector",
+  "description": "FluidFlow · Size Selector",
+  "content": "Create size selector component. Layout: horizontal row of size buttons. Button style: min-w-[40px] h-10 border rounded, selected state (border-black bg-black text-white). Sizes: XS, S, M, L, XL, XXL or numeric. Availability indicators: available (normal), low stock (yellow), out of stock (disabled, line-through). Size guide link opens modal with measurement table. Error state: highlight if no size selected on add to cart.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "651543bf300b3add19fb9353bd6845df8a88ceb0b2da33dbabce042046cc4bf0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create size buttons showing available sizes with selection state.",
+    "detailed": "Create size selector component. Layout: horizontal row of size buttons. Button style: min-w-[40px] h-10 border rounded, selected state (border-black bg-black text-white). Sizes: XS, S, M, L, XL, XXL or numeric. Availability indicators: available (normal), low stock (yellow), out of stock (disabled, line-through). Size guide link opens modal with measurement table. Error state: highlight if no size selected on add to cart.",
+    "advanced": "Create size selector component with availability and size guide. Layout: vertical section with label \"Size\" and selector row. Selector: flex flex-wrap gap-2 for button row, or Select dropdown variant for many sizes. Button style: min-w-[44px] h-11 border-2 rounded-lg font-medium transition-all. States: unselected (border-gray-200 hover:border-gray-400), selected (border-black bg-black text-white), disabled (border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through). Sizes: text sizes (XS, S, M, L, XL, 2XL, 3XL) or numeric (US: 6, 7, 8, 9, 10, 11, 12 or EU: 36, 37, 38...). Availability indicators per size button: available (normal), low stock (small amber/yellow dot indicator or \"Only 2 left\" tooltip on hover), out of stock (text-gray-400 with line-through text, disabled). Hover tooltip: show exact stock count on hover (\"8 in stock\" or \"Only 2 left!\"). Size guide: \"Size Guide\" link (text-sm underline) opens modal/drawer with measurement table. Table columns: Size, Chest, Waist, Hips, Length measurements in inches/cm toggle. Include \"How to Measure\" illustration. Fit recommendations: \"This item runs small, we recommend sizing up\" banner if applicable, based on customer feedback or product data. Remember selection: store last selected size per category in localStorage, pre-select on return visits. Error state: if user clicks \"Add to Cart\" without selecting size, highlight selector with red border (ring-2 ring-red-500), show inline error \"Please select a size\", scroll to selector if out of view. Clear selection: option to deselect by clicking selected button again. Mobile: ensure min 44x44px touch targets, consider bottom sheet for many sizes. Accessibility: role=\"radiogroup\" with role=\"radio\" for buttons, aria-checked, announce selection changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

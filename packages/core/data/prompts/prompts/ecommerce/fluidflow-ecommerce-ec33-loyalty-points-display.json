@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec33-loyalty-points-display",
+  "slug": "fluidflow-ecommerce-ec33-loyalty-points-display",
+  "title": "Loyalty Points Display",
+  "description": "FluidFlow · Loyalty Points Display",
+  "content": "Build loyalty points display widget. Balance: prominent points balance with currency equivalent. Tier status: current tier badge, progress to next tier. Earn: points this order will earn. Redeem: apply points toggle with savings amount. History: recent points activity. Benefits: current tier perks list. Promotion: bonus points offers.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6f246282f945c04e2015df3760be34bfe01c737d660ac466014377b6744a4f8c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create loyalty points balance display with earning opportunities.",
+    "detailed": "Build loyalty points display widget. Balance: prominent points balance with currency equivalent. Tier status: current tier badge, progress to next tier. Earn: points this order will earn. Redeem: apply points toggle with savings amount. History: recent points activity. Benefits: current tier perks list. Promotion: bonus points offers.",
+    "advanced": "Build comprehensive loyalty points display and management interface. Points balance widget (header/account): current points balance prominently displayed (text-2xl font-bold), points currency equivalent (\"= $X in rewards\"), points expiring soon alert (\"150 points expire in 30 days\"). Tier status display: current tier badge with icon (Bronze, Silver, Gold, Platinum), tier color styling, progress bar to next tier, points needed for upgrade (\"Earn 500 more points to reach Gold\"), next tier benefits preview. Checkout integration: \"You'll earn X points on this order\" display, bonus multiplier events (\"2X points today!\"), points redemption section (toggle or input), redemption options: apply all points, apply specific amount, slider between pay more cash or use more points, savings display (\"Save $X by using points\"), minimum redemption threshold if applicable, remaining balance preview. Points earning breakdown: detailed calculator showing points per dollar, bonus categories (2X on category), promotional bonus, referral bonus, tier bonus multiplier. Account loyalty dashboard: points balance with visual (circular progress or large number), tier status with visual progress, lifetime points earned stat, points history table/list showing: date, transaction, points earned/redeemed, balance, filter by earned/redeemed, pagination. Current tier benefits: checklist of perks (free shipping, early access, birthday bonus, exclusive sales, free returns, priority support), locked benefits with tier required noted. How to earn more: grid of earning opportunities (Make a purchase - 1pt/$1, Write a review - 50 pts, Refer a friend - 500 pts, Complete profile - 100 pts, Follow social - 25 pts each, Birthday bonus - 200 pts), CTA buttons for each action. Rewards catalog: if points redeemable for specific items/perks, browsable catalog showing point costs, filters by points range. Points transfer: if allowed, send points to friend/family. Promotional campaigns: bonus points events highlighted, countdown timers for limited promos, personalized offers based on history. Email notifications: points earned confirmation, points expiring reminder, tier upgrade celebration. Tier comparison: table showing all tiers with benefits, user's current tier highlighted. Mobile: prominent points display in app header, easy checkout redemption. Gamification: badges for achievements, streaks for consecutive purchases. Accessibility: points balance announced clearly, progress communicated, all interactive elements accessible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d24-indie-handcrafted",
+  "slug": "fluidflow-design-d24-indie-handcrafted",
+  "title": "Indie/Handcrafted",
+  "description": "FluidFlow · Indie/Handcrafted",
+  "content": "Apply indie/handcrafted aesthetic suggesting human touch and artisanal quality. Use hand-drawn style fonts for headings (Caveat, Permanent Marker, Kalam). Add paper or craft textures as backgrounds. Include hand-drawn icons, arrows, and decorative elements (SVG). Apply slightly imperfect, organic shapes - irregular borders, hand-drawn circles. Use warm, earthy color palette (amber, terracotta, sage green, cream). Add subtle rotation to elements for casual feel. Include stamp or badge designs. Washi tape or torn paper edge effects.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "18ef8a3c59830cfa2cf4e3d93ba7f781a7710e653d13c17b90088ca4a3011573",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create artisanal, handmade aesthetic with hand-drawn elements and natural textures.",
+    "detailed": "Apply indie/handcrafted aesthetic suggesting human touch and artisanal quality. Use hand-drawn style fonts for headings (Caveat, Permanent Marker, Kalam). Add paper or craft textures as backgrounds. Include hand-drawn icons, arrows, and decorative elements (SVG). Apply slightly imperfect, organic shapes - irregular borders, hand-drawn circles. Use warm, earthy color palette (amber, terracotta, sage green, cream). Add subtle rotation to elements for casual feel. Include stamp or badge designs. Washi tape or torn paper edge effects.",
+    "advanced": "Apply indie/handcrafted aesthetic suggesting human touch and artisanal quality. Typography: hand-drawn fonts for headings (Caveat, Permanent Marker, Kalam from Google Fonts), readable serif or rounded sans-serif for body. Paper textures: subtle noise overlay (SVG filter or CSS), kraft paper tan (bg-amber-50), aged paper cream (bg-orange-50). Hand-drawn elements: SVG icons with sketchy, imperfect stroke style (stroke-linecap: round, slight path variations), use libraries like Rough.js style. Irregular shapes: buttons and cards with slightly uneven borders using clip-path with organic curves, or SVG masks. Rotation: subtle random rotation on cards/images (rotate-1, -rotate-2) for casual, pinned feel. Stamp/badge elements: circular or shield shapes with distressed edges, vintage typography inside. Washi tape effect: decorative strips with patterns holding elements, slight transparency. Torn paper edges: SVG or CSS clip-path creating ragged edge effect. Color palette: warm and earthy - amber-600, terracotta (orange-700), sage (green-600), cream (orange-50), muted red (rose-700). Sticker/label aesthetic: elements that look applied or collaged. Shadows: soft, natural looking (shadow-md with warm tint). Hand-drawn underlines: SVG paths under headings with sketchy stroke. Accessibility: ensure hand-drawn fonts remain readable at all sizes, provide fallback fonts. Performance: optimize SVG decorations, use CSS where possible over heavy images."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

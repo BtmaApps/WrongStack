@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r5-responsive-images",
+  "slug": "fluidflow-responsive-r5-responsive-images",
+  "title": "Responsive Images",
+  "description": "FluidFlow · Responsive Images",
+  "content": "Optimize images with responsive containers using aspect-ratio utilities (aspect-video, aspect-square, aspect-[4/3]). Use object-cover or object-contain for proper scaling. Implement responsive grid for image galleries - grid-cols-2 md:grid-cols-3 lg:grid-cols-4. Add skeleton loading placeholders with animate-pulse. Use lazy loading with loading=\"lazy\" attribute. Create responsive hero images with different crops per breakpoint. Ensure images never overflow containers (max-w-full h-auto). Add proper alt text for accessibility. Consider bandwidth - smaller images on mobile if possible.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5e847a4ca6d821ad1734f314e2bd6ae1508330258410919bb7f8504d45163a11",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Optimize images to scale properly across all screen sizes with lazy loading.",
+    "detailed": "Optimize images with responsive containers using aspect-ratio utilities (aspect-video, aspect-square, aspect-[4/3]). Use object-cover or object-contain for proper scaling. Implement responsive grid for image galleries - grid-cols-2 md:grid-cols-3 lg:grid-cols-4. Add skeleton loading placeholders with animate-pulse. Use lazy loading with loading=\"lazy\" attribute. Create responsive hero images with different crops per breakpoint. Ensure images never overflow containers (max-w-full h-auto). Add proper alt text for accessibility. Consider bandwidth - smaller images on mobile if possible.",
+    "advanced": "Optimize images with responsive containers using aspect-ratio utilities (aspect-video, aspect-square, aspect-[4/3]) for layout stability before load. Use object-cover or object-contain based on content - cover for backgrounds, contain for product images. Implement responsive grid for galleries: grid-cols-2 md:grid-cols-3 lg:grid-cols-4 with consistent gaps. Add skeleton loading placeholders matching exact dimensions with animate-pulse bg-gray-200. Use native lazy loading (loading=\"lazy\") with Intersection Observer fallback for older browsers. Implement picture element with art direction - different crops per breakpoint using source media queries. Add srcset with 1x, 2x, 3x resolutions and sizes attribute for proper selection. Ensure images never overflow (max-w-full h-auto block). Add meaningful alt text - descriptive for content images, empty alt=\"\" for decorative. Implement blur-up placeholder technique for perceived performance. Consider WebP/AVIF with fallbacks. Use CDN with automatic format negotiation. Add fetchpriority=\"high\" for above-fold hero images. Calculate and reserve space to prevent CLS (Cumulative Layout Shift)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

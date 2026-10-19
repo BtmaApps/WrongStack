@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac6-skip-links",
+  "slug": "fluidflow-accessibility-ac6-skip-links",
+  "title": "Skip Links",
+  "description": "FluidFlow · Skip Links",
+  "content": "Implement skip navigation links for keyboard users. Add visually hidden skip link as first focusable element: \"Skip to main content\". Style: sr-only by default, visible on focus (focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:p-4 focus:bg-white). Link target: main content area with id=\"main-content\" and tabindex=\"-1\". Add additional skip links for complex pages: \"Skip to navigation\", \"Skip to footer\", \"Skip to search\". Ensure skip link targets receive focus properly (tabindex=\"-1\" on non-interactive targets). Position skip links appropriately when visible. Test skip links with keyboard navigation. Consider skip links for repeated sidebar content on mobile. Style consistently with site design when visible.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e82236de47bc91cedfc5ddea1e94f6e7709c997cfc8d78199cc36700a3d208a0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add skip navigation links for keyboard users.",
+    "detailed": "Implement skip navigation links for keyboard users. Add visually hidden skip link as first focusable element: \"Skip to main content\". Style: sr-only by default, visible on focus (focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:p-4 focus:bg-white). Link target: main content area with id=\"main-content\" and tabindex=\"-1\". Add additional skip links for complex pages: \"Skip to navigation\", \"Skip to footer\", \"Skip to search\". Ensure skip link targets receive focus properly (tabindex=\"-1\" on non-interactive targets). Position skip links appropriately when visible. Test skip links with keyboard navigation. Consider skip links for repeated sidebar content on mobile. Style consistently with site design when visible.",
+    "advanced": "Implement skip navigation links allowing keyboard users to bypass repetitive content. Primary skip link: first focusable element in DOM, appears before header/navigation. Link text: \"Skip to main content\" (or \"Skip to content\"). Styling: sr-only normally (position: absolute, clip: rect(0,0,0,0)), visible on focus (focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:p-4 focus:bg-white focus:text-blue-600 focus:shadow-lg focus:rounded). Target setup: main content area needs id=\"main-content\" and tabindex=\"-1\" for receiving focus, focus should move to target on click. Implementation: <a href=\"#main-content\" className=\"sr-only focus:not-sr-only ...\">Skip to main content</a> as first child of body or layout. Multiple skip links for complex pages: \"Skip to navigation\" (for mega menus), \"Skip to search\" (prominent search), \"Skip to footer\" (contact info). Skip link group: if multiple, show as a row of links on focus (first link receives focus, Tab moves through group). Target considerations: tabindex=\"-1\" on non-interactive targets (main, section), ensures focus moves without adding to tab order. Testing: press Tab immediately after page load, skip link should be first thing focused and visible, clicking should move focus past navigation. Responsive: on mobile with drawer navigation, skip link less critical but still valuable. Scroll behavior: browser should scroll target into view, consider scroll-margin-top if fixed header. Alternative: skip-link alternatives like landmark navigation (screen readers can jump to nav, main, etc.) complement but don't replace skip links."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

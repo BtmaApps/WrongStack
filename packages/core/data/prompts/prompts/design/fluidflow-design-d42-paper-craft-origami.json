@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d42-paper-craft-origami",
+  "slug": "fluidflow-design-d42-paper-craft-origami",
+  "title": "Paper Craft/Origami",
+  "description": "FluidFlow · Paper Craft/Origami",
+  "content": "Apply paper craft aesthetic suggesting folded, cut paper. Layered paper elements with shadows showing depth. Origami-inspired geometric shapes. Paper texture backgrounds. Fold lines and creases visible. Cut-out style illustrations. Soft shadows suggesting paper thickness. Muted, paper-like colors. Include paper corner folds and curls. Craft project, handmade atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d42"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e642032aeb7b64a99eda08c22e853ee5f93e60bcfb5d88ccfa2a94dade741698",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create folded paper aesthetic with origami shapes, paper textures, and layered depth.",
+    "detailed": "Apply paper craft aesthetic suggesting folded, cut paper. Layered paper elements with shadows showing depth. Origami-inspired geometric shapes. Paper texture backgrounds. Fold lines and creases visible. Cut-out style illustrations. Soft shadows suggesting paper thickness. Muted, paper-like colors. Include paper corner folds and curls. Craft project, handmade atmosphere.",
+    "advanced": "Apply paper craft aesthetic with folded, layered paper feel. Paper layers: multiple elements stacked with increasing shadow-md to shadow-xl for depth, each layer slightly offset. Paper texture: subtle fiber pattern, aged paper color variations (cream, off-white, craft brown). Origami elements: geometric folded shapes (SVG with gradient faces suggesting 3D folds), angular forms. Fold lines: subtle diagonal creases across elements (thin line with gradient fade), corner folds (triangle in corner with shadow). Cut-out style: elements appear cut from paper - slightly rough edges (SVG filter or clip-path), layered over contrasting background. Shadows: soft, directional shadows suggesting paper floating above surface, consistent light direction. Corner curls: paper corners lifting (pseudo-element with curved gradient). Colors: paper palette - cream, kraft brown, white, subtle pastels like construction paper. Pop-up elements: 3D paper architecture style, elements appearing to fold out. Interactive: paper folding animations on hover, elements can flip or unfold. Torn edges: rough paper tear effect for dividers or edges. Tape and pins: decorative elements holding paper pieces. Collage: layered composition suggesting crafted arrangement. Implementation: CSS transforms for 3D paper folds, SVG for complex shapes. Performance: shadow-heavy design - optimize carefully. Accessibility: ensure paper colors provide sufficient text contrast, layer shadows dont obscure content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

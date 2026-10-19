@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d109-a-b-testing-dashboard",
+  "slug": "fluidflow-design-d109-a-b-testing-dashboard",
+  "title": "A/B Testing Dashboard",
+  "description": "FluidFlow · A/B Testing Dashboard",
+  "content": "Apply A/B testing aesthetic with experimentation platform feel. Experiment status cards (draft, running, completed). Variant traffic allocation sliders. Metric comparison tables. Statistical significance indicators. Confidence interval visualizations. Segment filtering. Winner declaration banners. Experiment timeline views. Feature flag associations. Rollout percentage controls.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d109"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "21a36463f6c3040306aa405a422cb82908d9be2c8fe34333c77f8284a7321a1f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create A/B testing interface with experiment cards, variant comparisons, and statistical results.",
+    "detailed": "Apply A/B testing aesthetic with experimentation platform feel. Experiment status cards (draft, running, completed). Variant traffic allocation sliders. Metric comparison tables. Statistical significance indicators. Confidence interval visualizations. Segment filtering. Winner declaration banners. Experiment timeline views. Feature flag associations. Rollout percentage controls.",
+    "advanced": "Apply A/B testing aesthetic with Optimizely/LaunchDarkly patterns. Experiment cards: name, status badge, start date, traffic percentage. Variant sliders: Control (A) vs Treatment (B/C/D) with percentage inputs summing to 100%. Metric table: variant columns, rows for each metric, relative lift with arrows. Significance badge: \"95% confident\", \"Not significant\", \"Trending\". Confidence interval error bars on comparison chart. Segment dropdown with user property filters. Winner banner: green \"B wins by 12%\", with ship button. Timeline: Gantt-style with experiment duration bars. Flag toggle linked to experiment. Rollout: 0-100% slider with graduated deployment suggestions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

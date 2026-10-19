@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co15-data-labels",
+  "slug": "fluidflow-content-co15-data-labels",
+  "title": "Data Labels",
+  "description": "FluidFlow · Data Labels",
+  "content": "Build label/value display component for data presentation. Layout: horizontal (label: value) or stacked (label above value). Grid alignment: use CSS grid for aligned label columns. Label styling: text-gray-500 text-sm, Value styling: text-gray-900 font-medium. Empty values: show \"-\" or \"N/A\" placeholder. Copy button: optional copy icon for values. Link values: render as clickable links. Multi-value: handle arrays as comma-separated or list. Responsive: stack on mobile, horizontal on desktop. Sections: group related fields with dividers or cards. Icon prefix: optional icon before label.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bc2b802fe8fe0acf2c1e5aa9b3b3384426939ae1ecdc12d60e22115593b03ea8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create consistent label/value pair displays for data.",
+    "detailed": "Build label/value display component for data presentation. Layout: horizontal (label: value) or stacked (label above value). Grid alignment: use CSS grid for aligned label columns. Label styling: text-gray-500 text-sm, Value styling: text-gray-900 font-medium. Empty values: show \"-\" or \"N/A\" placeholder. Copy button: optional copy icon for values. Link values: render as clickable links. Multi-value: handle arrays as comma-separated or list. Responsive: stack on mobile, horizontal on desktop. Sections: group related fields with dividers or cards. Icon prefix: optional icon before label.",
+    "advanced": "Build label/value display component system for consistent data presentation. Layout variations: horizontal inline (label: value in row), stacked vertical (label above value), description list (dl/dt/dd semantic). Grid alignment: CSS grid with label column width fitting content (auto) and value column growing (1fr), gap-4 between rows. Styling: label (text-sm text-gray-500 dark:text-gray-400), value (text-base text-gray-900 dark:text-white font-medium). Empty/null handling: display dash or \"N/A\" with muted styling, or hide row entirely based on prop. Value types: strings as-is, links render as anchor with text-blue-600, dates formatted with TimeAgo or formatted date, booleans as Yes/No or checkmark/x icon. Array values: comma-separated, or bullet list, or tags/badges. Copy functionality: hover reveals copy button on value, click copies to clipboard, brief \"Copied\" feedback. Responsive: grid-cols-1 sm:grid-cols-2 for two-column, stacked on mobile. Grouping: group related fields in cards or with section headings. Icon support: optional icon prop rendered before label. Component API: <DataField label=\"Email\" value={user.email} copyable /> or <DataGrid fields={[{label, value}]} columns={2} />. Accessibility: use dl/dt/dd for semantic markup, or aria-label on value for context. Truncation: optional truncate on long values with tooltip for full content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

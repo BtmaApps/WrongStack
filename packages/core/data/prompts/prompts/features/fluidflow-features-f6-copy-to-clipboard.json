@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f6-copy-to-clipboard",
+  "slug": "fluidflow-features-f6-copy-to-clipboard",
+  "title": "Copy to Clipboard",
+  "description": "FluidFlow · Copy to Clipboard",
+  "content": "Implement robust copy-to-clipboard functionality. Use navigator.clipboard.writeText() API. Trigger: button with Copy icon, onClick handler. Visual feedback: icon changes to Check for 2 seconds, then back to Copy. Apply to: code blocks, share links, reference IDs. Handle errors: show \"Failed to copy\" message. Copy button positioning: absolute top-right corner of copyable content.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1768d47e5b4f99c518a7c1270fc117b255fa59c58e7e8a89d73158a70c8f0aba",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add copy button that copies text to clipboard and shows \"Copied!\" feedback.",
+    "detailed": "Implement robust copy-to-clipboard functionality. Use navigator.clipboard.writeText() API. Trigger: button with Copy icon, onClick handler. Visual feedback: icon changes to Check for 2 seconds, then back to Copy. Apply to: code blocks, share links, reference IDs. Handle errors: show \"Failed to copy\" message. Copy button positioning: absolute top-right corner of copyable content.",
+    "advanced": "Implement robust copy-to-clipboard functionality with full browser support. Use navigator.clipboard.writeText() API (modern, async, requires secure context). Fallback for older browsers: create temporary hidden textarea, append to body, select content, document.execCommand(\"copy\"), remove element. Trigger: button with Copy icon (lucide-react), onClick async handler with try/catch. Visual feedback: icon transitions from Copy to Check with fade animation for 2 seconds, then back to Copy. Alternative feedback: tooltip \"Copied!\" appears briefly using absolute positioned element. Button text variant: \"Copy\" → \"Copied!\" with text-green-600 color. Apply to: code blocks (multi-line preserving formatting), share links, reference IDs, API keys, configuration snippets. Handle errors: show \"Failed to copy\" error toast with reason. Keyboard shortcut: Ctrl/Cmd+C when element is focused (if appropriate). Copy button positioning: absolute top-right corner (top-2 right-2) of copyable content container with relative parent. Support copying rich text/HTML when needed using navigator.clipboard.write() with ClipboardItem. Accessibility: aria-label=\"Copy to clipboard\" describes action, announce \"Copied to clipboard\" success to screen readers using aria-live=\"polite\" region. Prevent double-click issues with disabled state during feedback period. Add haptic feedback on mobile if available."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

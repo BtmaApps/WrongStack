@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d84-kubernetes-container",
+  "slug": "fluidflow-design-d84-kubernetes-container",
+  "title": "Kubernetes/Container",
+  "description": "FluidFlow · Kubernetes/Container",
+  "content": "Apply Kubernetes container orchestration aesthetic with cloud-native DevOps feel. Pod rectangles containing container circles. Deployment/service relationships. Namespace color coding. Node representations with resource bars. kubectl output styling. YAML manifest appearance. Health status indicators. Replica count displays. Helm chart styling. Container orchestration atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d84"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "abfe5cbf313ed9076321ee78e1f415bec8505f3177a81bc1636a4d4cabf37423",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Kubernetes aesthetic with pod diagrams, container orchestration visuals, and DevOps styling.",
+    "detailed": "Apply Kubernetes container orchestration aesthetic with cloud-native DevOps feel. Pod rectangles containing container circles. Deployment/service relationships. Namespace color coding. Node representations with resource bars. kubectl output styling. YAML manifest appearance. Health status indicators. Replica count displays. Helm chart styling. Container orchestration atmosphere.",
+    "advanced": "Apply Kubernetes container orchestration aesthetic with K8s dashboard feel. Pod visualization: rounded rectangle containing smaller circles (containers), labeled with pod name, namespace color-coded border. Container icons: Docker whale or container box, image name:tag, port mappings. Deployment: group of pod replicas with ReplicaSet indicator, scaling arrows, rolling update visualization (old/new pods). Services: service shape connecting to pods, ClusterIP/NodePort/LoadBalancer type badges, port:targetPort display. Ingress: gateway icon with routing rules, TLS indicator. Namespace: colored sidebar or background grouping resources, namespace selector dropdown. Nodes: large rectangles representing worker nodes, CPU/memory utilization bars, pod count, conditions (Ready, DiskPressure). Resource requests/limits: bar charts showing requested vs limit vs current usage. YAML styling: syntax highlighted manifests, proper indentation, kubectl explain inline hints. kubectl output: table format with columns (NAME, READY, STATUS, RESTARTS, AGE), get/describe output styling. Health: green Ready, yellow Pending, red Failed/CrashLoopBackOff, probe status indicators. Labels/annotations: tag badges, selector matching visualization. ConfigMaps/Secrets: mounted volume connections to pods. Helm: chart icon, release name, revision history. Operators: CRD indicators, operator-managed badges. Events: warning/normal event log styling. Metrics: HPA current/target metrics, Prometheus-style queries. Implementation: SVG for architecture diagrams, kubectl-style tables. Accessibility: complex diagrams need text descriptions, status not color-only."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo20-color-picker",
+  "slug": "fluidflow-forms-fo20-color-picker",
+  "title": "Color Picker",
+  "description": "FluidFlow · Color Picker",
+  "content": "Build color picker component. Preset swatches: grid of common colors. Custom: open spectrum picker for custom color. Display: show selected color in preview box. Formats: support HEX, RGB, HSL input. Eyedropper: optional browser eyedropper tool. Recent colors: remember recently used colors. Opacity: optional alpha channel slider. Input: manual hex input field.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "994a4c24e0be93a01d4278204200e260e3d9bb4de77bb353f5674cc57b1a468b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create color picker with swatches and custom color option.",
+    "detailed": "Build color picker component. Preset swatches: grid of common colors. Custom: open spectrum picker for custom color. Display: show selected color in preview box. Formats: support HEX, RGB, HSL input. Eyedropper: optional browser eyedropper tool. Recent colors: remember recently used colors. Opacity: optional alpha channel slider. Input: manual hex input field.",
+    "advanced": "Build comprehensive color picker component. Trigger: button showing current color swatch, click to open picker. Picker layout: dropdown or popover with multiple sections. Preset swatches: grid of preset colors (Tailwind palette or custom), click to select, hover shows color name. Custom color section: spectrum/gradient area for hue/saturation, separate slider for lightness/value, vertical hue strip. Opacity slider: optional alpha channel slider (0-100%), checkerboard background showing transparency. Color formats: toggle between HEX (#FF5733), RGB (rgb(255, 87, 51)), HSL (hsl(14, 100%, 60%)), manual input for each with validation. Preview: side-by-side current vs new color comparison. Eyedropper: EyeDropper API (where supported) to pick color from screen, graceful fallback where unsupported. Recent colors: store last 8-10 used colors in localStorage, show at top of picker. Favorite colors: allow saving colors to favorites, persist across sessions. Copy value: click to copy color value in current format. Named colors: optionally support CSS named colors (red, navy, coral). Color contrast: show WCAG contrast ratio when applicable. Gradients: optional gradient builder (two-color picker with direction). Keyboard navigation: arrow keys in swatches, Tab through sections. Accessibility: announce color selections, ARIA for picker controls. Close: click outside, Escape, or confirm button. Implementation: consider react-color, @radix-ui/react-popover, or custom. Mobile: full-screen modal picker, larger touch targets."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

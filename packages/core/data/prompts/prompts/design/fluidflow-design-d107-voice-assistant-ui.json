@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d107-voice-assistant-ui",
+  "slug": "fluidflow-design-d107-voice-assistant-ui",
+  "title": "Voice Assistant UI",
+  "description": "FluidFlow · Voice Assistant UI",
+  "content": "Apply voice assistant aesthetic with conversational AI feel. Waveform visualization during listening. Speech-to-text transcription display. Command recognition with intent badges. Response cards with TTS playback. Wake word sensitivity controls. Voice profile management. Skill/action discovery. Multi-turn conversation threading. Noise cancellation indicators. Microphone permission states.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d107"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "68b0b16a6153f8ddd6888c0f6ac4aa4fdffedc9b69ce063eba024778c74143e0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create voice assistant interface with waveform visualizations, command recognition, and response displays.",
+    "detailed": "Apply voice assistant aesthetic with conversational AI feel. Waveform visualization during listening. Speech-to-text transcription display. Command recognition with intent badges. Response cards with TTS playback. Wake word sensitivity controls. Voice profile management. Skill/action discovery. Multi-turn conversation threading. Noise cancellation indicators. Microphone permission states.",
+    "advanced": "Apply voice assistant aesthetic with Alexa/Google patterns. Circular waveform: bars or sine wave animation when listening. Transcription: real-time text appearance with cursor. Intent badge after recognition with confidence percentage. Response card with text, speak button, source attribution. Wake word: sensitivity slider, detection sound toggle. Voice profiles: family member list with voice samples. Skills grid with category filters. Conversation history with user/assistant turns. Noise gate meter with threshold line. Mic states: listening (blue pulse), processing (dots), muted (red), permissions (dialog)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

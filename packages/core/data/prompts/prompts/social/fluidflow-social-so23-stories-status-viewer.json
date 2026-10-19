@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so23-stories-status-viewer",
+  "slug": "fluidflow-social-so23-stories-status-viewer",
+  "title": "Stories/Status Viewer",
+  "description": "FluidFlow · Stories/Status Viewer",
+  "content": "Build Instagram/Snapchat style stories viewer. Full screen overlay with story content. Progress bars: segmented bar showing story count and current progress. Navigation: tap left/right to navigate, swipe. User header: avatar, name, timestamp, close button. Actions: reply input, emoji reactions. Auto-advance after 5 seconds. Pausing: hold to pause.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0ec29fa687bab3ecc8f21761a76f648ebefb3a69d9f1b90bc103761e17f19508",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create stories viewer with progress bar and navigation.",
+    "detailed": "Build Instagram/Snapchat style stories viewer. Full screen overlay with story content. Progress bars: segmented bar showing story count and current progress. Navigation: tap left/right to navigate, swipe. User header: avatar, name, timestamp, close button. Actions: reply input, emoji reactions. Auto-advance after 5 seconds. Pausing: hold to pause.",
+    "advanced": "Build full-screen stories/status viewer with complete interactions. Viewer overlay: fixed inset-0 bg-black z-50, displayed when story opened. Content area: centered, max-w-lg mx-auto h-full flex flex-col. Progress bar section: flex gap-1 px-2 pt-2. Segments: one bar per story item, h-1 rounded-full bg-white/30. Active segment: animating width from 0 to 100% over duration (default 5s), bg-white. Completed: bg-white full width. User header: absolute top, flex items-center gap-2 p-4 z-10. Avatar (w-8 h-8 rounded-full border-2 border-white), username (text-white font-medium), timestamp (text-white/70 text-sm \"2h ago\"), close X button (right-aligned). Story content: flex-1 flex items-center justify-center. Image/video: object-contain max-h-full. Text story: styled text on gradient background. Video: autoplay muted, optional sound toggle. Navigation zones: invisible tap areas, left 30% taps previous, right 70% taps next. Touch gestures: tap to navigate, long-press to pause (video/timer pauses), swipe left/right for previous/next story, swipe down to close. Keyboard: left/right arrows, escape to close. Auto-advance: setTimeout moves to next story item, then next user's stories. Actions bar (bottom): flex items-center gap-4 p-4. Reply input: flex-1 rounded-full bg-white/20 text-white placeholder-white/70 px-4 py-2, opens keyboard. Quick reactions: emoji buttons (❤️ 🔥 😂 😮 😢 👏) with send animation. Share button: forward story to DM. More menu: mute user, report story. Story rings (entry point): horizontal scroll of user avatars with gradient ring (unseen) or grey ring (seen), your story first with + badge, tap opens viewer starting with that user. Create story: camera interface, capture or select media, add text/stickers/drawings, post with visibility selector. Story list: multiple stories from same user, swipe up to see more info (viewers, replies) on your own stories. View count: \"Seen by X\" for own stories with viewer list. Story highlights: pinned stories on profile. Expiration: stories expire after 24h, countdown shown. Loading: spinner while media loads. Accessibility: close button reachable, content described, pause state announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c19-add-dropdown-menu",
+  "slug": "fluidflow-components-c19-add-dropdown-menu",
+  "title": "Add Dropdown Menu",
+  "description": "FluidFlow · Add Dropdown Menu",
+  "content": "Create dropdown menu component with full functionality. Trigger: button or link that opens menu. Menu container: absolute positioning, mt-2 below trigger, min-w-[200px], bg-white rounded-lg shadow-lg border. Items: py-2 px-4 hover:bg-gray-100, support icons prefix, keyboard shortcuts suffix, disabled state. Add dividers between groups with border-t my-1. Nested submenus: ChevronRight indicator, show on hover with delay. Animations: scale-95 to scale-100 with opacity fade. Positioning: detect viewport edges and flip direction if needed. Keyboard navigation: arrow keys to navigate, Enter to select, Escape to close. Focus management: focus first item on open. Accessibility: role=\"menu\", role=\"menuitem\", aria-expanded on trigger.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b2663408b5b35304583d5ad7868bea25f520dde2929b7c1b7dfb07448bc230bf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a dropdown menu with items and keyboard navigation.",
+    "detailed": "Create dropdown menu component with full functionality. Trigger: button or link that opens menu. Menu container: absolute positioning, mt-2 below trigger, min-w-[200px], bg-white rounded-lg shadow-lg border. Items: py-2 px-4 hover:bg-gray-100, support icons prefix, keyboard shortcuts suffix, disabled state. Add dividers between groups with border-t my-1. Nested submenus: ChevronRight indicator, show on hover with delay. Animations: scale-95 to scale-100 with opacity fade. Positioning: detect viewport edges and flip direction if needed. Keyboard navigation: arrow keys to navigate, Enter to select, Escape to close. Focus management: focus first item on open. Accessibility: role=\"menu\", role=\"menuitem\", aria-expanded on trigger.",
+    "advanced": "Create dropdown menu component with full functionality, keyboard navigation, and positioning. Wrapper: relative inline-block for positioning context. Trigger: button with aria-haspopup=\"true\", aria-expanded={isOpen}, onClick toggles, ref for positioning. Menu container: position absolute, z-50, mt-2 (below) or mb-2 (above), min-w-[200px], bg-white rounded-lg shadow-lg border border-gray-200, py-1. Animation: transition-all duration-150, closed (opacity-0 scale-95 pointer-events-none), open (opacity-100 scale-100), transform-origin based on position. Menu item: button or link, w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100, flex items-center gap-3. Icon prefix: flex-shrink-0 w-4 h-4 text-gray-400. Keyboard shortcut suffix: ml-auto text-xs text-gray-400. Disabled state: opacity-50 cursor-not-allowed pointer-events-none. Divider: hr with border-t border-gray-200 my-1. Group labels: px-4 py-2 text-xs font-semibold text-gray-500 uppercase. Nested submenu: item with ChevronRight icon, relative group, nested menu absolute left-full top-0 -mt-1, show on hover with delay (group-hover:visible). Keyboard navigation: arrow keys (up/down) move focus, Enter/Space selects, Escape closes, Home/End for first/last. Focus management: on open focus first item, maintain focus within menu, return focus to trigger on close. Click outside: close menu when clicking outside (useEffect with document click listener). Viewport detection: if menu would overflow viewport, flip to open upward or leftward. Position calculation: use getBoundingClientRect or library like Floating UI. ACCESSIBILITY: role=\"menu\" on container, role=\"menuitem\" on items, role=\"menuitemcheckbox\" for toggleable items, aria-disabled for disabled items, proper focus visible styles. Component API: trigger (render prop or children), items array with {label, icon?, shortcut?, onClick, disabled?}, optional groups."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

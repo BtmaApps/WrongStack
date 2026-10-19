@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d13-material-design",
+  "slug": "fluidflow-design-d13-material-design",
+  "title": "Material Design",
+  "description": "FluidFlow · Material Design",
+  "content": "Apply Material Design 3 principles with proper elevation system using shadows (shadow-sm for 1dp, shadow-md for 4dp, shadow-lg for 8dp). Implement ripple effects on interactive elements. Use bold primary colors with proper surface tints. Add proper state layers for hover (opacity changes), focus (visible outlines), and pressed states. Use 4dp grid system for spacing. Include proper motion with easing curves. Add FAB (Floating Action Button) where appropriate. Ensure proper component spacing and touch targets (min 48px).",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7840eabfa950a50d97cf9ffe9fedac4602a974d8c75c85b5078ee27601ab720e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply Google Material Design with elevation shadows, ripple effects, and bold colors.",
+    "detailed": "Apply Material Design 3 principles with proper elevation system using shadows (shadow-sm for 1dp, shadow-md for 4dp, shadow-lg for 8dp). Implement ripple effects on interactive elements. Use bold primary colors with proper surface tints. Add proper state layers for hover (opacity changes), focus (visible outlines), and pressed states. Use 4dp grid system for spacing. Include proper motion with easing curves. Add FAB (Floating Action Button) where appropriate. Ensure proper component spacing and touch targets (min 48px).",
+    "advanced": "Apply Material Design 3 principles with proper elevation system: shadow-sm (1dp), shadow-md (4dp), shadow-lg (8dp), shadow-xl (12dp), shadow-2xl (24dp). Implement ripple effects using pseudo-elements with radial-gradient animation on interactive elements. Use bold primary colors with proper surface tints (primary color at 8% opacity for containers). Add proper state layers: hover (primary at 8% opacity), focus (primary at 12%), pressed (primary at 12% + ripple), dragged (primary at 16%). Use 4dp baseline grid for all spacing. Include proper motion with standard easing (cubic-bezier(0.4,0,0.2,1)) for enter, decelerated for exit. Add FAB (Floating Action Button) at bottom-right with proper elevation. Ensure proper component spacing: 16dp edge margins, 24dp between components. Touch targets minimum 48x48dp. Implement proper typography scale: Display, Headline, Title, Body, Label. Include tonal color palette generation. Add component ripple state management. Follow Material motion choreography for coordinated animations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

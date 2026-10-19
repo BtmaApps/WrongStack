@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d133-holo-gradient-mesh",
+  "slug": "fluidflow-design-d133-holo-gradient-mesh",
+  "title": "Holo/Gradient Mesh",
+  "description": "FluidFlow · Holo/Gradient Mesh",
+  "content": "Apply holographic aesthetic with gradient mesh feel. Complex multi-color gradients. Mesh gradient backgrounds. Rainbow shimmer effects. Metallic and iridescent surfaces. Glow and bloom effects. Prismatic color splits. Foil and chrome textures. Gradient borders. Animated color cycling. Glassmorphism combination.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d133"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fee5bb3fae6cd1b8ee02ec37f09ec51b96b9294cbf0cb87d747ab4929e699de9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create holographic style with mesh gradients, rainbow effects, and futuristic glow.",
+    "detailed": "Apply holographic aesthetic with gradient mesh feel. Complex multi-color gradients. Mesh gradient backgrounds. Rainbow shimmer effects. Metallic and iridescent surfaces. Glow and bloom effects. Prismatic color splits. Foil and chrome textures. Gradient borders. Animated color cycling. Glassmorphism combination.",
+    "advanced": "Apply holographic aesthetic with mesh gradient patterns. Mesh gradients: multiple color stops positioned as radial gradients, blended together for organic flow. Background: conic-gradient with multiple color stops, animate hue-rotate for living color. Shimmer: linear-gradient overlay with transparency, animate background-position for sweep effect. Metallic: linear-gradient with multiple stops (light, mid, dark, light), creates chrome illusion. Iridescence: pseudo-element with mix-blend-mode: color-dodge, hue-shift on scroll/hover. Glow: multiple box-shadows with different colors, blur-lg for bloom effect. Prismatic: text or element with pseudo-elements offset in RGB colors, chromatic aberration effect. Foil: noisy gradient texture, animate subtly for holographic foil feel. Gradient borders: background gradient on parent, solid background on child with gap for border. Glass: backdrop-blur combined with gradient background for colorful glass. Text: gradient fill with animated movement, sparkle overlay. Buttons: gradient background, glow on hover, animated border. Cards: gradient border with solid fill, holographic shine on tilt (mouse position). Noise: SVG noise texture overlay at low opacity for texture. Implementation: CSS gradients, SVG filters for advanced effects. Performance: hardware-accelerated animations, limit simultaneous animations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

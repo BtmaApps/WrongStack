@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la19-search-results-page",
+  "slug": "fluidflow-layouts-la19-search-results-page",
+  "title": "Search Results Page",
+  "description": "FluidFlow · Search Results Page",
+  "content": "Build search results page. Header: search input with query shown, result count. Filters sidebar: checkboxes for categories, price range slider, rating filter. Sort dropdown: relevance, price, date. Results grid or list view toggle. Result cards: image, title, description, metadata. Pagination: numbered pages or infinite scroll. No results state. Related searches.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a23cb526a847a6895164e7a41e98e31e6fa4f3e67e72c55e0ec7d3d6f904b204",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create search results page with filters, sorting, and pagination.",
+    "detailed": "Build search results page. Header: search input with query shown, result count. Filters sidebar: checkboxes for categories, price range slider, rating filter. Sort dropdown: relevance, price, date. Results grid or list view toggle. Result cards: image, title, description, metadata. Pagination: numbered pages or infinite scroll. No results state. Related searches.",
+    "advanced": "Build comprehensive search results page with filtering and sorting. Page header: search input (pre-filled with query, editable), \"X results for [query]\" count. Layout: grid-cols-1 lg:grid-cols-4 gap-8. Filters sidebar (lg:col-span-1): sticky top-4, bg-white rounded-xl shadow-sm p-4. \"Filters\" header with \"Clear All\" link. Filter groups as collapsible sections: Category (checkbox list with counts), Price Range (dual-handle slider or min/max inputs), Rating (star rating checkboxes), Date (date range picker or presets), Brand (searchable checkbox list if many). \"Apply Filters\" button (mobile), filters apply instantly (desktop). Active filters: pills above results showing active filters with X to remove. Mobile: filters in sheet/modal triggered by \"Filters\" button, badge with active count. Results area (lg:col-span-3): header bar: sort dropdown (Relevance, Price: Low to High, Price: High to Low, Newest, Best Rating), view toggle (Grid/List icons). Grid view: grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4. List view: space-y-4, horizontal card layout. Result card: image (aspect-square or aspect-video), title (font-medium line-clamp-2), description (text-sm text-gray-600 line-clamp-2), metadata (price, rating stars, date, location), quick action (Add to Cart, Save). Hover: shadow-md, reveal additional actions. Highlighting: search term highlighted in title/description (mark tag or bg-yellow-200). Pagination: flex justify-center mt-8, \"Previous\" / page numbers / \"Next\", or infinite scroll with \"Load More\" button. Results per page selector. Loading: skeleton cards during fetch. No results: friendly message \"No results found for [query]\", suggestions (check spelling, try different keywords, browse categories), \"Clear filters\" if filters active. Related searches: \"People also search for\" with clickable terms. Did you mean: spelling correction suggestion. Search history: recent searches dropdown in search input. Mobile: collapse filters, 2-column grid. Accessibility: filter changes announced, results count updated, pagination navigable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

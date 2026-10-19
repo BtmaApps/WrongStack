@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec29-order-confirmation",
+  "slug": "fluidflow-ecommerce-ec29-order-confirmation",
+  "title": "Order Confirmation",
+  "description": "FluidFlow · Order Confirmation",
+  "content": "Build order confirmation page. Success header: large checkmark, \"Order Confirmed!\" message, order number. Summary: ordered items list with images, quantities, prices. Totals: subtotal, shipping, tax, order total. Shipping info: address, method, estimated delivery. Next steps: create account prompt (if guest), tracking info coming email. Actions: \"Continue Shopping\" button, \"View Order\" link.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dd9be40320d4b0ee63f387d33c235e3d7e7ea061c19733332889d315bb7affb2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create order confirmation page with summary and next steps.",
+    "detailed": "Build order confirmation page. Success header: large checkmark, \"Order Confirmed!\" message, order number. Summary: ordered items list with images, quantities, prices. Totals: subtotal, shipping, tax, order total. Shipping info: address, method, estimated delivery. Next steps: create account prompt (if guest), tracking info coming email. Actions: \"Continue Shopping\" button, \"View Order\" link.",
+    "advanced": "Build comprehensive order confirmation page/modal as final checkout step. Success hero: centered content with large success icon (animated checkmark in circle, green pulse), \"Order Confirmed!\" or \"Thank You for Your Order!\" heading (text-2xl md:text-3xl font-bold), order number prominently displayed (font-mono, copiable), \"Confirmation sent to [email]\" note. Order summary section: bg-white rounded-lg shadow-sm p-6. Items list: each item shows image (w-16 h-16), name, variant details (size, color), quantity, price, link to product for reordering. Order totals: subtotal, discount applied (if any), shipping cost and method, taxes, order total (font-bold text-lg). Payment info: last 4 digits of card used, payment status (Paid, Pending). Shipping information: shipping address formatted, shipping method selected, estimated delivery date prominently displayed (\"Estimated Delivery: January 15-17, 2024\"), delivery instructions if provided. Tracking section: \"You'll receive tracking information at [email] when your order ships\" message, tracking number (if available immediately), \"Track Order\" button (disabled until shipped). Guest checkout prompts: if guest, \"Create an Account\" CTA to save order history and speed future checkouts, benefits list (track orders, save addresses, faster checkout), email pre-filled. Next steps list: numbered or bullet list explaining what happens next (1. Order confirmation email sent, 2. You'll receive shipping confirmation with tracking, 3. Package arrives!). Actions: \"Continue Shopping\" primary CTA, \"View Order Details\" link to order history if logged in, \"Print Confirmation\" button. Cross-sell: \"You might also like\" related products section (don't be too aggressive). Social sharing: \"Share your purchase\" optional (if not gift). Survey/feedback: optional one-question survey (\"How was your checkout experience?\"). App download: if mobile app exists, prompt to download for order tracking. Order support: \"Questions about your order?\" with contact link, FAQ link. Email preview: note about what to expect in confirmation email. Mobile: optimized for screenshot sharing, clean layout. Accessibility: success announced to screen readers, order number easily selectable, logical heading structure."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

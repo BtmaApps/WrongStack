@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d100-microservices-map",
+  "slug": "fluidflow-design-d100-microservices-map",
+  "title": "Microservices Map",
+  "description": "FluidFlow · Microservices Map",
+  "content": "Apply microservices aesthetic with distributed system visualization. Service node cards with health status. Connection lines showing dependencies. Request flow animations. Circuit breaker indicators. Service mesh overlays. Load balancer distributions. API gateway representations. Message queue visualizations. Service discovery lists. Distributed tracing views.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d100"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b146e02fe8d34a53794bbc4cca4676967542ad637f9c341a95fdb8defe8f6818",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create microservices architecture visualization with service nodes, connections, and health monitoring.",
+    "detailed": "Apply microservices aesthetic with distributed system visualization. Service node cards with health status. Connection lines showing dependencies. Request flow animations. Circuit breaker indicators. Service mesh overlays. Load balancer distributions. API gateway representations. Message queue visualizations. Service discovery lists. Distributed tracing views.",
+    "advanced": "Apply microservices aesthetic with architecture diagram patterns. Service hexagons with name, version, instance count. Dependency arrows with request rate labels. Animated dots flowing along connections. Circuit breaker badges: closed (green), open (red), half-open (yellow). Istio-style mesh overlay grid. Load balancer with weighted routing percentages. API gateway node with route mappings. Queue icons with message counts. Consul-style service registry table. Jaeger-style trace waterfall with span timing."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

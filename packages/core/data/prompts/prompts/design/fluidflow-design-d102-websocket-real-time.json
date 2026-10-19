@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d102-websocket-real-time",
+  "slug": "fluidflow-design-d102-websocket-real-time",
+  "title": "WebSocket Real-time",
+  "description": "FluidFlow · WebSocket Real-time",
+  "content": "Apply WebSocket aesthetic with real-time application feel. Connection status indicators with latency. Live message feed scrolling display. Channel subscription management. Presence indicators for online users. Typing indicators. Message acknowledgment badges. Reconnection countdown timers. Binary data size displays. Heartbeat pulse visualizations. Event type filtering controls.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d102"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f56ab2a0af5358aca38fb704b8fed31304a4bf187869b26c96d2406c9186ce55",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create WebSocket interface with connection status, live message feeds, and channel subscriptions.",
+    "detailed": "Apply WebSocket aesthetic with real-time application feel. Connection status indicators with latency. Live message feed scrolling display. Channel subscription management. Presence indicators for online users. Typing indicators. Message acknowledgment badges. Reconnection countdown timers. Binary data size displays. Heartbeat pulse visualizations. Event type filtering controls.",
+    "advanced": "Apply WebSocket aesthetic with real-time patterns. Connection badge: connected (green pulse), disconnected (red), reconnecting (yellow spinner). Latency display with ms value. Message feed with auto-scroll, timestamp, direction arrows (↑↓). Channel list with subscriber counts, join/leave buttons. Presence: avatar stack with online count, \"user is typing...\" animation. ACK badges: sent→delivered→read. Reconnect countdown with attempt number. Binary messages with byte size, preview toggle. Heartbeat icon with pulse animation. Event filter checkboxes: message, join, leave, error."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

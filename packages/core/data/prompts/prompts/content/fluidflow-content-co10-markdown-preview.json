@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co10-markdown-preview",
+  "slug": "fluidflow-content-co10-markdown-preview",
+  "title": "Markdown Preview",
+  "description": "FluidFlow · Markdown Preview",
+  "content": "Build markdown preview component for rendering formatted content. Parse markdown to HTML using a library like marked or remark. Support standard markdown: headings (#, ##, ###), bold (**text**), italic (*text*), links [text](url), images ![alt](url), code blocks (```), inline code (`), lists (-, 1.), blockquotes (>), horizontal rules (---), tables. Apply Tailwind typography styles for rendered output (prose class or custom styles). Sanitize HTML output to prevent XSS. Add side-by-side editor/preview mode option. Sync scroll between editor and preview. Support GitHub Flavored Markdown (GFM) for tables, task lists, strikethrough. Handle relative image paths. Add syntax highlighting for code blocks. Dark mode support for preview styling.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a9ae83b8cd7e3e01f32d51a6508ee644fe2f5cad38fd757f2d68c873cbea41ae",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build markdown preview with formatted output.",
+    "detailed": "Build markdown preview component for rendering formatted content. Parse markdown to HTML using a library like marked or remark. Support standard markdown: headings (#, ##, ###), bold (**text**), italic (*text*), links [text](url), images ![alt](url), code blocks (```), inline code (`), lists (-, 1.), blockquotes (>), horizontal rules (---), tables. Apply Tailwind typography styles for rendered output (prose class or custom styles). Sanitize HTML output to prevent XSS. Add side-by-side editor/preview mode option. Sync scroll between editor and preview. Support GitHub Flavored Markdown (GFM) for tables, task lists, strikethrough. Handle relative image paths. Add syntax highlighting for code blocks. Dark mode support for preview styling.",
+    "advanced": "Build markdown preview component for rendering formatted content safely and beautifully. Parser options: marked (fast, lightweight), remark/unified (extensible, AST-based), markdown-it (plugins, good GFM support). Setup example with marked: import { marked } from \"marked\"; const html = marked(markdownString). GFM support: tables (| header |), task lists (- [ ] todo), strikethrough (~~text~~), autolinks, footnotes. Custom renderer: extend default renderer for custom handling (open links in new tab, lazy load images, custom heading IDs). Code block highlighting: integrate with Prism.js or highlight.js, marked.setOptions({ highlight: (code, lang) => Prism.highlight(code, Prism.languages[lang], lang) }). Output styling: wrap in prose class from @tailwindcss/typography, or apply custom styles matching rich text component. SECURITY CRITICAL: sanitize output with DOMPurify before rendering - const clean = DOMPurify.sanitize(html) - prevents XSS from malicious markdown. Editor/preview modes: side-by-side (flex with two columns), tabbed (toggle between views), live preview below editor. Scroll sync: map scroll position between editor and preview, tricky to implement perfectly. Custom extensions: embed support (YouTube, Twitter), math equations (KaTeX), diagrams (Mermaid). Image handling: resolve relative paths, lazy loading, click to expand. Copy code button: add to each code block programmatically. Dark mode: prose-invert class or custom dark styles. Component API: content (markdown string), className, components (custom renderers), remarkPlugins, rehypePlugins for unified. Performance: debounce preview updates during typing (200-300ms), memoize parsed output."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

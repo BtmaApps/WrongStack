@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co27-help-tooltips",
+  "slug": "fluidflow-content-co27-help-tooltips",
+  "title": "Help Tooltips",
+  "description": "FluidFlow · Help Tooltips",
+  "content": "Create help/info tooltip system. Trigger: small info icon (HelpCircle or Info) next to labels. Tooltip: appears on hover/focus with explanation text. Styling: bg-gray-900 text-white text-sm rounded shadow. Position: above element by default, flips if near edge. Delay: slight delay before showing to avoid flicker. Arrow: small arrow pointing to trigger. Max width: limit tooltip width for readability. Rich content: support links and formatting in tooltip. Close on click: dismiss on click outside. Keyboard: show on focus, dismiss on Escape.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "48cb7759686b09679ce8f70dfbf06274c8a5a4f35c81cd54ec24590be1716c53",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add contextual help icons with explanatory tooltips.",
+    "detailed": "Create help/info tooltip system. Trigger: small info icon (HelpCircle or Info) next to labels. Tooltip: appears on hover/focus with explanation text. Styling: bg-gray-900 text-white text-sm rounded shadow. Position: above element by default, flips if near edge. Delay: slight delay before showing to avoid flicker. Arrow: small arrow pointing to trigger. Max width: limit tooltip width for readability. Rich content: support links and formatting in tooltip. Close on click: dismiss on click outside. Keyboard: show on focus, dismiss on Escape.",
+    "advanced": "Create contextual help tooltip system for user guidance. Trigger element: HelpCircle or Info icon (h-4 w-4 text-gray-400 hover:text-gray-600), placed after form labels or near complex UI. Trigger behavior: show on mouseenter (with 150ms delay to prevent flicker), show on focus for keyboard, hide on mouseleave (with 200ms delay to allow moving to tooltip). Tooltip container: position absolute/fixed, z-50, bg-gray-900 text-white text-sm, py-2 px-3, rounded-lg, max-w-xs, shadow-lg. Arrow: CSS triangle using ::after pseudo-element, positioned pointing to trigger. Positioning: default above/below trigger, flip automatically based on viewport edges (use floating-ui or @radix-ui/tooltip). Rich content: support multiple lines, bold text, links (in light color), bullet lists, even inline code. Interactive tooltip: if contains links or interactive elements, keep open while user hovers tooltip. Animation: fade in (opacity transition) and slight translate for polish. Keyboard support: show when trigger focused (with Tab), dismiss on Escape key, not blocking focus flow. Touch devices: tap to show, tap elsewhere to dismiss, or tap toggle. Accessibility: trigger has aria-describedby pointing to tooltip id, tooltip has role=\"tooltip\". Alternative: for longer help content, use help modal or slide-out panel instead of tooltip. Implementation: Radix UI Tooltip, Floating UI, or custom hook. Dark mode: consider inverting colors (bg-white text-gray-900) for dark backgrounds. Help icon consistency: use same icon throughout app for discoverability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

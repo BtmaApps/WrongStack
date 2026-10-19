@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d83-cloud-infrastructure",
+  "slug": "fluidflow-design-d83-cloud-infrastructure",
+  "title": "Cloud Infrastructure",
+  "description": "FluidFlow · Cloud Infrastructure",
+  "content": "Apply cloud infrastructure aesthetic with cloud console feel. Service-specific icons (compute, storage, database, networking). Resource grouping by type or region. Connection arrows showing data flow. Status badges (running, stopped, error). Metrics mini-charts. Cost indicators. Region/AZ labels. Tags and resource IDs. Console navigation sidebar. Cloud-native architecture atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d83"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b729a08038b4d355b0abc8dbc2dce4b19f8fddddc764f900117647f0c38947c1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create cloud provider aesthetic with service icons, resource diagrams, and AWS/Azure/GCP styling.",
+    "detailed": "Apply cloud infrastructure aesthetic with cloud console feel. Service-specific icons (compute, storage, database, networking). Resource grouping by type or region. Connection arrows showing data flow. Status badges (running, stopped, error). Metrics mini-charts. Cost indicators. Region/AZ labels. Tags and resource IDs. Console navigation sidebar. Cloud-native architecture atmosphere.",
+    "advanced": "Apply cloud infrastructure aesthetic with major cloud provider console feel. Service icons: consistent icon style (AWS orange, Azure blue, GCP colors), recognizable service shapes - compute (EC2 box), storage (S3 bucket), database (RDS cylinder), Lambda (function symbol), containers (docker whale). Architecture diagrams: grouped resources in VPC/subnet boundaries, availability zone separation, region labels. Connections: arrows showing traffic flow, IAM permissions, event triggers. Service colors: compute orange, storage green, database blue, networking purple, security red - consistent across diagram. Resource cards: service icon, resource name, ID (truncated), status badge, key metrics. Status indicators: running (green circle), stopped (gray), pending (yellow pulse), error (red). Metrics: CPU%, memory, request count sparklines, cost per resource. Console navigation: sidebar with service categories, search, recent resources, favorites. Breadcrumbs: Account > Region > Service > Resource path. Tables: resource listings with sortable columns, bulk actions. Filters: status, type, tags, region dropdowns. Tags: key:value badge displays, filterable. Costs: daily/monthly cost column, trend indicators, budget alerts. IAM: role badges, permission boundaries indicated. Logs: CloudWatch-style log groups and streams. Regions: region selector with flag icons, latency indicators. Implementation: consistent icon library, service color tokens. Accessibility: icons need labels, status conveyed by more than color."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

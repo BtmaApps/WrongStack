@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co2-better-microcopy",
+  "slug": "fluidflow-content-co2-better-microcopy",
+  "title": "Better Microcopy",
+  "description": "FluidFlow · Better Microcopy",
+  "content": "Improve all UI text for clarity and user guidance. Button labels: use action verbs (\"Save Changes\", \"Create Account\", \"Send Message\" - not \"Submit\" or \"OK\"). Form labels: clear, concise field names. Placeholder text: helpful examples, not label repetition. Error messages: specific, actionable (\"Email must include @\" not \"Invalid email\"). Success messages: confirm what happened (\"Profile updated successfully\"). Empty states: helpful next steps, not just \"No items\". Loading text: contextual (\"Loading your projects...\"). Tooltips: explain features briefly. Confirmation dialogs: clear consequences. Link text: descriptive (not \"Click here\"). Use sentence case for buttons and labels. Keep tone consistent throughout.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3f21fdb827c8e50969fde57aac35b24e21eb46d55149f2a1a8b2b8d3a31bea99",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Improve UI text with clear, actionable labels and messages.",
+    "detailed": "Improve all UI text for clarity and user guidance. Button labels: use action verbs (\"Save Changes\", \"Create Account\", \"Send Message\" - not \"Submit\" or \"OK\"). Form labels: clear, concise field names. Placeholder text: helpful examples, not label repetition. Error messages: specific, actionable (\"Email must include @\" not \"Invalid email\"). Success messages: confirm what happened (\"Profile updated successfully\"). Empty states: helpful next steps, not just \"No items\". Loading text: contextual (\"Loading your projects...\"). Tooltips: explain features briefly. Confirmation dialogs: clear consequences. Link text: descriptive (not \"Click here\"). Use sentence case for buttons and labels. Keep tone consistent throughout.",
+    "advanced": "Improve all UI text for clarity, guidance, and consistent voice. Button labels: use specific action verbs (\"Save Changes\", \"Create Account\", \"Send Message\", \"Add to Cart\" - never generic \"Submit\", \"OK\", \"Click Here\"), include object when helpful (\"Delete Project\", \"Copy Link\"). Form labels: clear, concise field names (not \"Enter your email address\", just \"Email\"), use sentence case. Placeholder text: helpful examples (\"jane@company.com\", \"Search products...\"), never repeat label, disappears so don't rely on it. Error messages: specific problem + how to fix (\"Email must include @ symbol\", \"Password needs at least 8 characters\" - not \"Invalid email\", \"Password error\"), friendly tone without blame. Success messages: confirm what happened with specifics (\"Profile updated\", \"Message sent to Sarah\", \"3 items added to cart\"), brief celebration without overdoing it. Empty states: explain what would be here + how to add it (\"No projects yet. Create your first project to get started.\" with CTA button), include illustration if appropriate. Loading text: contextual (\"Loading your projects...\", \"Searching...\", \"Saving changes...\"), not generic \"Loading...\". Tooltips: explain what feature does briefly (under 10 words), when to use it, keyboard shortcut if applicable. Confirmation dialogs: clear consequences (\"Delete this project? This action cannot be undone.\" with \"Delete Project\" / \"Cancel\" buttons), avoid yes/no. Link text: describe destination (\"View documentation\", \"Contact support\" - never \"Click here\" or \"Learn more\"). Tone consistency: define voice (professional but friendly, casual, technical) and apply throughout. Capitalization: Sentence case for buttons and labels (not Title Case or ALL CAPS)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

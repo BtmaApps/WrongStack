@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q3-add-dark-mode",
+  "slug": "fluidflow-quick-actions-q3-add-dark-mode",
+  "title": "🌙 Add Dark Mode",
+  "description": "FluidFlow · 🌙 Add Dark Mode",
+  "content": "Create elegant dark mode using Tailwind dark: prefix. Background: bg-gray-900 for main, bg-gray-800 for cards. Text: text-gray-100 for primary, text-gray-400 for secondary. Ensure 4.5:1 contrast ratio minimum. Use muted accent colors - slightly desaturated. Add dark:border-gray-700 for borders. Include theme toggle button with Sun/Moon icons. Store preference in localStorage. Support system preference detection with prefers-color-scheme. Add smooth transition-colors for theme switching.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9f9522a144d05a852199a83569c0c9aa369a86a0956795f2b6736ebf5a752cd4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add dark mode with theme toggle and proper dark color scheme.",
+    "detailed": "Create elegant dark mode using Tailwind dark: prefix. Background: bg-gray-900 for main, bg-gray-800 for cards. Text: text-gray-100 for primary, text-gray-400 for secondary. Ensure 4.5:1 contrast ratio minimum. Use muted accent colors - slightly desaturated. Add dark:border-gray-700 for borders. Include theme toggle button with Sun/Moon icons. Store preference in localStorage. Support system preference detection with prefers-color-scheme. Add smooth transition-colors for theme switching.",
+    "advanced": "Create elegant dark mode with comprehensive theming system. Color mapping: bg-white -> dark:bg-gray-900 (base), bg-gray-50 -> dark:bg-gray-800 (cards), bg-gray-100 -> dark:bg-gray-700 (hover states). Text: text-gray-900 -> dark:text-gray-100 (primary), text-gray-600 -> dark:text-gray-400 (secondary), text-gray-400 -> dark:text-gray-500 (muted). Borders: border-gray-200 -> dark:border-gray-700. Shadows: add dark:shadow-gray-900/50 for depth in dark mode. Accent colors: slightly desaturate - blue-600 -> dark:blue-500, use opacity variants. Theme toggle component: button with Sun/Moon icons from lucide-react, animate rotation on switch. State management: useState with useEffect for localStorage sync. System preference: useMediaQuery for prefers-color-scheme, default to system. HTML class strategy: add \"dark\" class to html element. Transitions: transition-colors duration-200 on body for smooth switch. Ensure images work in dark mode - add dark:brightness-90 if needed. Form inputs: dark:bg-gray-800 dark:border-gray-600. Code blocks: use dark theme syntax highlighting."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

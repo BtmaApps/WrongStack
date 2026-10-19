@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la29-kanban-board-layout",
+  "slug": "fluidflow-layouts-la29-kanban-board-layout",
+  "title": "Kanban Board Layout",
+  "description": "FluidFlow · Kanban Board Layout",
+  "content": "Build Kanban board interface. Columns: status columns (To Do, In Progress, Review, Done). Column header: title, card count, add card button, menu. Cards: title, description preview, labels, assignee avatar, due date. Drag and drop: move cards between columns. Horizontal scroll: scroll columns horizontally. Card detail: click opens card modal.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "378428ab54117dd49fad88ed135dd64dae1e26328e9192ae411df94fccdd825f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Kanban board with columns and draggable cards.",
+    "detailed": "Build Kanban board interface. Columns: status columns (To Do, In Progress, Review, Done). Column header: title, card count, add card button, menu. Cards: title, description preview, labels, assignee avatar, due date. Drag and drop: move cards between columns. Horizontal scroll: scroll columns horizontally. Card detail: click opens card modal.",
+    "advanced": "Build comprehensive Kanban board with drag-and-drop and card management. Board layout: flex overflow-x-auto gap-4 p-4 min-h-[calc(100vh-64px)], horizontal scroll for many columns. Column component: flex-shrink-0 w-80 bg-gray-100 rounded-xl flex flex-col max-h-full. Column header: p-3 flex items-center justify-between. Left: title (font-semibold), card count badge (bg-gray-200 text-gray-600 text-xs px-2 rounded-full). Right: add card button (Plus icon), column menu (MoreHorizontal) with Rename, Hide, Delete. Column body: flex-1 overflow-y-auto p-2 space-y-2. Card component: bg-white rounded-lg shadow-sm p-3 cursor-grab active:cursor-grabbing hover:shadow-md. Card content: labels row (colored pills for priority, type), title (font-medium), description preview (text-sm text-gray-600 line-clamp-2), attachments indicator (Paperclip icon with count), comments indicator (MessageSquare icon with count), bottom row: assignee avatars (stacked, small), due date badge (Calendar icon, red if overdue). Checklist progress: if has checklist, progress bar with \"3/5\" count. Card menu: hover reveals menu (Edit, Copy, Move, Archive). Drag and drop: use @dnd-kit/core or react-beautiful-dnd. Drag states: dragging card elevated (shadow-xl, opacity-80), placeholder in drop position. Drop targets: columns accept cards, reorder within column. Add card: click \"+\" button, inline form appears at bottom of column (title input, submit button), or opens modal. Card detail modal: full card editor when clicked. Modal sections: title (editable inline), description (rich text editor), labels (add/remove), assignees (user selector), due date (date picker), checklist (add items, check off), attachments (file upload), comments/activity log, actions (Move, Copy, Archive, Delete). Column reordering: drag columns by header. Board features: search cards (filter across columns), filter by assignee, filter by label, collapse/expand columns. Multiple boards: board selector or tabs. Board settings: column management (add, reorder, rename, delete), default assignees, automation rules. Mobile: single column view with column selector, swipe to change columns. Keyboard: arrow key navigation, Enter to open card. Accessibility: drag-and-drop keyboard alternatives, announcements for moves."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

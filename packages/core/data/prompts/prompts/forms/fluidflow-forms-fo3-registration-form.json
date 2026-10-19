@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo3-registration-form",
+  "slug": "fluidflow-forms-fo3-registration-form",
+  "title": "Registration Form",
+  "description": "FluidFlow · Registration Form",
+  "content": "Build comprehensive registration form. Fields: full name, email, password, confirm password. Password requirements: minimum 8 characters, uppercase, lowercase, number, special character - show checklist that updates live. Password strength meter: visual bar (red/yellow/green). Confirm password: validate matches password. Terms checkbox: required, link to terms and privacy policy. Submit button: \"Create Account\", loading state. Social signup options: OAuth buttons for Google, GitHub.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d264cd196fbcffdd948890bdea9f21ef9cf0f73148360cf6aee069e67dd7f7f9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create signup form with name, email, password, and confirm password fields.",
+    "detailed": "Build comprehensive registration form. Fields: full name, email, password, confirm password. Password requirements: minimum 8 characters, uppercase, lowercase, number, special character - show checklist that updates live. Password strength meter: visual bar (red/yellow/green). Confirm password: validate matches password. Terms checkbox: required, link to terms and privacy policy. Submit button: \"Create Account\", loading state. Social signup options: OAuth buttons for Google, GitHub.",
+    "advanced": "Build comprehensive registration form with strong password requirements and social options. Fields: full name (required, 2-50 chars), email (required, valid format, async check for existing accounts), password (required, with strength meter), confirm password (required, must match). Password requirements: minimum 8 characters, at least one uppercase, one lowercase, one number, one special character (!@#$%^&*) - show live checklist with Check/X icons that update as user types, green when met. Password strength meter: visual bar below input using 4-5 segments, colors from red (Very Weak) through yellow (Weak/Fair) to green (Strong/Very Strong), calculate score based on length + character variety + no common patterns. Confirm password: real-time validation showing match status, error if mismatch on blur. Password visibility: toggle (Eye/EyeOff) for both password fields independently. Terms checkbox: required, label with links to Terms of Service and Privacy Policy (open in new tab), must be checked to submit. Marketing opt-in: optional checkbox for newsletter/updates. Submit button: \"Create Account\" text, primary style, full width, loading state with spinner, disabled until form valid. Social signup: \"Or sign up with\" divider, Google and GitHub OAuth buttons with brand icons. On submit: POST to API, show loading, handle errors inline. Success: show \"Check your email to verify your account\" message with illustration. Validation: inline errors on blur, validate all on submit. Form state: disable submit button until all required fields valid. Handle existing email error: suggest login instead. Accessibility: proper labels, aria-describedby for requirements, announce errors."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

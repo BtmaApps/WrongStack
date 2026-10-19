@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec25-back-in-stock-alert",
+  "slug": "fluidflow-ecommerce-ec25-back-in-stock-alert",
+  "title": "Back in Stock Alert",
+  "description": "FluidFlow · Back in Stock Alert",
+  "content": "Build back-in-stock notification feature. Display: replaces \"Add to Cart\" when out of stock. Form: email input, \"Notify Me\" button. Variant-specific: if product has variants, specify which variant. Success: \"We'll email you when back in stock\" confirmation. Already signed up: show subscribed status with option to unsubscribe. Alternative: show similar in-stock products suggestion.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a803a7a3fe8232f4a99aedb18eb2968d0a56ccad6f3fc5f0fe0852eacf833094",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create back-in-stock notification signup for out-of-stock items.",
+    "detailed": "Build back-in-stock notification feature. Display: replaces \"Add to Cart\" when out of stock. Form: email input, \"Notify Me\" button. Variant-specific: if product has variants, specify which variant. Success: \"We'll email you when back in stock\" confirmation. Already signed up: show subscribed status with option to unsubscribe. Alternative: show similar in-stock products suggestion.",
+    "advanced": "Build comprehensive back-in-stock notification system. Display trigger: appears when product/variant is out of stock, replaces or supplements disabled \"Add to Cart\" button. Container: bg-gray-50 rounded-lg p-4 or inline form. Out of stock message: \"Currently Out of Stock\" or \"Sold Out\" text with warning styling, estimated restock date if available (\"Expected back: Late January\"). Notification form: \"Get notified when back in stock\" heading, email input (pre-filled if logged in, placeholder \"Enter your email\"), \"Notify Me\" primary button, or compact inline layout (flex gap-2). Variant-specific: if product has multiple variants (size/color), the form captures which specific variant user wants, display selected variant info: \"Notify me when Size M / Blue is available\", if multiple variants OOS, option to select which to track or \"Notify for any\". Phone/SMS option: optional phone input for SMS notification (faster), toggle between email/SMS preference. Success state: replaces form with confirmation, check icon with \"You're on the list!\", \"We'll notify you at [email] when [Product - Variant] is back\", \"Manage Notifications\" link to preferences. Already subscribed state: if user already signed up, show \"You'll be notified when available\" with subscribed status, \"Remove\" or \"Unsubscribe\" option. Interest counter: optionally show \"{X} people waiting\" social proof. Pre-order option: if enabled, offer pre-order while OOS \"Pre-order now, ships when available\". Alternative products: \"Similar items in stock\" section showing available alternatives, same category or complementary products. Waitlist position: optionally show user's position in notification queue. Priority access: subscribers might get early notification before general restock announcement. Notification flow: when item restocks, send email with direct link to product, time-limited \"Reserved for 24 hours\" priority. Management page: user can see all back-in-stock subscriptions, edit or remove each. Suppress for in-stock: automatically hide/disable signup form when item comes back in stock. Rate limiting: one signup per email per product to prevent abuse. Analytics: track notification signups and conversion when restocked. Accessibility: form properly labeled, status changes announced, clear success/error messaging."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

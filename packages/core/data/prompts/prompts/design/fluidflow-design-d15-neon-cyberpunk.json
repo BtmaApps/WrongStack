@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d15-neon-cyberpunk",
+  "slug": "fluidflow-design-d15-neon-cyberpunk",
+  "title": "Neon/Cyberpunk",
+  "description": "FluidFlow · Neon/Cyberpunk",
+  "content": "Apply cyberpunk aesthetics with dark backgrounds (bg-gray-950 or bg-black). Add neon glow effects using text-shadow and box-shadow with bright colors (cyan-400, pink-500, purple-500). Create glowing borders with shadow-[0_0_10px_theme(colors.cyan.400)]. Use futuristic typography - monospace or condensed fonts. Include grid patterns or circuit-like decorative elements. Add scanline or glitch effects for authenticity. Use gradient overlays with neon colors. Create HUD-like interface elements with angular shapes and data-display aesthetics.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "eb47b7a7fe6a3208d0d967e1ef979ed8859c0b3f1fa0f33fd690045f26fd4801",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create futuristic dark design with glowing neon colors and tech aesthetics.",
+    "detailed": "Apply cyberpunk aesthetics with dark backgrounds (bg-gray-950 or bg-black). Add neon glow effects using text-shadow and box-shadow with bright colors (cyan-400, pink-500, purple-500). Create glowing borders with shadow-[0_0_10px_theme(colors.cyan.400)]. Use futuristic typography - monospace or condensed fonts. Include grid patterns or circuit-like decorative elements. Add scanline or glitch effects for authenticity. Use gradient overlays with neon colors. Create HUD-like interface elements with angular shapes and data-display aesthetics.",
+    "advanced": "Apply cyberpunk aesthetics with dark backgrounds (bg-gray-950 or bg-black) and subtle grid overlay pattern. Add neon glow effects using layered text-shadow (multiple shadow layers for bloom effect) and box-shadow with bright colors (cyan-400, pink-500, purple-500). Create glowing borders with shadow-[0_0_10px_theme(colors.cyan.400),0_0_20px_theme(colors.cyan.400/50)]. Use futuristic typography - JetBrains Mono, Orbitron, or Rajdhani. Include grid patterns using CSS background (linear-gradient grid lines) or SVG. Add scanline effect using pseudo-element with repeating-linear-gradient. Create glitch effects using CSS animation with clip-path. Use gradient overlays with neon colors and blend modes. Build HUD-like interface elements: angular corners using clip-path, data-display typography, progress bars with glow. Add subtle flicker animations for authentic CRT feel. IMPORTANT: High contrast neon on black can cause eye strain - offer reduced glow mode. Ensure glow effects dont obscure text. Add prefers-reduced-motion support to disable flicker/glitch effects. Test accessibility of cyan-on-black and pink-on-black combinations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

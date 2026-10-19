@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r18-orientation-handling",
+  "slug": "fluidflow-responsive-r18-orientation-handling",
+  "title": "Orientation Handling",
+  "description": "FluidFlow · Orientation Handling",
+  "content": "Handle device orientation changes gracefully. Use orientation media queries (landscape:, portrait:). Adjust layout for landscape mobile: reduce vertical space, consider horizontal layouts. Lock orientation for specific views if needed (video player, games). Handle virtual keyboard appearance in landscape. Reflow content appropriately on rotation. Test both orientations on tablets.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a0750d293bbe9fce93bf9ca6f8dd4e855be75b182080d94319da7174bae950cd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Handle landscape and portrait orientations appropriately.",
+    "detailed": "Handle device orientation changes gracefully. Use orientation media queries (landscape:, portrait:). Adjust layout for landscape mobile: reduce vertical space, consider horizontal layouts. Lock orientation for specific views if needed (video player, games). Handle virtual keyboard appearance in landscape. Reflow content appropriately on rotation. Test both orientations on tablets.",
+    "advanced": "Handle device orientation with appropriate layouts. Media queries: use landscape: and portrait: variants in Tailwind. Landscape mobile: reduce header height, consider horizontal split layouts, hide non-essential UI elements, maximize content area. Portrait tablet: similar to desktop layout, more columns. Landscape tablet: wide layouts, sidebar visible. Keyboard landscape: critical issue - very limited viewport height, scroll to keep input visible, consider minimizing UI. Orientation lock: use Screen Orientation API for specific views (games, video). Detect changes: use matchMedia listener or resize event. Smooth transitions: handle layout changes gracefully, avoid jarring reflows. Safe areas: update safe area handling on rotation (notches move). Video: auto-fullscreen suggestion in landscape. Forms: reflow multi-column forms to single column in portrait mobile. Images: art direction - different crops for portrait vs landscape. Test matrix: phone portrait, phone landscape, tablet portrait, tablet landscape."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d57-zen-japanese-minimalism",
+  "slug": "fluidflow-design-d57-zen-japanese-minimalism",
+  "title": "Zen/Japanese Minimalism",
+  "description": "FluidFlow · Zen/Japanese Minimalism",
+  "content": "Apply Zen Japanese minimalist aesthetic with wabi-sabi philosophy. Extreme empty space (ma concept). Natural, muted colors: stone gray, bamboo green, paper white, ink black. Include natural elements: stones, water, bamboo, cherry blossoms. Asymmetric balance (fukinsei). Subtle textures: washi paper, tatami, wood grain. Simple brush stroke decorations. Circular enso elements. Meditative, peaceful, refined atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d57"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "88b9566862c8bbc90ddff3a0d8566f7b1abdde5bbc8d4b22deb0bbb7f6c29168",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create serene Japanese aesthetic with empty space, natural elements, and meditative simplicity.",
+    "detailed": "Apply Zen Japanese minimalist aesthetic with wabi-sabi philosophy. Extreme empty space (ma concept). Natural, muted colors: stone gray, bamboo green, paper white, ink black. Include natural elements: stones, water, bamboo, cherry blossoms. Asymmetric balance (fukinsei). Subtle textures: washi paper, tatami, wood grain. Simple brush stroke decorations. Circular enso elements. Meditative, peaceful, refined atmosphere.",
+    "advanced": "Apply Zen Japanese minimalist aesthetic with wabi-sabi philosophy (beauty in imperfection). Ma (negative space): extreme emphasis on empty space as design element, content islands in sea of white/neutral. Color palette: natural, muted - stone gray (#808080), bamboo green (#7ba05b), rice paper white (#f5f5f0), sumi ink black (#1a1a1a), sakura pink (#ffb7c5). Asymmetry (fukinsei): intentionally off-center compositions, avoid perfect symmetry. Natural elements: stones (rock garden patterns), water (wave motifs, ripples), bamboo, pine, cherry blossoms as subtle decorations. Textures: washi paper (subtle fiber texture), tatami weave pattern, wood grain, stone surface. Typography: clean sans-serif or brush-style fonts (Noto Sans JP), generous letter-spacing, vertical text option for Japanese. Enso circle: brush-stroke circle as decorative element (SVG with rough edges). Brush strokes: ink wash effects, calligraphic accents, sumi-e style illustrations. Grid: modular, clean, inspired by shoji screens. Shadows: subtle, diffused (like paper lantern light). Interactive: gentle, unhurried transitions, subtle reveals. Seasons: seasonal motifs (spring cherry, summer bamboo, autumn maple, winter pine). Imperfection: subtle irregularities suggesting handcraft - slightly uneven edges, brush texture. Sound: design suggests quietude, consider silence in UI feedback. Accessibility: high contrast despite muted palette, clear functional hierarchy."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da4-bar-chart",
+  "slug": "fluidflow-dashboard-da4-bar-chart",
+  "title": "Bar Chart",
+  "description": "FluidFlow · Bar Chart",
+  "content": "Build bar chart component for categorical comparisons. Layout: vertical bars (default) or horizontal bars option. Bars: consistent width with gap between, colored fills, hover highlight. Labels: category names on X-axis, values on Y-axis with grid lines. Tooltip: show category and value on hover. Legend: for multi-series charts. Animation: bars grow from zero on initial load. Sorting: option to sort by value. Responsive: horizontal bars on mobile.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6453fa3c70b765a3de6ebe45f584cf696b68f167bbca225697b0f03609fd7770",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create bar chart comparing values across categories.",
+    "detailed": "Build bar chart component for categorical comparisons. Layout: vertical bars (default) or horizontal bars option. Bars: consistent width with gap between, colored fills, hover highlight. Labels: category names on X-axis, values on Y-axis with grid lines. Tooltip: show category and value on hover. Legend: for multi-series charts. Animation: bars grow from zero on initial load. Sorting: option to sort by value. Responsive: horizontal bars on mobile.",
+    "advanced": "Build bar chart component for categorical comparisons with full interactivity. Layout: vertical bars (default) or horizontal bars option (better for long category names or mobile). Using Recharts BarChart or custom SVG. Bars: consistent width calculated based on data length with gap between (barGap={4}), colored fills (fill prop from palette), hover highlight (opacity increase or brightness), border-radius on tops (radius={[4, 4, 0, 0]}). Labels: category names on X-axis (angle={-45} if many categories, textAnchor=\"end\"), values on Y-axis with grid lines (cartesianGrid strokeDasharray=\"3 3\"), proper axis formatting (currency, percentage, abbreviated numbers: 1K, 1M). Value labels: optional labels on top of bars showing exact values, show on hover or always visible. Grouped bars: multiple series side by side with different colors, grouped by category. Stacked bars: series stacked on top of each other (stackId=\"a\"), showing composition and total. Tooltip: custom tooltip showing category name and all series values, color-coded. Legend: positioned below or right, color swatches + labels, click to toggle series. Animation: bars grow from zero with duration 500ms on initial load, update animations on data change. Sorting: dropdown to sort by value ascending/descending or alphabetically, animate bar position changes. Responsive: horizontal bars work better on mobile (swap axes), reduce bar count or enable horizontal scroll. Negative values: bars extending below zero line, different color for negative. Click handler: onClick per bar triggers drill-down or filter. Reference lines: show target or average line. Loading and empty states. Accessibility: data table fallback. Dark mode support."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

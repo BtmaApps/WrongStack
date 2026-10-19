@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q7-add-loading-states",
+  "slug": "fluidflow-quick-actions-q7-add-loading-states",
+  "title": "🔧 Add Loading States",
+  "description": "FluidFlow · 🔧 Add Loading States",
+  "content": "Implement comprehensive loading states. Create skeleton screens matching content layout using animate-pulse with bg-gray-200 shapes. Add spinner for button loading states using Loader2 icon with animate-spin. Show progress bars with percentages for uploads/downloads. Display contextual loading messages (\"Loading your data...\"). Use optimistic UI updates where possible. Add minimum loading time (300ms) to prevent flash. Include error states with retry buttons. Show loading indicators for all async operations.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e1323feabb68fd77aeaf06cd5355269bbb6c8903873b2bc20902da7e6ab43ed5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add skeleton loaders and spinners for async operations.",
+    "detailed": "Implement comprehensive loading states. Create skeleton screens matching content layout using animate-pulse with bg-gray-200 shapes. Add spinner for button loading states using Loader2 icon with animate-spin. Show progress bars with percentages for uploads/downloads. Display contextual loading messages (\"Loading your data...\"). Use optimistic UI updates where possible. Add minimum loading time (300ms) to prevent flash. Include error states with retry buttons. Show loading indicators for all async operations.",
+    "advanced": "Implement comprehensive loading states throughout the application. Skeleton screens: match exact layout of content, use animate-pulse bg-gray-200 dark:bg-gray-700 rounded shapes - div for text (h-4 w-3/4), rounded-full for avatars, aspect-video for images. Button loading: disabled state with Loader2 from lucide-react (className=\"animate-spin h-4 w-4 mr-2\"), maintain button width to prevent layout shift. Page loading: thin progress bar at top (h-1 bg-blue-600), or full-page skeleton. Data fetching: show skeleton immediately, minimum 300ms display to prevent flash (setTimeout), transition to content with fade. Progress indicators: determinate bar for uploads/downloads showing percentage, indeterminate for unknown duration. Loading messages: contextual text (\"Loading your dashboard...\", \"Saving changes...\"). Optimistic updates: update UI immediately, revert on error with toast notification. Error states: replace loading with error message, include retry button (RefreshCw icon), show what went wrong. Suspense boundaries: React Suspense with skeleton fallback for code-split components. Network indicators: subtle spinner in header during background fetches. Infinite scroll: skeleton row at bottom while loading more."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

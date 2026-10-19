@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r14-responsive-cards-grid",
+  "slug": "fluidflow-responsive-r14-responsive-cards-grid",
+  "title": "Responsive Cards Grid",
+  "description": "FluidFlow · Responsive Cards Grid",
+  "content": "Build responsive card grids that adapt to viewport. Use CSS Grid with responsive columns: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4. Maintain consistent gap spacing (gap-4 md:gap-6). Cards should have equal heights in rows (grid auto-rows or flex with stretch). On mobile, cards can span full width with horizontal scroll for featured items. Add responsive padding inside cards (p-4 md:p-6).",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6c5c64fb68122c48958237fb7e4a08fd9f00ae11dac77d286baea677fb2c9270",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create card layouts that adapt from single column to multi-column grids.",
+    "detailed": "Build responsive card grids that adapt to viewport. Use CSS Grid with responsive columns: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4. Maintain consistent gap spacing (gap-4 md:gap-6). Cards should have equal heights in rows (grid auto-rows or flex with stretch). On mobile, cards can span full width with horizontal scroll for featured items. Add responsive padding inside cards (p-4 md:p-6).",
+    "advanced": "Build responsive card grids with optimal layout per viewport. Grid setup: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 with gap-4 md:gap-6 lg:gap-8 scaling. Equal heights: grid auto-rows-fr for equal height rows, or use flex with align-items-stretch. Card internals: flex flex-col for content, flex-grow on main content area, mt-auto on footer/actions. Featured cards: col-span-2 for wide cards, row-span-2 for tall cards, responsive (col-span-2 lg:col-span-1). Mobile optimization: consider horizontal scroll carousel for featured section (overflow-x-auto snap-x). Card padding: p-4 md:p-6 responsive, maintain consistent internal spacing. Images: aspect ratio containers (aspect-video, aspect-square) for consistent sizing. Hover states: transform hover:scale-[1.02] hover:shadow-lg transition on desktop. Loading: grid of skeleton cards matching layout. Empty state: centered message spanning all columns. Accessibility: cards as list items, clear heading hierarchy within cards."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

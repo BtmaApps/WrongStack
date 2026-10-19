@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac26-notification-a11y",
+  "slug": "fluidflow-accessibility-ac26-notification-a11y",
+  "title": "Notification A11y",
+  "description": "FluidFlow · Notification A11y",
+  "content": "Make notification/toast system accessible. Role and live region: role=\"alert\" or role=\"status\" with aria-live. Urgency: \"assertive\" for errors/critical, \"polite\" for info/success. Auto-dismiss: minimum 5 seconds visible, pause on hover/focus. Action buttons: keyboard accessible, clear labels. Close button: labeled \"Dismiss notification\". Focus management: optionally focus critical notifications. Queue: don't overwhelm with multiple simultaneous notifications. Position: consistent location, don't block important content. Screen reader: message content is announced when notification appears.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "86eb3c2c889e535676dd67dc4425338056eac432a745339741698fe29c7d4e62",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Make toast notifications accessible to screen readers.",
+    "detailed": "Make notification/toast system accessible. Role and live region: role=\"alert\" or role=\"status\" with aria-live. Urgency: \"assertive\" for errors/critical, \"polite\" for info/success. Auto-dismiss: minimum 5 seconds visible, pause on hover/focus. Action buttons: keyboard accessible, clear labels. Close button: labeled \"Dismiss notification\". Focus management: optionally focus critical notifications. Queue: don't overwhelm with multiple simultaneous notifications. Position: consistent location, don't block important content. Screen reader: message content is announced when notification appears.",
+    "advanced": "Make notification/toast system accessible for screen reader users. ARIA roles: role=\"alert\" with implicit aria-live=\"assertive\" for errors and critical info, role=\"status\" with implicit aria-live=\"polite\" for success and info. Alert content: entire message text is announced automatically when element appears. Auto-dismiss timing: minimum 5 seconds visible (WCAG 2.2.1), pause timer on hover and focus, option for persistent notifications. Implementation: render notification into existing aria-live container, or ensure notification container has role before content appears. Multiple notifications: queue system, don't show more than 1-2 simultaneously, don't spam announcements. Action buttons: keyboard accessible (Tab), clear labels (\"Undo\", \"View\", \"Dismiss\"), adequate touch targets. Close/dismiss: always provide close button, labeled \"Dismiss notification\" or \"Close\", keyboard accessible (Escape key while focused). Focus management: for critical actionable notifications, move focus to notification; for passive info, don't steal focus. Position: consistent location (top-right, bottom-center, etc.), don't cover important UI, stack gracefully. Animation: slide/fade in, respect prefers-reduced-motion. History: optionally provide notification history for reviewing dismissed notifications. Testing: trigger various notifications, verify screen reader announces content, test keyboard interaction."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

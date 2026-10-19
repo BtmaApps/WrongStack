@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r3-full-responsive",
+  "slug": "fluidflow-responsive-r3-full-responsive",
+  "title": "Full Responsive",
+  "description": "FluidFlow · Full Responsive",
+  "content": "Implement comprehensive responsive design across all breakpoints - sm (640px), md (768px), lg (1024px), xl (1280px). Use responsive grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4. Apply fluid spacing with responsive padding (p-4 md:p-6 lg:p-8). Scale typography appropriately (text-2xl md:text-3xl lg:text-4xl). Adjust container max-widths per breakpoint. Handle images with responsive sizing and srcset attributes. Test navigation at each breakpoint. Use responsive flex direction (flex-col md:flex-row). Ensure no horizontal scroll at any size.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0dca87a815d7ae26212eb513b0d7aca8a94650185f37a117fb2e2816530c9d63",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Implement complete responsive design across all screen sizes from mobile to desktop.",
+    "detailed": "Implement comprehensive responsive design across all breakpoints - sm (640px), md (768px), lg (1024px), xl (1280px). Use responsive grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4. Apply fluid spacing with responsive padding (p-4 md:p-6 lg:p-8). Scale typography appropriately (text-2xl md:text-3xl lg:text-4xl). Adjust container max-widths per breakpoint. Handle images with responsive sizing and srcset attributes. Test navigation at each breakpoint. Use responsive flex direction (flex-col md:flex-row). Ensure no horizontal scroll at any size.",
+    "advanced": "Implement comprehensive responsive design across all Tailwind breakpoints - sm (640px), md (768px), lg (1024px), xl (1280px), 2xl (1536px). Use responsive grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 with consistent gap scaling (gap-4 sm:gap-6 lg:gap-8). Apply fluid spacing with responsive padding (p-4 md:p-6 lg:p-8) maintaining visual rhythm. Scale typography using clamp() or responsive classes: h1 (text-2xl sm:text-3xl lg:text-4xl xl:text-5xl). Adjust container max-widths per breakpoint (max-w-sm md:max-w-2xl lg:max-w-5xl xl:max-w-7xl). Handle images with picture element, srcset, and sizes attributes for art direction and performance. Transform navigation: mobile hamburger, tablet collapsible sidebar, desktop full nav. Use responsive flex direction (flex-col md:flex-row) with logical content reordering. Ensure no horizontal scroll at any size - use overflow-x-hidden as safety. Test at every breakpoint plus 320px (minimum supported) and common device sizes. Add resize observer for dynamic layout adjustments. Consider print stylesheet. Validate with real device testing, not just browser resizing."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

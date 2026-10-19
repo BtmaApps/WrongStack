@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a9-parallax-effects",
+  "slug": "fluidflow-animation-a9-parallax-effects",
+  "title": "Parallax Effects",
+  "description": "FluidFlow · Parallax Effects",
+  "content": "Add parallax scrolling for depth and visual interest. Create layers that move at different speeds: background (slow, 0.3x), midground (medium, 0.6x), foreground (normal, 1x). Calculate position based on scroll: translateY(scrollY * speed). Use transform for GPU acceleration. Add parallax to: hero background images, floating decorative elements, section backgrounds. Implement horizontal parallax for side-scrolling effects. Use requestAnimationFrame for smooth 60fps updates. Add bounds to prevent elements from moving too far. Consider mobile - reduce or disable parallax for performance and motion sensitivity. Provide fallback static positioning. Test performance and reduce complexity if janky.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f25494d085b1f82660e74aab8811af1e55fe307c8a4dd2ab9ec3ff66f98660ce",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add parallax scrolling with layers moving at different speeds.",
+    "detailed": "Add parallax scrolling for depth and visual interest. Create layers that move at different speeds: background (slow, 0.3x), midground (medium, 0.6x), foreground (normal, 1x). Calculate position based on scroll: translateY(scrollY * speed). Use transform for GPU acceleration. Add parallax to: hero background images, floating decorative elements, section backgrounds. Implement horizontal parallax for side-scrolling effects. Use requestAnimationFrame for smooth 60fps updates. Add bounds to prevent elements from moving too far. Consider mobile - reduce or disable parallax for performance and motion sensitivity. Provide fallback static positioning. Test performance and reduce complexity if janky.",
+    "advanced": "Add parallax scrolling for depth and visual interest creating immersive experiences. Layer system: define speed multipliers - background (0.2-0.3x), midground (0.5-0.6x), foreground (0.8-1x), with optional negative values for reverse parallax. Position calculation: translateY((scrollY - elementOffsetTop) * speed), account for element's position in document. Implementation pattern: useEffect with scroll listener, store scrollY in ref, use requestAnimationFrame for smooth 60fps updates, calculate transform in rAF callback. CSS variables approach: set --scroll-y on scroll, use in CSS calc(var(--scroll-y) * 0.3px) for each layer. Apply parallax to: hero background images (slow rise), floating decorative elements (varied speeds create depth), section backgrounds, text layers. Horizontal parallax: translateX for side-scrolling effects, triggered by vertical scroll. Bounds and constraints: clamp movement within reasonable range to prevent elements leaving viewport, use Math.max/min. Performance optimization: throttle scroll handler calculation (not the rAF), use transform exclusively (not top/left), add will-change: transform only during scroll (remove on scroll end), consider Intersection Observer to disable parallax for off-screen sections. MOBILE: reduce parallax intensity (half speeds) or disable entirely for battery and motion sensitivity - check window.matchMedia(\"(prefers-reduced-motion: reduce)\") and touch device. Fallback: static positioning for reduced motion preference. Advanced effects: parallax fade (opacity tied to scroll progress), parallax scale, parallax blur for depth of field effect. Testing: verify smooth 60fps on mid-range devices, reduce complexity if janky. Libraries: consider Lenis, Locomotive Scroll for complex implementations with smooth scroll integration."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

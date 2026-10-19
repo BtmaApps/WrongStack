@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac10-high-contrast-mode",
+  "slug": "fluidflow-accessibility-ac10-high-contrast-mode",
+  "title": "High Contrast Mode",
+  "description": "FluidFlow · High Contrast Mode",
+  "content": "Support Windows High Contrast Mode and provide enhanced contrast option. Use CSS forced-colors media query: @media (forced-colors: active). Ensure UI remains functional when colors are overridden - don't rely solely on color. Add visible borders that appear in high contrast mode (transparent by default, visible when forced). Use system colors for forced-colors: Canvas, CanvasText, LinkText, ButtonFace, ButtonText. Test with Windows High Contrast themes. Create optional high contrast theme toggle in settings. High contrast theme: increase all contrast ratios, add borders, use solid colors instead of gradients, increase font weights. Ensure focus indicators work in high contrast. Test interactive state visibility (hover, active, disabled).",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2f27c0558feecb5711049867f75f532394ed245d5a58329d20f4713af0f1cd15",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Support Windows High Contrast Mode and provide enhanced contrast.",
+    "detailed": "Support Windows High Contrast Mode and provide enhanced contrast option. Use CSS forced-colors media query: @media (forced-colors: active). Ensure UI remains functional when colors are overridden - don't rely solely on color. Add visible borders that appear in high contrast mode (transparent by default, visible when forced). Use system colors for forced-colors: Canvas, CanvasText, LinkText, ButtonFace, ButtonText. Test with Windows High Contrast themes. Create optional high contrast theme toggle in settings. High contrast theme: increase all contrast ratios, add borders, use solid colors instead of gradients, increase font weights. Ensure focus indicators work in high contrast. Test interactive state visibility (hover, active, disabled).",
+    "advanced": "Support Windows High Contrast Mode and provide enhanced contrast options for users with low vision. Forced colors mode: Windows High Contrast overrides your colors - detect with @media (forced-colors: active). Design for forced colors: don't rely solely on color (add borders, icons, text), ensure UI structure remains understandable when colors change, use transparent borders that become visible (border: 1px solid transparent becomes visible in HC mode). System colors for forced-colors: Canvas (background), CanvasText (text), LinkText (links), ButtonFace (button backgrounds), ButtonText (button text), Highlight (selected), HighlightText (selected text), GrayText (disabled). Forced-colors CSS: @media (forced-colors: active) { .card { border: 2px solid ButtonText; } .icon { forced-color-adjust: none; /* preserve custom colors if intentional */ } }. Testing: Windows Settings > Ease of Access > High contrast, try different themes (High Contrast Black, White, #1, #2). Custom high contrast theme in app: toggle in settings, increases all contrast ratios to 7:1+, adds visible borders to all containers, uses solid colors instead of gradients, increases font weights, enlarges focus indicators. Focus in high contrast: ensure ring/outline visible regardless of theme (use system Highlight color or solid border). Interactive states: hover, active, disabled must remain distinguishable in high contrast (use borders, underlines, transparency). Gradients and shadows: replaced by solid colors in forced colors - ensure buttons, cards still recognizable. Images and icons: can preserve colors with forced-color-adjust: none where meaning is conveyed (logos, status icons), but ensure alternatives exist."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

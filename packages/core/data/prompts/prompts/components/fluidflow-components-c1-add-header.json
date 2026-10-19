@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c1-add-header",
+  "slug": "fluidflow-components-c1-add-header",
+  "title": "Add Header",
+  "description": "FluidFlow · Add Header",
+  "content": "Create modern header/navbar component. Structure: fixed top-0 with z-50, max-w-7xl mx-auto container. Include: logo/brand on left, navigation links center or right, action buttons (login/signup) far right. Add mobile hamburger menu (hidden md:hidden) with slide-out drawer. Style with bg-white/80 backdrop-blur-sm shadow-sm for floating effect. Navigation links with hover states and active indicator. Add dropdown menus for nested navigation. Include search icon trigger if needed. Ensure proper spacing (py-4 px-6) and responsive breakpoints. Add scroll-triggered background change for transparent hero headers.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cd07dddb345b6fcb25aa0ff24a83330d0c678dfcfe656cc4950f338ae7b16207",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a modern header/navbar with logo, navigation links, and mobile menu.",
+    "detailed": "Create modern header/navbar component. Structure: fixed top-0 with z-50, max-w-7xl mx-auto container. Include: logo/brand on left, navigation links center or right, action buttons (login/signup) far right. Add mobile hamburger menu (hidden md:hidden) with slide-out drawer. Style with bg-white/80 backdrop-blur-sm shadow-sm for floating effect. Navigation links with hover states and active indicator. Add dropdown menus for nested navigation. Include search icon trigger if needed. Ensure proper spacing (py-4 px-6) and responsive breakpoints. Add scroll-triggered background change for transparent hero headers.",
+    "advanced": "Create modern header/navbar component with full responsive behavior and accessibility. Structure: fixed top-0 inset-x-0 z-50, inner container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8. Layout: flex items-center justify-between h-16 or h-20. Logo: link to home with proper sizing (h-8 w-auto), consider both image and text variants. Navigation: hidden md:flex items-center gap-8 for desktop, with NavLink components. Link styling: text-gray-600 hover:text-gray-900 transition-colors, active state with text-blue-600 font-medium and optional border-b-2. Dropdown menus: relative group for hover trigger, absolute left-0 mt-2 dropdown with shadow-lg rounded-lg py-2. Mobile menu: button with Menu/X icon toggle, slide-out drawer (transform translateX) or dropdown sheet, include all nav items plus CTAs. Floating header effect: bg-white/80 backdrop-blur-md shadow-sm (glassmorphism). Scroll behavior: useEffect with scroll listener, add shadow and solid background after scrollY > 50. Transparent on hero: start with bg-transparent text-white, transition to solid on scroll. Search: icon button opening search modal or expanding input. CTAs: Login (ghost/outline) and Sign Up (primary filled) buttons. Mega menu for complex navigation: full-width dropdown with columns of links. Announcement bar above header: dismissible banner for promotions. ACCESSIBILITY: nav element with aria-label, skip link target, keyboard-navigable dropdowns, mobile menu focus trap. Consider sticky vs fixed based on content needs. Logo should be first focusable element after skip link."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

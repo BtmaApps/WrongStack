@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da24-report-builder",
+  "slug": "fluidflow-dashboard-da24-report-builder",
+  "title": "Report Builder",
+  "description": "FluidFlow · Report Builder",
+  "content": "Build report builder interface. Metrics selection: choose which metrics to include. Dimensions: select grouping dimensions. Filters: add filters to narrow data. Visualization: choose chart type. Layout: arrange components. Preview: see report preview. Save: save report configuration. Schedule: set up recurring reports. Export: download in various formats.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "22b932420d5eeefcc06d15b54e8ddce3ea2013013e810f09a0020065dd424b3e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create interface for building custom reports.",
+    "detailed": "Build report builder interface. Metrics selection: choose which metrics to include. Dimensions: select grouping dimensions. Filters: add filters to narrow data. Visualization: choose chart type. Layout: arrange components. Preview: see report preview. Save: save report configuration. Schedule: set up recurring reports. Export: download in various formats.",
+    "advanced": "Build comprehensive report builder for custom analytics. Report configuration: metric selector (multi-select from available metrics), dimension selector (group by fields), filter builder (add conditions). Drag and drop: drag metrics/dimensions into report areas, remove by dragging out or X button. Filter builder: add filter rows, select field, operator (equals, contains, greater than), value input, AND/OR logic, nested conditions. Visualization options: chart type selector (table, line, bar, pie, etc.), chart-specific options (stacking, orientation). Layout builder: drag and drop widgets on canvas grid, resize widgets, multi-column layouts. Live preview: preview updates as configuration changes, loading indicator for queries. Query builder: optional SQL mode for advanced users, validate query syntax. Save report: name and description, save to personal or shared reports, folder organization. Report templates: start from templates, share report configs. Sharing: share report with team members, public link option. Schedule: set up recurring email delivery, frequency (daily, weekly, monthly), recipient list, delivery time. Export formats: PDF, CSV, Excel, PNG for charts. Parameters: date range selector on saved reports, user-input parameters. Favorites: mark frequently used reports. Recent reports: quick access to recently viewed. Permissions: control who can edit vs view reports. Versioning: track report configuration changes. Embedding: generate embed code for external use."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

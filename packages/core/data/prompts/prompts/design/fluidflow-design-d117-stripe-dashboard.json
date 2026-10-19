@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d117-stripe-dashboard",
+  "slug": "fluidflow-design-d117-stripe-dashboard",
+  "title": "Stripe Dashboard",
+  "description": "FluidFlow · Stripe Dashboard",
+  "content": "Apply Stripe aesthetic with financial platform feel. White background with subtle gray sections. Dense but readable data tables. Small but clear typography. Purple accent color system. Micro-interactions and loading states. Inline actions and quick edits. Comprehensive filtering. Breadcrumb navigation. Activity feeds and logs. Status badges and indicators.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d117"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0e2e0c43ccd2375afec97a1bda6d0c4535bf963eb3bea3a141a3b660c17916e6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create fintech dashboard with data-rich displays, clean tables, and professional polish.",
+    "detailed": "Apply Stripe aesthetic with financial platform feel. White background with subtle gray sections. Dense but readable data tables. Small but clear typography. Purple accent color system. Micro-interactions and loading states. Inline actions and quick edits. Comprehensive filtering. Breadcrumb navigation. Activity feeds and logs. Status badges and indicators.",
+    "advanced": "Apply Stripe aesthetic with fintech dashboard patterns. Background: bg-white, sidebar bg-gray-50, sections with border-t. Typography: -apple-system font, text-sm base size, text-gray-900 primary, text-gray-500 secondary. Accent: purple-600 for links and primary actions, indigo-500 for secondary. Tables: text-sm, th text-gray-500 font-medium uppercase text-xs, td py-3, hover:bg-gray-50, sticky header. Badges: rounded-full px-2 py-0.5 text-xs, color-coded by status. Forms: compact, inline labels or floating, clear error states. Sidebar: narrow icon-based or wide with text, collapsible. Metrics: top row of KPI cards, value large, label small, change percentage. Charts: clean line/bar charts with grid, subtle colors. Filters: inline button groups, dropdown selects, active filters as pills. Pagination: simple prev/next or page numbers. Loading: skeleton screens matching content, shimmer effect. Actions: hover-revealed buttons, dropdowns for more. Breadcrumbs: text-sm, gray separator, current page darker. Logs: timestamped list, expandable details. Search: global search with keyboard shortcut hint. Responsive: sidebar collapses, table scrolls horizontally."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

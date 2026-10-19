@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da1-dashboard-layout",
+  "slug": "fluidflow-dashboard-da1-dashboard-layout",
+  "title": "Dashboard Layout",
+  "description": "FluidFlow · Dashboard Layout",
+  "content": "Create complete dashboard layout structure. Sidebar: fixed left (w-64), collapsible to icons-only (w-16), contains logo, navigation with icons, user profile at bottom. Header: fixed top with h-16, search bar, notifications bell with badge, user avatar dropdown. Main content: flex-1 with overflow-auto, padding (p-6). Grid layout for widgets: grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6. Responsive: sidebar becomes overlay drawer on mobile. Dark mode support.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "447d5a423637fb45b978caf6791ea0bfed83255939b5ed53427431cbb938855a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dashboard layout with sidebar navigation, header, and main content area.",
+    "detailed": "Create complete dashboard layout structure. Sidebar: fixed left (w-64), collapsible to icons-only (w-16), contains logo, navigation with icons, user profile at bottom. Header: fixed top with h-16, search bar, notifications bell with badge, user avatar dropdown. Main content: flex-1 with overflow-auto, padding (p-6). Grid layout for widgets: grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6. Responsive: sidebar becomes overlay drawer on mobile. Dark mode support.",
+    "advanced": "Create complete dashboard layout structure with full responsiveness. Sidebar: fixed left (w-64), collapsible to icons-only mode (w-16) with toggle button (ChevronLeft/ChevronRight icon), smooth transition-all duration-300. Sidebar content: logo/brand at top, navigation links with lucide icons and labels (Dashboard, Analytics, Users, Settings), grouped sections with collapsible headers, user profile at bottom (avatar, name, role, logout). Header: fixed top (top-0 z-40), h-16 bg-white border-b, flex items-center justify-between px-6. Header content: hamburger menu (mobile only), search bar (w-72 hidden md:block), quick action buttons, notifications bell (Bell icon) with unread count badge (bg-red-500 text-white text-xs rounded-full), user avatar dropdown with profile link, settings, logout. Main content: ml-64 (or ml-16 when collapsed) pt-16, flex-1 overflow-auto, padding (p-6), bg-gray-50 or bg-gray-100. Grid layout for widgets: grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6. Responsive: on mobile (md:hidden) sidebar transforms to overlay drawer (fixed inset-0 z-50) with dark backdrop, hamburger menu in header toggles drawer. Breadcrumbs below header for navigation context (Home > Dashboard > Analytics). Content sections with consistent card styling (bg-white rounded-lg shadow-sm p-6). Dark mode support: dark:bg-gray-900 dark:text-white throughout. Loading states for all sections. Error boundaries for widget failures. Focus trap when sidebar drawer is open on mobile."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

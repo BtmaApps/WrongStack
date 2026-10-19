@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac14-table-accessibility",
+  "slug": "fluidflow-accessibility-ac14-table-accessibility",
+  "title": "Table Accessibility",
+  "description": "FluidFlow · Table Accessibility",
+  "content": "Make data tables fully accessible. Use semantic table elements: table, thead, tbody, tr, th, td. Header cells: use th with scope=\"col\" for column headers, scope=\"row\" for row headers. Caption: add caption element describing table content. Complex tables: use id/headers attributes for cells spanning multiple rows/columns. Responsive tables: maintain relationships on mobile (don't just linearize). Sortable columns: aria-sort=\"ascending|descending|none\". Summary: add description if table is complex. Avoid: layout tables (use CSS grid/flexbox instead), missing headers, tables for non-tabular data.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e136c719193d5542268a335b789a8f179052699478556286c9199368cbfce551",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add proper headers and scope attributes to data tables.",
+    "detailed": "Make data tables fully accessible. Use semantic table elements: table, thead, tbody, tr, th, td. Header cells: use th with scope=\"col\" for column headers, scope=\"row\" for row headers. Caption: add caption element describing table content. Complex tables: use id/headers attributes for cells spanning multiple rows/columns. Responsive tables: maintain relationships on mobile (don't just linearize). Sortable columns: aria-sort=\"ascending|descending|none\". Summary: add description if table is complex. Avoid: layout tables (use CSS grid/flexbox instead), missing headers, tables for non-tabular data.",
+    "advanced": "Make data tables fully accessible for screen reader navigation. Semantic structure: table element (not divs), thead for header row(s), tbody for data rows, tfoot for summary row(s), tr for rows, th for header cells, td for data cells. Header associations: th scope=\"col\" for column headers, th scope=\"row\" for row headers (first cell in each row if applicable). Table caption: caption element as first child of table, describes table purpose. Complex tables with merged cells: use id on th cells and headers attribute on td cells listing associated th ids. Simple table example: <table><caption>Sales Data</caption><thead><tr><th scope=\"col\">Product</th><th scope=\"col\">Q1</th></tr></thead><tbody><tr><th scope=\"row\">Widget</th><td>$500</td></tr></tbody></table>. Sortable tables: th has button inside for sorting, aria-sort=\"ascending|descending|none\" on th indicating current sort state. Responsive tables: maintain associations (don't just stack cells), horizontal scroll wrapper, or reformat to cards with explicit labels. Empty cells: use data or appropriate indicator, not completely empty. Avoid: layout tables (use CSS grid/flexbox), divs with display:table, missing th elements, tables for non-tabular data. Testing: navigate table with screen reader table navigation (Ctrl+Alt+Arrow keys in VoiceOver), verify headers announced with each cell. Consider: sticky headers for long tables, row selection checkboxes with proper labeling."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

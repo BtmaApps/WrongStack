@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u17-keyboard-shortcuts",
+  "slug": "fluidflow-ux-u17-keyboard-shortcuts",
+  "title": "Keyboard Shortcuts",
+  "description": "FluidFlow · Keyboard Shortcuts",
+  "content": "Implement keyboard shortcuts for power users. Define shortcuts for common actions: Cmd/Ctrl+S (save), Cmd/Ctrl+K (search), Cmd/Ctrl+N (new), Escape (close modals). Create help modal showing all shortcuts - trigger with \"?\" key. Group shortcuts by category in help modal. Show shortcut hints in tooltips and menus. Handle modifier keys properly (Cmd for Mac, Ctrl for Windows). Prevent conflicts with browser/OS shortcuts. Add visual feedback when shortcut is triggered. Support sequential shortcuts (g then h for go home). Allow customization if applicable. Disable shortcuts when typing in inputs. Use useEffect with keydown listener and proper cleanup.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4372ca17ccea0e4454519b37c741e185308b4d0ed0da78b376ecb3bf4d3aa988",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add keyboard shortcuts for common actions with help modal.",
+    "detailed": "Implement keyboard shortcuts for power users. Define shortcuts for common actions: Cmd/Ctrl+S (save), Cmd/Ctrl+K (search), Cmd/Ctrl+N (new), Escape (close modals). Create help modal showing all shortcuts - trigger with \"?\" key. Group shortcuts by category in help modal. Show shortcut hints in tooltips and menus. Handle modifier keys properly (Cmd for Mac, Ctrl for Windows). Prevent conflicts with browser/OS shortcuts. Add visual feedback when shortcut is triggered. Support sequential shortcuts (g then h for go home). Allow customization if applicable. Disable shortcuts when typing in inputs. Use useEffect with keydown listener and proper cleanup.",
+    "advanced": "Implement keyboard shortcuts for power users to dramatically increase efficiency. Define shortcuts for common actions: Cmd/Ctrl+S (save), Cmd/Ctrl+K (search/command palette), Cmd/Ctrl+N (new), Escape (close modals), Cmd/Ctrl+/ (toggle sidebar). Create help modal showing all shortcuts - trigger with \"?\" key (Shift+/). Group shortcuts by category: Navigation, Actions, View, Help. Show shortcut hints in tooltips and menu items - format: \"⌘K\" on Mac, \"Ctrl+K\" on Windows (detect with navigator.platform). Handle modifier keys: detect OS, use metaKey for Mac, ctrlKey for Windows - provide consistent UX. Prevent conflicts: avoid Cmd/Ctrl+W/T/N/P that browsers reserve, test across browsers. Add visual feedback: brief flash or ripple on target element when shortcut triggered. Support sequential shortcuts (vim-style): \"g then h\" for go home - show mode indicator when in sequence. Allow customization if applicable: settings page for remapping, store in localStorage. CRITICAL: Disable shortcuts when typing in inputs, textareas, contenteditable - check event.target.tagName and isContentEditable. Use useEffect with keydown listener on document, proper cleanup to prevent memory leaks, useCallback for stable handler reference. Consider command palette pattern (Cmd+K) for discoverable shortcuts. ACCESSIBILITY: Ensure all shortcut actions are also accessible via mouse/touch."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

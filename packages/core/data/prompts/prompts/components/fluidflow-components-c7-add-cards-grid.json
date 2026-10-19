@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c7-add-cards-grid",
+  "slug": "fluidflow-components-c7-add-cards-grid",
+  "title": "Add Cards Grid",
+  "description": "FluidFlow · Add Cards Grid",
+  "content": "Create responsive card grid layout with reusable card component. Grid container: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6. Card structure: image container with aspect ratio (aspect-video), content area with padding (p-4 or p-6). Include: image with hover zoom effect, category badge, title (font-semibold truncate), description (line-clamp-2), metadata row (date, author, read time), action buttons or link. Add hover effect: shadow increase, slight lift (-translate-y-1). Loading state with skeleton cards. Empty state when no items. Consider masonry layout variant for varying heights.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c12441e857d6fee6d2dd71be41f24d773e9b98f91a705790e324ef5cd7a411d6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a responsive grid of cards with images and content.",
+    "detailed": "Create responsive card grid layout with reusable card component. Grid container: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6. Card structure: image container with aspect ratio (aspect-video), content area with padding (p-4 or p-6). Include: image with hover zoom effect, category badge, title (font-semibold truncate), description (line-clamp-2), metadata row (date, author, read time), action buttons or link. Add hover effect: shadow increase, slight lift (-translate-y-1). Loading state with skeleton cards. Empty state when no items. Consider masonry layout variant for varying heights.",
+    "advanced": "Create responsive card grid layout with reusable, accessible card component. Grid container: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6, with container padding px-4. Card component structure: article element (or div with proper semantics), bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden. Image area: aspect-video or aspect-[4/3] relative overflow-hidden, img with object-cover w-full h-full, hover zoom effect using group-hover:scale-105 transition-transform duration-300. Category badge: absolute top-4 left-4, z-10 bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded. Content area: p-4 or p-5 flex flex-col gap-2. Title: h3 font-semibold text-lg line-clamp-2 or truncate, link wrapper for clickable cards. Description: text-gray-600 text-sm line-clamp-2 or line-clamp-3. Metadata row: flex items-center gap-4 text-sm text-gray-500, include date (Calendar icon), author (avatar or User icon), read time (Clock icon). Tags: flex flex-wrap gap-1 with small badges. Actions: flex justify-between items-center mt-auto pt-4, can include Like button, Share button, primary CTA. Card link: make entire card clickable with stretched link technique (a::after absolute inset-0) or wrap in Link. Hover effects: -translate-y-1 hover:shadow-lg on card, image zoom, optional border highlight. Loading state: skeleton cards matching exact layout with animate-pulse bg-gray-200. Empty state: centered message with illustration, \"No items found\", and optional CTA. Masonry variant: use CSS columns or masonry library for varying heights. List view toggle: alternative single-column horizontal card layout. ACCESSIBILITY: proper heading levels, alt text on images, keyboard-focusable cards with visible focus ring."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

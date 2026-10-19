@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so30-live-stream-indicator",
+  "slug": "fluidflow-social-so30-live-stream-indicator",
+  "title": "Live Stream Indicator",
+  "description": "FluidFlow · Live Stream Indicator",
+  "content": "Build live stream UI components. Live badge: pulsing red \"LIVE\" indicator. Viewer count: eye icon with count, updates real-time. Stream preview: thumbnail with live badge overlay. Join prompt: \"Join Live\" button. Go live: button to start streaming. Notifications: \"[User] is live!\" toast.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "01e6ed0f9c5eb471eb0cae7e482855b0084fb419b6e926eeecac41a04066983c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create live streaming status badge and viewer count.",
+    "detailed": "Build live stream UI components. Live badge: pulsing red \"LIVE\" indicator. Viewer count: eye icon with count, updates real-time. Stream preview: thumbnail with live badge overlay. Join prompt: \"Join Live\" button. Go live: button to start streaming. Notifications: \"[User] is live!\" toast.",
+    "advanced": "Build comprehensive live stream UI components and indicators. Live badge component: inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500 text-white text-xs font-semibold. Pulsing dot: w-2 h-2 rounded-full bg-white animate-pulse before text. \"LIVE\" text. Sizes: small for thumbnails, medium for headers. Stream thumbnail card: aspect-video relative rounded-lg overflow-hidden. Video preview: actual live preview frame or static poster with play overlay. Live badge: absolute top-2 left-2. Viewer count: absolute top-2 right-2 bg-black/70 text-white rounded px-2 py-0.5 text-sm, Eye icon + count (updates real-time). Duration: optional \"Live for 1h 23m\" timestamp. Stream info overlay: absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 p-3. Stream title (text-white font-medium line-clamp-1), streamer info (avatar w-6 h-6, name). Hover: scale-105 transform with shadow. Click: navigates to stream. Profile live indicator: when user is live, red ring around avatar (ring-2 ring-red-500), small LIVE badge below avatar. Story-style: in story tray, live users have distinct red ring vs gradient ring. \"Go Live\" button: for users with streaming enabled, Camera icon + \"Go Live\" button in composer or profile. Opens stream setup (title, thumbnail, visibility, save stream toggle). Live notifications: when followed user goes live, toast notification \"[User] is live: [Stream title]\", tap opens stream. Push notification: \"🔴 [User] started a live video\". Feed integration: live streams appear in feed with live badge, auto-promoted to top of feed. Viewer list: expandable showing current viewers with avatars. Live comments: real-time scrolling chat overlay. React to stream: reaction animations floating up. Join prompt: for discovered streams, \"Watch Live\" prominent CTA. Stream ended: \"Live has ended\" state with replay option if saved. Schedule live: \"Schedule a live video\" with date/time picker, reminder signup for followers. Multi-host: indicators for co-hosts in stream. Accessibility: live status announced, viewer count updates not disruptive, stream content describable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec26-review-summary-widget",
+  "slug": "fluidflow-ecommerce-ec26-review-summary-widget",
+  "title": "Review Summary Widget",
+  "description": "FluidFlow · Review Summary Widget",
+  "content": "Build review summary widget. Overall rating: large star display with average (4.5/5), total review count. Distribution: horizontal bar chart showing 5-star to 1-star percentages. Key highlights: AI-generated pros/cons summary from reviews. Category ratings: if applicable, sub-ratings (Quality, Value, Comfort). CTA: \"Write a Review\" button. Filter links: click rating bar to filter reviews by that rating.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "22e37e5c875d604da78f6b3c8b86fd65a007dc9d06d0a5ccaa3a6d92f43c3921",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create review summary showing rating distribution and highlights.",
+    "detailed": "Build review summary widget. Overall rating: large star display with average (4.5/5), total review count. Distribution: horizontal bar chart showing 5-star to 1-star percentages. Key highlights: AI-generated pros/cons summary from reviews. Category ratings: if applicable, sub-ratings (Quality, Value, Comfort). CTA: \"Write a Review\" button. Filter links: click rating bar to filter reviews by that rating.",
+    "advanced": "Build comprehensive review summary widget aggregating product feedback. Container: bg-white rounded-lg shadow-sm p-6, or full-width section on PDP. Layout: responsive grid with overall rating left, distribution right, or stacked on mobile. Overall rating display: extra large star rating visualization (5 filled/unfilled stars, large scale), numeric average prominently displayed (text-4xl font-bold \"4.7\"), total review count below (\"Based on 2,847 reviews\"), verified purchase badge if all verified. Rating distribution: vertical list of 5 rows (5★ to 1★). Each row: star count label (\"5 ★\"), progress bar (h-2 rounded-full), percentage or count. Bar fill: proportional to count, color gradient (5★ green, 1★ red) or brand color. Click interaction: clicking a bar filters reviews to that rating, highlight selected. Animated bars: bars animate to fill on initial load. Category/attribute ratings: grid of sub-ratings if applicable. Categories vary by product type: Apparel (Fit, Quality, Comfort, Style), Electronics (Performance, Value, Ease of Use, Build Quality), each shows average (4.2/5) with mini stars or numeric. Review highlights: AI-generated summary section. \"What customers are saying\" header, pros list (green checkmarks): top 3-5 positive themes extracted (\"Great battery life\", \"Easy to set up\"), cons list (red X or minus): top concerns (\"Runs small\", \"Slow shipping\"). Quote snippets: 2-3 short customer quotes with attribution (\"Best purchase ever\" - Sarah M.). Keyword pills: clickable tags for common themes mentioned (clicking filters reviews containing that term). Recommendation percentage: \"92% of customers recommend this product\" with visual bar. Verified purchase indicator: \"X% verified purchases\" trust signal. Review call-to-action: \"Write a Review\" or \"Share Your Experience\" button, prompts for purchase verification or opens review form modal. Photo/video summary: thumbnail grid of user-submitted media from reviews, \"See all X photos\" link opening gallery. Sort/filter controls: sort dropdown (Most Recent, Highest Rated, Lowest Rated, Most Helpful), filter by rating, verified only, with photos. Compare to similar: \"See how this compares\" link to category average comparison. Syndicated reviews: note if reviews aggregated from multiple sources. Mobile: stack sections vertically, collapsible detailed sections. Accessibility: progress bars have proper aria-label with percentage, interactive elements focusable, summary readable linearly."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

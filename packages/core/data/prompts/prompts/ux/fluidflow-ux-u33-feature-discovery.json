@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u33-feature-discovery",
+  "slug": "fluidflow-ux-u33-feature-discovery",
+  "title": "Feature Discovery",
+  "description": "FluidFlow · Feature Discovery",
+  "content": "Help users discover features they might miss. Add \"New\" badges on recently added features. Show feature announcements for significant updates. Include \"Did you know?\" tips periodically. Highlight unused features in empty states. Add progressive feature introduction. Create feature discovery checklist. Use contextual prompts when relevant. Show keyboard shortcuts in menus. Track feature adoption for insights.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "eacf9026ff20c5eaba1d98261f5539fc6472f8cc5cb14027074ae380ddbc1e18",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Help users discover new and hidden features.",
+    "detailed": "Help users discover features they might miss. Add \"New\" badges on recently added features. Show feature announcements for significant updates. Include \"Did you know?\" tips periodically. Highlight unused features in empty states. Add progressive feature introduction. Create feature discovery checklist. Use contextual prompts when relevant. Show keyboard shortcuts in menus. Track feature adoption for insights.",
+    "advanced": "Help users discover features to increase engagement and reduce churn. \"New\" badges: pill badge on new features (show for 2 weeks or until clicked), subtle to avoid overwhelming. Announcements: modal or banner for significant releases, \"Whats New\" page with release notes, in-app changelog. \"Did you know?\" tips: non-intrusive tips shown periodically (max 1 per session), relevant to current context, dismissible (permanently). Empty state suggestions: when user has unused feature, suggest in related empty state (\"Try our new templates\"). Progressive introduction: dont show all features at once, introduce advanced features after mastering basics. Discovery checklist: optional checklist of features to explore, reward completion (badge, discount). Contextual prompts: when user is doing something the hard way, suggest easier approach (\"You can also drag and drop\"). Shortcut hints: keyboard shortcuts in menu items and tooltips, cheatsheet accessible via ?. Adoption tracking: analytics on feature usage, identify underused features, inform roadmap. Segmentation: different discovery paths for different user types. Frequency capping: limit total prompts per session (max 2-3), respect \"dont show again\". A/B testing: test prompt timing, wording, UI patterns. ACCESSIBILITY: prompts keyboard dismissible, not blocking critical paths. Balance: help without annoying - err on side of fewer prompts."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

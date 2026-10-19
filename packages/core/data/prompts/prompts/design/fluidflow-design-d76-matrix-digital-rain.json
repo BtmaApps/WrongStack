@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d76-matrix-digital-rain",
+  "slug": "fluidflow-design-d76-matrix-digital-rain",
+  "title": "Matrix/Digital Rain",
+  "description": "FluidFlow · Matrix/Digital Rain",
+  "content": "Apply Matrix digital rain aesthetic with falling character streams. Black background with bright green text. Vertical streams of characters falling at varying speeds. Mix of characters: katakana, numbers, symbols. Glow effect on characters. Some characters brighter than others creating depth. Include code snippets and binary. Mysterious hacker atmosphere. Cybersecurity feel.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d76"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0a1d71f49f36ec957116052831cf5ded89677ac006f1696c73132fd49f66a250",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Matrix-style digital rain with falling code characters and green-on-black cyber aesthetic.",
+    "detailed": "Apply Matrix digital rain aesthetic with falling character streams. Black background with bright green text. Vertical streams of characters falling at varying speeds. Mix of characters: katakana, numbers, symbols. Glow effect on characters. Some characters brighter than others creating depth. Include code snippets and binary. Mysterious hacker atmosphere. Cybersecurity feel.",
+    "advanced": "Apply Matrix digital rain aesthetic with authentic falling code streams. Background: pure black (#000000) for maximum contrast. Character color: Matrix green (#00ff41, #03a062) with glow effect (text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41). Character set: mix of half-width katakana (ｱｲｳｴｵ), numbers, Latin letters, symbols - random selection. Rain columns: vertical streams at random x positions, characters change randomly as they fall. Speed variation: different columns fall at different speeds, some characters linger. Brightness depth: leading character brightest, trailing characters fade (opacity gradient). Column density: varying gaps between columns for depth. Character rendering: monospace font, consistent character width for alignment. Animation: CSS keyframes or canvas for smooth falling, 30-60fps. Glow layers: multiple text-shadows for bloom effect. Interactive option: mouse movement affects nearby rain, characters scatter. Code overlay: actual code snippets visible through rain effect. Wake effect: bright flash when character changes. Mirror reflection: optional reflection at bottom (flipped, faded). Sound suggested: digital rain ambient, key clicks. Performance: canvas more efficient than DOM for many particles, requestAnimationFrame. Fall patterns: some columns faster, occasional pauses, random restarts. Implementation: canvas for best performance, or CSS columns with staggered animations. Accessibility: CRITICAL - constant motion problematic, must respect prefers-reduced-motion, provide static alternative with rain pattern background image."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

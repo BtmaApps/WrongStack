@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec7-product-reviews",
+  "slug": "fluidflow-ecommerce-ec7-product-reviews",
+  "title": "Product Reviews",
+  "description": "FluidFlow · Product Reviews",
+  "content": "Build product reviews section. Summary: average rating (large stars + number), rating distribution bars (5-1 star counts), total reviews count. Write review button: opens form modal. Review form: star rating selector, title, review text, optional photo upload. Review list: sortable (newest, highest, lowest). Review item: user avatar, name, verified badge, date, star rating, review text, helpful votes, report button. Photos: thumbnail grid, click to enlarge. Filtering: by rating. Pagination or load more.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "95a578a90bc60f28177f8f110c59002dff105b3ca904e276595ffdc3431505f1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create reviews section with average rating, review list, and write review form.",
+    "detailed": "Build product reviews section. Summary: average rating (large stars + number), rating distribution bars (5-1 star counts), total reviews count. Write review button: opens form modal. Review form: star rating selector, title, review text, optional photo upload. Review list: sortable (newest, highest, lowest). Review item: user avatar, name, verified badge, date, star rating, review text, helpful votes, report button. Photos: thumbnail grid, click to enlarge. Filtering: by rating. Pagination or load more.",
+    "advanced": "Build product reviews section with comprehensive features. Summary area: flex row on desktop, stack on mobile. Average display: large rating number (text-5xl font-bold), filled/empty Star icons row, total review count (\"Based on 128 reviews\"). Rating distribution: vertical bars for 5-star through 1-star, each row with star count, horizontal bar (h-2 bg-gray-200 with fill based on percentage), count number. Click rating bar to filter reviews by that rating. Write review CTA: \"Write a Review\" button opens modal form. Require purchase or allow all reviews with \"Verified Purchase\" badge distinction. Review form modal: star rating selector (click or hover to select 1-5 stars with labels: \"Poor\" to \"Excellent\"), title input (required, max 100 chars), review text textarea (required, min 50 chars, max 2000, character counter), photo upload (optional, max 5 photos, drag-drop zone with preview), \"Would you recommend this product?\" yes/no, Submit button with loading state. Review list: sticky filter/sort bar at top. Filters: rating dropdown (All, 5★, 4★, etc.), \"With Photos\" toggle, \"Verified Purchases\" toggle. Sort: dropdown (Most Recent, Highest Rated, Lowest Rated, Most Helpful). Review item card: user avatar (initials fallback), display name, \"Verified Purchase\" badge (green checkmark), date (relative or formatted), star rating row, review title (font-medium), review text (line-clamp-4 with \"Read more\" expand), photo thumbnails (click to enlarge in lightbox). Helpful votes: \"Was this helpful?\" with Yes/No buttons and counts, prevent duplicate votes using localStorage or API. Report button: dropdown with reason selection. Photos section: horizontal grid of all customer photos from reviews, click to see photo with review context. Owner responses: highlighted reply box below review with seller avatar and \"Seller Response\" label. Pagination: \"Load more reviews\" button or numbered pages. Empty state: \"No reviews yet. Be the first to share your experience!\" Loading: skeleton review cards. Accessibility: proper heading structure, focus management in modal."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

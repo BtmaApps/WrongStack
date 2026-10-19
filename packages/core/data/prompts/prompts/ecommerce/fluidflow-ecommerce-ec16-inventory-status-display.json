@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec16-inventory-status-display",
+  "slug": "fluidflow-ecommerce-ec16-inventory-status-display",
+  "title": "Inventory Status Display",
+  "description": "FluidFlow · Inventory Status Display",
+  "content": "Build inventory status display system. Stock indicators: \"In Stock\" (green), \"Low Stock\" (orange with \"Only X left\"), \"Out of Stock\" (red). Progress bar: visual stock level (green > 50%, yellow 20-50%, red < 20%). Restock date: \"Back in stock: Est. Jan 15\" when available. Location-based: \"Available at 3 nearby stores\". Pre-order option: show when out of stock with expected date. Size-specific: show stock per size in size selector.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a9637f53fcbf871229c7c1d5278434a37dfdaeaa3f67e81c14aabd9a7e4943c4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create inventory status indicators showing stock levels.",
+    "detailed": "Build inventory status display system. Stock indicators: \"In Stock\" (green), \"Low Stock\" (orange with \"Only X left\"), \"Out of Stock\" (red). Progress bar: visual stock level (green > 50%, yellow 20-50%, red < 20%). Restock date: \"Back in stock: Est. Jan 15\" when available. Location-based: \"Available at 3 nearby stores\". Pre-order option: show when out of stock with expected date. Size-specific: show stock per size in size selector.",
+    "advanced": "Build comprehensive inventory status display system with multiple display modes. Stock level indicator component: accepts current stock and threshold props. Display variants based on level: In Stock (stock > lowThreshold): text-green-600 with Check icon, optionally hide if always in stock; Low Stock (stock > 0 && stock <= lowThreshold): text-orange-500 with AlertTriangle icon, \"Only X left in stock\" or \"Selling fast - only X left\" for urgency; Out of Stock (stock === 0): text-red-600 with X icon, \"Out of Stock\" or \"Sold Out\". Visual progress bar: h-2 rounded-full bg-gray-200, inner bar with dynamic width (stock/maxStock * 100%), color transition (bg-green-500 > 50%, bg-yellow-500 20-50%, bg-red-500 < 20%). Numeric display option: \"42 available\" or \"42/100 in stock\" for B2B. Restock information: when out of stock, show estimated restock date if available (\"Expected back: January 15, 2024\"), notify button to subscribe for restock alerts. Pre-order availability: when out of stock but pre-order enabled, show \"Pre-order now - Ships by Feb 1\" with different button styling. Location-based stock: for omnichannel, \"Available at 3 nearby stores\" link opening store selector, \"Check store availability\" button, show stock level per location. Size/variant specific: in size selector, each option shows stock indicator (dot: green/orange/red or \"2 left\"), disabled styling for out-of-stock variants with strikethrough or grayed appearance. Cart/checkout stock warnings: \"Hurry! Only 2 left and 5 people have this in their cart\" social proof, real-time stock validation before checkout. Stock alerts: modal or form for email notification signup when back in stock. Reserved stock: \"Reserved for 10 minutes\" when item added to cart, countdown timer optional. Backorder: \"Available on backorder - Ships in 2-3 weeks\" option when stock is 0 but backorder allowed. B2B enhancements: show exact quantities, bulk availability, lead times for larger orders. Accessibility: stock status announced with aria-live for dynamic updates, color not sole indicator (always include text/icon)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

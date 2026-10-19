@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d34-swiss-international",
+  "slug": "fluidflow-design-d34-swiss-international",
+  "title": "Swiss/International",
+  "description": "FluidFlow · Swiss/International",
+  "content": "Apply Swiss/International Typographic Style with mathematical precision. Use strict grid systems for layout. Typography: Helvetica, Univers, or Akzidenz-Grotesk only. Left-aligned, flush-left ragged-right text. Objective photography without manipulation. Minimal color - mostly black, white, with one accent. Strong visual hierarchy through size and weight. Generous white space. Information-focused, no decorative elements. Clean, rational, universal design.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d6cfdd3c1f42e4bac92302d4814eae2626e6879fc5c8c4b454340d2d4dc7b17e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create clean Swiss typography design with grid systems, sans-serif fonts, and objective clarity.",
+    "detailed": "Apply Swiss/International Typographic Style with mathematical precision. Use strict grid systems for layout. Typography: Helvetica, Univers, or Akzidenz-Grotesk only. Left-aligned, flush-left ragged-right text. Objective photography without manipulation. Minimal color - mostly black, white, with one accent. Strong visual hierarchy through size and weight. Generous white space. Information-focused, no decorative elements. Clean, rational, universal design.",
+    "advanced": "Apply Swiss/International Typographic Style (1950s-60s Swiss design movement). Grid system: strict modular grid, use CSS Grid with precise column definitions (12-column or custom), consistent gutters, baseline grid for typography. Typography: Helvetica Neue, Univers, Akzidenz-Grotesk - no serifs, no decorative fonts. Text settings: flush-left ragged-right alignment (text-left), no justified text, generous line-height (leading-relaxed), tight tracking for headlines (tracking-tight). Hierarchy: establish clear levels through size scale only (not decorative means) - display, headline, subhead, body, caption. Photography: objective, documentary style, no filters or manipulation, full-bleed or precisely grid-aligned. Color: primarily black (#000) and white (#fff), single accent color if needed, avoid gradients. White space: generous, intentional, as important as content. Layout: asymmetric balance, content aligned to grid intersections, mathematical proportions. No decoration: every element is functional, remove anything without purpose. Information design: charts, diagrams, infographics with Swiss precision. Numbering and systems: clear organizational systems, proper use of bullets and numbering. Modern implementation: CSS custom properties for type scale, strict spacing tokens. Accessibility: extreme clarity benefits all users, high contrast, logical reading order."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

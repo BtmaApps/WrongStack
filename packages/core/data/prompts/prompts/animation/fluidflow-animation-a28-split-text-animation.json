@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a28-split-text-animation",
+  "slug": "fluidflow-animation-a28-split-text-animation",
+  "title": "Split Text Animation",
+  "description": "FluidFlow · Split Text Animation",
+  "content": "Create split text animations by animating individual characters or words. Split text into spans programmatically. Apply staggered animation to each span. Support character-by-character or word-by-word splits. Add animation variants (fade up, rotate in, scale). Handle whitespace properly. Maintain accessibility with original text. Create wave effects with delay patterns.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "83f01a9613e6c0f73f3f561df9562671e1273f1ec67b955ca1ea0cc39b12f260",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Animate text by splitting into individual characters or words.",
+    "detailed": "Create split text animations by animating individual characters or words. Split text into spans programmatically. Apply staggered animation to each span. Support character-by-character or word-by-word splits. Add animation variants (fade up, rotate in, scale). Handle whitespace properly. Maintain accessibility with original text. Create wave effects with delay patterns.",
+    "advanced": "Create split text animations for dynamic typographic effects. Splitting approach: wrap each character or word in span, apply inline-block display (needed for transforms). Character split: text.split(\"\").map((char, i) => <span key={i} style={{animationDelay: `${i * 50}ms`}}>{char}</span>), handle spaces specially (use &nbsp; or preserve whitespace). Word split: text.split(\" \").map() with spaces rendered between. Animation variants: fade-up (opacity 0, translateY(20px) to visible), rotate-in (rotateX(-90deg) to 0), scale-pop (scale(0) to scale(1)), blur-in (filter: blur(10px) to 0). Stagger patterns: linear (50ms increment), accelerating, decelerating, random within range. Wave effect: use sine-based delay calculation for smooth wave. Combined effects: animate multiple properties with different timings. Line awareness: split by lines for responsive animations (more complex, may need JS line detection). Performance: many spans can impact performance, use CSS animations not JS, avoid animating on each scroll. Trigger: Intersection Observer for scroll-triggered, or on mount/event. Libraries: splitting.js, GSAP SplitText for easier implementation with more features. Reduced motion: show complete text without animation. ACCESSIBILITY: use aria-label with full text on container, individual spans can be aria-hidden if needed. Text updates: re-split when text content changes. Special characters: handle emojis, punctuation properly. Cursor/selection: inline-block spans maintain normal text selection. Use cases: hero headlines, emphasis text, dramatic reveals."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

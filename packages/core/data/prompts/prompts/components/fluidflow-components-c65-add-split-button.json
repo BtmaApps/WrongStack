@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c65-add-split-button",
+  "slug": "fluidflow-components-c65-add-split-button",
+  "title": "Add Split Button",
+  "description": "FluidFlow · Add Split Button",
+  "content": "Create split button. Container: inline-flex rounded-lg shadow. Primary button: px-4 py-2 bg-blue-500 text-white rounded-l-lg hover:bg-blue-600, main action text. Dropdown trigger: px-2 py-2 bg-blue-500 text-white rounded-r-lg border-l border-blue-400 hover:bg-blue-600, chevron icon. Dropdown menu: absolute top-full right-0 mt-1 bg-white rounded-lg shadow-xl border, menu items py-2 px-4 hover:bg-gray-100.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c65"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1df4fc29ce93fd4bfba746bddeb2242d23a863786be179744e1859c4af221b9e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create button with dropdown for secondary actions.",
+    "detailed": "Create split button. Container: inline-flex rounded-lg shadow. Primary button: px-4 py-2 bg-blue-500 text-white rounded-l-lg hover:bg-blue-600, main action text. Dropdown trigger: px-2 py-2 bg-blue-500 text-white rounded-r-lg border-l border-blue-400 hover:bg-blue-600, chevron icon. Dropdown menu: absolute top-full right-0 mt-1 bg-white rounded-lg shadow-xl border, menu items py-2 px-4 hover:bg-gray-100.",
+    "advanced": "Create versatile split button component. Layout: main button + dropdown toggle sharing same height/style. Primary action: larger area, text and optional icon, onClick handler. Dropdown toggle: smaller area, chevron/caret icon, opens menu on click. Menu positioning: below by default, flip to top if near viewport bottom (use Floating UI). Menu items: text, icon optional, keyboard shortcut hint, disabled state, separator/divider option. Selection: clicking menu item can either fire action and close, or change the primary button action (remember last used). Menu sections: group items with headers. Variants: primary, secondary, outline, ghost - applied to both parts. Sizes: sm, md, lg. Disabled: both parts disabled, or just dropdown disabled. Loading: spinner in primary button during async action. Keyboard: Tab focuses button, Enter activates, Escape closes menu, arrow keys navigate menu. Controlled: isOpen and onOpenChange props. Close behavior: close on item click, close on outside click, close on Escape. Mobile: consider full button opening menu instead of split. Accessibility: aria-haspopup, aria-expanded, menu has role=\"menu\", items role=\"menuitem\"."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

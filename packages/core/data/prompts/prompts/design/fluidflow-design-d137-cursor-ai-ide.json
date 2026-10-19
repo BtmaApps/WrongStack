@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d137-cursor-ai-ide",
+  "slug": "fluidflow-design-d137-cursor-ai-ide",
+  "title": "Cursor/AI IDE",
+  "description": "FluidFlow · Cursor/AI IDE",
+  "content": "Apply Cursor aesthetic with AI IDE feel. Code editor with AI panels. Inline code suggestions. Chat interface for AI. Diff views for AI changes. Terminal integration. File explorer. AI-generated documentation. Command palette. Multi-file editing. Version control integration.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d137"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4ac8584743af3ce43b6696ee16e6bbae7f2e09aac122b3fa7b8bd533991099d3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create AI-powered development environment with inline assistance and code generation.",
+    "detailed": "Apply Cursor aesthetic with AI IDE feel. Code editor with AI panels. Inline code suggestions. Chat interface for AI. Diff views for AI changes. Terminal integration. File explorer. AI-generated documentation. Command palette. Multi-file editing. Version control integration.",
+    "advanced": "Apply Cursor aesthetic with AI IDE patterns. Editor: Monaco or CodeMirror base, multiple tabs, syntax highlighting. AI inline: ghost text suggestions (grayed italic), Tab to accept, partial accept. AI panel: side panel or bottom panel chat interface, context-aware. Chat: markdown rendering, code blocks with copy and apply. Diffs: AI changes as diff view, accept/reject buttons per line or file. Apply changes: preview before apply, undo stack. Context: @file, @folder, @symbol mentions, auto-include relevant code. Commands: Cmd+K for inline edit prompt, Cmd+L for chat focus. Generation: loading state with progress, streaming text appearance. Prompts: saved prompts, prompt history, edit and rerun. Terminal: integrated terminal, AI can suggest commands. Files: tree explorer with search, file status indicators. Git: gutter indicators, inline blame, commit from IDE. Multi-file: AI can edit across files, show all changes before apply. Diagnostics: error squiggles, AI fix suggestions. Documentation: generate docs from selection, inline docstrings. Refactoring: AI-powered rename, extract function. Search: semantic search, find usages. Settings: AI model selection, behavior toggles, API keys. Themes: dark, light, high contrast. Collaboration: share session, pair programming. Extensions: plugin system for additional AI features."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

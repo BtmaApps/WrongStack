@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u3-empty-states",
+  "slug": "fluidflow-ux-u3-empty-states",
+  "title": "Empty States",
+  "description": "FluidFlow · Empty States",
+  "content": "Design helpful empty states that guide users to action. Include friendly illustration or icon (use lucide-react icons at large size like h-24 w-24 text-gray-300). Write clear headline explaining the state (\"No projects yet\"). Add supportive body text with next steps (\"Create your first project to get started\"). Include prominent CTA button for the primary action. Suggest alternative actions if applicable. Use consistent empty state pattern across all list/grid views. Add subtle background patterns for visual interest. Consider different empty states: first-time vs filtered results vs error state.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c9ee6d97dd518a550d903a52f46e7b4e2d141709959b26053bce331ee818b33a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Design helpful empty states with icons and clear call-to-action.",
+    "detailed": "Design helpful empty states that guide users to action. Include friendly illustration or icon (use lucide-react icons at large size like h-24 w-24 text-gray-300). Write clear headline explaining the state (\"No projects yet\"). Add supportive body text with next steps (\"Create your first project to get started\"). Include prominent CTA button for the primary action. Suggest alternative actions if applicable. Use consistent empty state pattern across all list/grid views. Add subtle background patterns for visual interest. Consider different empty states: first-time vs filtered results vs error state.",
+    "advanced": "Design helpful empty states that guide users to action and reduce abandonment. Include friendly illustration or icon (lucide-react icons h-16 w-16 to h-24 w-24 text-gray-400) centered in container. Write clear, empathetic headline explaining the state (\"No projects yet\" not \"Error: Empty\"). Add supportive body text with specific next steps (\"Create your first project to start collaborating with your team\"). Include single prominent CTA button for primary action - dont overwhelm with choices. Suggest ONE alternative if truly applicable (\"or import from template\"). Use consistent empty state pattern across all views - create reusable EmptyState component. Differentiate states: first-time user (encouraging, onboarding-focused), filtered results (\"No matches for X\", show clear filters button), error state (apologetic, retry option), permission-denied (explain why, who to contact). Add subtle background pattern or illustration that matches brand. ACCESSIBILITY: Ensure empty state is announced to screen readers, CTA is keyboard accessible. Consider adding sample/demo data option for first-time users. Track empty state views to identify UX friction points."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d103-mobile-os-interface",
+  "slug": "fluidflow-design-d103-mobile-os-interface",
+  "title": "Mobile OS Interface",
+  "description": "FluidFlow · Mobile OS Interface",
+  "content": "Apply mobile OS aesthetic with smartphone interface feel. App icon grids with labels. Notification center cards with actions. Control center toggles. Status bar with battery, signal, time. Lock screen with clock and shortcuts. Settings list with switches and chevrons. App drawer search. Widget stack layouts. Gesture indicators. Permission dialogs.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d103"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cdb8bb6851d04fea3691ba75bf9a870bbaec65ea00c90f8db9719bce5b9b7759",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create mobile OS style interface with app icons, notification center, and control panels.",
+    "detailed": "Apply mobile OS aesthetic with smartphone interface feel. App icon grids with labels. Notification center cards with actions. Control center toggles. Status bar with battery, signal, time. Lock screen with clock and shortcuts. Settings list with switches and chevrons. App drawer search. Widget stack layouts. Gesture indicators. Permission dialogs.",
+    "advanced": "Apply mobile OS aesthetic with iOS/Android patterns. App icon grid: 4x6 with rounded square icons, name labels below. Notification cards with app icon, title, body, action buttons. Control center: 4x4 toggle grid (WiFi, Bluetooth, Airplane, etc) with long-press expand. Status bar: signal bars, WiFi icon, battery with percentage, centered time. Lock screen: large time display, date, camera/flashlight shortcuts. Settings: grouped lists with icons, switches, disclosure arrows. Searchable app drawer. Widgets: small/medium/large snap grid. Swipe indicators with pill shapes. Permission sheets with Allow/Deny buttons."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

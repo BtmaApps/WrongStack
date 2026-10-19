@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so13-user-mentions-tagging",
+  "slug": "fluidflow-social-so13-user-mentions-tagging",
+  "title": "User Mentions/Tagging",
+  "description": "FluidFlow · User Mentions/Tagging",
+  "content": "Build @mention system for tagging users. Trigger: typing @ shows autocomplete dropdown. Dropdown: user avatar, name, username, follows you badge. Search: filters as user types. Selection: click or arrow keys + enter. Display: mention styled differently in text (text-blue-600). Limit: max mentions per post. Notification: tagged users receive notification.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "061f821944cb77d888e472d6670c65f3fb0d45fc7a3469af1042e65b59484bb9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create @mention autocomplete for tagging users in posts.",
+    "detailed": "Build @mention system for tagging users. Trigger: typing @ shows autocomplete dropdown. Dropdown: user avatar, name, username, follows you badge. Search: filters as user types. Selection: click or arrow keys + enter. Display: mention styled differently in text (text-blue-600). Limit: max mentions per post. Notification: tagged users receive notification.",
+    "advanced": "Build comprehensive @mention system for user tagging. Trigger detection: listen for @ symbol in input/textarea, track cursor position to detect mention context, support @ at start of input or after space. Autocomplete dropdown: positioned below cursor (calculate position from caret), max-h-64 overflow-y-auto, bg-white rounded-lg shadow-xl border. Loading state while fetching. Empty state if no matches. Results: list of matching users ordered by relevance (friends first, then followers, then others). User row: flex items-center gap-3 p-2 hover:bg-gray-50, avatar (w-8 h-8 rounded-full), name (font-medium), username (text-gray-500 @handle), badges (\"Follows you\", \"Mutual\", verified check). Navigation: arrow keys move selection highlight, enter/tab confirms selection, escape closes. Search behavior: debounced API call as user types after @, search by name and username, fuzzy matching. Mention insertion: on selection, replace @partial with @username, add space after, store mention data (user ID, display text) in state. Styled display: mentions render as inline span with different styling (text-blue-600 bg-blue-50 rounded px-0.5) or as chips. Editing: clicking mention selects whole mention, backspace removes entire mention. Mention limits: max mentions per post (e.g., 10), show count \"5/10 mentions\". Backend data: submit post with mention user IDs for notification system. Notifications: tagged users receive notification \"X mentioned you in a post\" with link. Privacy: respect user settings (some users may have mentions disabled). Mobile: dropdown as bottom sheet on small screens, larger touch targets. Contenteditable: if using contenteditable for rich text, handle mention nodes properly. Accessibility: dropdown is combobox role, announce selected item, keyboard fully operable. Performance: virtualize long user lists, cache recent mentions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

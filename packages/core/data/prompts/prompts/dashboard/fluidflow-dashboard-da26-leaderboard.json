@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da26-leaderboard",
+  "slug": "fluidflow-dashboard-da26-leaderboard",
+  "title": "Leaderboard",
+  "description": "FluidFlow · Leaderboard",
+  "content": "Build leaderboard component. Ranking: numbered list by metric. Avatars: user or team avatars. Metrics: show relevant performance metrics. Changes: up/down arrows for position changes. Top highlight: special styling for top performers. Filtering: filter by period or category. Self position: highlight current user. Pagination: for long leaderboards. Animations: smooth rank change animations.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e36ef339a507574fcfb6e649674452cdb52f7c636b746441695e7a9095add73f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create ranked leaderboard for metrics or performance.",
+    "detailed": "Build leaderboard component. Ranking: numbered list by metric. Avatars: user or team avatars. Metrics: show relevant performance metrics. Changes: up/down arrows for position changes. Top highlight: special styling for top performers. Filtering: filter by period or category. Self position: highlight current user. Pagination: for long leaderboards. Animations: smooth rank change animations.",
+    "advanced": "Build comprehensive leaderboard for performance ranking. Layout: table or card list with rank numbers, user/team avatar, name, primary metric, secondary metrics. Ranking display: #1, #2, #3 with special styling (gold, silver, bronze badges or background), numerical rank for others. Metric display: primary metric prominently shown, formatted appropriately (currency, percentage, count), secondary metrics in smaller columns. Position changes: arrow icons showing up/down movement since last period, +3 or -2 change values, new entries marked. Podium view: optional podium visualization for top 3 (elevated cards, #1 center and larger). Filtering: filter by time period (today, this week, this month, all time), filter by category or segment, search by name. Self highlighting: current user row highlighted (bg-blue-50), show \"You\" badge, always visible even if scrolled. Pagination: show top 50-100, load more button, or virtualized for long lists. Animations: smooth transitions when ranks change, items slide into new positions. Ties: handle tied ranks (two #3s then #5). Historical: toggle to see leaderboard at previous points in time. Multiple boards: tabs for different metric leaderboards. Goals: optional goal indicator per user (% of target). Profile links: click name to view full profile. Export: download leaderboard as CSV. Privacy: option to show anonymous leaderboard (hide names). Gamification: optional badges, achievements, streaks displayed."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

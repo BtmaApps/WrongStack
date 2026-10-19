@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d110-feature-flag-manager",
+  "slug": "fluidflow-design-d110-feature-flag-manager",
+  "title": "Feature Flag Manager",
+  "description": "FluidFlow · Feature Flag Manager",
+  "content": "Apply feature flag aesthetic with release management feel. Flag toggle cards with status indicators. Targeting rule builders. Environment tabs (dev, staging, prod). User segment selectors. Percentage rollout sliders. Kill switch controls. Audit log displays. SDK code snippets. Stale flag warnings. Dependency visualization.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d110"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "98b393987bba3e17e16ce2226331f81503ef38dd01525909776cbf917ddde77d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create feature flag interface with toggle controls, targeting rules, and environment management.",
+    "detailed": "Apply feature flag aesthetic with release management feel. Flag toggle cards with status indicators. Targeting rule builders. Environment tabs (dev, staging, prod). User segment selectors. Percentage rollout sliders. Kill switch controls. Audit log displays. SDK code snippets. Stale flag warnings. Dependency visualization.",
+    "advanced": "Apply feature flag aesthetic with LaunchDarkly/Unleash patterns. Flag cards: name, key, toggle switch, last modified, created by. Rule builder: IF user.property OPERATOR value, THEN serve variant, with add/remove buttons. Environment tabs with independent configs, promote button between. Segment multi-select with user property-based definitions. Rollout: percentage slider with sticky (user ID hash) indicator. Kill switch: prominent red toggle with confirmation modal. Audit log: timeline with change diffs, actor, timestamp. SDK tabs with copy buttons for various languages. Stale warning: yellow badge for flags unchanged >90 days. Dependency graph showing flag prerequisites."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

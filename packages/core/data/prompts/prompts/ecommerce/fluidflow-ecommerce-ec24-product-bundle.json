@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec24-product-bundle",
+  "slug": "fluidflow-ecommerce-ec24-product-bundle",
+  "title": "Product Bundle",
+  "description": "FluidFlow · Product Bundle",
+  "content": "Build product bundle/kit display. Bundle card: hero image of bundle or composite, bundle name, included products list with thumbnails. Pricing: individual prices crossed out, bundle price, \"Save X%\" badge. Product details: expandable list showing each item. Add to cart: single button adds entire bundle. Customization: optional variant selection per item if applicable. Alternative: \"Build Your Own Bundle\" with product picker.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8c8f7a2f9ba7a05675f80e339167d424d04460187f56c7c190a1c2ebf4a618bb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product bundle display with combined pricing.",
+    "detailed": "Build product bundle/kit display. Bundle card: hero image of bundle or composite, bundle name, included products list with thumbnails. Pricing: individual prices crossed out, bundle price, \"Save X%\" badge. Product details: expandable list showing each item. Add to cart: single button adds entire bundle. Customization: optional variant selection per item if applicable. Alternative: \"Build Your Own Bundle\" with product picker.",
+    "advanced": "Build comprehensive product bundle display with various bundle types. Bundle card/section: prominent display on PDP or dedicated bundle pages. Visual layout: large hero image showing bundle contents arranged attractively, or composite image with product cutouts. Badge: \"Bundle & Save\", \"Value Set\", \"Kit\" badge in corner. Bundle title: descriptive name (\"Complete Skincare Routine\", \"Starter Kit\", \"Gaming Bundle\"). Included products: vertical or horizontal list of included items. Each item: thumbnail image (w-16 h-16), product name (truncated), individual retail price, link to individual product page, variant info if specific variant included (e.g., \"Size M\", \"Color: Black\"). Pricing display: \"If purchased separately: $X\" crossed out total, \"Bundle Price: $Y\" in large text, \"You Save: $Z (X%)\" highlighted in green badge. Per-item breakdown: optional expandable showing bundle allocation per item. Variant selection: if bundle allows variant choice per item (e.g., size selection), show variant selectors per item within bundle, update bundle image/price if variants affect it. Add to Cart: prominent \"Add Bundle to Cart - $Y\" button, adds all items at once, loading state, success feedback. Quantity: bundle quantity selector if multiple bundles can be purchased. Limited availability: \"Only X bundles available\" scarcity indicator. Bundle types supported: Fixed bundle (all items predetermined), Configurable bundle (select variants), BOGO (Buy One Get One), Build Your Own (select X items from category). Build Your Own Bundle: product picker interface, select X of Y products, running total and savings displayed, \"Add to Bundle\" per product, visual checklist of selections. Bundle-only items: some products may be bundle-exclusive, noted with badge. Cross-sell: \"Complete Your Bundle\" suggesting additional items. Bundle comparison: if multiple bundle tiers, comparison showing what's included in each. Subscription bundle: monthly bundle option with recurring delivery. Gift bundle: option to send bundle as gift with gift options. Inventory: show if any bundle component is low stock or out of stock (affects whole bundle availability). Mobile: stack products vertically, sticky add to cart. Accessibility: clear structure, bundle contents properly grouped and labeled, pricing clearly associated."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

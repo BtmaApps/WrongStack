@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo8-range-slider",
+  "slug": "fluidflow-forms-fo8-range-slider",
+  "title": "Range Slider",
+  "description": "FluidFlow · Range Slider",
+  "content": "Create range slider input component. Structure: track bar with draggable thumb(s). Track: bg-gray-200 rounded-full h-2. Filled track: bg-blue-600 from start to current value. Thumb: w-4 h-4 rounded-full bg-white border-2 border-blue-600. Dual range: two thumbs for min/max selection. Value display: current value above thumb. Keyboard: arrow keys to adjust. Accessibility: ARIA attributes.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a5e48b2796e3daee66c97fd33ead21e524d2026297dbfc38936b3dd1d0233799",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create slider input for selecting a value or range within min/max bounds.",
+    "detailed": "Create range slider input component. Structure: track bar with draggable thumb(s). Track: bg-gray-200 rounded-full h-2. Filled track: bg-blue-600 from start to current value. Thumb: w-4 h-4 rounded-full bg-white border-2 border-blue-600. Dual range: two thumbs for min/max selection. Value display: current value above thumb. Keyboard: arrow keys to adjust. Accessibility: ARIA attributes.",
+    "advanced": "Create range slider input component with single or dual thumb support. Structure: relative container with track bar and draggable thumb(s). Track: bg-gray-200 rounded-full h-2 w-full. Filled track: absolute bg-blue-600 rounded-full h-2, positioned from left edge (or between thumbs for dual range) to current value percentage. Thumb: w-5 h-5 rounded-full bg-white border-2 border-blue-600 shadow-md, cursor-pointer, absolute positioned at value percentage minus half thumb width. Hover: thumb scale-110. Active/dragging: thumb ring-2 ring-blue-200. Dual range mode: two thumbs for min/max range selection, don't allow crossing (min thumb can't exceed max), filled track spans between the two thumbs. Value display: tooltip above thumb on hover/drag showing current value, or always visible in input fields on sides. Min/max labels: show minimum and maximum values at track ends. Step: configurable step increments (step={5}), snap to nearest step. Input sync: optional number input fields on each side that sync bidirectionally with slider. Mouse handling: track mouse position on track click or thumb drag, calculate percentage, apply step snapping. Keyboard: arrow keys ±1 step, Shift+arrow ±10 steps (or larger step), when thumb focused. Touch: proper touch event handling (touchstart, touchmove, touchend) for mobile, prevent scroll during drag. Tooltip: show value on hover/drag near thumb using absolute positioned div. Marks: optional tick marks at intervals with labels below track. Disabled state: grayed out track and thumb (bg-gray-100, border-gray-300), cursor-not-allowed, non-interactive. Accessibility: role=\"slider\", aria-valuenow, aria-valuemin, aria-valuemax, aria-label, keyboard navigation. Performance: use RAF for smooth drag updates."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u1-better-ctas",
+  "slug": "fluidflow-ux-u1-better-ctas",
+  "title": "Better CTAs",
+  "description": "FluidFlow · Better CTAs",
+  "content": "Improve call-to-action buttons for maximum conversion. Use action-oriented verbs (\"Get Started\", \"Try Free\", \"Join Now\") instead of generic text. Make primary CTA visually dominant with larger size, bold colors (bg-blue-600), and prominent positioning. Add secondary CTAs with outlined style (border-2 border-blue-600 text-blue-600). Include micro-interactions on hover (scale-105, brightness change). Use contrasting colors against background. Add urgency when appropriate (\"Limited time\"). Ensure sufficient whitespace around CTAs. Place above the fold and repeat at logical points.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0c1f0b5433385e6b7e2dab31702f74b63bc1f06176cdbea6458bb242ced55c56",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Improve call-to-action buttons with clear action words and prominent styling.",
+    "detailed": "Improve call-to-action buttons for maximum conversion. Use action-oriented verbs (\"Get Started\", \"Try Free\", \"Join Now\") instead of generic text. Make primary CTA visually dominant with larger size, bold colors (bg-blue-600), and prominent positioning. Add secondary CTAs with outlined style (border-2 border-blue-600 text-blue-600). Include micro-interactions on hover (scale-105, brightness change). Use contrasting colors against background. Add urgency when appropriate (\"Limited time\"). Ensure sufficient whitespace around CTAs. Place above the fold and repeat at logical points.",
+    "advanced": "Improve call-to-action buttons for maximum conversion using proven UX patterns. Use action-oriented, benefit-focused verbs (\"Get Started Free\", \"Start Saving Today\", \"Join 10,000+ Users\") instead of generic text (\"Submit\", \"Click Here\"). Make primary CTA visually dominant: larger size (py-3 px-8), bold colors (bg-blue-600 hover:bg-blue-700), prominent positioning above fold. Create clear visual hierarchy: primary (filled), secondary (outlined border-2), tertiary (text link). Include micro-interactions: hover (scale-105 or brightness-110), active (scale-95), focus-visible ring. Use contrasting colors meeting WCAG AA - test CTA visibility. Add urgency ethically when true (\"Limited time offer\", countdown timers). Ensure 24px+ whitespace around CTAs. Place strategically: hero section, after value props, fixed bottom bar on long pages. A/B test button copy and colors. Add loading state for form submissions. Consider button placement in thumb zone on mobile. Track click-through rates for optimization."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

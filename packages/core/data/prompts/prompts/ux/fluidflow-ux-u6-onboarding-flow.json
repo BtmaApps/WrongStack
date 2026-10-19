@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u6-onboarding-flow",
+  "slug": "fluidflow-ux-u6-onboarding-flow",
+  "title": "Onboarding Flow",
+  "description": "FluidFlow · Onboarding Flow",
+  "content": "Create engaging onboarding experience for new users. Design welcome modal with personalized greeting and value proposition. Add multi-step setup wizard for essential configuration (max 3-5 steps). Include progress indicator showing current step. Use illustrations or icons to explain each feature. Add \"Skip\" option for users who want to explore freely. Implement feature highlights with spotlight effect (dark overlay with highlighted element). Add tooltip tours pointing to key UI elements. Store onboarding completion state to not repeat. Include sample data or templates to help users understand the product. Add contextual tips that appear during first-time actions.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "99b988f32a4f03d4644bba151d9610c098f2b941ed8b68fffb18b57699bb2903",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create welcome screens and setup wizard for new users.",
+    "detailed": "Create engaging onboarding experience for new users. Design welcome modal with personalized greeting and value proposition. Add multi-step setup wizard for essential configuration (max 3-5 steps). Include progress indicator showing current step. Use illustrations or icons to explain each feature. Add \"Skip\" option for users who want to explore freely. Implement feature highlights with spotlight effect (dark overlay with highlighted element). Add tooltip tours pointing to key UI elements. Store onboarding completion state to not repeat. Include sample data or templates to help users understand the product. Add contextual tips that appear during first-time actions.",
+    "advanced": "Create engaging onboarding that activates users while respecting their time. Design welcome modal: personalized greeting if name available, clear value proposition (3 bullet benefits), prominent \"Get Started\" CTA, subtle \"Skip\" option. Add multi-step setup wizard for essential configuration only (3-5 steps max): each step single-focused, progress indicator visible, back button available. Use illustrations/animations to explain features - not walls of text. Implement progressive onboarding over time, not all at once. Add \"Skip\" that leads to minimal viable setup - respect user agency. Implement feature highlights with spotlight effect: dark overlay (bg-black/60), highlighted element with padding, tooltip with explanation and \"Got it\" button, keyboard navigable (arrows/tab). Store onboarding state in backend (not just localStorage) - dont repeat for returning users. Include sample data or templates: \"Start with a template\" vs \"Start from scratch\". Add contextual tips on first-time actions using tooltips or coach marks. Track completion rates per step to identify friction. Offer \"replay tour\" in help menu. ACCESSIBILITY: Ensure spotlight is keyboard accessible, skip link available, announcements for screen readers. Consider different onboarding paths for different user types/goals."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

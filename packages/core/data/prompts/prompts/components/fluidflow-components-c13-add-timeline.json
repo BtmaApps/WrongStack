@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c13-add-timeline",
+  "slug": "fluidflow-components-c13-add-timeline",
+  "title": "Add Timeline",
+  "description": "FluidFlow · Add Timeline",
+  "content": "Create timeline component for history, process steps, or events. Vertical layout: centered line with alternating left/right content cards (md:flex-row-reverse for alternating). Connector: absolute positioned line (w-0.5 bg-gray-200) with circular nodes at each event. Node styling: colored circles (bg-blue-600) with icons inside for different event types. Content cards: date/time, title, description, optional image or icon. Horizontal variant: flex-row with scroll, timeline below items. Add animations: line drawing effect, cards fading in on scroll. Active/current state with different node color and pulsing effect. Collapsible details for long content. Mobile: single column with line on left side.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "348fc64c203ecb03c869decf08557445295d1ad6ac75b51cb80c1a5145046c5a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a timeline for history, events, or process steps.",
+    "detailed": "Create timeline component for history, process steps, or events. Vertical layout: centered line with alternating left/right content cards (md:flex-row-reverse for alternating). Connector: absolute positioned line (w-0.5 bg-gray-200) with circular nodes at each event. Node styling: colored circles (bg-blue-600) with icons inside for different event types. Content cards: date/time, title, description, optional image or icon. Horizontal variant: flex-row with scroll, timeline below items. Add animations: line drawing effect, cards fading in on scroll. Active/current state with different node color and pulsing effect. Collapsible details for long content. Mobile: single column with line on left side.",
+    "advanced": "Create timeline component for history, process steps, or events with animations. Vertical timeline structure: relative with pseudo-element center line (::before absolute left-1/2 -translate-x-1/2 w-0.5 h-full bg-gray-200 for alternating, or left-4 for left-aligned). Items container: space-y-8 or space-y-12. Individual item: relative flex for alternating layout. Alternating effect: odd items flex-row, even items flex-row-reverse, both have gap-8 items-center. Node (connector dot): absolute left-1/2 -translate-x-1/2 (or left-4 for left-aligned), w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow. Icon in node: larger node (w-10 h-10) with centered icon for different event types. Content card: w-[calc(50%-2rem)] (for alternating), bg-white rounded-lg shadow-sm p-6, or simple without card styling. Card content: date (text-sm text-gray-500), title (font-semibold mt-1), description (text-gray-600 mt-2), optional image or action links. Line connecting to card: optional small horizontal line extending from node to card. Current/active state: node with ring-4 ring-blue-200 or animate-pulse, different color (bg-green-600), \"Current\" badge. Completed vs upcoming: completed nodes filled color, upcoming nodes bg-gray-300 or outline only. Horizontal variant: flex overflow-x-auto, items in row, timeline line below as border-t, nodes positioned with ::before absolute bottom. Scroll animations: cards fade-in and slide from side when scrolled into view, line can animate drawing effect with stroke-dasharray. Collapsible details: expandable \"Read more\" for long descriptions. Responsive: mobile always left-aligned single column, desktop alternating or left-aligned based on prop. ACCESSIBILITY: ordered list semantics (ol/li) for sequential events, time element for dates, sufficient color contrast for nodes and states."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

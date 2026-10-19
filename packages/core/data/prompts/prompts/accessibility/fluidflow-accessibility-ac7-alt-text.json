@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac7-alt-text",
+  "slug": "fluidflow-accessibility-ac7-alt-text",
+  "title": "Alt Text",
+  "description": "FluidFlow · Alt Text",
+  "content": "Add appropriate alt text to all images and media. Informative images: describe content and function (\"Team photo showing five employees in office\"). Decorative images: use empty alt=\"\" to hide from screen readers. Functional images (buttons, links): describe the action (\"Search\", \"Close menu\", \"Download PDF\"). Complex images (charts, diagrams): provide detailed description or link to text alternative. Icons: use aria-label on parent button/link, aria-hidden on icon SVG. Background images with text: ensure text is in HTML, not just visual. Logo images: company name as alt text. Avoid redundant descriptions (\"Image of...\", \"Photo of...\"). Image links: alt describes destination. Review all img elements, SVGs, and CSS background images.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a79f93e82f35f7835d58e064eb64ebbf36a0d39dcfa272bc088fc5d5c0bdf28d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add descriptive alt text to all images and icons.",
+    "detailed": "Add appropriate alt text to all images and media. Informative images: describe content and function (\"Team photo showing five employees in office\"). Decorative images: use empty alt=\"\" to hide from screen readers. Functional images (buttons, links): describe the action (\"Search\", \"Close menu\", \"Download PDF\"). Complex images (charts, diagrams): provide detailed description or link to text alternative. Icons: use aria-label on parent button/link, aria-hidden on icon SVG. Background images with text: ensure text is in HTML, not just visual. Logo images: company name as alt text. Avoid redundant descriptions (\"Image of...\", \"Photo of...\"). Image links: alt describes destination. Review all img elements, SVGs, and CSS background images.",
+    "advanced": "Add appropriate alt text to all images and media following best practices. Image types and alt text: 1) Informative images: describe content and function concisely (\"Team of five engineers collaborating at whiteboard\"), 2) Decorative images: alt=\"\" (empty, not absent) to hide from AT, or use CSS background, 3) Functional images (in links/buttons): describe destination/action (\"Search products\", \"Open settings\"), 4) Images of text: include the text in alt, 5) Complex images (charts, diagrams): brief alt + longer description via aria-describedby or link to text alternative. Writing good alt text: be concise (typically under 125 chars), don't start with \"Image of\" or \"Photo of\" (AT already announces image), include relevant details based on context, consider what information the image conveys. Icons in buttons/links: icon itself has aria-hidden=\"true\", parent element has aria-label describing action (<button aria-label=\"Search\"><SearchIcon aria-hidden=\"true\" /></button>). Standalone meaningful icons: use aria-label on SVG or wrap in span with sr-only text. Logo images: alt=\"Company Name\" (home link) or alt=\"Company Name logo\" for footer. Background images with text: ensure text is in HTML, not burned into image; if text is in image, provide alternative. Image links: alt describes destination, not image content. Figure and figcaption: use for images with captions, figcaption provides visible description. Testing: disable images, can you still understand the content? Screen reader testing to hear how images announced. SVGs: add role=\"img\" and aria-label, or title element with unique ID and aria-labelledby. Review: audit all img, svg, [role=\"img\"], and CSS background-image for appropriate alt text or hiding."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

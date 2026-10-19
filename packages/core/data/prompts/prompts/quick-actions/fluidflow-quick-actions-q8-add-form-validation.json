@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q8-add-form-validation",
+  "slug": "fluidflow-quick-actions-q8-add-form-validation",
+  "title": "📝 Add Form Validation",
+  "description": "FluidFlow · 📝 Add Form Validation",
+  "content": "Implement comprehensive form validation. Add real-time inline validation as user types (debounced). Show error messages below inputs with text-red-600 and error icons. Add success indicators (CheckCircle icon, green ring) for valid fields. Style input states: default, focus (ring-2 ring-blue-500), error (ring-2 ring-red-500), success (ring-2 ring-green-500). Validate on blur for better UX. Add password strength meter with visual indicator. Include character counters for textareas. Disable submit until form is valid. Preserve input on validation failure.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c5cf5b844ad60fad2cd84a60a67b2fa5468c1591c70021e55f20b5a4186ebe4d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add form validation with inline errors and success indicators.",
+    "detailed": "Implement comprehensive form validation. Add real-time inline validation as user types (debounced). Show error messages below inputs with text-red-600 and error icons. Add success indicators (CheckCircle icon, green ring) for valid fields. Style input states: default, focus (ring-2 ring-blue-500), error (ring-2 ring-red-500), success (ring-2 ring-green-500). Validate on blur for better UX. Add password strength meter with visual indicator. Include character counters for textareas. Disable submit until form is valid. Preserve input on validation failure.",
+    "advanced": "Implement comprehensive form validation with excellent UX. Validation timing: validate on blur for first interaction, then on change for corrections, debounce 300ms for async validation. Input states: default (border-gray-300), focus (ring-2 ring-blue-500 border-blue-500), error (ring-2 ring-red-500 border-red-500), success (ring-2 ring-green-500 border-green-500), disabled (bg-gray-100 cursor-not-allowed). Error display: text-red-600 text-sm mt-1 flex items-center gap-1 with AlertCircle icon, use aria-describedby linking to error message. Success indicators: CheckCircle icon inside input (absolute right-3), green border. Validation rules: required fields, email format (regex), password strength (8+ chars, uppercase, number, symbol), phone format, URL validation. Password strength meter: 4-segment bar, calculate score, show requirements checklist. Character counters: textarea with \"150/500 characters\" below, warn at 90% (text-amber-600). Submit button: disabled until valid (disabled:opacity-50 disabled:cursor-not-allowed), loading state on submit. Form state: preserve all inputs on validation failure, clear only on successful submit. Async validation: username availability check with debounce, show checking spinner. Accessibility: aria-invalid=\"true\" on error, aria-describedby for error messages, announce errors to screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

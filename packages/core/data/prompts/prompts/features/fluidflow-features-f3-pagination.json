@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f3-pagination",
+  "slug": "fluidflow-features-f3-pagination",
+  "title": "Pagination",
+  "description": "FluidFlow · Pagination",
+  "content": "Build complete pagination component. Display: current page, total pages, page number buttons. Show subset of pages: first, last, current ± 2, ellipsis for gaps (1 ... 4 5 6 ... 20). Previous/Next buttons with ChevronLeft/ChevronRight icons, disabled on first/last. Items per page selector: dropdown with options (10, 25, 50, 100). Results info: \"Showing 1-10 of 156 results\". URL sync: update ?page= query parameter.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c74747fd6a7515d2d2867b76593eddb3b89062d732abd0b2c5164327518b8281",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add page numbers with Previous/Next buttons to navigate through results.",
+    "detailed": "Build complete pagination component. Display: current page, total pages, page number buttons. Show subset of pages: first, last, current ± 2, ellipsis for gaps (1 ... 4 5 6 ... 20). Previous/Next buttons with ChevronLeft/ChevronRight icons, disabled on first/last. Items per page selector: dropdown with options (10, 25, 50, 100). Results info: \"Showing 1-10 of 156 results\". URL sync: update ?page= query parameter.",
+    "advanced": "Build complete pagination component with full accessibility support. Display: current page, total pages, page number buttons with proper ARIA labels. Show subset of pages: first, last, current ± 2, ellipsis for gaps (1 ... 4 5 6 ... 20). Previous/Next buttons with ChevronLeft/ChevronRight icons, disabled (aria-disabled) on first/last page. Items per page selector: dropdown with options (10, 25, 50, 100), remember preference in localStorage. Results info: \"Showing 1-10 of 156 results\". Keyboard support: arrow keys when focused, Enter to select page. URL sync: update ?page= and ?perPage= query parameters for bookmarkable URLs. Handle edge cases: single page (hide pagination entirely), empty results (show appropriate message), invalid page number (redirect to page 1). Loading state: show spinner while fetching new page, disable controls. Scroll to top on page change (smooth scroll). Mobile: simplified view with prev/next buttons and \"Page X of Y\" text. Accessible: nav role=\"navigation\" with aria-label=\"Pagination\", current page marked with aria-current=\"page\". Support both controlled and uncontrolled modes. Add jump-to-page input for datasets with many pages."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

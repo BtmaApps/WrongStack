@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co9-emoji-support",
+  "slug": "fluidflow-content-co9-emoji-support",
+  "title": "Emoji Support",
+  "description": "FluidFlow · Emoji Support",
+  "content": "Add emoji functionality to the application. Emoji picker: grid of emoji organized by category (Smileys, People, Animals, Food, Activities, Travel, Objects, Symbols). Search/filter functionality at top. Recent/frequently used section. Picker trigger: button with Smile icon. Picker position: absolute dropdown or modal. Use native emoji characters for cross-platform compatibility. Render emojis at appropriate size (text-xl in text, larger standalone). Support emoji in: comments, messages, reactions, usernames. Add emoji reactions component: row of common emoji with count and add button. Store emoji as Unicode characters. Consider emoji skin tone selector for people emoji. Keyboard shortcut: trigger picker with \":\" autocomplete. Handle emoji in text input gracefully.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e461e1ba14a0b57ce986c4d9fc4de8d5093a848e24da17f8522d9bdab443a435",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add emoji picker and support throughout the app.",
+    "detailed": "Add emoji functionality to the application. Emoji picker: grid of emoji organized by category (Smileys, People, Animals, Food, Activities, Travel, Objects, Symbols). Search/filter functionality at top. Recent/frequently used section. Picker trigger: button with Smile icon. Picker position: absolute dropdown or modal. Use native emoji characters for cross-platform compatibility. Render emojis at appropriate size (text-xl in text, larger standalone). Support emoji in: comments, messages, reactions, usernames. Add emoji reactions component: row of common emoji with count and add button. Store emoji as Unicode characters. Consider emoji skin tone selector for people emoji. Keyboard shortcut: trigger picker with \":\" autocomplete. Handle emoji in text input gracefully.",
+    "advanced": "Add comprehensive emoji functionality to the application. Emoji picker component: grid layout (8-10 columns), categories with tabs or horizontal scroll (Smileys, People, Animals, Food, Activities, Travel, Objects, Symbols, Flags), search input with filter, recent/frequently used section at top (stored in localStorage). Picker trigger: button with Smile icon, toggles picker visibility. Picker positioning: absolute below/above trigger based on viewport space, or modal on mobile. Emoji rendering: use native Unicode characters for cross-platform compatibility, twemoji library for consistent appearance if needed. Emoji data: use emoji-mart, emojibase, or similar for comprehensive emoji list with keywords for search. Size handling: text-xl or text-2xl for inline emoji, larger (text-4xl+) for standalone/reactions. Text input integration: insert emoji at cursor position, handle selection replacement. \":\" autocomplete: detect :keyword pattern in input, show filtered suggestions dropdown, replace on selection. Skin tone modifier: for people emoji, show skin tone selector (5 Fitzpatrick scale tones), remember user preference. Emoji reactions component: horizontal row of common emoji (👍❤️😂😮😢😡), click to add/toggle, show count per emoji, add button to open full picker. Storage: store as Unicode characters in database, renders correctly everywhere. Accessibility: emoji picker needs keyboard navigation, emoji characters announced by screen readers, consider aria-label for icon-only emoji buttons. Performance: lazy load emoji data, virtualize large lists. Recent tracking: store last 20-30 used emoji in localStorage, show at top of picker."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

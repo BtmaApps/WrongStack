@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u2-loading-states",
+  "slug": "fluidflow-ux-u2-loading-states",
+  "title": "Loading States",
+  "description": "FluidFlow · Loading States",
+  "content": "Add comprehensive loading states for all async operations. Implement skeleton screens matching content layout using animate-pulse with bg-gray-200 shapes. Add spinner for button loading states (Loader2 icon with animate-spin). Show progress bars for uploads/downloads with percentage. Display contextual loading messages (\"Loading your dashboard...\"). Use optimistic UI updates where possible. Add minimum loading time (300ms) to prevent flash. Include cancel option for long operations. Implement progressive loading - show content as it arrives. Handle timeout states gracefully with retry option.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1df0c7272293d89dd80271f7e1f561c59943bf632487891108b2010451db251f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add loading spinners and skeleton screens for async operations.",
+    "detailed": "Add comprehensive loading states for all async operations. Implement skeleton screens matching content layout using animate-pulse with bg-gray-200 shapes. Add spinner for button loading states (Loader2 icon with animate-spin). Show progress bars for uploads/downloads with percentage. Display contextual loading messages (\"Loading your dashboard...\"). Use optimistic UI updates where possible. Add minimum loading time (300ms) to prevent flash. Include cancel option for long operations. Implement progressive loading - show content as it arrives. Handle timeout states gracefully with retry option.",
+    "advanced": "Add comprehensive loading states for all async operations following perceived performance principles. Implement skeleton screens matching exact content layout using animate-pulse with bg-gray-200 shapes - maintain layout stability (no CLS). Add spinner for button loading states: Loader2 icon with animate-spin, maintain button width with min-w constraint, disable button and show loading text. Show determinate progress bars for uploads/downloads with percentage and estimated time. Display contextual loading messages that reduce anxiety (\"Loading your dashboard...\", \"Almost there...\"). Implement optimistic UI: update UI immediately, rollback on error with clear feedback. Add minimum loading time (300ms) to prevent jarring flash for fast operations. Include cancel option (AbortController) for long operations with confirmation. Implement progressive/streaming loading - show content as it arrives. Handle timeout states: show message after 10s, offer retry after 30s, suggest offline mode if repeated failures. Add aria-busy and aria-live for screen reader announcements. Show skeleton for initial loads, spinner for subsequent. Consider network quality - adjust timeout thresholds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

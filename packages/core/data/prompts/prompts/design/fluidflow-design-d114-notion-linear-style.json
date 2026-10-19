@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d114-notion-linear-style",
+  "slug": "fluidflow-design-d114-notion-linear-style",
+  "title": "Notion/Linear Style",
+  "description": "FluidFlow · Notion/Linear Style",
+  "content": "Apply Notion/Linear aesthetic with productivity tool feel. Clean white/light gray backgrounds. Subtle borders and dividers. Compact information density. Keyboard shortcut hints. Minimal iconography with consistent stroke width. Hover states with light backgrounds. Inline editing patterns. Sidebar navigation with collapsible sections. Command palette integration. Focus on typography hierarchy.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d114"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bb3ffd1b7c469f8fb551ee6911246966999795c6fcf97add784cbcfe83856830",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create clean productivity app aesthetic with minimal UI, subtle borders, and keyboard-first design.",
+    "detailed": "Apply Notion/Linear aesthetic with productivity tool feel. Clean white/light gray backgrounds. Subtle borders and dividers. Compact information density. Keyboard shortcut hints. Minimal iconography with consistent stroke width. Hover states with light backgrounds. Inline editing patterns. Sidebar navigation with collapsible sections. Command palette integration. Focus on typography hierarchy.",
+    "advanced": "Apply Notion/Linear aesthetic with modern productivity patterns. Background: bg-white with subtle bg-gray-50 sections. Borders: border-gray-200, use sparingly, prefer spacing over lines. Typography: Inter or similar sans-serif, tight tracking, clear hierarchy (text-2xl font-semibold for titles, text-sm text-gray-500 for meta). Icons: consistent 20px Lucide/Heroicons, stroke-width 1.5. Buttons: minimal - text buttons with hover:bg-gray-100, primary actions with bg-gray-900 text-white. Input fields: border-0 with bg-gray-100, focus:ring-0 focus:bg-gray-200. Keyboard hints: kbd styling with bg-gray-100 border rounded px-1.5 text-xs. Lists: hover:bg-gray-50, selected:bg-blue-50. Inline editing: click-to-edit with seamless transition, no modal. Sidebar: w-60, collapsible, section headers text-xs uppercase text-gray-500, items with icons. Tables: minimal headers, row hover, inline actions. Command palette: Cmd+K, clean search with grouped results. Animations: subtle, fast (150ms), no bounce. Drag handles: appear on hover, 6-dot grip. Empty states: centered, minimal illustration, action button."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

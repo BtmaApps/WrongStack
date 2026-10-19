@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c37-add-tag-input",
+  "slug": "fluidflow-components-c37-add-tag-input",
+  "title": "Add Tag Input",
+  "description": "FluidFlow · Add Tag Input",
+  "content": "Create tag input component for entering multiple items. Container: flex flex-wrap gap-2 p-2 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500. Tags: inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm. Remove button: X icon w-4 h-4 hover:bg-blue-200 rounded-full. Input: flex-1 min-w-[120px] border-0 focus:ring-0 outline-none. Create tag on Enter or comma press. Remove last tag on Backspace when input empty. Prevent duplicates. Limit maximum tags optionally.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c37"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "178d26bf40803835ffda21faa526cac1575e885ba732d9cd430399715572cf78",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a tag/chip input for entering multiple values.",
+    "detailed": "Create tag input component for entering multiple items. Container: flex flex-wrap gap-2 p-2 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500. Tags: inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm. Remove button: X icon w-4 h-4 hover:bg-blue-200 rounded-full. Input: flex-1 min-w-[120px] border-0 focus:ring-0 outline-none. Create tag on Enter or comma press. Remove last tag on Backspace when input empty. Prevent duplicates. Limit maximum tags optionally.",
+    "advanced": "Create comprehensive tag input with autocomplete support. Container: flex flex-wrap gap-2 p-2 min-h-[44px] border rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-shadow. Tags: inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium. Tag with avatar: include small image/icon before text. Remove button: ml-1 w-4 h-4 rounded-full hover:bg-blue-200 flex items-center justify-center, X icon or × character. Input: flex-1 min-w-[150px] bg-transparent border-0 outline-none text-sm placeholder:text-gray-400. Tag creation triggers: Enter key, comma key, Tab key (configurable), blur (optional). Validation: prevent duplicates (case-insensitive), maxTags limit with message, pattern validation (email tags, etc). Autocomplete/suggestions: absolute dropdown below input showing filtered options, keyboard navigation (arrows + enter), highlight matching text. Drag to reorder: enable drag-drop to reorder tags. Tag variants: default (filled), outline (border only), different colors per tag category. Paste handling: split pasted text by comma/newline into multiple tags. Accessibility: role=\"listbox\" for suggestions, aria-selected, tags as list with role=\"list\", remove buttons have aria-label=\"Remove [tag]\". Props: value (string array), onChange, placeholder, maxTags, allowDuplicates, suggestions, onCreateTag, validateTag, disabled, delimiter. Component composition: TagInput.Root, TagInput.Tag, TagInput.Input for customization."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

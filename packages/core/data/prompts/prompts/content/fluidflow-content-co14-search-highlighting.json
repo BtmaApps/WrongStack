@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co14-search-highlighting",
+  "slug": "fluidflow-content-co14-search-highlighting",
+  "title": "Search Highlighting",
+  "description": "FluidFlow · Search Highlighting",
+  "content": "Highlight matching search terms within text content. Find matches: case-insensitive search for query in text. Highlight style: bg-yellow-200 dark:bg-yellow-800 on matching text. Multiple terms: highlight each search word. Preserve case: show original text case, not search case. HTML output: wrap matches in mark or span with highlight class. Special characters: escape regex special chars in query. Performance: efficient for large text bodies. Context: show surrounding text with matches. Fuzzy matching: optional support for typos and partial matches. Clear highlights: when search clears.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3e5d32fafa3d3014c4ccda7661bb6f51e985275ea284a9946f18d5e3734c5121",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Highlight search terms in text results.",
+    "detailed": "Highlight matching search terms within text content. Find matches: case-insensitive search for query in text. Highlight style: bg-yellow-200 dark:bg-yellow-800 on matching text. Multiple terms: highlight each search word. Preserve case: show original text case, not search case. HTML output: wrap matches in mark or span with highlight class. Special characters: escape regex special chars in query. Performance: efficient for large text bodies. Context: show surrounding text with matches. Fuzzy matching: optional support for typos and partial matches. Clear highlights: when search clears.",
+    "advanced": "Highlight matching search terms within text content for search results. Implementation: split text on matches, wrap matches in highlight element. Regex approach: create pattern with escaped query for case-insensitive matching, text.split(regex) then map with highlight on odd indices. Escape special chars: function to escape regex special characters in search query. Highlight element: mark (semantic) or span with classes, style: bg-yellow-200 text-black dark:bg-yellow-700 dark:text-white, rounded px-0.5. Multiple terms: split query by spaces, highlight each term (union into single regex or loop). React output: return array of strings and React elements. Preserve original case: use captured group in replacement to maintain original casing. Word boundary option: use word boundary matching for whole words only. Context snippets: extract ~50 chars before and after match with \"...\" for search result previews. Performance: for large texts, consider limiting highlight count or virtualizing results. Fuzzy matching: use fuzzy search library (fuse.js) for finding, then exact highlight of best matches. No matches: return original text unchanged. Security: sanitize output when rendering HTML content. Clear function: when query empty, return plain text without spans. Accessibility: mark element has implicit \"highlighted\" semantics."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c48-add-kanban-board",
+  "slug": "fluidflow-components-c48-add-kanban-board",
+  "title": "Add Kanban Board",
+  "description": "FluidFlow · Add Kanban Board",
+  "content": "Create kanban board with draggable cards. Board container: flex gap-4 overflow-x-auto p-4 min-h-screen bg-gray-100. Column: w-72 flex-shrink-0 bg-gray-200 rounded-lg p-3. Column header: flex justify-between items-center mb-3, title font-semibold, card count badge, add card button. Cards container: space-y-2 min-h-[200px]. Card: bg-white p-3 rounded shadow-sm cursor-grab hover:shadow-md transition. Card content: title, optional labels (colored badges), assignee avatar, due date. Drag: use HTML5 drag-and-drop or library like dnd-kit.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c48"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "220b7e665cb9df3a19a37fcd149d7b89ac51221923e03c9a225bd80aa88738ce",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create drag-and-drop kanban board with columns and cards.",
+    "detailed": "Create kanban board with draggable cards. Board container: flex gap-4 overflow-x-auto p-4 min-h-screen bg-gray-100. Column: w-72 flex-shrink-0 bg-gray-200 rounded-lg p-3. Column header: flex justify-between items-center mb-3, title font-semibold, card count badge, add card button. Cards container: space-y-2 min-h-[200px]. Card: bg-white p-3 rounded shadow-sm cursor-grab hover:shadow-md transition. Card content: title, optional labels (colored badges), assignee avatar, due date. Drag: use HTML5 drag-and-drop or library like dnd-kit.",
+    "advanced": "Create full kanban board with drag-drop and real-time updates. Board: horizontal scroll with snap points, columns flex-shrink-0. Column: min-w-[300px] max-w-[300px], header with title (editable on double-click), card count, WIP limit indicator, collapse toggle, add card button. Column menu: rename, set WIP limit, archive column, change color. Cards: draggable between columns and within column for reorder. Card component: shadow on drag, labels as colored dots or pills, priority indicator, assignee avatar, due date with overdue styling, comment count, attachment count, checklist progress bar. Card quick actions: hover to show edit/archive buttons. Card modal: click card to open detail modal with full description, comments, activity log, attachments, checklists. Add card: inline form at bottom of column, textarea with Ctrl+Enter to save. Drag feedback: placeholder card shows drop position, column highlights as valid drop target. Column reorder: drag column headers to reorder. Filters: top bar with assignee filter, label filter, search. Swimlanes: optional horizontal grouping by assignee or priority. Keyboard: Tab through cards, Space to pick up, arrow keys to move, Enter to drop."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

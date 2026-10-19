@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec27-recently-viewed-products",
+  "slug": "fluidflow-ecommerce-ec27-recently-viewed-products",
+  "title": "Recently Viewed Products",
+  "description": "FluidFlow · Recently Viewed Products",
+  "content": "Build recently viewed products section. Layout: horizontal scroll carousel. Products: compact cards with image, name, price, quick add button. Behavior: tracks products user has viewed, stores in localStorage. Display: show on homepage, PDP, cart page. Clear option: \"Clear History\" link. Empty state: hide section if no history. Limit: show last 10-12 products.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a2bee85c19c59a29d349f60f8bf51d57c127346766f7311c472c4833718835d1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create recently viewed products horizontal scroll section.",
+    "detailed": "Build recently viewed products section. Layout: horizontal scroll carousel. Products: compact cards with image, name, price, quick add button. Behavior: tracks products user has viewed, stores in localStorage. Display: show on homepage, PDP, cart page. Clear option: \"Clear History\" link. Empty state: hide section if no history. Limit: show last 10-12 products.",
+    "advanced": "Build recently viewed products section with persistent tracking. Section container: py-8 with header \"Recently Viewed\" or \"Continue Shopping\". Layout: horizontal scroll carousel (flex overflow-x-auto snap-x gap-4 pb-4 hide-scrollbar), or responsive grid for larger displays. Navigation: left/right arrow buttons (hidden on mobile), fade edges indicating more content. Product cards: compact variant (w-48 flex-shrink-0), aspect-square image, product name (line-clamp-2), price, optional \"Quick Add\" button on hover. Click: entire card links to product page. Tracking behavior: on product page view, add product to history (ID, timestamp, basic info), avoid duplicates (move to front if already in history), limit to last 20-30 products, debounce/throttle tracking to avoid excessive writes. Storage: localStorage with key \"recentlyViewed\", store product IDs and timestamps, fetch full product data from API or include minimal data in storage, handle storage quota exceeded gracefully. Cross-device sync: if user logged in, optionally sync to account for cross-device access. Display locations: homepage (below hero or fold), product detail pages (related products area), cart page (before checkout), empty cart page, search results when few results. Clear history: \"Clear History\" text link, confirms action, clears localStorage and hides section. Privacy consideration: note in privacy policy about local storage tracking. Empty state: completely hide section if no viewed history, or show \"No recently viewed items\" with CTA to shop. Filtering: optionally filter out current product from display on PDP, filter out out-of-stock items, filter out items already in cart. Analytics: track if user purchases from recently viewed section for recommendation optimization. Session vs persistent: toggle between session-only (sessionStorage) or persistent (localStorage) based on privacy settings. Loading: skeleton cards while fetching product details, or instant display if full data cached. Order: most recent first (left to right). Mobile: smaller cards (w-36), touch scroll with snap points. Accessibility: carousel navigable via keyboard, products focusable with clear labels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

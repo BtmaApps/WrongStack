@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d70-frost-ice-winter",
+  "slug": "fluidflow-design-d70-frost-ice-winter",
+  "title": "Frost/Ice/Winter",
+  "description": "FluidFlow · Frost/Ice/Winter",
+  "content": "Apply frost/ice aesthetic with frozen crystalline beauty. Cool color palette: ice blue, white, silver, pale purple. Frost crystal patterns on surfaces. Snowflake motifs and decorations. Translucent ice effects. Frozen texture overlays. Include icicles and snow accumulation. Sparkle and shimmer effects. Cold, magical, winter wonderland atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d70"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e5ac631ca64e85d10f6dcd3d098462ba86f36f8405ec5d54eeb4f80c7f67e338",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create frozen winter aesthetic with ice crystals, frost patterns, and cold crystalline beauty.",
+    "detailed": "Apply frost/ice aesthetic with frozen crystalline beauty. Cool color palette: ice blue, white, silver, pale purple. Frost crystal patterns on surfaces. Snowflake motifs and decorations. Translucent ice effects. Frozen texture overlays. Include icicles and snow accumulation. Sparkle and shimmer effects. Cold, magical, winter wonderland atmosphere.",
+    "advanced": "Apply frost/ice aesthetic with frozen crystalline beauty. Color palette: ice blue (#a5f2f3), white (#ffffff), silver (#c0c0c0), pale purple (#e6e6fa), deep winter blue (#1a237e), hints of aurora colors. Frost patterns: delicate crystal formations spreading across surfaces - implement with SVG fractal patterns, or pseudo-element overlays with frost texture PNG. Snowflakes: hexagonal symmetry, intricate geometric patterns, varying sizes (SVG or Unicode ❄). Ice texture: translucent layers with backdrop-blur, inner cracks and facets (thin white lines), reflective highlights. Icicles: pointed elements hanging from edges, gradient from white to translucent. Snow: accumulation on elements (white rounded shapes on tops), falling snow particles (animated). Frozen effect: elements appearing encased in ice - white tint overlay, frost edges, reduced saturation. Sparkle/shimmer: small star/diamond shapes with twinkle animation, light catching ice facets. Glass ice: clear with rainbow refraction edges (subtle rainbow shadows). Breath visibility: misty effects for extreme cold context. Typography: clean, crystalline fonts, can have frosted/glassy appearance. Winter light: cold, low angle, blue shadows, bright white highlights. Interactive: frost spreading on hover, ice cracking effects, snow disturbance. Sound suggested: ice tinkling, snow crunching. Implementation: SVG for snowflakes and frost, CSS filters for frozen effects, particles for snow. Accessibility: ensure sufficient contrast despite cool palette, snowfall respects reduced motion."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

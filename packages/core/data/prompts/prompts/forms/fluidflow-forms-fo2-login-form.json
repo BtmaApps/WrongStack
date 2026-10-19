@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo2-login-form",
+  "slug": "fluidflow-forms-fo2-login-form",
+  "title": "Login Form",
+  "description": "FluidFlow · Login Form",
+  "content": "Create secure login form with UX best practices. Fields: email (autocomplete=\"email\"), password (autocomplete=\"current-password\"). Password field: toggle visibility button (Eye/EyeOff icon). Remember me: checkbox with label. Links: \"Forgot password?\" below form. Submit button: full width, loading state. Divider: \"Or continue with\" separator line. Social login: Google, GitHub buttons with icons. Error display: generic \"Invalid credentials\" message.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "46c4ce8024eb26253f387ea6f85a7955ad4587d5a1be95bad44affff9170db15",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create login form with email, password fields and remember me checkbox.",
+    "detailed": "Create secure login form with UX best practices. Fields: email (autocomplete=\"email\"), password (autocomplete=\"current-password\"). Password field: toggle visibility button (Eye/EyeOff icon). Remember me: checkbox with label. Links: \"Forgot password?\" below form. Submit button: full width, loading state. Divider: \"Or continue with\" separator line. Social login: Google, GitHub buttons with icons. Error display: generic \"Invalid credentials\" message.",
+    "advanced": "Create secure login form with UX best practices and security considerations. Fields: email (autocomplete=\"email\", type=\"email\", autofocus on mount), password (autocomplete=\"current-password\", type=\"password\"). Password field: toggle visibility button (Eye when hidden, EyeOff when shown) positioned absolute right-3, aria-label=\"Show/Hide password\". Remember me: checkbox with label using proper htmlFor, stores preference for extended session. Links: \"Forgot password?\" link below form navigating to reset page. Submit button: full width (w-full), primary style, loading state with disabled and spinner. Form submission: prevent default, validate client-side first. Divider: \"Or continue with\" separator using flex with hr lines and centered text. Social login: Google, GitHub, Apple buttons with brand icons from lucide or SVG, outlined style, initiates OAuth flow. Error display: generic \"Invalid email or password\" message in alert banner (never reveal which field is wrong for security). Rate limiting: track failed attempts in state, disable form for 30s after 5 failures with countdown. Redirect: to returnUrl query param, dashboard, or previous page on success. Persist session: short session by default, extended if remember me checked. Accessibility: autofocus email field, Enter submits form, aria-live region announces errors to screen readers. CSRF protection if not SPA. Consider 2FA flow trigger after successful password entry."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r26-print-stylesheet",
+  "slug": "fluidflow-responsive-r26-print-stylesheet",
+  "title": "Print Stylesheet",
+  "description": "FluidFlow · Print Stylesheet",
+  "content": "Create print-friendly styles. Use print: variant in Tailwind or @media print. Hide navigation, footers, ads, interactive elements. Remove backgrounds and shadows to save ink. Ensure text contrast is sufficient for print. Expand all accordions and tabs. Convert links to show URLs after text. Break pages appropriately. Size for standard paper dimensions.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "549bfe491a38880fea3de1e2295f81b0b2dffcf9c157603e895dcc0d31b8331c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create print-friendly version of the page with responsive print styles.",
+    "detailed": "Create print-friendly styles. Use print: variant in Tailwind or @media print. Hide navigation, footers, ads, interactive elements. Remove backgrounds and shadows to save ink. Ensure text contrast is sufficient for print. Expand all accordions and tabs. Convert links to show URLs after text. Break pages appropriately. Size for standard paper dimensions.",
+    "advanced": "Create comprehensive print stylesheet. Hide: navigation (print:hidden), footers, ads, interactive elements, decorative images, buttons, form controls. Colors: force high contrast text, remove background images and colors (background: white !important). Typography: increase to print-friendly size (12-14pt), serif fonts often more readable in print. Links: add URL after link text using ::after with attr(href). Expand: show all accordion content, all tab panels, remove overflow:hidden. Page breaks: break-before-page, break-after-page, avoid breaking inside cards (break-inside: avoid). Paper size: set width for standard paper, @page { size: letter; margin: 1in; }. Headers/footers: @page { @top-center { content: \"Page title\" } }. Table handling: keep headers repeating (thead { display: table-header-group }). Images: ensure important images print, set max-width to avoid overflow. Remove: shadows, rounded corners (optional), gradients. Testing: use browser print preview, test on actual printer. Invoke: add print button that triggers window.print()."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

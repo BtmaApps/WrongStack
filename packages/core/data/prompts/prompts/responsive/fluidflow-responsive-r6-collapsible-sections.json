@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r6-collapsible-sections",
+  "slug": "fluidflow-responsive-r6-collapsible-sections",
+  "title": "Collapsible Sections",
+  "description": "FluidFlow · Collapsible Sections",
+  "content": "Convert content sections to collapsible accordions on mobile using responsive display (block md:hidden for accordion, hidden md:block for full). Add collapse/expand trigger button with ChevronDown icon that rotates (rotate-180) when open. Implement smooth height animation using grid-rows transition or max-height. Show section previews/summaries when collapsed. Keep important information visible in collapsed state. Add visual indicator of collapsed content (e.g., \"Show more\"). Use state to track open sections - allow multiple open or single-open accordion behavior. Add proper ARIA expanded states.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e33a07e86a1eaf3c157340a3c1ae7012796e169f47f137cbecd75ee73c1292e3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Convert content sections to expandable accordions on mobile screens.",
+    "detailed": "Convert content sections to collapsible accordions on mobile using responsive display (block md:hidden for accordion, hidden md:block for full). Add collapse/expand trigger button with ChevronDown icon that rotates (rotate-180) when open. Implement smooth height animation using grid-rows transition or max-height. Show section previews/summaries when collapsed. Keep important information visible in collapsed state. Add visual indicator of collapsed content (e.g., \"Show more\"). Use state to track open sections - allow multiple open or single-open accordion behavior. Add proper ARIA expanded states.",
+    "advanced": "Convert content sections to collapsible accordions on mobile using responsive display (block md:hidden for accordion, hidden md:block for full content). Add collapse/expand trigger button with ChevronDown icon that rotates (rotate-180 transition-transform duration-200) when open. Implement smooth height animation using CSS Grid (grid-template-rows: 0fr/1fr with transition) for better performance than max-height. Show meaningful section previews/summaries when collapsed - first sentence or key stats. Keep critical information visible in collapsed state - dont hide essential content. Add clear visual indicator (\"Show more\", \"+3 items\"). Use React state to track open sections - implement both allow-multiple and single-open-only modes based on content type. ACCESSIBILITY: Add aria-expanded on trigger, aria-controls pointing to content ID. Use aria-hidden on collapsed content. Make trigger a button element (not div). Support Enter/Space to toggle. Add aria-labelledby linking content to its header. Announce expansion state changes to screen readers. Maintain focus management - dont lose focus on collapse. Add prefers-reduced-motion support for animation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

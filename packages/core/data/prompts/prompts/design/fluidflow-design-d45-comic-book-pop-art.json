@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d45-comic-book-pop-art",
+  "slug": "fluidflow-design-d45-comic-book-pop-art",
+  "title": "Comic Book/Pop Art",
+  "description": "FluidFlow · Comic Book/Pop Art",
+  "content": "Apply comic book/pop art aesthetic with bold, graphic style. Use halftone dot patterns for shading. Bold black outlines on all elements. Primary colors: red, yellow, blue plus white and black. Speech bubble containers. Action words with dynamic styling (POW, ZOOM). Ben-Day dots for gradients. Panel/frame layouts. Include motion lines and impact effects. Energetic, dynamic, bold atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d45"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e9b69cb2138feca7a0426d038d6d6ec594ea225a7288304ff7bcfd6b3f0f39a9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create bold comic book style with halftone dots, speech bubbles, and dynamic action effects.",
+    "detailed": "Apply comic book/pop art aesthetic with bold, graphic style. Use halftone dot patterns for shading. Bold black outlines on all elements. Primary colors: red, yellow, blue plus white and black. Speech bubble containers. Action words with dynamic styling (POW, ZOOM). Ben-Day dots for gradients. Panel/frame layouts. Include motion lines and impact effects. Energetic, dynamic, bold atmosphere.",
+    "advanced": "Apply comic book/pop art aesthetic with bold graphic punch. Halftone dots: CSS radial-gradient creating dot patterns, or SVG filter for authentic Ben-Day dot effect. Vary dot size/density for shading. Outlines: thick black borders (border-3 to border-4 border-black) on all elements, emphasize shapes. Color palette: primary pop art colors - red (#ff3333), yellow (#ffeb3b), blue (#2196f3), plus white and black. Flat colors, no gradients (use halftone for tone variation). Speech bubbles: classic comic bubbles with tail, thought clouds, caption boxes. Styled text inside with comic fonts. Action words: POW, BAM, ZOOM with starburst backgrounds, perspective distortion, dynamic colors, rotation. Motion lines: parallel lines suggesting movement, speed streaks. Impact effects: starburst patterns, explosion shapes for emphasis. Panel layout: grid of frames like comic page, varied panel sizes for pacing. Typography: comic fonts (Bangers, Comic Neue, Badaboom BB), sound effects in display style. Character style: bold simplified forms, exaggerated expressions. Interactive: action word animations on click, panel transitions. Warhol option: repeated images in different color variations. Lichtenstein option: focus on halftone, romantic comic style. Implementation: CSS custom properties for color palette, SVG for effects. Accessibility: bold colors need contrast checking, ensure text readable over busy backgrounds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

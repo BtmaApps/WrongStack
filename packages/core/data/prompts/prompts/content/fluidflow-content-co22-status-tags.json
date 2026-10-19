@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co22-status-tags",
+  "slug": "fluidflow-content-co22-status-tags",
+  "title": "Status Tags",
+  "description": "FluidFlow · Status Tags",
+  "content": "Build status tag/badge component. States: active (green), pending (yellow), inactive (gray), error (red), info (blue). Style: pill shape with background color and matching text. Size: small (text-xs), medium (text-sm). Icon variant: optional icon before text. Outline variant: border instead of filled background. Dot prefix: colored dot before text. Capitalization: uppercase or capitalize. Custom colors: support custom color prop. Dark mode: appropriate colors for dark theme. Truncation: ellipsis for long status text. Interactive: optionally clickable with hover state.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7356ba9395701a821f1784bf747fa23fab435002f35f70e8e4c0449353e08ce9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create colored status tags for different states.",
+    "detailed": "Build status tag/badge component. States: active (green), pending (yellow), inactive (gray), error (red), info (blue). Style: pill shape with background color and matching text. Size: small (text-xs), medium (text-sm). Icon variant: optional icon before text. Outline variant: border instead of filled background. Dot prefix: colored dot before text. Capitalization: uppercase or capitalize. Custom colors: support custom color prop. Dark mode: appropriate colors for dark theme. Truncation: ellipsis for long status text. Interactive: optionally clickable with hover state.",
+    "advanced": "Build comprehensive status tag/badge component system. Semantic variants: success (green, for active/completed/approved), warning (yellow/amber, for pending/review/attention), error (red, for failed/rejected/critical), info (blue, for informational), neutral (gray, for inactive/draft/default). Styling patterns: filled (bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200), outline (border-green-300 text-green-700), subtle (bg-green-50 text-green-700). Shape: rounded-full for pill, rounded for badge. Size: xs (text-xs px-2 py-0.5), sm (text-sm px-2.5 py-0.5), md (text-sm px-3 py-1). With icon: icon before text with gap-1, icon matches status (CheckCircle for success, AlertCircle for error, Clock for pending). Dot indicator: small colored circle before text (w-2 h-2 rounded-full), works with neutral background. Capitalization: uppercase tracking-wide for emphasis, or capitalize for sentence case. Custom colors: accept color prop for special statuses not in preset variants. Dark mode: each variant has dark mode colors, use dark: prefix or CSS variables. Interactive: if clickable, add hover:bg-opacity-80, cursor-pointer, focus ring. Removable: optional X button to remove/dismiss, calls onRemove callback. Group spacing: when multiple badges, add flex gap-2. Max width: optional truncate for long labels with tooltip. Component API: <StatusTag status=\"success\" label=\"Active\" size=\"sm\" icon={CheckCircle} />."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

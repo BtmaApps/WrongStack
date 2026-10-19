@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c57-add-image-cropper",
+  "slug": "fluidflow-components-c57-add-image-cropper",
+  "title": "Add Image Cropper",
+  "description": "FluidFlow · Add Image Cropper",
+  "content": "Create image crop component. Container: relative inline-block. Image: max-w-full. Crop area: absolute border-2 border-white border-dashed, draggable and resizable. Handles: corner squares for resize. Dimmed area: overlay outside crop zone with bg-black/50. Controls: aspect ratio selector (1:1, 16:9, 4:3, free), zoom slider, rotation buttons. Actions: Cancel and Apply buttons.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c57"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a46f1a92cbe3026a34bb6a87b6735d5086e6e60224ff58d3370e6997d1b18a8d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create image cropper for profile photos with aspect ratio.",
+    "detailed": "Create image crop component. Container: relative inline-block. Image: max-w-full. Crop area: absolute border-2 border-white border-dashed, draggable and resizable. Handles: corner squares for resize. Dimmed area: overlay outside crop zone with bg-black/50. Controls: aspect ratio selector (1:1, 16:9, 4:3, free), zoom slider, rotation buttons. Actions: Cancel and Apply buttons.",
+    "advanced": "Create full-featured image cropper. Image input: drag-drop zone or file input, accepts jpg/png/gif, validates size/dimensions. Preview: display selected image centered, pinch-zoom on mobile. Crop overlay: draggable crop area, resize handles on corners and edges, maintain aspect ratio when Shift held. Aspect ratios: 1:1 (profile), 16:9 (cover), 4:3 (post), 9:16 (story), free form. Grid overlay: optional rule-of-thirds grid inside crop area. Zoom: slider control 1x-3x, scroll wheel zoom, pinch-zoom. Pan: drag image when zoomed. Rotation: slider -180 to 180 degrees, or quick buttons for 90° increments. Flip: horizontal and vertical flip buttons. Filters: optional basic filters (brightness, contrast, saturation sliders). Preview: live preview of cropped result. Output options: format (jpg/png), quality slider, max dimensions. Export: getCroppedImage() returns Blob/base64. Reset: restore to original. Keyboard: arrow keys for fine position adjustment. Touch support: gesture handling for mobile. Accessibility: all controls keyboard accessible, live region announces changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

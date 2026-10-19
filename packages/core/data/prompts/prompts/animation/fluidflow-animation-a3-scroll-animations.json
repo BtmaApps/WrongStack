@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a3-scroll-animations",
+  "slug": "fluidflow-animation-a3-scroll-animations",
+  "title": "Scroll Animations",
+  "description": "FluidFlow · Scroll Animations",
+  "content": "Add scroll-triggered reveal animations using Intersection Observer API. Create reusable animation component that observes element visibility. Default animation: fade up (opacity-0 translate-y-4 to opacity-100 translate-y-0). Add variants: fade-left, fade-right, scale-up, blur-in. Trigger when element is 20% visible (threshold: 0.2). Add stagger delays for grouped elements (delay-100, delay-200, delay-300). Use once option to animate only on first scroll. Implement parallax speed variations for layered depth. Add progress-based animations that animate as user scrolls through section. Respect prefers-reduced-motion - use simple fade or no animation.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2b959e3d2dc365e1a5d4d8c39fcd91b64fa8d4666e79fb1105551946d4fe0da1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add fade-in animations when elements scroll into view.",
+    "detailed": "Add scroll-triggered reveal animations using Intersection Observer API. Create reusable animation component that observes element visibility. Default animation: fade up (opacity-0 translate-y-4 to opacity-100 translate-y-0). Add variants: fade-left, fade-right, scale-up, blur-in. Trigger when element is 20% visible (threshold: 0.2). Add stagger delays for grouped elements (delay-100, delay-200, delay-300). Use once option to animate only on first scroll. Implement parallax speed variations for layered depth. Add progress-based animations that animate as user scrolls through section. Respect prefers-reduced-motion - use simple fade or no animation.",
+    "advanced": "Add scroll-triggered reveal animations using Intersection Observer API for engaging storytelling. Create reusable ScrollReveal component: accepts children, animation variant, threshold, delay props. Observer setup: new IntersectionObserver with configurable threshold (default 0.2 = 20% visible), rootMargin for early trigger (\"-50px\"). Animation variants: fade-up (opacity-0 translate-y-8 to visible), fade-left/right (translate-x-8), scale-up (scale-95), blur-in (blur-sm to blur-0), clip-reveal (clip-path animation). Initial state: set via CSS class, remove class when observed to trigger transition. Stagger groups: parent component passes index to children, each child calculates delay: style={{transitionDelay: `${index * 100}ms`}}. Once option: observer.unobserve(entry.target) after first intersection. Progress-based animations: calculate scroll progress through section (0-1), use for parallax, progress bars, fade intensity - update in scroll event with requestAnimationFrame. Parallax layers: different translateY speeds based on data-speed attribute. Performance optimization: use CSS transitions not JS animation, batch DOM reads/writes, throttle scroll handlers to 60fps. Intersection Observer threshold array [0, 0.25, 0.5, 0.75, 1] for progress tracking. ACCESSIBILITY: @media (prefers-reduced-motion: reduce) { .scroll-animate { transition: opacity 0.3s; transform: none !important; }} - provide simple fade or instant appearance. Mobile: consider disabling complex animations on touch devices for battery. Debug: add outline during development to visualize observed elements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec10-quantity-selector",
+  "slug": "fluidflow-ecommerce-ec10-quantity-selector",
+  "title": "Quantity Selector",
+  "description": "FluidFlow · Quantity Selector",
+  "content": "Create quantity selector input component. Structure: horizontal group with minus button, input, plus button. Buttons: w-10 h-10, Minus and Plus icons. Input: text-center, w-12. Styling: border rounded-lg, buttons with hover:bg-gray-100. Increment/decrement: plus adds 1, minus subtracts 1. Boundaries: minimum 1 (disable minus), maximum based on stock (disable plus). Direct input: allow typing, validate on blur.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "afcdfc91a3b5030ea73fb2130175063930342c3a49944366ff902e4235c8ff42",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create quantity input with plus/minus buttons.",
+    "detailed": "Create quantity selector input component. Structure: horizontal group with minus button, input, plus button. Buttons: w-10 h-10, Minus and Plus icons. Input: text-center, w-12. Styling: border rounded-lg, buttons with hover:bg-gray-100. Increment/decrement: plus adds 1, minus subtracts 1. Boundaries: minimum 1 (disable minus), maximum based on stock (disable plus). Direct input: allow typing, validate on blur.",
+    "advanced": "Create quantity selector input component with validation and stock awareness. Structure: inline-flex items-center with border rounded-lg overflow-hidden. Minus button: w-10 h-10 flex items-center justify-center, Minus icon (w-4 h-4), hover:bg-gray-100 transition, disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent. Input: text-center w-14 border-x border-gray-200 font-medium, type=\"text\" with numeric validation (pattern=\"[0-9]*\" inputMode=\"numeric\"), remove spinner for type=\"number\". Plus button: same styling as minus with Plus icon. Overall styling: border border-gray-200 rounded-lg, focus-within:ring-2 focus-within:ring-black. Increment/decrement: plus adds 1, minus subtracts 1, with onClick handlers updating state. Boundaries: minimum 1 (disable minus button with disabled prop when value=1), maximum based on stock (disable plus when value=maxStock). Show \"Max\" indicator when at maximum. Direct input: allow typing quantity, validate on blur (parseInt, clamp between min and max), clear invalid input and reset to 1. Stock limit display: optional \"Max 10\" text label or tooltip on disabled plus. Update handling: for cart integration, debounce API calls (300ms), show optimistic UI update immediately, revert on error with toast notification. Loading state: subtle spinner or opacity during save. Delete on zero: option to trigger item removal if decremented below 1, show confirmation (\"Remove item?\" with Undo). Compact variant: smaller dimensions (w-8 h-8 buttons, w-10 input) for cart line items. Dropdown variant: for wholesale/bulk, use select dropdown with preset quantities (1, 5, 10, 25, 50). Keyboard: arrow up/down to increment/decrement when input focused, support keyboard navigation. Accessibility: group with aria-label \"Quantity\", buttons have aria-label \"Decrease quantity\" / \"Increase quantity\", input has aria-valuenow, aria-valuemin, aria-valuemax. Mobile: ensure adequate touch targets (44x44 minimum)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

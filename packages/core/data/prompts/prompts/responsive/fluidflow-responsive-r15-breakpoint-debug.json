@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r15-breakpoint-debug",
+  "slug": "fluidflow-responsive-r15-breakpoint-debug",
+  "title": "Breakpoint Debug",
+  "description": "FluidFlow · Breakpoint Debug",
+  "content": "Add development-only breakpoint indicator showing current viewport size. Fixed position badge in corner (fixed bottom-4 right-4). Display current breakpoint: default/sm/md/lg/xl/2xl. Show viewport dimensions in pixels. Color-code by breakpoint for quick identification. Only show in development mode. Remove or hide in production builds.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f3336f30ca9880ae2d1f8a0c340e26e332b0aa32f2aa78118b3234b89916f504",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add visual breakpoint indicator for responsive development debugging.",
+    "detailed": "Add development-only breakpoint indicator showing current viewport size. Fixed position badge in corner (fixed bottom-4 right-4). Display current breakpoint: default/sm/md/lg/xl/2xl. Show viewport dimensions in pixels. Color-code by breakpoint for quick identification. Only show in development mode. Remove or hide in production builds.",
+    "advanced": "Add development-only breakpoint indicator for responsive debugging. Position: fixed bottom-4 right-4 z-[9999]. Display: show active breakpoint name and pixel dimensions. Implementation: use Tailwind responsive classes with content in pseudo-elements or conditional rendering. Show: block sm:hidden for xs indicator, hidden sm:block md:hidden for sm, etc. Dimensions: use window.innerWidth/Height, update on resize. Color coding: each breakpoint has distinct background color for instant recognition. Production: use process.env.NODE_ENV check to exclude from production, or use Tailwind debug-screens plugin. Additional info: optional toggle to show more details (container width, device pixel ratio). Accessibility: mark as decorative (aria-hidden=\"true\"), no interaction. Performance: debounce resize handler, use resize observer for efficiency. Bonus: highlight elements with responsive classes on hover, show applied breakpoint-specific styles."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

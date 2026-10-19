@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c70-add-masonry-grid",
+  "slug": "fluidflow-components-c70-add-masonry-grid",
+  "title": "Add Masonry Grid",
+  "description": "FluidFlow · Add Masonry Grid",
+  "content": "Create masonry grid. Container: columns-2 md:columns-3 lg:columns-4 gap-4. Item: break-inside-avoid mb-4. Card: bg-white rounded-lg overflow-hidden shadow. Image: w-full, variable height based on aspect ratio. Content: p-4 with title and description. Hover: scale-105 transition on card.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c70"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f4ee7bc5882d2b938c93d27d109c23af400a3292d1a2135e18da985b49a50d73",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Pinterest-style masonry layout for images or cards.",
+    "detailed": "Create masonry grid. Container: columns-2 md:columns-3 lg:columns-4 gap-4. Item: break-inside-avoid mb-4. Card: bg-white rounded-lg overflow-hidden shadow. Image: w-full, variable height based on aspect ratio. Content: p-4 with title and description. Hover: scale-105 transition on card.",
+    "advanced": "Create responsive masonry layout. Implementation options: CSS columns (simple), CSS Grid with grid-row span (more control), or JS library (masonry-layout, react-masonry-css) for complex cases. Column count: responsive breakpoints (2 on mobile, 3 on tablet, 4+ on desktop). Gap: consistent spacing between items. Item sizing: items have natural/intrinsic height, images maintain aspect ratio. Lazy loading: images load as they scroll into view, skeleton placeholder. Loading new items: append to grid, animate entrance. Filtering: show/hide items by category with re-layout animation. Infinite scroll: load more items, integrate with scroll detection. Click interaction: open lightbox for images, or modal for detailed view. Hover effects: overlay with actions (save, share, view), slight zoom. Card content: image, title, description, author avatar, stats (likes, comments). Responsive images: srcset for different sizes, optimize for column width. Accessibility: grid landmark, proper image alt text, keyboard navigation. Performance: virtualize if hundreds of items, use content-visibility for off-screen items. Image error handling: fallback image or placeholder."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

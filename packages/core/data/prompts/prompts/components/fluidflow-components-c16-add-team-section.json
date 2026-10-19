@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c16-add-team-section",
+  "slug": "fluidflow-components-c16-add-team-section",
+  "title": "Add Team Section",
+  "description": "FluidFlow · Add Team Section",
+  "content": "Build team members grid section. Card layout: image (aspect-square or 4:3, object-cover), name (font-semibold), role/title (text-gray-600), short bio (optional), social links row. Grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8. Image hover: slight zoom or grayscale to color transition. Social icons: LinkedIn, Twitter, Email with hover color effects. Layout variants: centered card, left-aligned, horizontal card with image left. Add filtering by department/team for large organizations. Leadership section separate with larger cards. Linking to individual profile pages. Include \"Join our team\" CTA card at end. Skeleton loading state for images.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "781cbb21732dec9c3fd5c6747e6c81c7bd576d54a43e0de4061a23c064a38782",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a team members grid with photos, names, and roles.",
+    "detailed": "Build team members grid section. Card layout: image (aspect-square or 4:3, object-cover), name (font-semibold), role/title (text-gray-600), short bio (optional), social links row. Grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8. Image hover: slight zoom or grayscale to color transition. Social icons: LinkedIn, Twitter, Email with hover color effects. Layout variants: centered card, left-aligned, horizontal card with image left. Add filtering by department/team for large organizations. Leadership section separate with larger cards. Linking to individual profile pages. Include \"Join our team\" CTA card at end. Skeleton loading state for images.",
+    "advanced": "Build team members grid section with social links and interactive effects. Container: max-w-7xl mx-auto px-4 py-16. Section header: text-center, \"Meet Our Team\" h2, optional subtitle. Grid layout: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8. Card structure: bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow. Image container: aspect-square relative overflow-hidden. Image: w-full h-full object-cover, hover effects (group-hover:scale-105 transition-transform duration-300, or grayscale group-hover:grayscale-0 transition). Content area: p-5 text-center (or text-left for variant). Name: font-semibold text-lg text-gray-900. Role: text-sm text-gray-500 mt-1. Bio: text-sm text-gray-600 mt-3 line-clamp-3 (optional). Social links: flex justify-center gap-3 mt-4, icon buttons (Linkedin, Twitter, Mail) with text-gray-400 hover:text-blue-600 transition-colors. Layout variants: 1) Card centered: all text centered, 2) Card left-aligned: text-left, 3) Horizontal: flex-row with image left (w-24 h-24), content right. Leadership section: separate grid above with larger cards (lg:grid-cols-2 or lg:grid-cols-3), more prominent styling. Department filtering: tabs or dropdown to filter by team (Engineering, Design, Marketing), fade animation on filter change. CTA card: final card position with \"Join Our Team\" message, careers link, different styling (border-dashed, bg-gray-50). Link to profile: card or name clickable linking to full profile page. Image loading: skeleton placeholder with animate-pulse bg-gray-200, fade in image on load. Empty image fallback: colored background with initials. ACCESSIBILITY: alt text on images, social links with aria-labels, proper heading hierarchy."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac23-drag-and-drop-a11y",
+  "slug": "fluidflow-accessibility-ac23-drag-and-drop-a11y",
+  "title": "Drag and Drop A11y",
+  "description": "FluidFlow · Drag and Drop A11y",
+  "content": "Make drag and drop functionality accessible. Keyboard alternative: arrow keys to move item, Enter to drop. Reorder buttons: up/down move buttons visible on focus. Grab/drop state: aria-grabbed (deprecated, use aria-describedby for instructions). Instructions: announce how to use keyboard reordering. Live announcements: \"Grabbed item 3\", \"Moved to position 2\", \"Dropped\". Focus management: maintain focus on moved item. Touch: adequate touch targets for drag handles. Selection mode: alternative method using checkboxes and move action. Context: provide clear visual feedback during drag. Test: complete reordering tasks with keyboard only.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fb28c17a6aaa846187321fe5550970eca6ebc3fe8bdeffb69d8195fe1c929c05",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Provide accessible alternatives to drag and drop interactions.",
+    "detailed": "Make drag and drop functionality accessible. Keyboard alternative: arrow keys to move item, Enter to drop. Reorder buttons: up/down move buttons visible on focus. Grab/drop state: aria-grabbed (deprecated, use aria-describedby for instructions). Instructions: announce how to use keyboard reordering. Live announcements: \"Grabbed item 3\", \"Moved to position 2\", \"Dropped\". Focus management: maintain focus on moved item. Touch: adequate touch targets for drag handles. Selection mode: alternative method using checkboxes and move action. Context: provide clear visual feedback during drag. Test: complete reordering tasks with keyboard only.",
+    "advanced": "Make drag and drop functionality accessible with keyboard and screen reader support. Alternative interaction patterns: 1) Arrow keys while focused move item (up/down for lists, arrows for grids), 2) Visible reorder buttons (up/down arrows) appear on focus/hover, 3) Selection mode with checkboxes plus Move To action, 4) Input field to specify position directly. Instructions: aria-describedby linking to instructions text (\"Press space to grab, arrows to move, space to drop\"). Announcing state changes: live region announces \"Picked up [item name]\", \"Moved to position 3 of 7\", \"Dropped [item name] in position 3\". Focus management: focus remains on item throughout drag operation, item stays focused after drop. Implementation: track isDragging state, keydown handler for space (pick up/drop) and arrows (move), update position in list, announce changes. Library: dnd-kit, react-beautiful-dnd, @dnd-kit/accessibility have built-in a11y support. Visual feedback: clear indication of grabbed state, drop target highlighting, position preview. Mouse/touch DnD: still works normally, a11y is additive. Handle indicators: visible drag handle icon, adequate size for touch. aria-grabbed deprecated: don't use, instead rely on instructions and announcements. Multi-item selection: accessible multi-select then batch move. Testing: reorder list items using only keyboard, verify announcements describe what happened."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

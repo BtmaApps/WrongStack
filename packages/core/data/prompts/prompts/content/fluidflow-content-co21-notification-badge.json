@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co21-notification-badge",
+  "slug": "fluidflow-content-co21-notification-badge",
+  "title": "Notification Badge",
+  "description": "FluidFlow · Notification Badge",
+  "content": "Create notification badge component. Position: absolute top-right corner of parent element. Size: small circle (w-5 h-5) with number inside. Number format: show count, max \"99+\". Colors: red for alerts, blue for info, gray for neutral. Dot variant: simple dot without number for presence. Animation: subtle pulse or scale on update. Parent: relative container for absolute positioning. Hide when zero: optionally hide when count is 0. Accessibility: screen reader text describing count. Multiple variants: inline badge for text, icon overlay, tab badges.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8096cc12ad04c15c802c44717f5eb531e8327d360b4c4cd0bc51a7d456166d69",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add notification count badges to icons and buttons.",
+    "detailed": "Create notification badge component. Position: absolute top-right corner of parent element. Size: small circle (w-5 h-5) with number inside. Number format: show count, max \"99+\". Colors: red for alerts, blue for info, gray for neutral. Dot variant: simple dot without number for presence. Animation: subtle pulse or scale on update. Parent: relative container for absolute positioning. Hide when zero: optionally hide when count is 0. Accessibility: screen reader text describing count. Multiple variants: inline badge for text, icon overlay, tab badges.",
+    "advanced": "Create versatile notification badge component system. Badge types: count (numeric), dot (presence indicator), text (status label). Positioning: absolute relative to parent, typically -top-1 -right-1 for icon overlays, configurable corners. Size variants: small (dot only, w-2 h-2), medium (w-5 h-5 text-xs), large (min-w-6 h-6 px-1.5 text-sm). Number formatting: display count directly for 1-99, show \"99+\" for higher, or K abbreviation for thousands. Color variants: red/destructive (bg-red-500) for alerts/errors, blue/primary for general notifications, green for positive, gray for neutral/read. Dot indicator: simple circle without text, for unread state or online presence. Animation: animate-pulse on new notifications, scale-up on mount, shake for attention. Conditionally show: hide completely when count is 0, or show muted/gray 0. Parent setup: relative on parent, badge position absolute. Inline variant: badge next to text (inline-flex), not overlapping icon. Icon + badge: Bell or MessageSquare icon with overlaid badge. Tab badges: badge in navigation tabs, smaller and aligned. Accessibility: aria-label or sr-only text (\"5 unread notifications\"), badge should not be only way to convey critical info. Update indication: when count increases, animation draws attention. Max width: for very large numbers, set max-width and truncate or abbreviate."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

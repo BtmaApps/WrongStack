@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo18-otp-verification-code",
+  "slug": "fluidflow-forms-fo18-otp-verification-code",
+  "title": "OTP/Verification Code",
+  "description": "FluidFlow · OTP/Verification Code",
+  "content": "Build OTP input with individual digit boxes. Structure: 4-6 separate input boxes in row. Auto-advance: move to next box on input. Backspace: move to previous box on delete. Paste: handle pasting full code, distribute digits. Focus: focus first empty box on click anywhere. Styling: larger inputs, centered text, focus ring. Auto-submit: optionally submit when all filled. Resend: countdown timer with resend button.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ce92616d90bf86d0149c11d5e4a667f9a31bed6232a471a305b8d2f350838402",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create OTP input with separate boxes for each digit.",
+    "detailed": "Build OTP input with individual digit boxes. Structure: 4-6 separate input boxes in row. Auto-advance: move to next box on input. Backspace: move to previous box on delete. Paste: handle pasting full code, distribute digits. Focus: focus first empty box on click anywhere. Styling: larger inputs, centered text, focus ring. Auto-submit: optionally submit when all filled. Resend: countdown timer with resend button.",
+    "advanced": "Build comprehensive OTP verification code input. Structure: 4 or 6 individual input boxes (configurable), flex row with gap-2 or gap-3 between boxes. Individual inputs: w-12 h-14 (or similar), text-center, text-2xl font-mono, border rounded-lg, focus:ring-2. Auto-advance: on input, automatically focus next empty box, on paste distribute digits across boxes. Backspace handling: on empty box backspace, focus previous box, delete that digit. Paste support: intercept paste event, extract digits, fill boxes left to right, focus appropriate next box. Click behavior: click on container focuses first empty box or last filled box. Numeric only: filter non-digit input, inputmode=\"numeric\", pattern=\"[0-9]*\" for iOS. Auto-submit: when all boxes filled, automatically trigger submit/verify action (optional, configurable). Error state: red border on all boxes if code incorrect, shake animation, clear boxes for retry. Success state: green borders, checkmark animation before redirect. Countdown timer: \"Resend code in 00:30\" with live countdown. Resend button: appears when timer hits 0, \"Resend code\" button, disable during request, restart timer on resend. Rate limiting: track resend attempts, show warning after too many. Accessibility: aria-label on container describing purpose, live region announcing errors. Expiry: show code expiration time (\"Code expires in 10 minutes\"). Loading state: disable inputs during verification, show spinner. Masked input: optionally mask digits after entry for security (show dots). Voice input: allow voice-to-text for accessibility. Cleanup: clear on component unmount to prevent stale data."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la1-landing-page",
+  "slug": "fluidflow-layouts-la1-landing-page",
+  "title": "Landing Page",
+  "description": "FluidFlow · Landing Page",
+  "content": "Create complete landing page structure. Hero section: full viewport height, headline (text-5xl md:text-6xl font-bold), subheadline, dual CTA buttons, hero image. Trust bar: logos of customers/press mentions. Features section: 3-4 feature cards in grid with icons, titles, descriptions. Testimonials: carousel or grid of customer quotes. Pricing: 3 tier cards. FAQ: accordion questions. Final CTA: full-width banner. Footer: links, social icons. Mobile-responsive.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0f9386247e0fa4e155f2b95dc756064df461b483846d112f276e7839c9ef239f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create landing page with hero section, features grid, testimonials, and CTA.",
+    "detailed": "Create complete landing page structure. Hero section: full viewport height, headline (text-5xl md:text-6xl font-bold), subheadline, dual CTA buttons, hero image. Trust bar: logos of customers/press mentions. Features section: 3-4 feature cards in grid with icons, titles, descriptions. Testimonials: carousel or grid of customer quotes. Pricing: 3 tier cards. FAQ: accordion questions. Final CTA: full-width banner. Footer: links, social icons. Mobile-responsive.",
+    "advanced": "Create complete landing page structure with all essential sections. Hero section: min-h-screen or h-[90vh], flex items-center. Content: headline (text-4xl sm:text-5xl md:text-6xl font-bold leading-tight), subheadline (text-xl text-gray-600 max-w-2xl), dual CTA buttons (primary filled, secondary outline), hero image or illustration (positioned right or below on mobile). Background: gradient, pattern, or image with overlay. Trust bar: logos of customers/press mentions in grayscale (filter grayscale opacity-60), flex justify-center gap-8 md:gap-12, \"Trusted by\" label. Features section: py-20 bg-gray-50. Section heading centered. Grid of 3-4 feature cards (grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8). Each card: icon in colored circle, title (text-xl font-semibold), description (text-gray-600). How it works: numbered steps (1, 2, 3) with icons, titles, explanations, connected by lines or arrows. Benefits: alternating left/right image+text sections (flex-row-reverse for alternate). Testimonials: carousel or grid of customer quotes with photos, names, titles, company logos, star ratings. Pricing section: 3 tier cards (Basic, Pro, Enterprise) with monthly/annual toggle, features list with check/x icons, highlighted \"Popular\" tier, CTA per tier. FAQ: accordion style with ChevronDown icon, common questions. Final CTA: full-width colored banner (bg-gradient-to-r), compelling headline, single prominent button. Footer: multi-column links (Product, Company, Resources, Legal), social icons, newsletter signup input, copyright. Navigation: sticky header with logo, nav links, CTA button, mobile hamburger menu. Smooth scroll: scroll-smooth on html, anchor links to sections. Mobile-responsive: stack layouts, adjust typography sizes, collapsible nav. Animation: sections fade-in on scroll using IntersectionObserver."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

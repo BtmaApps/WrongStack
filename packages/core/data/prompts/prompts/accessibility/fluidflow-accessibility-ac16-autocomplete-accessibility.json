@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac16-autocomplete-accessibility",
+  "slug": "fluidflow-accessibility-ac16-autocomplete-accessibility",
+  "title": "Autocomplete Accessibility",
+  "description": "FluidFlow · Autocomplete Accessibility",
+  "content": "Implement accessible autocomplete following combobox pattern. Structure: input with role=\"combobox\", listbox popup with role=\"listbox\". States: aria-expanded=\"true|false\" on input, aria-activedescendant pointing to highlighted option. Options: role=\"option\" with aria-selected on selected item. Keyboard: down arrow opens and navigates, up arrow navigates, Enter selects, Escape closes. Announce: selection changes to screen reader. Live region: announce result count (\"5 results available\"). Clear button: accessible label. No results: announce \"No results found\" message.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f133c4055c1d7b0fdc9460e46125815ec9755386dd63cdb601e39a8d6decdbfc",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Make autocomplete/combobox components fully accessible.",
+    "detailed": "Implement accessible autocomplete following combobox pattern. Structure: input with role=\"combobox\", listbox popup with role=\"listbox\". States: aria-expanded=\"true|false\" on input, aria-activedescendant pointing to highlighted option. Options: role=\"option\" with aria-selected on selected item. Keyboard: down arrow opens and navigates, up arrow navigates, Enter selects, Escape closes. Announce: selection changes to screen reader. Live region: announce result count (\"5 results available\"). Clear button: accessible label. No results: announce \"No results found\" message.",
+    "advanced": "Implement accessible autocomplete following WAI-ARIA Combobox pattern. Input element: role=\"combobox\", aria-autocomplete=\"list\" (or \"both\" if also completes), aria-haspopup=\"listbox\", aria-expanded=\"true|false\", aria-controls=\"listbox-id\", aria-activedescendant=\"option-id\" (currently highlighted). Listbox element: role=\"listbox\", id matching aria-controls, rendered below input when expanded. Options: role=\"option\", unique id for aria-activedescendant, aria-selected=\"true\" on currently selected item (if any). Keyboard navigation: down arrow opens listbox if closed and highlights first option, up/down arrows move highlight through options, Enter selects highlighted option and closes, Escape closes without selection, Tab closes and moves focus. Mouse: clicking option selects it, hovering highlights. Visual highlight: clear highlight styling on active option. Live announcements: aria-live region announces result count (\"5 suggestions available\", \"No results\"), optionally announce highlighted option. Clear button: visible when input has value, aria-label=\"Clear search\" or similar. Loading state: announce when searching (\"Searching...\"), show spinner. Grouping: optgroup pattern with role=\"group\" and aria-label if options are grouped. No results: visible \"No results found\" message, announced via live region. Implementation: consider Downshift, React-Aria, or Radix UI for battle-tested implementations. Testing: navigate with keyboard only, test with screen reader, verify all states announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

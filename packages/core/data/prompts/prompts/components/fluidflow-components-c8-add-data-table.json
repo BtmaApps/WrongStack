@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c8-add-data-table",
+  "slug": "fluidflow-components-c8-add-data-table",
+  "title": "Add Data Table",
+  "description": "FluidFlow · Add Data Table",
+  "content": "Build feature-rich data table component. Structure: wrapper with overflow-x-auto for horizontal scroll. Table with w-full, proper thead/tbody separation. Sticky header option (sticky top-0). Column features: sortable (click header to sort, show arrow indicators), resizable (drag border), hideable (column visibility menu). Add row selection with checkbox column, select all in header. Implement pagination: page numbers, prev/next, items per page selector, showing X-Y of Z items. Search/filter input above table. Row actions column with dropdown menu. Zebra striping (even:bg-gray-50) or hover highlight. Loading state with skeleton rows. Empty state with message and action. Export functionality.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "98b8d4f8ce5b2c8aaf0fcfeb78a58bc7dc23b833294e4d901d5e2b866f514a66",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a data table with sorting and pagination.",
+    "detailed": "Build feature-rich data table component. Structure: wrapper with overflow-x-auto for horizontal scroll. Table with w-full, proper thead/tbody separation. Sticky header option (sticky top-0). Column features: sortable (click header to sort, show arrow indicators), resizable (drag border), hideable (column visibility menu). Add row selection with checkbox column, select all in header. Implement pagination: page numbers, prev/next, items per page selector, showing X-Y of Z items. Search/filter input above table. Row actions column with dropdown menu. Zebra striping (even:bg-gray-50) or hover highlight. Loading state with skeleton rows. Empty state with message and action. Export functionality.",
+    "advanced": "Build feature-rich data table component with sorting, filtering, pagination, and selection. Wrapper: div with overflow-x-auto for responsive horizontal scroll. Table: w-full border-collapse. Thead: sticky top-0 bg-white z-10 shadow-sm (when scrolling). Th cells: px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider, border-b. Sortable headers: cursor-pointer hover:bg-gray-50, click toggles sort (asc → desc → none), show ChevronUp/Down icons with active state highlighting. Tbody: divide-y divide-gray-200. Td cells: px-4 py-4 whitespace-nowrap text-sm. Row styles: hover:bg-gray-50 or zebra striping even:bg-gray-50. Row selection: checkbox column, controlled selection state (Set of IDs), select all checkbox in header with indeterminate state for partial selection. Bulk actions bar: appears when items selected, shows count and action buttons. Pagination: separate component below table, shows \"Showing X-Y of Z results\", page number buttons with ellipsis, prev/next with ChevronLeft/Right, items per page dropdown (10, 25, 50, 100). Search/filter: input above table with Search icon, debounced filtering, column-specific filters optional. Column features: resizable (drag border with cursor-col-resize), hideable (column visibility dropdown with checkboxes). Row actions: last column with MoreVertical icon dropdown menu (Edit, Delete, etc.). Expandable rows: click to expand and show additional details below row. Loading state: skeleton rows or overlay spinner. Empty state: full-width message with illustration and action button. Export: button to download CSV/Excel with current filter applied. Responsive: cards view option on mobile instead of table. ACCESSIBILITY: proper table semantics, scope on headers, aria-sort for sortable columns, checkbox labels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

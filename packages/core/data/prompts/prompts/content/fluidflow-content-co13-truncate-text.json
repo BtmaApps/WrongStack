@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co13-truncate-text",
+  "slug": "fluidflow-content-co13-truncate-text",
+  "title": "Truncate Text",
+  "description": "FluidFlow · Truncate Text",
+  "content": "Implement text truncation with show more/less toggle. CSS truncation: line-clamp-3 for multi-line, truncate for single line. JavaScript truncation: cut at character/word limit, add \"...\". Show more button: expands to full text, changes to \"Show less\". Word boundary: do not cut words in middle. Character count: show remaining characters. Animate: smooth height transition on expand/collapse. Read more link: inline \"...read more\" link. Handle HTML content: truncate safely without breaking tags. Preserve formatting: maintain paragraphs and line breaks when expanded.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "22305d2547521b68fad77f537a58df7ae1bf5538cd324431a0af2a101ae79d38",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add text truncation with ellipsis and expand/collapse toggle.",
+    "detailed": "Implement text truncation with show more/less toggle. CSS truncation: line-clamp-3 for multi-line, truncate for single line. JavaScript truncation: cut at character/word limit, add \"...\". Show more button: expands to full text, changes to \"Show less\". Word boundary: do not cut words in middle. Character count: show remaining characters. Animate: smooth height transition on expand/collapse. Read more link: inline \"...read more\" link. Handle HTML content: truncate safely without breaking tags. Preserve formatting: maintain paragraphs and line breaks when expanded.",
+    "advanced": "Implement text truncation with expand/collapse and proper handling. CSS-only truncation: single line with truncate (text-overflow: ellipsis, overflow: hidden, white-space: nowrap), multi-line with line-clamp-N (display: -webkit-box, -webkit-line-clamp: N, -webkit-box-orient: vertical). JavaScript truncation: for dynamic control or server rendering. Word boundary: find last space before character limit, cut there to avoid mid-word truncation. Show more/less: button or link toggles between truncated and full, state tracked in useState. Inline \"read more\": \"...read more\" at end of truncated text, same element. Animation: CSS transition on max-height from truncated to scrollHeight, or use grid-template-rows trick for smooth height animation. Character/word count: optional display of remaining content (\"...and 234 more characters\"). HTML-safe truncation: if content has HTML, use DOM parser to truncate without breaking tags, or strip HTML first. Line counting: for precise line limits in JS, measure element height vs line-height, or use ResizeObserver. Preserve formatting: when expanded, maintain original paragraphs, line breaks, lists. Component API: <TruncatedText text={content} lines={3} showToggle /> or <TruncatedText maxLength={200} />. Accessibility: expanded state via aria-expanded on toggle, full text available to screen readers. Performance: virtualize very long content even when expanded."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

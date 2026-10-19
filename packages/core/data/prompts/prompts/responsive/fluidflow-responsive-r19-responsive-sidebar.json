@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r19-responsive-sidebar",
+  "slug": "fluidflow-responsive-r19-responsive-sidebar",
+  "title": "Responsive Sidebar",
+  "description": "FluidFlow · Responsive Sidebar",
+  "content": "Build responsive sidebar navigation. Mobile: hidden by default, slide-in overlay on hamburger click, fixed inset-y-0 left-0, dark backdrop behind. Tablet: collapsible to icons-only (w-16) with expand on hover. Desktop: always visible, fixed width (w-64). Use breakpoints: lg:block for persistent sidebar, hidden lg:flex for hamburger. Handle main content offset on desktop.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "86baebf1d6358087a377f63eabcaac3ae284752510d6708c2e7d38faa85322a2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create sidebar that adapts from overlay on mobile to fixed on desktop.",
+    "detailed": "Build responsive sidebar navigation. Mobile: hidden by default, slide-in overlay on hamburger click, fixed inset-y-0 left-0, dark backdrop behind. Tablet: collapsible to icons-only (w-16) with expand on hover. Desktop: always visible, fixed width (w-64). Use breakpoints: lg:block for persistent sidebar, hidden lg:flex for hamburger. Handle main content offset on desktop.",
+    "advanced": "Build responsive sidebar with three states. Mobile (<768px): hidden by default, hamburger trigger in header, slide-in overlay (fixed inset-y-0 left-0 w-64 z-50), dark backdrop (fixed inset-0 bg-black/50 z-40), body scroll lock, swipe to close. Tablet (768-1024px): collapsible, icons-only by default (w-16), expand on hover or toggle to full width (w-64), persistent (always visible), tooltip labels when collapsed. Desktop (>1024px): always visible at full width (w-64), fixed or sticky, main content offset (ml-64). Implementation: use state for mobile open/close, localStorage for collapse preference. Transitions: translate-x for mobile slide, width transition for collapse. Main content: ml-0 md:ml-16 lg:ml-64 responsive offset. Overlay: use createPortal for proper stacking. Focus: trap focus when mobile overlay open. Resize: close mobile overlay if resizing to larger viewport. Navigation items: icons required for collapsed state, text for expanded. Active indicator: visible in both states. Sub-menus: expand within sidebar or popover in collapsed mode."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

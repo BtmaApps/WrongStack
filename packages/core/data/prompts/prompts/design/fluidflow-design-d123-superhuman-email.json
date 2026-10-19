@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d123-superhuman-email",
+  "slug": "fluidflow-design-d123-superhuman-email",
+  "title": "Superhuman/Email",
+  "description": "FluidFlow · Superhuman/Email",
+  "content": "Apply Superhuman aesthetic with productivity email feel. Split view with list and preview. Keyboard-centric navigation. Command palette (Cmd+K). Scheduled sending and reminders. Read receipts and tracking. Minimal chrome, maximum content. Quick actions and snippets. Thread collapsing. Contact sidebar. Search with operators.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d123"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "675169898667159862fd0a3f4f313d2dd7140469eebfa6e3fa39ae2ec954f8dc",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create premium email client with keyboard navigation and focused inbox.",
+    "detailed": "Apply Superhuman aesthetic with productivity email feel. Split view with list and preview. Keyboard-centric navigation. Command palette (Cmd+K). Scheduled sending and reminders. Read receipts and tracking. Minimal chrome, maximum content. Quick actions and snippets. Thread collapsing. Contact sidebar. Search with operators.",
+    "advanced": "Apply Superhuman aesthetic with premium email patterns. Layout: three-column (folders, list, preview) or two-column with toggle. Background: bg-white with subtle gradients, or dark mode bg-[#1a1a1a]. Email list: sender avatar/initials, subject bold, snippet preview, timestamp, unread indicator. Preview pane: full email thread, collapse older messages, inline images. Compose: modal or inline, To/CC with autocomplete, formatting toolbar, scheduled send. Command palette: Cmd+K opens, quick actions, navigation, search. Keyboard: j/k navigate, e archive, # trash, r reply, shown in onboarding. Thread: conversation view, quoted text collapsed, inline reply box. Snooze: time picker, custom date/time. Reminders: if no reply in X days. Read status: subtle indicator for opened emails. Snippets: /shortcode expansion. Split inbox: important, other, newsletters categories. Search: operators like from:, to:, has:attachment. Contact info: sidebar with social links, recent emails. Undo send: toast with countdown and undo button. Attachments: preview thumbnails, download buttons. Mobile: swipe actions (archive, snooze), pull to refresh. Focus mode: one email at a time workflow."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

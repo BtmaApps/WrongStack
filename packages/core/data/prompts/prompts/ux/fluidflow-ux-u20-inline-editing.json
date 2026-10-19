@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u20-inline-editing",
+  "slug": "fluidflow-ux-u20-inline-editing",
+  "title": "Inline Editing",
+  "description": "FluidFlow · Inline Editing",
+  "content": "Enable inline editing for quick updates. Click on text to switch to edit mode with input replacing text. Show subtle hover indicator that text is editable (cursor, underline, or edit icon). Use Enter to save and Escape to cancel. Show save/cancel buttons for touch users. Auto-focus input on edit mode. Maintain same width to prevent layout shift. Add validation with inline error display. Show brief success indicator after save.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bab9ee58535de7d8610744789afa8067a65e718cca86e5da7d3320cc60edca0e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Enable clicking on text to edit it in place without opening a form.",
+    "detailed": "Enable inline editing for quick updates. Click on text to switch to edit mode with input replacing text. Show subtle hover indicator that text is editable (cursor, underline, or edit icon). Use Enter to save and Escape to cancel. Show save/cancel buttons for touch users. Auto-focus input on edit mode. Maintain same width to prevent layout shift. Add validation with inline error display. Show brief success indicator after save.",
+    "advanced": "Enable inline editing for quick updates without form navigation. Click or double-click on text to switch to edit mode. Hover indicator: show edit icon (Pencil), cursor:pointer, subtle underline, or background highlight. Edit mode: input/textarea replaces text, same font styling, auto-focus with text selected. Save triggers: Enter key (single line), Cmd/Ctrl+Enter (multi-line), blur (auto-save), explicit Save button. Cancel: Escape key, Cancel button, restore original value. Touch users: show explicit Save/Cancel buttons since no blur event on mobile. Width stability: set min-width to prevent layout shift, or use fixed width matching content. Validation: validate on blur/save attempt, show inline error below input, dont close edit mode if invalid. Success feedback: brief checkmark animation, subtle green flash, \"Saved\" text that fades. Loading state: disable input and show spinner during save. Error handling: show error message, keep edit mode open, allow retry. Optimistic updates: update UI immediately, rollback on error. Keyboard navigation: Tab to move to next editable field. ACCESSIBILITY: ensure edit mode is announced, focus management correct, errors accessible. Consider edit history/undo for critical fields."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

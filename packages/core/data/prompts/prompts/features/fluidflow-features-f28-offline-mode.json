@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f28-offline-mode",
+  "slug": "fluidflow-features-f28-offline-mode",
+  "title": "Offline Mode",
+  "description": "FluidFlow · Offline Mode",
+  "content": "Implement offline functionality. Service Worker: cache app shell and static assets. Data caching: IndexedDB for application data. Offline detection: navigator.onLine and event listeners. UI indicator: show offline status banner. Queue actions: store mutations to sync when online. Sync on reconnect: process queued actions. Conflict handling: resolve sync conflicts. Cache strategy: network-first or cache-first based on resource type.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "17c260bac380833f76f29e459711f2636886ce434fa085ba5ebb06217026e292",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Enable app to work offline with cached data.",
+    "detailed": "Implement offline functionality. Service Worker: cache app shell and static assets. Data caching: IndexedDB for application data. Offline detection: navigator.onLine and event listeners. UI indicator: show offline status banner. Queue actions: store mutations to sync when online. Sync on reconnect: process queued actions. Conflict handling: resolve sync conflicts. Cache strategy: network-first or cache-first based on resource type.",
+    "advanced": "Implement comprehensive offline support for progressive web app experience. Service Worker setup: Workbox for simplified SW development, precache app shell (HTML, CSS, JS, fonts), runtime caching for API responses and images. Cache strategies: CacheFirst for static assets (immutable), NetworkFirst for API data (fresh when possible), StaleWhileRevalidate for semi-static content. Data persistence: IndexedDB for structured data (use idb wrapper or Dexie.js), localStorage for small settings, Cache API for responses. Offline detection: navigator.onLine for initial state, online/offline events for changes, actual fetch failure as confirmation (navigator.onLine can be unreliable). UI indicators: banner or icon showing offline status, different styling for cached vs fresh data, \"Changes saved locally\" vs \"Synced\". Mutation queue: store pending writes in IndexedDB with timestamp and retry count, structured as {type, payload, created, attempts}. Background sync: Background Sync API for reliable sync when online (limited browser support), fallback to sync on visibility change or manual trigger. Sync process: process queue in order, handle failures with retry, update local state on success. Conflict resolution: timestamp-based (last write wins), field-level merge, or prompt user to resolve. Cache invalidation: version-based cache busting, periodic revalidation of cached data. Push notifications: notify user of sync completion or conflicts when returning online. App manifest: configure for installable PWA. Testing: Chrome DevTools offline mode, slow network throttling."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

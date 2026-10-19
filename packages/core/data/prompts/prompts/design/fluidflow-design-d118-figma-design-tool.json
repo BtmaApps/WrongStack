@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d118-figma-design-tool",
+  "slug": "fluidflow-design-d118-figma-design-tool",
+  "title": "Figma/Design Tool",
+  "description": "FluidFlow · Figma/Design Tool",
+  "content": "Apply Figma aesthetic with design tool feel. Dark chrome with light canvas. Left sidebar for layers/assets. Right panel for properties. Top toolbar for tools. Floating toolbars and context menus. Grid and guide overlays. Selection handles and bounds. Zoom controls. Color pickers and input fields. Panel tabs and sections.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d118"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "54b6230bf83ac37596fa84b379b0309b58503311fb00e9142ed8e2ef843b74fe",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create design tool interface with canvas areas, tool panels, and property inspectors.",
+    "detailed": "Apply Figma aesthetic with design tool feel. Dark chrome with light canvas. Left sidebar for layers/assets. Right panel for properties. Top toolbar for tools. Floating toolbars and context menus. Grid and guide overlays. Selection handles and bounds. Zoom controls. Color pickers and input fields. Panel tabs and sections.",
+    "advanced": "Apply Figma aesthetic with design tool patterns. Chrome: bg-[#2c2c2c] for panels, bg-[#1e1e1e] for toolbar. Canvas: bg-[#e5e5e5] checkered or solid, centered artboard. Panels: w-64 fixed, scrollable content, collapsible sections. Toolbar: horizontal, icon buttons with tooltips, grouped with dividers. Layer tree: indented list, visibility/lock icons, selection highlight. Properties: labeled inputs in grid, section headers collapsible. Input fields: compact, dark bg-[#3c3c3c], light text, number scrubbing. Color picker: swatch button opening popover, hex/rgba inputs. Dropdowns: dark themed, checkmark for selected. Selection: blue handles on corners/edges, rotation handle top. Context menu: dark, sections with dividers, keyboard shortcuts right-aligned. Zoom: bottom-left percentage, zoom to fit buttons. Rulers: optional, tick marks with numbers. Grid: toggle overlay with grid lines. Tabs: panel section switcher, bottom border indicator. Resize handles: panel edges draggable. Keyboard shortcuts: extensive, shown in tooltips. Prototype: separate mode with flow connections. Comments: pin markers on canvas, sidebar thread."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d67-tribal-indigenous",
+  "slug": "fluidflow-design-d67-tribal-indigenous",
+  "title": "Tribal/Indigenous",
+  "description": "FluidFlow · Tribal/Indigenous",
+  "content": "Apply tribal/indigenous aesthetic with cultural pattern richness. Earth tone colors: terracotta, ochre, black, cream, rust. Traditional geometric patterns from various cultures. Include animal motifs and nature symbols. Hand-crafted texture quality. Woven and beaded pattern aesthetics. Natural materials: clay, wood, fiber. Respect cultural origins while creating. Grounded, heritage, natural atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d67"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "005261cbdf96e3eac5da01b6c196f7c3d557682acca9aff7882eb9a9dc48f7e9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create earth-toned tribal aesthetic with indigenous patterns, natural textures, and cultural motifs.",
+    "detailed": "Apply tribal/indigenous aesthetic with cultural pattern richness. Earth tone colors: terracotta, ochre, black, cream, rust. Traditional geometric patterns from various cultures. Include animal motifs and nature symbols. Hand-crafted texture quality. Woven and beaded pattern aesthetics. Natural materials: clay, wood, fiber. Respect cultural origins while creating. Grounded, heritage, natural atmosphere.",
+    "advanced": "Apply tribal/indigenous aesthetic with respectful cultural appreciation. IMPORTANT: When using indigenous patterns, research origins and ensure respectful, non-appropriative use. Consider collaborating with or crediting indigenous artists. Color palette: earth tones - terracotta (#e07040), ochre (#cc7722), burnt sienna (#8a3324), charcoal (#36454f), cream (#fffef0), natural black, red oxide. Pattern types: geometric (stepped patterns, diamonds, zigzags, crosses), symbolic (animals, nature, spiritual), repetitive borders. Texture: hand-crafted quality - slight irregularities, woven fabric patterns (Navajo-style, kente influence, ikat), beadwork (small repeated circles), pottery glazes, basket weave. Nature motifs: animals (buffalo, eagle, serpent, etc.), plants, celestial (sun, moon, stars), elements (water waves, mountains). Materials suggested: clay/ceramic texture, unfinished wood, natural fibers, leather, bone, stone. Typography: bold, simple, can have angular qualities, avoid fake \"tribal\" fonts. Symbolism: research actual meanings, dont invent. Hand-made aesthetic: visible craft in creation, not machine-perfect. Border designs: repetitive pattern bands framing content. Color application: flat or textured fills, no gradients. Implementation: SVG for patterns, texture overlays for materials. Cultural respect: acknowledge sources, avoid sacred symbols, consider indigenous designers/consultants. Accessibility: earth tones generally provide good contrast, ensure patterns dont obscure content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

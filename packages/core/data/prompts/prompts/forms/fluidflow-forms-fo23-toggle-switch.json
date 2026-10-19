@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo23-toggle-switch",
+  "slug": "fluidflow-forms-fo23-toggle-switch",
+  "title": "Toggle/Switch",
+  "description": "FluidFlow · Toggle/Switch",
+  "content": "Build toggle switch component. Track: pill-shaped background that changes color. Thumb: circular button that slides between states. States: on (green/blue) and off (gray). Animation: smooth slide transition. Labels: optional on/off labels. Sizes: small, medium, large variants. Icons: optional icons inside thumb or track. Disabled: disabled styling and no interaction.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3b8efd0c3a128c1a4fb8eff7b503724dbd9f5683bd10256c8abd9105bcd291b1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create iOS-style toggle switch for boolean settings.",
+    "detailed": "Build toggle switch component. Track: pill-shaped background that changes color. Thumb: circular button that slides between states. States: on (green/blue) and off (gray). Animation: smooth slide transition. Labels: optional on/off labels. Sizes: small, medium, large variants. Icons: optional icons inside thumb or track. Disabled: disabled styling and no interaction.",
+    "advanced": "Build polished toggle switch component with smooth animations. Structure: button element with role=\"switch\" for accessibility. Track: pill-shaped container (w-11 h-6 rounded-full), background color transitions (bg-gray-200 for off, bg-blue-600 for on). Thumb: circular handle (w-5 h-5 bg-white rounded-full shadow-sm), positioned left when off, right when on. Animation: transition-all duration-200, thumb translates smoothly (translate-x-0 to translate-x-5). Click/keyboard: click toggles state, Space/Enter when focused. States: on (checked, pressed), off (unchecked), disabled (opacity-50, cursor-not-allowed), loading (show spinner, disable). Size variants: sm (w-8 h-4, thumb w-3 h-3), md (default), lg (w-14 h-7, thumb w-6 h-6). Icons in thumb: optional icon showing state (Check when on, X when off), or static icon. Icons in track: optional icons at each end of track (moon/sun for theme). Labels: optional text labels beside toggle (\"Dark mode\"), or on/off text. Label position: left or right of toggle. Color variants: different colors for on state (green for success, red for danger). Controlled/uncontrolled: work with both patterns, value/onChange for controlled. Focus ring: visible focus indicator (focus-visible:ring-2). Form integration: works with form libraries, name attribute. Accessibility: role=\"switch\", aria-checked, aria-label or associated label. Loading state: pulse animation or spinner replacing thumb during async toggle."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

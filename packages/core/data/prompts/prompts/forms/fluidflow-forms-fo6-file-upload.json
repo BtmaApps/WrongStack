@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo6-file-upload",
+  "slug": "fluidflow-forms-fo6-file-upload",
+  "title": "File Upload",
+  "description": "FluidFlow · File Upload",
+  "content": "Create drag-and-drop file upload component. Drop zone: dashed border area, highlight on drag over. Content: Upload icon, \"Drag files here or click to browse\" text. Click handler: opens file input dialog. Validation: file type and max size validation. File list: show selected files with name, size, remove button. Preview: image thumbnails. Upload progress: progress bar per file with percentage.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "50001fbb49363842337cae496a5e17ce0f4b9884d304f6cda309d0db525bb38a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create drag-and-drop zone for uploading files with progress indicator.",
+    "detailed": "Create drag-and-drop file upload component. Drop zone: dashed border area, highlight on drag over. Content: Upload icon, \"Drag files here or click to browse\" text. Click handler: opens file input dialog. Validation: file type and max size validation. File list: show selected files with name, size, remove button. Preview: image thumbnails. Upload progress: progress bar per file with percentage.",
+    "advanced": "Create drag-and-drop file upload component with comprehensive features. Drop zone: dashed border (border-2 border-dashed border-gray-300) rounded-lg p-8, expand and highlight on drag enter (border-blue-500 bg-blue-50), revert on drag leave. Use onDragEnter, onDragOver (preventDefault), onDragLeave, onDrop events. Content: Upload/CloudUpload icon (w-12 h-12 text-gray-400), \"Drag files here or click to browse\" text, supported formats list (e.g., \"PNG, JPG, PDF up to 10MB\"). Click handler: onClick triggers hidden file input click. Input: hidden <input type=\"file\">, accept attribute for file types (image/*,.pdf,.doc), multiple attribute for multi-file. Validation: check file.type against allowed types, check file.size against maxSize (show error toast for violations: \"File too large\" or \"File type not allowed\"). File list: show selected files in list below with file.name, formatted file.size (KB/MB), type icon (Image, FileText, File from lucide), remove button (X icon). Preview: generate image thumbnails using URL.createObjectURL for images, show file type icon for documents. Upload progress: progress bar per file (h-2 bg-gray-200 rounded-full with bg-blue-600 fill), percentage text, cancel button (X) to abort upload using AbortController. States per file: pending, uploading (show progress), completed (green CheckCircle), failed (red XCircle with \"Retry\" button). Handle multiple files dropped at once. Support drag and drop from desktop file manager. Accessibility: keyboard accessible (focus styles, Enter/Space to trigger), proper labels and aria-describedby. Handle errors: network failure, server rejection. Show total upload progress for multiple files. Consider chunked uploads for large files."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

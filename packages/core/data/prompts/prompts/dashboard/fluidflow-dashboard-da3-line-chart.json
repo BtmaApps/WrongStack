@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da3-line-chart",
+  "slug": "fluidflow-dashboard-da3-line-chart",
+  "title": "Line Chart",
+  "description": "FluidFlow · Line Chart",
+  "content": "Create line chart component for time-series data visualization. Container: responsive width, fixed or aspect-ratio height. Chart elements: SVG-based or canvas with chart library. Lines: smooth curves, multiple series with different colors. Axes: X-axis with time labels, Y-axis with value scale and grid lines. Tooltip: show values on hover with date. Legend: series names with color indicators. Time range selector: buttons for 7D, 30D, 90D, 1Y. Loading state: skeleton placeholder.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "411a84c67b760821124ecf444829745d6de759ef7de261a3ce473ab775bec1e6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create line chart showing data trends over time with hover tooltips.",
+    "detailed": "Create line chart component for time-series data visualization. Container: responsive width, fixed or aspect-ratio height. Chart elements: SVG-based or canvas with chart library. Lines: smooth curves, multiple series with different colors. Axes: X-axis with time labels, Y-axis with value scale and grid lines. Tooltip: show values on hover with date. Legend: series names with color indicators. Time range selector: buttons for 7D, 30D, 90D, 1Y. Loading state: skeleton placeholder.",
+    "advanced": "Create line chart component for time-series data visualization using Recharts, Chart.js, or custom SVG. Container: responsive width (w-full), aspect-ratio height (aspect-[16/9] or fixed h-80), bg-white rounded-lg p-4. Chart elements: SVG-based with ResponsiveContainer wrapper. Lines: smooth curves (type=\"monotone\") or straight segments, multiple series support (up to 5) with distinct colors from accessible palette. Stroke width 2-3px, optional area fill with gradient (linearGradient from color to transparent). Axes: X-axis with time labels (formatted dates: \"Jan 1\", \"Mon\", etc.), Y-axis with value scale, grid lines (stroke-dasharray=\"3 3\" in light gray), axis labels and tick marks. Data points: optional dots on line (r={4}), larger dots highlighted on hover (r={6}). Tooltip: custom tooltip component appearing on hover, shows date and all series values with color indicators, semi-transparent background with shadow. Legend: below chart, horizontal layout, series names with color circles, click to toggle series visibility (strike-through when hidden). Interactions: hover for tooltip, optional zoom/pan for large datasets using brush component. Responsive: reduce point density (show every Nth point) on smaller screens, simplify axis labels. Time range selector: button group (7D, 30D, 90D, 1Y, Custom), active state highlighted, triggers data refetch. Annotations: optional reference lines for targets/thresholds. Loading state: skeleton chart placeholder matching dimensions. Empty state: \"No data available\" message with illustration. Animation: lines draw in on initial load. Accessibility: provide data table alternative, proper ARIA labels. Dark mode: adjust colors for dark background."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

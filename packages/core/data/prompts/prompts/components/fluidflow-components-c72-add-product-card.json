@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c72-add-product-card",
+  "slug": "fluidflow-components-c72-add-product-card",
+  "title": "Add Product Card",
+  "description": "FluidFlow · Add Product Card",
+  "content": "Create product card. Container: bg-white rounded-xl overflow-hidden shadow hover:shadow-lg transition group. Image: aspect-square object-cover, hover zoom effect. Badge: absolute top-2 left-2 for sale/new. Content: p-4. Title: font-semibold truncate. Price: text-lg font-bold, original price strikethrough if on sale. Rating: stars with review count. Actions: Add to Cart button, wishlist heart icon.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c72"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ecf1ebdb4f8a912f333ea68898fe087674372d23332747b15ee877229bbe251c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create e-commerce product card with image, price, and actions.",
+    "detailed": "Create product card. Container: bg-white rounded-xl overflow-hidden shadow hover:shadow-lg transition group. Image: aspect-square object-cover, hover zoom effect. Badge: absolute top-2 left-2 for sale/new. Content: p-4. Title: font-semibold truncate. Price: text-lg font-bold, original price strikethrough if on sale. Rating: stars with review count. Actions: Add to Cart button, wishlist heart icon.",
+    "advanced": "Create versatile product card component. Image section: aspect-square container, lazy loaded image, skeleton placeholder, hover to show secondary image (if available), zoom on hover. Badges: stackable - \"Sale\", \"New\", \"Sold Out\", percentage off, positioned top-left. Quick actions: overlay on hover - quick view, add to wishlist, compare. Wishlist: heart icon, filled when in wishlist, optimistic toggle. Color swatches: show available colors, click to change displayed image. Rating: star display with average, review count link. Price: current price, compare-at price (strikethrough), discount percentage. Variants preview: size availability dots. Add to cart: button, changes to \"Added\" briefly, if variants required opens quick-add modal. Stock status: \"In Stock\", \"Low Stock\" (3 left), \"Out of Stock\" with disabled add button. Quick add modal: select size/color, quantity, add to cart without leaving page. Responsive: adjust card size per breakpoint. Accessibility: proper alt text, buttons labeled, keyboard navigable. Skeleton: loading state matching card layout. Product link: entire card clickable except action buttons."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

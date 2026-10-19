@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c87-add-poll-vote-widget",
+  "slug": "fluidflow-components-c87-add-poll-vote-widget",
+  "title": "Add Poll/Vote Widget",
+  "description": "FluidFlow · Add Poll/Vote Widget",
+  "content": "Create poll component. Container: bg-white rounded-xl p-6 shadow. Question: text-lg font-bold mb-4. Options: space-y-3. Option button: w-full text-left p-3 border rounded-lg hover:border-blue-500, radio indicator and text. After vote: show results with progress bars and percentages. Total votes: text-sm text-gray-500 mt-4. Expires: countdown or expiry date.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c87"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9814d9f2d44eb5980d3f60d322dea8d318cae80016f61b07a9be80d0b015749f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create voting poll with options and results display.",
+    "detailed": "Create poll component. Container: bg-white rounded-xl p-6 shadow. Question: text-lg font-bold mb-4. Options: space-y-3. Option button: w-full text-left p-3 border rounded-lg hover:border-blue-500, radio indicator and text. After vote: show results with progress bars and percentages. Total votes: text-sm text-gray-500 mt-4. Expires: countdown or expiry date.",
+    "advanced": "Create full polling component. Poll types: single choice, multiple choice, ranked choice, rating scale, open-ended text. Before voting: option buttons/checkboxes, vote button, option to see results without voting. After voting: transition to results view, highlight user choice. Results display: horizontal progress bars with percentages, vote counts, winner highlighted. Animations: bars animate to width on reveal, count up numbers. Live results: real-time updates via WebSocket, pulse animation on vote count change. User vote: indicator on which option user chose, change vote option if allowed. Expiration: countdown timer, \"Poll closed\" state after expiry, voting disabled. Scheduling: future start date, \"Poll opens in X\". Permissions: require login, one vote per user (or per IP for anonymous), require email verification. Creator options: end poll early, delete options, reset votes. Share: share buttons, embed code for external sites. Poll series: multiple questions in sequence. Analysis: breakdown by demographic if available. Comments: discussion section below poll. Report: flag inappropriate options. Accessibility: fieldset/legend for question, proper radio/checkbox semantics, results table alternative. Moderation: approve options before showing, hide inappropriate content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

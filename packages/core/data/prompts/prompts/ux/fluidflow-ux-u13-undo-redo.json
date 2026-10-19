@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u13-undo-redo",
+  "slug": "fluidflow-ux-u13-undo-redo",
+  "title": "Undo/Redo",
+  "description": "FluidFlow · Undo/Redo",
+  "content": "Implement undo functionality for reversible actions. Show toast notification immediately after action (\"Item deleted\") with \"Undo\" button. Set undo timeout (5-10 seconds) with visual countdown. Execute actual deletion only after timeout expires (soft delete pattern). Support multiple levels of undo with action history. Add Ctrl/Cmd+Z keyboard shortcut for undo. Store undo stack in state or local storage. Clear undo stack on page navigation or explicit confirmation. Show success message when undo is triggered (\"Deletion canceled\"). Implement redo (Ctrl/Cmd+Shift+Z) where appropriate. Handle edge cases: undo during loading, undo after navigation.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2df2e701162781d1186f9f23a091a09501171d2ff7dcf6fd7900c22313000872",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add undo functionality with toast notification after destructive actions.",
+    "detailed": "Implement undo functionality for reversible actions. Show toast notification immediately after action (\"Item deleted\") with \"Undo\" button. Set undo timeout (5-10 seconds) with visual countdown. Execute actual deletion only after timeout expires (soft delete pattern). Support multiple levels of undo with action history. Add Ctrl/Cmd+Z keyboard shortcut for undo. Store undo stack in state or local storage. Clear undo stack on page navigation or explicit confirmation. Show success message when undo is triggered (\"Deletion canceled\"). Implement redo (Ctrl/Cmd+Shift+Z) where appropriate. Handle edge cases: undo during loading, undo after navigation.",
+    "advanced": "Implement undo functionality for reversible actions to enable fearless interaction. Show toast notification immediately after action: \"Item deleted\" with prominent \"Undo\" button. Set undo timeout (5-10 seconds) with visual countdown progress bar in toast. Implement soft delete pattern: mark item as deleted immediately (optimistic UI), execute actual deletion only after timeout expires, restore instantly on undo. Support multiple levels of undo with action history stack (limit to 10-20 items to manage memory). Add Ctrl/Cmd+Z keyboard shortcut for undo, Ctrl/Cmd+Shift+Z for redo - handle both globally. Store undo stack in React state (useReducer) for component-level, localStorage for cross-session persistence on critical actions. Clear undo stack on explicit confirmation (\"Empty trash permanently\") or after reasonable time. Show success message when undo triggered: \"Deletion canceled - item restored\". Handle edge cases: undo during loading (disable undo button while processing), undo after navigation (warn or clear stack), concurrent actions (maintain order in stack). For collaborative apps, consider server-side undo with operation transforms. ACCESSIBILITY: Announce undo availability and success via aria-live, ensure keyboard shortcut doesnt conflict with browser. Test rapid undo/redo sequences for race conditions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

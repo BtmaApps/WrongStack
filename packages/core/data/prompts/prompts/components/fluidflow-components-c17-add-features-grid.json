@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c17-add-features-grid",
+  "slug": "fluidflow-components-c17-add-features-grid",
+  "title": "Add Features Grid",
+  "description": "FluidFlow · Add Features Grid",
+  "content": "Create features/benefits showcase section. Card structure: icon container (p-3 rounded-lg bg-blue-100 text-blue-600 w-fit), title (font-semibold text-lg mt-4), description paragraph (text-gray-600). Grid layout: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8. Icon selection: use relevant lucide-react icons (Zap, Shield, Clock, etc.). Visual variants: icons above text (centered), icons left of text (flex-row), numbered list. Add hover effects: card lift, icon color change, border accent. Background options: plain white, alternating backgrounds, gradient cards. Include \"Learn more\" links on each feature. Responsive spacing adjustments. Consider tabbed features for different product aspects.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a3c574ce18010953f5c0c39d21c5085abdb7aa1e6f0ad24fcf890930cf9af666",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a features section with icons, titles, and descriptions.",
+    "detailed": "Create features/benefits showcase section. Card structure: icon container (p-3 rounded-lg bg-blue-100 text-blue-600 w-fit), title (font-semibold text-lg mt-4), description paragraph (text-gray-600). Grid layout: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8. Icon selection: use relevant lucide-react icons (Zap, Shield, Clock, etc.). Visual variants: icons above text (centered), icons left of text (flex-row), numbered list. Add hover effects: card lift, icon color change, border accent. Background options: plain white, alternating backgrounds, gradient cards. Include \"Learn more\" links on each feature. Responsive spacing adjustments. Consider tabbed features for different product aspects.",
+    "advanced": "Create features/benefits showcase section with icons and engaging interactions. Container: max-w-7xl mx-auto px-4 py-16. Section header: text-center max-w-2xl mx-auto mb-16, badge/eyebrow (text-sm text-blue-600 font-semibold uppercase tracking-wide), title (text-3xl font-bold), subtitle (text-gray-600 mt-4). Grid layout: grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8. Feature card structure: p-6 rounded-xl hover:shadow-md transition-shadow, optional bg-white or bg-gray-50. Icon container: w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center, icon with h-6 w-6. Lucide icons: choose contextually relevant - Zap (fast/powerful), Shield (security), Clock (time-saving), Layers (features), Users (team), Globe (global), Lock (privacy), BarChart (analytics), etc. Title: font-semibold text-lg text-gray-900 mt-4. Description: text-gray-600 mt-2 leading-relaxed. Learn more link: text-blue-600 hover:underline mt-3 inline-flex items-center gap-1, ArrowRight icon. Layout variants: 1) Icon above (default): icon, title, description stacked centered, 2) Icon left: flex gap-4, icon flex-shrink-0, 3) Large icon: bigger icons (w-16 h-16), 4) Numbered: replace icon with styled number (01, 02, 03). Hover effects: card lift (-translate-y-1), shadow increase, icon background color intensity, or border-l-4 border-blue-600 accent. Visual variety: alternate icon background colors (blue, green, purple, orange) or gradient icons. Tabbed features: for multiple product aspects, tabs above grid to switch feature sets. Background: plain white, subtle gradient, or alternating section backgrounds. ACCESSIBILITY: proper heading levels, icons with aria-hidden (decorative), descriptive link text."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

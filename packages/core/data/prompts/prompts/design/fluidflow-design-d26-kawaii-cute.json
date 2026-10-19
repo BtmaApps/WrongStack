@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d26-kawaii-cute",
+  "slug": "fluidflow-design-d26-kawaii-cute",
+  "title": "Kawaii/Cute",
+  "description": "FluidFlow · Kawaii/Cute",
+  "content": "Apply kawaii/cute Japanese aesthetic with adorable elements. Use soft pastel colors: pink-200, sky-200, yellow-200, lavender. Add cute character faces to icons and illustrations (simple dots for eyes, small curves for mouths). Extra-rounded corners (rounded-3xl, rounded-full). Include decorative elements: stars, hearts, sparkles, clouds, rainbows. Use playful, rounded fonts. Add subtle bounce animations on interaction. Create sticker-like elements with white borders. Emphasize positive emotions and friendliness.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ba69497b7658495a0fa3e565ae2d2b1c10117230087a7e3e929a6725922eeceb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create adorable Japanese kawaii style with cute characters, pastel colors, and rounded shapes.",
+    "detailed": "Apply kawaii/cute Japanese aesthetic with adorable elements. Use soft pastel colors: pink-200, sky-200, yellow-200, lavender. Add cute character faces to icons and illustrations (simple dots for eyes, small curves for mouths). Extra-rounded corners (rounded-3xl, rounded-full). Include decorative elements: stars, hearts, sparkles, clouds, rainbows. Use playful, rounded fonts. Add subtle bounce animations on interaction. Create sticker-like elements with white borders. Emphasize positive emotions and friendliness.",
+    "advanced": "Apply kawaii/cute Japanese aesthetic with adorable, friendly design language. Color palette: soft pastels - sakura pink (pink-200, pink-300), sky blue (sky-200), butter yellow (yellow-200), mint (green-200), lavender (violet-200). Character elements: simple face expressions on icons/mascots - dot eyes, small curved mouth, rosy cheek circles (can be CSS pseudo-elements). Shape language: extremely rounded (rounded-3xl, rounded-full), soft, puffy shapes like clouds. Decorative elements: sparkle/star clusters (SVG or Unicode ✦✧★), hearts, small clouds, rainbow arcs, confetti dots. Typography: extra-rounded fonts (Nunito, Quicksand, Varela Round), consider Japanese-style with slight bounce. Animation: subtle bounce on hover (scale + translateY spring animation), floating motion for decorative elements, sparkle twinkle effects. Sticker aesthetic: elements with white border/shadow appearing as applied stickers. Speech bubbles: cute rounded chat bubbles with small tails. Buttons: pill-shaped with subtle gradient and face expressions or emoji. Background patterns: polka dots, tiny stars, subtle grid. Icons: rounded stroke style with happy expressions added. Sound/interaction: consider adding satisfying micro-interactions. Borders: soft, thick borders in slightly darker pastel. Accessibility: ensure pastels meet contrast requirements, faces dont interfere with usability. Target audience: casual apps, children, wellness, gaming."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

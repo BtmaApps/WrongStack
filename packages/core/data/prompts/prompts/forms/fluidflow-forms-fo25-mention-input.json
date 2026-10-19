@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo25-mention-input",
+  "slug": "fluidflow-forms-fo25-mention-input",
+  "title": "Mention Input",
+  "description": "FluidFlow · Mention Input",
+  "content": "Build @mention input component. Trigger: type @ to show suggestions. Popup: dropdown of users/entities to mention. Search: filter suggestions as typing. Selection: click or enter to insert mention. Display: render mentions as styled tags. Keyboard: arrow keys navigate suggestions. Multiple: support multiple mentions in single input. Data: pass selected mentions as structured data.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f7cabc78b4db7b1ec0ab17f14bd18731840708e0465c94da3c2c81f5136f78ec",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create input that triggers @mention suggestions.",
+    "detailed": "Build @mention input component. Trigger: type @ to show suggestions. Popup: dropdown of users/entities to mention. Search: filter suggestions as typing. Selection: click or enter to insert mention. Display: render mentions as styled tags. Keyboard: arrow keys navigate suggestions. Multiple: support multiple mentions in single input. Data: pass selected mentions as structured data.",
+    "advanced": "Build comprehensive @mention input with suggestion popup. Input type: contentEditable div or textarea (contentEditable for inline styling). Trigger detection: detect @ character, capture text after @ until space or special char. Suggestion popup: absolute positioned below cursor or input, show filtered list of mentionable entities. Search: filter suggestions by name or username, fuzzy matching, debounce filter (150ms). Suggestion item: avatar, name, username/title, keyboard highlight on current selection. Selection: click or Enter inserts mention, replace @query with mention. Mention display: styled inline (bg-blue-100 text-blue-700 px-1 rounded), non-editable unit, delete whole mention on backspace. Data structure: track mentions separately ({id, name, position}), or use special Unicode characters as markers. Multiple mentions: support many mentions in single input, each triggers independently. Escape: Escape closes popup without selecting. Navigation: arrow up/down moves selection, wrap around, scroll into view. Empty/loading: show loading spinner while fetching, \"No users found\" if empty. Entity types: support different mention types (@user, #channel, :emoji:) with different triggers and sources. Cursor positioning: place cursor after inserted mention. Validation: validate mentions still exist on submit (user not deleted). Backend format: convert to ID references for storage, display names for rendering. Accessibility: aria-autocomplete, announce suggestions count, announce selection. Libraries: tribute.js, react-mentions for complex implementations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

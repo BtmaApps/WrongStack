@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo28-multi-step-form",
+  "slug": "fluidflow-forms-fo28-multi-step-form",
+  "title": "Multi-step Form",
+  "description": "FluidFlow · Multi-step Form",
+  "content": "Build multi-step form wizard. Progress: step indicator showing current position. Steps: multiple form sections as steps. Navigation: Next/Previous buttons. Validation: validate current step before proceeding. Summary: review step before submission. Persistence: save progress between steps. Animation: smooth transition between steps.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ad7faba45708c98207c38c4b90a673150c3055269a2362eaa47f2416f7a6ee68",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create wizard form with steps and progress indicator.",
+    "detailed": "Build multi-step form wizard. Progress: step indicator showing current position. Steps: multiple form sections as steps. Navigation: Next/Previous buttons. Validation: validate current step before proceeding. Summary: review step before submission. Persistence: save progress between steps. Animation: smooth transition between steps.",
+    "advanced": "Build comprehensive multi-step form wizard. Progress indicator: horizontal steps with numbers or icons, connector lines between, current step highlighted, completed steps with checkmark, step labels below. Step display: one step visible at a time, or accordion-style with collapsed completed steps. Form sections: each step contains related fields, independent validation per step. Navigation buttons: \"Previous\" and \"Next\" buttons, \"Next\" validates current step before proceeding, \"Previous\" preserves entered data. Validation: validate only current step fields on next, show errors inline, prevent advancement until valid. Step state: track current step index, completed steps set, form data object. URL sync: optionally update URL with step (?step=2) for bookmarking and refresh survival. Persistence: save form data to localStorage or sessionStorage between steps, restore on page refresh. Summary step: final step shows all entered data for review, edit buttons per section to jump back. Submission: submit button on final step, handle loading state, success/error feedback. Animation: slide or fade transition between steps, direction based on navigation (left for next, right for prev). Progress saving: periodic auto-save of form data, \"Draft saved\" indicator. Exit warning: beforeunload prompt if form has unsaved changes. Skip optional steps: mark steps as optional, allow skipping. Conditional steps: show/hide steps based on previous answers. Accessibility: announce step changes, proper heading hierarchy per step, focus management. Mobile: stack steps vertically on mobile, full-width navigation. Error recovery: save state on error, restore to continue."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

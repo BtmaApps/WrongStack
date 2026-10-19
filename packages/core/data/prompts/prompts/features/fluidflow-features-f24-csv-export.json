@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f24-csv-export",
+  "slug": "fluidflow-features-f24-csv-export",
+  "title": "CSV Export",
+  "description": "FluidFlow · CSV Export",
+  "content": "Implement CSV export for tabular data. Data formatting: convert objects to rows. Headers: include column headers. Escaping: handle commas, quotes, newlines in values. Encoding: UTF-8 with BOM for Excel compatibility. Download: trigger browser download. Filename: descriptive with date. Selected rows: option to export selected only. All data: export full dataset not just visible page. Custom columns: choose which columns to include.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e61b7bcda4f85011e04fb45a7c1bb8aab8a714fcccfee2f37a9743bdf3d50851",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Export data tables to CSV format.",
+    "detailed": "Implement CSV export for tabular data. Data formatting: convert objects to rows. Headers: include column headers. Escaping: handle commas, quotes, newlines in values. Encoding: UTF-8 with BOM for Excel compatibility. Download: trigger browser download. Filename: descriptive with date. Selected rows: option to export selected only. All data: export full dataset not just visible page. Custom columns: choose which columns to include.",
+    "advanced": "Implement comprehensive CSV export for tabular data. Data preparation: flatten nested objects, format dates consistently, convert booleans to Yes/No or 1/0, handle null/undefined (empty string or \"N/A\"). CSV generation: map data to rows, join with commas, add header row. Escaping rules (RFC 4180): wrap values containing comma, quote, or newline in double quotes, escape double quotes by doubling them (\"\"). Character encoding: UTF-8 with BOM (\\uFEFF prefix) for proper Excel compatibility with special characters. Download implementation: create Blob with text/csv type, create object URL, create anchor element with download attribute and filename, trigger click. Filename: descriptive with content and date (\"users_export_2024-12-15.csv\"). Export options: selected rows only (checkbox selection), current page vs all data (paginated data), filtered data (apply current filters), custom column selection (checklist modal). Large datasets: chunked processing with progress bar, Web Worker for non-blocking generation, streaming for very large files. Date formatting: ISO 8601 or locale-specific format, consistent across rows. Number formatting: preserve precision, handle locale differences in decimal separator. Boolean and enum: convert to human-readable values. Special fields: handle arrays (JSON string or repeated columns), exclude internal IDs or sensitive fields. Alternative formats: JSON export option alongside CSV. Server-side: for very large exports, generate on server and provide download link. Error handling: catch and report any generation errors."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

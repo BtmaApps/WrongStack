@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r28-responsive-padding-safe-areas",
+  "slug": "fluidflow-responsive-r28-responsive-padding-safe-areas",
+  "title": "Responsive Padding Safe Areas",
+  "description": "FluidFlow · Responsive Padding Safe Areas",
+  "content": "Handle safe area insets for modern devices. Use env() CSS function: env(safe-area-inset-top), env(safe-area-inset-bottom), env(safe-area-inset-left), env(safe-area-inset-right). Apply to fixed elements (headers, bottom nav, FAB). Set viewport-fit=cover in viewport meta tag. Use Tailwind plugin for safe area utilities or custom properties.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3bf4ab2360e61500ee74b907ea8618c317417403a15fa00eecb35cfc52151bbd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Handle safe area insets for notched and curved screen devices.",
+    "detailed": "Handle safe area insets for modern devices. Use env() CSS function: env(safe-area-inset-top), env(safe-area-inset-bottom), env(safe-area-inset-left), env(safe-area-inset-right). Apply to fixed elements (headers, bottom nav, FAB). Set viewport-fit=cover in viewport meta tag. Use Tailwind plugin for safe area utilities or custom properties.",
+    "advanced": "Handle safe area insets for notched, curved, and cutout displays. Viewport meta: <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\"> to allow content behind notch. CSS env() values: safe-area-inset-top (notch), safe-area-inset-bottom (home indicator), safe-area-inset-left/right (landscape rotation). Application: fixed/sticky headers (pt-[env(safe-area-inset-top)]), bottom navigation (pb-[env(safe-area-inset-bottom)]), FAB (mb-[calc(env(safe-area-inset-bottom)+1rem)]), landscape mode (px-[max(1rem,env(safe-area-inset-left))]). Fallback: use max() or fallback values - padding-left: max(1rem, env(safe-area-inset-left)). Tailwind plugin: @tailwindcss/safe-area or custom safelist. Full-bleed: for edge-to-edge content, let content go to edge with proper insets on interactive elements. Modals: ensure close buttons and actions are within safe areas. Landscape: different insets when device rotates. Testing: iOS simulator, notch device emulators, real device testing. Keyboard: safe-area-inset-keyboard for keyboard-aware layouts."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

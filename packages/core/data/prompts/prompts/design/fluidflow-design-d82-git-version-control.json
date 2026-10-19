@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d82-git-version-control",
+  "slug": "fluidflow-design-d82-git-version-control",
+  "title": "Git/Version Control",
+  "description": "FluidFlow · Git/Version Control",
+  "content": "Apply Git version control aesthetic with repository management feel. Commit history as vertical timeline. Branch lines with merge points. Commit hashes (short SHA). Author avatars and timestamps. Diff styling with red/green lines. File status indicators (modified, added, deleted). Pull request styling. Branch name badges. Repository directory structure. Collaborative development atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d82"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e51c8ad60024fe0675cf0960b9c40763467950076bdb43cb95fdf60cc4f0d881",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Git aesthetic with commit history, branch visualization, and version control UI patterns.",
+    "detailed": "Apply Git version control aesthetic with repository management feel. Commit history as vertical timeline. Branch lines with merge points. Commit hashes (short SHA). Author avatars and timestamps. Diff styling with red/green lines. File status indicators (modified, added, deleted). Pull request styling. Branch name badges. Repository directory structure. Collaborative development atmosphere.",
+    "advanced": "Apply Git version control aesthetic with repository platform feel. Commit graph: vertical timeline with branch lines (SVG), merge points as line convergence, commit dots on lines. Commit entries: short SHA hash (monospace, clickable), message (first line prominent), author avatar, timestamp (relative \"2 hours ago\"), branch tags. Branch visualization: parallel vertical lines in different colors, merge and branch points clearly shown, current branch highlighted. Diff view: unified or split view, line numbers, red background for deletions (bg-red-950), green for additions (bg-green-950), syntax highlighting maintained. Diff markers: - and + prefixes, @@ chunk headers in purple, file headers with a/b paths. File status: M (modified, orange), A (added, green), D (deleted, red), R (renamed, purple) badges. Hunks: collapsible diff sections, expand context buttons. Pull/merge requests: title, description, reviewer avatars, approval checkmarks, CI status checks, merge button states. Branch badges: rounded labels with branch icon, color-coded (main/master blue, feature green, hotfix red). File tree: directory structure with status indicators, changed file count badges. Blame view: author strips on left side. Conflict markers: <<<<< ===== >>>>> highlighted sections. Stash entries: WIP indicators, stash messages. Tags: version tag badges (v1.0.0). Actions: fetch, pull, push, merge button styling. Implementation: SVG for branch graph, proper diff rendering. Accessibility: diffs need proper semantics, color not sole indicator for changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

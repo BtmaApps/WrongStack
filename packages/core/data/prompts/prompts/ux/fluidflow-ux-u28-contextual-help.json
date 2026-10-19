@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u28-contextual-help",
+  "slug": "fluidflow-ux-u28-contextual-help",
+  "title": "Contextual Help",
+  "description": "FluidFlow · Contextual Help",
+  "content": "Provide contextual help for each feature. Add help icon (?) that opens relevant documentation. Create slideover or panel with help content. Include text explanations, images, and videos. Show keyboard shortcuts for current context. Link to full documentation for more details. Add \"Was this helpful?\" feedback. Implement search within help content. Show common questions for current area. Remember dismissed help to not repeat.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "02d69e4768a1281402ecd12dd6472ba8a9f3603a940d546596250dbd6e36cd1b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Provide help content relevant to the current page or feature.",
+    "detailed": "Provide contextual help for each feature. Add help icon (?) that opens relevant documentation. Create slideover or panel with help content. Include text explanations, images, and videos. Show keyboard shortcuts for current context. Link to full documentation for more details. Add \"Was this helpful?\" feedback. Implement search within help content. Show common questions for current area. Remember dismissed help to not repeat.",
+    "advanced": "Provide contextual help reducing support burden and user frustration. Help trigger: HelpCircle icon (w-5 h-5 text-gray-400) in page header or near complex features, keyboard shortcut (F1 or ?). Help panel: slide-over from right (w-80) or bottom sheet on mobile, close on X, Escape, or outside click. Content structure: brief explanation, step-by-step for complex tasks, annotated screenshots, short video walkthroughs (30-60s). Context awareness: help content matches current page/feature automatically via route matching. Keyboard shortcuts: list shortcuts relevant to current context, filterable/searchable. Documentation link: \"Learn more\" links to full docs, open in new tab. Feedback: \"Was this helpful?\" with Yes/No, optional comment field, track to improve content. Search: search within help content, show results inline, fallback to full docs search. Common questions: FAQ section for current feature, expandable answers. Progressive disclosure: start with basics, \"Show advanced\" for power user content. Onboarding integration: \"Take a tour\" option launches guided tour from help panel. Dismissed help: track viewed help articles, show \"Whats New\" for updates. Content management: help content in CMS or MDX for easy updates. Analytics: track help access patterns to identify confusing features. ACCESSIBILITY: help panel keyboard navigable, content screen reader friendly."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

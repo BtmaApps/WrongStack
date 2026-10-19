@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo21-rating-input",
+  "slug": "fluidflow-forms-fo21-rating-input",
+  "title": "Rating Input",
+  "description": "FluidFlow · Rating Input",
+  "content": "Build star rating input component. Stars: 5 clickable star icons in row. Hover preview: fill stars up to hovered position. Selection: click to set rating. Display: filled stars for rating, outline for remaining. Half stars: optionally support half-star increments. Clear: option to clear/reset rating. Sizes: multiple size options.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ec8b8f8c8cefe066091e39b0a0db37d2f268543a8c11bedc163b0df785b7d2bd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create star rating input with hover and click selection.",
+    "detailed": "Build star rating input component. Stars: 5 clickable star icons in row. Hover preview: fill stars up to hovered position. Selection: click to set rating. Display: filled stars for rating, outline for remaining. Half stars: optionally support half-star increments. Clear: option to clear/reset rating. Sizes: multiple size options.",
+    "advanced": "Build comprehensive rating input component. Star icons: 5 Star icons from lucide-react (configurable count), inline-flex row with small gap. Hover preview: on mouse enter, temporarily fill stars up to hovered position, revert on mouse leave. Click to select: click sets rating, can click same to keep or configure to toggle off. Visual states: filled (text-yellow-400 fill-yellow-400), empty (text-gray-300), hover (text-yellow-300). Half-star support: detect click position within star (left half = 0.5, right half = 1.0), display half-filled stars, hover shows half increments. Clear rating: click selected rating again to clear, or explicit clear button/X. Read-only mode: display-only without hover/click interactions. Size variants: sm (h-4), md (h-5), lg (h-6), xl (h-8). Labels: optional text label (\"Rate this product\"), current rating text (\"3 of 5 stars\"). Custom icons: configurable icon (Heart, ThumbsUp instead of Star). Animation: subtle scale on hover, pop on selection. Tooltips: show rating meaning on hover (\"3 stars - Good\"). Form integration: works with react-hook-form, onChange callback, value controlled. Accessibility: keyboard navigation (arrow keys change rating), Enter/Space to confirm, proper ARIA (radiogroup with radio items, or slider). Disabled state: grayed out, no interactions. Average display: for showing aggregate ratings, support decimal display (4.3 stars). Distribution: optional bars showing rating distribution breakdown."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

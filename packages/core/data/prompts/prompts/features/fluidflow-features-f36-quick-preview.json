@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f36-quick-preview",
+  "slug": "fluidflow-features-f36-quick-preview",
+  "title": "Quick Preview",
+  "description": "FluidFlow · Quick Preview",
+  "content": "Build quick preview functionality. Trigger: hover, long-press, or preview button. Modal: show content preview in overlay. Content types: support text, images, documents. Navigation: navigate within preview without leaving. Actions: quick actions from preview (edit, share). Close: click outside or Escape. Loading: skeleton while loading preview content. Mobile: full-screen preview on mobile. Link preview: preview external links within app.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f36"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b76552b80e06c80caa07e7338afbfb6e6bb289d744fd1d854f6cee5f56ca1f60",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Preview content without leaving the current page.",
+    "detailed": "Build quick preview functionality. Trigger: hover, long-press, or preview button. Modal: show content preview in overlay. Content types: support text, images, documents. Navigation: navigate within preview without leaving. Actions: quick actions from preview (edit, share). Close: click outside or Escape. Loading: skeleton while loading preview content. Mobile: full-screen preview on mobile. Link preview: preview external links within app.",
+    "advanced": "Build comprehensive quick preview system for content inspection without navigation. Trigger options: hover with delay (500ms to prevent accidental triggers), dedicated preview button (Eye icon), keyboard shortcut while focused, long-press on touch. Preview modal: centered overlay with backdrop, animate in (scale + fade), max-width based on content type. Content loading: skeleton placeholder while loading, fetch preview data from API or use cached data. Content types: documents (rendered preview or PDF), images (full size with zoom), code (syntax highlighted), data records (formatted card), external links (fetch og:tags for preview). Preview content: condensed but complete view, key information visible, scroll for longer content. Navigation within preview: tabs or sections if content has multiple parts, do not navigate away from parent page. Quick actions: buttons in preview footer (Open, Edit, Share, Delete), primary action opens full view. Close triggers: click backdrop, Escape key, X button, click primary action. Keyboard navigation: Tab through preview content, arrow keys for items. Mobile optimization: full-screen modal on mobile (sheet from bottom), swipe down to close, larger touch targets. External link preview: for URLs, fetch open graph metadata, show title, description, image, site icon. Performance: lazy load preview content, cache recent previews, limit concurrent previews. Accessibility: focus management, trap focus in preview, announce preview open/close."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

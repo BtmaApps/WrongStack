@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo14-credit-card-form",
+  "slug": "fluidflow-forms-fo14-credit-card-form",
+  "title": "Credit Card Form",
+  "description": "FluidFlow · Credit Card Form",
+  "content": "Build secure credit card input form. Card number: format with spaces (4444 5555 6666 7777), max 19 characters. Card type detection: detect Visa/Mastercard/Amex from first digits, show icon. Expiry: MM/YY format, auto-add slash. CVV: 3-4 digits based on card type. Card preview: visual card representation. Validation: Luhn algorithm for card number. Security: never log card data.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b494d3ee9f1a062ccc5d1a7d9b14aca40cd57d8c2819e10843a0038aa59e4104",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create credit card form with card number, expiry, and CVV fields.",
+    "detailed": "Build secure credit card input form. Card number: format with spaces (4444 5555 6666 7777), max 19 characters. Card type detection: detect Visa/Mastercard/Amex from first digits, show icon. Expiry: MM/YY format, auto-add slash. CVV: 3-4 digits based on card type. Card preview: visual card representation. Validation: Luhn algorithm for card number. Security: never log card data.",
+    "advanced": "Build secure credit card input form with validation and visual feedback. Card number field: format with spaces as user types (4444 5555 6666 7777), max 19 characters (16 digits + 3 spaces), inputMode=\"numeric\" for mobile keyboard. Card type detection: detect from first digits (4=Visa, 51-55/2221-2720=Mastercard, 34/37=Amex, 6011/65=Discover, etc.), show appropriate brand icon next to input, update max length for Amex (15 digits). Expiry field: MM/YY format, auto-add slash after 2 digits, validate month 01-12, validate not in past (compare to current month/year). CVV field: 3 digits for most cards, 4 digits for Amex, type=\"password\" or type=\"text\" with dots, inputMode=\"numeric\". Name field: cardholder name as on card, text-transform: uppercase for display. Single line option: all fields in one row for compact checkout layout. Card preview: visual card representation (200x125px rounded-xl with gradient background) showing entered values live - card number masked (•••• •••• •••• 1234), expiry, name, brand logo positioned realistically. Validation: Luhn algorithm for card number validity, all fields required, show inline errors (text-red-600 text-sm below each field). Error states: red border (border-red-500), error icon, error message. Security: NEVER log card data, don't store in state longer than needed, use appropriate autocomplete attributes (cc-number, cc-exp, cc-csc), add autocomplete=\"off\" if not using browser autofill. PCI compliance note: in production, use hosted fields from payment processor (Stripe Elements, Braintree, Adyen) that collect card data in iframes, never touching your servers. Icons: card type icons (credit card brands), Lock icon for security indicator, \"Secure payment\" text. Keyboard: auto-advance focus between fields (number → expiry → CVV → name), numeric keyboard on mobile. Add \"Save card for future purchases\" checkbox option."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

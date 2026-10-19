@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r21-responsive-hero-section",
+  "slug": "fluidflow-responsive-r21-responsive-hero-section",
+  "title": "Responsive Hero Section",
+  "description": "FluidFlow · Responsive Hero Section",
+  "content": "Build responsive hero sections. Mobile: stack content vertically, image above or below text. Tablet: side-by-side layout begins. Desktop: larger typography, more whitespace, prominent imagery. Adjust button sizes and layout per breakpoint. Handle background images responsively with object-position. Scale heading sizes significantly (text-3xl to text-6xl).",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7f298eaead2dac07bc5a18cdf85f65c7ce32707416274ee4f5b8852c36eefabe",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create hero sections that adapt content layout across screen sizes.",
+    "detailed": "Build responsive hero sections. Mobile: stack content vertically, image above or below text. Tablet: side-by-side layout begins. Desktop: larger typography, more whitespace, prominent imagery. Adjust button sizes and layout per breakpoint. Handle background images responsively with object-position. Scale heading sizes significantly (text-3xl to text-6xl).",
+    "advanced": "Build responsive hero sections with strong visual impact at all sizes. Mobile: stack vertically (flex-col), image full-width, text-center, text-3xl heading, single column CTA buttons, py-12 for spacing. Tablet: side-by-side begins (md:flex-row), text-left, image right, text-4xl heading, inline buttons. Desktop: larger canvas (lg:py-24), text-5xl xl:text-6xl heading, more whitespace, imagery prominence, animated elements. Background images: use picture element for art direction, object-position adjustments per breakpoint, overlay gradient for text contrast. CTAs: button sizing (text-sm py-2 to text-lg py-4), layout (flex-col to flex-row), primary + secondary. Content width: max-w-xl for text content, prevent overly long lines. Animation: entrance animations on desktop, respect reduced motion. Video backgrounds: consider bandwidth, provide static fallback on mobile. Alignment: center on mobile, left or creative alignment on desktop. Scroll indicator: visible on desktop, hidden on mobile."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d85-binary-machine-code",
+  "slug": "fluidflow-design-d85-binary-machine-code",
+  "title": "Binary/Machine Code",
+  "description": "FluidFlow · Binary/Machine Code",
+  "content": "Apply binary/machine code aesthetic with low-level computing feel. Binary digit streams (0s and 1s). Hexadecimal dumps with ASCII sidebars. Memory address columns. Assembly instruction styling. CPU register displays. Byte highlighting. Bit manipulation visualizations. Stack and heap representations. Machine instruction opcodes. Bare metal programming atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d85"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "51d1e6000e8a19a9b3483179bf02a6a733cc1ce03fa9ff6e08b9359b3eec2158",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create low-level computing aesthetic with binary digits, hex dumps, and assembly code styling.",
+    "detailed": "Apply binary/machine code aesthetic with low-level computing feel. Binary digit streams (0s and 1s). Hexadecimal dumps with ASCII sidebars. Memory address columns. Assembly instruction styling. CPU register displays. Byte highlighting. Bit manipulation visualizations. Stack and heap representations. Machine instruction opcodes. Bare metal programming atmosphere.",
+    "advanced": "Apply binary/machine code aesthetic with systems programming feel. Binary display: monospace 0s and 1s, grouped in bytes (8 digits), word boundaries marked, bit position indicators (7-0 above). Hex dump format: address column (0x00000000), hex bytes (16 per line), ASCII representation on right, non-printable as dots. Colors: different colors for opcodes, addresses, data - subtle differentiation. Memory addresses: monospace, 0x prefix, consistent width (zero-padded). Assembly styling: label column, instruction mnemonic (blue), registers (green), immediate values (purple), memory operands (orange), comments (gray). CPU registers: register file visualization showing values, flags register with individual bit labels (Z, C, N, O). Stack visualization: vertical stack growing down, SP/BP markers, stack frame boundaries. Heap: memory blocks with allocation status, sizes, pointers. Instruction encoding: bit field breakdowns showing opcode, operands, addressing modes. Disassembly: address + bytes + assembly side by side. Breakpoints: red dots in gutter, conditional breakpoint diamonds. Watchpoints: highlighted memory ranges. Machine code: raw bytes with decoded instruction overlay. Memory map: regions labeled (code, data, stack, heap, kernel). Endianness: little-endian byte order visualization. Cache lines: highlighted cache-aligned boundaries. Page tables: virtual to physical address mapping. Implementation: fixed-width font essential, careful alignment of columns. Accessibility: provide semantic structure for screen readers, not just visual formatting."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

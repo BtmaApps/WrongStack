@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac24-video-accessibility",
+  "slug": "fluidflow-accessibility-ac24-video-accessibility",
+  "title": "Video Accessibility",
+  "description": "FluidFlow · Video Accessibility",
+  "content": "Make video content accessible. Captions: add WebVTT track with kind=\"captions\", ensure accuracy and timing. Transcript: provide full text transcript link/button. Audio description: separate track describing visual content for blind users. Controls: use native controls or build accessible custom controls. Keyboard: all controls keyboard accessible. Autoplay: avoid, or ensure muted and pausable. Player controls: labeled buttons (Play, Pause, Mute, Fullscreen). Progress: accessible progress bar with keyboard control. Volume: keyboard adjustable. Reduce motion: consider not autoplaying for motion preference.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8079b06134eb8f40c5219f497afa00e0fac3f1bcc8dc30e61f0a27848b6ad84d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add captions, transcripts, and controls to video content.",
+    "detailed": "Make video content accessible. Captions: add WebVTT track with kind=\"captions\", ensure accuracy and timing. Transcript: provide full text transcript link/button. Audio description: separate track describing visual content for blind users. Controls: use native controls or build accessible custom controls. Keyboard: all controls keyboard accessible. Autoplay: avoid, or ensure muted and pausable. Player controls: labeled buttons (Play, Pause, Mute, Fullscreen). Progress: accessible progress bar with keyboard control. Volume: keyboard adjustable. Reduce motion: consider not autoplaying for motion preference.",
+    "advanced": "Make video content accessible for all users. Captions: add track element with kind=\"captions\" and WebVTT file, ensure accurate timing and speaker identification, captions describe meaningful audio (not just dialogue - sound effects, music mood). Subtitles vs captions: subtitles for language translation, captions for deaf/hard of hearing (include non-speech audio). Transcript: provide complete text transcript (link below video or expandable section), includes all spoken content plus visual descriptions. Audio description: separate audio track describing important visual content for blind users, kind=\"descriptions\", or extended audio description if pauses needed. Custom controls: if not using native controls, build fully accessible player - all controls keyboard accessible and labeled, focus visible, announced states. Native controls: video controls attribute provides accessible defaults, may need styling overrides. Keyboard controls: Tab to each control, Enter/Space to activate, arrow keys for volume/seek. Autoplay: avoid entirely, or must be muted and have visible pause button. Player state: aria-label on play button updates (\"Play\"/\"Pause\"), live region for important state changes. Progress bar: role=\"slider\" with aria-valuenow, aria-valuemin, aria-valuemax, keyboard arrows adjust position. Reduced motion: @media (prefers-reduced-motion) prevents autoplay. Sign language: consider adding sign language interpretation track for deaf users. Test: use player with keyboard only and screen reader."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

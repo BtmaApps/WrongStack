@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo32-form-analytics",
+  "slug": "fluidflow-forms-fo32-form-analytics",
+  "title": "Form Analytics",
+  "description": "FluidFlow · Form Analytics",
+  "content": "Build form analytics tracking. Field focus: track which fields get focus. Time spent: measure time on each field. Errors: track validation errors encountered. Submission: track successful vs abandoned. Field changes: detect frequently changed fields. Drop-off: identify where users abandon form. Heatmap: optional visual representation of interactions.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "34dbf5d5ccd4e4aecdc1195a8fb09e1920dccab79ae7c59ea269afaba029f2ae",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Track form interactions and abandonment.",
+    "detailed": "Build form analytics tracking. Field focus: track which fields get focus. Time spent: measure time on each field. Errors: track validation errors encountered. Submission: track successful vs abandoned. Field changes: detect frequently changed fields. Drop-off: identify where users abandon form. Heatmap: optional visual representation of interactions.",
+    "advanced": "Build comprehensive form analytics for optimization insights. Tracking events: field focus, field blur, value change, validation error, step navigation, submission attempt, successful submission, abandonment. Field-level metrics: focus count, time spent (first focus to blur), error occurrences per field, change count (how often user modifies). Form-level metrics: total time to complete, submission success rate, abandonment rate, abandonment point (which field/step). Funnel analysis: for multi-step forms, conversion rate per step, step abandonment rates. Error analysis: which fields cause most errors, error messages shown, error resolution success. Event format: {event, field, timestamp, value (hashed if sensitive), sessionId, formId}. Privacy: never track actual values of sensitive fields (passwords, SSN), hash or omit. Implementation: useEffect hooks on field events, context for form-wide tracking. Data collection: batch events, send periodically or on navigation, beacon API for abandonment. Storage backend: send to analytics service (Segment, Amplitude, custom), or local collection endpoint. Visualization: dashboard showing funnel, field performance, error rates, time distribution. Heatmap: visual overlay showing click/focus density on form. A/B testing: track variant identifier for form experiments. Sampling: for high-traffic forms, sample percentage of sessions. User identification: anonymous session ID, or user ID if authenticated. Alerts: notify on unusual abandonment rates or error spikes. Recommendations: surface fields needing improvement based on data."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

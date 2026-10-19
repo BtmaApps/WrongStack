@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a4-hover-effects",
+  "slug": "fluidflow-animation-a4-hover-effects",
+  "title": "Hover Effects",
+  "description": "FluidFlow · Hover Effects",
+  "content": "Create engaging hover effects for interactive elements. Cards: lift effect with shadow increase (hover:-translate-y-2 hover:shadow-xl). Add image zoom within card (overflow-hidden with hover:scale-105 on image). Buttons: background color shift, border glow, or gradient animation. Links: animated underline using pseudo-element width transition. Navigation items: background slide-in from left. Images: subtle brightness/contrast change or color overlay fade. Icons: rotation, bounce, or color fill animation. Add smooth transitions (duration-200 to duration-300). Use transform and opacity for best performance. Consider touch devices - add active states as alternative.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a16268757fac537a54ff87e4c8fd6563aaf00e1a22f0506be3226a226224303b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add lift, shadow, and scale effects on hover.",
+    "detailed": "Create engaging hover effects for interactive elements. Cards: lift effect with shadow increase (hover:-translate-y-2 hover:shadow-xl). Add image zoom within card (overflow-hidden with hover:scale-105 on image). Buttons: background color shift, border glow, or gradient animation. Links: animated underline using pseudo-element width transition. Navigation items: background slide-in from left. Images: subtle brightness/contrast change or color overlay fade. Icons: rotation, bounce, or color fill animation. Add smooth transitions (duration-200 to duration-300). Use transform and opacity for best performance. Consider touch devices - add active states as alternative.",
+    "advanced": "Create engaging hover effects for interactive elements that feel responsive and delightful. Cards: lift effect with shadow progression (hover:-translate-y-2 hover:shadow-xl transition-all duration-300), subtle border color change on hover. Image zoom within cards: overflow-hidden on container, image with group-hover:scale-110 transition-transform duration-500 ease-out. Buttons: background color shift (hover:bg-blue-700), border glow using box-shadow (hover:shadow-[0_0_20px_rgba(59,130,246,0.4)]), gradient position animation (background-size: 200% with hover:bg-right). Links: animated underline using pseudo-element - ::after with w-0 hover:w-full transition-all, positioned absolute bottom-0. Navigation items: background slide-in from left using ::before with scaleX(0) hover:scaleX(1) origin-left. Images: subtle brightness change (hover:brightness-110), grayscale to color (grayscale hover:grayscale-0), color overlay fade (overlay absolute opacity-0 hover:opacity-30). Icons: rotation (hover:rotate-12), bounce using keyframes, fill color animation (hover:fill-current). 3D tilt on hover: calculate mouse position within card, apply perspective and rotateX/Y based on position. PERFORMANCE: use transform and opacity exclusively for GPU acceleration, add transition-property specifically (not transition-all when possible), will-change: transform on hover. Touch devices: add active: states as alternatives (active:scale-95), disable hover effects that don't work well on touch (title attribute tooltips). State layering: combine hover with focus-visible for keyboard users. Prevent hover on touch: @media (hover: hover) { .hover-effect:hover { ... } }."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

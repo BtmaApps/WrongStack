@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la28-analytics-dashboard",
+  "slug": "fluidflow-layouts-la28-analytics-dashboard",
+  "title": "Analytics Dashboard",
+  "description": "FluidFlow · Analytics Dashboard",
+  "content": "Build analytics dashboard page. Header: page title, date range picker, export button. Metrics row: key stat cards with values, trends, sparklines. Charts section: line chart (traffic over time), bar chart (top pages), pie chart (sources), geo map. Data tables: sortable tables for detailed data. Filters: segment by user type, device, location. Comparison: period over period.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f97fcb1aea21383d7923390a2881b09ce8578ba14ab8cfbf4fd913ad319b5333",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create analytics dashboard with charts, metrics, and date filters.",
+    "detailed": "Build analytics dashboard page. Header: page title, date range picker, export button. Metrics row: key stat cards with values, trends, sparklines. Charts section: line chart (traffic over time), bar chart (top pages), pie chart (sources), geo map. Data tables: sortable tables for detailed data. Filters: segment by user type, device, location. Comparison: period over period.",
+    "advanced": "Build comprehensive analytics dashboard for data visualization. Page header: flex justify-between items-center, \"Analytics\" title, date range picker (preset options: Today, Yesterday, Last 7 Days, Last 30 Days, This Month, Custom Range with calendar), comparison toggle (\"Compare to previous period\"), export dropdown (PDF, CSV, PNG). Quick filters bar: segment selectors (All Users, New Users, Returning), device filter, country/region filter, channel filter. Metrics overview: grid-cols-2 md:grid-cols-4 gap-4. Metric cards: bg-white rounded-xl shadow-sm p-6, metric name (text-sm text-gray-500), value (text-3xl font-bold), trend badge (TrendingUp green or TrendingDown red with percentage), sparkline mini-chart (last 7 days trend), comparison text (\"vs 12,345 prev period\"). Key metrics: Total Visitors, Page Views, Bounce Rate, Avg Session Duration, Conversion Rate, Revenue. Primary chart section: bg-white rounded-xl shadow-sm p-6. Chart header: title, granularity toggle (Hour, Day, Week, Month). Line chart: multi-series (current vs previous period, dashed for comparison), hover tooltips with values, responsive sizing. Chart library: Recharts, Chart.js, or Victory. Secondary charts grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6. Charts include: Top Pages (horizontal bar chart), Traffic Sources (pie/donut chart), Device Breakdown (pie chart), Geographic Distribution (map or top countries table), Browser/OS breakdown. Real-time section: if applicable, live visitor count, active pages, recent events stream. Data tables section: sortable, searchable tables. Pages table: Page URL, Views, Unique Views, Avg Time, Bounce Rate. Sources table: Source, Users, Sessions, Conversion Rate. Column sorting: click header to sort. Search/filter inputs. Pagination. Export table data. Drill-down: clicking chart elements filters dashboard or opens detail view. Goal tracking: progress toward set goals with progress bars. Alerts: notable changes highlighted (traffic spike, drop alert). Loading: skeleton charts and cards. Error states: per-widget error with retry. Mobile: stack all sections, scrollable charts, collapsible sections. Accessibility: charts have data tables as alternatives, colors distinguishable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

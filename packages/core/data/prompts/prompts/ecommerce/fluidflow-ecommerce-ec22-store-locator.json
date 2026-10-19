@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec22-store-locator",
+  "slug": "fluidflow-ecommerce-ec22-store-locator",
+  "title": "Store Locator",
+  "description": "FluidFlow · Store Locator",
+  "content": "Build store locator page. Search: location input with \"Use My Location\" button. Results: split view with map and store list. Map: pins for each location, info popup on click. Store cards: name, address, phone, hours, distance, \"Get Directions\" link. Filters: by services offered, open now toggle. Store detail: expanded view with full hours, services, photos.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "44226a044f8df9902dc1a0d009e251ca65d64aa64e3b5c1b5c46d73d662d22d1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create store locator with search, map, and store list.",
+    "detailed": "Build store locator page. Search: location input with \"Use My Location\" button. Results: split view with map and store list. Map: pins for each location, info popup on click. Store cards: name, address, phone, hours, distance, \"Get Directions\" link. Filters: by services offered, open now toggle. Store detail: expanded view with full hours, services, photos.",
+    "advanced": "Build comprehensive store locator with map integration and rich store information. Page layout: responsive split view - sidebar (w-96) with search and list, main area with map, mobile stacks with list above map or toggle view. Search section: location input with placeholder \"Enter city, zip, or address\", autocomplete suggestions from Google Places or similar, \"Use My Location\" button with crosshairs icon (requests geolocation permission), search radius dropdown (5, 10, 25, 50 miles). Results header: \"{X} stores found within {radius} miles of {location}\", sort options (Distance, Name). Store list: scrollable list of store cards, max-height with overflow. Store card: name (font-semibold), address (two lines), phone number (clickable tel: link), distance (\"3.2 mi\"), today's hours with open/closed status badge (bg-green-100 \"Open Now\" or bg-red-100 \"Closed\"), expandable full hours, services/features icons (wheelchair accessible, curbside pickup, etc.), action buttons: \"Get Directions\" (opens maps app), \"Call Store\", \"View Details\". Map integration: Google Maps or Mapbox embed, custom branded markers for store pins, marker clusters when zoomed out, click pin shows info window with store card preview, map auto-fits to show all results, user location shown with different marker, draw search radius circle optional. Current store highlight: when hovering/focusing store in list, corresponding map pin highlights/bounces, and vice versa. Filters panel: expandable or sidebar section, filter by: services offered (checkboxes: In-Store Pickup, Curbside, Returns, Repairs, etc.), store type if multiple (Flagship, Outlet, Partner), open now toggle, open late toggle. Store detail page/modal: full store information, large map showing single location, complete weekly hours, all services with descriptions, store manager/contact, photos gallery, upcoming events at store, reviews if available. Favorite stores: logged in users can save favorite stores for quick access. Recently viewed: remember recently checked stores. Appointment booking: \"Book Appointment\" button if store supports appointments. Inventory check: \"Check Store Availability\" for specific products. No results: message with suggestions to expand search or try different location. Loading: skeleton cards, map loading indicator. SEO: individual store pages with structured data for Google Business integration. Mobile: bottom sheet for store list that can be dragged up, full-screen map mode. Accessibility: list navigable by keyboard, map has accessible alternatives (list is always available)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

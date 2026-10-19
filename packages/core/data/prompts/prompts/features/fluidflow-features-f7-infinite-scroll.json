@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f7-infinite-scroll",
+  "slug": "fluidflow-features-f7-infinite-scroll",
+  "title": "Infinite Scroll",
+  "description": "FluidFlow · Infinite Scroll",
+  "content": "Replace pagination with infinite scroll for seamless browsing. Use Intersection Observer API to detect scroll near bottom. Observer target: sentinel element at end of list. Trigger: when sentinel is 200px from viewport, load more. Loading state: spinner at bottom while fetching. Append new items to existing array. Handle end of data: show \"No more items\" message. Error handling: show retry button if fetch fails.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "87d7b58d1fa6611c4ea13726a6ee0c7a875f82537b6515fa19ee622dc1423123",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Load more items automatically when user scrolls near the bottom of the list.",
+    "detailed": "Replace pagination with infinite scroll for seamless browsing. Use Intersection Observer API to detect scroll near bottom. Observer target: sentinel element at end of list. Trigger: when sentinel is 200px from viewport, load more. Loading state: spinner at bottom while fetching. Append new items to existing array. Handle end of data: show \"No more items\" message. Error handling: show retry button if fetch fails.",
+    "advanced": "Replace pagination with infinite scroll for seamless browsing experience. Use Intersection Observer API to detect scroll near bottom with rootMargin: \"200px\" for early trigger. Observer target: sentinel div element at end of list, observed when component mounts. Trigger: when sentinel intersects viewport, call loadMore function if not already loading and hasMore data. Loading state: spinner or skeleton items at bottom while fetching next page. Append new items to existing array using spread operator, never replace. Track current page/cursor for API pagination. Handle end of data: unobserve sentinel, show \"You have seen it all\" or \"No more items\" message with friendly illustration. Error handling: show \"Failed to load\" message with Retry button, keep observer active. Scroll restoration: maintain scroll position on navigation back using ScrollRestoration or manual sessionStorage tracking. Performance: virtualize list for very long lists (>100 items) using react-window or react-virtualized, only render visible items plus buffer. URL sync: update ?page= as user scrolls for deep linking and SEO. Back button: return to approximate scroll position by jumping to stored page. Mobile: add pull-to-refresh at top using touch events or library. Show floating \"Back to top\" button after scrolling down 500px. Implement loading=\"lazy\" on images. Add aria-busy during loading."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

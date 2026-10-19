@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d131-craft-notion-docs",
+  "slug": "fluidflow-design-d131-craft-notion-docs",
+  "title": "Craft/Notion Docs",
+  "description": "FluidFlow · Craft/Notion Docs",
+  "content": "Apply Craft aesthetic with document editing feel. Block-based content structure. Beautiful typography and spacing. Cover images and icons. Nested pages and folders. Real-time collaboration. Export options. Daily notes and templates. Backlinks and references. Markdown support. Focus mode.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d131"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f53d961d42cf1b0811e65213eaa665f2ed89110ac68edc34cd87ee1551c51bea",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create document editor with blocks, beautiful typography, and collaboration.",
+    "detailed": "Apply Craft aesthetic with document editing feel. Block-based content structure. Beautiful typography and spacing. Cover images and icons. Nested pages and folders. Real-time collaboration. Export options. Daily notes and templates. Backlinks and references. Markdown support. Focus mode.",
+    "advanced": "Apply Craft aesthetic with document patterns. Editor: clean canvas, blocks with hover handles. Typography: excellent defaults, custom fonts (serif/sans toggle), proper hierarchy. Blocks: paragraph, headings (1-3), lists (bullet, number, toggle, checkbox), quotes, code, callouts, images, embeds. Block handles: left margin, drag to reorder, click for menu, / command. Cover: header image with gradient fade, reposition. Icon: emoji or custom image as page icon. Pages: nested in sidebar, drag to organize, favorites section. Folders: group pages, expand/collapse. Templates: starter templates, user-created templates. Daily notes: calendar-linked, quick entry. Collaboration: cursors, comments, suggestions mode. Export: PDF, Markdown, Word, with styling options. Backlinks: see pages that link to current page. Mentions: [[Page Name]] linking, autocomplete. Focus: full screen mode, typewriter scrolling. Cards: link cards with preview, inline expansion. Tables: block-based tables, formula support. Sync: real-time, conflict resolution, offline support. Mobile: responsive, touch-friendly block editing. Search: full text, filter by type, recent. Share: public links, password protect, expiry. Themes: light, dark, sepia, custom."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

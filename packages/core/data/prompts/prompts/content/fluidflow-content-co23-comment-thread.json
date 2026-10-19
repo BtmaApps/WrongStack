@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co23-comment-thread",
+  "slug": "fluidflow-content-co23-comment-thread",
+  "title": "Comment Thread",
+  "description": "FluidFlow · Comment Thread",
+  "content": "Create comment thread component. Structure: parent comment with nested replies. Avatar: user avatar and name. Timestamp: relative time display. Content: comment text with markdown support. Actions: reply, edit, delete, like. Threading: indent nested replies with connecting line. Collapse: collapse/expand reply chains. Pagination: load more for many comments. Composer: inline reply input field. Highlighting: highlight new or mentioned comments. Sort: newest first, oldest first, top comments.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d86ca16bf06d1524781d874e1518511d81834865e7b3f560042b51ef9fa455c1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build threaded comment display with replies.",
+    "detailed": "Create comment thread component. Structure: parent comment with nested replies. Avatar: user avatar and name. Timestamp: relative time display. Content: comment text with markdown support. Actions: reply, edit, delete, like. Threading: indent nested replies with connecting line. Collapse: collapse/expand reply chains. Pagination: load more for many comments. Composer: inline reply input field. Highlighting: highlight new or mentioned comments. Sort: newest first, oldest first, top comments.",
+    "advanced": "Create comprehensive threaded comment system with full interactions. Comment structure: avatar, author name, timestamp, content, action buttons, nested replies array. Metadata display: author with optional badge (admin, OP), relative timestamp (\"2 hours ago\") with tooltip for exact time. Content rendering: markdown support for formatting, @mentions highlighted and linked, links clickable, code formatting. Actions: reply (opens inline composer), edit (for own comments, inline editor), delete (with confirmation, shows \"[deleted]\"), like/upvote (count + filled state), report/flag, share/copy link. Threading: nested replies indented (ml-8 or ml-12), vertical line connector (border-l-2 from parent), max depth limit (3-4 levels) then flatten with \"View more replies\". Collapse/expand: collapse long threads with \"Show 12 more replies\", expand inline, remember state. Pagination: initial comment count (20), \"Load more comments\" button or infinite scroll, load more per thread. Reply composer: inline text area below comment when \"Reply\" clicked, cancel/submit buttons, user avatar preview. Highlighting: new comments (bg-blue-50 briefly), mentioned user view. Sorting: newest, oldest, top (by likes), toggle in header. Loading states: skeleton for initial load, inline spinner for loading more. Deleted/hidden: \"[deleted]\" for removed comments preserving thread structure. Edit history: \"edited\" badge with optional view edits."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la21-invoice-receipt-layout",
+  "slug": "fluidflow-layouts-la21-invoice-receipt-layout",
+  "title": "Invoice/Receipt Layout",
+  "description": "FluidFlow · Invoice/Receipt Layout",
+  "content": "Build invoice/receipt document layout. Header: company logo, invoice number, date. Addresses: from (company) and to (customer) blocks. Line items table: description, quantity, unit price, total. Subtotal, tax, discounts, grand total. Payment info: method used, status. Footer: terms, thank you message. Print button with print-optimized styles.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "12cc681af421044a08236a69406f25239fbd57ed3b19ce411ec3a47375d01813",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create printable invoice or receipt with company and order details.",
+    "detailed": "Build invoice/receipt document layout. Header: company logo, invoice number, date. Addresses: from (company) and to (customer) blocks. Line items table: description, quantity, unit price, total. Subtotal, tax, discounts, grand total. Payment info: method used, status. Footer: terms, thank you message. Print button with print-optimized styles.",
+    "advanced": "Build comprehensive invoice/receipt document layout optimized for print and digital. Container: max-w-4xl mx-auto bg-white p-8 md:p-12, print:p-0. Print styles: @media print rules for clean output, hide non-essential UI, page breaks. Header section: flex justify-between items-start. Company info (left): logo (w-32), company name, address, phone, email, website, tax ID. Invoice info (right): \"INVOICE\" large text (text-3xl font-bold text-gray-400), invoice number (font-mono), issue date, due date, status badge (Paid/Pending/Overdue with appropriate colors). Addresses section: grid-cols-2 gap-8 mt-8 py-6 border-y. Bill To: label (text-sm text-gray-500 uppercase), customer name (font-semibold), company name if B2B, full address, email. Ship To: if different from billing, same format. Line items table: w-full mt-8. Table header: bg-gray-50, columns: Description, Quantity, Unit Price, Amount. Table rows: border-b, alternating bg optional. Description cell: item name (font-medium), optional SKU or details below (text-sm text-gray-500). Quantity: text-center. Unit Price: text-right, formatted currency. Amount: text-right, quantity × price. Totals section: mt-8 flex justify-end. Summary box: w-72, space-y-2. Rows: Subtotal, Discount (if applicable, negative), Tax (X% - $amount), Shipping (if applicable), horizontal divider, Total Due (text-lg font-bold). Payment info section: mt-8 pt-8 border-t. If paid: payment method (Visa ending 4242), payment date, transaction ID. If pending: payment instructions, bank details for wire, PayPal link. Notes section: mt-8, \"Notes\" label, custom message textarea content (terms, thank you, return policy). Footer: mt-12 pt-8 border-t text-center text-sm text-gray-500. \"Thank you for your business!\", company name, support email. Action buttons (screen only, print:hidden): \"Download PDF\" button, \"Print\" button (triggers window.print()), \"Send\" button to email invoice. Document variants: Invoice (with due date, payment terms), Receipt (paid confirmation, transaction details), Quote/Estimate (valid until date, accept button). Accessibility: table properly structured with headers, readable print contrast."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

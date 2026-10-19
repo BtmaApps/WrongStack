@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c18-add-cta-banner",
+  "slug": "fluidflow-components-c18-add-cta-banner",
+  "title": "Add CTA Banner",
+  "description": "FluidFlow · Add CTA Banner",
+  "content": "Build call-to-action banner component. Full-width or contained with rounded corners. Layout: text content left, buttons right (flex-col md:flex-row justify-between items-center). Content: compelling headline (text-2xl font-bold), supporting description, primary and secondary action buttons. Background options: solid color (bg-blue-600 text-white), gradient, image with overlay, pattern. Button styling: contrasting colors, primary filled, secondary outline or ghost. Add decorative elements: subtle pattern, floating shapes, illustration. Variants: slim inline banner, large section CTA, sticky bottom banner. Include dismiss option for promotional banners. Add urgency elements: countdown timer, \"Limited time\" badges. Mobile: stack vertically with full-width buttons.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b6eb3ed4bfcb80e63188591b5ade34e08a9accd1c090b57269e05183a8fb778e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a call-to-action banner with headline and buttons.",
+    "detailed": "Build call-to-action banner component. Full-width or contained with rounded corners. Layout: text content left, buttons right (flex-col md:flex-row justify-between items-center). Content: compelling headline (text-2xl font-bold), supporting description, primary and secondary action buttons. Background options: solid color (bg-blue-600 text-white), gradient, image with overlay, pattern. Button styling: contrasting colors, primary filled, secondary outline or ghost. Add decorative elements: subtle pattern, floating shapes, illustration. Variants: slim inline banner, large section CTA, sticky bottom banner. Include dismiss option for promotional banners. Add urgency elements: countdown timer, \"Limited time\" badges. Mobile: stack vertically with full-width buttons.",
+    "advanced": "Build call-to-action banner component with multiple variants and engaging design. Container variants: 1) Full-width section: py-16, 2) Contained card: max-w-4xl mx-auto rounded-2xl, 3) Inline banner: simpler horizontal strip. Outer styling: bg-blue-600 (solid), bg-gradient-to-r from-blue-600 to-purple-600 (gradient), relative with bg-cover bg-center (image + overlay). Layout: flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6, padding px-8 py-10. Content side: max-w-xl for text containment. Headline: text-2xl lg:text-3xl font-bold text-white. Description: text-blue-100 mt-2 (lighter for contrast on dark bg). Buttons side: flex flex-col sm:flex-row gap-3. Primary button: bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium. Secondary button: border border-white/50 text-white hover:bg-white/10 px-6 py-3 rounded-lg. Decorative elements: absolute positioned SVG shapes, dots pattern overlay (opacity-10), floating illustration or screenshot. Variants: 1) Large section CTA: generous padding, large text, 2) Slim inline: py-4, single line text + button, 3) Sticky bottom: fixed bottom-0 with shadow, dismiss button. Promotional banner: include dismiss X button (saves to localStorage), countdown timer component for urgency, \"Limited time\" or \"New\" badge. Urgency elements: countdown with days/hours/minutes, progress bar showing limited spots. Mobile responsive: stack vertically, full-width buttons, adjust padding. Dark/light versions: provide both color schemes. Animation: subtle float animation on decorative elements, entrance animation when scrolled into view. ACCESSIBILITY: sufficient contrast for text on colored backgrounds (check white text on blue), buttons clearly identifiable, dismiss button properly labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

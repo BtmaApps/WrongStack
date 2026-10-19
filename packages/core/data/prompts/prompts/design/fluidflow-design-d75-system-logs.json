@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d75-system-logs",
+  "slug": "fluidflow-design-d75-system-logs",
+  "title": "System Logs",
+  "description": "FluidFlow · System Logs",
+  "content": "Apply system logs aesthetic with monitoring dashboard feel. Dark background with scrolling log entries. Timestamps in consistent format. Severity level badges: DEBUG, INFO, WARN, ERROR, FATAL. Color-coded by severity. Monospace text for log content. Include source/module indicators. Filter and search functionality styling. Real-time streaming appearance. Log file viewer atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d75"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f3c2bf3de7b74d6a472e05299f66265108830a8bc23c854a5ebecdd599ba69e2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create log monitoring aesthetic with timestamped entries, severity levels, and real-time data streams.",
+    "detailed": "Apply system logs aesthetic with monitoring dashboard feel. Dark background with scrolling log entries. Timestamps in consistent format. Severity level badges: DEBUG, INFO, WARN, ERROR, FATAL. Color-coded by severity. Monospace text for log content. Include source/module indicators. Filter and search functionality styling. Real-time streaming appearance. Log file viewer atmosphere.",
+    "advanced": "Apply system logs aesthetic with production monitoring feel. Background: dark (#0d1117) or terminal black, optimized for long reading sessions. Log entry structure: [TIMESTAMP] [LEVEL] [SOURCE] MESSAGE format, each on single line or wrapped consistently. Timestamps: ISO 8601 format (2024-01-15T14:32:05.123Z), monospace, dimmed color (#6e7681). Severity levels with colors: TRACE (#6e7681 gray), DEBUG (#58a6ff blue), INFO (#3fb950 green), WARN (#d29922 yellow), ERROR (#f85149 red), FATAL (#ff7b72 bright red, background highlight). Level badges: inline labels with background color, uppercase, fixed width for alignment. Source tags: [module:function] or [service.component] in cyan/teal. Message content: primary text color, monospace, can contain JSON (syntax highlighted). Stack traces: indented, dimmed, collapsible. Structured data: JSON pretty-printed with syntax highlighting. Filters: severity toggles, source filters, time range selectors. Search: highlight matches in log content, regex support indication. Real-time: new entries animate in (slide down or fade), auto-scroll toggle, pause indicator. Stats: log rate (logs/sec), error count, time range displayed. Virtual scrolling: handle large log volumes efficiently. Export: copy/download buttons. Correlation: trace ID highlighting, related log grouping. Implementation: virtualized list for performance, efficient DOM updates. Accessibility: severity conveyed by more than color (icons, labels), pausable animations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

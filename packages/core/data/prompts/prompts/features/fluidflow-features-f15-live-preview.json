@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f15-live-preview",
+  "slug": "fluidflow-features-f15-live-preview",
+  "title": "Live Preview",
+  "description": "FluidFlow · Live Preview",
+  "content": "Implement real-time preview that updates as user edits. Split view: editor on left, preview on right. Sync updates: debounced onChange (200-300ms) updates preview. Preview types: rendered markdown, code output, form preview. Syntax highlighting in editor. Error handling: show errors inline in preview. Toggle: option to hide preview. Mobile: tabs to switch between edit and preview.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "202aead83ba728ff08e98bf0f62f0ad2bc2818d62f8d7ef5e264db16c3a1c44e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show side-by-side editor and preview that updates as user types.",
+    "detailed": "Implement real-time preview that updates as user edits. Split view: editor on left, preview on right. Sync updates: debounced onChange (200-300ms) updates preview. Preview types: rendered markdown, code output, form preview. Syntax highlighting in editor. Error handling: show errors inline in preview. Toggle: option to hide preview. Mobile: tabs to switch between edit and preview.",
+    "advanced": "Implement real-time preview that updates as user edits with professional editing experience. Split view: editor on left (flex-1), resizable divider (4px draggable), preview on right (flex-1), or top/bottom split on mobile. Sync updates: debounced onChange (200-300ms delay using useDebounce) updates preview to prevent excessive rendering. Preview types: rendered markdown (using marked or remark), code output (sandboxed iframe for JS), form preview (live form with entered values), design preview (rendered components). Syntax highlighting in editor using Monaco Editor (from @monaco-editor/react) or CodeMirror 6 with appropriate language mode, line numbers, bracket matching, auto-indent. Error handling: show errors inline in preview area with red styling and line numbers, don't break preview entirely, keep last valid output visible with error overlay. Scroll sync: scroll preview to match editor cursor position using scroll event handlers and element mapping. Toggle: button to hide preview for more editor space, keyboard shortcut (Cmd/Ctrl+Shift+P). Full-screen preview: expand preview to full viewport temporarily with Escape to exit. Hot reload: for code previews, automatically re-execute without manual refresh, preserve console output. Diff view: optionally show changes highlighted using diff algorithm comparison with previous version. Save draft: autosave to localStorage every 30 seconds during editing with \"Draft saved\" indicator. Mobile: tabs interface to switch between Edit and Preview views with swipe gestures. Share preview: generate preview-only shareable link (read-only mode). Add word/character count in status bar. Support multiple files with tab interface for complex projects."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

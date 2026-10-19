@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a26-text-scramble",
+  "slug": "fluidflow-animation-a26-text-scramble",
+  "title": "Text Scramble",
+  "description": "FluidFlow · Text Scramble",
+  "content": "Create text scramble effect for dramatic reveals. Start with random characters. Progressively reveal correct characters from start. Each character cycles through random chars before settling. Use monospace or similar-width font for stability. Control reveal speed and scramble duration. Apply to headings, statistics, or dramatic reveals. Add subtle color transition as characters finalize. Handle different text lengths.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f5d5fb02ea96c571cd62ad758ffb3ad28289d1efbded7cf072efc567200caa5c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create text scramble effect that reveals text through random characters.",
+    "detailed": "Create text scramble effect for dramatic reveals. Start with random characters. Progressively reveal correct characters from start. Each character cycles through random chars before settling. Use monospace or similar-width font for stability. Control reveal speed and scramble duration. Apply to headings, statistics, or dramatic reveals. Add subtle color transition as characters finalize. Handle different text lengths.",
+    "advanced": "Create text scramble effect for dramatic text reveals (Matrix/hacking aesthetic). Algorithm: for each character position, cycle through random characters before settling on final character, reveal progresses from first to last character. Implementation: use setInterval to update displayed text, each position has a resolve time, before resolved show random char, after resolved show final char. Character pool: alphanumeric (A-Z, 0-9) for tech feel, or match character type (uppercase for uppercase). Timing: each character resolves after delay, stagger from start to end (first char resolves quickly, last takes full duration). Update frequency: 30-50ms for smooth scramble effect. Duration: 1-2s for full reveal depending on text length. Font: monospace fonts work best (equal character widths prevent jumping), or use tabular-nums for numbers. Reveal patterns: left-to-right (classic), random positions, outside-in. Color transition: scrambling characters slightly different color/opacity, final characters full opacity. Numbers: great for statistics counters, scramble digits before showing final value. React implementation: useEffect with interval, cleanup on unmount, state for displayed characters array. Trigger: on scroll into view, on interaction, or on mount. Edge cases: handle text changes mid-animation, support variable lengths. Performance: simple string manipulation, no heavy computation. ACCESSIBILITY: final text must be accessible to screen readers, use aria-label with final text, aria-live for dynamic updates. Reduced motion: instant reveal without scramble. Use cases: hero text, statistics, dramatic reveals, tech/gaming aesthetics."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

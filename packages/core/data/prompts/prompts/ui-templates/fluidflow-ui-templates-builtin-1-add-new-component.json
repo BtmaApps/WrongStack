@@ -1,0 +1,31 @@
+{
+  "id": "fluidflow-ui-templates-builtin-1-add-new-component",
+  "slug": "fluidflow-ui-templates-builtin-1-add-new-component",
+  "title": "Add New Component",
+  "description": "Create a new React component with specified features",
+  "content": "Create a {{componentName}} component that {{functionality}}. Use Tailwind CSS for styling and include hover states and transitions.",
+  "category": "ui-templates",
+  "tags": ["fluidflow", "ui-templates", "builtin-1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f2b9c95b5da473396033df08d662d07080bc7ecca8879b9e5f7c959143162f72",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variables": [
+    {
+      "name": "componentName",
+      "description": "Name of the component",
+      "default": "Card",
+      "required": true
+    },
+    {
+      "name": "functionality",
+      "description": "What the component should do",
+      "default": "displays product information",
+      "required": true
+    }
+  ],
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

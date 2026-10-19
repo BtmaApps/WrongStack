@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f9-export-data",
+  "slug": "fluidflow-features-f9-export-data",
+  "title": "Export Data",
+  "description": "FluidFlow · Export Data",
+  "content": "Add data export functionality in multiple formats. Export button: Download icon with dropdown for format selection. Formats: CSV, JSON, Excel (XLSX), PDF. CSV export: convert array to CSV string, handle commas and quotes, create Blob and download. JSON export: JSON.stringify with indentation. Apply current filters/sort to export. Filename: include date. Progress indicator for large exports.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3489885c252d50162efeba232b1851fa5bdd2c6c4404a6de016729eb49f047f4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add export button to download data as CSV or JSON file.",
+    "detailed": "Add data export functionality in multiple formats. Export button: Download icon with dropdown for format selection. Formats: CSV, JSON, Excel (XLSX), PDF. CSV export: convert array to CSV string, handle commas and quotes, create Blob and download. JSON export: JSON.stringify with indentation. Apply current filters/sort to export. Filename: include date. Progress indicator for large exports.",
+    "advanced": "Add data export functionality in multiple formats with progress tracking. Export button: Download icon with dropdown for format selection (or modal for options). Formats: CSV (comma-separated values with proper escaping), JSON (pretty-printed with 2-space indent), Excel (XLSX with formatting), PDF (formatted table with headers). CSV export: convert array to CSV string, wrap values containing commas/quotes/newlines in quotes, escape internal quotes by doubling, add UTF-8 BOM for Excel compatibility, create Blob(\"text/csv;charset=utf-8\") and trigger download via temporary anchor with download attribute. JSON export: JSON.stringify(data, null, 2) with proper typing. Excel: use SheetJS (xlsx) library to create workbook with styled headers, column widths, number formatting. PDF: use jspdf with jspdf-autotable plugin for formatted tables with pagination. Include column headers/names from configuration. Apply current filters/sort/search to export (export what user sees). Options modal: checkboxes to select columns to include, date range picker, format-specific settings (delimiter for CSV, compression for JSON). Progress indicator: for large exports (>1000 rows), show progress bar with percentage and cancel button. Filename: descriptive name with date and filter summary (e.g., \"orders_2024-01-15_completed.csv\"). Server-side export option for very large datasets (>10k rows) with email delivery. Implement streaming for large client-side exports to prevent memory issues. Track export events for analytics."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

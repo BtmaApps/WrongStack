@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c55-add-chat-interface",
+  "slug": "fluidflow-components-c55-add-chat-interface",
+  "title": "Add Chat Interface",
+  "description": "FluidFlow · Add Chat Interface",
+  "content": "Create chat interface. Container: flex flex-col h-[500px]. Messages area: flex-1 overflow-y-auto p-4 space-y-4. Message bubble: max-w-[70%], sent messages ml-auto bg-blue-500 text-white rounded-l-xl rounded-tr-xl, received messages mr-auto bg-gray-100 rounded-r-xl rounded-tl-xl. Message content: p-3, text and timestamp (text-xs opacity-70). Input area: border-t p-4 flex gap-2, textarea flex-1, send button.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c55"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f9522d6b4510cf2ce152f73324741e4728fbe461dc3715340fbe301bfa08f79a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create messaging chat UI with message bubbles.",
+    "detailed": "Create chat interface. Container: flex flex-col h-[500px]. Messages area: flex-1 overflow-y-auto p-4 space-y-4. Message bubble: max-w-[70%], sent messages ml-auto bg-blue-500 text-white rounded-l-xl rounded-tr-xl, received messages mr-auto bg-gray-100 rounded-r-xl rounded-tl-xl. Message content: p-3, text and timestamp (text-xs opacity-70). Input area: border-t p-4 flex gap-2, textarea flex-1, send button.",
+    "advanced": "Create full-featured chat interface. Layout: sidebar (conversation list) + main chat area. Conversation list: search bar, conversation items with avatar, name, last message preview, unread badge, timestamp. Main chat: header (contact info, status, actions), messages area, input area. Messages: grouped by date with separator. Message types: text, image (lightbox on click), file (download link with icon), voice (audio player), location (map preview), system messages (user joined, etc). Message states: sending (opacity), sent (single check), delivered (double check), read (blue checks), failed (red with retry). Message features: reply (quoted message above), edit, delete, reactions (emoji picker), forward. Input area: expandable textarea, attachment button (dropdown: image, file, location), emoji picker, voice record button, send button. Typing indicator: animated dots when other user typing. Read receipts: show who has read in group. Scroll behavior: auto-scroll to bottom on new message, \"New messages\" button if scrolled up. Unread divider: \"New messages\" line between read/unread. Search in chat: Cmd+F to search messages. Timestamps: hover to see full timestamp."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

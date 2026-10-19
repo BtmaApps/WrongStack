@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f27-auto-save",
+  "slug": "fluidflow-features-f27-auto-save",
+  "title": "Auto-save",
+  "description": "FluidFlow · Auto-save",
+  "content": "Implement auto-save functionality. Trigger: save on change after debounce delay (1-2 seconds). Status indicator: show \"Saving...\", \"Saved\", \"Error\" states. Conflict handling: detect concurrent edits. Draft system: save drafts before publishing. Offline: queue saves when offline. Manual save: still allow manual save option. Last saved time: show \"Last saved 2 min ago\". Unsaved warning: warn on page leave with unsaved changes.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d48c508f8b329637101caab50f1a79e6399cfec7f7775ef684cb5728325900ec",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Automatically save changes as user edits.",
+    "detailed": "Implement auto-save functionality. Trigger: save on change after debounce delay (1-2 seconds). Status indicator: show \"Saving...\", \"Saved\", \"Error\" states. Conflict handling: detect concurrent edits. Draft system: save drafts before publishing. Offline: queue saves when offline. Manual save: still allow manual save option. Last saved time: show \"Last saved 2 min ago\". Unsaved warning: warn on page leave with unsaved changes.",
+    "advanced": "Implement comprehensive auto-save system for seamless editing experience. Save triggers: debounced save on change (1-2 second delay), save on blur/focus loss, save before page unload. Status indicator: subtle indicator showing state - idle (hidden or muted), saving (Loader2 spinner, \"Saving...\"), saved (Check icon, \"Saved\" fades after 2s), error (AlertCircle icon, \"Save failed\" with retry). Debounce implementation: useCallback with debounce wrapper, cancel pending save on unmount. Draft system: save to localStorage or server draft endpoint, separate from published version, \"You have unsaved draft\" indicator on return. Version history: store revisions with timestamps, allow viewing and restoring previous versions. Conflict detection: store version number or timestamp, compare on save, show conflict UI if changed elsewhere. Conflict resolution: show both versions, allow merge or choose one. Offline support: detect navigator.onLine, queue saves when offline, process queue on reconnect, show offline indicator. API retry: exponential backoff on failure (1s, 2s, 4s), max retries before showing error. Manual save: Ctrl/Cmd+S still works, immediate save bypassing debounce. Last saved time: \"All changes saved\" or \"Last saved 2 minutes ago\", update relative time. Unsaved changes warning: beforeunload event handler, only warn if changes since last save. Save scope: save entire form or granular field-level saves. Optimistic updates: assume save succeeds, show error and revert if fails. Disable during critical operations: pause auto-save during bulk imports, deletes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

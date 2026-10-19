@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a11-number-counter",
+  "slug": "fluidflow-animation-a11-number-counter",
+  "title": "Number Counter",
+  "description": "FluidFlow · Number Counter",
+  "content": "Add animated counting numbers for statistics and metrics. Trigger animation when element scrolls into view using Intersection Observer. Animate from 0 to target value over 1-2 seconds. Use easeOutExpo easing for satisfying deceleration at end. Format numbers with commas as they count (toLocaleString). Handle decimals and percentages. Add suffix/prefix support ($, %, +). Include optional \"+\" indicator for numbers that continue to grow. Consider large numbers - abbreviate (1.2M, 500K) and count the abbreviated value. Add subtle scale bounce at completion. Replay option on scroll back. Use requestAnimationFrame for smooth animation. Handle rapid scroll - cancel and restart appropriately.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "83a182a9957e8d9c8c9b688f25d8db4630a1f90e019c865cf77e2d22db57d6a2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Animate numbers counting up when they scroll into view.",
+    "detailed": "Add animated counting numbers for statistics and metrics. Trigger animation when element scrolls into view using Intersection Observer. Animate from 0 to target value over 1-2 seconds. Use easeOutExpo easing for satisfying deceleration at end. Format numbers with commas as they count (toLocaleString). Handle decimals and percentages. Add suffix/prefix support ($, %, +). Include optional \"+\" indicator for numbers that continue to grow. Consider large numbers - abbreviate (1.2M, 500K) and count the abbreviated value. Add subtle scale bounce at completion. Replay option on scroll back. Use requestAnimationFrame for smooth animation. Handle rapid scroll - cancel and restart appropriately.",
+    "advanced": "Add animated counting numbers for statistics and metrics with smooth easing and formatting. Intersection Observer trigger: observe element, start animation when isIntersecting, optionally unobserve after first trigger or allow replay on re-entry. Animation implementation: track startTime, use requestAnimationFrame loop, calculate progress (currentTime - startTime) / duration, apply easing function, compute currentValue = startValue + (endValue - startValue) * easedProgress. Easing function: easeOutExpo = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress) for satisfying deceleration. Number formatting: toLocaleString() for commas, handle decimals with toFixed(decimalPlaces), percentage with % suffix. Prefix/suffix support: $1,234, 99%, +500, props for prefix/suffix strings. Large number abbreviation: if > 1M show \"1.2M\", if > 1K show \"500K\", count abbreviated value for visual clarity. Duration: 1.5-2 seconds feels satisfying, adjust based on number magnitude. Animation polish: subtle scale bounce (1 to 1.05 to 1) at completion using separate CSS animation triggered on complete. Component API: <Counter value={1234} prefix=\"$\" suffix=\"+\" duration={2000} decimals={0} />. Handle edge cases: rapid scroll (cancel ongoing animation with cancelAnimationFrame), negative numbers, zero start value. Performance: single rAF loop per counter, batch updates if many counters visible simultaneously. Replay option: re-trigger animation when scrolled back into view, reset displayed value on exit. ACCESSIBILITY: ensure final value is accessible in DOM (not just visual), use aria-label with full number for screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

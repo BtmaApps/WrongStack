@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u11-confirmation-dialogs",
+  "slug": "fluidflow-ux-u11-confirmation-dialogs",
+  "title": "Confirmation Dialogs",
+  "description": "FluidFlow · Confirmation Dialogs",
+  "content": "Add confirmation dialogs for destructive or irreversible actions. Create modal with clear headline stating the action (\"Delete project?\"). Include body text explaining consequences (\"This will permanently delete all files and cannot be undone\"). Use danger styling for destructive actions (red button). Include Cancel button (secondary) and Confirm button (primary/danger). Make Cancel the default focused element for safety. Show loading state on confirm button during action. Add checkbox confirmation for critical actions (\"I understand this cannot be undone\"). Close on backdrop click only for non-critical confirmations. Support keyboard: Escape to cancel, Enter to confirm (carefully).",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4b68f047ee2c76779bc8a9104381dacb779d849b3e8ed6d38fd606cc5dd2cf06",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add confirmation modals for delete and other destructive actions.",
+    "detailed": "Add confirmation dialogs for destructive or irreversible actions. Create modal with clear headline stating the action (\"Delete project?\"). Include body text explaining consequences (\"This will permanently delete all files and cannot be undone\"). Use danger styling for destructive actions (red button). Include Cancel button (secondary) and Confirm button (primary/danger). Make Cancel the default focused element for safety. Show loading state on confirm button during action. Add checkbox confirmation for critical actions (\"I understand this cannot be undone\"). Close on backdrop click only for non-critical confirmations. Support keyboard: Escape to cancel, Enter to confirm (carefully).",
+    "advanced": "Add confirmation dialogs for destructive or irreversible actions to prevent costly mistakes. Create modal: clear headline stating specific action (\"Delete Project X?\" not just \"Are you sure?\"), body text explaining consequences in plain language (\"This will permanently delete 47 files and remove access for 3 team members. This cannot be undone.\"). Use danger styling for destructive actions: red confirm button (bg-red-600), keep Cancel as secondary (gray outline). Make Cancel the default focused element for safety - prevent accidental Enter confirmation. Show loading state on confirm button during action with spinner, disable both buttons. Add checkbox confirmation for critical/irreversible actions: \"I understand this cannot be undone\" checkbox must be checked to enable Confirm button. Close on backdrop click only for non-critical confirmations - keep backdrop click disabled for destructive actions. Support keyboard: Escape always cancels, Enter confirms ONLY if confirm button is focused (not on checkbox), trap focus within modal. ACCESSIBILITY: Use role=\"alertdialog\" for destructive confirmations, aria-describedby for consequence text, focus first focusable element (Cancel) on open, return focus to trigger on close. Consider requiring typing confirmation for critical actions (type \"DELETE\" to confirm). Log confirmations for audit trail."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

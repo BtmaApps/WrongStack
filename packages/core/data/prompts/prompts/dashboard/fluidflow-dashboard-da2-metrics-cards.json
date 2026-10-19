@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da2-metrics-cards",
+  "slug": "fluidflow-dashboard-da2-metrics-cards",
+  "title": "Metrics Cards",
+  "description": "FluidFlow · Metrics Cards",
+  "content": "Build KPI/metrics card components for dashboard overview. Card structure: bg-white rounded-lg shadow-sm p-6. Content: metric label (text-sm text-gray-500), large value (text-3xl font-bold), trend indicator. Trend display: arrow icon (TrendingUp/TrendingDown), percentage change, colored text (green for positive, red for negative). Optional: comparison text (\"vs last month\"), icon representing the metric. Grid layout: 4 cards in row on desktop, 2 on tablet, 1 on mobile. Loading state: skeleton with pulsing animation.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a694f8b1e3752066f7b10dfd736504ec419d760f601c897f22b5e2557aba00e0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create KPI cards showing metric value with trend indicator (up/down arrow).",
+    "detailed": "Build KPI/metrics card components for dashboard overview. Card structure: bg-white rounded-lg shadow-sm p-6. Content: metric label (text-sm text-gray-500), large value (text-3xl font-bold), trend indicator. Trend display: arrow icon (TrendingUp/TrendingDown), percentage change, colored text (green for positive, red for negative). Optional: comparison text (\"vs last month\"), icon representing the metric. Grid layout: 4 cards in row on desktop, 2 on tablet, 1 on mobile. Loading state: skeleton with pulsing animation.",
+    "advanced": "Build KPI/metrics card components for dashboard overview with comprehensive features. Card structure: bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6, optional colored left border (border-l-4 border-blue-500) for accent. Content: metric label (text-sm text-gray-500 uppercase tracking-wide), large value (text-3xl font-bold text-gray-900, format numbers with toLocaleString), trend indicator below value. Trend display: flex items-center gap-1, TrendingUp (text-green-600) or TrendingDown (text-red-600) icon from lucide, percentage change (+12.5% or -3.2%), colored text matching trend. Comparison text: \"vs last month\" or \"vs last week\" in text-gray-400 text-xs. Optional elements: icon representing metric (Users, DollarSign, ShoppingCart, Activity) in colored circle (w-12 h-12 rounded-full bg-blue-100) positioned top-right or left. Mini sparkline chart: small 50x20px line chart showing 7-day trend using SVG path or chart library. Variants: primary (larger, full-width), compact (smaller padding, inline layout), with action button (\"View details\" link). Click behavior: entire card clickable, navigates to detailed view/report. Grid layout: grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6. Loading state: skeleton with animate-pulse, show gray rectangles matching content layout. Error state: show error icon with retry button. Real-time updates: optionally poll for updates or use WebSocket. Dark mode: dark:bg-gray-800 dark:text-white. Accessibility: meaningful card labels, announce value changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

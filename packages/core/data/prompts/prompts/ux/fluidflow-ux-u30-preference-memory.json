@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u30-preference-memory",
+  "slug": "fluidflow-ux-u30-preference-memory",
+  "title": "Preference Memory",
+  "description": "FluidFlow · Preference Memory",
+  "content": "Remember user preferences across sessions. Store view preferences (grid vs list view). Remember sort order and direction. Persist filter selections. Save column visibility and order in tables. Remember sidebar collapsed/expanded state. Store per-page items count preference. Save dark/light mode preference. Sync preferences across devices if logged in. Provide reset option for defaults.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5f53e5c3a05d7431f8b1cad5ee30a2098c94ca16f0399a0f59e52937479a640c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Remember user preferences like view mode, sort order, and filters.",
+    "detailed": "Remember user preferences across sessions. Store view preferences (grid vs list view). Remember sort order and direction. Persist filter selections. Save column visibility and order in tables. Remember sidebar collapsed/expanded state. Store per-page items count preference. Save dark/light mode preference. Sync preferences across devices if logged in. Provide reset option for defaults.",
+    "advanced": "Remember user preferences for personalized consistent experience. View preferences: grid vs list view (per section), remember last used. Sort preferences: remember sort column and direction per list/table. Filters: persist active filters per context, option to save filter presets. Table customization: column visibility, column order, column widths - save and restore. UI state: sidebar collapsed/expanded, panel sizes, accordion states. Pagination: remember items per page preference globally. Theme: dark/light/system mode, accent color choices. Regional: timezone, date format, number format, language. Storage locations: localStorage for device-specific, backend for cross-device (logged-in users). Sync strategy: localStorage as cache, backend as source of truth, merge on login. Reset option: \"Reset to defaults\" per section and global, confirm before clearing. Migration: handle preference schema changes gracefully. Privacy: preferences are personal data, handle appropriately. Initial state: sensible defaults when no preferences stored. Preference UI: dedicated settings page and inline controls (e.g., view toggle). Performance: lazy load preferences, dont block initial render. ACCESSIBILITY: respect browser preferences (reduced-motion, high-contrast) as defaults."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

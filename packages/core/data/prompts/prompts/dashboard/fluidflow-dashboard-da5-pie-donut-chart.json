@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da5-pie-donut-chart",
+  "slug": "fluidflow-dashboard-da5-pie-donut-chart",
+  "title": "Pie/Donut Chart",
+  "description": "FluidFlow · Pie/Donut Chart",
+  "content": "Create pie or donut chart for proportion visualization. SVG-based chart with arc segments. Donut variant: inner radius creates hole for center content. Segments: colored arcs representing percentages. Center content (donut): total value. Legend: list of categories with color swatches. Hover effects: segment highlight with tooltip. Animation: segments animate in clockwise on load. Click handler: select segment for filtering.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "706a0b0e4cad1764db404144e2b922c9eb2933bcdd73da6b5ed89f82507beefd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create pie or donut chart showing proportions of different categories.",
+    "detailed": "Create pie or donut chart for proportion visualization. SVG-based chart with arc segments. Donut variant: inner radius creates hole for center content. Segments: colored arcs representing percentages. Center content (donut): total value. Legend: list of categories with color swatches. Hover effects: segment highlight with tooltip. Animation: segments animate in clockwise on load. Click handler: select segment for filtering.",
+    "advanced": "Create pie or donut chart for proportion visualization using Recharts PieChart or custom SVG. SVG-based chart with arc segments calculated using d3-shape or built-in. Donut variant: inner radius (innerRadius={60}) creates hole for center content. Size: responsive, typically 200-300px diameter. Segments: colored arcs representing percentages using accessible color palette, separated by small gaps (paddingAngle={2}), stroke for definition. Center content (donut only): total value (text-2xl font-bold), percentage of selected, or meaningful icon/label, update on hover to show hovered segment. Labels: segment labels with percentages, positioned outside (label line) or as separate legend. Use label component for custom positioning. Legend: below or right side, list of categories with color swatches (w-3 h-3 rounded-full inline-block) and values/percentages, click legend item to toggle segment visibility. Hover effects: segment scales slightly (scale: 1.05) or increases brightness, tooltip appears showing category, value, percentage, smooth transition. Animation: segments animate in clockwise on load using animationDuration={500}, startAngle and endAngle transitions. Click handler: onClick on segment triggers filtering main dashboard data by that category, visual selected state (stroke or scale). Responsive: smaller size on mobile (150-200px), simplified labels (legend only), adjust center text size. Color palette: use consistent, accessible color scheme with sufficient contrast. Show \"Other\" segment: group small values (<5%) into \"Other\" to reduce clutter. Loading state: spinning circle placeholder. Empty state: \"No data\" with empty circle outline. Accessibility: provide data values in accessible format, keyboard navigation between segments. Dark mode: adjust colors and labels for dark background."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

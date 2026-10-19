@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d40-cyberpunk-ui",
+  "slug": "fluidflow-design-d40-cyberpunk-ui",
+  "title": "Cyberpunk UI",
+  "description": "FluidFlow · Cyberpunk UI",
+  "content": "Apply cyberpunk UI aesthetic with futuristic tech displays. Dark backgrounds with neon accents (cyan, magenta, yellow). HUD-style interface elements: targeting brackets, data readouts, scan lines. Glitch effects on text and images. Angular, aggressive shapes. Include digital noise and static. Transparent overlays with tech patterns. Warning and alert styling. Japanese text accents optional. Dystopian tech atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d40"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f77da41e8929af6351005eab506a3463ca7343e9519da85a6be79a5d97d6fec0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create futuristic cyberpunk interface with HUD elements, glitch effects, and high-tech displays.",
+    "detailed": "Apply cyberpunk UI aesthetic with futuristic tech displays. Dark backgrounds with neon accents (cyan, magenta, yellow). HUD-style interface elements: targeting brackets, data readouts, scan lines. Glitch effects on text and images. Angular, aggressive shapes. Include digital noise and static. Transparent overlays with tech patterns. Warning and alert styling. Japanese text accents optional. Dystopian tech atmosphere.",
+    "advanced": "Apply cyberpunk UI aesthetic with futuristic, dystopian tech feel. Color scheme: dark base (bg-gray-950, pure black), neon accents - cyan (#00fff0), magenta (#ff00ff), electric yellow (#ffff00), warning red (#ff3333). HUD elements: corner brackets on containers (CSS borders on pseudo-elements), targeting reticles, progress arcs, data streams. Typography: tech/display fonts (Orbitron, Rajdhani, Exo 2), mixed with Japanese characters for aesthetic (カタカナ). Glitch effects: CSS animation with clip-path slicing, color channel offset (text-shadow with RGB separation), random displacement. Scan lines: horizontal line overlay using repeating-linear-gradient, slight flicker animation. Noise/static: animated grain texture using SVG filter or canvas. Panel design: angular cuts (clip-path: polygon), borders with glow (box-shadow with neon color), transparency (bg-opacity-80 backdrop-blur). Data visualization: circular gauges, bar graphs with segment styling, scrolling data feeds. Warning states: pulsing red, hazard stripes, alert icons. Loading: matrix-style code rain, progress with glitch. Sound indicators: visualize audio with reactive bars. Interactive: glitch on hover, scan effect on focus, holographic shimmer. Layer effects: use mix-blend-mode for overlay interactions. Grid patterns: subtle tech grid background. Implementation: heavy CSS animations, SVG for complex shapes, consider canvas for real-time effects. Accessibility: glitch effects can trigger seizures - respect prefers-reduced-motion, ensure core content readable despite effects."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

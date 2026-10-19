@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d106-chatbot-builder",
+  "slug": "fluidflow-design-d106-chatbot-builder",
+  "title": "Chatbot Builder",
+  "description": "FluidFlow · Chatbot Builder",
+  "content": "Apply chatbot builder aesthetic with conversational AI feel. Flow diagram with message nodes. Intent classification cards. Entity extraction highlights. Response template editors. Training phrase lists. Conversation preview simulators. Analytics with session metrics. Fallback handling configuration. Multi-language support panels. Integration webhook settings.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d106"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "446407d76d5f334b620f79cc6378f17af8e7393142b66b17a09985ee26a9f173",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create chatbot builder interface with conversation flows, intent mapping, and response templates.",
+    "detailed": "Apply chatbot builder aesthetic with conversational AI feel. Flow diagram with message nodes. Intent classification cards. Entity extraction highlights. Response template editors. Training phrase lists. Conversation preview simulators. Analytics with session metrics. Fallback handling configuration. Multi-language support panels. Integration webhook settings.",
+    "advanced": "Apply chatbot builder aesthetic with dialog flow patterns. Node-based canvas: user message (blue), bot response (green), condition (yellow diamond), action (purple). Intent cards with training phrases, confidence threshold slider. Entity badges with @entity highlighting in text. Template editor with {variable} placeholders, rich message types (cards, buttons, carousels). Training table with phrase, intent, entities columns. Live preview: phone mockup with chat simulation. Analytics: sessions, completion rate, fallback rate charts. Fallback node with escalation options. Language tabs with translation status. Webhook cards with URL, auth, payload preview."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

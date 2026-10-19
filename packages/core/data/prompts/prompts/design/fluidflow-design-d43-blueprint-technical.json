@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d43-blueprint-technical",
+  "slug": "fluidflow-design-d43-blueprint-technical",
+  "title": "Blueprint/Technical",
+  "description": "FluidFlow · Blueprint/Technical",
+  "content": "Apply blueprint/technical drawing aesthetic. Blue or dark background with white/light blue lines. Grid pattern background (graph paper style). Technical drawing style illustrations with thin precise lines. Engineering font for text. Include dimension lines and annotations. Circular elements and arcs common. Cross-section styling. Clean, precise, analytical feel. Scientific/engineering atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d43"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "74ff80006b1460ad63ea91f3e130fd43f1dc46b95dc96d9636fa3845f5424fee",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create engineering blueprint style with technical drawings, grid backgrounds, and precise annotations.",
+    "detailed": "Apply blueprint/technical drawing aesthetic. Blue or dark background with white/light blue lines. Grid pattern background (graph paper style). Technical drawing style illustrations with thin precise lines. Engineering font for text. Include dimension lines and annotations. Circular elements and arcs common. Cross-section styling. Clean, precise, analytical feel. Scientific/engineering atmosphere.",
+    "advanced": "Apply blueprint/technical drawing aesthetic with engineering precision. Background: blueprint blue (#0c2340, #1a365d) or dark gray for modern take, overlaid with precise grid pattern (CSS repeating gradient or SVG). Line work: thin, precise lines in white or light blue (#a0c4ff), consistent stroke width (1-2px). Drawing style: technical illustration approach - orthographic views, cross-sections, exploded diagrams. Dimension lines: annotation lines with arrows, measurement labels, leader lines pointing to details. Typography: engineering/technical fonts (Roboto Mono, IBM Plex Mono, DIN), all caps for labels, precise spacing. Annotations: callout labels with lines connecting to elements, numbered references, spec tables. Geometric precision: perfect circles (compass-drawn appearance), precise angles, mathematical curves. Cross-sections: elements showing internal structure, hatching patterns for materials. Title block: formal drawing title area with project info, date, revision. Border: thick outer border with tick marks, drawing number. Interactive: zoom to detail on hover, reveal hidden dimensions. Modern elements: combine with digital data overlays, animated construction. Color coding: different systems in different line colors (mechanical, electrical, etc). Implementation: SVG for technical drawings, CSS Grid for precise layout. Accessibility: ensure line weights visible, provide alternative text for technical diagrams."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

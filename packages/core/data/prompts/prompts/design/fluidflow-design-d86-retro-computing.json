@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d86-retro-computing",
+  "slug": "fluidflow-design-d86-retro-computing",
+  "title": "Retro Computing",
+  "description": "FluidFlow · Retro Computing",
+  "content": "Apply retro computing aesthetic with vintage computer feel. CRT monitor effects: scan lines, phosphor glow, slight curvature. DOS/mainframe color schemes: amber or green on black, blue BIOS screens. Blocky bitmap fonts. Command prompt interfaces. Floppy disk and tape references. Blinking cursor. System boot sequences. BASIC code appearance. Mainframe operator atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d86"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "16ced900fa17648488c12bb77b3d446013d67c4b5b934d2015d608790808b8e0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create vintage computing aesthetic with CRT monitors, DOS prompts, and mainframe terminal styling.",
+    "detailed": "Apply retro computing aesthetic with vintage computer feel. CRT monitor effects: scan lines, phosphor glow, slight curvature. DOS/mainframe color schemes: amber or green on black, blue BIOS screens. Blocky bitmap fonts. Command prompt interfaces. Floppy disk and tape references. Blinking cursor. System boot sequences. BASIC code appearance. Mainframe operator atmosphere.",
+    "advanced": "Apply retro computing aesthetic with vintage mainframe/personal computer feel. CRT effects: scan lines (horizontal lines via repeating-linear-gradient), phosphor glow (text-shadow with color spread), screen curvature (slight barrel distortion via CSS transform), color bleeding between adjacent pixels. Classic terminals: VT100 green (#33ff33) on black, IBM amber (#ffb000), blue mainframe screens (#4169e1 on black). Screen noise: subtle static/noise overlay, occasional flicker. Bitmap fonts: DOS fonts (Perfect DOS VGA), C64, Apple II - chunky pixels, no anti-aliasing (font-smooth: never). Boot sequences: POST text, memory counting, BIOS splash screens, loading dots. Command prompts: C:> or $ prompts, directory listings, FORMAT warnings. Error screens: BSOD styling (white on blue), Guru Meditation (Amiga red), Sad Mac. Loading: spinning cursor, percentage bars with blocks █░░░. BASIC code: line numbers (10, 20, 30), keywords in caps, READY prompt. Floppy/tape: 3.5\" disk icons, loading from tape visualization, A: drive references. Sound suggested: beeps, disk drive sounds, modem handshake. Hardware: keyboard styling (chunky keys), CRT monitor bezels. Startup chime: visual representation of boot sounds. Memory: conventional/extended memory displays, 640K messages. Window managers: Windows 3.1, Mac System 7 styled elements. Implementation: CSS filters for CRT effects, custom fonts. Accessibility: retro effects can reduce readability - ensure content is accessible, motion respects preferences."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

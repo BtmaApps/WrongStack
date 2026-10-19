@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d1-modernize-design",
+  "slug": "fluidflow-design-d1-modernize-design",
+  "title": "Modernize Design",
+  "description": "FluidFlow · Modernize Design",
+  "content": "Transform to a modern aesthetic with clean lines and minimal visual noise. Use subtle box shadows (shadow-sm to shadow-md) for depth, implement contemporary sans-serif typography with proper hierarchy (text-sm to text-4xl). Apply generous whitespace using consistent spacing scale (p-4, p-6, p-8, gap-4, gap-6). Use a neutral color palette (gray-50 to gray-900) with one accent color. Add smooth transitions (duration-200) for interactive elements. Ensure proper visual hierarchy with size, weight, and color variations.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "970e6671fae7b156e6c5f104650c41143ade1935ccd25b25639bc125f32f2403",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Update the design to look modern with clean lines, subtle shadows, and good spacing.",
+    "detailed": "Transform to a modern aesthetic with clean lines and minimal visual noise. Use subtle box shadows (shadow-sm to shadow-md) for depth, implement contemporary sans-serif typography with proper hierarchy (text-sm to text-4xl). Apply generous whitespace using consistent spacing scale (p-4, p-6, p-8, gap-4, gap-6). Use a neutral color palette (gray-50 to gray-900) with one accent color. Add smooth transitions (duration-200) for interactive elements. Ensure proper visual hierarchy with size, weight, and color variations.",
+    "advanced": "Transform to a modern aesthetic with clean lines and minimal visual noise. Use subtle box shadows (shadow-sm to shadow-md) for depth with GPU-accelerated transforms. Implement contemporary sans-serif typography with proper hierarchy (text-sm to text-4xl) and fluid typography using clamp() for responsive scaling. Apply generous whitespace using consistent 4px/8px spacing scale (p-4, p-6, p-8, gap-4, gap-6). Use a neutral color palette (gray-50 to gray-900) with one accent color meeting WCAG 2.1 AA contrast ratios. Add smooth transitions (duration-200) with ease-out timing for interactive elements. Implement focus-visible states for keyboard navigation. Use CSS custom properties for theming consistency. Add prefers-reduced-motion support. Ensure proper visual hierarchy with size, weight, and color variations. Include skeleton loading states for async content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

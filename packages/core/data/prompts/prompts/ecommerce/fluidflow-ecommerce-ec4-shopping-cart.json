@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec4-shopping-cart",
+  "slug": "fluidflow-ecommerce-ec4-shopping-cart",
+  "title": "Shopping Cart",
+  "description": "FluidFlow · Shopping Cart",
+  "content": "Create shopping cart page with full functionality. Layout: main cart area (items list) + order summary sidebar (sticky). Cart items: product image (w-24), name link, selected variants, unit price, quantity selector, line total, remove button. Quantity updates: optimistic update. Empty cart: illustration with \"Your cart is empty\" message, \"Continue Shopping\" CTA. Order summary: subtotal, shipping, tax estimate, promo code input, order total. Checkout button prominent. Mobile: full-width layout, sticky checkout bar at bottom.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8bd36544724ff2256ec886bbeaddcdcc60b699c36899d7a4662da5fd5164f181",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create cart page with item list, quantities, and order total.",
+    "detailed": "Create shopping cart page with full functionality. Layout: main cart area (items list) + order summary sidebar (sticky). Cart items: product image (w-24), name link, selected variants, unit price, quantity selector, line total, remove button. Quantity updates: optimistic update. Empty cart: illustration with \"Your cart is empty\" message, \"Continue Shopping\" CTA. Order summary: subtotal, shipping, tax estimate, promo code input, order total. Checkout button prominent. Mobile: full-width layout, sticky checkout bar at bottom.",
+    "advanced": "Create shopping cart page with full functionality and excellent UX. Layout: max-w-7xl mx-auto, flex gap-8, main cart area (flex-1) + order summary sidebar (w-96 flex-shrink-0 sticky top-4). Cart items list: divide-y divide-gray-200. Cart item row: flex gap-4 py-6. Item content: product image (w-24 h-24 rounded-lg object-cover) linking to product page, info column (flex-1) with product name link (font-medium hover:underline), selected variants displayed (Size: M, Color: Blue) in text-gray-500 text-sm, unit price. Actions column: quantity selector component (compact variant), line total (font-medium text-right), remove button (Trash2 icon or text \"Remove\" text-red-600 hover:underline). Quantity updates: optimistic UI update immediately, debounced API call, revert on error with toast. Empty cart: centered content with shopping bag illustration, \"Your cart is empty\" heading, \"Looks like you have not added anything yet\" subtext, \"Continue Shopping\" primary CTA button. Save for later: text button to move item to saved items section below cart. Recently viewed: \"You may also like\" section showing recently viewed products in horizontal scroll. Order summary card: bg-gray-50 rounded-lg p-6. Summary rows: Subtotal (items total), Shipping (\"Calculated at checkout\" or actual amount or \"FREE\" badge), Estimated Tax, Discount row if promo applied (text-green-600 with negative amount), Order total (text-xl font-bold). Promo code: collapsible section with input and Apply button. Checkout button: w-full bg-black text-white py-4 rounded-lg font-medium, disabled if cart empty. Trust badges below: accepted payment icons (Visa, MC, Amex, PayPal), \"Secure checkout\" with Lock icon. Mobile layout: stack vertically, order summary collapses into accordion or moves to bottom, sticky \"Checkout ($X)\" bar at bottom of screen with total. Loading states: skeleton items during initial load, subtle opacity during quantity updates. Handle out-of-stock: show warning if item became unavailable, suggest alternatives."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c50-add-rich-text-editor",
+  "slug": "fluidflow-components-c50-add-rich-text-editor",
+  "title": "Add Rich Text Editor",
+  "description": "FluidFlow · Add Rich Text Editor",
+  "content": "Create WYSIWYG text editor. Toolbar: flex flex-wrap gap-1 p-2 border-b bg-gray-50. Toolbar buttons: p-2 rounded hover:bg-gray-200, icons for bold, italic, underline, strikethrough, lists, links, headings. Button groups: separated by dividers. Editor area: min-h-[200px] p-4 focus:outline-none, contentEditable div or textarea. Formatting: execCommand or library like TipTap/Slate. Output: HTML or Markdown.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c50"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dd080941391eb6f5673867666fb7e8d4587b56e0f0d608ba9d7f6cd7b77fe0d3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create rich text editor with formatting toolbar.",
+    "detailed": "Create WYSIWYG text editor. Toolbar: flex flex-wrap gap-1 p-2 border-b bg-gray-50. Toolbar buttons: p-2 rounded hover:bg-gray-200, icons for bold, italic, underline, strikethrough, lists, links, headings. Button groups: separated by dividers. Editor area: min-h-[200px] p-4 focus:outline-none, contentEditable div or textarea. Formatting: execCommand or library like TipTap/Slate. Output: HTML or Markdown.",
+    "advanced": "Create full-featured rich text editor. Toolbar: sticky top, grouped buttons (text style, paragraph, insert). Text formatting: bold, italic, underline, strikethrough, code, highlight colors. Paragraph: headings (H1-H3), bullet list, numbered list, blockquote, code block. Insert: link (modal for URL), image (upload or URL), table, horizontal rule, emoji picker. Alignment: left, center, right, justify. Editor: based on TipTap, Slate, or Lexical for React. Floating toolbar: appears on text selection with quick formatting. Slash commands: type \"/\" to open insert menu. Mentions: type \"@\" to mention users with autocomplete. Link preview: paste URL to auto-embed preview. Image handling: drag-drop upload, resize handles, alt text editor. Tables: insert, add/remove rows/cols, merge cells. Code blocks: syntax highlighting with language selector. Markdown shortcuts: type \"# \" for H1, \"- \" for bullet, etc. Character count: show in footer with limit warning. Autosave: debounced save to localStorage or API. Collaboration: optional cursor presence for multi-user editing. Output: getHTML(), getJSON(), getMarkdown() methods."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

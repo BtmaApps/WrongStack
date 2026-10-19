@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d6-gradient-accents",
+  "slug": "fluidflow-design-d6-gradient-accents",
+  "title": "Gradient Accents",
+  "description": "FluidFlow · Gradient Accents",
+  "content": "Add vibrant gradient accents using bg-gradient-to-r for horizontal gradients or bg-gradient-to-br for diagonal. Apply to buttons (from-blue-500 to-purple-600), hero backgrounds, and section dividers. Use text gradients with bg-clip-text text-transparent for headings. Include gradient borders using border-transparent with gradient background. Add hover state variations that shift gradient colors. Ensure gradients are smooth and complementary colors. Use gradient overlays on images for visual interest.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4a3e20d90182970307b1b56cd8f8406d5f2cb68066ca16395183fb0a2fb6d389",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add colorful gradient backgrounds and text effects to accent elements.",
+    "detailed": "Add vibrant gradient accents using bg-gradient-to-r for horizontal gradients or bg-gradient-to-br for diagonal. Apply to buttons (from-blue-500 to-purple-600), hero backgrounds, and section dividers. Use text gradients with bg-clip-text text-transparent for headings. Include gradient borders using border-transparent with gradient background. Add hover state variations that shift gradient colors. Ensure gradients are smooth and complementary colors. Use gradient overlays on images for visual interest.",
+    "advanced": "Add vibrant gradient accents using bg-gradient-to-r for horizontal or bg-gradient-to-br for diagonal gradients. Apply to buttons (from-blue-500 to-purple-600), hero backgrounds, and section dividers. Use text gradients with bg-clip-text text-transparent for headings - include solid color fallback for older browsers. Create gradient borders using border-transparent with gradient background via pseudo-elements. Add hover state variations that smoothly transition gradient positions using background-position animation. Ensure gradient color combinations pass contrast checks - test start, middle, and end points. Use complementary or analogous color schemes. Add gradient overlays on images for visual interest while maintaining image visibility. Consider colorblind users - dont rely solely on color gradients for meaning. Implement CSS custom properties for gradient colors to enable theming. Use radial gradients for spotlight effects. Add subtle animation to gradients for premium feel without being distracting."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

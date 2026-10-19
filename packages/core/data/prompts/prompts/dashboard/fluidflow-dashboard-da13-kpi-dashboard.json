@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da13-kpi-dashboard",
+  "slug": "fluidflow-dashboard-da13-kpi-dashboard",
+  "title": "KPI Dashboard",
+  "description": "FluidFlow · KPI Dashboard",
+  "content": "Build KPI dashboard with summary metrics. Metric cards: grid of stat cards showing key values. Trends: sparklines or trend arrows showing direction. Comparison: show vs previous period. Color coding: green for positive, red for negative. Drilldown: click for detailed view. Real-time: auto-refresh for live data. Date range: selector for time period. Export: download report options.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6b1e7f4f6d012e68a6d69582dafcdd48c34ae83e7adb752882d094fe97d7eb41",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create key performance indicator dashboard with metric cards.",
+    "detailed": "Build KPI dashboard with summary metrics. Metric cards: grid of stat cards showing key values. Trends: sparklines or trend arrows showing direction. Comparison: show vs previous period. Color coding: green for positive, red for negative. Drilldown: click for detailed view. Real-time: auto-refresh for live data. Date range: selector for time period. Export: download report options.",
+    "advanced": "Build comprehensive KPI dashboard for business metrics monitoring. Layout: grid of metric cards (grid-cols-2 lg:grid-cols-4), each card with consistent sizing. Card structure: icon/category indicator (colored circle), main value (text-3xl font-bold), label (text-sm text-gray-500), trend indicator (TrendingUp/Down with percentage). Value formatting: abbreviate large numbers (1.2M, 3.5K), proper currency symbols, percentage display, decimal precision based on metric type. Trend calculation: compare current to previous period, show percentage change (+12.5%, -8.3%), color coding (text-green-600 for positive, text-red-600 for negative). Sparkline trends: tiny inline line chart showing recent history (last 7/30 days), using recharts sparlines or custom SVG. Comparison period: \"vs last week\", \"vs last month\", \"vs same period last year\", show absolute and percentage difference. Target/goal: optional target indicator, progress bar showing % to goal, color based on on-track status. Drilldown: click card opens detailed view/modal with full chart, breakdown by category/region/product. Grouping: organize related KPIs into sections (Revenue, Users, Performance), section headers. Real-time updates: WebSocket or polling for live metrics, animate value changes, show last updated timestamp. Date range selector: preset ranges (Today, 7d, 30d, 90d, YTD, Custom), affects all dashboard metrics. Responsive: stack cards on mobile (grid-cols-1 sm:grid-cols-2), swipe between metric groups. Loading state: skeleton cards matching layout. Error handling: show error state per card if metric fetch fails. Export: download as PDF, CSV data export, schedule email reports. Favorites/pinning: let users pin important metrics to top. Alerts: configure threshold alerts (notify when metric exceeds/drops below value)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

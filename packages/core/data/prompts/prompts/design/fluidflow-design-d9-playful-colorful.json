@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d9-playful-colorful",
+  "slug": "fluidflow-design-d9-playful-colorful",
+  "title": "Playful & Colorful",
+  "description": "FluidFlow · Playful & Colorful",
+  "content": "Add playful, energetic design with vibrant color palette - use multiple bright colors (pink-500, yellow-400, cyan-400, violet-500). Apply generous rounded corners (rounded-full for buttons, rounded-3xl for cards). Include bouncy hover animations with scale and rotate transforms. Use fun, friendly typography with varied weights. Add illustrated placeholders or emoji accents where appropriate. Create irregular shapes and overlapping elements. Use gradient backgrounds with multiple color stops. Add subtle rotation to cards for dynamic feel.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dec6e25f1a915a5ce6f12989ebb4b923051de6a447fef1b4e5199b2bbe9800b4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add fun, vibrant colors with bouncy animations and rounded shapes.",
+    "detailed": "Add playful, energetic design with vibrant color palette - use multiple bright colors (pink-500, yellow-400, cyan-400, violet-500). Apply generous rounded corners (rounded-full for buttons, rounded-3xl for cards). Include bouncy hover animations with scale and rotate transforms. Use fun, friendly typography with varied weights. Add illustrated placeholders or emoji accents where appropriate. Create irregular shapes and overlapping elements. Use gradient backgrounds with multiple color stops. Add subtle rotation to cards for dynamic feel.",
+    "advanced": "Add playful, energetic design with vibrant color palette - use multiple bright colors (pink-500, yellow-400, cyan-400, violet-500) while maintaining WCAG AA contrast. Apply generous rounded corners (rounded-full for buttons, rounded-3xl for cards). Include bouncy hover animations using spring physics (cubic-bezier(0.68,-0.55,0.265,1.55)) with scale and rotate transforms. Use fun, friendly typography like Nunito or Quicksand with varied weights. Add illustrated SVG placeholders or emoji accents where appropriate (with proper aria-labels). Create irregular shapes using clip-path and overlapping elements with z-index layering. Use gradient backgrounds with multiple color stops. Add subtle rotation (rotate-1, rotate-2) to cards for dynamic feel. Implement staggered entrance animations for groups. IMPORTANT: Despite playful feel, maintain clear interactive element identification, proper focus management, and dont let animations interfere with usability. Add prefers-reduced-motion support to tone down bouncy effects. Ensure color combinations work for colorblind users."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

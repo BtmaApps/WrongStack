@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r16-responsive-video",
+  "slug": "fluidflow-responsive-r16-responsive-video",
+  "title": "Responsive Video",
+  "description": "FluidFlow · Responsive Video",
+  "content": "Create responsive video embeds maintaining aspect ratio. Use aspect-video (16:9) or aspect-[4/3] container. Video fills container with w-full h-full object-cover. For iframes (YouTube, Vimeo): wrap in aspect ratio container, iframe w-full h-full. Remove fixed width/height attributes from iframe. Add rounded corners (rounded-lg) and overflow-hidden on container. Consider smaller video size on mobile for bandwidth.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b234bdda99993e6bcb840aafa55505037155f2e4ed98cf5b0b66b885b93ec0dd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Embed responsive videos that maintain aspect ratio across screen sizes.",
+    "detailed": "Create responsive video embeds maintaining aspect ratio. Use aspect-video (16:9) or aspect-[4/3] container. Video fills container with w-full h-full object-cover. For iframes (YouTube, Vimeo): wrap in aspect ratio container, iframe w-full h-full. Remove fixed width/height attributes from iframe. Add rounded corners (rounded-lg) and overflow-hidden on container. Consider smaller video size on mobile for bandwidth.",
+    "advanced": "Create responsive video embeds with proper aspect ratio handling. Container: relative w-full aspect-video (16:9) or aspect-[4/3], overflow-hidden rounded-lg. Native video: w-full h-full object-cover for fill, object-contain for letterbox. Iframe embeds: wrap in aspect ratio container, iframe absolute inset-0 w-full h-full, remove inline width/height. Poster image: show before play for faster perceived load. Loading: lazy load with IntersectionObserver, show skeleton or poster while loading. Autoplay: only with muted, consider prefers-reduced-motion. Controls: custom controls overlay for native video, position absolute over video. Mobile: consider lower resolution source for bandwidth, offer quality selector. Full-screen: support fullscreen API, handle safe areas. Captions: include track element with captions, style with ::cue. PiP: support Picture-in-Picture where available. Performance: preload=\"none\" or \"metadata\" for below-fold videos. Accessibility: captions required, keyboard controls, focus visible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

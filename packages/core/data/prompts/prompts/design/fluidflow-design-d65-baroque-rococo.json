@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d65-baroque-rococo",
+  "slug": "fluidflow-design-d65-baroque-rococo",
+  "title": "Baroque/Rococo",
+  "description": "FluidFlow · Baroque/Rococo",
+  "content": "Apply Baroque/Rococo aesthetic with dramatic classical ornament. Rich, dark colors with gold accents. Elaborate scrollwork and flourishes. Dramatic lighting (chiaroscuro). Include cherubs, shells, acanthus leaves. Ornate picture frames and borders. Luxurious textures: velvet, marble, gilt. Theatrical, emotional compositions. Opulent, dramatic, aristocratic atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d65"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a3af2ed8aa9b480ff9c6d91fceebc38b01b148c45e9d3c449ff6d51de153fe09",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create ornate classical aesthetic with dramatic flourishes, gold details, and luxurious grandeur.",
+    "detailed": "Apply Baroque/Rococo aesthetic with dramatic classical ornament. Rich, dark colors with gold accents. Elaborate scrollwork and flourishes. Dramatic lighting (chiaroscuro). Include cherubs, shells, acanthus leaves. Ornate picture frames and borders. Luxurious textures: velvet, marble, gilt. Theatrical, emotional compositions. Opulent, dramatic, aristocratic atmosphere.",
+    "advanced": "Apply Baroque/Rococo aesthetic with theatrical classical grandeur. Baroque (dramatic): strong contrast (chiaroscuro), emotional intensity, dynamic movement, religious/mythological themes. Rococo (playful): lighter colors, asymmetric curves, playful motifs, aristocratic elegance. Color palette: rich darks - burgundy (#722f37), deep blue (#1a1a4e), forest green (#0b3d0b), with abundant gold (#d4af37) and cream. Ornamental vocabulary: acanthus leaves, scrollwork (C-curves, S-curves), shells (rocaille), cherubs/putti, ribbons, flowers, cartouches. Frames: elaborate gilded frames around content, multiple nested borders, corner ornaments. Typography: elaborate scripts, decorative serif faces, ornamental initial caps. Textures: velvet (deep pile pattern), marble (veined patterns), gilt gold (metallic gradient with highlights), brocade fabric. Architectural elements: columns, pediments, arches, ceiling paintings. Dramatic lighting: spotlight effects, vignettes, golden glow, candlelit warmth. Painting influence: Caravaggio shadows, Fragonard pastels, Versailles opulence. Trompe loeil: painted illusions of 3D architectural elements. Interactive: flourishes can animate in, golden shimmer on hover. Portrait style: oval frames, dramatic poses. Implementation: SVG essential for ornamental details, careful layering for depth. Performance: ornate designs can be heavy - optimize carefully. Accessibility: ensure text readable despite decoration, maintain contrast with gold on dark."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la17-auth-pages",
+  "slug": "fluidflow-layouts-la17-auth-pages",
+  "title": "Auth Pages",
+  "description": "FluidFlow · Auth Pages",
+  "content": "Build authentication pages. Login: email/password inputs, remember me checkbox, forgot password link, submit button, social login (Google, GitHub), sign up link. Signup: name, email, password (with strength), confirm password, terms checkbox, submit, social signup, login link. Split layout: form one side, branded visual other side. Validation. Loading states.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "06f4348fe8602aed0b888a8bbc668f72fa9a356d91b5a45bd60a34d1687dca8c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create login and signup pages with forms and social auth.",
+    "detailed": "Build authentication pages. Login: email/password inputs, remember me checkbox, forgot password link, submit button, social login (Google, GitHub), sign up link. Signup: name, email, password (with strength), confirm password, terms checkbox, submit, social signup, login link. Split layout: form one side, branded visual other side. Validation. Loading states.",
+    "advanced": "Build comprehensive authentication pages with social login. Page layout: min-h-screen grid-cols-1 lg:grid-cols-2. Left side (form): flex items-center justify-center p-8. Right side (branding): hidden lg:block, bg-gradient-to-br or image, testimonial or feature highlights. Form container: max-w-md w-full. Logo: centered, links to home. Login form: \"Welcome back\" heading (text-2xl font-bold), \"Sign in to your account\" subtext. Email input: label, text input, email validation. Password input: label, password input with show/hide toggle (Eye/EyeOff icons). Remember me: checkbox + label \"Remember me for 30 days\". Forgot password: text link aligned right. Submit button: w-full \"Sign In\", loading state with spinner. Divider: \"Or continue with\" text between horizontal lines. Social login: flex gap-4, Google button (with logo), GitHub button, Apple button. Style: outline with icon + text or icon-only. Sign up link: \"Don't have an account? Sign up\" with link. Signup form: \"Create an account\" heading, \"Start your free trial\" subtext. Name input: full name or first/last split. Email input: with validation. Password input: with strength meter (weak/fair/strong bar), requirements list (8+ chars, uppercase, number, symbol) showing check/x as typed. Confirm password: with match validation. Terms checkbox: required, \"I agree to the Terms of Service and Privacy Policy\" with links. Submit: \"Create Account\". Social signup, login link similar to login. Shared features: inline validation (red border, error text), success states (green check), loading during submit, error banner for failed attempts (\"Invalid credentials\"), rate limiting warning. Two-factor: if enabled, second step for code entry. Magic link: optional passwordless option. Mobile: single column, form centered. Accessibility: labels associated with inputs, errors linked via aria-describedby, focus management."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

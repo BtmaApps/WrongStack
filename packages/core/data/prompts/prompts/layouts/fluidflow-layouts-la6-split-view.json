@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la6-split-view",
+  "slug": "fluidflow-layouts-la6-split-view",
+  "title": "Split View",
+  "description": "FluidFlow · Split View",
+  "content": "Build resizable split panel layout. Container: flex with horizontal split. Left panel: list view (navigation, inbox). Right panel: detail view (content, editor). Divider: draggable to resize panels. Min/max widths: prevent panels from becoming too small. Collapse: option to collapse left panel. Resize persistence: save to localStorage. Mobile: full-screen panels with back navigation. Panel content: each scrolls independently.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "58735f87e51fcda6f6612bb6371b52940118a41e4591e747189e1da9aa76b40f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create resizable two-panel layout with list and detail views.",
+    "detailed": "Build resizable split panel layout. Container: flex with horizontal split. Left panel: list view (navigation, inbox). Right panel: detail view (content, editor). Divider: draggable to resize panels. Min/max widths: prevent panels from becoming too small. Collapse: option to collapse left panel. Resize persistence: save to localStorage. Mobile: full-screen panels with back navigation. Panel content: each scrolls independently.",
+    "advanced": "Build resizable split panel layout with drag-to-resize and responsive behavior. Container: flex h-screen (or h-full) with horizontal split (flex-row, default) or vertical option (flex-col). Left panel (flex-shrink-0): list view content like navigation, inbox messages, file tree. Default width w-80 or 30%. Right panel (flex-1): detail view showing selected content, editor, or preview. Both panels: overflow-auto for independent scrolling. Divider: w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize transition-colors. Drag handling: onMouseDown starts resize, track mouse position, update left panel width, onMouseUp ends resize. Min/max widths: clamp left panel between min-w-[200px] and max-w-[50%] to prevent too small or too large. Collapse feature: toggle button (ChevronLeft/Right) on divider or header, collapses left panel to w-0 with overflow-hidden, shows expand button. Default ratio: configurable 30/70 or 40/60 split. Resize persistence: save panel width to localStorage on resize end, restore on mount. Mobile (md:hidden): no split view, full-screen panels with stack navigation. Left panel full screen initially, selecting item navigates to detail view (right panel full screen), back button returns to list. Panel content: flexible, render children or specific content per use case. Variants: email client (conversation list / message view), code editor (file explorer / editor / preview with 3 panels), messaging (conversations / chat), Kanban (board list / card detail). Header per panel: panel-specific toolbars with actions relevant to that panel. Responsive breakpoints: md:flex-row flex-col for vertical stack on narrow screens, or tabs interface alternative. Keyboard navigation: arrow keys navigate list in left panel, Enter opens in detail, Escape returns focus. Double-click divider: reset to default ratio. Accessibility: proper focus management, panel landmarks."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

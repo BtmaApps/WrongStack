@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d27-art-deco",
+  "slug": "fluidflow-design-d27-art-deco",
+  "title": "Art Deco",
+  "description": "FluidFlow · Art Deco",
+  "content": "Apply Art Deco aesthetic inspired by 1920s glamour. Use geometric patterns: chevrons, sunbursts, fan shapes, zigzags. Color palette: black and gold (amber-400), with deep jewel tones (emerald, sapphire, ruby). Strong symmetry in layouts. Bold geometric typography with clean lines. Gold metallic accents using gradients. Tall, vertical proportions. Include decorative frames and borders with geometric motifs. Add luxury materials feel: marble, gold, lacquer. Sharp angles and stepped forms.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bbdd943413a9bf0171c2b205dd7535d5bb707e46a1f990d920822a980bb61169",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create elegant 1920s Art Deco style with geometric patterns, gold accents, and bold symmetry.",
+    "detailed": "Apply Art Deco aesthetic inspired by 1920s glamour. Use geometric patterns: chevrons, sunbursts, fan shapes, zigzags. Color palette: black and gold (amber-400), with deep jewel tones (emerald, sapphire, ruby). Strong symmetry in layouts. Bold geometric typography with clean lines. Gold metallic accents using gradients. Tall, vertical proportions. Include decorative frames and borders with geometric motifs. Add luxury materials feel: marble, gold, lacquer. Sharp angles and stepped forms.",
+    "advanced": "Apply Art Deco aesthetic inspired by 1920s glamour and geometric elegance. Patterns: chevrons, sunburst rays, stepped pyramid forms, fan/shell shapes, zigzag borders - implement as SVG backgrounds or CSS gradients (repeating-linear-gradient for chevrons). Color palette: primary black (bg-gray-950) and gold (#D4AF37, amber-400/500); accent jewel tones - emerald (emerald-700), sapphire (blue-700), ruby (rose-700). Gold effects: metallic gradient (from-amber-200 via-yellow-400 to-amber-600) for text and borders. Typography: geometric sans-serif (Poiret One, Josefin Sans, Bebas Neue), tall letterforms, wide tracking (tracking-widest). Strong symmetry: centered layouts, mirrored decorative elements, balanced compositions. Vertical emphasis: tall containers, elongated proportions, vertical dividers. Decorative frames: geometric borders around content, corner ornaments using SVG or border-image. Sunburst motif: radial gradient with alternating colors creating ray pattern for hero sections. Materials simulation: marble texture backgrounds, gold foil effects, lacquered shine (subtle gradient overlay). Shapes: stepped/ziggurat forms, overlapping circles and lines, arrow motifs. Line work: thin gold lines creating geometric divisions. Typography hierarchy: display type for headlines, simple sans for body. Accessibility: ensure gold-on-black meets contrast standards, patterns dont overwhelm content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

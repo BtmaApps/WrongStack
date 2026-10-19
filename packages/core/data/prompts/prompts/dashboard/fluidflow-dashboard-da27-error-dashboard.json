@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da27-error-dashboard",
+  "slug": "fluidflow-dashboard-da27-error-dashboard",
+  "title": "Error Dashboard",
+  "description": "FluidFlow · Error Dashboard",
+  "content": "Build error monitoring dashboard. Error list: recent errors with timestamps. Grouping: group by error type/message. Counts: show occurrence frequency. Trends: error trend chart. Stack traces: expandable stack traces. Status: acknowledged, resolved, ignored. Affected users: count of impacted users. Quick actions: ignore, resolve, create issue.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1f457029c1a33a275eb251ff8d730d48427c1c621994d7e8178fb59eda76e821",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Monitor and display application errors.",
+    "detailed": "Build error monitoring dashboard. Error list: recent errors with timestamps. Grouping: group by error type/message. Counts: show occurrence frequency. Trends: error trend chart. Stack traces: expandable stack traces. Status: acknowledged, resolved, ignored. Affected users: count of impacted users. Quick actions: ignore, resolve, create issue.",
+    "advanced": "Build comprehensive error monitoring dashboard like Sentry. Error grouping: group similar errors by message signature, fingerprint unique errors, show occurrence count per group. Error list: table with error message (truncated), type/category, count, affected users, last seen, first seen, status. Filtering: by error type, status (unresolved, resolved, ignored), date range, severity level, environment (production, staging). Sorting: by count, recency, user impact, severity. Error detail view: full error message, stack trace (syntax highlighted, collapsible frames), related errors. Context: request URL, user info (ID, browser, OS), session replay link if available. Affected users: list of users who encountered error, count and percentage of total users. Trend chart: occurrences over time, helps identify if growing or one-time. Status workflow: open, acknowledged (being investigated), resolved, ignored (will not fix), snooze until occurs again. Quick actions: mark resolved, ignore, assign to team member, create GitHub issue, copy error details. Alerting: configure alerts for new errors or error spikes, notification integrations (Slack, email). Release tracking: tag errors by release version, identify regression vs existing. Aggregation: error count KPI card, errors by release, errors by route. Real-time: new errors appear automatically. Search: full-text search across error messages and stack traces. Bulk actions: resolve or ignore multiple selected errors. Integration: link to code (click stack frame opens code), source maps support."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

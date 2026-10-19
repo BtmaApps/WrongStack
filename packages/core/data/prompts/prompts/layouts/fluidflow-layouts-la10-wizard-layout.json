@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la10-wizard-layout",
+  "slug": "fluidflow-layouts-la10-wizard-layout",
+  "title": "Wizard Layout",
+  "description": "FluidFlow · Wizard Layout",
+  "content": "Create multi-step wizard/form layout. Structure: progress indicator top, step content center, navigation bottom. Progress: horizontal steps showing completed (check), current (highlighted), upcoming (gray). Step indicator: numbered circles connected by lines. Content area: centered, max-w-2xl. Form validation: validate current step before proceeding. Navigation: \"Back\" and \"Continue\" buttons. Save progress: persist to localStorage. Review step: final step showing all entered data.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5500e41fe1207c8622fd8d1ad1a806f1ca5f41bd4550a1e0ee7058f36995dcfb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create multi-step wizard with progress indicator and form navigation.",
+    "detailed": "Create multi-step wizard/form layout. Structure: progress indicator top, step content center, navigation bottom. Progress: horizontal steps showing completed (check), current (highlighted), upcoming (gray). Step indicator: numbered circles connected by lines. Content area: centered, max-w-2xl. Form validation: validate current step before proceeding. Navigation: \"Back\" and \"Continue\" buttons. Save progress: persist to localStorage. Review step: final step showing all entered data.",
+    "advanced": "Create multi-step wizard/form layout with validation and persistence. Structure: flex flex-col min-h-screen. Progress indicator: sticky top-0 bg-white border-b py-4 px-6 z-10. Horizontal stepper: flex justify-between items-center max-w-3xl mx-auto. Each step: flex flex-col items-center. Step circle: w-10 h-10 rounded-full flex items-center justify-center font-medium. States: completed (bg-green-500 text-white with Check icon), current (bg-blue-600 text-white ring-4 ring-blue-100), upcoming (bg-gray-200 text-gray-500). Connecting lines: flex-1 h-0.5 mx-2, bg-green-500 if previous completed, bg-gray-200 otherwise. Step labels below: text-xs, font-medium for current, text-gray-500 for others. Responsive: on mobile (sm:hidden), show simplified \"Step 2 of 4\" text or vertical layout. Content area: flex-1 flex flex-col items-center justify-center px-4 py-8. Inner container: max-w-2xl w-full. Step content: rendered based on currentStep state, each step is a form section. Step transitions: fade or slide animation between steps using AnimatePresence (Framer Motion) or CSS transitions. Form validation: validate current step fields before allowing next. Use react-hook-form or Formik for form state. Show inline errors, prevent advancement if invalid. Navigation: fixed bottom-0 or sticky, bg-white border-t p-4. Buttons: \"Back\" secondary button (left, hidden on first step), \"Continue\" primary button (right, shows \"Submit\" or \"Complete\" on final step). Button states: disabled during validation, loading during save. Step summary: optionally show completed step summaries above current step (collapsible accordions with \"Edit\" links). Save progress: persist form state to localStorage on each step change and on input change (debounced). On return, offer to resume from saved progress. Skip steps: optionally allow skipping non-required steps (shown as \"Skip\" text button), track skipped state. Review step: final step showing all entered data in read-only format, organized by section, \"Edit\" link per section to jump back. Loading: spinner overlay during save/submit operations. Success screen: completion screen with success icon, summary, next action buttons (\"Go to Dashboard\", \"Add Another\"). Error recovery: if submission fails, show error, allow retrying or going back to fix issues. Accessibility: announce step changes, form labels, error messages."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

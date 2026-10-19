@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d93-blockchain-web3",
+  "slug": "fluidflow-design-d93-blockchain-web3",
+  "title": "Blockchain/Web3",
+  "description": "FluidFlow · Blockchain/Web3",
+  "content": "Apply Web3 aesthetic with blockchain visualization. Wallet connection buttons with address display. Transaction hash formatting. Block explorer style tables. Smart contract interaction forms. Gas fee estimators. NFT gallery grids. Token balance displays. Network switching selectors. Decentralized application patterns. Chain connection status indicators.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d93"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2a60ca4557a94b92377f2947145a032e643c453a236193371006f67c07c6184e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create blockchain-inspired design with wallet connections, transaction flows, and decentralized aesthetics.",
+    "detailed": "Apply Web3 aesthetic with blockchain visualization. Wallet connection buttons with address display. Transaction hash formatting. Block explorer style tables. Smart contract interaction forms. Gas fee estimators. NFT gallery grids. Token balance displays. Network switching selectors. Decentralized application patterns. Chain connection status indicators.",
+    "advanced": "Apply Web3 aesthetic with decentralized application patterns. Wallet connect buttons with ENS/address truncation (0x...1234). Transaction cards with hash, status, confirmations. Block explorer tables with mono fonts. Smart contract forms with ABI parameter inputs. Gas estimator with gwei display. NFT cards with metadata. Token balances with 18-decimal precision. Network selector with chain icons (ETH, Polygon, BSC). Connection status with block height. Pending transaction spinners. MetaMask-style confirmation dialogs."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

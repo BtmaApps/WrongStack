@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da23-notification-center",
+  "slug": "fluidflow-dashboard-da23-notification-center",
+  "title": "Notification Center",
+  "description": "FluidFlow · Notification Center",
+  "content": "Build notification center component. Bell icon: shows unread count badge. Dropdown: list of notifications. Types: info, warning, success, error with icons. Unread: highlight unread notifications. Mark read: click to mark as read. Actions: action buttons in notifications. Clear all: dismiss all notifications. Settings: notification preferences link.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "43c745ec9319c42b8dbd514feba8ae74e74f0202bca1bbbbef08234468f57a0e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create notification center for dashboard alerts.",
+    "detailed": "Build notification center component. Bell icon: shows unread count badge. Dropdown: list of notifications. Types: info, warning, success, error with icons. Unread: highlight unread notifications. Mark read: click to mark as read. Actions: action buttons in notifications. Clear all: dismiss all notifications. Settings: notification preferences link.",
+    "advanced": "Build comprehensive notification center for dashboard. Trigger: Bell icon in header with unread count badge (Badge component), red bg for alerts, blue for info. Dropdown panel: positioned absolute right, w-80 or w-96, max-h-96 overflow-y-auto, shadow-lg, rounded-lg. Header: \"Notifications\" title, \"Mark all read\" button, Settings gear icon link. Notification item: icon (type-specific), title text, body text (truncated), timestamp, unread indicator (dot or background), hover highlight. Types: info (InfoCircle, blue), success (CheckCircle, green), warning (AlertTriangle, yellow), error (XCircle, red), action required (bold styling). Unread styling: bg-blue-50 or left border, dot indicator. Read state: click notification marks as read, dimmer styling for read. Actions: optional action buttons per notification, \"View\", \"Dismiss\", custom actions. Grouping: group by date (Today, Yesterday, Earlier), or by category. Empty state: \"No notifications\" with illustration. Real-time: new notifications push to top with animation, update badge count. Notification preferences: settings modal or page, toggle types, delivery method (in-app, email, push). Mark all read: button in header, confirmation for many unread. Auto-dismiss: some notifications auto-dismiss after viewing. Persistence: notifications stored in database, sync across sessions. Mobile: full-screen modal on mobile, adequate touch targets. Accessibility: aria-live for new notifications, proper labeling. Sound: optional sound on new notification. Archive: view old/dismissed notifications."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

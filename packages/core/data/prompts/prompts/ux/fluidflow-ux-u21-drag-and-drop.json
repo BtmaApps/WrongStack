@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u21-drag-and-drop",
+  "slug": "fluidflow-ux-u21-drag-and-drop",
+  "title": "Drag and Drop",
+  "description": "FluidFlow · Drag and Drop",
+  "content": "Implement drag and drop for intuitive interactions. Add drag handle (grip icon) or make entire item draggable. Show visual feedback on drag: shadow, opacity change, cursor grabbing. Display drop zone indicators (border, background change). Animate items moving aside during drag. Support keyboard alternative for accessibility. Implement drop constraints (valid targets). Handle edge cases: dropping on self, cancelled drags. Save new order after drop. Add touch support with long-press to initiate drag.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8599f5cb785cbc6404f6d22fa5c633ce41f18993111066f9e1ef8c7ce2b742ef",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add drag and drop for reordering lists and moving items.",
+    "detailed": "Implement drag and drop for intuitive interactions. Add drag handle (grip icon) or make entire item draggable. Show visual feedback on drag: shadow, opacity change, cursor grabbing. Display drop zone indicators (border, background change). Animate items moving aside during drag. Support keyboard alternative for accessibility. Implement drop constraints (valid targets). Handle edge cases: dropping on self, cancelled drags. Save new order after drop. Add touch support with long-press to initiate drag.",
+    "advanced": "Implement drag and drop for intuitive reordering and organization. Use library: @dnd-kit/core or react-beautiful-dnd for complex interactions. Drag handle: GripVertical icon on left, cursor: grab, or entire item draggable (touchAction: none). Drag start feedback: item gets shadow-lg, scale(1.02), opacity-90, cursor: grabbing. Drop zone indicators: 2px dashed border, bg-blue-50 on valid targets, visual gap where item will drop. Animate items: other items smoothly translate to make room (transform: translateY), use spring physics for natural feel. Keyboard alternative REQUIRED: Tab to focus item, Space to pick up, arrow keys to move, Space to drop - announce position to screen readers. Drop constraints: define valid targets, show invalid cursor on invalid drop zones, snap back on invalid drop. Edge cases: dropping on self (no-op), drag cancelled (Escape key, restore position), drag out of bounds (return to origin). Save order: persist immediately after drop (optimistic), handle save failure with undo. Touch support: 150-200ms long-press to initiate (avoid conflict with scroll), haptic feedback on pickup. Multi-select drag: Shift+click to select multiple, drag selection together. ACCESSIBILITY: aria-grabbed, aria-dropeffect, live announcements of position. Performance: virtualize long lists during drag."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

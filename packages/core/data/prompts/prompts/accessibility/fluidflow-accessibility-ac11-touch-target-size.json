@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac11-touch-target-size",
+  "slug": "fluidflow-accessibility-ac11-touch-target-size",
+  "title": "Touch Target Size",
+  "description": "FluidFlow · Touch Target Size",
+  "content": "Ensure all interactive elements meet minimum touch target size for mobile accessibility. WCAG 2.2 requires 44x44 CSS pixels minimum. Apply min-h-11 min-w-11 (44px) to all buttons, links, and interactive controls. For inline links within text, ensure adequate line height (leading-loose). Icon buttons: even if icon is smaller, clickable area should be 44px. Form inputs: ensure adequate height for touch. Close buttons: don't place too close to edges. Navigation items: ensure comfortable spacing. Touch target spacing: minimum 8px gap between adjacent targets to prevent accidental taps. Use padding for larger targets without affecting visual design.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "27136cb66ac99295f4f76b3bb3e26040bf484aafb4fb290bc39bc28e79d9e1c7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Ensure all interactive elements have minimum 44x44px touch targets.",
+    "detailed": "Ensure all interactive elements meet minimum touch target size for mobile accessibility. WCAG 2.2 requires 44x44 CSS pixels minimum. Apply min-h-11 min-w-11 (44px) to all buttons, links, and interactive controls. For inline links within text, ensure adequate line height (leading-loose). Icon buttons: even if icon is smaller, clickable area should be 44px. Form inputs: ensure adequate height for touch. Close buttons: don't place too close to edges. Navigation items: ensure comfortable spacing. Touch target spacing: minimum 8px gap between adjacent targets to prevent accidental taps. Use padding for larger targets without affecting visual design.",
+    "advanced": "Ensure all interactive elements meet minimum touch target size requirements. WCAG 2.2 Level AA: minimum 44x44 CSS pixels (Target Size Enhanced: 24x24 minimum). Apply consistently: min-h-11 min-w-11 (44px in Tailwind) to buttons, links, form controls, checkboxes, radio buttons, toggles. Implementation strategies: use padding to expand touch area without changing visual size, wrapper element with click handler if padding not possible, pseudo-element ::before/::after with position absolute and larger size. Icon buttons: even if icon is 20px, clickable area should be 44px (p-3 around 20px icon). Inline text links: ensure adequate line height (leading-loose or leading-relaxed), consider underlining to make tap target visible. Form inputs: min-h-11 for inputs, selects, textareas. Close buttons: don't place too close to screen edges (minimum 8px margin), ensure thumb can reach. Navigation: comfortable spacing between items (gap-2 minimum). Touch target spacing: minimum 8px gap between adjacent interactive elements to prevent accidental activation. Testing: use browser devtools device mode, test on actual mobile devices, check with large finger simulation. Small targets with adequate spacing: allowed if 24px minimum with no overlapping targets. Exception: inline text links can be smaller if text block has 24px+ height. Mobile-first: design for touch then adapt for mouse, not reverse."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

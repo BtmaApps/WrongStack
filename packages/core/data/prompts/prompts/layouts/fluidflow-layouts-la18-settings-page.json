@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la18-settings-page",
+  "slug": "fluidflow-layouts-la18-settings-page",
+  "title": "Settings Page",
+  "description": "FluidFlow · Settings Page",
+  "content": "Build application settings page. Layout: sidebar navigation with main content. Navigation: tabs or sidebar list (Profile, Account, Notifications, Security, Billing). Content sections: card-based with form inputs. Save buttons per section or floating. Success/error feedback. Danger zone: destructive actions with confirmations. Responsive: tabs become dropdown on mobile.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "61ef99c20366ab823edefeabe50fa841eb8394e7cbf85a009c0cfb324f98359a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create settings page with navigation tabs and form sections.",
+    "detailed": "Build application settings page. Layout: sidebar navigation with main content. Navigation: tabs or sidebar list (Profile, Account, Notifications, Security, Billing). Content sections: card-based with form inputs. Save buttons per section or floating. Success/error feedback. Danger zone: destructive actions with confirmations. Responsive: tabs become dropdown on mobile.",
+    "advanced": "Build comprehensive application settings page. Layout: flex with sidebar (w-64) and main content (flex-1). Sidebar navigation: sticky top-4, space-y-1. Nav items: flex items-center gap-3 px-3 py-2 rounded-lg, icon + label, hover:bg-gray-100, active: bg-gray-100 font-medium. Sections: Profile, Account, Notifications, Privacy, Security, Billing, Integrations, API. Grouped with section headers if many. Main content: max-w-3xl py-6 px-8. Page header: section title (text-2xl font-bold), description text (text-gray-600). Content cards: space-y-6. Card: bg-white rounded-xl shadow-sm border p-6. Card header: title (text-lg font-semibold), description (text-sm text-gray-600), optional \"Edit\" button aligned right. Form sections: space-y-4. Input groups: label (text-sm font-medium), input, helper text (text-xs text-gray-500). Input types: text, select, toggle switches, radio groups, checkboxes. Toggle settings: flex justify-between items-center for label + switch pairs. Save actions: per-card \"Save Changes\" button (shows when modified), or floating action bar at bottom. Success feedback: toast notification \"Settings saved\" or inline success text. Notifications section: granular toggles for email, push, SMS per category (Marketing, Product Updates, Security Alerts, Weekly Digest). Privacy section: visibility toggles, data sharing options. Security section: change password form, two-factor auth toggle with setup flow, session management (list active sessions, revoke option). Billing section: current plan card, payment method with last 4 digits, invoices table with download links, cancel subscription with confirmation. Danger zone: bg-red-50 border border-red-200 rounded-xl, \"Delete Account\" with confirmation modal. API section: API key display (masked with copy button), regenerate key with confirmation. Mobile: sidebar becomes horizontal tabs or hamburger menu, cards full-width. Loading: skeleton cards while fetching settings. Accessibility: form sections as fieldsets with legends, save status announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

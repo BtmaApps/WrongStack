@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d132-lottie-animation-rich",
+  "slug": "fluidflow-design-d132-lottie-animation-rich",
+  "title": "Lottie/Animation Rich",
+  "description": "FluidFlow · Lottie/Animation Rich",
+  "content": "Apply Lottie animation aesthetic with illustrated motion feel. Loading animations instead of spinners. Illustrated empty states with motion. Celebration confetti and effects. Animated icons and toggles. Onboarding illustrations. Error and success animations. Character animations. Data visualization motion. Scroll-triggered animations.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d132"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "db8100580c06d4b6120573b0e125f79f5dd2d2004d56d135ab88ac6a3f751c31",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create interface with rich Lottie animations for illustrations, loading states, and celebrations.",
+    "detailed": "Apply Lottie animation aesthetic with illustrated motion feel. Loading animations instead of spinners. Illustrated empty states with motion. Celebration confetti and effects. Animated icons and toggles. Onboarding illustrations. Error and success animations. Character animations. Data visualization motion. Scroll-triggered animations.",
+    "advanced": "Apply Lottie animation aesthetic with illustrated motion patterns. Loading: themed Lottie loops for loading states, skeleton + animation overlay option. Empty states: illustrated character animations, looping idle states, call to action. Success: checkmark morph, confetti burst, celebration character. Error: illustrated error scenes, retry animation. Icons: animated icon transitions (menu to X, play to pause), micro-interactions. Onboarding: full-screen illustrations with motion, swipe between steps. Progress: animated progress bars, completion celebrations. Toggles: animated switches, state transitions. Buttons: hover animations, click feedback with motion. Charts: animated data entry, value change transitions. Scroll: trigger animations on scroll into view, parallax layered animations. Characters: mascot illustrations with idle animations, reactions. Weather: animated weather icons, scene backgrounds. Notifications: animated badges, attention-grabbing motion. Achievements: unlock animations, badge reveals. Forms: animated validation feedback, success confetti. Implementation: lottie-web or lottie-react, load JSON animations. Performance: lazy load animations, reduce complexity on low-power. Interactivity: play on hover, scrub on scroll, click to trigger. Accessibility: respect reduced motion, provide static fallbacks."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

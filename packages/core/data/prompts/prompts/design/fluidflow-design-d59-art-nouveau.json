@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d59-art-nouveau",
+  "slug": "fluidflow-design-d59-art-nouveau",
+  "title": "Art Nouveau",
+  "description": "FluidFlow · Art Nouveau",
+  "content": "Apply Art Nouveau aesthetic with organic flowing elegance. Sinuous, whiplash curves and lines. Nature-inspired motifs: flowers, vines, insects, birds. Female figure illustrations (Mucha-style). Muted but rich colors: gold, olive, burgundy, teal, cream. Ornate decorative frames and borders. Stylized floral patterns. Elegant serif and decorative typography. Romantic, natural, ornamental atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d59"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ace9cb808fd7ffca5d89140704ac4cd68660d28eee46025403af9923c0955f4b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create elegant Art Nouveau style with flowing organic lines, nature motifs, and decorative beauty.",
+    "detailed": "Apply Art Nouveau aesthetic with organic flowing elegance. Sinuous, whiplash curves and lines. Nature-inspired motifs: flowers, vines, insects, birds. Female figure illustrations (Mucha-style). Muted but rich colors: gold, olive, burgundy, teal, cream. Ornate decorative frames and borders. Stylized floral patterns. Elegant serif and decorative typography. Romantic, natural, ornamental atmosphere.",
+    "advanced": "Apply Art Nouveau aesthetic (1890-1910) with organic flowing elegance. Line work: sinuous \"whiplash\" curves, asymmetric organic lines - essential to style. Implement using SVG paths with smooth bezier curves. Nature motifs: stylized flowers (iris, lily, rose), vines and tendrils, leaves, insects (dragonflies, butterflies), peacock feathers, flowing hair. Female figures: elegant women in flowing robes/hair (Alphonse Mucha style) as decorative illustrations. Color palette: muted but rich - gold/ochre (#c9a227), olive green (#708238), burgundy (#722f37), teal (#008080), cream (#fffef0), touches of pale pink and lavender. Frames and borders: ornate decorative surrounds with organic flowing shapes, corner ornaments, circular and arch frames. Patterns: stylized repeating florals, peacock patterns, organic tessellations. Typography: elegant Art Nouveau fonts (Arnold Boecklin, Auriol, or modern alternatives), decorative initial caps with floral integration. Glass/window effect: reference to Tiffany lamps, stained glass with organic leading. Materials suggested: bronze, glass, ceramic glazes. Architecture: arched doorways, organic moldings. Interactive: elements can bloom/grow on hover, flowing reveal animations. Posters: inspired by Mucha advertising posters - figure with decorative frame and typography. Implementation: SVG essential for curved lines and complex illustrations. Accessibility: decorative frames shouldnt trap focus, ensure text readable despite ornamentation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

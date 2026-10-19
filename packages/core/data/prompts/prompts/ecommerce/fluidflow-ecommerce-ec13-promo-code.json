@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec13-promo-code",
+  "slug": "fluidflow-ecommerce-ec13-promo-code",
+  "title": "Promo Code",
+  "description": "FluidFlow · Promo Code",
+  "content": "Build promo/coupon code input component. Structure: flex row with input and Apply button. Input: text field with placeholder \"Enter promo code\", uppercase transform. Apply button: loading state while validating. Validation states: checking (spinner), valid (green check, show discount), invalid (error message). Applied state: show code as removable pill with discount amount. Error messages for expired, invalid, or minimum not met.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6f2ec5fd806e7b159f1c72c1ea4ee697e78b36eeb98187145d4c09041cca8f54",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create promo code input with Apply button and validation feedback.",
+    "detailed": "Build promo/coupon code input component. Structure: flex row with input and Apply button. Input: text field with placeholder \"Enter promo code\", uppercase transform. Apply button: loading state while validating. Validation states: checking (spinner), valid (green check, show discount), invalid (error message). Applied state: show code as removable pill with discount amount. Error messages for expired, invalid, or minimum not met.",
+    "advanced": "Build promo/coupon code input component with comprehensive validation. Structure: flex gap-2 with input (flex-1) and Apply button. Input: text field with placeholder \"Enter promo code\" or \"Discount code\", text-transform uppercase (CSS or on input), font-mono for code appearance, border rounded-lg px-4 py-2. Apply button: px-6 py-2 bg-gray-900 text-white rounded-lg, or outline variant. States: \"Apply\" default, loading spinner while validating (disabled), \"Applied\" success state. Validation flow: on Apply click, validate code against backend, show appropriate feedback. States with UI: idle (default appearance), checking (input disabled, button shows Loader2 animate-spin), valid (input border-green-500, green Check icon inside, button changes to \"Applied\" or checkmark), invalid (input border-red-500, shake animation, error message below). Applied state display: replace input with applied code pill (bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center gap-2) showing code text and X remove button. Show discount amount/percentage applied (\"20% off\" or \"-$25.00\"). Error messages (text-red-600 text-sm below input): \"This code has expired\", \"Minimum purchase of $50 required\", \"Code not found\", \"This code has already been used\", \"One code per order\". Multiple codes: if allowed, show stacked pills for each applied code, input remains for adding more. Remove code: X button removes code and recalculates totals. Auto-apply feature: support ?promo=CODE URL parameter for promo links, auto-apply on page load. Suggestions section: \"Available promotions\" collapsible showing applicable codes user can click to apply (SUMMER20, FREESHIP). Success feedback: brief green highlight animation when discount applied, toast notification optional. Persistent: remember applied code in sessionStorage, restore on page refresh. Input validation: trim whitespace, handle case-insensitive codes. Keyboard: Enter key triggers Apply. Accessibility: aria-describedby linking input to error message, announce success/failure to screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

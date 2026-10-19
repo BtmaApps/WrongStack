@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la27-newsletter-layout",
+  "slug": "fluidflow-layouts-la27-newsletter-layout",
+  "title": "Newsletter Layout",
+  "description": "FluidFlow · Newsletter Layout",
+  "content": "Build newsletter or long-form content layout. Header: publication logo, date, read time. Hero: large title, author byline, hero image. Body: prose styling with proper typography for paragraphs, headings, lists, quotes, code, images with captions. Sidebar: table of contents, share buttons, newsletter signup. Footer: author bio, related articles.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "225081a12b4d018844807428e09d3f5064a3622dd8ebfc494f0075d7e8f68ec6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create newsletter/blog post layout with article styling.",
+    "detailed": "Build newsletter or long-form content layout. Header: publication logo, date, read time. Hero: large title, author byline, hero image. Body: prose styling with proper typography for paragraphs, headings, lists, quotes, code, images with captions. Sidebar: table of contents, share buttons, newsletter signup. Footer: author bio, related articles.",
+    "advanced": "Build newsletter or long-form article layout optimized for reading. Container: max-w-screen-xl mx-auto. Header bar: py-4 border-b, publication logo/name, issue number/date, \"View in browser\" link (for email version). Article header section: max-w-3xl mx-auto py-12 text-center. Category/tag badge, title (text-4xl md:text-5xl font-bold leading-tight), subtitle (text-xl text-gray-600 mt-4), author byline (avatar, name, date, read time estimate), share buttons (Twitter, LinkedIn, Copy Link). Hero image: full-width or max-w-4xl, aspect-video rounded-xl, caption below (text-sm text-gray-500 text-center). Content area: max-w-3xl mx-auto relative. Main article: prose prose-lg (Tailwind Typography), proper styling for: headings (h2, h3 with anchor links), paragraphs (text-lg leading-relaxed), links (text-blue-600 underline), blockquotes (border-l-4 border-gray-300 pl-4 italic), lists (ul/ol with proper bullets/numbers), code inline and blocks (bg-gray-100 rounded, syntax highlighting), images with captions (figure/figcaption), tables, horizontal rules. Pull quotes: larger styled quotes breaking out of column width. Embedded tweets/posts: styled embeds. Newsletter-specific: highlighted boxes for announcements, sponsor section (clearly labeled). Sidebar (lg:absolute lg:right-0 lg:w-48): sticky top-24. Table of contents: auto-generated from headings, scroll-spy highlighting current section. Social share buttons: vertical stack. Newsletter signup: compact form. Reading progress: bar at top showing scroll progress. Footer sections: Author bio (larger format with image, name, title, longer bio, social links). Related articles (\"You might also like\"): 3 article cards. Newsletter CTA: subscribe form for non-subscribers. Previous/Next issue navigation. Publication footer with links. Responsive: sidebar hidden on mobile (or collapsed), full-width images, adjusted typography sizes. Print: clean print styles. Accessibility: proper heading hierarchy, image alts, skip to content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

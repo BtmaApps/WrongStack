@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c46-add-data-table",
+  "slug": "fluidflow-components-c46-add-data-table",
+  "title": "Add Data Table",
+  "description": "FluidFlow · Add Data Table",
+  "content": "Create data table with sorting and filtering. Table container: overflow-x-auto for mobile scroll. Table: w-full border-collapse. Header: sticky top-0 bg-gray-50, th with px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider. Sort buttons: inline-flex items-center gap-1, show arrow icons for asc/desc. Body rows: hover:bg-gray-50 transition. Cells: px-4 py-3 whitespace-nowrap. Filter row: search input above table. Pagination: flex justify-between items-center, prev/next buttons, page numbers, items per page selector.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c46"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e2f9f9e0fcb2ef0341d5621c7fc8e8b3200b770580be8b3896d2dd4024ec2f66",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create sortable, filterable data table with pagination.",
+    "detailed": "Create data table with sorting and filtering. Table container: overflow-x-auto for mobile scroll. Table: w-full border-collapse. Header: sticky top-0 bg-gray-50, th with px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider. Sort buttons: inline-flex items-center gap-1, show arrow icons for asc/desc. Body rows: hover:bg-gray-50 transition. Cells: px-4 py-3 whitespace-nowrap. Filter row: search input above table. Pagination: flex justify-between items-center, prev/next buttons, page numbers, items per page selector.",
+    "advanced": "Create full-featured data table component. Container: relative overflow-hidden rounded-lg border. Toolbar: flex justify-between p-4 border-b, contains search input, column visibility toggle, export button. Search: debounced input with search icon, searches across all columns. Column visibility: dropdown with checkboxes for each column. Sorting: click header to sort, shift+click for multi-sort, sort indicators (▲▼). Filtering: per-column filters in header row, text/select/date range based on column type. Selection: checkbox column, select all (current page/all), bulk action bar appears when items selected. Row actions: hover to show action buttons (edit, delete, view) or use dropdown menu. Expandable rows: click to expand additional details. Resizable columns: drag border to resize. Sticky columns: first column stays visible on horizontal scroll. Loading state: skeleton rows or overlay spinner. Empty state: centered message when no data. Pagination: page size selector (10/25/50/100), page number buttons with ellipsis, showing X-Y of Z items. Keyboard navigation: arrow keys to navigate, Enter to select, Escape to deselect. Virtual scrolling: for large datasets, only render visible rows. Export: CSV/Excel download of filtered data."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

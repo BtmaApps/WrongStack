@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d3-neumorphism-style",
+  "slug": "fluidflow-design-d3-neumorphism-style",
+  "title": "Neumorphism Style",
+  "description": "FluidFlow · Neumorphism Style",
+  "content": "Convert to neumorphic soft UI with dual shadows - light shadow on top-left (shadow-[-5px_-5px_10px_rgba(255,255,255,0.8)]) and dark shadow on bottom-right (shadow-[5px_5px_10px_rgba(0,0,0,0.1)]). Use a consistent background color (bg-gray-100 or bg-slate-100) throughout. Create pressed/inset states for buttons using inset shadows. Keep colors monochromatic within the same hue family. Add generous padding and rounded corners (rounded-xl). Avoid high contrast - keep everything soft and subtle.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "48163f249a9957ea9dc91234ec62fed5c775fd6e9a7d17e5201045839ff34312",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create soft UI with inset shadows that make elements appear extruded from the background.",
+    "detailed": "Convert to neumorphic soft UI with dual shadows - light shadow on top-left (shadow-[-5px_-5px_10px_rgba(255,255,255,0.8)]) and dark shadow on bottom-right (shadow-[5px_5px_10px_rgba(0,0,0,0.1)]). Use a consistent background color (bg-gray-100 or bg-slate-100) throughout. Create pressed/inset states for buttons using inset shadows. Keep colors monochromatic within the same hue family. Add generous padding and rounded corners (rounded-xl). Avoid high contrast - keep everything soft and subtle.",
+    "advanced": "Convert to neumorphic soft UI with dual shadows - light shadow on top-left (shadow-[-5px_-5px_10px_rgba(255,255,255,0.8)]) and dark shadow on bottom-right (shadow-[5px_5px_10px_rgba(0,0,0,0.1)]). Use consistent background color (bg-gray-100 or bg-slate-100) throughout. Create pressed/inset states for buttons using inset shadows with smooth transitions. CRITICAL: Neumorphism has accessibility concerns - ensure minimum 3:1 contrast ratio for interactive element boundaries. Add visible focus indicators (ring-2 ring-offset-2) that stand out from soft shadows. Keep colors monochromatic within same hue family. Add generous padding (p-4 to p-6) and rounded corners (rounded-xl). Include haptic-style feedback animations for touch. Use CSS custom properties for shadow values to enable theme switching. Test with users who have low vision - consider adding subtle borders as fallback. Avoid using neumorphism for critical actions where visibility is essential."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

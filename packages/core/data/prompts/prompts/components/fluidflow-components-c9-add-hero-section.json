@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c9-add-hero-section",
+  "slug": "fluidflow-components-c9-add-hero-section",
+  "title": "Add Hero Section",
+  "description": "FluidFlow · Add Hero Section",
+  "content": "Create impactful hero section component. Full-width container with generous padding (py-20 lg:py-32). Layout options: centered text, split with image right, or background image with overlay. Content: headline using text-4xl md:text-5xl lg:text-6xl font-bold with proper line-height, subheadline in text-xl text-gray-600, CTA buttons (primary filled + secondary outline) with proper spacing. Add background: gradient, pattern, image with dark overlay for text contrast. Include optional elements: trust badges, customer logos, stats row, announcement banner above. Animated entrance for text elements. Responsive: stack elements on mobile, adjust text sizes. Consider video background option.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f776fd9dea39eb6f7ad91b539617abe31c313c14b4ba402cda1ca1715f7540a9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create an impactful hero section with headline, description, and CTAs.",
+    "detailed": "Create impactful hero section component. Full-width container with generous padding (py-20 lg:py-32). Layout options: centered text, split with image right, or background image with overlay. Content: headline using text-4xl md:text-5xl lg:text-6xl font-bold with proper line-height, subheadline in text-xl text-gray-600, CTA buttons (primary filled + secondary outline) with proper spacing. Add background: gradient, pattern, image with dark overlay for text contrast. Include optional elements: trust badges, customer logos, stats row, announcement banner above. Animated entrance for text elements. Responsive: stack elements on mobile, adjust text sizes. Consider video background option.",
+    "advanced": "Create impactful hero section component with multiple layout variants and polish. Container: relative overflow-hidden, min-h-[600px] or min-h-screen for full viewport. Inner: max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32. Layout variants: 1) Centered: text-center max-w-3xl mx-auto, 2) Split: grid lg:grid-cols-2 gap-12 items-center with content left/image right, 3) Background image: relative with absolute bg-image and overlay. Headline: text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 (or text-white on dark bg), proper line-height leading-tight. Subheadline: mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl (for readability). CTA buttons: mt-8 flex flex-col sm:flex-row gap-4, primary (bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium), secondary (border border-gray-300 hover:bg-gray-50 px-8 py-3 rounded-lg). Background options: gradient (bg-gradient-to-br from-blue-50 to-purple-50), pattern (SVG or CSS pattern), image with bg-cover bg-center and dark overlay (bg-black/50). Trust indicators: flex items-center gap-8 mt-12, customer logos in grayscale hover:grayscale-0. Stats row: grid grid-cols-3 gap-8 mt-12 with large numbers + labels. Announcement banner: above hero with dismissible promo message. Floating elements: decorative shapes, screenshots, or illustrations with subtle parallax. Image in split layout: relative rounded-lg shadow-xl overflow-hidden, optional floating UI elements. Video background: autoPlay loop muted playsInline with poster fallback. Animation: staggered fade-in for text elements using CSS animation delays. Responsive: stack to single column on mobile, adjust text sizes and padding. ACCESSIBILITY: proper heading level (h1), sufficient color contrast on overlays, ensure text readable on all backgrounds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

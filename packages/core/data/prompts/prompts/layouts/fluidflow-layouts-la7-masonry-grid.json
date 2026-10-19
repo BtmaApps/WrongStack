@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la7-masonry-grid",
+  "slug": "fluidflow-layouts-la7-masonry-grid",
+  "title": "Masonry Grid",
+  "description": "FluidFlow · Masonry Grid",
+  "content": "Create masonry/Pinterest-style grid layout. Container: columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4. Items: break-inside-avoid mb-4. Card structure: image with variable height, title, description, actions. Image handling: maintain aspect ratios, lazy loading. Hover effect: slight scale, shadow increase, overlay with actions. Infinite scroll: load more on scroll. Lightbox: click to view full size.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c8a126ddec778f8231aa5b67282983ec23f0b9cbd9e6f1e275397b10890a81e6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Pinterest-style masonry grid with variable height cards.",
+    "detailed": "Create masonry/Pinterest-style grid layout. Container: columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4. Items: break-inside-avoid mb-4. Card structure: image with variable height, title, description, actions. Image handling: maintain aspect ratios, lazy loading. Hover effect: slight scale, shadow increase, overlay with actions. Infinite scroll: load more on scroll. Lightbox: click to view full size.",
+    "advanced": "Create masonry/Pinterest-style grid layout with optimal item placement. Container: CSS columns approach - columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4. Items: break-inside-avoid mb-4 for proper column flow without breaking across columns. Alternative: CSS Grid with grid-template-rows: masonry (if browser supported), or JavaScript library (Masonry.js, react-masonry-css) for precise positioning. Card structure: bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow. Image: variable height based on original aspect ratio (not forced aspect ratio), object-cover if cropping needed, lazy loading with loading=\"lazy\" or IntersectionObserver, skeleton placeholder while loading. Content below image: p-4 with title (font-medium line-clamp-2), description (text-sm text-gray-600 line-clamp-3), action buttons row. Hover effect: group class on card, image scale-105 transition, shadow increase, overlay appears (absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100) with action buttons (Save/Like, Share, Open icons). Gap consistency: gap-4 on container ensures equal spacing. Infinite scroll: IntersectionObserver on sentinel element near bottom, trigger loadMore function, append new items to array, render in grid. Loading state: skeleton placeholders in masonry layout matching card shapes with varying heights. Filter/sort: category pills above grid, smooth transition animation when filters change (items fade in/out or reposition). Lightbox: click image opens full-size viewer with navigation arrows, close button, image counter. Overlay buttons: Save/heart icon (toggles saved state), quick actions. Categories/tags: filterable, shown on cards as small badges. Responsive: adjust column count per breakpoint (1 mobile, 2 tablet, 3-4 desktop). Performance: virtualize rendering for very large grids (>100 items visible), only render items in/near viewport using react-window or similar. Image optimization: srcset for responsive images, WebP format. Accessibility: grid landmark, focusable cards, alt text on images."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

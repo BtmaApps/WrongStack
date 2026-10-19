@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d125-slack-teams-style",
+  "slug": "fluidflow-design-d125-slack-teams-style",
+  "title": "Slack/Teams Style",
+  "description": "FluidFlow · Slack/Teams Style",
+  "content": "Apply Slack aesthetic with team communication feel. Sidebar with workspace and channels. Message pane with threading. User presence indicators. Emoji reactions and custom emoji. File sharing and previews. App integrations. Huddles and calls. Search with filters. Pinned items. Mentions and notifications.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d125"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6a1e3078daa1ecbb06d576565ca18a6e4873f720624594ec1f43916ac8edf576",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create workspace communication with channels, threads, and integrations.",
+    "detailed": "Apply Slack aesthetic with team communication feel. Sidebar with workspace and channels. Message pane with threading. User presence indicators. Emoji reactions and custom emoji. File sharing and previews. App integrations. Huddles and calls. Search with filters. Pinned items. Mentions and notifications.",
+    "advanced": "Apply Slack aesthetic with team communication patterns. Workspace switcher: vertical icon bar, notifications badge, add workspace. Sidebar: workspace name header, sections (Channels, Direct Messages, Apps), channel/DM rows with unread bold and count. Message area: date separators, messages with avatar, name, timestamp, content. Threading: click to open thread in right panel, reply count on parent. Message actions: emoji reaction, reply, more (edit, delete, pin, bookmark). Rich formatting: markdown, code blocks, blockquotes, lists. Emoji: picker with categories, search, recent, custom emoji. Reactions: row of emoji with counts below message. Files: upload, preview thumbnails, expand to viewer. @mentions: blue text, mention picker on @. Channels: # prefix, topic below name, members count. DMs: avatar, online status dot. Presence: green (active), empty (away), dnd (red). Search: top bar, filters (in:channel, from:person, has:link). Pins: pinned items list in channel details. Integrations: bot messages with app icon. Huddle: audio call in channel with participants shown. Bookmarks: toolbar below channel header. Settings: notifications per channel."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

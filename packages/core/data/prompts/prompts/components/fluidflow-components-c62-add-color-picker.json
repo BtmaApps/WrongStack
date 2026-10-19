@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c62-add-color-picker",
+  "slug": "fluidflow-components-c62-add-color-picker",
+  "title": "Add Color Picker",
+  "description": "FluidFlow · Add Color Picker",
+  "content": "Create color picker. Trigger: button showing current color swatch (w-10 h-10 rounded border). Dropdown: absolute bg-white rounded-lg shadow-xl p-4. Preset colors: grid grid-cols-8 gap-2, small swatches (w-6 h-6 rounded cursor-pointer). Custom input: hex input field. Preview: large swatch showing selected color. Actions: cancel and apply buttons.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c62"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "623dfe96f2f0c3c82941d16625e9f70d3338f2a0416f0f47a0d46e5a10c849ba",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create color picker with palette and custom input.",
+    "detailed": "Create color picker. Trigger: button showing current color swatch (w-10 h-10 rounded border). Dropdown: absolute bg-white rounded-lg shadow-xl p-4. Preset colors: grid grid-cols-8 gap-2, small swatches (w-6 h-6 rounded cursor-pointer). Custom input: hex input field. Preview: large swatch showing selected color. Actions: cancel and apply buttons.",
+    "advanced": "Create comprehensive color picker. Trigger: color swatch button with dropdown arrow, current color preview. Picker modes: preset palette, gradient picker, input values. Gradient picker: saturation/brightness square with hue slider below, draggable marker. Hue slider: horizontal rainbow gradient, draggable handle. Alpha slider: optional opacity control with checkerboard background. Value inputs: hex (#RRGGBB), RGB (3 inputs), HSL (3 inputs), tab switcher between formats. Preset palettes: common colors, recent colors (localStorage), saved colors. Recent: last 8-10 used colors, click to select. Custom palettes: predefined brand colors, theme colors. Preview: old vs new color comparison. Eye dropper: EyeDropper API to pick color from screen (where supported). Copy: button to copy current color value. Color names: show nearest named color. Validation: reject invalid hex input, clamp RGB 0-255. Keyboard: arrow keys adjust values, Tab between inputs. Accessibility: proper labeling, keyboard operable gradient picker alternative. Mobile: touch-friendly slider handles. Output: onChange fires with { hex, rgb, hsl, alpha } object."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d12-minimalist",
+  "slug": "fluidflow-design-d12-minimalist",
+  "title": "Minimalist",
+  "description": "FluidFlow · Minimalist",
+  "content": "Create ultra-minimalist design with maximum whitespace - use generous margins (mx-auto max-w-4xl) and padding (py-20, px-8). Limit color palette to black, white, and one accent color. Use typography as the primary design element with clear hierarchy. Remove all unnecessary decorative elements - no shadows, minimal borders. Include only essential UI components. Use thin fonts for elegance. Add micro-interactions that are subtle and purposeful. Embrace negative space as a design element. Keep icons simple and line-based.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "df3f42507694b9b5cbc3ab45758dfd9d0a75c1281e00921023b8109bbb414c48",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create ultra-clean design with maximum whitespace and minimal elements.",
+    "detailed": "Create ultra-minimalist design with maximum whitespace - use generous margins (mx-auto max-w-4xl) and padding (py-20, px-8). Limit color palette to black, white, and one accent color. Use typography as the primary design element with clear hierarchy. Remove all unnecessary decorative elements - no shadows, minimal borders. Include only essential UI components. Use thin fonts for elegance. Add micro-interactions that are subtle and purposeful. Embrace negative space as a design element. Keep icons simple and line-based.",
+    "advanced": "Create ultra-minimalist design with maximum whitespace - use generous margins (mx-auto max-w-4xl) and padding (py-20 md:py-32, px-6 md:px-8). Limit color palette to black, white, and one carefully chosen accent color. Use typography as the primary design element with clear hierarchy and intentional scale jumps (text-sm to text-5xl). Remove all unnecessary decorative elements - no shadows, minimal borders (border-b only for dividers). Include only essential UI components - question every element. Use thin fonts (font-light to font-normal) for elegance but ensure readability at small sizes. Add micro-interactions that are subtle and purposeful - gentle opacity changes, understated transforms. Embrace negative space as intentional design element. Keep icons simple and line-based (strokeWidth=1.5). CRITICAL: Minimalism must not sacrifice usability - ensure interactive elements are clearly identifiable, maintain proper touch targets (min 44px), provide adequate visual feedback. Test with users to ensure \"minimal\" doesnt mean \"confusing\". Ensure sufficient contrast despite limited palette."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

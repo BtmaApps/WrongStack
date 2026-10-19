@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f1-theme-toggle",
+  "slug": "fluidflow-features-f1-theme-toggle",
+  "title": "Theme Toggle",
+  "description": "FluidFlow · Theme Toggle",
+  "content": "Implement dark/light theme toggle with system preference detection. Create theme context with useState and useEffect. Check prefers-color-scheme media query for initial value. Store preference in localStorage with key \"theme\". Toggle button: Sun/Moon icons that switch. Apply theme: add/remove \"dark\" class on document.documentElement. Tailwind dark mode: ensure darkMode: \"class\" in config, use dark: prefix for dark styles. Smooth transition: add transition-colors duration-200 to body.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e1f0b73dc658a687c2db63a6289b522536d3470e85a1ff5fb2a6cda63f873e24",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add dark/light mode toggle button with Sun/Moon icons. Store preference in localStorage.",
+    "detailed": "Implement dark/light theme toggle with system preference detection. Create theme context with useState and useEffect. Check prefers-color-scheme media query for initial value. Store preference in localStorage with key \"theme\". Toggle button: Sun/Moon icons that switch. Apply theme: add/remove \"dark\" class on document.documentElement. Tailwind dark mode: ensure darkMode: \"class\" in config, use dark: prefix for dark styles. Smooth transition: add transition-colors duration-200 to body.",
+    "advanced": "Implement dark/light theme toggle with system preference detection. Create ThemeContext with useState and useEffect hooks. Check prefers-color-scheme media query for initial value, fallback to localStorage. Store preference with key \"theme\" (light/dark/system). Toggle button: Sun/Moon icons with smooth rotation transition. Apply theme: add/remove \"dark\" class on document.documentElement. Tailwind config: darkMode: \"class\", use dark: prefix extensively. Smooth transition-colors duration-200 on body for seamless switching. System preference option: \"auto\" that follows OS setting and responds to changes. Update meta theme-color for browser chrome styling. Sync across browser tabs with storage event listener. Provide ThemeProvider component wrapping entire app. Include useTheme hook for accessing theme state anywhere. Handle SSR flash with script in head. Add keyboard shortcut (Cmd/Ctrl+Shift+D). Consider color scheme for system UI elements (scrollbars, form controls). Test both themes thoroughly for contrast compliance."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

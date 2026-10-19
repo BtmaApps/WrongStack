@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d56-voxel-low-poly",
+  "slug": "fluidflow-design-d56-voxel-low-poly",
+  "title": "Voxel/Low Poly",
+  "description": "FluidFlow · Voxel/Low Poly",
+  "content": "Apply voxel/low poly 3D aesthetic reminiscent of early 3D games. Blocky, cubic shapes like Minecraft. Flat-shaded polygon surfaces. Limited color palette per object. Visible polygon edges. Isometric or 3D perspective views. Chunky pixel-like 3D elements. Include terrain, characters, objects in voxel style. Nostalgic early 3D, playful geometric atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d56"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5ba3f3846f9605ca72d2add05e00b0ff097103f41ef2504fa5e9d5a6bfcea92c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create 3D blocky aesthetic with voxel art, low polygon models, and retro 3D game feel.",
+    "detailed": "Apply voxel/low poly 3D aesthetic reminiscent of early 3D games. Blocky, cubic shapes like Minecraft. Flat-shaded polygon surfaces. Limited color palette per object. Visible polygon edges. Isometric or 3D perspective views. Chunky pixel-like 3D elements. Include terrain, characters, objects in voxel style. Nostalgic early 3D, playful geometric atmosphere.",
+    "advanced": "Apply voxel/low poly 3D aesthetic with retro 3D gaming feel. Voxel style: blocky cubic shapes, each voxel a distinct color, step-like surfaces (think Minecraft). Create using CSS 3D transforms for simple shapes, or SVG/canvas for complex scenes. Low poly: visible triangular faces, flat shading (no smooth gradients on surfaces), hard edges between polygons. Color: limited palette per object (3-5 colors showing light/shadow on faces), slight color banding. Shading: each polygon face solid color based on light direction - top faces lightest, side faces medium, bottom/back darkest. No anti-aliasing for authentic look. Perspective: isometric (transform: rotateX(60deg) rotateZ(45deg)) or standard 3D perspective. CSS 3D: use transform-style: preserve-3d for actual 3D shapes, multiple divs for polygon faces. Terrain: stepped landscape, cubic trees, blocky mountains. Characters: simplified cubic figures, pixel-art faces on voxel heads. UI elements: chunky 3D buttons, extruded text, depth through actual 3D transforms. Animation: rotation reveals all sides, step-based movement (not smooth). Background: gradient sky, distant low-poly mountains. Shadows: hard-edged, blocky shadows matching aesthetic. Typography: pixel or blocky fonts complement style. Implementation: CSS 3D for simple elements, Three.js or similar for complex scenes. Performance: 3D transforms need optimization, especially on mobile. Accessibility: ensure any text remains readable, provide 2D fallbacks for essential information."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

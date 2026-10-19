@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da29-health-monitor",
+  "slug": "fluidflow-dashboard-da29-health-monitor",
+  "title": "Health Monitor",
+  "description": "FluidFlow · Health Monitor",
+  "content": "Build system health monitoring dashboard. Services: list of monitored services. Status: green/yellow/red indicators. Uptime: uptime percentage display. Latency: response time metrics. Incidents: current and past incidents. Notifications: alert on status changes. History: status history timeline. Dependencies: show service dependencies.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2054274ffdb6c5f6e36c3193fc993f472be7072eb01fdbe53e578952566ea024",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Monitor system health with status indicators.",
+    "detailed": "Build system health monitoring dashboard. Services: list of monitored services. Status: green/yellow/red indicators. Uptime: uptime percentage display. Latency: response time metrics. Incidents: current and past incidents. Notifications: alert on status changes. History: status history timeline. Dependencies: show service dependencies.",
+    "advanced": "Build comprehensive system health monitoring dashboard. Service list: grid or list of all monitored services/components, each with name, status indicator, brief description. Status indicators: green (operational), yellow (degraded/slow), red (outage/error), gray (maintenance/unknown), pulsing animation for active issues. Status summary: header showing overall status, count of issues. Uptime display: percentage uptime (99.9%), uptime over different periods (24h, 7d, 30d, 90d), uptime bar visualization showing history. Latency metrics: current response time (p50, p95, p99), latency trend chart, threshold indicators (normal, elevated, critical). Service detail: click service for detail modal, full metrics, recent incidents, maintenance schedule. Incident management: current incident banner at top, incident timeline with updates, severity level and affected services. Incident history: list of past incidents, postmortem links, filter by severity and service. Status page: optional public status page view, subscribe to updates. Notifications: configure alert channels (email, Slack, PagerDuty), alert thresholds, on-call schedule. Dependency map: visualization of service dependencies, trace impact of issues. Metrics charts: CPU, memory, error rates, request volume, per-service charts. Maintenance windows: schedule and display planned maintenance. Auto-recovery detection: detect and show when issue auto-resolved. SLA tracking: service level agreement compliance, remaining error budget. Export: status reports, incident reports. Mobile: responsive for on-call mobile access, push notifications."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

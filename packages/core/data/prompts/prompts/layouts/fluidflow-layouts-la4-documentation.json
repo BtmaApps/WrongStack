@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la4-documentation",
+  "slug": "fluidflow-layouts-la4-documentation",
+  "title": "Documentation",
+  "description": "FluidFlow · Documentation",
+  "content": "Build documentation/help center layout. Three-column layout: sidebar nav (w-64), main content (flex-1), table of contents (w-48). Left sidebar: collapsible navigation tree with sections and pages, search input. Main content: article with proper typography (prose), code blocks with syntax highlighting, callout boxes. Right sidebar: table of contents with scroll-spy. Header: doc title, version selector, search. Mobile: sidebars become hamburger menu.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "da80cbe9045445efcb46edb7b9e25765ff3a7498af0db80abed7586c7758526c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create docs layout with sidebar navigation, content area, and table of contents.",
+    "detailed": "Build documentation/help center layout. Three-column layout: sidebar nav (w-64), main content (flex-1), table of contents (w-48). Left sidebar: collapsible navigation tree with sections and pages, search input. Main content: article with proper typography (prose), code blocks with syntax highlighting, callout boxes. Right sidebar: table of contents with scroll-spy. Header: doc title, version selector, search. Mobile: sidebars become hamburger menu.",
+    "advanced": "Build documentation/help center layout with full navigation features. Layout: flex with three columns on desktop. Left sidebar (w-64 flex-shrink-0 border-r): sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto. Search input at top (Search icon, Cmd+K hint). Collapsible navigation tree: sections as collapsible headers (ChevronRight icon rotates on expand), pages as links below, nested subsections supported, active page highlighted (bg-blue-50 text-blue-700 font-medium). Main content (flex-1 min-w-0 px-8 py-6): article with proper typography using prose class (Tailwind Typography plugin), responsive max-width. Code blocks: syntax highlighting (Prism or Shiki), language label, copy button (top-right), line numbers optional. Callout boxes: styled divs for tip (blue/info icon), warning (amber/alert icon), danger (red/error icon), note (gray). Tables with borders and alternating rows. Images with captions. Right sidebar (w-48 flex-shrink-0): sticky top-20. \"On this page\" heading. Table of contents links generated from headings (h2, h3), scroll-spy highlighting current section as user scrolls. Header: h-16 border-b flex items-center justify-between px-6. Doc title/logo, version selector dropdown, global search button, GitHub link, dark mode toggle. Breadcrumbs: below header showing location (Docs > Getting Started > Installation). Bottom navigation: previous/next page buttons with titles. Search: full-text search modal (Cmd+K), results grouped by section, keyboard navigation. Mobile (md:hidden): left sidebar becomes hamburger drawer, ToC becomes collapsible section at top of content. Copy buttons on all code blocks. \"Edit this page on GitHub\" link at bottom. Last updated timestamp. Feedback widget: \"Was this helpful?\" with Yes/No buttons. Dark mode: proper syntax highlighting theme swap. Accessibility: proper heading hierarchy, skip links, landmarks."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

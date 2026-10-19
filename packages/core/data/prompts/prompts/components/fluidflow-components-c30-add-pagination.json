@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c30-add-pagination",
+  "slug": "fluidflow-components-c30-add-pagination",
+  "title": "Add Pagination",
+  "description": "FluidFlow · Add Pagination",
+  "content": "Create pagination component with page numbers and navigation. Container: flex items-center justify-center gap-1. Buttons: w-10 h-10 rounded-md flex items-center justify-center. Previous/Next: ChevronLeft/ChevronRight icons, disabled state when at start/end. Page numbers: show current page highlighted (bg-blue-600 text-white), nearby pages, ellipsis for gaps. Active page: bg-blue-600 text-white. Hover state: bg-gray-100. Show first and last page always. Mobile: simplified with prev/next and current indicator only. Optional: items per page selector, \"Showing 1-10 of 100\" text.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cde3da54d3ef9e9a8cdaf66df2eff50b850801e9d71e047f96ef42edf24273b1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create pagination controls for navigating through pages of content.",
+    "detailed": "Create pagination component with page numbers and navigation. Container: flex items-center justify-center gap-1. Buttons: w-10 h-10 rounded-md flex items-center justify-center. Previous/Next: ChevronLeft/ChevronRight icons, disabled state when at start/end. Page numbers: show current page highlighted (bg-blue-600 text-white), nearby pages, ellipsis for gaps. Active page: bg-blue-600 text-white. Hover state: bg-gray-100. Show first and last page always. Mobile: simplified with prev/next and current indicator only. Optional: items per page selector, \"Showing 1-10 of 100\" text.",
+    "advanced": "Create comprehensive pagination component with multiple display modes. Container: flex items-center justify-between (full) or justify-center (simple). Navigation buttons: flex items-center gap-1. Button base: inline-flex items-center justify-center w-10 h-10 rounded-md text-sm font-medium transition-colors. States: default (text-gray-700 hover:bg-gray-100), active (bg-blue-600 text-white hover:bg-blue-700), disabled (text-gray-300 cursor-not-allowed). Prev/Next: show icons + optional text on larger screens. Page calculation: show first page, last page, current page, siblings (1-2 each side), ellipsis for gaps. Ellipsis: span with \"...\" not clickable, or dropdown showing hidden pages. Smart display: if total pages <= 7, show all; otherwise truncate with ellipsis. Sizes: sm (h-8 w-8 text-xs), md (h-10 w-10 text-sm), lg (h-12 w-12 text-base). Mobile responsive: on small screens show only prev/current/next or prev/next with page input. Additional controls: items per page select (10, 25, 50, 100), results summary \"Showing 1-10 of 97 results\". Accessibility: nav element with aria-label=\"Pagination\", current page with aria-current=\"page\", disabled buttons with aria-disabled. Props: currentPage, totalPages, onPageChange, siblingsCount, showFirstLast, showPrevNext, size. Keyboard: focusable buttons with proper tab order."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so21-activity-timeline",
+  "slug": "fluidflow-social-so21-activity-timeline",
+  "title": "Activity Timeline",
+  "description": "FluidFlow · Activity Timeline",
+  "content": "Build activity timeline feed. Event types: posts created, likes, comments, follows, profile updates. Timeline structure: vertical list with connecting line. Event row: icon, description, timestamp. Filtering: filter by activity type. Date grouping: \"Today\", \"Yesterday\", \"This Week\". Expandable details for each event.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cc89f4a70fc77c57bd52edc6eb32c1fb794ff88ef2acd304c7e5b28c00e168f1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create activity timeline showing user actions.",
+    "detailed": "Build activity timeline feed. Event types: posts created, likes, comments, follows, profile updates. Timeline structure: vertical list with connecting line. Event row: icon, description, timestamp. Filtering: filter by activity type. Date grouping: \"Today\", \"Yesterday\", \"This Week\". Expandable details for each event.",
+    "advanced": "Build comprehensive activity timeline showing user actions history. Container: max-w-2xl mx-auto py-8. Timeline structure: relative, vertical line (absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200) connecting events. Event grouping: group by date with sticky headers (\"Today\", \"Yesterday\", \"January 15, 2024\"). Event row: flex gap-4 relative pl-10 py-3. Icon circle: absolute left-0, w-8 h-8 rounded-full flex items-center justify-center, colored based on event type (blue for posts, red for likes, green for follows, purple for comments). Icons: FileText for post, Heart for like, MessageCircle for comment, UserPlus for follow, Edit for profile update, Share2 for share. Event content: flex-1. Description: text with bold usernames and links, \"[You] liked [Username]'s post\" or \"[You] started following [Username]\". Timestamp: text-xs text-gray-500 mt-1. Preview: for posts/comments, show content preview (line-clamp-2 text-sm text-gray-600 mt-1). Link: entire row clickable to navigate to relevant content. Expandable details: ChevronDown to expand showing full content or context. Activity types: Post created, Post liked, Comment added, User followed, Profile updated (shows what changed), Photo added, Shared post, Mentioned in post, Tagged in photo. Filter bar: horizontal pills (All, Posts, Likes, Comments, Follows), active state styling. Undo actions: for recent actions, \"Undo\" link (e.g., undo follow within 5 minutes). Grouped activities: \"You liked 5 posts\" collapsed, expandable to see all. Analytics summary: top of timeline showing \"This week: 12 posts, 47 likes, 8 comments\" stats. Time range selector: This Week, This Month, All Time dropdown. Infinite scroll: load older events on scroll. Privacy control: setting to make activity public, followers-only, or private. Export: download activity data. Empty state: \"No recent activity\" with suggestions. Accessibility: timeline as list, events properly structured, dates announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

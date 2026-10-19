@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so19-user-badge-system",
+  "slug": "fluidflow-social-so19-user-badge-system",
+  "title": "User Badge System",
+  "description": "FluidFlow · User Badge System",
+  "content": "Build badge/achievement system UI. Badge grid: earned badges with icons, names, dates earned. Badge detail: modal with full description, progress, how to earn. Profile display: showcase badges on profile. Categories: engagement, milestones, special events. Locked badges: shown greyed out with requirements. Progress indicators for in-progress badges.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0d25014914c0ff057ce5150fa03318be002005a60860bfa2be10ff01be117ae8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create user badges and achievements display system.",
+    "detailed": "Build badge/achievement system UI. Badge grid: earned badges with icons, names, dates earned. Badge detail: modal with full description, progress, how to earn. Profile display: showcase badges on profile. Categories: engagement, milestones, special events. Locked badges: shown greyed out with requirements. Progress indicators for in-progress badges.",
+    "advanced": "Build comprehensive badge and achievement system display. Badge grid container: grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4. Badge card: flex flex-col items-center p-4 rounded-lg hover:bg-gray-50. Badge icon: w-16 h-16, could be SVG, image, or emoji in colored circle. Badge name: text-sm font-medium text-center mt-2. Earned date: text-xs text-gray-500 \"Earned Jan 2024\". Earned vs locked: earned badges full color, locked badges grayscale/opacity-50 with Lock icon overlay. Badge categories: tabs or sections (Engagement, Milestones, Special, Seasonal) with category icons. Badge detail modal: on badge click, show modal with larger icon (w-24 h-24), badge name (text-xl font-bold), description explaining achievement, criteria (\"Post 100 times\"), earned date or progress bar if not earned, rarity indicator (Common, Rare, Epic, Legendary with colors), other users count (\"12.4K users have this badge\"), share badge button. Progress badges: for badges with numeric progress, show progress bar (e.g., \"47/100 posts\"), percentage display, estimated time to earn optional. Profile badge showcase: on user profile, horizontal row of top/featured badges (user can select which to display), click badge opens detail. Badge notification: when earned, celebratory modal/toast with confetti animation, \"New Badge Earned!\" heading, badge preview, share to feed option. Badge comparison: see which badges friends have, \"X mutual badges\" on profiles. Leaderboard: users with most badges or specific rare badges. Badge history: timeline of badges earned with dates. Special badges: verified badge (platform-verified), early adopter, beta tester, premium subscriber with distinct styling. Seasonal badges: limited-time badges for events/holidays. Badge search: if many badges, search and filter by category, earned status, rarity. Accessibility: badges have alt text descriptions, modal accessible, progress announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

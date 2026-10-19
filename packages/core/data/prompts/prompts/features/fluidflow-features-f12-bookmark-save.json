@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f12-bookmark-save",
+  "slug": "fluidflow-features-f12-bookmark-save",
+  "title": "Bookmark/Save",
+  "description": "FluidFlow · Bookmark/Save",
+  "content": "Implement save/bookmark functionality for items. Save button: Bookmark icon (outline when unsaved, filled when saved). Toggle action: click to save/unsave. Animation: subtle scale animation on save. Storage: localStorage for anonymous users, API for authenticated. Saved items page: dedicated route showing all bookmarks. Empty state: friendly message. Sort saved items by date saved.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "28a02fc224972f0da98a1c4209e2fbdbe5bc4ed2e97473aec875820fbd15735a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add bookmark icon button to save items to a favorites list stored locally.",
+    "detailed": "Implement save/bookmark functionality for items. Save button: Bookmark icon (outline when unsaved, filled when saved). Toggle action: click to save/unsave. Animation: subtle scale animation on save. Storage: localStorage for anonymous users, API for authenticated. Saved items page: dedicated route showing all bookmarks. Empty state: friendly message. Sort saved items by date saved.",
+    "advanced": "Implement save/bookmark functionality for items with organization features. Save button: Bookmark icon from lucide-react (outline stroke when unsaved, filled fill-current when saved). Toggle action: click to save/unsave with immediate visual feedback. Animation: subtle scale-110 pulse animation on save, smooth fill transition. Storage: localStorage with array of saved item IDs for anonymous users (with upgrade prompt at limit), API endpoint POST/DELETE for authenticated users. Saved items page: dedicated /saved route showing all bookmarks in grid/list view toggle. Card display: item preview with saved date, \"Remove\" button (X icon). Empty state: friendly illustration with \"Nothing saved yet\" message and browse suggestion CTA. Organize saved items: create folders/collections feature (e.g., \"Work\", \"Read Later\", \"Inspiration\") with drag-drop between collections. Sort saved items: by date saved (newest/oldest), alphabetically by title, custom manual order. Filter by collection or item type. Sync across devices: for logged-in users via API, merge on login. Export saved items: download list as JSON with item details or CSV with IDs and titles. Share collection: generate shareable public link with privacy controls. Limit: max 100 saved items for anonymous users with \"Create account to save more\" prompt. Handle deleted items gracefully (show \"Item no longer available\" placeholder). Quick unsave from saved page with undo toast. Add to saved from multiple contexts: card hover button, detail page action bar, long-press on mobile."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

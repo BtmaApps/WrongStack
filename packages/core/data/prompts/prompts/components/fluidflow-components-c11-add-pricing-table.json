@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c11-add-pricing-table",
+  "slug": "fluidflow-components-c11-add-pricing-table",
+  "title": "Add Pricing Table",
+  "description": "FluidFlow · Add Pricing Table",
+  "content": "Create pricing comparison table/cards. Structure: grid grid-cols-1 md:grid-cols-3 gap-8 for three tiers. Card layout: plan name, price (large text-4xl font-bold), billing period, feature list with check/x icons, CTA button. Highlight recommended plan: scale-105, ring-2 ring-blue-500, \"Popular\" or \"Recommended\" badge. Feature comparison: icon prefix (Check for included, X or minus for excluded), text descriptions. Toggle for monthly/annual billing with discount badge. Add FAQ link below. Sticky header on scroll for comparison tables. Money-back guarantee badge. Custom/Enterprise tier with \"Contact us\" CTA. Animate price change on billing toggle.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8e4d6bde08064a751a1822b9a28d6413dda083b58f074c0fd34399ebf54ab079",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create pricing cards with plan names, prices, and feature lists.",
+    "detailed": "Create pricing comparison table/cards. Structure: grid grid-cols-1 md:grid-cols-3 gap-8 for three tiers. Card layout: plan name, price (large text-4xl font-bold), billing period, feature list with check/x icons, CTA button. Highlight recommended plan: scale-105, ring-2 ring-blue-500, \"Popular\" or \"Recommended\" badge. Feature comparison: icon prefix (Check for included, X or minus for excluded), text descriptions. Toggle for monthly/annual billing with discount badge. Add FAQ link below. Sticky header on scroll for comparison tables. Money-back guarantee badge. Custom/Enterprise tier with \"Contact us\" CTA. Animate price change on billing toggle.",
+    "advanced": "Create pricing comparison table/cards with billing toggle and feature comparison. Container: max-w-7xl mx-auto px-4 py-16. Section header: text-center with title, subtitle explaining pricing. Billing toggle: flex justify-center mb-12, segmented control or switch for Monthly/Annual, discount badge (\"Save 20%\") next to Annual. Cards grid: grid grid-cols-1 md:grid-cols-3 gap-8 items-start. Card structure: bg-white rounded-2xl shadow-sm border p-8, flex flex-col. Plan header: plan name (text-lg font-semibold), optional description. Price display: mt-4, currency symbol (text-2xl), amount (text-5xl font-bold), period (/month text-gray-500). Animate price change on toggle with number transition. Feature list: mt-8 space-y-4, each feature with Check icon (text-green-500) or X icon (text-gray-300) prefix, text-sm text-gray-600. CTA button: mt-8 w-full, primary for recommended (bg-blue-600), outline for others. Highlighted/recommended tier: relative scale-105, ring-2 ring-blue-500, \"Most Popular\" badge absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-sm px-3 py-1 rounded-full. Enterprise tier: \"Custom\" instead of price, \"Contact Sales\" CTA. Feature comparison table: alternative layout with features as rows, plans as columns, sticky header on scroll. Add-ons section: optional add-on features with +$X/mo. Trust elements: money-back guarantee badge, security badges, customer count. FAQ section below: common pricing questions. Responsive: stack cards on mobile with recommended first. Hover effects: subtle shadow increase, border color change. ACCESSIBILITY: proper table markup for comparison view, clear feature descriptions not just icons."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

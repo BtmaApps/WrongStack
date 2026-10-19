@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da12-calendar-view",
+  "slug": "fluidflow-dashboard-da12-calendar-view",
+  "title": "Calendar View",
+  "description": "FluidFlow · Calendar View",
+  "content": "Build calendar component for date-based data. Month view: grid of 7 columns (days) x 6 rows (weeks). Header: month/year title, previous/next navigation arrows, Today button. Day cells: date number, event indicators (dots or text). Events: colored bars, click to view details. Day cell states: today (highlight), selected, other month (gray). Drag to reschedule events. Responsive: list view on mobile.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ac3023475ee5e4459ba2abb10389b6da6eb0708ac3d5800c49e81f3e2409d944",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create month calendar grid showing events on dates.",
+    "detailed": "Build calendar component for date-based data. Month view: grid of 7 columns (days) x 6 rows (weeks). Header: month/year title, previous/next navigation arrows, Today button. Day cells: date number, event indicators (dots or text). Events: colored bars, click to view details. Day cell states: today (highlight), selected, other month (gray). Drag to reschedule events. Responsive: list view on mobile.",
+    "advanced": "Build calendar component for date-based data with multiple views. Month view: grid of 7 columns (days of week) x 6 rows (weeks), using CSS grid or table. Header: month/year title (font-semibold text-xl), ChevronLeft/ChevronRight navigation arrows with hover states, \"Today\" button to jump to current date. Day of week headers: S M T W T F S (or full names), text-sm text-gray-500 text-center. Day cells: w-full aspect-square or fixed height (h-24 md:h-32), p-1, border-b border-r border-gray-200. Cell content: date number (text-sm font-medium) in corner, event indicators below. Date number positioning: top-left or centered. Events in cells: colored bars (h-5 rounded text-xs px-1 truncate) showing event title, different colors for categories, stacked vertically (show max 3, then \"+2 more\" link). Click event bar: opens event details modal. Day cell states: today (bg-blue-50 ring-2 ring-blue-500 ring-inset), selected (bg-blue-100), other month dates (text-gray-400), weekend (subtle bg tint optional). Click day cell: select date, optionally open day detail view. Week view: 7-day horizontal view with hour rows (24 or business hours) for time slots, events positioned by time, height based on duration. Day view: single day with detailed hour slots (30min or 1hr increments), events as positioned blocks. Mini calendar: small month view (150-200px) for sidebar date picker, click date navigates main calendar. Event creation: click empty time slot, or click and drag to create event spanning time, opens creation form modal with title, time, description, color fields. Event details: click event opens modal/popover with full details, Edit and Delete buttons. Drag to reschedule: drag events to different days/times, visual feedback during drag, confirm or auto-save on drop. Resize events: drag event edges to change duration. Responsive: on mobile, switch to agenda/list view showing upcoming events chronologically with date headers. Loading: skeleton calendar grid. Integration consideration: sync with external calendar services (Google, Outlook) via API. Dark mode support. Accessibility: proper grid semantics, keyboard navigation between cells/events, announce date changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

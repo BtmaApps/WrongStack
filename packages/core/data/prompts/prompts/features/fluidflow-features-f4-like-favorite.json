@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f4-like-favorite",
+  "slug": "fluidflow-features-f4-like-favorite",
+  "title": "Like/Favorite",
+  "description": "FluidFlow · Like/Favorite",
+  "content": "Implement like/favorite functionality with engaging interactions. Heart icon: Heart from lucide-react, filled when active. Toggle states: outline heart (not liked), filled red heart (liked). Animation: scale bounce on like (scale-125 then back). Counter: show like count next to icon, update optimistically. Store liked state: localStorage for anonymous users, API call for authenticated. Error handling: revert on failed save, show toast.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8c52bde18cc3a30471cb58cddb4d1c6d6669b653cb0e1a9ee2303d99a6da1d03",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add heart icon button that toggles between outline and filled state when clicked.",
+    "detailed": "Implement like/favorite functionality with engaging interactions. Heart icon: Heart from lucide-react, filled when active. Toggle states: outline heart (not liked), filled red heart (liked). Animation: scale bounce on like (scale-125 then back). Counter: show like count next to icon, update optimistically. Store liked state: localStorage for anonymous users, API call for authenticated. Error handling: revert on failed save, show toast.",
+    "advanced": "Implement like/favorite functionality with engaging interactions. Heart icon: Heart from lucide-react, filled when active. Toggle states: outline heart (stroke-current), filled red heart (fill-red-500) when liked. Animation: scale bounce on like (scale-125 then scale-100) with duration-200, optional CSS particle burst effect using ::before/::after pseudo-elements. Counter: show like count next to icon, update optimistically for instant feedback. Double-tap to like on mobile (for images/cards using touch events with timing check). Store liked state: localStorage with Set of liked IDs for anonymous users, API POST/DELETE for authenticated users. Undo: can unlike immediately without confirmation. Batch likes: support liking multiple items quickly with debounced API calls. Loading state: subtle pulse animation while saving. Error handling: revert UI on failed save, show error toast with retry option. List of favorites page showing all saved items in grid/list view. Add to favorites from multiple contexts (card hover, detail page action bar, quick action menu). Sync across devices for logged-in users. Include unlike confirmation for accidental taps (optional setting). Announce like/unlike action to screen readers with aria-live region."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

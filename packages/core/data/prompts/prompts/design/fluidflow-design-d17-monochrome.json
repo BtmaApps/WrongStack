@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d17-monochrome",
+  "slug": "fluidflow-design-d17-monochrome",
+  "title": "Monochrome",
+  "description": "FluidFlow · Monochrome",
+  "content": "Create monochrome design using variations of a single hue - choose base color (blue, green, purple) then use full range from lightest (50) to darkest (950). Add visual interest through different saturations and brightness levels. Use contrast for hierarchy - darker shades for important elements, lighter for backgrounds. Include subtle gradients within the same color family. Add texture through patterns using the same color range. Ensure sufficient contrast for accessibility. Use black/white sparingly for extreme emphasis only.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "13c3c81f3c8608a4d58360aa641a6837c1305eb9c275f6786fee50ac2bb23e66",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Design using only variations of a single color from light to dark.",
+    "detailed": "Create monochrome design using variations of a single hue - choose base color (blue, green, purple) then use full range from lightest (50) to darkest (950). Add visual interest through different saturations and brightness levels. Use contrast for hierarchy - darker shades for important elements, lighter for backgrounds. Include subtle gradients within the same color family. Add texture through patterns using the same color range. Ensure sufficient contrast for accessibility. Use black/white sparingly for extreme emphasis only.",
+    "advanced": "Create monochrome design using variations of a single hue - choose base color (blue, green, purple) then use full Tailwind range from 50 (lightest) to 950 (darkest). Add visual interest through different saturations and brightness levels within the hue. Establish clear hierarchy: darkest shades (800-950) for headings and CTAs, medium shades (500-700) for body text and borders, lightest shades (50-200) for backgrounds and surfaces. Include subtle gradients within the same color family for depth. Add texture through patterns (dots, lines, noise) using same color range. CRITICAL: Verify sufficient contrast for accessibility - monochrome schemes can easily fail WCAG if not careful. Use contrast checker tools for text/background combinations. Use pure black for text on light backgrounds if needed for readability. Add white for extreme highlights only. Consider colorblind users - monochrome is naturally colorblind-friendly but ensure meaning isnt conveyed by shade alone. Include proper focus states that stand out within the limited palette."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

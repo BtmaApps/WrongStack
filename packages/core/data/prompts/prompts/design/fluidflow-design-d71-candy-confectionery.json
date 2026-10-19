@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d71-candy-confectionery",
+  "slug": "fluidflow-design-d71-candy-confectionery",
+  "title": "Candy/Confectionery",
+  "description": "FluidFlow · Candy/Confectionery",
+  "content": "Apply candy/confectionery aesthetic with sweet deliciousness. Pastel and bright candy colors: pink, mint, yellow, lavender. Include candy and dessert imagery: lollipops, cupcakes, ice cream. Sprinkle patterns and textures. Glossy, glazed surfaces. Dripping frosting and chocolate effects. Striped candy patterns. Sweet, playful, indulgent atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d71"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d9a84920b17c0b796f5edaa2875b1e068452b5827ba93e4e52a71bde7ca399e7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create sweet candy aesthetic with sugary colors, dessert motifs, and delicious playfulness.",
+    "detailed": "Apply candy/confectionery aesthetic with sweet deliciousness. Pastel and bright candy colors: pink, mint, yellow, lavender. Include candy and dessert imagery: lollipops, cupcakes, ice cream. Sprinkle patterns and textures. Glossy, glazed surfaces. Dripping frosting and chocolate effects. Striped candy patterns. Sweet, playful, indulgent atmosphere.",
+    "advanced": "Apply candy/confectionery aesthetic with sweet, delicious playfulness. Color palette: candy pastels and brights - bubblegum pink (#ffc0cb), mint (#98ff98), lemon yellow (#fffacd), lavender (#e6e6fa), candy red (#ff6b6b), chocolate brown (#7b3f00), cream (#fffef0). Candy types: lollipops (swirl patterns), gummy textures (translucent, glossy), hard candy (shiny, faceted), cotton candy (fluffy, pastel). Dessert motifs: cupcakes, donuts, ice cream cones, macarons, cookies - as illustrations or icons. Sprinkles: scattered elongated shapes in rainbow colors, as pattern or decoration. Texture effects: glazed/glossy surfaces (gradient highlights), frosting texture (soft peaks), chocolate drip (smooth, shiny brown). Stripes: candy cane diagonal stripes, circus tent stripes. Dripping: liquid effects on edges - frosting, chocolate, glaze dripping down (SVG or CSS). Typography: rounded, friendly, playful fonts (Bubblegum Sans, Fredoka One), can have frosting/candy decoration. Polka dots: large colorful dots pattern (gumball/jawbreaker reference). Wrapper aesthetic: twisted candy wrapper ends on elements. Bite marks: elements can have bites taken out. Interactive: lick/bite effects on hover, sprinkles falling, bouncy animations. Sound suggested: crunch, squish, wrapper crinkle. Photography: macro candy shots, bright lighting. Implementation: gradients for glossy effects, SVG for shapes. Accessibility: bright colors need contrast checking, playful aesthetic shouldnt compromise usability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

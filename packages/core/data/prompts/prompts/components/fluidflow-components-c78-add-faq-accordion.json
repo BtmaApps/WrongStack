@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c78-add-faq-accordion",
+  "slug": "fluidflow-components-c78-add-faq-accordion",
+  "title": "Add FAQ Accordion",
+  "description": "FluidFlow · Add FAQ Accordion",
+  "content": "Create FAQ component. Container: max-w-2xl mx-auto. Section header: text-center mb-8, title text-3xl font-bold, subtitle. Questions: divide-y border rounded-lg. Item: py-4 px-6. Question button: w-full flex justify-between items-center text-left font-medium, chevron icon rotates on open. Answer: text-gray-600 pt-4, hidden when collapsed, animate height on toggle.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c78"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5c77cd5de7a773c1409425476e43a233eb1d09ca5808a1d5d1c096c7fee7f3cb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create FAQ section with expandable question/answer pairs.",
+    "detailed": "Create FAQ component. Container: max-w-2xl mx-auto. Section header: text-center mb-8, title text-3xl font-bold, subtitle. Questions: divide-y border rounded-lg. Item: py-4 px-6. Question button: w-full flex justify-between items-center text-left font-medium, chevron icon rotates on open. Answer: text-gray-600 pt-4, hidden when collapsed, animate height on toggle.",
+    "advanced": "Create comprehensive FAQ section. Layout options: single column, two columns, or categorized with tabs/sections. Search: filter FAQs by keyword, highlight matches in questions. Categories: group related questions, horizontal tabs or sidebar navigation. Accordion behavior: single open (close others) or multiple open simultaneously. Question row: question text, expand/collapse icon with rotation animation, optional helpful count (\"X found this helpful\"). Answer content: rich text support (links, lists, code blocks, images), embed videos. Helpful voting: \"Was this helpful?\" Yes/No buttons, update count. Related questions: show related FAQs at bottom of answer. Deep linking: hash URLs to specific questions (#faq-payment), scroll and open on page load. Schema markup: FAQ structured data for SEO. CTA: \"Still have questions? Contact us\" at bottom. Lazy content: load answer content on expand for large FAQs. Print: expand all for print stylesheet. Feedback: if not helpful, show feedback form. Integration: link from other pages directly to relevant FAQ. Analytics: track which questions are opened most. Accessibility: proper disclosure pattern, aria-expanded, keyboard toggle, focus management."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

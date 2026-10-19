@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c40-add-countdown-timer",
+  "slug": "fluidflow-components-c40-add-countdown-timer",
+  "title": "Add Countdown Timer",
+  "description": "FluidFlow · Add Countdown Timer",
+  "content": "Create countdown timer component for events/launches. Container: flex items-center justify-center gap-4. Time units: flex flex-col items-center. Value: text-4xl font-bold tabular-nums. Label: text-sm text-gray-500 uppercase. Separator: colon or divider between units. Units: days, hours, minutes, seconds (configurable). Use useEffect with setInterval updating every second. Calculate remaining time from target date. Handle completion: show message or trigger callback. Leading zeros for single digits. Animate number changes optionally.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c40"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6fd8a102d77b9e50468fe8f9372a73e4432e6609f02df791163bdf8afd449edc",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a countdown timer showing days, hours, minutes, seconds.",
+    "detailed": "Create countdown timer component for events/launches. Container: flex items-center justify-center gap-4. Time units: flex flex-col items-center. Value: text-4xl font-bold tabular-nums. Label: text-sm text-gray-500 uppercase. Separator: colon or divider between units. Units: days, hours, minutes, seconds (configurable). Use useEffect with setInterval updating every second. Calculate remaining time from target date. Handle completion: show message or trigger callback. Leading zeros for single digits. Animate number changes optionally.",
+    "advanced": "Create animated countdown timer with multiple display styles. State management: useEffect with setInterval (1000ms), calculate diff from target Date. Time calculation: Math.floor for days/hours/minutes/seconds from milliseconds diff. Display formats: full (D H M S), compact (HH:MM:SS), minimal (largest unit only). Layout options: inline (flex gap-4), stacked (flex flex-col), card grid (grid-cols-4). Time unit styling: each unit in container with value + label. Value: text-5xl md:text-6xl font-bold tabular-nums (mono for consistent width), optionally text-gradient. Label: text-xs uppercase tracking-wider text-gray-500 mt-1. Separators: colon character (text-4xl font-light mx-2) or custom divider component. Animation: flip animation on number change (CSS perspective + rotateX), or simple fade transition. Card style: each unit in separate card (bg-white shadow rounded-xl p-4 min-w-[80px]). Circular progress: optional circular ring behind each number showing progress through that unit. Completion handling: onComplete callback, show custom message, optionally redirect. Props: targetDate (Date or ISO string), onComplete, showDays/Hours/Minutes/Seconds, format, labels (custom unit names), className. Edge cases: handle negative diff (show 0s or \"Expired\"), handle server/client time diff, use requestAnimationFrame for smoother updates. Accessibility: role=\"timer\", aria-live=\"polite\" for screen reader updates (throttled to avoid spam)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

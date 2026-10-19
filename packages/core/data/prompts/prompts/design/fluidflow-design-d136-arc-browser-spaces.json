@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d136-arc-browser-spaces",
+  "slug": "fluidflow-design-d136-arc-browser-spaces",
+  "title": "Arc Browser Spaces",
+  "description": "FluidFlow · Arc Browser Spaces",
+  "content": "Apply Arc aesthetic with browser workspace feel. Colored spaces for context switching. Sidebar with tabs organized. Split view capabilities. Easel for screenshots and notes. Command bar integration. Boost theming. Little Arc window. Library and history. Profile switching. Keyboard-centric navigation.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d136"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8b96f4d9451702bb49845f15673e57a6c17728d66008d06ae6a617779c376fb5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create browser-like interface with spaces, split views, and sidebar organization.",
+    "detailed": "Apply Arc aesthetic with browser workspace feel. Colored spaces for context switching. Sidebar with tabs organized. Split view capabilities. Easel for screenshots and notes. Command bar integration. Boost theming. Little Arc window. Library and history. Profile switching. Keyboard-centric navigation.",
+    "advanced": "Apply Arc aesthetic with browser workspace patterns. Sidebar: vertical tabs list, pinned tabs section, today tabs (auto-archive), favorites. Spaces: colored sections/tabs at top, switch context entirely, unique color per space. Colors: each space has accent color, sidebar tinted, space indicator. Tabs: favicon + title, close on hover, pin by drag to top, folder grouping. Split view: drag tab to side for split, resize divider, up to 4-way split. Easel: capture area to canvas, annotate, add notes, pin as tab. Command bar: Cmd+T for new tab with search, actions, bookmarks. Boosts: per-site CSS/JS customizations, themes, ad blocking. Little Arc: mini window for quick tasks, picture-in-picture feel. Library: organized bookmarks, history search, downloads. Profiles: switch browser profiles with keyboard, sync separately. Navigation: swipe gestures, keyboard shortcuts, vim-like options. Extensions: browser extensions in sidebar. Media: playing media indicator on tab. Minimalism: hide URL bar until needed, content-focused. Toolbar: customizable, minimal by default. Archives: auto-archive old tabs, restore easily. Sharing: screenshot tools, share link quick actions. Mobile: companion app with sync, handoff. Themes: light/dark, auto based on time or space. Performance: tab management for memory, lazy loading."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

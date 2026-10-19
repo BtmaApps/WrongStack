@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d122-github-interface",
+  "slug": "fluidflow-design-d122-github-interface",
+  "title": "GitHub Interface",
+  "description": "FluidFlow · GitHub Interface",
+  "content": "Apply GitHub aesthetic with developer collaboration feel. White and dark mode support. Repository layouts with file trees. Code viewing with syntax highlighting. Issue and PR lists with labels. Markdown rendering. Contribution graphs. User profiles with activity. Organization structures. Action workflow displays. Compare and diff views.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d122"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "806e1e08ec53cbdb76827d18f97ed8f5adfc2fa517c3174272e4483c57be81bc",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create code platform interface with repositories, files, and collaboration features.",
+    "detailed": "Apply GitHub aesthetic with developer collaboration feel. White and dark mode support. Repository layouts with file trees. Code viewing with syntax highlighting. Issue and PR lists with labels. Markdown rendering. Contribution graphs. User profiles with activity. Organization structures. Action workflow displays. Compare and diff views.",
+    "advanced": "Apply GitHub aesthetic with code platform patterns. Colors: white bg (light), bg-[#0d1117] (dark), green for additions, red for deletions, blue links. Header: black bar, logo, search with slash hint, nav items. Repository header: name with org, visibility badge, stars/forks counts, watch dropdown. Tab bar: Code, Issues, PRs, Actions, etc with counts. File tree: folder icons, file icons by extension, file/folder names. Code view: line numbers, syntax highlighting, blame view, history. Blob: raw/blame/history buttons, file size, copy button. Diff: split or unified view, +/- line markers, expand context buttons. Issues: title, labels (colored pills), assignees (avatars), milestones. PR: status checks (green check, yellow dot, red x), review states, merge button. Comments: markdown rendered, reactions, edit/delete for own. Activity graph: green squares calendar heatmap. Profile: avatar, bio, pinned repos, contribution graph. Labels: colored bg with contrast text, editable. Actions: workflow runs list, status icons, duration. Markdown: proper rendering with checkboxes, tables, code blocks. Branch dropdown: current branch, search, switch. Clone: HTTPS/SSH tabs, copy button."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

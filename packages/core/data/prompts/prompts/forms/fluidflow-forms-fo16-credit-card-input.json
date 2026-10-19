@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo16-credit-card-input",
+  "slug": "fluidflow-forms-fo16-credit-card-input",
+  "title": "Credit Card Input",
+  "description": "FluidFlow · Credit Card Input",
+  "content": "Build credit card input with auto-formatting. Number field: add spaces after every 4 digits. Card detection: detect Visa, Mastercard, Amex from first digits, show card icon. Expiry field: MM/YY format with auto-slash. CVV field: 3-4 digits based on card type. Luhn validation: validate card number algorithm. Visual card: optional card preview showing entered data.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "55e5d8360ea54d9bac3f25d52a3f5c0a18bd5106083ff4d039c5fe8da9fe06b5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create credit card input with formatting and card type detection.",
+    "detailed": "Build credit card input with auto-formatting. Number field: add spaces after every 4 digits. Card detection: detect Visa, Mastercard, Amex from first digits, show card icon. Expiry field: MM/YY format with auto-slash. CVV field: 3-4 digits based on card type. Luhn validation: validate card number algorithm. Visual card: optional card preview showing entered data.",
+    "advanced": "Build comprehensive credit card input with formatting and validation. Number field: auto-format with spaces (4242 4242 4242 4242), max 16-19 digits based on card type, inputmode=\"numeric\" for mobile keyboard. Card type detection: detect from first digits (4=Visa, 51-55/22-27=Mastercard, 34/37=Amex, 6011/65=Discover), show recognized card brand icon dynamically. Expiry field: MM/YY format, auto-insert \"/\" after 2 digits, validate month 01-12, validate not expired, inputmode=\"numeric\". CVV/CVC field: 3 digits for most cards, 4 for Amex, position hint (front for Amex, back for others), inputmode=\"numeric\", type=\"password\" or text with toggle. Cardholder name: optional, uppercase transform, alphabetic only with spaces. Luhn algorithm: validate card number checksum on blur, show error if invalid. Visual feedback: green border/check on valid, red on invalid. Card preview: optional visual credit card showing entered data updating live, flip animation to show CVV side. Single line layout: all fields in row on desktop, stack on mobile. Autofill support: autocomplete attributes (cc-number, cc-exp, cc-csc, cc-name). Tokenization ready: structure for Stripe Elements or similar integration. Security: never log card numbers, mask in any error reporting. Accessibility: clear labels, error messages linked with aria-describedby. Save card option: checkbox to save for future (with security disclaimer)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

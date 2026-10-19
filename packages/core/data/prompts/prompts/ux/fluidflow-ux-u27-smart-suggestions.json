@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u27-smart-suggestions",
+  "slug": "fluidflow-ux-u27-smart-suggestions",
+  "title": "Smart Suggestions",
+  "description": "FluidFlow · Smart Suggestions",
+  "content": "Provide smart suggestions to guide users. Suggest based on recent activity (continue editing draft). Recommend based on similar users (people like you also...). Show contextual suggestions in empty states. Offer autocomplete in search and inputs. Suggest next actions after completing tasks. Display related items on detail pages. Personalize suggestions based on preferences. Balance suggestions with user autonomy.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fdce599c397ee34f4bec3fb9261ce06f15c70556993939d4e33a0cfb53621933",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Provide intelligent suggestions based on user behavior and context.",
+    "detailed": "Provide smart suggestions to guide users. Suggest based on recent activity (continue editing draft). Recommend based on similar users (people like you also...). Show contextual suggestions in empty states. Offer autocomplete in search and inputs. Suggest next actions after completing tasks. Display related items on detail pages. Personalize suggestions based on preferences. Balance suggestions with user autonomy.",
+    "advanced": "Provide smart suggestions to reduce cognitive load and drive engagement. Behavioral suggestions: \"Continue editing Draft A\" based on recent activity, \"Complete your profile\" for incomplete setup. Collaborative filtering: \"Users who viewed X also viewed Y\" - requires ML/analytics backend. Contextual suggestions: empty states with relevant suggestions (no projects → templates), inline suggestions during workflows. Autocomplete: search input suggestions from popular queries and user history, form field suggestions from past entries. Next actions: after task completion, suggest logical next step (\"Project created. Add team members?\"). Related items: on detail pages, show related content (related articles, similar products). Personalization: learn from user behavior (clicks, ignores), segment-based defaults, explicit preference settings. Smart timing: dont show suggestions when user is focused on task, show when idle or at decision points. Dismissibility: allow dismissing suggestions (dont show again), respect dismissals. Explanation: optionally explain why suggesting (\"Because you viewed...\"). A/B testing: measure suggestion click rates, optimize recommendations. Privacy: be transparent about data use, allow opting out of personalization. Quality over quantity: show 1-3 high-quality suggestions, not a wall of options. Track engagement: measure suggestion acceptance rate to improve algorithms."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c5-add-tabs",
+  "slug": "fluidflow-components-c5-add-tabs",
+  "title": "Add Tabs",
+  "description": "FluidFlow · Add Tabs",
+  "content": "Create accessible tabbed interface component. Tab list with role=\"tablist\", individual tabs with role=\"tab\" aria-selected aria-controls. Tab panels with role=\"tabpanel\" aria-labelledby. Style tabs: horizontal with border-b, active tab with border-b-2 border-blue-600 text-blue-600. Add hover states for inactive tabs. Implement keyboard navigation: arrow keys to move, Enter/Space to select. Support both controlled and uncontrolled modes. Add content transition animation (fade or slide). Variants: underline tabs, pill/button tabs, vertical tabs. Handle overflow with scroll or dropdown for many tabs. Lazy load tab content option for performance.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "49d5fe3c7ac6bdd687462b6cd034dcf6ac1fab6a9f6d2d9ab24108219405445a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a tabbed interface with tab buttons and content panels.",
+    "detailed": "Create accessible tabbed interface component. Tab list with role=\"tablist\", individual tabs with role=\"tab\" aria-selected aria-controls. Tab panels with role=\"tabpanel\" aria-labelledby. Style tabs: horizontal with border-b, active tab with border-b-2 border-blue-600 text-blue-600. Add hover states for inactive tabs. Implement keyboard navigation: arrow keys to move, Enter/Space to select. Support both controlled and uncontrolled modes. Add content transition animation (fade or slide). Variants: underline tabs, pill/button tabs, vertical tabs. Handle overflow with scroll or dropdown for many tabs. Lazy load tab content option for performance.",
+    "advanced": "Create accessible tabbed interface component with full keyboard support and variants. Component structure: Tabs container, TabList, Tab, TabPanels, TabPanel. TabList: role=\"tablist\", flex with optional border-b. Tab button: role=\"tab\", aria-selected={isActive}, aria-controls={panelId}, tabIndex={isActive ? 0 : -1}. TabPanel: role=\"tabpanel\", aria-labelledby={tabId}, tabIndex={0}, hidden={!isActive}. Styling variants: 1) Underline: border-b-2 on TabList, active tab border-blue-600 -mb-px, 2) Pills: gap-2 no border, active tab bg-blue-100 text-blue-700 rounded-lg, 3) Boxed: border around tabs, active tab bg-white with top border, 4) Vertical: flex-col for TabList, TabPanels beside. Keyboard navigation: Left/Right arrows (or Up/Down for vertical) move focus between tabs, Home/End for first/last, Enter/Space activates focused tab. Implement roving tabindex: only active tab has tabIndex=0, others -1. Focus management: arrow key moves focus AND activates (auto-activation) or just moves focus (manual activation based on prop). Content transition: fade (opacity) or slide (translateX) animation on panel change, use key or conditional rendering. Controlled mode: activeIndex and onChange props. Uncontrolled mode: internal state with defaultIndex. Overflow handling: for many tabs, add horizontal scroll with fade edges, or \"More\" dropdown with hidden tabs. Lazy loading: render TabPanel children only when first activated, keep mounted after. Disabled tabs: aria-disabled, skip in keyboard navigation, grayed styling. Icons in tabs: support icon prop with proper spacing. ACCESSIBILITY: ensure panels are in DOM for screen readers even if visually hidden, or use proper hiding technique."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

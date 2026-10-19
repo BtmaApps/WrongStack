@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d53-glitch-art",
+  "slug": "fluidflow-design-d53-glitch-art",
+  "title": "Glitch Art",
+  "description": "FluidFlow · Glitch Art",
+  "content": "Apply glitch art aesthetic with intentional digital corruption. RGB channel splitting and color offset effects. Broken/corrupted image sections. Horizontal scan line distortion. Pixel sorting streaks. Random block displacement. Static noise and artifacts. Fragmented text with missing characters. VHS tracking errors. Corrupted data visualization. Chaotic but intentional digital decay.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d53"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d232b607267ce59a2ccbd95ca597cbfbc7d547ad4f5a13cab1dc441a0965841b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create digital corruption aesthetic with databending effects, broken pixels, and visual artifacts.",
+    "detailed": "Apply glitch art aesthetic with intentional digital corruption. RGB channel splitting and color offset effects. Broken/corrupted image sections. Horizontal scan line distortion. Pixel sorting streaks. Random block displacement. Static noise and artifacts. Fragmented text with missing characters. VHS tracking errors. Corrupted data visualization. Chaotic but intentional digital decay.",
+    "advanced": "Apply glitch art aesthetic with intentional digital corruption and databending. RGB split: offset color channels using multiple text-shadows or pseudo-elements with different colors (red left, cyan right offset by 2-5px). Scan line distortion: horizontal slices displaced using clip-path animations, pseudo-random translateX values. Pixel sorting: vertical streaks effect using repeating-linear-gradient with sharp color bands. Block displacement: random rectangular sections offset using CSS clip-path with animation. Static noise: SVG filter with feTurbulence, or canvas-generated noise overlay, animated opacity. VHS effects: tracking lines (horizontal white bars moving vertically), color bleeding, tape warping at edges. Text corruption: use CSS to randomly hide/show characters, replace with symbols (█▓▒░), letterSpacing glitches. Fragment effect: content broken into offset pieces using clip-path. Data visualization: binary/hex strings as decorative elements, corrupted file aesthetics. Animation: erratic, non-smooth movements using steps() timing or random keyframe values. Sound visualization: audio waveform distortion graphics. Color: high contrast, neon on black, or desaturated with color pops. Implementation: heavy CSS animations, SVG filters, optional canvas for real-time effects. CRITICAL: respect prefers-reduced-motion - glitch effects can trigger seizures, provide static fallback. Ensure core content remains readable despite effects."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

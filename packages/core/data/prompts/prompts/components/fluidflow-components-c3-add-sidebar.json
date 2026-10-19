@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c3-add-sidebar",
+  "slug": "fluidflow-components-c3-add-sidebar",
+  "title": "Add Sidebar",
+  "description": "FluidFlow · Add Sidebar",
+  "content": "Create collapsible sidebar navigation component. Fixed height (h-screen) with flex-col layout. Include: logo/brand at top, main navigation with icons and labels, collapsible sections using ChevronRight indicators, user profile at bottom. Add collapse toggle to minimize to icons-only view (w-64 to w-16). Implement hover-expand on collapsed state. Active state with background highlight and left border indicator. Use nested items with indentation. Add tooltips on collapsed icons. Include scroll container for long navigation lists with subtle scrollbar. Support keyboard navigation. Responsive: transform -translate-x-full on mobile with overlay toggle.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "73564e535636b09107b10830d75380d85b5a9b57627cde9698a6f4aa3f6a74a6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a collapsible sidebar with navigation and icons.",
+    "detailed": "Create collapsible sidebar navigation component. Fixed height (h-screen) with flex-col layout. Include: logo/brand at top, main navigation with icons and labels, collapsible sections using ChevronRight indicators, user profile at bottom. Add collapse toggle to minimize to icons-only view (w-64 to w-16). Implement hover-expand on collapsed state. Active state with background highlight and left border indicator. Use nested items with indentation. Add tooltips on collapsed icons. Include scroll container for long navigation lists with subtle scrollbar. Support keyboard navigation. Responsive: transform -translate-x-full on mobile with overlay toggle.",
+    "advanced": "Create collapsible sidebar navigation component for dashboard/app layouts. Structure: aside element with fixed h-screen left-0 top-0, flex flex-col. Width states: expanded w-64, collapsed w-16, transition-all duration-300. Header: logo/brand with optional collapse when sidebar collapsed, h-16 flex items-center px-4 border-b. Navigation container: flex-1 overflow-y-auto py-4, custom scrollbar (scrollbar-thin scrollbar-thumb-gray-300). Nav items: flex items-center px-4 py-2.5 gap-3, icon (h-5 w-5 flex-shrink-0), label (truncate, hidden when collapsed). Item states: hover:bg-gray-100, active with bg-blue-50 text-blue-700 border-l-4 border-blue-700. Nested navigation: collapsible sections with ChevronRight rotation animation, nested items with pl-12 indent. Section headers: uppercase text-xs text-gray-500 px-4 py-2 mt-4. Collapse toggle: button at bottom or in header, ChevronLeft/Right icon that flips. Collapsed state: icons only with tooltips (title attribute or custom Tooltip component). Hover expand: on collapsed state, hover expands to show labels temporarily (group-hover). User profile: bottom section with avatar, name, role, optional dropdown for settings/logout. Badge/notification indicators: absolute dot or count on nav items. Mobile behavior: hidden by default, hamburger toggle shows overlay + sidebar with backdrop. Keyboard navigation: Tab through items, Enter to activate, arrow keys for sections. ACCESSIBILITY: nav element with aria-label, aria-current on active item, aria-expanded on collapsible sections. Persist collapsed state in localStorage. Consider pinning option for collapsed state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

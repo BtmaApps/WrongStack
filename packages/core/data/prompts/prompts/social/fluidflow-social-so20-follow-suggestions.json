@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so20-follow-suggestions",
+  "slug": "fluidflow-social-so20-follow-suggestions",
+  "title": "Follow Suggestions",
+  "description": "FluidFlow · Follow Suggestions",
+  "content": "Build follow suggestions section. Card grid: suggested user cards. Card content: avatar, name, username, mutual connections count (\"12 mutual friends\"), brief bio, Follow button. Reasons: \"Based on your contacts\", \"Followed by [Friend]\". Dismiss: X button to remove suggestion. Refresh: load more suggestions. Carousel: horizontal scroll on mobile.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f4cdb660d903fddb648fb341af30f4f9466dec002fef8ad2ea10eb454cc4c680",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create \"People you may know\" suggestion cards.",
+    "detailed": "Build follow suggestions section. Card grid: suggested user cards. Card content: avatar, name, username, mutual connections count (\"12 mutual friends\"), brief bio, Follow button. Reasons: \"Based on your contacts\", \"Followed by [Friend]\". Dismiss: X button to remove suggestion. Refresh: load more suggestions. Carousel: horizontal scroll on mobile.",
+    "advanced": "Build comprehensive follow suggestions with smart recommendations. Section container: \"People You May Know\" or \"Suggested for You\" heading, \"See All\" link. Layout options: horizontal carousel (default for in-feed placement), grid (for dedicated page). Horizontal carousel: flex overflow-x-auto gap-4 pb-4 snap-x, hide scrollbar, navigation arrows on desktop. User card: w-60 flex-shrink-0 bg-white rounded-xl shadow-sm p-4 border. Card content: avatar (w-16 h-16 rounded-full mx-auto), name (font-semibold text-center mt-3), username (text-gray-500 text-sm text-center), bio preview (text-sm text-gray-600 text-center line-clamp-2 mt-2), mutual indicator (text-xs text-gray-500 \"12 mutual friends\" or \"Followed by John, Sarah\"). Follow button: w-full mt-4 bg-blue-500 text-white rounded-lg py-2 hover:bg-blue-600. Following state: button changes to \"Following\" with check, outline style. Dismiss: X button (absolute top-2 right-2 text-gray-400 hover:text-gray-600), removes card with animation, provides feedback to algorithm. Recommendation reasons (below username): \"From your contacts\", \"Followed by [FriendName]\" with friend's small avatar, \"Based on your interests\", \"Popular in your network\", \"People who follow you also follow\". Grid layout: grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4. Suggestion sources: phone contacts (if imported), email contacts, mutual friends analysis, similar interests/bio, location-based, trending/popular users. Batch follow: \"Follow All\" button for multiple quick follows. Refresh: \"Refresh suggestions\" link or pull-to-refresh. Persistent dismissals: dismissed users don't reappear, stored server-side. A/B variants: different card layouts, with/without bio, single vs batch actions. Analytics: track follow rate, dismissal rate per suggestion source. Empty state: if no suggestions, prompt to import contacts or follow topics. Privacy: link to manage contact sync settings. Loading: skeleton cards while fetching. Accessibility: carousel keyboard navigable, follow buttons clearly labeled with username."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

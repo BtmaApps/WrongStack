@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q12-e-commerce-ready",
+  "slug": "fluidflow-quick-actions-q12-e-commerce-ready",
+  "title": "🛒 E-Commerce Ready",
+  "description": "FluidFlow · 🛒 E-Commerce Ready",
+  "content": "Add essential e-commerce components. Create product cards with image, title, price, rating, and \"Add to Cart\" button. Build product grid with filter sidebar (categories, price range, sizes) and sort dropdown. Add shopping cart with item list, quantity selectors, and order summary. Implement slide-out cart drawer for quick access. Add wishlist functionality with heart icon toggle. Create checkout flow with shipping, payment, and review steps. Include promo code input with validation. Add related products section. Ensure all prices are properly formatted and cart updates are smooth.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ec1b5fc4e2dde51417c991e402546da5f2b3a3d78f6a7545bd2b3f45aad3d42f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add e-commerce components: product cards, cart, filters, and checkout flow.",
+    "detailed": "Add essential e-commerce components. Create product cards with image, title, price, rating, and \"Add to Cart\" button. Build product grid with filter sidebar (categories, price range, sizes) and sort dropdown. Add shopping cart with item list, quantity selectors, and order summary. Implement slide-out cart drawer for quick access. Add wishlist functionality with heart icon toggle. Create checkout flow with shipping, payment, and review steps. Include promo code input with validation. Add related products section. Ensure all prices are properly formatted and cart updates are smooth.",
+    "advanced": "Add essential e-commerce components with complete functionality. Product card: aspect-square image container with hover zoom (group-hover:scale-105), quick-view button overlay, wishlist heart (absolute top-2 right-2), title (line-clamp-2), rating (Star icons, filled/empty), price (font-bold, original price with line-through if discounted), \"Add to Cart\" button (w-full). Product grid: grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6. Filter sidebar: sticky top-4, category checkboxes, price range slider (min/max inputs or range slider), size buttons (toggle selection), color swatches (rounded-full border-2 on selected), brand checkboxes, clear filters button. Sort dropdown: Relevance, Price Low-High, Price High-Low, Newest, Best Selling. Cart drawer: Sheet component slide from right, cart items list (image, title, variant, quantity selector with -/+ buttons, price, remove X), order summary (subtotal, shipping estimate, tax, total), \"Checkout\" button, \"Continue Shopping\" link. Cart badge: on cart icon showing item count. Wishlist: heart icon toggle (filled when added), separate wishlist page. Checkout flow: multi-step (Shipping > Payment > Review), progress indicator, form validation, address autocomplete. Promo code: input with \"Apply\" button, success/error feedback. Related products: horizontal scroll or grid below product details. Price formatting: Intl.NumberFormat with currency symbol. Stock indicators: \"In Stock\" green, \"Low Stock\" amber, \"Out of Stock\" gray with disabled button."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

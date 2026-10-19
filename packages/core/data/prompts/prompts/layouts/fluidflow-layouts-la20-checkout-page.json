@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la20-checkout-page",
+  "slug": "fluidflow-layouts-la20-checkout-page",
+  "title": "Checkout Page",
+  "description": "FluidFlow · Checkout Page",
+  "content": "Build e-commerce checkout page. Sections: cart summary (items, quantities, prices), shipping address form, shipping method selection, payment form (card inputs). Order summary sidebar: subtotal, shipping, tax, total, promo code input. Progress steps at top. Express checkout options (PayPal, Apple Pay). Edit links back to each section. Place order button.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b9db800d5c08a9c004739e1ce4e22431dde61c9c4653df4b78a9ce6aa2ce0422",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create checkout page with cart summary, shipping, and payment.",
+    "detailed": "Build e-commerce checkout page. Sections: cart summary (items, quantities, prices), shipping address form, shipping method selection, payment form (card inputs). Order summary sidebar: subtotal, shipping, tax, total, promo code input. Progress steps at top. Express checkout options (PayPal, Apple Pay). Edit links back to each section. Place order button.",
+    "advanced": "Build comprehensive e-commerce checkout page. Layout: grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto py-8 px-4. Main content (lg:col-span-2): checkout steps. Progress indicator: horizontal stepper showing Cart > Shipping > Payment > Confirmation, current step highlighted. Express checkout: \"Express Checkout\" section at top with PayPal, Apple Pay, Google Pay buttons for one-click checkout. Divider: \"Or continue with checkout\" line. Shipping section: \"Shipping Address\" heading. Form: full name, email, phone, address line 1, address line 2, city, state/province dropdown, postal code, country dropdown. Saved addresses: if logged in, selectable saved address cards with \"Use this address\" button, \"+ Add new address\". Address validation: inline validation, suggest corrections. Shipping method section: \"Shipping Method\" heading. Options as selectable cards: Standard (free, 5-7 days), Express ($9.99, 2-3 days), Next Day ($19.99, 1 day). Each shows carrier logo, name, price, estimated delivery date. Payment section: \"Payment\" heading. Card form: card number (with card type icon detection), expiration (MM/YY), CVV (with ? tooltip), name on card. Saved cards: selectable cards showing last 4 digits. Security badges: SSL, card logos. Billing address: checkbox \"Same as shipping\" or separate form. Order summary sidebar (lg:col-span-1): sticky top-4 bg-gray-50 rounded-xl p-6. \"Order Summary\" heading. Cart items: compact list with image, name, quantity, price, edit link. Promo code: input with \"Apply\" button, applied code shows as removable chip. Pricing breakdown: Subtotal, Shipping (or \"Free\"), Tax, Discount if applicable, Total (text-xl font-bold). \"Place Order\" primary button (full-width, prominent). Terms: \"By placing your order, you agree to our Terms\" text. Trust badges: secure checkout, money-back guarantee, free returns. Edit links: each section has \"Edit\" link to modify. Mobile: single column, sticky order summary as bottom bar with expandable details. Loading: overlay during order submission. Accessibility: form labels, error messages, focus management between sections."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

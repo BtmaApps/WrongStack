@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da16-multi-chart-dashboard",
+  "slug": "fluidflow-dashboard-da16-multi-chart-dashboard",
+  "title": "Multi-chart Dashboard",
+  "description": "FluidFlow · Multi-chart Dashboard",
+  "content": "Build dashboard with various chart types. Chart grid: responsive grid of chart widgets. Chart types: line, bar, pie, area, doughnut. Legends: clear chart legends. Tooltips: hover tooltips with details. Interactivity: click to drill down. Loading: skeleton charts while loading. Responsive: charts resize appropriately. Date sync: shared date range affects all charts.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "131638acbb8f9365f89e0391b3790c9e4f5630139ffc9b5ea618104be93a570f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dashboard with multiple chart types displaying data.",
+    "detailed": "Build dashboard with various chart types. Chart grid: responsive grid of chart widgets. Chart types: line, bar, pie, area, doughnut. Legends: clear chart legends. Tooltips: hover tooltips with details. Interactivity: click to drill down. Loading: skeleton charts while loading. Responsive: charts resize appropriately. Date sync: shared date range affects all charts.",
+    "advanced": "Build comprehensive multi-chart analytics dashboard. Grid layout: responsive CSS grid (grid-cols-1 md:grid-cols-2 xl:grid-cols-3), chart cards with consistent styling. Chart card component: white bg, rounded-xl, shadow-sm, p-4-6, title header, chart area, optional footer with actions. Chart types: Line (time series, trends), Area (stacked for composition over time), Bar (comparisons, rankings), Horizontal Bar (for long labels), Pie/Donut (part-to-whole), Radar (multi-variable comparison), Scatter (correlation). Chart library: Recharts for React, or Victory, Chart.js. Common styling: consistent color palette across all charts, same fonts, axis styling, legend positioning. Responsive charts: ResponsiveContainer wrapper, charts resize with container. Tooltips: custom tooltip component with card styling, show relevant metrics on hover. Legends: positioned below or right based on chart type, clickable to toggle series visibility. Interactions: click bar/pie slice for drilldown, zoom on line charts, selection for time ranges. Loading states: skeleton chart matching aspect ratio, or pulse placeholder. Error handling: error message in chart area with retry. Refresh: individual chart refresh button, auto-refresh interval option. Global date range: selector affects all charts, pass range as prop to each. Chart fullscreen: expand single chart to full screen for detailed view. Download: each chart has download as PNG/SVG option. Dashboard configuration: optional drag and drop reordering of chart positions, save layout preference. Dark mode: chart colors adapt to dark theme."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

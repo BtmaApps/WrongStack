@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la11-pricing-page",
+  "slug": "fluidflow-layouts-la11-pricing-page",
+  "title": "Pricing Page",
+  "description": "FluidFlow · Pricing Page",
+  "content": "Build pricing page with plan comparison. Header: title \"Simple, Transparent Pricing\", toggle for monthly/annual billing. Plan cards: 3 tiers side by side (Basic, Pro, Enterprise). Card structure: plan name, price (large), billing period, description, feature list with check icons, CTA button. Popular badge: highlight recommended tier. Enterprise: \"Contact Sales\" instead of price. Feature comparison table below. FAQ section at bottom.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0eec07f7a66d3d6f17b7813ce6908e69fb5ce1cb24e99e42a5cfbecdc851c4a7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create pricing page with tier comparison cards and feature lists.",
+    "detailed": "Build pricing page with plan comparison. Header: title \"Simple, Transparent Pricing\", toggle for monthly/annual billing. Plan cards: 3 tiers side by side (Basic, Pro, Enterprise). Card structure: plan name, price (large), billing period, description, feature list with check icons, CTA button. Popular badge: highlight recommended tier. Enterprise: \"Contact Sales\" instead of price. Feature comparison table below. FAQ section at bottom.",
+    "advanced": "Build comprehensive pricing page with comparison and conversion focus. Page header: text-center py-12, headline \"Simple, Transparent Pricing\" (text-4xl font-bold), subheadline \"Choose the plan that fits your needs\" (text-xl text-gray-600). Billing toggle: inline-flex items-center gap-4, \"Monthly\" label, toggle switch (bg-blue-600 when annual), \"Annual\" label with \"Save 20%\" badge (bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full). Plan cards: grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto. Card structure: bg-white rounded-2xl shadow-lg p-8, border-2 (border-transparent default, border-blue-600 for popular). Popular tier: relative with \"Most Popular\" badge (absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-sm px-4 py-1 rounded-full), slightly larger scale (scale-105), shadow-xl. Plan name: text-lg font-semibold text-gray-600. Price: flex items-baseline gap-1, price number (text-5xl font-bold), period (\"/month\" text-gray-500). Annual pricing: show monthly equivalent with \"billed annually\" note. Description: text-gray-600 mt-4. Feature list: space-y-4 mt-8. Each feature: flex items-center gap-3, Check icon (text-green-500), feature text. Unavailable features: X icon (text-gray-300), text-gray-400 line-through. CTA button: w-full mt-8, primary style for popular tier, outline for others. Enterprise card: \"Custom\" price, \"Contact Sales\" button, include custom features text. Feature comparison table: full-width below cards, responsive horizontal scroll on mobile. Table: feature names left column, plan columns right, Check/X icons or values in cells. Category headers: bold rows spanning full width. Sticky first column on scroll. FAQ section: max-w-3xl mx-auto py-16, accordion style. Trust elements: customer logos, testimonials, money-back guarantee badge. Mobile: cards stack vertically, popular card first. Accessibility: toggle announced, feature list properly structured."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

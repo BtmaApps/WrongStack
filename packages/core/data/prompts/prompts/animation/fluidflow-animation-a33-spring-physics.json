@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a33-spring-physics",
+  "slug": "fluidflow-animation-a33-spring-physics",
+  "title": "Spring Physics",
+  "description": "FluidFlow · Spring Physics",
+  "content": "Apply spring physics for natural feeling animations. Configure stiffness, damping, and mass. Create bouncy button interactions. Add overshoot and settle effects. Use for modal entrances. Apply to drag and drop settle. Create natural following animations. Handle interruption gracefully. Use libraries like Framer Motion for implementation.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3eb3e1a7f164375395cce065b04d460b9a3307df69aca14f11058909e728a97f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply spring physics for natural bouncy animations.",
+    "detailed": "Apply spring physics for natural feeling animations. Configure stiffness, damping, and mass. Create bouncy button interactions. Add overshoot and settle effects. Use for modal entrances. Apply to drag and drop settle. Create natural following animations. Handle interruption gracefully. Use libraries like Framer Motion for implementation.",
+    "advanced": "Apply spring physics for natural, physically-accurate animations. Spring parameters: stiffness (higher = snappier, 100-500), damping (higher = less bounce, 10-50), mass (higher = slower, 0.5-3). Framer Motion springs: transition={{ type: \"spring\", stiffness: 300, damping: 20 }} for bouncy, { stiffness: 400, damping: 40 } for snappy, { stiffness: 100, damping: 10 } for very bouncy. Presets: wobbly (low damping), gentle (low stiffness), stiff (high stiffness, high damping). Button press: scale spring from 1 to 0.95 to 1, natural overshoot feels satisfying. Modal entrance: scale 0.9 to 1 with opacity, spring creates arrival effect. Drag release: spring to final position after drag ends, velocity from drag affects spring. Following animations: cursor followers, scroll-linked elements, use spring interpolation. Interruption handling: spring naturally handles mid-animation interruption, new target blends smoothly. Chained springs: stagger spring animations on children with delay. Custom spring: for non-library implementation, use spring equation in rAF loop: velocity += (target - current) * stiffness; velocity *= damping; current += velocity. React Spring: useSpring hook for imperative control, animated components. Framer Motion: animate prop with spring transition, layout animations with spring. Performance: spring calculations each frame, but transform-only animations are GPU accelerated. When to use springs: UI responses (buttons, toggles), drag/drop, modals, micro-interactions. When not to use: progress bars, page transitions (usually), loading animations. Reduced motion: reduce spring effect to simple ease, or disable entirely. Tuning: adjust stiffness/damping by feel, test on various devices."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

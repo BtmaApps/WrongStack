@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co25-info-callout",
+  "slug": "fluidflow-content-co25-info-callout",
+  "title": "Info Callout",
+  "description": "FluidFlow · Info Callout",
+  "content": "Build callout/alert box components. Types: info (blue), success (green), warning (yellow), error (red), tip (purple). Structure: icon, title, description text. Styling: colored left border or full background. Icon: matching icon per type (Info, CheckCircle, AlertTriangle, XCircle, Lightbulb). Dismissible: optional close button. Actions: optional action buttons or links. Collapsible: click title to expand/collapse body. Inline variant: smaller, inline with text. Markdown: render markdown in description. Sticky: optional sticky positioning for important alerts.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "edf1c50d5e06660faab3895710c552427cbccaa2837da748040565a483ff5cdf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create info, warning, and tip callout boxes.",
+    "detailed": "Build callout/alert box components. Types: info (blue), success (green), warning (yellow), error (red), tip (purple). Structure: icon, title, description text. Styling: colored left border or full background. Icon: matching icon per type (Info, CheckCircle, AlertTriangle, XCircle, Lightbulb). Dismissible: optional close button. Actions: optional action buttons or links. Collapsible: click title to expand/collapse body. Inline variant: smaller, inline with text. Markdown: render markdown in description. Sticky: optional sticky positioning for important alerts.",
+    "advanced": "Build comprehensive callout/alert box component system. Semantic types: info (blue, Info icon - general information), success (green, CheckCircle - confirmation/completion), warning (yellow/amber, AlertTriangle - caution/attention), error (red, XCircle - problems/failures), tip (purple, Lightbulb - helpful suggestions), note (gray, FileText - additional context). Structure: container with optional icon, optional title (font-semibold), body/description text. Style variants: border-left (border-l-4 with colored border, light background), filled (full colored background), outline (border with transparent background), subtle (very light background only). Icon sizing: h-5 w-5 matching title height, or larger for prominent alerts. Title optional: can have just icon + body for compact alerts. Dismissible: X button top-right, calls onDismiss, smooth fade-out animation. Action buttons: optional action buttons or links in footer area. Collapsible: chevron icon rotates, body hides/shows, useful for lengthy details. Inline variant: smaller padding, inline-flex, used within paragraphs. Markdown support: body can render markdown for rich content (links, bold, lists). Sticky/fixed: important alerts can be position sticky top, with shadow when scrolled. Auto-dismiss: optional timeout for transient success messages. Accessibility: role=\"alert\" for error/warning, aria-live for dynamic alerts, aria-describedby linking description to announced content. Close button: aria-label=\"Dismiss\"."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

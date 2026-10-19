@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f14-rating-system",
+  "slug": "fluidflow-features-f14-rating-system",
+  "title": "Rating System",
+  "description": "FluidFlow · Rating System",
+  "content": "Create interactive star rating component. Display: 5 stars in a row using Star icon from lucide-react. States: empty (outline), filled (solid yellow/gold), half-filled for averages. Interactive rating: hover to preview, click to set. Animation: subtle scale on hover, bounce on select. Show average: \"4.5 out of 5\" with star icon. Rating distribution: bar chart. Accessibility: keyboard navigation.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f2d0702533951f9746128bf83abe150c7eb329bde908ce6602e5120204b1a84b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add 5-star rating display with clickable stars to set user rating.",
+    "detailed": "Create interactive star rating component. Display: 5 stars in a row using Star icon from lucide-react. States: empty (outline), filled (solid yellow/gold), half-filled for averages. Interactive rating: hover to preview, click to set. Animation: subtle scale on hover, bounce on select. Show average: \"4.5 out of 5\" with star icon. Rating distribution: bar chart. Accessibility: keyboard navigation.",
+    "advanced": "Create interactive star rating component with comprehensive features. Display: 5 stars in horizontal row using Star icon from lucide-react. States: empty (stroke-gray-300 fill-none), filled (stroke-yellow-400 fill-yellow-400), half-filled for averages using CSS clip-path or gradient. Interactive rating: hover to preview (fill stars up to hovered position with lighter shade), click to set rating. Hover effect: individual star scale-110 on hover. Animation: subtle scale transform on hover, bounce animation (scale-125 to scale-100) on select with duration-300. Read-only mode: for displaying averages, no hover effects, cursor-default, use different component variant. Show average: \"4.5 out of 5\" text with single filled star icon, or \"4.5 ★★★★☆\" visual display. Rating distribution: horizontal bar chart showing count per star level (5★ ████████ 156, 4★ ████ 89, etc.). Total ratings count: \"(based on 234 reviews)\" clickable to scroll to reviews. Clear rating: X button or click same star to remove, confirm dialog optional. Prevent accidental changes: require slight hold (200ms) or double-click to submit. Accessibility: role=\"radiogroup\" with role=\"radio\" for each star, keyboard navigation with arrow keys, aria-label=\"Rate 4 out of 5 stars\", announce selection changes. Mobile: larger touch targets (min-w-10 min-h-10 per star). Submit rating: POST API call with optimistic update, show \"Thanks for rating!\" toast. Allow rating change: PUT request to update existing rating, show \"Rating updated\" feedback. Consider emoji ratings (😞😐😊😃🤩) as alternative style. Aggregate stats: show percentage who would recommend."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

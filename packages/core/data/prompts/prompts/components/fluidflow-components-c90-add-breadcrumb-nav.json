@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c90-add-breadcrumb-nav",
+  "slug": "fluidflow-components-c90-add-breadcrumb-nav",
+  "title": "Add Breadcrumb Nav",
+  "description": "FluidFlow · Add Breadcrumb Nav",
+  "content": "Create breadcrumb. Container: flex items-center gap-2 text-sm text-gray-500. Items: flex items-center gap-2. Link: hover:text-gray-700 hover:underline. Separator: slash or chevron icon between items. Current page: text-gray-900 font-medium, not a link. Home: optional home icon as first item. Truncation: ellipsis for long paths.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c90"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "289590b9095a715253ed8a63d5f737a6fc42598ecf39066b7a7e8955e48533b1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create breadcrumb navigation showing page hierarchy.",
+    "detailed": "Create breadcrumb. Container: flex items-center gap-2 text-sm text-gray-500. Items: flex items-center gap-2. Link: hover:text-gray-700 hover:underline. Separator: slash or chevron icon between items. Current page: text-gray-900 font-medium, not a link. Home: optional home icon as first item. Truncation: ellipsis for long paths.",
+    "advanced": "Create comprehensive breadcrumb navigation. Structure: nav with aria-label=\"Breadcrumb\", ordered list of links. Separators: chevron (>), slash (/), or custom icon between items. Home link: optional home icon as first crumb, link to home page. Current page: last item, not a link (use span), aria-current=\"page\". Truncation: for deep hierarchies, collapse middle items to \"...\", expand on click or hover to show full path. Mobile: horizontal scroll or dropdown for long breadcrumbs. Dynamic generation: auto-generate from URL path or route config, fetch page titles via API. Rich snippets: BreadcrumbList schema.org structured data for SEO. Styling: customizable separator, active/inactive colors, spacing. Categories: show category hierarchies for products, articles. Back navigation: optional \"Back to [parent]\" link for single-level back. Multi-path: when item belongs to multiple categories, primary path only or dropdown with alternatives. Last crumb: show or hide based on context (show on listing pages, hide if same as page title). Loading: skeleton placeholder during dynamic loading. Max items: configurable max visible items before collapse. Accessibility: proper nav landmark, links vs spans, screen reader friendly separators (visually hidden text or aria-hidden icons). Integration: work with React Router, Next.js routing, or static configuration."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

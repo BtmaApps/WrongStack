@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r12-touch-friendly-forms",
+  "slug": "fluidflow-responsive-r12-touch-friendly-forms",
+  "title": "Touch-Friendly Forms",
+  "description": "FluidFlow · Touch-Friendly Forms",
+  "content": "Optimize forms for touch devices. Increase input height to min-h-12 (48px). Add generous padding px-4 py-3. Space form fields with gap-6 for fat-finger prevention. Use full-width inputs on mobile (w-full). Increase checkbox and radio sizes to w-6 h-6. Add clear touch feedback with active states. Use appropriate input types for virtual keyboard (email, tel, number). Disable autocorrect on username fields. Add input mode attributes for numeric keyboards.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4305330bedcd41a6b64beb2f3c0389ce6039ee49ae954cb79e4acef62d121720",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Optimize form inputs for touch with larger targets and proper spacing.",
+    "detailed": "Optimize forms for touch devices. Increase input height to min-h-12 (48px). Add generous padding px-4 py-3. Space form fields with gap-6 for fat-finger prevention. Use full-width inputs on mobile (w-full). Increase checkbox and radio sizes to w-6 h-6. Add clear touch feedback with active states. Use appropriate input types for virtual keyboard (email, tel, number). Disable autocorrect on username fields. Add input mode attributes for numeric keyboards.",
+    "advanced": "Optimize forms for touch with comprehensive mobile patterns. Input sizing: min-h-[48px] per WCAG touch targets, py-3 px-4 internal padding. Field spacing: gap-6 between fields prevents accidental taps. Full-width: w-full on mobile for easier targeting. Checkboxes/radios: w-6 h-6 minimum, larger tap area with padding. Touch feedback: active:bg-gray-100, focus:ring-2 visible focus states. Input types: type=\"email\" for email keyboard, type=\"tel\" for phone pad, inputmode=\"numeric\" for numbers without spinners. Autocomplete: appropriate autocomplete attributes for autofill. Autocorrect: disable on usernames, codes (autocorrect=\"off\" autocapitalize=\"off\"). Labels: always visible (not placeholder-only), tap label to focus input. Error messages: clear, inline, sufficient contrast. Submit buttons: min-h-12, full-width, sticky bottom on long forms. Keyboard avoidance: scroll input into view when focused. Password: show/hide toggle, paste allowed. Multi-step: progress indicator, save progress. Date inputs: native date pickers or touch-optimized date selectors."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

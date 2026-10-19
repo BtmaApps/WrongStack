@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d25-tech-developer",
+  "slug": "fluidflow-design-d25-tech-developer",
+  "title": "Tech/Developer",
+  "description": "FluidFlow · Tech/Developer",
+  "content": "Apply tech/developer aesthetic with code-inspired design. Use monospace fonts (JetBrains Mono, Fira Code) for headings and accent text. Dark theme with syntax highlighting colors as accents (green for success, red for errors, yellow for warnings, blue for info). Include terminal/code block styling with proper backgrounds (bg-gray-900). Add blinking cursor effects. Use ASCII art decorations or code comments as design elements. Grid/matrix backgrounds. Badge-style labels. Sharp corners for technical feel.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e8f1b472be14fbe12e961c71e1183a87ec769c5dddbf346770fe3743b515c32b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create developer-focused design with code aesthetics, terminal styling, and monospace fonts.",
+    "detailed": "Apply tech/developer aesthetic with code-inspired design. Use monospace fonts (JetBrains Mono, Fira Code) for headings and accent text. Dark theme with syntax highlighting colors as accents (green for success, red for errors, yellow for warnings, blue for info). Include terminal/code block styling with proper backgrounds (bg-gray-900). Add blinking cursor effects. Use ASCII art decorations or code comments as design elements. Grid/matrix backgrounds. Badge-style labels. Sharp corners for technical feel.",
+    "advanced": "Apply tech/developer aesthetic with code-inspired design language. Typography: monospace primary (JetBrains Mono, Fira Code with ligatures, Source Code Pro), readable mono or sans for body. Color scheme: dark IDE theme base (bg-gray-950, bg-slate-900) with syntax highlighting accents - string green (#a6e22e), keyword purple (#ae81ff), function blue (#66d9ef), comment gray (#75715e), error red (#f92672). Terminal styling: code blocks with bg-gray-900, proper padding, line numbers (text-gray-500), scrollable overflow. Cursor: blinking animation (animate-pulse) on terminal prompt elements. ASCII/code decorations: comments as section dividers (// ============), ASCII art logos, bracket patterns. Window chrome: fake title bars with traffic light dots (red/yellow/green circles) or minimize/maximize/close buttons. Matrix/grid backgrounds: subtle dot grid pattern or circuit board lines. Badges: inline-code style (bg-gray-800 px-2 py-0.5 rounded font-mono text-sm) for labels and tags. UI elements: sharp corners (rounded-none or rounded-sm), minimal shadows, border-focused definition. Keyboard shortcuts: styled kbd elements (bg-gray-700 border-b-2 border-gray-600 px-2 rounded). Loading states: typing animation, progress bars with percentage. Interactive: hover states showing file paths or code snippets. Git-inspired: branch indicators, commit-style history. Accessibility: ensure syntax colors have sufficient contrast, blinking respects prefers-reduced-motion."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

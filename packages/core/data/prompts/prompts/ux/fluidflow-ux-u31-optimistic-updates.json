@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u31-optimistic-updates",
+  "slug": "fluidflow-ux-u31-optimistic-updates",
+  "title": "Optimistic Updates",
+  "description": "FluidFlow · Optimistic Updates",
+  "content": "Implement optimistic UI updates for perceived speed. Update UI immediately on user action. Show pending state subtly (reduced opacity, progress indicator). Confirm with server in background. Revert on failure with error message. Handle race conditions with concurrent updates. Queue updates if offline. Maintain data consistency. Add undo option for accidental actions.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fa703b210e6ecbe0b86383a6419503986116363a2b23a768353106065ed5811c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Update UI immediately before server confirmation for faster feel.",
+    "detailed": "Implement optimistic UI updates for perceived speed. Update UI immediately on user action. Show pending state subtly (reduced opacity, progress indicator). Confirm with server in background. Revert on failure with error message. Handle race conditions with concurrent updates. Queue updates if offline. Maintain data consistency. Add undo option for accidental actions.",
+    "advanced": "Implement optimistic UI updates for near-instant perceived performance. Immediate update: on action (like, save, delete), update UI instantly without waiting for server. Pending indicator: subtle feedback that sync is in progress (small spinner, opacity change, status text). Background sync: send request to server while UI is already updated. Success handling: often no change needed, optionally update with server-returned data (IDs, timestamps). Failure handling: revert UI to previous state, show error toast with details, offer retry. Race conditions: handle concurrent updates (multiple quick clicks, slow network), use timestamps or version numbers. Offline queue: if offline, queue updates with timestamp, sync when online in order, handle conflicts. Data consistency: ensure local state matches server truth eventually, handle edge cases (item deleted by another user). Undo integration: optimistic delete with undo option (dont hit server until undo timeout expires). Implementation patterns: React Query mutations with optimisticUpdate, Redux with pending/success/failure pattern. Considerations: not all actions should be optimistic (financial, irreversible), evaluate per action type. Animation: optimistic updates can have subtle animations, reverts should be clear but not jarring. Testing: test slow network, failures, offline scenarios thoroughly."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co11-time-ago-display",
+  "slug": "fluidflow-content-co11-time-ago-display",
+  "title": "Time Ago Display",
+  "description": "FluidFlow · Time Ago Display",
+  "content": "Implement relative time display for dates. Use library like date-fns (formatDistanceToNow) or Intl.RelativeTimeFormat. Display patterns: \"just now\" (<1 min), \"5 minutes ago\", \"2 hours ago\", \"yesterday\", \"3 days ago\", \"last week\", \"2 weeks ago\", \"Dec 15\". Threshold: switch to absolute date after ~7 days or month. Tooltip: show full date/time on hover. Auto-update: optionally refresh display every minute for recent items. Locale: respect user locale for formatting. Handle future dates: \"in 2 hours\", \"tomorrow\". Edge cases: invalid dates, timezone handling.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e5d9028c053af2b5a1f43185a57859df8a6ac30f2f257170f18633a910e1e3cf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Display dates as relative time like \"2 hours ago\" or \"yesterday\".",
+    "detailed": "Implement relative time display for dates. Use library like date-fns (formatDistanceToNow) or Intl.RelativeTimeFormat. Display patterns: \"just now\" (<1 min), \"5 minutes ago\", \"2 hours ago\", \"yesterday\", \"3 days ago\", \"last week\", \"2 weeks ago\", \"Dec 15\". Threshold: switch to absolute date after ~7 days or month. Tooltip: show full date/time on hover. Auto-update: optionally refresh display every minute for recent items. Locale: respect user locale for formatting. Handle future dates: \"in 2 hours\", \"tomorrow\". Edge cases: invalid dates, timezone handling.",
+    "advanced": "Implement relative time display for dates with auto-updating and locale support. Library options: date-fns formatDistanceToNow (lightweight, tree-shakeable), dayjs with relativeTime plugin, Intl.RelativeTimeFormat (native, limited but zero-dep). Display thresholds: <1 minute: \"just now\", <60 minutes: \"X minutes ago\", <24 hours: \"X hours ago\", yesterday: \"yesterday\", <7 days: \"X days ago\", <30 days: \"last week\"/\"2 weeks ago\", older: absolute date (Dec 15, 2024). Short format option: \"5m\", \"2h\", \"3d\" for compact displays. Tooltip: title attribute or custom tooltip with full datetime (\"December 15, 2024 at 3:45 PM\"). Auto-update: useEffect with setInterval to refresh every 60 seconds for items <1 hour old, clean up interval on unmount. Future dates: \"in 5 minutes\", \"tomorrow\", \"in 2 weeks\". Locale: Intl.RelativeTimeFormat respects locale, or date-fns with locale import. Implementation: custom hook useTimeAgo(date) returning formatted string, or component <TimeAgo date={timestamp} />. Edge cases: handle null/undefined dates, invalid dates, very old dates (years ago), timezone conversions. Accessibility: datetime attribute on time element for machine-readable date. SSR: handle hydration mismatch (dates differ server vs client), consider suppressHydrationWarning or client-only rendering."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec6-wishlist",
+  "slug": "fluidflow-ecommerce-ec6-wishlist",
+  "title": "Wishlist",
+  "description": "FluidFlow · Wishlist",
+  "content": "Implement wishlist/favorites functionality. Add to wishlist: heart icon on product cards and detail pages. Toggle states: outline heart (not saved), filled red heart (saved). Animation: scale bounce on add. Storage: localStorage for guests, API for logged in. Wishlist page: grid of saved products. Card actions: \"Add to Cart\", \"Remove\" buttons. Share wishlist option. Empty wishlist: helpful message with shop suggestions.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "98dc1265b2052207905223d8e25b0509c3a94f92a511b44e55eebfaaada36481",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add heart icon toggle to save products to wishlist page.",
+    "detailed": "Implement wishlist/favorites functionality. Add to wishlist: heart icon on product cards and detail pages. Toggle states: outline heart (not saved), filled red heart (saved). Animation: scale bounce on add. Storage: localStorage for guests, API for logged in. Wishlist page: grid of saved products. Card actions: \"Add to Cart\", \"Remove\" buttons. Share wishlist option. Empty wishlist: helpful message with shop suggestions.",
+    "advanced": "Implement wishlist/favorites functionality with comprehensive features. Add to wishlist trigger: heart icon button (Heart from lucide-react) on product cards (absolute top-right) and detail pages (in action buttons). Toggle states: outline stroke (not saved), filled red (fill-red-500) when saved. Animation: scale-125 bounce on add with duration-300, optional confetti or heart particles. Storage strategy: localStorage for guest users (array of product IDs), API endpoint for authenticated users (POST /api/wishlist/add, DELETE /api/wishlist/remove). Sync: merge localStorage wishlist into user account on login. Wishlist page (/wishlist route): grid of saved products using standard product card component (grid-cols-2 md:grid-cols-3 lg:grid-cols-4). Card actions overlay or below: \"Add to Cart\" primary button, \"Remove\" text button (X icon). Share wishlist: \"Share\" button generates unique shareable link (/wishlist/share/[id]), copy to clipboard with toast. Move to cart: add to cart and optionally remove from wishlist (toggle setting). Price drop alerts: show badge \"Price dropped!\" if current price < saved price, show percentage or amount saved. Stock alerts: for out-of-stock items, show \"Notify Me\" button to get email when back in stock. Empty wishlist state: heart illustration, \"Your wishlist is empty\" heading, \"Save items you love\" subtext, \"Start Shopping\" CTA button. Sort/filter options: date added (newest/oldest), price (low/high), availability (in stock first). Multiple lists feature: create named lists (\"Birthday Wishlist\", \"Home Office\"), move items between lists, separate share links per list. List management: rename, delete lists. Guest user limit: cap at 50 items, show \"Sign in to save more\" prompt. Real-time sync: update heart state across all product cards when toggled. Accessibility: aria-label on heart button indicating state (\"Add to wishlist\" / \"Remove from wishlist\")."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

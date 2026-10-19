@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a19-ripple-effect",
+  "slug": "fluidflow-animation-a19-ripple-effect",
+  "title": "Ripple Effect",
+  "description": "FluidFlow · Ripple Effect",
+  "content": "Create Material Design ripple effect on click. Calculate click position relative to element. Create expanding circle from click point. Animate scale from 0 to covering element with opacity fade. Use CSS transitions or keyframes. Clean up ripple elements after animation. Support multiple concurrent ripples. Handle elements of various sizes and shapes. Add to buttons, list items, and touch surfaces. Use pseudo-element or dynamically created spans.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "52d0f7e22ba1df90408858a1a7c9b9cc454598af5784b93c95afe6741455800c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add Material Design style ripple effect on click.",
+    "detailed": "Create Material Design ripple effect on click. Calculate click position relative to element. Create expanding circle from click point. Animate scale from 0 to covering element with opacity fade. Use CSS transitions or keyframes. Clean up ripple elements after animation. Support multiple concurrent ripples. Handle elements of various sizes and shapes. Add to buttons, list items, and touch surfaces. Use pseudo-element or dynamically created spans.",
+    "advanced": "Create Material Design ripple effect on interactive elements. Implementation approaches: 1) Dynamic span creation, 2) CSS pseudo-element with JS positioning. Span approach: on click, create span at click position (event.clientX/Y relative to element getBoundingClientRect), apply absolute positioning, start at scale(0) with opacity 0.3, animate to scale(4) with opacity 0, remove span after animation ends (600ms). Positioning calculation: const rect = element.getBoundingClientRect(); const x = event.clientX - rect.left; const y = event.clientY - rect.top;. Span styles: absolute, rounded-full, bg-white/30 (or bg-current for themed), transform scale-0, animation: ripple 600ms ease-out forwards. Container: relative, overflow-hidden (critical to clip ripple to element bounds). Multiple ripples: allow new ripple before previous finishes, each independent. CSS-only approach (simpler but centered): ::after with scale transition on :active, always from center. Size handling: ripple needs to be large enough to cover element, set width/height to max(elementWidth, elementHeight) * 2, center at click point. Custom hook: useRipple() returning onClick handler and necessary styles. Performance: use transform scale (GPU accelerated), limit concurrent ripples if needed. Cleanup: remove span elements after animation with setTimeout or animationend event. Color: white with opacity on dark buttons, dark with opacity on light, or use currentColor. Tailwind: custom animation in config, or use inline keyframes. Accessibility: purely visual enhancement, doesn't affect interaction. Touch devices: works with touch events, larger ripple for finger size."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

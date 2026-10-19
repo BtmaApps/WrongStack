@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r24-responsive-sticky-elements",
+  "slug": "fluidflow-responsive-r24-responsive-sticky-elements",
+  "title": "Responsive Sticky Elements",
+  "description": "FluidFlow · Responsive Sticky Elements",
+  "content": "Implement responsive sticky elements. Header: sticky top-0, adjust height per breakpoint. Sidebar: sticky top-16 (below header offset). Mobile: consider when sticky makes sense, may need fixed for nav. Handle z-index properly for overlapping sticky elements. Account for safe areas on mobile. Adjust sticky offset for different header heights.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d91be75a04a9b330658d38c5f690f5be5df0051a7d00e7addadebf090b93b044",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Handle sticky positioning that works across all screen sizes.",
+    "detailed": "Implement responsive sticky elements. Header: sticky top-0, adjust height per breakpoint. Sidebar: sticky top-16 (below header offset). Mobile: consider when sticky makes sense, may need fixed for nav. Handle z-index properly for overlapping sticky elements. Account for safe areas on mobile. Adjust sticky offset for different header heights.",
+    "advanced": "Implement responsive sticky positioning across devices. Header: sticky top-0 z-40, responsive height (h-14 md:h-16 lg:h-20), handle transform on scroll (hide on scroll down, show on scroll up). Sidebar: sticky with offset for header (top-16 md:top-20), max-height for scrollable content (h-[calc(100vh-4rem)]). Table headers: sticky with proper background for readability. CTAs: sticky bottom for mobile (fixed bottom-0), inline on desktop. Offset calculation: use CSS calc() or CSS custom properties for header height reference. Z-index layers: header (z-40), sidebar (z-30), sticky elements (z-20), modals (z-50). Mobile: fixed often better than sticky for nav, consider bottom nav. Safe areas: add env(safe-area-inset-top) to top sticky elements on notched devices. Scroll containers: sticky works within scrollable parents, set correct positioning context. Performance: avoid too many sticky elements, can cause repaint issues. Intersection Observer: alternative for dynamic behavior based on scroll position."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

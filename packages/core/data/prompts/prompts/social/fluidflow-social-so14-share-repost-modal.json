@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so14-share-repost-modal",
+  "slug": "fluidflow-social-so14-share-repost-modal",
+  "title": "Share/Repost Modal",
+  "description": "FluidFlow · Share/Repost Modal",
+  "content": "Build share/repost modal. Options: \"Repost\" (share to feed instantly), \"Quote\" (add comment before sharing), \"Copy Link\" (with success toast), \"Share via...\" (Twitter, Facebook, email). Post preview: show original post being shared. Quote mode: textarea for adding comment. Direct message: share to specific users via DM.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0a0b5717ff307b1797165b4b7750d44b18a8da07d188dfd2db4ef1e701b68876",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create share modal with repost, quote, and share options.",
+    "detailed": "Build share/repost modal. Options: \"Repost\" (share to feed instantly), \"Quote\" (add comment before sharing), \"Copy Link\" (with success toast), \"Share via...\" (Twitter, Facebook, email). Post preview: show original post being shared. Quote mode: textarea for adding comment. Direct message: share to specific users via DM.",
+    "advanced": "Build comprehensive share/repost modal with multiple sharing options. Trigger: share button (Share2 or repeat icon) on posts opens modal. Modal structure: centered, max-w-md, bg-white rounded-xl shadow-2xl. Header: \"Share\" title, close X button. Post preview: compact preview of post being shared (author avatar+name, truncated content, media thumbnail if applicable) in bordered container. Sharing options as list: Repost/Reblog: Share2 icon, \"Repost\", \"Share to your profile instantly\", one-click action with confirmation toast, adds to your feed with \"Reposted by [you]\" attribution. Quote Post: MessageSquare icon, \"Quote\", \"Add your thoughts\", click expands to quote mode. Send via Message: Send icon, \"Send in message\", \"Share privately with someone\", opens user selector for DM. Copy Link: Link icon, \"Copy link\", click copies URL to clipboard, button changes to \"Copied!\" with Check icon briefly. External share options: Twitter/X icon, \"Share to Twitter\" opens Twitter intent URL, Facebook, LinkedIn, Email (mailto: with subject and body). Quote mode expansion: when Quote selected, reveal textarea (placeholder \"Add a comment...\"), character counter, original post preview below, \"Share\" primary button. Send via message flow: search/select recipients from followers, recent conversations, preview of message with post attachment, send button. Share URL: generate clean shareable URL, shortened if service available. Analytics tracking: track which share method used for engagement metrics. Embed code: for supported platforms, \"Embed\" option with copyable HTML code. QR code: optional QR code generation for easy mobile sharing. Schedule: option to schedule repost for later. Audience selector: if applicable, choose who sees the repost (public, followers, close friends). Mobile: bottom sheet that slides up, full-width buttons, larger touch targets. Accessibility: modal traps focus, buttons labeled clearly, share status announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

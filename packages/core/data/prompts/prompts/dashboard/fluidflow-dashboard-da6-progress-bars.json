@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da6-progress-bars",
+  "slug": "fluidflow-dashboard-da6-progress-bars",
+  "title": "Progress Bars",
+  "description": "FluidFlow · Progress Bars",
+  "content": "Build progress bar components with multiple variants. Basic structure: track (bg-gray-200 rounded-full h-2), fill (bg-blue-600 rounded-full). Value display: percentage text to the right. Label: progress title above bar. Colors: different colors for status (green=complete, yellow=warning, red=critical). Animated fill: transition-all duration-500. Accessibility: role=\"progressbar\" with aria attributes.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5a4ebd4b758ebf5b1d9e5f836984f3e5f91ff283ec9a2925a2a687e70a6e26c7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create progress bars showing completion percentage with labels.",
+    "detailed": "Build progress bar components with multiple variants. Basic structure: track (bg-gray-200 rounded-full h-2), fill (bg-blue-600 rounded-full). Value display: percentage text to the right. Label: progress title above bar. Colors: different colors for status (green=complete, yellow=warning, red=critical). Animated fill: transition-all duration-500. Accessibility: role=\"progressbar\" with aria attributes.",
+    "advanced": "Build progress bar components with multiple variants and accessibility. Basic structure: track container (bg-gray-200 rounded-full), fill bar (rounded-full) positioned inside with width based on percentage. Value display: percentage text (text-sm font-medium) to the right, inside bar for thick variants, or as tooltip. Label: progress title (font-medium) above bar with optional subtitle. Size variants: thin (h-1), medium (h-2), thick (h-4 with text inside), with segments. Colors: contextual colors for status - green (bg-green-500) for complete/success, blue (bg-blue-500) for in-progress, yellow/amber (bg-amber-500) for warning, red (bg-red-500) for critical/error. Animated fill: transition-all duration-500 ease-out on width change for smooth animation. Striped pattern: CSS repeating-linear-gradient (45deg stripes) for active/processing state, animate stripe movement with CSS animation. Indeterminate: animated gradient or stripe movement for unknown progress duration, no percentage shown. Circular progress: ring-based alternative using SVG circle with stroke-dasharray and stroke-dashoffset, rotation animation, value in center. Multi-segment: different colored segments in one bar representing breakdown (e.g., 40% complete, 30% in-progress, 30% pending). Goal indicator: vertical marker line showing target position on track. Stacked progress bars: multiple bars in column for comparison with aligned labels. Buffer progress: secondary lighter fill showing buffered amount (like video loading). Accessibility: role=\"progressbar\", aria-valuenow={value}, aria-valuemin={0}, aria-valuemax={100}, aria-label describing what progress represents. Dark mode: adjust track color (dark:bg-gray-700). Component API: value, max, label, color, size, showValue, animated, indeterminate props."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

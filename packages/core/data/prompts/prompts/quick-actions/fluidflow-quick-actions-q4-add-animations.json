@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q4-add-animations",
+  "slug": "fluidflow-quick-actions-q4-add-animations",
+  "title": "⚡ Add Animations",
+  "description": "FluidFlow · ⚡ Add Animations",
+  "content": "Add smooth micro-interactions throughout. Buttons: hover:scale-105 or active:scale-95 with duration-200. Cards: hover:-translate-y-1 hover:shadow-lg transition-all. Links: animated underline on hover. Loading: animate-spin for spinners, animate-pulse for skeletons. Page transitions: fade-in with opacity transition. Scroll animations: elements fade-in as they enter viewport. Icon interactions: subtle rotation or bounce. Use duration-200 to duration-300 for snappy feel. Respect prefers-reduced-motion.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c88394dc9246a45168f303f1d2375e16cf1162e70d85744e2b83149c57658b4f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add smooth animations and hover effects to interactive elements.",
+    "detailed": "Add smooth micro-interactions throughout. Buttons: hover:scale-105 or active:scale-95 with duration-200. Cards: hover:-translate-y-1 hover:shadow-lg transition-all. Links: animated underline on hover. Loading: animate-spin for spinners, animate-pulse for skeletons. Page transitions: fade-in with opacity transition. Scroll animations: elements fade-in as they enter viewport. Icon interactions: subtle rotation or bounce. Use duration-200 to duration-300 for snappy feel. Respect prefers-reduced-motion.",
+    "advanced": "Add smooth micro-interactions throughout the interface. Button animations: hover:scale-105 active:scale-95 transition-transform duration-150, or hover:bg-opacity-90 for subtle effect. Card interactions: hover:-translate-y-1 hover:shadow-lg transition-all duration-200, add group class for child animations (group-hover:text-blue-600). Link underlines: relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-current hover:after:w-full after:transition-all. Loading states: animate-spin for Loader2 icon, animate-pulse for skeleton screens, animate-bounce for attention. Entrance animations: use Intersection Observer for scroll-triggered fade-in, opacity-0 translate-y-4 -> opacity-100 translate-y-0 transition-all duration-500. Stagger children: delay-75, delay-150, delay-225 for sequential reveals. Icon micro-interactions: hover:rotate-12 for settings, group-hover:translate-x-1 for arrows. Modal/dropdown: animate-in fade-in-0 zoom-in-95 (using tailwindcss-animate). Duration guide: 150ms for hovers, 200-300ms for transitions, 300-500ms for page animations. CRITICAL: wrap in motion-safe: or check prefers-reduced-motion to respect user preferences."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec19-flash-sale-timer",
+  "slug": "fluidflow-ecommerce-ec19-flash-sale-timer",
+  "title": "Flash Sale Timer",
+  "description": "FluidFlow · Flash Sale Timer",
+  "content": "Build flash sale countdown component. Banner style: full-width bg-red-600 or gradient. Content: sale title (\"Flash Sale!\"), countdown timer (days:hours:minutes:seconds), discount percentage (\"Up to 70% Off\"). Timer: large digits in boxes, animated flip or simple decrement. Urgency: pulsing animation, \"Ends Soon\" when < 1 hour. Product badge: smaller variant showing \"Sale ends in 2:34:15\" on product cards. Actions: \"Shop Now\" button.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8921d851ce9c72e7f733d91c2e46ebdf2a63ad9360918bab37b67f08ea0c04d3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create countdown timer for flash sale with urgency styling.",
+    "detailed": "Build flash sale countdown component. Banner style: full-width bg-red-600 or gradient. Content: sale title (\"Flash Sale!\"), countdown timer (days:hours:minutes:seconds), discount percentage (\"Up to 70% Off\"). Timer: large digits in boxes, animated flip or simple decrement. Urgency: pulsing animation, \"Ends Soon\" when < 1 hour. Product badge: smaller variant showing \"Sale ends in 2:34:15\" on product cards. Actions: \"Shop Now\" button.",
+    "advanced": "Build flash sale countdown component with multiple variants and urgency escalation. Banner variant: full-width, bg-gradient-to-r from-red-600 to-orange-500 or brand colors. Content layout: flex items-center justify-center gap-8 py-4 px-4, sale icon (Zap, Flame, or custom), sale title (\"FLASH SALE\" or \"LIMITED TIME\" in font-bold text-white tracking-wide), countdown timer, CTA. Countdown timer: flex gap-2, each unit (days if > 0, hours, minutes, seconds) in separate box (bg-white/20 backdrop-blur rounded-lg px-3 py-2), large number (text-3xl font-bold font-mono), label below (text-xs uppercase). Timer animation options: simple decrement, flip animation (CSS 3D transform on second change), slide animation. Separator: colon between units, optionally animated blink. Discount display: \"Up to 70% OFF\" or \"Extra 20% Off\" badge. Urgency escalation: when timer < 1 hour, add pulsing animation (animate-pulse) or color intensification, \"ENDING SOON!\" flashing text, when < 5 minutes, critical styling (bg-red-700), shake animation optional. Sound: optional tick sound in final minute (user preference). Product card badge: compact variant, smaller \"Ends in 2:34:15\" with Clock icon, positioned absolute top-right on product image, bg-red-500 text-white text-xs px-2 py-1 rounded. Product page banner: medium variant above product title, shows time remaining and sale price. Timer end behavior: when reaches 0, show \"Sale Ended\" message, optionally auto-redirect to regular product, or reload to reflect updated pricing. Server sync: sync timer with server time to prevent client manipulation, handle timezone correctly. Start time: if sale hasn't started, show \"Starts in...\" countdown instead. CTA button: \"Shop Now\", \"View Deals\" - high contrast button. Multiple sales: support different end times per product/category. Sticky bar: optionally sticky top during scroll on sale pages. Accessibility: timer should not auto-announce every second (use aria-live=\"polite\" with less frequent updates), provide static \"Sale ends at [time]\" for screen readers. Mobile: stack layout, smaller timer boxes, shorter labels (\"HR\", \"MIN\", \"SEC\")."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

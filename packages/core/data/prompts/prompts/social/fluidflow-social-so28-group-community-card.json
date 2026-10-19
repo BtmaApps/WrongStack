@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so28-group-community-card",
+  "slug": "fluidflow-social-so28-group-community-card",
+  "title": "Group/Community Card",
+  "description": "FluidFlow · Group/Community Card",
+  "content": "Build group/community card component. Visual: cover image, group avatar/icon, name, description. Stats: member count, posts per week. Join button: Join/Joined toggle. Privacy: public/private indicator. Admin badges. Category tags. Member avatars preview. Last activity timestamp.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e627e2141d9c3f55a786d160cf3dbfdcc3e69968fbecf7522b201b769d3ce521",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create group or community preview card with join button.",
+    "detailed": "Build group/community card component. Visual: cover image, group avatar/icon, name, description. Stats: member count, posts per week. Join button: Join/Joined toggle. Privacy: public/private indicator. Admin badges. Category tags. Member avatars preview. Last activity timestamp.",
+    "advanced": "Build comprehensive group/community card for discovery and management. Card container: bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow. Cover image: h-24 object-cover w-full, gradient overlay at bottom for text readability. Group avatar: w-16 h-16 rounded-xl border-4 border-white, positioned overlapping cover with -mt-8 ml-4, could be icon/emoji on colored bg or uploaded image. Card content: px-4 pb-4 pt-2. Group name: text-lg font-bold line-clamp-1, verified/official badge if applicable. Privacy indicator: inline badge next to name, \"Public\" (Globe icon) or \"Private\" (Lock icon), text-xs text-gray-500. Description: text-sm text-gray-600 line-clamp-2 mt-1. Category tags: flex gap-2 mt-2, small pills (Tech, Gaming, Music). Stats row: flex gap-4 mt-3 text-sm text-gray-500. Member count: Users icon + \"12.4K members\". Activity: MessageCircle icon + \"50+ posts/week\" or \"Very active\". Admin section: small avatars of admins, \"Managed by [Name]\". Member preview: overlapping avatar stack of 3-5 members, \"+2.4K more\". Your connection: \"5 friends are members\" with tiny friend avatars. Join button: w-full mt-4. States: \"Join\" (primary bg-blue-500 text-white), \"Pending\" (for private groups, outline disabled), \"Joined\" (outline with check, hover shows \"Leave\"). Request to join: for private groups, Join sends request. Invite button: if already member, option to invite friends. Rules/guidelines preview: \"3 rules - Read before joining\" expandable. Mute option: for joined groups, mute notifications. Notification bell: toggle notification level (All, Highlights, None). Leave: in dropdown menu with confirmation. Pinned groups: star/pin groups for quick access. Group type indicators: badges for \"Official\", \"Verified\", \"Featured\". Analytics for admins: member growth, engagement stats. Mobile: cards in scrollable list or grid. Accessibility: card as article, join button clearly labeled with group name, interactive elements focusable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

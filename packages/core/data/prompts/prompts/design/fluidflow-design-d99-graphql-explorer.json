@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d99-graphql-explorer",
+  "slug": "fluidflow-design-d99-graphql-explorer",
+  "title": "GraphQL Explorer",
+  "description": "FluidFlow · GraphQL Explorer",
+  "content": "Apply GraphQL explorer aesthetic with API playground feel. Query editor with syntax highlighting. Schema type browser with field exploration. Variable input panels. Response JSON viewers. Query history sidebar. Documentation search. Type connections visualization. Subscription status indicators. Error highlighting with line markers. Performance timing displays.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d99"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "78607529e28e39a9dbeceefe76f17f122b333dae66d68a84bd91b516c4bc11ce",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create GraphQL explorer interface with query builders, schema browsers, and response viewers.",
+    "detailed": "Apply GraphQL explorer aesthetic with API playground feel. Query editor with syntax highlighting. Schema type browser with field exploration. Variable input panels. Response JSON viewers. Query history sidebar. Documentation search. Type connections visualization. Subscription status indicators. Error highlighting with line markers. Performance timing displays.",
+    "advanced": "Apply GraphQL aesthetic with playground patterns. Query editor with GraphQL syntax highlighting, auto-complete dropdown. Schema explorer tree with types→fields→arguments. Variables panel with JSON input validation. Response viewer with collapsible JSON, syntax colors. History list with query previews, timestamps. Docs search with type/field results. Schema graph SVG with type nodes, relation edges. Subscription badge with connected/disconnected. Error gutters with red underlines, tooltip messages. Tracing panel with resolver timing bars."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

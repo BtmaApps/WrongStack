@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c52-add-timeline",
+  "slug": "fluidflow-components-c52-add-timeline",
+  "title": "Add Timeline",
+  "description": "FluidFlow · Add Timeline",
+  "content": "Create vertical timeline. Container: relative pl-8 before:absolute before:left-3 before:top-0 before:bottom-0 before:w-0.5 before:bg-gray-200. Item: relative mb-8 last:mb-0. Marker: absolute -left-5 w-4 h-4 rounded-full bg-blue-500 border-4 border-white. Content card: bg-white p-4 rounded-lg shadow. Date: text-sm text-gray-500 mb-1. Title: font-semibold. Description: text-gray-600.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c52"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "becb40d9919f6ccdb2055e4fe59d67688db00dbfc586a1d0f053e2d95983d315",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create vertical timeline for events or history.",
+    "detailed": "Create vertical timeline. Container: relative pl-8 before:absolute before:left-3 before:top-0 before:bottom-0 before:w-0.5 before:bg-gray-200. Item: relative mb-8 last:mb-0. Marker: absolute -left-5 w-4 h-4 rounded-full bg-blue-500 border-4 border-white. Content card: bg-white p-4 rounded-lg shadow. Date: text-sm text-gray-500 mb-1. Title: font-semibold. Description: text-gray-600.",
+    "advanced": "Create interactive timeline component. Layout options: vertical (default), horizontal (scrollable). Vertical timeline: alternating sides (left/right) on desktop, single side on mobile. Line: pseudo-element connecting items, gradient or solid color, animated drawing on scroll. Marker: customizable icon or avatar, different colors by event type, pulse animation for current/active. Content card: hover elevation, expandable on click for more details. Date display: relative time (2 days ago) or absolute, grouped by year/month headers. Media support: images, videos in cards. Connected events: visual grouping of related items. Filtering: filter by type, date range, search. Load more: pagination or infinite scroll for long timelines. Animation: staggered reveal on scroll (Intersection Observer), slide in from side. Zoom levels: year/month/day granularity for dense timelines. Export: print-friendly version. Accessibility: semantic list markup, keyboard navigable, proper ARIA labels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

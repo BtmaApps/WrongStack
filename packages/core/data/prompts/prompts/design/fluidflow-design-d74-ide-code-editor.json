@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d74-ide-code-editor",
+  "slug": "fluidflow-design-d74-ide-code-editor",
+  "title": "IDE/Code Editor",
+  "description": "FluidFlow · IDE/Code Editor",
+  "content": "Apply IDE/code editor aesthetic with development environment feel. Dark theme background with syntax highlighting colors. Line numbers in gutter. File tabs at top. Sidebar with file tree. Minimap scrollbar visualization. Syntax highlighting: keywords, strings, comments, functions in different colors. Include breadcrumb navigation. Status bar at bottom. Split pane layouts. Code-focused developer atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d74"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "63aa59611a1c683e7e2b2f89dbb76e8656d851522180a3e210a407b2d93525e0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create code editor aesthetic with syntax highlighting, line numbers, and IDE panel layouts.",
+    "detailed": "Apply IDE/code editor aesthetic with development environment feel. Dark theme background with syntax highlighting colors. Line numbers in gutter. File tabs at top. Sidebar with file tree. Minimap scrollbar visualization. Syntax highlighting: keywords, strings, comments, functions in different colors. Include breadcrumb navigation. Status bar at bottom. Split pane layouts. Code-focused developer atmosphere.",
+    "advanced": "Apply IDE/code editor aesthetic with authentic development environment feel. Theme base: dark IDE colors - VS Code dark (#1e1e1e), Dracula (#282a36), One Dark (#21252b), or Monokai (#272822). Editor area: main content with syntax highlighting, line numbers (text-gray-500) in left gutter, active line highlight (bg-gray-800/50). Syntax highlighting palette: keywords purple (#c678dd), strings green (#98c379), comments gray (#5c6370), functions blue (#61afef), variables red (#e06c75), numbers orange (#d19a66), types yellow (#e5c07b). File tabs: horizontal tabs with file icons, active tab highlighted, close buttons, modified indicator (dot). File tree sidebar: collapsible folder structure, file type icons, indentation lines. Minimap: scaled-down code preview as scrollbar decoration. Breadcrumbs: path navigation showing file > folder > function. Status bar: bottom bar with git branch, line/column position, file type, encoding. Split panes: resizable panels for multi-file editing. Git integration: inline diff colors (green additions, red deletions), gutter indicators. IntelliSense: autocomplete dropdown styling, parameter hints. Terminal panel: integrated terminal at bottom. Find/replace: search input with match highlighting. Errors/warnings: squiggly underlines, problems panel. Implementation: CSS Grid for panel layout, proper code font rendering. Accessibility: syntax colors should have sufficient contrast, keyboard navigation for all panels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

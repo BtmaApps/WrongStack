@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q9-modernize-style",
+  "slug": "fluidflow-quick-actions-q9-modernize-style",
+  "title": "🎨 Modernize Style",
+  "description": "FluidFlow · 🎨 Modernize Style",
+  "content": "Update to contemporary design aesthetics. Apply glassmorphism with backdrop-blur-md and bg-white/20 on cards. Add gradient accents using bg-gradient-to-r from-blue-500 to-purple-600 on buttons and highlights. Use modern typography with proper font weights and letter-spacing. Include subtle shadows (shadow-xl) with colored tints. Add rounded-2xl or rounded-3xl for softer appearance. Implement smooth transitions on all interactive elements. Use contemporary color palette with vibrant accents. Add subtle border effects with border-white/20.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8a0def87fc84bf7ba3cd4db48fe0da69a80ee581b08e00f82a46c0b84c768c60",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Update to modern design with glassmorphism, gradients, and soft shadows.",
+    "detailed": "Update to contemporary design aesthetics. Apply glassmorphism with backdrop-blur-md and bg-white/20 on cards. Add gradient accents using bg-gradient-to-r from-blue-500 to-purple-600 on buttons and highlights. Use modern typography with proper font weights and letter-spacing. Include subtle shadows (shadow-xl) with colored tints. Add rounded-2xl or rounded-3xl for softer appearance. Implement smooth transitions on all interactive elements. Use contemporary color palette with vibrant accents. Add subtle border effects with border-white/20.",
+    "advanced": "Update to contemporary design aesthetics with modern techniques. Glassmorphism: backdrop-blur-md bg-white/70 dark:bg-gray-900/70 border border-white/20 shadow-xl - use for cards, modals, nav bars floating over content. Gradients: bg-gradient-to-r from-blue-500 to-purple-600 for primary buttons, bg-gradient-to-br from-blue-50 to-purple-50 for hero backgrounds, text-transparent bg-clip-text bg-gradient-to-r for gradient text. Shadows: shadow-xl shadow-blue-500/10 for colored shadow tints, multiple shadows for depth (shadow-lg shadow-blue-500/25). Soft shapes: rounded-2xl for cards, rounded-3xl for hero sections, rounded-full for buttons and badges. Typography: Inter or system-ui font, tracking-tight on headlines, font-medium for emphasis instead of bold. Borders: border border-gray-200/50 dark:border-gray-700/50 for subtle definition, ring-1 ring-gray-900/5 for elevated elements. Hover effects: hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300. Background patterns: subtle dot grid using radial-gradient, or mesh gradient using multiple overlapping gradients. Micro-textures: subtle noise overlay using SVG filter for depth. Color palette: use vibrant accents (violet, fuchsia, cyan) against neutral backgrounds. Ensure glassmorphism has sufficient contrast for accessibility."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

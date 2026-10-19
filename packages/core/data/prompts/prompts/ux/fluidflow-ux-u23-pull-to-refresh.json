@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u23-pull-to-refresh",
+  "slug": "fluidflow-ux-u23-pull-to-refresh",
+  "title": "Pull to Refresh",
+  "description": "FluidFlow · Pull to Refresh",
+  "content": "Implement pull-to-refresh for mobile content updates. Detect pull-down gesture at top of scrollable area. Show pull indicator with progress (arrow that inverts when threshold reached). Release to trigger refresh with spinner animation. Execute refresh action (API call). Return to normal state with updated content. Add subtle haptic feedback at trigger threshold. Prevent overscroll on iOS. Show timestamp of last refresh. Disable during active refresh.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ce8f4b60beeb2549d3feb06f1643526bfce35bafa44e1eb7528b7269423ba283",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add pull-to-refresh gesture for mobile content refresh.",
+    "detailed": "Implement pull-to-refresh for mobile content updates. Detect pull-down gesture at top of scrollable area. Show pull indicator with progress (arrow that inverts when threshold reached). Release to trigger refresh with spinner animation. Execute refresh action (API call). Return to normal state with updated content. Add subtle haptic feedback at trigger threshold. Prevent overscroll on iOS. Show timestamp of last refresh. Disable during active refresh.",
+    "advanced": "Implement pull-to-refresh for mobile content updates following native patterns. Detect pull-down gesture: touch events at top of scroll container, only when scrollTop is 0. Pull indicator: hidden by default, translate-y to reveal as user pulls, progress arrow that rotates/inverts when threshold (~80px) reached. Visual feedback: arrow icon initially, transforms to spinner at release, color transition at threshold. Release behavior: if past threshold, trigger refresh; if not, snap back smoothly. Refresh action: execute async function (API fetch), minimum display time (500ms) to show activity even if fast. Success state: spinner transitions to checkmark briefly, content updates, indicator hides. Failure state: show error indicator, allow immediate retry. Haptic feedback: vibrate briefly at trigger threshold (navigator.vibrate). iOS overscroll: prevent rubber-banding from interfering, use touch-action or overscroll-behavior. Last refresh timestamp: \"Updated 2 minutes ago\" in subtle text. Disable: prevent pull during active refresh, disable completely during loading states. Implementation: consider libraries like react-pull-to-refresh or custom with touch events. CSS: use transform for GPU acceleration. ACCESSIBILITY: provide manual refresh button for non-touch users."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

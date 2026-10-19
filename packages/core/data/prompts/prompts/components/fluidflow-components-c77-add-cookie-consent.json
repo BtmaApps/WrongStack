@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c77-add-cookie-consent",
+  "slug": "fluidflow-components-c77-add-cookie-consent",
+  "title": "Add Cookie Consent",
+  "description": "FluidFlow · Add Cookie Consent",
+  "content": "Create cookie banner. Container: fixed bottom-0 inset-x-0 z-50 p-4 bg-white shadow-lg border-t. Content: max-w-4xl mx-auto flex items-center justify-between gap-4. Text: text-sm text-gray-600, brief explanation with privacy policy link. Buttons: flex gap-2, Reject (outline), Accept (primary). Animation: slide up on mount.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c77"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2f34d898a0bd9fe23b2497aedfc0e2a655e50826255969c9c201939c36097c70",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create GDPR cookie consent banner with accept/reject.",
+    "detailed": "Create cookie banner. Container: fixed bottom-0 inset-x-0 z-50 p-4 bg-white shadow-lg border-t. Content: max-w-4xl mx-auto flex items-center justify-between gap-4. Text: text-sm text-gray-600, brief explanation with privacy policy link. Buttons: flex gap-2, Reject (outline), Accept (primary). Animation: slide up on mount.",
+    "advanced": "Create complete cookie consent system. Banner position: bottom bar (default), bottom corner popup, or center modal. Initial state: show on first visit, respect Do Not Track if enabled. Content: clear explanation of cookie usage, link to full privacy policy. Cookie categories: essential (always on), analytics, marketing, preferences - each with toggle and description. Quick actions: \"Accept All\", \"Reject All\", \"Customize\" buttons. Customization modal: detailed category explanations, individual toggles, Save Preferences button. Essential cookies: cannot be disabled, explain why. Cookie list: expandable list of actual cookies per category with purpose and duration. Remember choice: store preference in cookie/localStorage, expiry after 1 year. Re-consent: trigger on policy change, show \"Updated\" badge. Minimize: after choice, show small button to reopen preferences. Legal compliance: GDPR (EU), CCPA (California) option switches, appropriate language. A/B variants: different copy and layouts for testing. No banner if consented: only show settings link in footer. Integration: fire consent events for analytics tools to respect. Accessibility: focus trap in modal, keyboard operable, screen reader announcements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

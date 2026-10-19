@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c56-add-notification-center",
+  "slug": "fluidflow-components-c56-add-notification-center",
+  "title": "Add Notification Center",
+  "description": "FluidFlow · Add Notification Center",
+  "content": "Create notification center. Trigger: bell icon button with unread count badge (absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5). Dropdown: absolute right-0 w-80 bg-white rounded-lg shadow-xl border. Header: flex justify-between p-3 border-b, title \"Notifications\", \"Mark all read\" link. List: max-h-96 overflow-y-auto. Item: p-3 hover:bg-gray-50 flex gap-3 border-b last:border-0, unread items have bg-blue-50. Item content: avatar/icon, text (title bold, description text-sm), time (text-xs text-gray-400). Footer: text-center p-2 border-t \"View all\" link.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c56"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a32d3af0d7040d3900f6bfa43ad0f88a45b31280c58c8a9d553438830659dfa9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create notification dropdown with grouped items.",
+    "detailed": "Create notification center. Trigger: bell icon button with unread count badge (absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5). Dropdown: absolute right-0 w-80 bg-white rounded-lg shadow-xl border. Header: flex justify-between p-3 border-b, title \"Notifications\", \"Mark all read\" link. List: max-h-96 overflow-y-auto. Item: p-3 hover:bg-gray-50 flex gap-3 border-b last:border-0, unread items have bg-blue-50. Item content: avatar/icon, text (title bold, description text-sm), time (text-xs text-gray-400). Footer: text-center p-2 border-t \"View all\" link.",
+    "advanced": "Create comprehensive notification system. Bell icon: relative, unread badge (count or dot), animate on new notification. Dropdown: positioned with Popper/Floating UI, max-height with scroll. Tabs: All, Unread, filter by type (mentions, comments, updates, etc). Notification item: avatar or icon by type, title with actor name bolded, action description, timestamp (relative), unread indicator dot, hover shows quick actions (mark read, delete). Notification types: mention (@ icon), comment (chat icon), like (heart icon), follow (user icon), system (bell icon), each with distinct styling. Grouping: group similar notifications (\"3 people liked your post\"). Rich content: some notifications show preview (image thumbnail, code snippet). Actions: primary action on click (navigate to source), mark as read, delete, mute similar. Bulk actions: mark all read, clear all. Empty state: illustration with \"All caught up!\" message. Real-time: new notifications appear at top with animation, badge count updates. Persistence: store read/unread state. Push integration: connect to browser notifications. Settings link: manage notification preferences. Sound: optional sound on new notification."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d58-psychedelic-60s",
+  "slug": "fluidflow-design-d58-psychedelic-60s",
+  "title": "Psychedelic 60s",
+  "description": "FluidFlow · Psychedelic 60s",
+  "content": "Apply 1960s psychedelic aesthetic with mind-expanding visuals. Vibrant, clashing colors: electric orange, hot pink, acid green, purple, yellow. Swirling, flowing patterns. Op-art optical illusions. Paisley and mandala motifs. Melting, warping text effects. Kaleidoscope patterns. Peace symbols and flower power elements. Liquid, organic flowing shapes. Trippy, groovy, consciousness-expanding atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d58"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6356d9c21f55c11cf2b8d57376f7d6c2ac8510b7eaaac3d0035409b37327f17a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create trippy 1960s psychedelic style with swirling patterns, vibrant colors, and mind-bending effects.",
+    "detailed": "Apply 1960s psychedelic aesthetic with mind-expanding visuals. Vibrant, clashing colors: electric orange, hot pink, acid green, purple, yellow. Swirling, flowing patterns. Op-art optical illusions. Paisley and mandala motifs. Melting, warping text effects. Kaleidoscope patterns. Peace symbols and flower power elements. Liquid, organic flowing shapes. Trippy, groovy, consciousness-expanding atmosphere.",
+    "advanced": "Apply 1960s psychedelic aesthetic with mind-expanding visual intensity. Color palette: vibrant, high-saturation, often clashing - electric orange (#ff6600), hot pink (#ff1493), acid green (#00ff00), purple (#9400d3), yellow (#ffff00), cyan. Colors can vibrate against each other. Swirling patterns: spiral shapes, concentric circles, flowing organic forms - implement using SVG paths with animation, or CSS radial/conic gradients with rotation. Op-art: optical illusion patterns (wavy lines, checkerboard warps, moiré effects) using repeating gradients. Paisley and mandala: intricate decorative patterns as backgrounds or accents (SVG). Typography: psychedelic display fonts (heavily stylized, Art Nouveau influenced), warped text using SVG textPath on curves, melting/dripping letter effects. Kaleidoscope: symmetrical radial patterns, often animated rotation. Flower power: stylized flowers, peace symbols, love motifs. Liquid shapes: blob forms morphing and flowing, use CSS border-radius animation or SVG. Background: often solid bright color or complex pattern, rarely plain. Poster aesthetic: inspired by concert posters (Fillmore, Avalon Ballroom). Interactive: colors shift, patterns rotate on hover/scroll. Animation: slow, flowing movements, morphing shapes. Sound visualization: represent music visually with reactive patterns. Implementation: SVG essential for complex patterns, CSS animations for movement. Accessibility: CRITICAL - busy patterns can cause seizures, respect prefers-reduced-motion, provide calm alternative, ensure text readable against wild backgrounds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

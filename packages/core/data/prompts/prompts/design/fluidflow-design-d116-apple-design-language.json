@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d116-apple-design-language",
+  "slug": "fluidflow-design-d116-apple-design-language",
+  "title": "Apple Design Language",
+  "description": "FluidFlow · Apple Design Language",
+  "content": "Apply Apple aesthetic with premium product feel. Clean white or deep black backgrounds. SF Pro typography hierarchy. Subtle shadows with depth. Rounded rectangles everywhere. Vibrant but controlled color palette. Large hero imagery. Parallax scroll effects. Hover state elevations. Generous whitespace. Product-focused layouts.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d116"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d2fe34663fc758b008ff9e97b6f0aeabe824bfcbf3721412949b27818b449ca0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Apple-inspired design with premium materials, depth, and refined interactions.",
+    "detailed": "Apply Apple aesthetic with premium product feel. Clean white or deep black backgrounds. SF Pro typography hierarchy. Subtle shadows with depth. Rounded rectangles everywhere. Vibrant but controlled color palette. Large hero imagery. Parallax scroll effects. Hover state elevations. Generous whitespace. Product-focused layouts.",
+    "advanced": "Apply Apple aesthetic with premium product patterns. Backgrounds: pure white (#fff) or deep black (#000), gradient gray sections. Typography: SF Pro Display for headlines (-apple-system fallback), font-semibold for emphasis, letter-spacing tight. Shadows: layered - shadow-sm for subtle, shadow-2xl for floating elements. Corners: rounded-2xl for cards, rounded-full for pills. Colors: system colors (blue-500, green-500) used sparingly, mostly monochrome. Imagery: full-bleed product photos, subtle parallax on scroll. Cards: bg-gray-100 (light) or bg-[#1c1c1e] (dark), no border, shadow for depth. Buttons: rounded-full px-8, primary filled, secondary with light background. Glass effects: backdrop-blur for overlays. Hover: translateY(-2px) with increased shadow. Whitespace: py-24 or more between sections. Navigation: centered or sticky, blur background on scroll. Product grid: large cards with image, minimal text. Typography scale: text-5xl to text-7xl for heroes, text-sm for details. Animations: spring physics, 300-400ms duration, ease-out."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

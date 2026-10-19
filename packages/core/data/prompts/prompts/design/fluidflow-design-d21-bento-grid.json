@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d21-bento-grid",
+  "slug": "fluidflow-design-d21-bento-grid",
+  "title": "Bento Grid",
+  "description": "FluidFlow · Bento Grid",
+  "content": "Apply bento box layout with asymmetric, magazine-style grids. Use CSS Grid with varying column and row spans. Create visual hierarchy: one large feature card (col-span-2 row-span-2), medium cards (col-span-2 or row-span-2), and small square cards. Add consistent gaps (gap-4 or gap-6). Each card: rounded corners (rounded-2xl), subtle shadows, distinct background colors or gradients. Include varied content types: stats, images, text, icons. Create visual rhythm with intentional size variation. Cards should feel like curated collections.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "95cddee09293e112ab02cc7c333bc89bcf490b360bedb7e27568d2918c049a28",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create asymmetric grid layouts inspired by Japanese bento boxes with varied card sizes.",
+    "detailed": "Apply bento box layout with asymmetric, magazine-style grids. Use CSS Grid with varying column and row spans. Create visual hierarchy: one large feature card (col-span-2 row-span-2), medium cards (col-span-2 or row-span-2), and small square cards. Add consistent gaps (gap-4 or gap-6). Each card: rounded corners (rounded-2xl), subtle shadows, distinct background colors or gradients. Include varied content types: stats, images, text, icons. Create visual rhythm with intentional size variation. Cards should feel like curated collections.",
+    "advanced": "Apply bento box layout creating asymmetric, magazine-style grids inspired by Apple feature pages. Grid setup: grid with auto-fit or explicit columns (grid-cols-4 on desktop, grid-cols-2 on tablet, grid-cols-1 on mobile). Use grid-template-areas for complex layouts or individual col-span/row-span classes. Size hierarchy: hero card (col-span-2 row-span-2), feature cards (col-span-2 row-span-1 or col-span-1 row-span-2), standard cards (col-span-1 row-span-1). Consistent gap (gap-4 md:gap-6). Card styling: rounded-2xl or rounded-3xl, subtle shadows (shadow-sm hover:shadow-md), smooth hover transitions (scale-[1.02]). Background variety: solid colors, gradients, images with overlays, or patterns - each card can be unique. Content types per card: large image with text overlay, stat number with label, icon grid, testimonial quote, feature description with illustration. Visual balance: distribute colors and content types evenly, avoid clustering similar cards. Responsive: reorganize grid at breakpoints, ensure logical reading order maintained. Animation: staggered entrance on scroll using IntersectionObserver. Accessibility: ensure grid order matches DOM order for screen readers, or use proper aria-attributes. Consider: card click actions, hover previews, expandable cards for detail views."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

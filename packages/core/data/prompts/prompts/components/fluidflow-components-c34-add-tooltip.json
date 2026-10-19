@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c34-add-tooltip",
+  "slug": "fluidflow-components-c34-add-tooltip",
+  "title": "Add Tooltip",
+  "description": "FluidFlow · Add Tooltip",
+  "content": "Create tooltip component appearing on hover. Trigger wrapper: relative inline-block group. Tooltip: absolute z-50 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg whitespace-nowrap. Positioning: bottom-full left-1/2 -translate-x-1/2 mb-2 for top, adjust for other positions (top, left, right, bottom). Arrow: pseudo-element triangle pointing to trigger. Show/hide: opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity. Delay: add slight delay before showing. Ensure tooltip stays in viewport.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2c0c7e7d04a8365ff6cfd9aa0afcacad552fc12296ae583d54ed2d6f6555812b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create tooltips that appear on hover with helpful information.",
+    "detailed": "Create tooltip component appearing on hover. Trigger wrapper: relative inline-block group. Tooltip: absolute z-50 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg whitespace-nowrap. Positioning: bottom-full left-1/2 -translate-x-1/2 mb-2 for top, adjust for other positions (top, left, right, bottom). Arrow: pseudo-element triangle pointing to trigger. Show/hide: opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity. Delay: add slight delay before showing. Ensure tooltip stays in viewport.",
+    "advanced": "Create accessible tooltip component with smart positioning. Implementation: wrapper component with trigger (children) and tooltip content. Trigger: onMouseEnter/Leave, onFocus/Blur for keyboard users. Tooltip element: role=\"tooltip\", id linked via aria-describedby on trigger. Styling: absolute z-50 px-3 py-1.5 text-sm text-white bg-gray-900 rounded-md shadow-lg max-w-xs. Positioning options: top, bottom, left, right, with smart flip when near viewport edge. Arrow: pseudo-element with border trick or SVG, positioned based on tooltip placement. Show/hide animation: opacity + scale transform (scale-95 to scale-100), transition-all duration-150. Delays: configurable delayShow (default 200ms) and delayHide (default 0) for better UX. Portal rendering: render tooltip in document.body to avoid overflow:hidden issues. Position calculation: use getBoundingClientRect, account for scroll, flip if not enough space. Touch devices: show on tap, hide on tap outside or after delay. Accessibility: tooltip shown on focus for keyboard users, not just hover. Interactive tooltips: keep open when hovering tooltip itself for tooltips with links. Props: content (string or ReactNode), placement, delay, interactive, disabled, open (controlled), onOpenChange. Implementation options: pure CSS with group-hover, or controlled state with useEffect for delays. Consider using Floating UI library for complex positioning needs."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

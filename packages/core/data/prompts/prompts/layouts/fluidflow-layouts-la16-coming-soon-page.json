@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la16-coming-soon-page",
+  "slug": "fluidflow-layouts-la16-coming-soon-page",
+  "title": "Coming Soon Page",
+  "description": "FluidFlow · Coming Soon Page",
+  "content": "Build pre-launch coming soon page. Hero: product name/logo, tagline. Countdown timer: days, hours, minutes, seconds until launch. Email signup: input and subscribe button. Social proof: \"Join X others waiting\". Social links. Background: video, gradient, or animated. Sneak peek: teaser images or feature list. Social sharing buttons.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "22daff375064def55feac29089dcd98f113db3ebf0306acc0decc604a43aaaf8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create coming soon/launch page with countdown and email signup.",
+    "detailed": "Build pre-launch coming soon page. Hero: product name/logo, tagline. Countdown timer: days, hours, minutes, seconds until launch. Email signup: input and subscribe button. Social proof: \"Join X others waiting\". Social links. Background: video, gradient, or animated. Sneak peek: teaser images or feature list. Social sharing buttons.",
+    "advanced": "Build compelling pre-launch coming soon page. Full-screen layout: min-h-screen relative overflow-hidden. Background: video loop (muted autoplay), parallax image, animated gradient (bg-gradient-to-br animate-gradient), or particle animation. Overlay: absolute inset-0 bg-black/50 for text readability. Content container: relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-4 text-white. Logo: brand logo or product icon (w-16 h-16 mb-8). Headline: product name (text-4xl md:text-6xl font-bold), tagline (text-xl md:text-2xl text-white/80 mt-4 max-w-2xl). Countdown timer: grid-cols-4 gap-4 md:gap-8 mt-12. Each unit: bg-white/10 backdrop-blur rounded-xl p-4 md:p-6. Number: text-4xl md:text-6xl font-bold font-mono. Label: text-xs md:text-sm uppercase tracking-wide text-white/70. Units: Days, Hours, Minutes, Seconds. Timer logic: calculate difference from launch date, update every second. Email signup section: mt-12 max-w-md w-full. \"Be the first to know\" text (text-lg mb-4). Form: flex gap-2, email input (flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:ring-2 focus:ring-white/30), \"Notify Me\" button (bg-white text-gray-900 font-medium px-6 py-3 rounded-lg hover:bg-gray-100). Success state: \"Thanks! We'll be in touch.\" with Check icon. Waitlist count: \"Join 12,847 others on the waitlist\" social proof (mt-4 text-white/70). Sneak peek: \"What to expect\" section with 3-4 feature highlights in grid or horizontal scroll. Progress indicator: optional \"X% of features ready\" progress bar. Social links: flex gap-4 mt-8, Twitter, LinkedIn, Instagram icons. Social sharing: \"Share with friends\" with pre-filled share buttons. Footer: copyright, privacy link. Mobile: scale down countdown, stack form. Animation: subtle floating elements, countdown number flip animation. Accessibility: timer values announced periodically (not every second), form properly labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

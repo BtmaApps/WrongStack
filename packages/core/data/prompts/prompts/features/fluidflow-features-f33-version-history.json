@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f33-version-history",
+  "slug": "fluidflow-features-f33-version-history",
+  "title": "Version History",
+  "description": "FluidFlow · Version History",
+  "content": "Build version history system. Tracking: save versions on significant changes. Version list: show history with timestamps and authors. Compare: diff view between versions. Preview: preview any version without restoring. Restore: restore to previous version. Labels: name important versions (e.g., \"Before refactor\"). Auto-save: versioning integrated with auto-save. Limits: retention policy for old versions. Export: download specific version.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "27bc2ac9e3fbd01caae53191cb2e6aa2fa1c89cc4d4e202c3466fbaaf8e4cf8e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Track and restore previous versions of content.",
+    "detailed": "Build version history system. Tracking: save versions on significant changes. Version list: show history with timestamps and authors. Compare: diff view between versions. Preview: preview any version without restoring. Restore: restore to previous version. Labels: name important versions (e.g., \"Before refactor\"). Auto-save: versioning integrated with auto-save. Limits: retention policy for old versions. Export: download specific version.",
+    "advanced": "Build comprehensive version history system for content management. Version triggers: save on explicit save, auto-save at intervals, before major operations (publish, delete). Version storage: store complete snapshots or incremental diffs, use server storage or IndexedDB for local-only. Version metadata: timestamp, author/user, change summary (auto-generated or user-provided), version number or hash. Version list UI: chronological list showing timestamp, author avatar/name, change summary, maybe diff stats (+5/-2 lines). Compare versions: side-by-side diff view, inline diff with highlighting, show additions (green), deletions (red), unchanged (gray). Diff implementation: text diff algorithm (jsdiff library), or visual diff for documents. Preview: view any version in read-only mode without affecting current version, \"Preview\" vs \"Restore\" buttons. Restore options: restore to this version (creates new version), branch from this version, view only. Version labels/tags: ability to name important versions (\"v1.0 Release\", \"Before redesign\"), filter by labeled versions. Auto-cleanup: retention policy (keep all for 30 days, then weekly for 90 days, then monthly), or keep N most recent. Storage optimization: store diffs after initial period, compress old versions. Export: download any version as file, include version metadata. Branching: optional branching support for parallel versions. Audit trail: link versions to user actions, changes for compliance. Restoration notification: toast confirming restore, undo option."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

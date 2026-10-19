@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f34-activity-feed",
+  "slug": "fluidflow-features-f34-activity-feed",
+  "title": "Activity Feed",
+  "description": "FluidFlow · Activity Feed",
+  "content": "Build activity feed component. Items: show actions with timestamp and actor. Types: user actions, system events, notifications. Icons: different icons per activity type. Real-time: update feed as events occur. Grouping: collapse similar activities. Filtering: filter by activity type or user. Pagination: infinite scroll or load more. Unread indicator: highlight new activities. Links: click to navigate to related item.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "323da52a7a7deefdc233e0adbd061b9428ffd7ec095736ce8f2290e265efaecb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show real-time feed of user and system activities.",
+    "detailed": "Build activity feed component. Items: show actions with timestamp and actor. Types: user actions, system events, notifications. Icons: different icons per activity type. Real-time: update feed as events occur. Grouping: collapse similar activities. Filtering: filter by activity type or user. Pagination: infinite scroll or load more. Unread indicator: highlight new activities. Links: click to navigate to related item.",
+    "advanced": "Build comprehensive activity feed system showing user and system events. Activity data structure: {id, type, actor (user/system), target (what was affected), timestamp, metadata}. Activity types: user actions (created, updated, deleted, commented, assigned), system events (scheduled job, automated process), status changes, integrations. Display format: avatar/icon, actor name, verb, target, timestamp, optional details. Timeline layout: vertical list, connector line, grouped by day. Real-time updates: WebSocket connection or polling for new activities, new items animate in at top, optionally show \"N new activities\" banner to click-to-load. Activity icons: different icons and colors per type (Plus for create, Edit for update, Trash for delete, MessageSquare for comment). Grouping: collapse similar activities (\"John updated 5 files\" instead of 5 separate items), expandable to see details. Rich content: preview of what changed, diff snippets, attached images. Filtering: by activity type (checkboxes), by user/team, by date range, by target type. Search: search activities by keyword. Pagination: infinite scroll with intersection observer, or \"Load more\" button, load 20-50 at a time. Unread state: track last seen timestamp per user, show new indicator (dot or \"New\" badge) on unread, mark as read on view. Navigation: click activity to go to related item (the document, comment, user). Actor click: navigate to user profile. Timestamps: relative time with absolute on hover. Notifications: activity feed can power notification system."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

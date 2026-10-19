@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c2-add-footer",
+  "slug": "fluidflow-components-c2-add-footer",
+  "title": "Add Footer",
+  "description": "FluidFlow · Add Footer",
+  "content": "Build comprehensive footer component. Structure with multiple columns: Company info (logo, description, social icons), Product links, Resources, Legal. Use responsive grid: grid-cols-2 md:grid-cols-4 lg:grid-cols-5. Add newsletter signup with email input and subscribe button. Include social icons (Twitter, LinkedIn, GitHub) using lucide-react. Bottom bar with copyright, language selector, and legal links. Style with dark background (bg-gray-900 text-gray-300) or light (bg-gray-100). Add hover effects on links. Include app store badges if mobile app. Ensure proper spacing and mobile-friendly stacking. Add back-to-top button.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0005fa7107f4f7038d7bd3c38fe0410403cc8d2c08a2791f51d77e6f4be2e881",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a footer with company info, navigation links, and social icons.",
+    "detailed": "Build comprehensive footer component. Structure with multiple columns: Company info (logo, description, social icons), Product links, Resources, Legal. Use responsive grid: grid-cols-2 md:grid-cols-4 lg:grid-cols-5. Add newsletter signup with email input and subscribe button. Include social icons (Twitter, LinkedIn, GitHub) using lucide-react. Bottom bar with copyright, language selector, and legal links. Style with dark background (bg-gray-900 text-gray-300) or light (bg-gray-100). Add hover effects on links. Include app store badges if mobile app. Ensure proper spacing and mobile-friendly stacking. Add back-to-top button.",
+    "advanced": "Build comprehensive footer component with all necessary sections and accessibility. Structure: footer element with bg-gray-900 text-gray-300 (dark) or bg-gray-50 text-gray-600 (light). Inner container: max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16. Grid layout: grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8. Column 1 (larger): Company logo, brief description (max 2-3 sentences), social icons row with hover color effects. Columns 2-5: Link groups with heading (font-semibold text-white mb-4) and list of links (space-y-2). Link categories: Product (Features, Pricing, Integrations), Resources (Blog, Documentation, Help Center), Company (About, Careers, Contact), Legal (Privacy, Terms, Cookies). Newsletter section: full width or in column, email input with Subscribe button, success/error states, privacy note. Social icons: flex gap-4, icon buttons with hover:text-white transition, Twitter, LinkedIn, GitHub, Instagram, YouTube as relevant. Bottom bar: border-t border-gray-800 mt-12 pt-8, flex justify-between flex-wrap, copyright text, language/region selector, legal links. App store badges: Apple App Store and Google Play if applicable. Back to top button: fixed bottom-right, appears after scrolling down, smooth scroll to top. ACCESSIBILITY: proper heading hierarchy in footer, links with clear text, social links with aria-labels, newsletter form with label. Responsive: columns stack to 2 on tablet, 1 on mobile. Consider reduced footer variant for app/dashboard pages."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

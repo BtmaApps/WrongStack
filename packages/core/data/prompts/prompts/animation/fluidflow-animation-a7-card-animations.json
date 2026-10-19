@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a7-card-animations",
+  "slug": "fluidflow-animation-a7-card-animations",
+  "title": "Card Animations",
+  "description": "FluidFlow · Card Animations",
+  "content": "Implement engaging card hover and interaction animations. Lift effect: translate-y and increased shadow (hover:-translate-y-2 hover:shadow-2xl). Image zoom: overflow-hidden on card, scale image on hover (group-hover:scale-110). Content reveal: show additional info or actions on hover with slide-up animation. Border glow: animated gradient border or shadow glow effect. Tilt effect: 3D perspective rotation following cursor position using transform: perspective() rotateX() rotateY(). Flip card: 3D flip to reveal back content on click. Add smooth transitions (duration-300) with ease-out timing. Use group utility for coordinated child animations. Include skeleton loading state for card content.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3e078bbbe2b5ebb40227ee92b855967fbb09f0b69150d46f29b67ea1d45ce20d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add hover lift, image zoom, and content reveal to cards.",
+    "detailed": "Implement engaging card hover and interaction animations. Lift effect: translate-y and increased shadow (hover:-translate-y-2 hover:shadow-2xl). Image zoom: overflow-hidden on card, scale image on hover (group-hover:scale-110). Content reveal: show additional info or actions on hover with slide-up animation. Border glow: animated gradient border or shadow glow effect. Tilt effect: 3D perspective rotation following cursor position using transform: perspective() rotateX() rotateY(). Flip card: 3D flip to reveal back content on click. Add smooth transitions (duration-300) with ease-out timing. Use group utility for coordinated child animations. Include skeleton loading state for card content.",
+    "advanced": "Implement engaging card hover and interaction animations for dynamic, interactive layouts. Lift effect: translate-y and shadow progression (hover:-translate-y-3 hover:shadow-2xl transition-all duration-300 ease-out). Image zoom: card with overflow-hidden rounded-t-lg, image with transition-transform duration-500 group-hover:scale-110. Content reveal: hidden content positioned absolute bottom-0, transform translate-y-full to translate-y-0 on hover with opacity transition; or max-height animation from 0 to auto using grid-rows technique. Border glow: animated gradient border using background linear-gradient with animation rotating the angle, or box-shadow with colored blur (hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]). 3D Tilt effect: track mouse position within card using onMouseMove, calculate rotation angles based on position relative to center, apply transform: perspective(1000px) rotateX(Ydeg) rotateY(Xdeg), reset on mouse leave with smooth transition. Flip card: preserve-3d on container, front and back faces with backface-visibility-hidden, rotate-y-180 on back, hover/click toggles rotate-y-180 on container. Card variants: vertical stack that fans out on hover, horizontal scroll with active card scaling up. Skeleton loading: exactly match card layout with bg-gray-200 animate-pulse shapes, transition to real content with fade. PERFORMANCE: use group utility for coordinated animations, will-change on hover, avoid animating layout properties (width, height - use transform instead). Click feedback: brief scale-95 on mousedown. ACCESSIBILITY: ensure content reveal doesn't hide critical information, provide alternative access for keyboard/touch users. Mobile: adapt hover effects to touch with active states or tap-to-reveal."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

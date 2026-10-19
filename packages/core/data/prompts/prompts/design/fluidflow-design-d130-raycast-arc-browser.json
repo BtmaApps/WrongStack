@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d130-raycast-arc-browser",
+  "slug": "fluidflow-design-d130-raycast-arc-browser",
+  "title": "Raycast/Arc Browser",
+  "description": "FluidFlow · Raycast/Arc Browser",
+  "content": "Apply Raycast aesthetic with power-user feel. Command bar central interaction. Quick action results. Keyboard shortcut everything. Extensions and plugins. Clipboard history. Window management hints. Snippets and quicklinks. AI integration. Minimal visual chrome. Speed and responsiveness.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d130"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "609817f63548d45445bd4a5b88fde515bb12b76c3ddcf32b1fef4743be414f6b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create power-user interface with command bar, quick actions, and keyboard-first design.",
+    "detailed": "Apply Raycast aesthetic with power-user feel. Command bar central interaction. Quick action results. Keyboard shortcut everything. Extensions and plugins. Clipboard history. Window management hints. Snippets and quicklinks. AI integration. Minimal visual chrome. Speed and responsiveness.",
+    "advanced": "Apply Raycast/Arc aesthetic with power-user patterns. Command bar: centered modal, large input, instant results as you type. Results: sectioned list with icons, title, subtitle, action hint on right. Actions: primary action on Enter, secondary with Cmd+Enter, action menu on Tab. Keyboard: every action has shortcut, shown in UI, cheatsheet available. Extensions: grid of available extensions, install/uninstall, configuration. Search: fuzzy matching, recency weighting, pinned items. Clipboard: history list, quick paste, snippet creation. Quicklinks: parameterized URLs, open with arguments. Snippets: text expansion, dynamic content (dates, etc). AI: inline AI actions, rewrite text, summarize, translate. Window: hints for window management, split screen. Theme: dark with vibrant accent colors, blur effects. Animation: fast, no delays, immediate feedback. Loading: skeleton or spinner only when necessary. Hotkey: global hotkey to summon, Escape to dismiss. Sections: Applications, Files, System, Custom. Fallback: web search if no results. Favorites: star items, appear in recents. Profile: sync settings, extensions across devices. Onboarding: feature tour with keyboard focus. Settings: comprehensive, organized, searchable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

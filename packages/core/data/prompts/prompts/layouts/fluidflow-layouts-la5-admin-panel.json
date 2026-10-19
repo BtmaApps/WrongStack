@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la5-admin-panel",
+  "slug": "fluidflow-layouts-la5-admin-panel",
+  "title": "Admin Panel",
+  "description": "FluidFlow · Admin Panel",
+  "content": "Create admin dashboard layout. Sidebar: w-64 fixed, dark background (bg-gray-900), logo, navigation with icons and labels, grouped sections, collapsed state (w-16), user profile at bottom. Header: h-16 sticky, search bar, notifications, user menu. Main content: p-6 bg-gray-100, dashboard widgets in grid. Quick stats row: 4 metric cards. Charts section. Recent activity table. Responsive: sidebar collapses on tablet, drawer on mobile.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5c93b86df1a7de971e45194b5427b6bdf4b358a13cfbea15d65f77707cc148f0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create admin dashboard with dark sidebar, header, and content grid.",
+    "detailed": "Create admin dashboard layout. Sidebar: w-64 fixed, dark background (bg-gray-900), logo, navigation with icons and labels, grouped sections, collapsed state (w-16), user profile at bottom. Header: h-16 sticky, search bar, notifications, user menu. Main content: p-6 bg-gray-100, dashboard widgets in grid. Quick stats row: 4 metric cards. Charts section. Recent activity table. Responsive: sidebar collapses on tablet, drawer on mobile.",
+    "advanced": "Create admin dashboard layout with collapsible sidebar and responsive design. Sidebar: fixed left-0 top-0 h-screen w-64, bg-gray-900 text-gray-100, transition-all duration-300. Collapsed state: w-16 showing only icons (triggered by toggle button or responsive breakpoint). Sidebar content: logo/brand at top (h-16 flex items-center px-4), main navigation with icon + label per item (hover:bg-gray-800 rounded-lg mx-2), grouped sections with small uppercase headers (text-xs text-gray-500 px-4 mt-4), items: Dashboard, Analytics, Users, Content, Orders, Settings. Active item: bg-gray-800 text-white. Collapse: tooltip shows label on hover when collapsed. User profile at bottom: avatar, name, role, dropdown menu. Header: fixed top-0 left-64 (left-16 when collapsed) right-0 h-16 bg-white border-b z-40, flex items-center justify-between px-6. Header content: hamburger menu (mobile), search bar (w-72 bg-gray-100 rounded-lg), quick action buttons, notifications dropdown (Bell icon with badge), user avatar dropdown menu. Main content area: ml-64 (ml-16 collapsed) pt-16 min-h-screen bg-gray-100 p-6. Dashboard widgets: grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6. Widget cards: bg-white rounded-lg shadow-sm p-6. Quick stats row: 4 KPI cards with metric, trend, icon. Charts section: grid with line chart (trends) and bar chart (comparisons), date range selector. Recent activity: table or feed list with pagination. Common admin pages: dashboard overview, data tables (CRUD with search, filter, sort, pagination), form pages (create/edit with validation), settings page. Responsive: sidebar collapses to icons on lg breakpoint, becomes slide-out drawer on mobile (hamburger trigger). Dark mode: sidebar stays dark, content area switches bg-gray-900, cards bg-gray-800. Breadcrumbs for navigation context. Loading states: skeleton for cards and tables. Error handling: error boundaries per widget. Accessibility: proper landmarks, skip links."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

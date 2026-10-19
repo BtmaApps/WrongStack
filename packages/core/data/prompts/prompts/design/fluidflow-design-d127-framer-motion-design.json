@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d127-framer-motion-design",
+  "slug": "fluidflow-design-d127-framer-motion-design",
+  "title": "Framer/Motion Design",
+  "description": "FluidFlow · Framer/Motion Design",
+  "content": "Apply Framer aesthetic with motion-focused design. Spring-based animations everywhere. Gesture interactions (drag, swipe). Parallax and scroll effects. Interactive prototypes. Component variants. Hover and tap animations. Shared element transitions. Physics-based bouncing. Keyframe sequences. Animation timelines.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d127"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8192a59c24a1551a3a05e75b6f1e7d775ff0769df33c4aa66eb722fe80b25ceb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create animation-rich interface with spring physics, gestures, and micro-interactions.",
+    "detailed": "Apply Framer aesthetic with motion-focused design. Spring-based animations everywhere. Gesture interactions (drag, swipe). Parallax and scroll effects. Interactive prototypes. Component variants. Hover and tap animations. Shared element transitions. Physics-based bouncing. Keyframe sequences. Animation timelines.",
+    "advanced": "Apply Framer aesthetic with motion design patterns. Spring animations: all transitions use spring physics (stiffness, damping, mass), bouncy but controlled. Gestures: draggable elements with constraints, pan gestures, pinch-zoom where appropriate. Hover states: scale(1.02-1.05), subtle shadow increase, color transitions. Tap: scale(0.98) on press, immediate feedback. Page transitions: shared element animations between routes, crossfade backgrounds. Scroll: parallax layers at different speeds, reveal animations on enter viewport. Stagger: list items animate in sequence with delay, wave effects. Layout animations: animate between different layouts (grid to list), morph shapes. Interactive: cursor effects (magnetic buttons, custom cursor), canvas interactions. Micro-interactions: button loading states, success animations, toggle switches. Physics: momentum scrolling, throw with velocity, rubber-band limits. Keyframes: complex multi-step animations, orchestrated sequences. Reduced motion: respect prefers-reduced-motion, provide static alternatives. Performance: use transform and opacity, GPU-accelerated. Easing: custom bezier curves for character, spring for bounce. Variants: define animation variants, switch based on state. Exit animations: elements animate out before removal. Debug: animation inspector, slow motion toggle."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

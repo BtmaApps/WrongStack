@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d63-dieselpunk",
+  "slug": "fluidflow-design-d63-dieselpunk",
+  "title": "Dieselpunk",
+  "description": "FluidFlow · Dieselpunk",
+  "content": "Apply dieselpunk aesthetic with interwar period retro-futurism. Art Deco combined with diesel machinery. Chrome, steel, and brass metals. 1920s-40s vehicle and aircraft aesthetics. Dark, industrial color palette with gold accents. Include propellers, rivets, analog gauges. Film noir lighting influence. Streamlined industrial design. Gritty, powerful, alternative history atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d63"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "386dcda09df19a670397397d5fa4f94bf92f45ded666291ba9a9e7dbdee5dd6a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create 1920s-40s retro-futurism with art deco machines, diesel-powered tech, and noir atmosphere.",
+    "detailed": "Apply dieselpunk aesthetic with interwar period retro-futurism. Art Deco combined with diesel machinery. Chrome, steel, and brass metals. 1920s-40s vehicle and aircraft aesthetics. Dark, industrial color palette with gold accents. Include propellers, rivets, analog gauges. Film noir lighting influence. Streamlined industrial design. Gritty, powerful, alternative history atmosphere.",
+    "advanced": "Apply dieselpunk aesthetic with 1920s-1940s retro-futurism. Era fusion: Art Deco elegance meets industrial diesel machinery, interwar period technology imagined forward. Metal palette: chrome silver, brushed steel (#71797e), brass (#b5a642), gunmetal (#2a3439), copper accents. Art Deco elements: geometric patterns, sunburst motifs, stepped forms, but grittier than pure Deco. Machinery: diesel engines, propellers, massive industrial equipment, visible gears and pistons, riveted panels. Vehicles: streamlined trains, zeppelins, propeller aircraft, massive ships, tank-like automobiles. Analog tech: gauges, dials, vacuum tubes, mechanical switches, ticker tape. Typography: bold Art Deco fonts (Broadway, Futura Display), industrial stencil, newspaper headlines. Color palette: dark and industrial - charcoal, navy, burgundy, olive - with brass/gold accents, occasional warning red. Lighting: film noir influenced - dramatic shadows, single light sources, smoky atmosphere. Texture: riveted metal panels, leather, oiled machinery, concrete. Military influence: uniforms, insignia, propaganda poster style. Characters: aviators, engineers, femme fatales in period dress. Sound suggested: engine rumble, mechanical clicks. Noir narrative: mystery, intrigue, alternative history. Interactive: mechanical movements, gauge animations, industrial sounds. Implementation: metal textures via gradients, SVG for machinery details. Accessibility: dark interface needs careful contrast, ensure readability despite atmospheric lighting."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

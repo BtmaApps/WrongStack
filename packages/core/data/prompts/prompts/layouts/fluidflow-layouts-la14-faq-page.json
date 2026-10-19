@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la14-faq-page",
+  "slug": "fluidflow-layouts-la14-faq-page",
+  "title": "FAQ Page",
+  "description": "FluidFlow · FAQ Page",
+  "content": "Build FAQ page with organized questions. Header: search input to filter FAQs. Categories: sidebar or horizontal tabs (Getting Started, Billing, Features, etc.). Question list: accordion style with plus/minus icons. Answer content: supports rich text, links, code snippets. Helpful? thumbs up/down feedback. Related questions. Contact support section at bottom if question not answered.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4ecee7231c912f97068b139dedd4b255f209bab7d0692e516eea1518e5a1c13f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create FAQ page with categorized questions and accordion answers.",
+    "detailed": "Build FAQ page with organized questions. Header: search input to filter FAQs. Categories: sidebar or horizontal tabs (Getting Started, Billing, Features, etc.). Question list: accordion style with plus/minus icons. Answer content: supports rich text, links, code snippets. Helpful? thumbs up/down feedback. Related questions. Contact support section at bottom if question not answered.",
+    "advanced": "Build comprehensive FAQ page with search and categorization. Page header: \"Frequently Asked Questions\" (text-4xl font-bold text-center), subheadline. Search section: large search input (max-w-2xl mx-auto), placeholder \"Search for answers...\", Search icon inside, clear X when has value, real-time filtering of questions, highlight matched terms in results. Category navigation: horizontal tabs (md:) or dropdown (mobile) or sidebar (lg:). Categories: Getting Started, Account & Billing, Features, Troubleshooting, Privacy & Security, API, etc. Active category: underline or bg styling. \"All\" option to show all. FAQ list: max-w-3xl mx-auto, space-y-4. Accordion item: bg-white rounded-lg shadow-sm border. Question row: flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50. Question text: font-medium. Toggle icon: ChevronDown (rotates 180deg when open) or Plus/Minus. Answer panel: px-4 pb-4 pt-0, prose styling for rich text content. Support markdown or HTML: paragraphs, links (text-blue-600 hover:underline), ordered/unordered lists, code blocks (bg-gray-100 rounded px-2 py-1 font-mono), images if applicable. Animation: max-height transition or Framer Motion for smooth expand/collapse. Multiple open: allow multiple questions open simultaneously (or single). Helpful feedback: at bottom of each answer, \"Was this helpful?\" with thumbs up/down buttons, track for analytics, show \"Thank you\" after vote. Related questions: \"Related articles\" section below each answer with 2-3 links. Deep linking: each question has anchor ID, URL updates on open, direct link to specific question. Not found section: after FAQ list, \"Didn't find what you were looking for?\" with contact support button and live chat option. Popular questions: optional \"Most Asked\" section at top with top 5 questions. Search results: when searching, show filtered questions with match highlighting, \"No results for [query]\" if none. Structured data: add FAQ schema for SEO. Mobile: collapsible category menu, full-width accordions. Accessibility: accordion follows WAI-ARIA pattern, buttons for toggle, aria-expanded state, proper heading levels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

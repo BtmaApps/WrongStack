@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c6-add-carousel",
+  "slug": "fluidflow-components-c6-add-carousel",
+  "title": "Add Carousel",
+  "description": "FluidFlow · Add Carousel",
+  "content": "Build image/content carousel with full controls. Container with overflow-hidden and relative positioning. Slides in flex row with transition-transform for smooth sliding. Navigation: left/right arrow buttons (absolute positioned, semi-transparent background), dot indicators below. Implement touch/swipe support for mobile using touch events. Add auto-play with pause on hover, configurable interval (5s default). Show partial next/previous slides for peek effect. Support infinite loop or bounded navigation. Add keyboard navigation (arrow keys when focused). Include progress bar option for timed auto-advance. Accessibility: aria-live for slide changes, pause button for auto-play. Responsive: adjust visible slides per breakpoint.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0b7b70af6dc47f4310a20cf9a13754c5ab849d6031a8f7db0798e34f1ac309da",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build an image carousel with navigation arrows and dots.",
+    "detailed": "Build image/content carousel with full controls. Container with overflow-hidden and relative positioning. Slides in flex row with transition-transform for smooth sliding. Navigation: left/right arrow buttons (absolute positioned, semi-transparent background), dot indicators below. Implement touch/swipe support for mobile using touch events. Add auto-play with pause on hover, configurable interval (5s default). Show partial next/previous slides for peek effect. Support infinite loop or bounded navigation. Add keyboard navigation (arrow keys when focused). Include progress bar option for timed auto-advance. Accessibility: aria-live for slide changes, pause button for auto-play. Responsive: adjust visible slides per breakpoint.",
+    "advanced": "Build image/content carousel with full controls, touch support, and accessibility. Container: relative overflow-hidden with defined aspect ratio or height. Slides container: flex transition-transform duration-500 ease-out, translateX(-currentIndex * 100%) for single slide or calculated for multiple visible. Individual slides: flex-shrink-0 with percentage width based on visible count. Navigation arrows: absolute top-1/2 -translate-y-1/2, left-4/right-4, circular buttons with ChevronLeft/Right, semi-transparent bg-white/80 hover:bg-white. Dot indicators: flex justify-center gap-2 mt-4, dots as buttons with w-2 h-2 rounded-full, active dot bg-blue-600, inactive bg-gray-300 hover:bg-gray-400. Touch/swipe support: track touchStart position, calculate delta on touchMove, if delta > threshold (50px) on touchEnd navigate, add touch-action: pan-y to prevent vertical scroll issues. Auto-play: useEffect with setInterval, pause on hover (onMouseEnter/Leave), pause on focus within, clear on unmount. Progress bar: absolute bottom, width animates 0 to 100% over interval duration, resets on slide change. Infinite loop: clone first/last slides, when reaching clone snap without transition to real slide. Multiple visible slides: show 1 on mobile, 2 on tablet, 3-4 on desktop via responsive slidesPerView. Peek effect: negative margin or partial translateX to show next/prev edges. Keyboard: when focused, Left/Right arrows navigate. Drag support: mouse drag similar to touch. ACCESSIBILITY: aria-roledescription=\"carousel\", aria-label, slides with aria-roledescription=\"slide\" and aria-label=\"Slide N of M\", aria-live=\"polite\" for announcements, pause button for auto-play (required for WCAG). Consider reduced motion: disable auto-play and use instant transitions. API: infinite, autoPlay, interval, slidesPerView, gap props."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

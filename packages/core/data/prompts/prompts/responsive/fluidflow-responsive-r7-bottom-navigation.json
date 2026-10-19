@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r7-bottom-navigation",
+  "slug": "fluidflow-responsive-r7-bottom-navigation",
+  "title": "Bottom Navigation",
+  "description": "FluidFlow · Bottom Navigation",
+  "content": "Add mobile bottom navigation bar fixed at screen bottom (fixed bottom-0 inset-x-0). Use safe area padding for notched devices (pb-safe or pb-6). Include 4-5 primary navigation items maximum. Each item has icon (24px) above label (text-xs). Highlight active item with different color and filled icon variant. Add subtle top border or shadow for separation. Ensure touch targets are large enough (min-h-14). Handle keyboard appearance - hide nav when keyboard opens. Add smooth transitions for active state. Include badge indicators for notifications if needed. Use z-50 for proper stacking.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8b8e460f7defb4faeade5a01c47cf2d170d5c61b1ae0a1f203304cb5e9f5c981",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add fixed bottom navigation bar for mobile with icon tabs.",
+    "detailed": "Add mobile bottom navigation bar fixed at screen bottom (fixed bottom-0 inset-x-0). Use safe area padding for notched devices (pb-safe or pb-6). Include 4-5 primary navigation items maximum. Each item has icon (24px) above label (text-xs). Highlight active item with different color and filled icon variant. Add subtle top border or shadow for separation. Ensure touch targets are large enough (min-h-14). Handle keyboard appearance - hide nav when keyboard opens. Add smooth transitions for active state. Include badge indicators for notifications if needed. Use z-50 for proper stacking.",
+    "advanced": "Add mobile bottom navigation bar fixed at screen bottom (fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900). Use safe area padding for notched devices (pb-[env(safe-area-inset-bottom)] or pb-safe with fallback). Include 4-5 primary navigation items maximum - more causes cramped touch targets. Each item: icon (w-6 h-6) above label (text-xs font-medium), centered in flex-col. Highlight active item with primary color and filled icon variant vs outline for inactive. Add subtle top border (border-t border-gray-200) or shadow-[0_-1px_3px_rgba(0,0,0,0.1)] for separation. Touch targets minimum 48x48px (min-h-[56px] flex-1). Handle virtual keyboard: use visualViewport API or CSS env(keyboard-inset-height) to hide/adjust nav when keyboard opens. Add smooth color transitions (transition-colors duration-150). Include badge indicators (absolute -top-1 -right-1) for notifications with pulse animation for new items. Use z-50 for proper stacking above content. ACCESSIBILITY: Use nav element with aria-label=\"Main navigation\". Each item is a link or button with clear accessible name. Indicate current page with aria-current=\"page\". Dont hide important actions in bottom nav without alternative access."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo1-contact-form",
+  "slug": "fluidflow-forms-fo1-contact-form",
+  "title": "Contact Form",
+  "description": "FluidFlow · Contact Form",
+  "content": "Build contact form with full validation. Fields: name (required, min 2 chars), email (required, valid email format), subject (optional dropdown or text), message (required, min 10 chars, textarea with character counter). Layout: single column, proper spacing (space-y-4), labels above inputs. Styling: consistent input styles (border rounded-lg p-3), focus ring. Validation: inline error messages (text-red-600 text-sm). Submit button: primary style, loading state with spinner. Success state: replace form with thank you message.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1488ebb6335454f0c579ff280cfccb0ae35e570a30cb9792da8c221ebf65cfdf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create contact form with name, email, and message fields with submit button.",
+    "detailed": "Build contact form with full validation. Fields: name (required, min 2 chars), email (required, valid email format), subject (optional dropdown or text), message (required, min 10 chars, textarea with character counter). Layout: single column, proper spacing (space-y-4), labels above inputs. Styling: consistent input styles (border rounded-lg p-3), focus ring. Validation: inline error messages (text-red-600 text-sm). Submit button: primary style, loading state with spinner. Success state: replace form with thank you message.",
+    "advanced": "Build contact form with full validation and spam protection. Fields: name (required, min 2 chars, max 50), email (required, valid email regex), subject (optional dropdown with common topics or freeform text), message (required, min 10 chars, max 1000, textarea with live character counter showing remaining). Layout: single column, proper spacing (space-y-4 or space-y-6), labels above inputs with htmlFor connection. Styling: consistent input styles (border border-gray-300 rounded-lg p-3 w-full), focus ring (focus:ring-2 focus:ring-blue-500 focus:border-transparent), error ring (ring-2 ring-red-500). Validation: inline error messages (text-red-600 text-sm mt-1) with AlertCircle icon, validate on blur and on submit, use react-hook-form or Formik for state management. Submit button: primary style (bg-blue-600 text-white), full width, loading state with Loader2 animate-spin icon, disabled during submission. Success state: replace form with thank you message (CheckCircle icon, green styling) or show toast notification and reset form. Error handling: display server errors (network issues, rate limits) in alert banner. Spam protection: honeypot hidden field (hidden input that bots fill), or integrate reCAPTCHA v3 (invisible). Accessibility: proper labels with htmlFor, aria-describedby connecting inputs to error messages, aria-invalid on error fields. CSRF token if needed. Rate limiting: prevent spam submissions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

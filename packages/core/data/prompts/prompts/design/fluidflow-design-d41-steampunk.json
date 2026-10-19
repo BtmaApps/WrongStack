@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d41-steampunk",
+  "slug": "fluidflow-design-d41-steampunk",
+  "title": "Steampunk",
+  "description": "FluidFlow · Steampunk",
+  "content": "Apply steampunk aesthetic blending Victorian elegance with industrial machinery. Brass and copper metallic colors. Include gear, cog, and mechanical decorations. Vintage paper and leather textures. Ornate Victorian typography and borders. Sepia and brown color palette with brass accents. Add rivets, bolts, and mechanical details. Steam and smoke effects optional. Analog gauges and dials. Industrial romanticism atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d41"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1f30811c51b67dc513d41c6cec168c6e3afe95dfc57654ed4eed82969d205d68",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Victorian-industrial steampunk aesthetic with brass, gears, and mechanical elements.",
+    "detailed": "Apply steampunk aesthetic blending Victorian elegance with industrial machinery. Brass and copper metallic colors. Include gear, cog, and mechanical decorations. Vintage paper and leather textures. Ornate Victorian typography and borders. Sepia and brown color palette with brass accents. Add rivets, bolts, and mechanical details. Steam and smoke effects optional. Analog gauges and dials. Industrial romanticism atmosphere.",
+    "advanced": "Apply steampunk aesthetic blending Victorian elegance with industrial machinery. Metal colors: brass (#b5a642), copper (#b87333), bronze (#cd7f32), iron gray (#48494b) - use gradients for metallic sheen. Mechanical elements: gears and cogs (SVG) as decorative elements, exposed mechanisms, pistons, valves. Textures: aged leather (brown with subtle grain), vintage paper (cream with foxing spots), riveted metal panels. Typography: Victorian display fonts (Playfair Display, Cinzel, Old Standard TT), decorative flourishes, old-style numerals. Borders: ornate Victorian frames, mechanical brackets, riveted edges (circular pattern along border). Color palette: sepia (amber-800, orange-900), browns, cream, with brass/copper accents. Gauges and dials: circular analog instruments, pressure meters, clock faces. Buttons: large, industrial with beveled metal appearance, visible screws. Wood and leather: panels with wood grain, leather straps with buckles and stitching. Steam effects: subtle animated wisps, valve releases. Light: warm, gas-lamp glow (amber shadows, vignette), Edison bulb aesthetic. Interactive: mechanical movements on hover (gears rotate, needles move), satisfying clunk animations. Layered depth: foreground machinery over background texture. SVG heavily for mechanical parts. Implementation: complex layered design, optimize for performance. Accessibility: maintain readability despite busy aesthetic, clear interactive indicators."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

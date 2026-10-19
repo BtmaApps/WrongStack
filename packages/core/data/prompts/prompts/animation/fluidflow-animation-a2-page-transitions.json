@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a2-page-transitions",
+  "slug": "fluidflow-animation-a2-page-transitions",
+  "title": "Page Transitions",
+  "description": "FluidFlow · Page Transitions",
+  "content": "Implement smooth transitions between pages/views. Add fade transition (opacity 0 to 1) with duration-300 as base. Include slide animations: slide-in-from-right for forward navigation, slide-in-from-left for back. Use scale transitions for modals (scale-95 to scale-100 with opacity). Add exit animations before new content loads. Implement shared element transitions where elements persist across pages. Use transform and opacity for GPU-accelerated performance. Add loading state between page transitions. Consider reduced motion preferences with prefers-reduced-motion media query. Stagger content elements appearing on new page.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4d0bdfbd36cfb2f49619ddef4f8d4e58e7dd6c49b672edeb3ec8a2b60753f3cd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add smooth fade and slide transitions between pages.",
+    "detailed": "Implement smooth transitions between pages/views. Add fade transition (opacity 0 to 1) with duration-300 as base. Include slide animations: slide-in-from-right for forward navigation, slide-in-from-left for back. Use scale transitions for modals (scale-95 to scale-100 with opacity). Add exit animations before new content loads. Implement shared element transitions where elements persist across pages. Use transform and opacity for GPU-accelerated performance. Add loading state between page transitions. Consider reduced motion preferences with prefers-reduced-motion media query. Stagger content elements appearing on new page.",
+    "advanced": "Implement smooth transitions between pages/views for seamless navigation experience. Base transition: fade (opacity 0 to 1) with duration-300 ease-out as foundation. Directional slides: slide-in-from-right (translate-x-4 to translate-x-0) for forward navigation, slide-in-from-left for back navigation - track navigation direction in state. Modal transitions: scale-95 opacity-0 to scale-100 opacity-100 with backdrop fade. Exit animations: animate-out before new content loads - fade-out slide-out-to-left for leaving page. Shared element transitions: identify persistent elements (header, nav) with layout IDs, interpolate position/size between states - consider Framer Motion layoutId or View Transitions API. Loading state: skeleton of target page during transition, or progress bar at top. Route-based configuration: different transitions for different route patterns (modals, drawers, full pages). GPU acceleration: use transform and opacity exclusively, add will-change: transform opacity on animating elements. Stagger content: child elements appear sequentially (delay-75, delay-150) after container transitions in. PERFORMANCE: keep total transition under 400ms, test on low-end devices. ACCESSIBILITY: wrap all in prefers-reduced-motion check - provide instant transition fallback. Handle browser back/forward: maintain transition direction consistency. Consider page scroll: reset to top or preserve scroll position based on navigation type."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

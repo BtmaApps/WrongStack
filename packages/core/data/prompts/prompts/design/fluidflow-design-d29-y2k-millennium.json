@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d29-y2k-millennium",
+  "slug": "fluidflow-design-d29-y2k-millennium",
+  "title": "Y2K/Millennium",
+  "description": "FluidFlow · Y2K/Millennium",
+  "content": "Apply Y2K/millennium bug era aesthetic (late 90s to early 2000s). Use chrome and metallic silver gradients. Include bubble/blob organic shapes. Color palette: electric blue, hot pink, lime green, silver, iridescent effects. Add 3D rendered element aesthetics. Use futuristic fonts (rounded, bubbly, or sharp cyber style). Include star and sparkle decorations. CD/holographic rainbow effects. Translucent plastic/gel appearance. Tech-optimism visual language.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4f83e82c1ecf21218c59fa1b96cccfc2d6b6854e50d83ad6f5956d4b33280230",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create early 2000s Y2K aesthetic with chrome, bubble shapes, and cyber gradients.",
+    "detailed": "Apply Y2K/millennium bug era aesthetic (late 90s to early 2000s). Use chrome and metallic silver gradients. Include bubble/blob organic shapes. Color palette: electric blue, hot pink, lime green, silver, iridescent effects. Add 3D rendered element aesthetics. Use futuristic fonts (rounded, bubbly, or sharp cyber style). Include star and sparkle decorations. CD/holographic rainbow effects. Translucent plastic/gel appearance. Tech-optimism visual language.",
+    "advanced": "Apply Y2K/millennium era aesthetic (1999-2003) with retro-futuristic optimism. Chrome effects: metallic silver gradients (from-gray-300 via-gray-100 to-gray-400) with highlights, apply to text, buttons, frames. Bubble/blob shapes: organic, inflated forms using border-radius variations (border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%) or SVG blobs, translucent with backdrop-blur. Color palette: electric blue (#00bfff), hot pink (#ff69b4), lime green (#00ff00), silver, lavender; often combined boldly. Iridescent/holographic: rainbow gradient that shifts (animated background-position on color gradient), or rainbow border effects. 3D aesthetic: rendered-looking elements with hard highlights and shadows suggesting early CGI. Typography: bubbly rounded fonts (Baloo, Rubik Bubbles) or sharp futuristic (Eurostile, Bank Gothic), chrome text effects. Decorations: stars, sparkles, abstract tech shapes, winged motifs, tribal patterns. CD/disc aesthetic: circular rainbow reflection patterns. Gel/plastic: translucent colored buttons and containers with inner glow and outer shadow (like gel UI elements). Tech imagery: abstract digital patterns, circuit-inspired lines, fiber optic bursts. Text styling: lowercase, excessive use of @ and other symbols. Background: gradient meshes, soft abstract shapes. Accessibility: Y2K was not accessibility-focused - ensure modern implementation meets contrast requirements while maintaining aesthetic."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

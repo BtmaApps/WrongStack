@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo22-slider-range-input",
+  "slug": "fluidflow-forms-fo22-slider-range-input",
+  "title": "Slider/Range Input",
+  "description": "FluidFlow · Slider/Range Input",
+  "content": "Build slider/range input component. Track: horizontal bar representing range. Thumb: draggable handle on track. Value display: show current value above or beside. Min/max: configurable range limits. Step: snap to increment values. Dual thumb: range slider with two handles. Marks: optional tick marks at intervals. Keyboard: arrow keys to adjust value.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2a38bc0e79561e644c7a364a8f47a201eb844a18cfabbbd7d5fcbe48144c02b8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create slider input with draggable thumb and value display.",
+    "detailed": "Build slider/range input component. Track: horizontal bar representing range. Thumb: draggable handle on track. Value display: show current value above or beside. Min/max: configurable range limits. Step: snap to increment values. Dual thumb: range slider with two handles. Marks: optional tick marks at intervals. Keyboard: arrow keys to adjust value.",
+    "advanced": "Build comprehensive slider/range input component. Track: horizontal bar (h-2 bg-gray-200 rounded-full), filled portion (bg-blue-500) up to thumb position. Thumb: circular handle (w-5 h-5 bg-white border-2 border-blue-500 rounded-full shadow), draggable, centered on track. Value display: show current value in tooltip above thumb (on hover/drag), or in label beside slider. Min/max/step: configurable range (min=0, max=100, step=1), value snaps to step increments. Disabled state: reduced opacity, no interaction. Dual thumbs (range): two handles for min-max range, filled area between, prevent thumbs crossing. Marks/ticks: optional tick marks at intervals, labels below (0, 25, 50, 75, 100), highlighted current value. Keyboard support: focus on thumb, left/right arrows adjust by step, Home/End jump to min/max, Page Up/Down for larger jumps. Mouse/touch: mousedown on thumb starts drag, mousemove updates, mouseup ends, touch events for mobile. Click on track: jump thumb to clicked position. Input binding: optional number input synced with slider value. Styling variants: different colors, sizes (sm, md, lg height), vertical orientation. Labels: min/max labels at ends, current value label. Format: custom value formatter (add %, $, units). Accessibility: role=\"slider\", aria-valuenow, aria-valuemin, aria-valuemax, aria-valuetext for formatted display. Implementation: native input[type=range] with custom styling, or fully custom for more control. Libraries: @radix-ui/react-slider, rc-slider for complex needs."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

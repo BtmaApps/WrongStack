@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u5-form-validation",
+  "slug": "fluidflow-ux-u5-form-validation",
+  "title": "Form Validation",
+  "description": "FluidFlow · Form Validation",
+  "content": "Implement comprehensive form validation with excellent UX. Add real-time inline validation as user types (debounced). Show error messages below inputs with text-red-600 and shake animation. Add success checkmarks (CheckCircle icon text-green-600) for valid fields. Use proper input states: default, focus (ring-2 ring-blue-500), error (ring-2 ring-red-500), success (ring-2 ring-green-500). Implement validation on blur for better UX. Show password strength meter with visual indicator. Add character counters for text areas. Disable submit button until form is valid. Show summary of errors at form top for long forms. Preserve user input on validation failure.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c7b05c743d33088c028798a61ae2a2e107013d580896b5d93da024c489eecaad",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add real-time form validation with clear error and success states.",
+    "detailed": "Implement comprehensive form validation with excellent UX. Add real-time inline validation as user types (debounced). Show error messages below inputs with text-red-600 and shake animation. Add success checkmarks (CheckCircle icon text-green-600) for valid fields. Use proper input states: default, focus (ring-2 ring-blue-500), error (ring-2 ring-red-500), success (ring-2 ring-green-500). Implement validation on blur for better UX. Show password strength meter with visual indicator. Add character counters for text areas. Disable submit button until form is valid. Show summary of errors at form top for long forms. Preserve user input on validation failure.",
+    "advanced": "Implement comprehensive form validation with excellent UX using proven patterns. Add real-time inline validation with 300ms debounce - validate as user types but not on every keystroke. Show error messages below inputs (not tooltips) with text-red-600, error icon, and subtle shake animation on appearance. Add success checkmarks (CheckCircle text-green-600) for valid fields to provide positive feedback. Use proper input states with clear visual distinction: default (border-gray-300), focus (ring-2 ring-blue-500 border-blue-500), error (ring-2 ring-red-500 border-red-500), success (ring-2 ring-green-500 border-green-500). Implement validation on blur for complex fields (email format, async validation) - dont frustrate users typing. Show password strength meter: 4-segment bar with colors (red/orange/yellow/green) and text feedback. Add character counters for textareas showing \"X/500\" near limit. Disable submit button until required fields valid - but show tooltip explaining what is missing. Show error summary at form top for long forms with links to each error. CRITICAL: Always preserve user input on validation failure. Mark required fields with asterisk and \"(required)\" for screen readers. Use aria-describedby linking inputs to error messages. Implement async validation (username availability) with loading indicator. Support autocomplete attributes for browser autofill."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da7-activity-feed",
+  "slug": "fluidflow-dashboard-da7-activity-feed",
+  "title": "Activity Feed",
+  "description": "FluidFlow · Activity Feed",
+  "content": "Create activity feed/timeline component. Container: vertical list with max-height and scroll. Item structure: avatar (small), content (flex-1), timestamp. Timeline line: vertical connecting line between items. Event types: different icons/colors for create, update, delete, comment. Content: user name (font-medium), action description. Relative timestamps: \"2 minutes ago\". Grouping: group by date with headers. Load more button or infinite scroll.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bf52ac9680e86256cf2005256b5a627b2eabc348ef219377f24e74d9aee4eac7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create activity feed showing recent events with timestamps and user avatars.",
+    "detailed": "Create activity feed/timeline component. Container: vertical list with max-height and scroll. Item structure: avatar (small), content (flex-1), timestamp. Timeline line: vertical connecting line between items. Event types: different icons/colors for create, update, delete, comment. Content: user name (font-medium), action description. Relative timestamps: \"2 minutes ago\". Grouping: group by date with headers. Load more button or infinite scroll.",
+    "advanced": "Create activity feed/timeline component with real-time updates. Container: vertical list with max-height (max-h-96 or custom) and overflow-y-auto, custom scrollbar styling. Item structure: flex row with avatar (w-8 h-8 rounded-full) on left, content (flex-1) in middle, timestamp (text-xs text-gray-400) on right or below content. Timeline line: vertical connecting line between items using pseudo-elements (::before on item with absolute positioning, w-0.5 bg-gray-200) or left border on container. Event types: different icons with colored backgrounds (w-8 h-8 rounded-full flex items-center justify-center) replacing avatar - PlusCircle (green) for create, Edit (blue) for update, Trash (red) for delete, MessageCircle (purple) for comment, User (gray) for user actions. Content: user name (font-medium text-gray-900) as link, action description (\"created a new project\", \"updated the status\"), affected item as link (text-blue-600 hover:underline). Relative timestamps: use date-fns formatDistanceToNow or similar (\"2 minutes ago\", \"Yesterday at 3:45 PM\", \"Jan 15\"), show full date on hover with title attribute. Grouping: group by date with sticky date headers (\"Today\", \"Yesterday\", \"January 15, 2024\"). Load more: \"Load more\" button at bottom, loading state with spinner, or infinite scroll using IntersectionObserver. Filters: filter pills or dropdown to filter by event type or user. Mark as read: visual distinction for new vs seen items (bg-blue-50 for unread), dot indicator. Real-time: new items appear at top with highlight animation (bg-yellow-50 fade out), use WebSocket or polling. Empty state: \"No recent activity\" message with illustration. Click item: navigate to related content. Hover: show additional details or quick actions. Collapse long descriptions with \"Show more\". Dark mode support. Accessibility: list role, announce new items with aria-live."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

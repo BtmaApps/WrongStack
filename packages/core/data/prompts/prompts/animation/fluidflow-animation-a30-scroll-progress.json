@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a30-scroll-progress",
+  "slug": "fluidflow-animation-a30-scroll-progress",
+  "title": "Scroll Progress",
+  "description": "FluidFlow · Scroll Progress",
+  "content": "Create scroll progress indicator showing reading/scroll position. Calculate scroll percentage (scrollY / (scrollHeight - clientHeight)). Display as horizontal bar at top or side. Animate width/height based on scroll. Add smooth transition. Support both page and container scroll. Style with gradient or brand colors. Include numerical percentage option. Handle dynamic content height changes.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6eb5ee42bce90ac363365a927c75137a148b6e972f679b35202e5bcd22ea985c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create scroll progress indicator that fills based on page position.",
+    "detailed": "Create scroll progress indicator showing reading/scroll position. Calculate scroll percentage (scrollY / (scrollHeight - clientHeight)). Display as horizontal bar at top or side. Animate width/height based on scroll. Add smooth transition. Support both page and container scroll. Style with gradient or brand colors. Include numerical percentage option. Handle dynamic content height changes.",
+    "advanced": "Create scroll progress indicator showing document or section reading progress. Calculation: progress = scrollY / (document.documentElement.scrollHeight - window.innerHeight), results in 0-1 value. Bar indicator: fixed top-0 left-0 w-full h-1, inner div with bg-blue-500, width set to percentage (style={{ width: `${progress * 100}%` }}). Smooth updates: either CSS transition on width (transition-all duration-75), or throttled scroll handler for efficiency. Circular indicator: SVG circle with stroke-dasharray and stroke-dashoffset, offset calculated from progress. Container scroll: target specific container scrollTop and scrollHeight instead of document. Section progress: track progress through specific section (when section is in view), calculate progress within that section bounds. Styling: gradient fill, rounded end caps, glow effect, brand colors. Numerical display: show \"75%\" text, optional tooltip with scroll depth. Direction indicator: show when scrolling up vs down with color or arrow. Hide behavior: fade out when not scrolling (after 2s timeout), or hide at top. Dynamic content: recalculate max scroll height when content changes, use ResizeObserver. Performance: use passive scroll listener, throttle to 60fps, use transform instead of width for very smooth animation. Implementation: useScrollProgress hook returning progress value and direction. Variants: thin line (h-0.5), chunky bar (h-1), sticky in header, floating sidebar. ACCESSIBILITY: purely decorative, use aria-hidden. Mobile: useful for long-form content, ensure doesnt obstruct content or navigation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la24-media-gallery-layout",
+  "slug": "fluidflow-layouts-la24-media-gallery-layout",
+  "title": "Media Gallery Layout",
+  "description": "FluidFlow · Media Gallery Layout",
+  "content": "Build media gallery page. Grid layout: masonry or uniform grid. Thumbnails: image with hover overlay showing title, actions. Filters: by type (photos, videos), date, albums. Sort: newest, oldest, popular. Lightbox: full-screen viewer with navigation. Bulk select: checkbox mode for multi-select actions. Upload button. Album organization.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1b784c7539e3d5e48c78a66e7a26734583eb775dc141b126e35b00abed8e6808",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create image/video gallery with grid, lightbox, and filters.",
+    "detailed": "Build media gallery page. Grid layout: masonry or uniform grid. Thumbnails: image with hover overlay showing title, actions. Filters: by type (photos, videos), date, albums. Sort: newest, oldest, popular. Lightbox: full-screen viewer with navigation. Bulk select: checkbox mode for multi-select actions. Upload button. Album organization.",
+    "advanced": "Build comprehensive media gallery with viewing and management features. Page header: \"Gallery\" title, upload button (Upload icon + \"Upload\"), view toggle (Grid/List icons), sort dropdown, filter button. Filter bar: horizontal pills or dropdown. Filters: All, Photos, Videos, by album/collection, by date range, by tags. Active filters as removable pills. Grid layout options: Uniform grid (grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4, aspect-square). Masonry (columns with varied heights, use CSS columns or masonry library). List view (table with columns: thumbnail, name, date, size, actions). Thumbnail component: aspect-square overflow-hidden rounded-lg relative group. Image: object-cover w-full h-full. Video indicator: Play icon overlay for videos, duration badge. Hover overlay: absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition. Overlay content: title/filename, quick actions (Eye view, Download, Heart favorite, Trash delete). Checkbox: absolute top-2 left-2 for selection mode, show on hover or always in select mode. Selection mode: toggle via \"Select\" button, checkboxes appear, selection count shown (\"3 selected\"), bulk action bar appears (Download All, Delete, Add to Album, Share). Lightbox viewer: click thumbnail opens fullscreen overlay. Structure: fixed inset-0 bg-black z-50, close X button (top-right), image centered (object-contain max-h-[90vh]), navigation arrows (left/right, or keyboard arrows), thumbnail strip below for quick navigation, image info panel (filename, date, dimensions, camera info). Slideshow: auto-advance option with play/pause. Zoom: click to zoom, pinch on mobile. Video playback: full controls in lightbox. Download: button in lightbox and on hover. Album organization: albums/collections in sidebar or tabs, create album modal (name, description), add to album action, album cover selection. Infinite scroll: load more images on scroll. Upload: drag-drop zone or file picker, progress indicators, thumbnail previews during upload. Mobile: 2-column grid, swipe navigation in lightbox, touch gestures. Accessibility: images have alt text, lightbox traps focus, keyboard navigation, close on Escape."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

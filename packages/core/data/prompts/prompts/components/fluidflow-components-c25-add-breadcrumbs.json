@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c25-add-breadcrumbs",
+  "slug": "fluidflow-components-c25-add-breadcrumbs",
+  "title": "Add Breadcrumbs",
+  "description": "FluidFlow · Add Breadcrumbs",
+  "content": "Create breadcrumb navigation component with horizontal list of links showing page hierarchy. Use nav element with aria-label=\"Breadcrumb\". Style: flex items-center gap-2 text-sm. Links: text-gray-500 hover:text-gray-700 transition-colors. Separators: ChevronRight icon (w-4 h-4 text-gray-400) or \"/\" text between items. Current page: text-gray-900 font-medium, use aria-current=\"page\". Truncation: for long breadcrumbs, show first, ellipsis dropdown, and last 2-3 items. Mobile: consider horizontal scroll or collapsing to current + parent only. Add Home icon for first item optionally.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "aa6fad425eecfdbd38f8b6f41ff355a4ed589eb156a92f325e196927e286e6bd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create breadcrumb navigation showing the current page location in hierarchy.",
+    "detailed": "Create breadcrumb navigation component with horizontal list of links showing page hierarchy. Use nav element with aria-label=\"Breadcrumb\". Style: flex items-center gap-2 text-sm. Links: text-gray-500 hover:text-gray-700 transition-colors. Separators: ChevronRight icon (w-4 h-4 text-gray-400) or \"/\" text between items. Current page: text-gray-900 font-medium, use aria-current=\"page\". Truncation: for long breadcrumbs, show first, ellipsis dropdown, and last 2-3 items. Mobile: consider horizontal scroll or collapsing to current + parent only. Add Home icon for first item optionally.",
+    "advanced": "Create accessible breadcrumb navigation component. Structure: nav element with aria-label=\"Breadcrumb\", ol for list (semantically correct for ordered navigation), li for each item. Styling: flex items-center gap-1 md:gap-2 text-sm text-gray-500. Links: hover:text-gray-900 hover:underline underline-offset-2 transition-colors. Separators: ChevronRight icon (w-4 h-4 text-gray-300 flex-shrink-0) between items using aria-hidden=\"true\". Current page: span (not link) with text-gray-900 font-medium and aria-current=\"page\". Smart truncation: for 5+ items, show Home, ellipsis button with dropdown showing hidden items, last 2 items. Dropdown: absolute positioned, bg-white shadow-lg rounded-md py-1, each item px-3 py-2 hover:bg-gray-100. Mobile responsive: on small screens (sm:), show only current page with back button, or horizontal scroll with scrollbar-hide. Home icon: optional Home icon (w-4 h-4) for first item with sr-only \"Home\" text. JSON-LD: add structured data schema BreadcrumbList for SEO. Component props: items array [{label, href, icon?}], separator component, maxItems before truncation. Handle dynamic routes with loading state for async breadcrumb data."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

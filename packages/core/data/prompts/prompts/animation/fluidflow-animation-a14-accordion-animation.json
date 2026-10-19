@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a14-accordion-animation",
+  "slug": "fluidflow-animation-a14-accordion-animation",
+  "title": "Accordion Animation",
+  "description": "FluidFlow · Accordion Animation",
+  "content": "Create smooth accordion expand/collapse animations. Use CSS grid for height animation: grid-rows-[0fr] to grid-rows-[1fr] with inner div overflow-hidden. Alternative: max-height transition from 0 to measured height. Add rotation animation to chevron icon (rotate-0 to rotate-180). Animate content opacity slightly delayed from height. Include subtle background color change on open item. Handle multiple accordions - allow single or multiple open states. Add proper ARIA attributes: aria-expanded, aria-controls. Smooth transition duration of 300-400ms with ease-out timing. Prevent content jump by measuring height before animation. Add focus styles for keyboard navigation. Include option to scroll open accordion into view.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1a01734583a41101763c049d25bd6c26f1dbdce739e15f40298b70215acaa29c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add smooth expand/collapse animations to accordions.",
+    "detailed": "Create smooth accordion expand/collapse animations. Use CSS grid for height animation: grid-rows-[0fr] to grid-rows-[1fr] with inner div overflow-hidden. Alternative: max-height transition from 0 to measured height. Add rotation animation to chevron icon (rotate-0 to rotate-180). Animate content opacity slightly delayed from height. Include subtle background color change on open item. Handle multiple accordions - allow single or multiple open states. Add proper ARIA attributes: aria-expanded, aria-controls. Smooth transition duration of 300-400ms with ease-out timing. Prevent content jump by measuring height before animation. Add focus styles for keyboard navigation. Include option to scroll open accordion into view.",
+    "advanced": "Create smooth accordion expand/collapse animations avoiding common height animation pitfalls. CSS Grid technique (recommended): wrapper with grid, grid-template-rows: 0fr (closed) to 1fr (open), inner div with overflow-hidden and min-h-0; transition grid-template-rows over 300-400ms. This animates height smoothly without JavaScript measurement. Alternative max-height: transition max-height from 0 to measured scrollHeight, but requires JS measurement and can feel slow if max-height is much larger than content. Content opacity: animate opacity with slight delay (50ms) after height starts, creates layered reveal effect. Chevron icon: transition-transform duration-300, rotate-0 when closed, rotate-180 when open, use transform-origin center. Header styling: subtle background color change on open (bg-gray-50), border-l-4 accent on active item. Multiple accordion behavior: props for single-open (close others when one opens) vs multi-open (independent). State management: array of open IDs for multi, single ID or null for single-open mode. ACCESSIBILITY: button trigger with aria-expanded={isOpen}, aria-controls pointing to panel ID, panel with role=\"region\" and aria-labelledby pointing to button; proper focus styles on button (focus-visible:ring-2), keyboard Enter/Space to toggle. Scroll into view: after opening, if panel extends below viewport, scrollIntoView({ behavior: \"smooth\", block: \"nearest\" }). Prevent content jump: if using max-height technique, measure content once and cache, or use grid technique which handles this automatically. Animation timing: 300-400ms with ease-out feels natural, faster feels abrupt, slower feels sluggish. Nested accordions: support recursively with proper ARIA tree structure. Reduced motion: instant expand/collapse without transition."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

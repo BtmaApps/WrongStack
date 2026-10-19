@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c79-add-contact-form",
+  "slug": "fluidflow-components-c79-add-contact-form",
+  "title": "Add Contact Form",
+  "description": "FluidFlow · Add Contact Form",
+  "content": "Create contact form. Container: max-w-lg mx-auto bg-white rounded-xl shadow p-8. Heading: text-2xl font-bold mb-6. Fields: space-y-4, name input, email input, subject select dropdown, message textarea (rows-4). Labels: block text-sm font-medium mb-1. Submit: w-full bg-blue-600 text-white py-3 rounded-lg. Success: show confirmation message after submit.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c79"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b8c7a74174d3a3a000f9184dfd34499cf2b6bf04460455fcf869f5faae60d657",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create contact form with name, email, message fields.",
+    "detailed": "Create contact form. Container: max-w-lg mx-auto bg-white rounded-xl shadow p-8. Heading: text-2xl font-bold mb-6. Fields: space-y-4, name input, email input, subject select dropdown, message textarea (rows-4). Labels: block text-sm font-medium mb-1. Submit: w-full bg-blue-600 text-white py-3 rounded-lg. Success: show confirmation message after submit.",
+    "advanced": "Create full contact form with validation and features. Layout: form beside contact info (phone, email, address, map). Form fields: name (first/last or single), email (validated format), phone (optional, formatted), company (optional), subject (dropdown or predefined options), message (textarea with character counter). Field validation: real-time validation, error messages below fields, highlight invalid fields. Required indicators: asterisk on required fields. Attachments: optional file upload (images, documents), drag-drop zone, multiple files, size limit display. Preferred contact method: radio buttons (email, phone, either). Best time to call: if phone selected, time preference dropdown. Urgency: priority selector if applicable. Anti-spam: honeypot field, reCAPTCHA, rate limiting. Submit: loading state, disable during submit, success/error feedback. Success state: replace form with confirmation message, what to expect next. Error handling: display API errors, retry option. Email confirmation: mention that confirmation email was sent. Response time: set expectations (\"We typically respond within 24 hours\"). Alternative contact: chat widget trigger, phone number for urgent matters. Accessibility: proper labels, error announcements, focus management on submit."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

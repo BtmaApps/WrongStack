@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d2-glassmorphism-style",
+  "slug": "fluidflow-design-d2-glassmorphism-style",
+  "title": "Glassmorphism Style",
+  "description": "FluidFlow · Glassmorphism Style",
+  "content": "Apply glassmorphism with frosted glass cards using backdrop-blur-md or backdrop-blur-lg, semi-transparent backgrounds (bg-white/20 or bg-white/30), and subtle borders (border border-white/30). Add soft shadows (shadow-xl) for depth. Use light text on darker backgrounds or dark text with proper contrast. Include subtle gradient overlays. Ensure all content remains readable against blurred backgrounds. Add rounded corners (rounded-xl or rounded-2xl) for softer appearance.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "53d4a6422f12fea33fde75f449f7837ceb8c16749243386bf8020f4cd95af126",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply frosted glass effect with blur backgrounds and semi-transparent cards.",
+    "detailed": "Apply glassmorphism with frosted glass cards using backdrop-blur-md or backdrop-blur-lg, semi-transparent backgrounds (bg-white/20 or bg-white/30), and subtle borders (border border-white/30). Add soft shadows (shadow-xl) for depth. Use light text on darker backgrounds or dark text with proper contrast. Include subtle gradient overlays. Ensure all content remains readable against blurred backgrounds. Add rounded corners (rounded-xl or rounded-2xl) for softer appearance.",
+    "advanced": "Apply glassmorphism with frosted glass cards using backdrop-blur-md or backdrop-blur-lg with GPU acceleration. Use semi-transparent backgrounds (bg-white/20 or bg-white/30) with subtle borders (border border-white/30). Add soft shadows (shadow-xl) for depth. Ensure WCAG AA contrast ratios - test text readability against all possible background variations. Include subtle gradient overlays with proper fallbacks for browsers without backdrop-filter support. Add @supports queries for graceful degradation. Use will-change: transform for animated glass elements. Implement noise texture overlay for authentic glass feel. Add rounded corners (rounded-xl or rounded-2xl). Consider performance impact on mobile devices - provide simpler fallback. Test against busy backgrounds to ensure readability. Add aria-labels where glass effect might obscure content boundaries."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

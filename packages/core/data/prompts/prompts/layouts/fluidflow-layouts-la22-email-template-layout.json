@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la22-email-template-layout",
+  "slug": "fluidflow-layouts-la22-email-template-layout",
+  "title": "Email Template Layout",
+  "description": "FluidFlow · Email Template Layout",
+  "content": "Build responsive HTML email template. Constraints: table-based layout for email client compatibility, inline styles. Structure: outer table for centering, inner table for content. Header: logo centered. Body: headline, paragraphs, CTA button, images. Footer: social links, unsubscribe link, company address. Max-width 600px. Mobile-responsive with media queries where supported.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "31c3fc7c4a126ab39ca92c14362beeafe20f97ef9415921b02444e64e84332ff",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create HTML email template with header, content, and footer.",
+    "detailed": "Build responsive HTML email template. Constraints: table-based layout for email client compatibility, inline styles. Structure: outer table for centering, inner table for content. Header: logo centered. Body: headline, paragraphs, CTA button, images. Footer: social links, unsubscribe link, company address. Max-width 600px. Mobile-responsive with media queries where supported.",
+    "advanced": "Build responsive HTML email template compatible with major email clients. Constraints: table-based layout (no flexbox/grid), inline CSS styles (or style tag for progressive enhancement), no external stylesheets, max-width 600px, MSO conditionals for Outlook. Outer structure: center-aligned wrapper table (width 100%, bgcolor background color). Inner container table: width 600px, centered with align=\"center\", bgcolor white. Header section: table row with logo image (max-width for retina: width=\"200\" style=\"width:200px;max-width:100%\"), centered. Preheader text: hidden preview text (font-size:0;line-height:0;display:none). Body content: padding via table cells (cellpadding or nested table with width). Headline: inline styles (font-family: Arial, sans-serif; font-size: 24px; font-weight: bold; color: #333;). Paragraphs: inline styles (font-size: 16px; line-height: 1.5; color: #666;), mso-line-height-rule:exactly for Outlook. CTA button: table-based button for full client support. Outer table: cellpadding for padding, bgcolor for button color, border-radius via CSS (won't work everywhere). Inner td: padding, link styled as text (no underline). Bulletproof button: VML for Outlook fallback. Images: always include width, height, alt, border=\"0\", style=\"display:block\" to prevent gaps. Hero image: full-width with max-width:100%. Two-column layout: nested table with two td cells, stack on mobile using media query @media (max-width: 599px) with display:block and width:100% !important. Footer section: smaller text (font-size: 12px; color: #999;). Social icons: inline images linked. Unsubscribe link: required, clear text. Company address: required for CAN-SPAM. Media queries: in style tag for clients that support it, reset widths to 100% for mobile stack, increase font sizes for readability. Dark mode: @media (prefers-color-scheme: dark) support where available, test with fallbacks. Testing: test in Litmus or Email on Acid across clients (Gmail, Outlook, Apple Mail, Yahoo). Template variants: transactional (order confirmation, password reset), marketing (newsletter, promotion), notification."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

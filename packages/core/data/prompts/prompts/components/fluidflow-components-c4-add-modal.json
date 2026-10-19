@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c4-add-modal",
+  "slug": "fluidflow-components-c4-add-modal",
+  "title": "Add Modal",
+  "description": "FluidFlow · Add Modal",
+  "content": "Build reusable modal/dialog component with proper accessibility. Structure: fixed inset-0 portal with z-50. Dark backdrop (bg-black/50) with click-to-close option. Centered content with max-w-lg or size variants (sm, md, lg, xl, full). Include header with title and X close button, scrollable body, and sticky footer with action buttons. Add enter/exit animations: backdrop fade, content scale-95 to scale-100 with opacity. Implement focus trap - focus stays within modal, Escape to close. Prevent body scroll when open (overflow-hidden on body). Add proper ARIA: role=\"dialog\" aria-modal aria-labelledby. Support nested modals with z-index stacking.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "38cd22063300c294f64b5af8d47365cbffa3aa2cff89fe271f0aa7202c8e8d18",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a reusable modal dialog with backdrop and close button.",
+    "detailed": "Build reusable modal/dialog component with proper accessibility. Structure: fixed inset-0 portal with z-50. Dark backdrop (bg-black/50) with click-to-close option. Centered content with max-w-lg or size variants (sm, md, lg, xl, full). Include header with title and X close button, scrollable body, and sticky footer with action buttons. Add enter/exit animations: backdrop fade, content scale-95 to scale-100 with opacity. Implement focus trap - focus stays within modal, Escape to close. Prevent body scroll when open (overflow-hidden on body). Add proper ARIA: role=\"dialog\" aria-modal aria-labelledby. Support nested modals with z-index stacking.",
+    "advanced": "Build reusable modal/dialog component with proper accessibility and animations. Portal rendering: use createPortal to render modal outside component tree, append to document.body or dedicated modal root. Structure: fixed inset-0 z-50 flex items-center justify-center p-4. Backdrop: absolute inset-0 bg-black/50 backdrop-blur-sm (optional blur), onClick closes if closeOnBackdropClick. Content container: relative bg-white rounded-lg shadow-xl, size variants via max-w classes (sm: max-w-sm, md: max-w-md, lg: max-w-lg, xl: max-w-xl, full: max-w-full m-4). Layout: flex flex-col max-h-[90vh]. Header: flex items-center justify-between p-4 border-b, title as h2 with id for aria-labelledby, X close button. Body: flex-1 overflow-y-auto p-4, scrollable for long content. Footer: flex justify-end gap-3 p-4 border-t bg-gray-50, Cancel and primary action buttons. Animations: backdrop fade (opacity-0 to opacity-100), content scale + fade (scale-95 opacity-0 to scale-100 opacity-100), duration-200 ease-out. Focus trap: on open, focus first focusable element, Tab cycles within modal, Shift+Tab reverse, store and restore previous activeElement on close. Body scroll lock: add overflow-hidden to body when open, restore on close. Keyboard: Escape closes modal. ACCESSIBILITY: role=\"dialog\", aria-modal=\"true\", aria-labelledby pointing to title id, aria-describedby for description if present. Nested modals: increment z-index for each level. Component API: isOpen, onClose, title, children, size, closeOnBackdropClick, closeOnEscape props. Confirmation modal variant: preset with icon, message, confirm/cancel buttons."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

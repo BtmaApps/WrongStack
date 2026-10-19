@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c80-add-testimonial-carousel",
+  "slug": "fluidflow-components-c80-add-testimonial-carousel",
+  "title": "Add Testimonial Carousel",
+  "description": "FluidFlow · Add Testimonial Carousel",
+  "content": "Create testimonials section. Container: py-16 bg-gray-50. Header: text-center mb-12, title text-3xl font-bold. Carousel: max-w-3xl mx-auto relative. Quote card: bg-white rounded-xl p-8 shadow text-center. Quote icon: text-4xl text-blue-200 mb-4. Text: text-lg text-gray-700 italic mb-6. Author: flex items-center justify-center gap-3, avatar, name and title. Navigation: prev/next arrows, dot indicators below.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c80"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9cf12f227fca4cfb6043be046ac89c666049177379d0f632afc17a37859e8359",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create testimonial slider with quotes and avatars.",
+    "detailed": "Create testimonials section. Container: py-16 bg-gray-50. Header: text-center mb-12, title text-3xl font-bold. Carousel: max-w-3xl mx-auto relative. Quote card: bg-white rounded-xl p-8 shadow text-center. Quote icon: text-4xl text-blue-200 mb-4. Text: text-lg text-gray-700 italic mb-6. Author: flex items-center justify-center gap-3, avatar, name and title. Navigation: prev/next arrows, dot indicators below.",
+    "advanced": "Create versatile testimonial component. Layout options: carousel (one at a time), grid (show multiple), masonry (varied heights), single featured. Carousel: auto-play with pause on hover, swipe on mobile, prev/next buttons (hide at ends or loop), dot indicators or thumbnail navigation. Quote card: large quote mark decoration, testimonial text, author photo, author name, author title/company, company logo (optional), rating stars (optional). Video testimonials: play button overlay, modal player, thumbnail. Multiple display: show 1/2/3 at a time based on viewport. Transition effects: fade, slide, or flip between testimonials. Filter by: category, industry, use case tabs above carousel. Featured: highlight one \"featured\" testimonial differently. Quote length: truncate long quotes with \"Read more\", expand in modal. Company logos: row of client logos below testimonials. CTA: \"See all testimonials\" or \"Submit your story\" link. Schema markup: Review structured data. Integration: pull from Google Reviews, Trustpilot, G2 APIs. Randomize: optionally randomize order. Accessibility: pause auto-play control, keyboard navigation, proper carousel ARIA. Loading: skeleton or placeholder during async load."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

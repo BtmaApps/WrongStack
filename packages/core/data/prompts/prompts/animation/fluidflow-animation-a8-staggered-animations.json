@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a8-staggered-animations",
+  "slug": "fluidflow-animation-a8-staggered-animations",
+  "title": "Staggered Animations",
+  "description": "FluidFlow · Staggered Animations",
+  "content": "Implement staggered entrance animations for lists and grids. Apply incremental delays to child elements: first child delay-0, second delay-75, third delay-150, etc. Use CSS custom properties for dynamic delays based on index (style={{animationDelay: `${index * 100}ms`}}). Create fade-up animation that each item plays in sequence. Limit total stagger time - cap at 5-6 items then batch. Add intersection observer to trigger only when container is visible. Implement reverse stagger for exit animations. Use for: grid cards, list items, navigation menus, table rows. Keep individual animation short (200-300ms) so sequence feels snappy. Reset animation state properly when content changes.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "59988fb72cf5d0323ee84b3dcf636ba1297524c6f715a1c2ba76ef8241056188",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add sequential entrance animations to lists and grids.",
+    "detailed": "Implement staggered entrance animations for lists and grids. Apply incremental delays to child elements: first child delay-0, second delay-75, third delay-150, etc. Use CSS custom properties for dynamic delays based on index (style={{animationDelay: `${index * 100}ms`}}). Create fade-up animation that each item plays in sequence. Limit total stagger time - cap at 5-6 items then batch. Add intersection observer to trigger only when container is visible. Implement reverse stagger for exit animations. Use for: grid cards, list items, navigation menus, table rows. Keep individual animation short (200-300ms) so sequence feels snappy. Reset animation state properly when content changes.",
+    "advanced": "Implement staggered entrance animations for lists and grids creating a cascade reveal effect. Delay calculation: style={{animationDelay: `${index * 75}ms`}} or use CSS custom property --stagger-delay: calc(var(--index) * 75ms). Tailwind approach: [&:nth-child(1)]:delay-0 [&:nth-child(2)]:delay-75 [&:nth-child(3)]:delay-150 for static lists. Animation keyframes: @keyframes stagger-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }. Apply animation: animation: stagger-in 300ms ease-out forwards, keep in initial hidden state with opacity-0. Grid stagger patterns: sequential (left to right, top to bottom), diagonal (top-left to bottom-right), center-out (middle items first). Cap total stagger duration: for 20+ items, batch into groups of 5-6 with same delay within batch, or use shorter delays (30-50ms). Intersection Observer trigger: observe container, when visible add .animate class that triggers children animations, prevents animation before scrolled into view. Exit animations: reverse stagger with shorter duration (150ms), last item animates first on exit. Content change handling: when data updates, reset animation state by toggling key prop or removing/re-adding animation class. Performance: CSS animations only, avoid animating layout properties, use will-change: transform, opacity on animating elements. ACCESSIBILITY: prefers-reduced-motion users get instant appearance (animation: none). Use cases: card grids, navigation dropdowns, search results, table rows, notification lists. React implementation: pass index to children via context or clone with props, or use CSS nth-child for static markup."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

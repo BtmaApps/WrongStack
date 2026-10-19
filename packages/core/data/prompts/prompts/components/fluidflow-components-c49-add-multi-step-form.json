@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c49-add-multi-step-form",
+  "slug": "fluidflow-components-c49-add-multi-step-form",
+  "title": "Add Multi-Step Form",
+  "description": "FluidFlow · Add Multi-Step Form",
+  "content": "Create multi-step form wizard. Container: max-w-2xl mx-auto. Progress: flex justify-between mb-8, step circles with numbers, connecting lines, completed steps green with checkmark. Step content: min-h-[300px] for consistent height. Form fields: standard inputs with validation. Navigation: flex justify-between mt-6, Back button (disabled on first step), Next/Submit button. Step transitions: fade or slide animation. Validation: validate current step before proceeding.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c49"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cc84644386bbf5af9b60a13811362571ae992de73015a0935ca9b6c2bfb52995",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create wizard-style multi-step form with progress indicator.",
+    "detailed": "Create multi-step form wizard. Container: max-w-2xl mx-auto. Progress: flex justify-between mb-8, step circles with numbers, connecting lines, completed steps green with checkmark. Step content: min-h-[300px] for consistent height. Form fields: standard inputs with validation. Navigation: flex justify-between mt-6, Back button (disabled on first step), Next/Submit button. Step transitions: fade or slide animation. Validation: validate current step before proceeding.",
+    "advanced": "Create advanced multi-step form with validation and persistence. Progress indicator: numbered circles connected by lines, states (completed/current/upcoming), step labels below circles, clickable to navigate (if previous steps valid). Step management: useState for currentStep, steps array with {id, title, component, validation}. Form state: useForm (react-hook-form) or useReducer for complex state. Validation: per-step validation schema (Zod/Yup), validate on Next click, show errors inline. Conditional steps: skip certain steps based on previous answers. Step content: each step is separate component receiving form context. Navigation: Back always enabled (except step 1), Next validates then advances, on last step shows Submit. Save progress: localStorage persistence, resume from where left off. Review step: final step shows summary of all inputs, edit buttons to jump to specific steps. Submit handling: loading state, success/error feedback. Accessibility: focus management on step change, announce step changes to screen readers. Mobile: progress shows current/total instead of all circles, swipe gestures optional. Animation: AnimatePresence with direction-aware slide (slide left going forward, right going back)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

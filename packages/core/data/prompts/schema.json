@@ -15,11 +15,26 @@
     "updatedAt"
   ],
   "properties": {
-    "id": { "type": "string", "minLength": 1 },
-    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-    "title": { "type": "string", "minLength": 1 },
-    "description": { "type": "string", "minLength": 1 },
-    "content": { "type": "string", "minLength": 1 },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -37,32 +52,106 @@
         "research",
         "product",
         "agentic-workflows",
-        "meta-prompting"
+        "meta-prompting",
+        "design",
+        "components",
+        "responsive",
+        "ux",
+        "animation",
+        "accessibility",
+        "content",
+        "features",
+        "forms",
+        "dashboard",
+        "ecommerce",
+        "social",
+        "layouts",
+        "quick-actions",
+        "ui-templates",
+        "fluidflow-workflows"
       ]
     },
-    "tags": { "type": "array", "items": { "type": "string" } },
-    "source": { "type": "string", "enum": ["builtin"] },
-    "favorite": { "type": "boolean" },
-    "checksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "createdAt": { "type": "string" },
-    "updatedAt": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source": {
+      "type": "string",
+      "enum": ["builtin"]
+    },
+    "favorite": {
+      "type": "boolean"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
     "variables": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["name"],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "description": { "type": "string" },
-          "default": { "type": "string" },
-          "required": { "type": "boolean" },
-          "enum": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-          "multiline": { "type": "boolean" }
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "default": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "enum": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "multiline": {
+            "type": "boolean"
+          }
         }
       }
     },
-    "author": { "type": "string" },
-    "version": { "type": "string" },
-    "license": { "type": "string" }
+    "author": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "variants": {
+      "type": "object",
+      "required": ["simple", "detailed", "advanced"],
+      "properties": {
+        "simple": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detailed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "advanced": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
   }
 }

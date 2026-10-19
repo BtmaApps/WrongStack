@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so24-followers-following-modal",
+  "slug": "fluidflow-social-so24-followers-following-modal",
+  "title": "Followers/Following Modal",
+  "description": "FluidFlow · Followers/Following Modal",
+  "content": "Build followers/following list modal. Tabs: Followers and Following toggle. User list: avatar, name, username, follow button per user. Search: filter list by name. Mutual indicator: \"Follows you\" badge. Actions: Follow/Unfollow toggle. Sort: recent first or alphabetical. Loading: paginated loading.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f14e8e77dcabda4f42bded31bcd0443dbe2506a26de97a41540bd12b8e84b6c7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create modal listing followers or following with actions.",
+    "detailed": "Build followers/following list modal. Tabs: Followers and Following toggle. User list: avatar, name, username, follow button per user. Search: filter list by name. Mutual indicator: \"Follows you\" badge. Actions: Follow/Unfollow toggle. Sort: recent first or alphabetical. Loading: paginated loading.",
+    "advanced": "Build comprehensive followers/following list modal with interactions. Trigger: clicking follower/following counts on profile opens modal. Modal structure: max-w-md w-full, max-h-[80vh], bg-white rounded-xl shadow-2xl. Header: \"Followers\" or \"Following\" title based on context, close X button. Tabs: \"Followers (1.2K)\" and \"Following (456)\" tabs with counts, underline active tab. Search: search input below tabs, placeholder \"Search\", filters list as typing, debounced. User list: overflow-y-auto flex-1, divide-y. User row: flex items-center gap-3 px-4 py-3. Avatar: w-10 h-10 rounded-full, click navigates to profile (closes modal). User info: flex-1, name (font-medium), username (text-gray-500 text-sm), bio preview (optional, text-xs text-gray-600 line-clamp-1). Mutual badge: \"Follows you\" badge (bg-gray-100 text-gray-600 text-xs px-2 rounded) if they follow you (in Following tab) or if you follow them (in Followers tab). Follow button: Follow/Following toggle button, Following shows on hover \"Unfollow\" in red. Remove follower: in Followers tab, dropdown with \"Remove follower\" option. Loading: initial list shows skeleton rows, infinite scroll loads more (paginated API). Empty state: \"No followers yet\" or \"Not following anyone\" with appropriate suggestion. Sort options: dropdown - Recent, Alphabetical. Filter options: Mutual only, Verified only. User preview hover card: on desktop, hovering username shows mini profile preview. Bulk actions: if admin/self, select multiple and remove. Close modal: clicking outside, X button, or escape key. Mobile: full-screen modal (inset-0 rounded-none), back button instead of X. URL state: modal state in URL for sharing (/profile/user/followers). Counts update: if follow/unfollow occurs, counts update in real-time. Performance: virtualize list for users with 100k+ followers. Accessibility: modal traps focus, list navigable, follow status announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

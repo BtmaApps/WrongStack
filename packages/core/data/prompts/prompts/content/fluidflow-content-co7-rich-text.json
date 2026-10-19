@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co7-rich-text",
+  "slug": "fluidflow-content-co7-rich-text",
+  "title": "Rich Text",
+  "description": "FluidFlow · Rich Text",
+  "content": "Implement rich text display component for formatted content. Support elements: headings (h1-h4 with proper styles), paragraphs (mb-4), bold/strong (font-semibold), italic/em, links (text-blue-600 hover:underline), ordered lists (list-decimal pl-6), unordered lists (list-disc pl-6), blockquotes (border-l-4 border-gray-300 pl-4 italic), code inline (bg-gray-100 px-1 rounded font-mono text-sm), code blocks (bg-gray-900 text-white p-4 rounded-lg overflow-x-auto), horizontal rules (border-t my-8), images with captions. Apply prose class from @tailwindcss/typography for automatic styling. Handle whitespace-pre-wrap for preserving line breaks. Sanitize HTML content if accepting user input. Support dark mode variants.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d2bfd75911068e59daea5245d2a5a170fed9c34892f76ac1eb218e929c3d5862",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Implement styled rich text display for formatted content.",
+    "detailed": "Implement rich text display component for formatted content. Support elements: headings (h1-h4 with proper styles), paragraphs (mb-4), bold/strong (font-semibold), italic/em, links (text-blue-600 hover:underline), ordered lists (list-decimal pl-6), unordered lists (list-disc pl-6), blockquotes (border-l-4 border-gray-300 pl-4 italic), code inline (bg-gray-100 px-1 rounded font-mono text-sm), code blocks (bg-gray-900 text-white p-4 rounded-lg overflow-x-auto), horizontal rules (border-t my-8), images with captions. Apply prose class from @tailwindcss/typography for automatic styling. Handle whitespace-pre-wrap for preserving line breaks. Sanitize HTML content if accepting user input. Support dark mode variants.",
+    "advanced": "Implement rich text display component for rendered formatted content. Use @tailwindcss/typography: install plugin, add prose class for automatic styling of semantic HTML. Prose customization: prose-sm/prose-lg for size variants, prose-gray/prose-slate for color schemes, dark:prose-invert for dark mode. Manual styling (without plugin): headings (h1: text-3xl font-bold mb-4, h2: text-2xl font-semibold mb-3, h3: text-xl font-semibold mb-2), paragraphs (mb-4 leading-relaxed), strong/bold (font-semibold), em/italic (italic), links (text-blue-600 hover:underline), ul (list-disc pl-6 mb-4 space-y-2), ol (list-decimal pl-6 mb-4 space-y-2), blockquote (border-l-4 border-gray-300 pl-4 italic text-gray-700 my-4), code inline (bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono text-sm), code blocks (bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto font-mono text-sm my-4), hr (border-t border-gray-200 my-8), images (max-w-full rounded-lg my-4), figure/figcaption for images with captions. Content sources: render HTML from CMS (dangerouslySetInnerHTML with sanitization), render from Markdown parser output, render from rich text editor output. SECURITY: always sanitize HTML content from user input using DOMPurify or similar before rendering, whitelist allowed tags and attributes. Special handling: whitespace-pre-wrap for preserving intentional line breaks, word-break: break-word for long URLs. Responsive: images max-w-full, tables overflow-x-auto wrapper. Dark mode: prose-invert or manual dark: variants for each element. Component props: content (HTML string), className, allowedTags (for sanitization)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

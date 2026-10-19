@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c60-add-video-player",
+  "slug": "fluidflow-components-c60-add-video-player",
+  "title": "Add Video Player",
+  "description": "FluidFlow · Add Video Player",
+  "content": "Create video player. Container: relative aspect-video bg-black rounded-lg overflow-hidden. Video: w-full h-full object-contain. Controls overlay: absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80, opacity-0 group-hover:opacity-100 transition. Controls: flex items-center gap-3, play/pause button, progress bar, time display, volume, fullscreen button.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c60"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ea7e895f9bc075467eb0c1f943dd6c940fc57b29bb40b46a04a6749d8b08ee85",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create custom video player with playback controls.",
+    "detailed": "Create video player. Container: relative aspect-video bg-black rounded-lg overflow-hidden. Video: w-full h-full object-contain. Controls overlay: absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80, opacity-0 group-hover:opacity-100 transition. Controls: flex items-center gap-3, play/pause button, progress bar, time display, volume, fullscreen button.",
+    "advanced": "Create full-featured video player. Video element: playsinline, poster image, multiple sources for format fallback. Controls bar: auto-hide after 3s inactivity, show on mouse move or tap. Playback: play/pause (center click also toggles), seek bar with preview thumbnails on hover, buffered indicator. Time: current / duration, click to toggle remaining. Volume: slider, mute button, remember preference. Speed: playback rate selector (0.25x to 2x). Quality: resolution selector if multiple sources (auto, 1080p, 720p, 480p). Captions: subtitle track support, toggle button, style options. Fullscreen: button and double-click, ESC to exit. PiP: Picture-in-Picture support. Keyboard: Space play/pause, F fullscreen, M mute, arrows seek/volume, 0-9 jump to percentage. Settings gear: opens panel with quality, speed, captions. Loading: spinner overlay while buffering. Error handling: display error message, retry button. Mobile: tap to toggle controls, swipe to seek, double-tap sides to skip. Chapters: if provided, markers on seek bar, chapter title display. End screen: replay button, related videos. Analytics hooks: play, pause, progress events. Accessibility: all controls labeled, captions, keyboard support."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

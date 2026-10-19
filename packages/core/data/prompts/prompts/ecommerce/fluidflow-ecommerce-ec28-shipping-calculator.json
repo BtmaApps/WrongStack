@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec28-shipping-calculator",
+  "slug": "fluidflow-ecommerce-ec28-shipping-calculator",
+  "title": "Shipping Calculator",
+  "description": "FluidFlow · Shipping Calculator",
+  "content": "Build shipping calculator widget. Input: country/region selector, zip/postal code input. Calculate button triggers rate lookup. Results: list of shipping options (Standard, Express, Overnight) with prices and estimated delivery dates. Free shipping threshold: \"Add $X more for free shipping\" progress bar. Selected method: radio selection applies to checkout. Error handling: invalid postal code messaging.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fa0efa92e59761933988f663233445594647e93fe79eee0df2a2a6476175f5bd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create shipping cost calculator with method selection.",
+    "detailed": "Build shipping calculator widget. Input: country/region selector, zip/postal code input. Calculate button triggers rate lookup. Results: list of shipping options (Standard, Express, Overnight) with prices and estimated delivery dates. Free shipping threshold: \"Add $X more for free shipping\" progress bar. Selected method: radio selection applies to checkout. Error handling: invalid postal code messaging.",
+    "advanced": "Build comprehensive shipping calculator with real-time rates. Container: bg-gray-50 rounded-lg p-4 or expandable section. Header: \"Calculate Shipping\" or \"Estimate Delivery\" with Truck icon. Location inputs: country dropdown (pre-select based on IP geolocation), state/province dropdown (dynamic based on country), zip/postal code input (format validation based on country), city input if required by carrier. \"Use My Location\" button: auto-fill from browser geolocation. Calculate button: \"Get Shipping Rates\" primary button, loading spinner while fetching. Rate lookup: call shipping API (UPS, FedEx, USPS, carrier aggregator), pass product dimensions/weight, return available methods. Results display: list of shipping methods as selectable radio cards. Each method: carrier logo if applicable, method name (\"Standard Ground\", \"2-Day Express\", \"Next Day Air\"), estimated delivery range (\"Arrives Jan 15-18\" or \"Delivery by Jan 15\"), transit time (\"5-7 business days\"), price (free highlighted in green, or \"$X.XX\"), cutoff notice (\"Order within 2hr 15min for delivery by [date]\"). Free shipping: if threshold exists, progress bar showing \"Spend $X more for FREE shipping\", or \"Qualifies for Free Shipping\" badge if met. Selection behavior: clicking option selects it, selected state (ring-2 ring-black), selection stored and passed to checkout, update cart totals to reflect shipping choice. Delivery instructions: optional text input for delivery notes (gate code, leave at door). International shipping: additional fields for customs, estimated duties/taxes calculator, restricted items warning. Express eligibility: if item not eligible for certain speeds (hazmat, oversize), note which methods unavailable. Multiple packages: if order ships in multiple boxes, calculate combined shipping, note \"Ships in 2 packages\". In-store pickup: include as free option if stores available, show nearby stores with availability. Ship to store: lower cost option if available. Date picker: for gifts, select preferred arrival date, calculate which methods meet date. Scheduled delivery: premium option for specific date/time window. Error states: invalid postal code, no shipping available to location, carrier timeout. Rate expiration: note rates valid for X minutes, refresh button. Mobile: stack layout, collapsible initially. Accessibility: form labeled, rate options as radio group with proper ARIA, delivery dates announced clearly."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

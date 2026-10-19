@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c66-add-comparison-slider",
+  "slug": "fluidflow-components-c66-add-comparison-slider",
+  "title": "Add Comparison Slider",
+  "description": "FluidFlow · Add Comparison Slider",
+  "content": "Create image comparison slider. Container: relative overflow-hidden aspect-video. Before image: absolute inset-0 w-full h-full object-cover. After image: absolute inset-0, clip-path to show portion. Slider: absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize, with handle (circle with arrows icon). Drag: update clip-path position on mouse/touch move.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c66"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4f0ce4e09b8005d0745487b27e8adbb0b4ddd1477e27c3cbcf83d0ffbaa797b0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create before/after image comparison slider.",
+    "detailed": "Create image comparison slider. Container: relative overflow-hidden aspect-video. Before image: absolute inset-0 w-full h-full object-cover. After image: absolute inset-0, clip-path to show portion. Slider: absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize, with handle (circle with arrows icon). Drag: update clip-path position on mouse/touch move.",
+    "advanced": "Create robust image comparison component. Images: before and after, both same aspect ratio, lazy loading, alt text. Clip modes: horizontal (left/right), vertical (top/bottom). Slider line: customizable color and width, subtle shadow for visibility. Handle: circular with grip lines or arrows, larger touch target on mobile. Drag behavior: track mouse/touch position, clamp to container bounds, smooth performance with requestAnimationFrame. Initial position: prop for starting position (default 50%). Keyboard: Tab to focus handle, arrow keys to move, Home/End for limits. Labels: optional \"Before\" and \"After\" labels on respective sides. Overlay info: optional text overlays on each image. Reset button: return to initial position. Hover effect: optional slight handle highlight on hover. Touch support: drag on touch devices, prevent scroll while dragging. Responsive: handle size adapts to container size. Loading: skeleton placeholder while images load. Accessibility: role=\"slider\", aria-valuemin, aria-valuemax, aria-valuenow, aria-label. Animation: optional intro animation sliding from one side. Multiple: support gallery of comparisons."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

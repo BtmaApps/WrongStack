@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d35-grunge-distressed",
+  "slug": "fluidflow-design-d35-grunge-distressed",
+  "title": "Grunge/Distressed",
+  "description": "FluidFlow · Grunge/Distressed",
+  "content": "Apply grunge aesthetic with intentionally rough, rebellious feel. Add distressed textures: scratches, noise, worn paper effects. Use irregular, hand-drawn or typewriter fonts. Include splatter and ink blot decorations. Dark, muted color palette: browns, blacks, dark reds, olive. Torn paper and rough edges on elements. Layered, collage-like compositions. Anti-corporate, DIY punk aesthetic. Vintage photograph treatments with high grain.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d35"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b269b2845e7ccba7d797a0a9b81411bc54e1818ebfec1a7bd4878fb6ed3643af",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create rough, rebellious grunge aesthetic with textures, worn edges, and raw typography.",
+    "detailed": "Apply grunge aesthetic with intentionally rough, rebellious feel. Add distressed textures: scratches, noise, worn paper effects. Use irregular, hand-drawn or typewriter fonts. Include splatter and ink blot decorations. Dark, muted color palette: browns, blacks, dark reds, olive. Torn paper and rough edges on elements. Layered, collage-like compositions. Anti-corporate, DIY punk aesthetic. Vintage photograph treatments with high grain.",
+    "advanced": "Apply grunge aesthetic with intentionally rough, rebellious, underground feel. Textures: distressed overlays using SVG filters or pseudo-elements - scratches, noise (grain effect via tiny dot pattern), worn/aged paper, concrete, rust. Apply mix-blend-mode for texture layering. Typography: irregular fonts - typewriter (Courier, Special Elite), hand-drawn (Permanent Marker), distressed display fonts. Vary baseline, size, and rotation for chaotic feel. Ink effects: splatter decorations (SVG), ink blots, drips, stains as background elements. Color palette: muted, dirty tones - browns (amber-900), blacks, dried blood red (rose-900), olive (stone-700), faded yellow (amber-200). Edges: torn paper effect using clip-path or SVG mask, rough borders, tape strips. Composition: layered collage style, overlapping elements, intentional messiness. Photography: high contrast, heavy grain (CSS filter: contrast(1.2) grayscale(0.3)), vintage fading. Stickers and labels: peeling, worn appearances. DIY aesthetic: visible staples, paper clips, hand-written notes. Background: aged paper texture, coffee stains, fold marks. Interactive: elements can tear away, reveal layers beneath. Performance: texture images can be heavy - optimize with CSS patterns where possible. Accessibility: despite chaotic appearance, maintain readable contrast for essential text."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

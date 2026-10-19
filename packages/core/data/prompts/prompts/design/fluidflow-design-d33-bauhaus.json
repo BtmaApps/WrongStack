@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d33-bauhaus",
+  "slug": "fluidflow-design-d33-bauhaus",
+  "title": "Bauhaus",
+  "description": "FluidFlow · Bauhaus",
+  "content": "Apply Bauhaus design principles with form follows function philosophy. Use primary colors (red, blue, yellow) plus black and white. Geometric shapes: circles, squares, triangles as core elements. Clean sans-serif typography (Futura, DIN, Helvetica). Grid-based asymmetric layouts. Bold contrast between elements. Minimal decoration - every element serves purpose. Include iconic Bauhaus color blocking. Strong horizontal and vertical lines. Industrial, functional aesthetic.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d60adf957f1f7ed58dda15d259cc23c5d4c6549dc594b95a545f4917ae407ddb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create functional modernist design inspired by Bauhaus school with primary colors and geometric forms.",
+    "detailed": "Apply Bauhaus design principles with form follows function philosophy. Use primary colors (red, blue, yellow) plus black and white. Geometric shapes: circles, squares, triangles as core elements. Clean sans-serif typography (Futura, DIN, Helvetica). Grid-based asymmetric layouts. Bold contrast between elements. Minimal decoration - every element serves purpose. Include iconic Bauhaus color blocking. Strong horizontal and vertical lines. Industrial, functional aesthetic.",
+    "advanced": "Apply Bauhaus design principles (1919-1933 German modernist school). Color theory: primary colors as accents (red-600 #E53935, blue-600 #1E88E5, yellow-500 #FDD835) against black and white base. Geometric foundation: circle, square, triangle as core visual vocabulary - use consistently for icons, decorations, layouts. Typography: geometric sans-serif (Futura, DIN, Bauhaus 93, ITC Avant Garde), clean letterforms, strong hierarchy through size and weight. Layout: asymmetric grid compositions, dynamic balance, intentional white space. Form follows function: every element has purpose, no pure decoration. Color blocking: large areas of solid color creating visual rhythm. Lines: bold horizontal and vertical rules as structural elements, thin lines for division. Shapes as containers: content within geometric frames. Josef Albers color squares: nested squares demonstrating color interaction. Material honesty: design suggests industrial production, machine-made precision. Interactive: geometric transitions, shapes morphing on state changes. Modern implementation: CSS Grid for Bauhaus-style compositions, custom properties for color palette. Accessibility: high contrast from limited palette, clear functional hierarchy aids navigation. Educational context: perfect for design schools, architecture, modern art contexts."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

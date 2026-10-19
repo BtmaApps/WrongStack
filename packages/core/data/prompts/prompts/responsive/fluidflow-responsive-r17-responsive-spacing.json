@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r17-responsive-spacing",
+  "slug": "fluidflow-responsive-r17-responsive-spacing",
+  "title": "Responsive Spacing",
+  "description": "FluidFlow · Responsive Spacing",
+  "content": "Implement responsive spacing system. Use consistent spacing scale that increases with viewport. Container padding: px-4 md:px-6 lg:px-8. Section padding: py-12 md:py-16 lg:py-24. Gap between elements: gap-4 md:gap-6 lg:gap-8. Margin between sections: my-8 md:my-12 lg:my-16. Maintain visual rhythm across all screen sizes. Reduce spacing on mobile to maximize content area.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9a9713c1455be3e821aec3496b9cec6056df6590ab9f0094ffc8b052b4385a02",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply consistent spacing that scales appropriately across breakpoints.",
+    "detailed": "Implement responsive spacing system. Use consistent spacing scale that increases with viewport. Container padding: px-4 md:px-6 lg:px-8. Section padding: py-12 md:py-16 lg:py-24. Gap between elements: gap-4 md:gap-6 lg:gap-8. Margin between sections: my-8 md:my-12 lg:my-16. Maintain visual rhythm across all screen sizes. Reduce spacing on mobile to maximize content area.",
+    "advanced": "Implement responsive spacing system with visual rhythm. Define spacing scale: use Tailwind default scale, apply responsively. Container: px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16. Sections: py-12 md:py-16 lg:py-24 for major sections, py-8 md:py-12 for subsections. Gaps: gap-4 md:gap-6 lg:gap-8 for grids and flex containers. Margins: space-y-4 md:space-y-6 lg:space-y-8 for stacked elements. Headings: mb-4 md:mb-6 after major headings, mb-2 md:mb-3 after subheadings. Cards: p-4 md:p-6 lg:p-8 internal padding. Visual rhythm: maintain consistent vertical spacing multiples (e.g., 4, 8, 12, 16). Mobile: tighter spacing (4px base) to maximize content. Desktop: more generous spacing (8px base) for breathing room. Consistency: define spacing tokens and apply consistently. CSS custom properties: define --section-padding etc. for easy adjustment. Maintain spacing in both orientations on tablets. Test edge cases: very small (320px) and very large (2560px+) screens."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

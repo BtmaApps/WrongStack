@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a20-drawer-animation",
+  "slug": "fluidflow-animation-a20-drawer-animation",
+  "title": "Drawer Animation",
+  "description": "FluidFlow · Drawer Animation",
+  "content": "Create smooth slide-in drawer animations. Position fixed at screen edge. Animate transform from off-screen to visible. Support all directions: left, right, top, bottom. Add backdrop with fade animation. Sync content and backdrop timing. Include spring/bounce effect for natural feel. Handle body scroll lock. Add drag-to-close gesture. Support nested drawers with z-index stacking. Coordinate with other animations.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e265dc6b6fab76554417598e7e5473d8603248a4a3c65587efdbb5435f908a94",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create smooth slide-in drawer/panel animations from screen edges.",
+    "detailed": "Create smooth slide-in drawer animations. Position fixed at screen edge. Animate transform from off-screen to visible. Support all directions: left, right, top, bottom. Add backdrop with fade animation. Sync content and backdrop timing. Include spring/bounce effect for natural feel. Handle body scroll lock. Add drag-to-close gesture. Support nested drawers with z-index stacking. Coordinate with other animations.",
+    "advanced": "Create smooth slide-in drawer animations for side panels and bottom sheets. Base structure: fixed positioning, z-50, flex for content layout. Direction variants: left (translate-x-full to translate-x-0 for open, reversed for close), right (negative translate), top (translate-y), bottom (translate-y from 100%). Backdrop: fixed inset-0, bg-black, opacity animation 0 to 0.5, separate from content animation for layered effect. Animation timing: content slides while backdrop fades simultaneously, 300ms ease-out for open, 250ms ease-in for close. Spring effect: use cubic-bezier(0.32, 0.72, 0, 1) for slight overshoot and settle. Drag-to-close: track touch/mouse drag perpendicular to edge, if drag exceeds threshold (30% of drawer size), close on release; if not, spring back. Velocity consideration: fast drag even if short distance can trigger close. Body scroll lock: add overflow-hidden to body when open, restore on close. Nested drawers: increment z-index for each level, new drawer pushes or overlays previous. Bottom sheet specifics: rounded-t-xl, drag handle at top (w-10 h-1 bg-gray-300 rounded-full), snap points (collapsed, expanded, dismissed). Transform origin: set origin for any scale effects to match edge (origin-left for left drawer). Performance: use transform only (not left/top), will-change during animation. Reduce motion: instant visibility toggle, fade backdrop without slide. ACCESSIBILITY: focus trap when open, Escape to close, aria-hidden on main content, focus first element on open, return focus on close. Swipe gesture: common on mobile, from edge-swipe to open as well."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

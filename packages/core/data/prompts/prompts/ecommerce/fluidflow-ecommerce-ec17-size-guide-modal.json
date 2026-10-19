@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec17-size-guide-modal",
+  "slug": "fluidflow-ecommerce-ec17-size-guide-modal",
+  "title": "Size Guide Modal",
+  "description": "FluidFlow · Size Guide Modal",
+  "content": "Build size guide modal for apparel/footwear. Trigger: \"Size Guide\" link near size selector. Modal content: product category tabs if multiple (Tops, Bottoms, Shoes). Measurement table: columns for size (S/M/L or numeric), chest, waist, hips, length in both inches and cm. Unit toggle: switch between in/cm. \"How to Measure\" section with body diagram and instructions. Fit notes: \"This item runs small, consider sizing up\". Size recommendation based on previous purchases.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2a0d33a86dce9daa00dca54f53ecd9c6262e3e47eba6df8197a59dcf4a79218f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create size guide modal with measurement table and tips.",
+    "detailed": "Build size guide modal for apparel/footwear. Trigger: \"Size Guide\" link near size selector. Modal content: product category tabs if multiple (Tops, Bottoms, Shoes). Measurement table: columns for size (S/M/L or numeric), chest, waist, hips, length in both inches and cm. Unit toggle: switch between in/cm. \"How to Measure\" section with body diagram and instructions. Fit notes: \"This item runs small, consider sizing up\". Size recommendation based on previous purchases.",
+    "advanced": "Build comprehensive size guide modal for apparel and footwear. Trigger: \"Size Guide\" text link (underline, text-gray-600) positioned near size selector, icon optional (Ruler). Modal: centered, max-w-2xl, bg-white rounded-xl shadow-2xl. Header: \"Size Guide\" title, close X button. Category tabs: if brand sells multiple categories, tabs for Tops, Bottoms, Dresses, Shoes, etc., each with own measurements. Unit toggle: prominent toggle switch for Inches/Centimeters in top-right, persisted to localStorage. Measurement table: clean table with borders, sticky header. Columns: Size (S, M, L, XL, XXL or numeric 6, 8, 10...), measurements relevant to category (Tops: Chest, Waist, Length; Bottoms: Waist, Hip, Inseam, Length; Shoes: US, UK, EU, CM). Highlight row on hover. Current size indicator: if user has size preference saved, highlight that row with subtle background. International conversion: for shoes, show US/UK/EU/JP conversions in same table. \"How to Measure\" section: illustrated diagrams (SVG or image) showing where to measure chest, waist, hips, inseam on body outline, numbered instructions: \"1. Chest: Measure around the fullest part...\", expandable/collapsible accordion format. Fit notes: product-specific callout box (bg-blue-50 border-l-4 border-blue-400): \"This item runs small, we recommend sizing up\" or \"Relaxed fit - if between sizes, size down\". Model measurements: \"Model is 5'10\" wearing size M\" with model stats. Size recommendation: if user logged in with measurement profile, show \"Based on your measurements, we recommend size M\" with confidence indicator. Measurement input: optional section where user can enter their measurements and get personalized recommendation using algorithm. Previous purchase reference: \"You bought size M in Similar Product and rated the fit as 'Perfect'\" reminder. Brand comparison: \"How our sizes compare to [Other Brand]\" if available. Print friendly: \"Print Size Guide\" button with print-optimized styles. Mobile: full-screen modal (inset-0 rounded-none), horizontally scrollable table, collapsible sections. Video guide: optional embedded video showing how to measure. Accessibility: table with proper headers, unit toggle announces change, modal traps focus."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

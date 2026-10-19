@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d18-pastel-colors",
+  "slug": "fluidflow-design-d18-pastel-colors",
+  "title": "Pastel Colors",
+  "description": "FluidFlow · Pastel Colors",
+  "content": "Apply soft pastel palette with gentle, desaturated colors - pink-200, blue-200, mint green (emerald-200), lavender (violet-200), peach (orange-200). Use white or cream backgrounds (bg-white or bg-orange-50). Add very subtle shadows (shadow-sm) with colored tints. Keep typography clean and readable against light backgrounds. Use gentle gradients between pastel colors. Include rounded corners for soft appearance. Create a calm, soothing visual experience. Balance multiple pastels without overwhelming - use one dominant color with accents.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e65ce16b55336210303e21d8abf098444e927eb66c118a200d76f5fff1996e20",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply soft, gentle pastel colors for a calm and soothing appearance.",
+    "detailed": "Apply soft pastel palette with gentle, desaturated colors - pink-200, blue-200, mint green (emerald-200), lavender (violet-200), peach (orange-200). Use white or cream backgrounds (bg-white or bg-orange-50). Add very subtle shadows (shadow-sm) with colored tints. Keep typography clean and readable against light backgrounds. Use gentle gradients between pastel colors. Include rounded corners for soft appearance. Create a calm, soothing visual experience. Balance multiple pastels without overwhelming - use one dominant color with accents.",
+    "advanced": "Apply soft pastel palette with gentle, desaturated colors - pink-200, blue-200, mint green (emerald-200), lavender (violet-200), peach (orange-200). Use white or cream backgrounds (bg-white or bg-orange-50/50). Add very subtle shadows (shadow-sm) with colored tints matching nearby elements. Keep typography clean and readable - use gray-700 or gray-800 for text to ensure contrast against light pastels. Use gentle gradients between analogous pastel colors for smooth transitions. Include generous rounded corners (rounded-xl to rounded-2xl) for soft appearance. Create calm, soothing visual experience appropriate for wellness, children, or lifestyle apps. Balance multiple pastels using 60-30-10 rule - one dominant pastel, one secondary, accent sparingly. IMPORTANT: Pastel-on-pastel combinations often fail accessibility - always verify contrast ratios. Use darker text colors, not pastel text. Ensure interactive elements have sufficient visual weight to be identifiable. Add subtle borders (border-gray-200) where pastel backgrounds meet. Consider users with low vision who may struggle with low-contrast pastel interfaces."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

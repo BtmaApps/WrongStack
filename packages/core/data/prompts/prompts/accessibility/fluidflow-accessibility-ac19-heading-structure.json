@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac19-heading-structure",
+  "slug": "fluidflow-accessibility-ac19-heading-structure",
+  "title": "Heading Structure",
+  "description": "FluidFlow · Heading Structure",
+  "content": "Audit and fix heading hierarchy for accessibility. Rules: single h1 per page (main title), headings in logical order (h1 → h2 → h3), don't skip levels (no h1 → h3), use for structure not styling. Page structure: h1 for page title, h2 for major sections, h3 for subsections, etc. Cards/components: appropriate heading level based on context (h2 in main, h3 in sidebar). Styling: use text utilities for size (text-2xl, text-xl) independent of heading level. Navigation: consider headings for nav sections. Test: create outline of headings, should read like table of contents. Screen readers use headings for navigation shortcuts.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a0f0dc06887274bc570df030caa091bc323a7bb7f70d71bda0d938218433a4e0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Fix heading hierarchy to use proper h1-h6 levels.",
+    "detailed": "Audit and fix heading hierarchy for accessibility. Rules: single h1 per page (main title), headings in logical order (h1 → h2 → h3), don't skip levels (no h1 → h3), use for structure not styling. Page structure: h1 for page title, h2 for major sections, h3 for subsections, etc. Cards/components: appropriate heading level based on context (h2 in main, h3 in sidebar). Styling: use text utilities for size (text-2xl, text-xl) independent of heading level. Navigation: consider headings for nav sections. Test: create outline of headings, should read like table of contents. Screen readers use headings for navigation shortcuts.",
+    "advanced": "Audit and fix heading hierarchy for accessible document structure and navigation. Core rules: exactly one h1 per page (main page title), descending order without skips (h1 → h2 → h3, never h1 → h3), headings represent document outline. Page structure: h1 for page title (often in header or hero), h2 for major sections (sidebar nav, main content sections, footer sections), h3 for subsections, h4-h6 for deeper nesting. Context-dependent levels: in a sidebar widget, if main content uses h2, sidebar can also use h2 (parallel sections); within a card inside main, use h3 if card is in h2 section. Styling independence: use heading element for semantics, CSS for appearance - a h3 can be styled larger than h2 if design requires, use text-3xl font-bold on h3 without changing semantic level. Component design: accept heading level as prop (as=\"h2\") for reusable components to adapt to context. Hidden headings: use sr-only class for headings that help screen reader navigation but aren't visible (\"Navigation\", \"Main content\"). Navigation: major nav regions benefit from headings for orientation. Landmarks vs headings: landmarks (nav, main, aside) provide region navigation, headings provide content structure - both valuable. Testing: browser extensions show heading outline, should read like table of contents; screen reader users navigate by heading (H key in VoiceOver), verify all content reachable. Avoid: using bold text instead of headings, empty headings, headings for styling only without structural meaning."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

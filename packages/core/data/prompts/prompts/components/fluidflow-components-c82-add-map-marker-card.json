@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c82-add-map-marker-card",
+  "slug": "fluidflow-components-c82-add-map-marker-card",
+  "title": "Add Map Marker Card",
+  "description": "FluidFlow · Add Map Marker Card",
+  "content": "Create location card. Container: bg-white rounded-xl shadow overflow-hidden. Map: aspect-video, embedded Google/Mapbox map or static image. Content: p-6. Location name: text-xl font-bold. Address: text-gray-600, formatted with line breaks. Contact: phone and email links. Hours: today hours with \"See all hours\" expandable. Directions button: flex items-center gap-2, opens in maps app.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c82"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "130f5340e4cc09260fba9f7bb07b7bfff128c53209f4f0df3bd00624a5d93e55",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create location card with map, address, and directions.",
+    "detailed": "Create location card. Container: bg-white rounded-xl shadow overflow-hidden. Map: aspect-video, embedded Google/Mapbox map or static image. Content: p-6. Location name: text-xl font-bold. Address: text-gray-600, formatted with line breaks. Contact: phone and email links. Hours: today hours with \"See all hours\" expandable. Directions button: flex items-center gap-2, opens in maps app.",
+    "advanced": "Create full location component. Map options: interactive map (Mapbox, Google Maps, Leaflet), static map image for performance, lazy load map on visibility. Map features: zoom controls, marker with custom icon, popup on marker click, satellite toggle. Multiple locations: list selector that updates map, or map with multiple pins. Marker clustering: for many locations. Geolocation: \"Find nearest location\" using browser geolocation. Location card: name, address (formatted), phone (click to call), email (click to email), website link. Business hours: today hours prominent, expandable full schedule, indicate currently open/closed, special holiday hours. Features/amenities: icons for parking, wheelchair access, WiFi, etc. Photos: small gallery of location photos. Directions: \"Get Directions\" opens native maps with location, distance from user if available. Share: copy address, share link. Reviews: rating and review count, link to reviews. Contact form: embedded form specific to location. Nearby: show nearby locations. Store locator pattern: search input, results list, map. Accessibility: map not essential (provide text alternative), all info available without map."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

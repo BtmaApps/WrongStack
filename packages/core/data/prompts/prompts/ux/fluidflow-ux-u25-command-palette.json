@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u25-command-palette",
+  "slug": "fluidflow-ux-u25-command-palette",
+  "title": "Command Palette",
+  "description": "FluidFlow · Command Palette",
+  "content": "Implement command palette (CMD+K / Ctrl+K) for power users. Create modal with prominent search input. Search across pages, actions, settings, and content. Show categorized results with icons. Navigate with arrow keys, select with Enter. Display recent commands at top when empty. Include keyboard shortcut hints in results. Add fuzzy search for typo tolerance. Support parameterized commands. Close on selection or Escape. Store frequently used commands.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5ce75cd640e45df910cfefe28c3b79e9288bbadd7855dc70c89b48ffd15632df",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add CMD+K command palette for quick navigation and actions.",
+    "detailed": "Implement command palette (CMD+K / Ctrl+K) for power users. Create modal with prominent search input. Search across pages, actions, settings, and content. Show categorized results with icons. Navigate with arrow keys, select with Enter. Display recent commands at top when empty. Include keyboard shortcut hints in results. Add fuzzy search for typo tolerance. Support parameterized commands. Close on selection or Escape. Store frequently used commands.",
+    "advanced": "Implement command palette (CMD+K) for power user efficiency and discoverability. Trigger: Cmd/Ctrl+K opens, prevent browser default, global listener with useEffect. Modal: centered, prominent search input, auto-focus, placeholder \"Type a command or search...\". Search scope: pages/navigation, actions (create, delete, export), settings, recent items, content search. Categorized results: group by type with headers (Navigation, Actions, Settings), icons for each category. Keyboard navigation: arrow up/down moves selection, Enter executes, Tab for autocomplete, Escape closes. Empty state: show recent commands (last 5-10), suggested actions, help text. Results display: icon + title + description + keyboard shortcut (right-aligned), max 10 visible with scroll. Fuzzy search: typo tolerance using libraries like fuse.js, highlight matched characters. Parameterized commands: \"go to project [name]\", \"create [type]\" - show parameter input inline. Ranking: weight by recency, frequency, and match quality. Nested menus: some items expand to sub-options (e.g., \"Create...\" shows types). Loading state: spinner for async searches (content search). Store frequently used: track command usage for personalized ranking. ACCESSIBILITY: role=\"combobox\", aria-expanded, aria-activedescendant, live announce selection. Implementation: consider libraries like cmdk or kbar. Features: plugins for extensibility, theming support."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so1-user-profile",
+  "slug": "fluidflow-social-so1-user-profile",
+  "title": "User Profile",
+  "description": "FluidFlow · User Profile",
+  "content": "Build comprehensive user profile page. Cover image: full-width banner (h-48 md:h-64) with edit button for own profile. Avatar: large (w-32 h-32), rounded-full, border-4 border-white, positioned overlapping cover image. Profile info: display name (text-2xl font-bold), username (@handle), bio paragraph, location with MapPin icon, link with Link icon. Stats row: posts, followers, following counts - clickable. Action buttons: \"Edit Profile\" for own profile, \"Follow\"/\"Message\" for others. Tabs below: Posts, Replies, Media, Likes.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "07f7cc88b7b6a9969726298824add8809857b80ac3db82848aae62c72932f6f8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create user profile page with avatar, bio, stats, and posts grid.",
+    "detailed": "Build comprehensive user profile page. Cover image: full-width banner (h-48 md:h-64) with edit button for own profile. Avatar: large (w-32 h-32), rounded-full, border-4 border-white, positioned overlapping cover image. Profile info: display name (text-2xl font-bold), username (@handle), bio paragraph, location with MapPin icon, link with Link icon. Stats row: posts, followers, following counts - clickable. Action buttons: \"Edit Profile\" for own profile, \"Follow\"/\"Message\" for others. Tabs below: Posts, Replies, Media, Likes.",
+    "advanced": "Build comprehensive user profile page with full social features. Cover image: full-width banner (h-48 md:h-64 object-cover) with edit button overlay (absolute bottom-4 right-4, Camera icon) for own profile, gradient overlay at bottom for text readability. Avatar: large (w-32 h-32 md:w-40 md:h-40), rounded-full, border-4 border-white shadow-lg, positioned overlapping cover image bottom using negative margin (-mt-16 md:-mt-20), click to view full size. Profile info section: display name (text-2xl md:text-3xl font-bold), username (@handle in text-gray-500), verified badge (blue checkmark) if applicable, bio/description paragraph (whitespace-pre-wrap for line breaks, linkify URLs and @mentions), location with MapPin icon, website link with Link icon (truncated with hover full URL), join date with Calendar icon (\"Joined January 2020\"). Stats row: flex gap-6, posts count, followers count, following count - each clickable to open modal/page with list, numbers formatted (1.2K). Action buttons: \"Edit Profile\" button for own profile opens edit modal, \"Follow\" primary button and \"Message\" secondary button for other profiles, dropdown menu (MoreHorizontal) with Share Profile, Block, Report options. Tabs below profile: Posts (default), Replies, Media (photos/videos grid), Likes. Content area: grid or list of user content based on selected tab, infinite scroll loading. Edit modal: form to update all profile fields including cover/avatar image upload with crop tool, character limits on bio (160 chars), preview before save. Loading: skeleton for profile while fetching. Error handling: show error state if profile not found or private. Responsive: stack layout on mobile, adjust avatar and cover sizes. Accessibility: proper heading hierarchy, alt text on images."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

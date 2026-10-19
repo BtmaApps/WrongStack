@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo26-tag-input",
+  "slug": "fluidflow-forms-fo26-tag-input",
+  "title": "Tag Input",
+  "description": "FluidFlow · Tag Input",
+  "content": "Build tag input component. Display: show tags as removable chips. Add: type and press Enter/comma to add tag. Remove: click X on chip to remove. Suggestions: optional autocomplete suggestions. Duplicates: prevent duplicate tags. Validation: validate tag format. Max tags: limit number of tags. Styling: pills with consistent colors.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bbe2dc041b860cf03ea62865baffada0a08383c0410957817ede44c816fcb1bb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create input for adding multiple tags with chips.",
+    "detailed": "Build tag input component. Display: show tags as removable chips. Add: type and press Enter/comma to add tag. Remove: click X on chip to remove. Suggestions: optional autocomplete suggestions. Duplicates: prevent duplicate tags. Validation: validate tag format. Max tags: limit number of tags. Styling: pills with consistent colors.",
+    "advanced": "Build comprehensive tag input component with suggestions. Container: flex flex-wrap with gap-2, styled like input field (border, padding, focus ring on container when input focused). Tag chips: inline-flex items with text and X remove button, bg-gray-100 text-gray-700 rounded-full px-3 py-1, hover on X for delete hint. Input: grows to fill remaining space, no visible border (minimal styling), placeholder \"Add tag...\". Add triggers: Enter key, comma, Tab, or paste (split by comma/newline). Remove: click X button, or backspace when input empty deletes last tag. Suggestions dropdown: show below input on focus or while typing, filter suggestions as user types, show recent/popular when empty. Suggestion selection: click or Enter to add, arrow keys to navigate. Duplicate prevention: check case-insensitive, show brief error if duplicate (\"Tag already exists\"), or just ignore. Validation: max character length per tag, allowed characters (alphanumeric, hyphen), transform (lowercase, trim spaces). Max tags: limit count (e.g., 10), hide input when limit reached, show \"Maximum tags reached\". Free-form vs preset: allow custom tags, or only from preset list. Tag colors: optional per-tag colors based on category or type. Drag reorder: optionally allow dragging to reorder tags. Edit tag: double-click tag to edit in place. Paste handling: parse comma-separated values into multiple tags. Keyboard: Tab moves to next form field, not add tag (or configurable). Clear all: optional button to remove all tags. Accessibility: announce tag added/removed, proper labeling."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

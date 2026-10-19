@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co16-stat-cards",
+  "slug": "fluidflow-content-co16-stat-cards",
+  "title": "Stat Cards",
+  "description": "FluidFlow · Stat Cards",
+  "content": "Build stat/metric display cards. Structure: main value, label, optional change indicator. Number formatting: large numbers abbreviated (1.2M), currency, percentages. Change indicator: up/down arrow with positive (green) or negative (red) styling. Comparison: \"vs last period\" or percentage change. Icon: category icon for visual context. Mini chart: optional sparkline trend. Grid layout: responsive grid of stat cards. Loading: skeleton state while fetching. Click action: optionally navigate to detailed view. Emphasis: larger size for primary metrics.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5fbee62894caf2560a898f42762515f35d05c70e78520671b859782407f2a93c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Display key metrics in formatted stat cards.",
+    "detailed": "Build stat/metric display cards. Structure: main value, label, optional change indicator. Number formatting: large numbers abbreviated (1.2M), currency, percentages. Change indicator: up/down arrow with positive (green) or negative (red) styling. Comparison: \"vs last period\" or percentage change. Icon: category icon for visual context. Mini chart: optional sparkline trend. Grid layout: responsive grid of stat cards. Loading: skeleton state while fetching. Click action: optionally navigate to detailed view. Emphasis: larger size for primary metrics.",
+    "advanced": "Build comprehensive stat/metric display cards for dashboards. Card structure: icon (optional, top-left), main value (large, prominent), label/title (smaller, descriptive), change indicator (with comparison context). Value formatting: use Intl.NumberFormat, abbreviate thousands/millions (formatCompact), currency symbols, percentage formatting, decimal precision based on value size. Change indicator: calculate percentage change from previous period, TrendingUp (green-600) for positive, TrendingDown (red-600) for negative, Minus (gray-400) for no change, display as \"+12.5%\" or \"-8.3%\". Comparison context: \"vs last week\", \"vs previous month\", \"YoY\" - smaller text below change. Icon: optional category icon (DollarSign for revenue, Users for user count, etc.) with colored background circle. Trend visualization: optional small sparkline (tiny line chart) showing recent trend, or bar chart for comparison. Layout: grid of cards, responsive (grid-cols-1 sm:grid-cols-2 lg:grid-cols-4). Size variants: compact (single line), standard, large (hero metric). Loading state: skeleton matching card layout with pulse animation. Interactivity: hover effect if clickable, click navigates to detailed report. Comparison modes: absolute change, percentage change, vs target. Tooltip: additional context on hover (exact values, date range). Color themes: neutral for standard, colored for specific metrics (revenue gold, users blue, etc.)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

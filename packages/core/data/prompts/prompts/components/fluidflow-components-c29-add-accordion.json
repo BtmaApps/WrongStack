@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c29-add-accordion",
+  "slug": "fluidflow-components-c29-add-accordion",
+  "title": "Add Accordion",
+  "description": "FluidFlow · Add Accordion",
+  "content": "Create accordion component with collapsible sections. Container: divide-y divide-gray-200 rounded-lg border. Item: border-b last:border-b-0. Header button: w-full flex justify-between items-center p-4 text-left hover:bg-gray-50 transition-colors. Title: font-medium text-gray-900. Icon: ChevronDown rotating 180deg when open (rotate-180 transition-transform). Content panel: overflow-hidden, animate height from 0 to auto. Content padding: p-4 pt-0. Allow single or multiple open panels. Use data-state=\"open\"/\"closed\" for styling. Smooth height animation using grid-rows trick or max-height.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3d3249330362744973283fe2a51cef445554cafb4aa3671db77501e13cd20487",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create expandable accordion sections with smooth animations.",
+    "detailed": "Create accordion component with collapsible sections. Container: divide-y divide-gray-200 rounded-lg border. Item: border-b last:border-b-0. Header button: w-full flex justify-between items-center p-4 text-left hover:bg-gray-50 transition-colors. Title: font-medium text-gray-900. Icon: ChevronDown rotating 180deg when open (rotate-180 transition-transform). Content panel: overflow-hidden, animate height from 0 to auto. Content padding: p-4 pt-0. Allow single or multiple open panels. Use data-state=\"open\"/\"closed\" for styling. Smooth height animation using grid-rows trick or max-height.",
+    "advanced": "Create fully accessible accordion component following WAI-ARIA pattern. Structure: div container, each item has button header and div panel. Header button: id, aria-expanded, aria-controls pointing to panel id. Panel: id, aria-labelledby pointing to header, role=\"region\". Styling - container: divide-y divide-gray-200 border rounded-lg overflow-hidden. Header: w-full flex justify-between items-center px-4 py-4 text-left font-medium text-gray-900 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500. Icon: ChevronDown w-5 h-5 text-gray-500 transition-transform duration-200, rotate-180 when expanded. Panel animation: CSS grid trick - grid grid-rows-[0fr] when closed, grid-rows-[1fr] when open, with transition-[grid-template-rows] duration-200. Inner content wrapper: overflow-hidden. Content: p-4 pt-0 text-gray-600. Modes: single (only one open at a time, like radio) or multiple (independent toggles). Keyboard: Enter/Space toggle, Arrow keys navigate between headers. State management: controlled (value, onChange) or uncontrolled (defaultValue). Animation: supports prefers-reduced-motion by disabling transitions. Props: type=\"single\"|\"multiple\", collapsible (allow closing all in single mode), defaultValue, value, onValueChange. Item props: value (unique identifier), disabled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c44-add-search-input",
+  "slug": "fluidflow-components-c44-add-search-input",
+  "title": "Add Search Input",
+  "description": "FluidFlow · Add Search Input",
+  "content": "Create search input component with accessories. Container: relative flex items-center. Search icon: absolute left-3 w-5 h-5 text-gray-400 pointer-events-none. Input: w-full pl-10 pr-10 h-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500. Placeholder: \"Search...\" in gray. Clear button: absolute right-3, X icon, visible only when input has value. Keyboard: Enter to submit, Escape to clear. Loading state: spinner replacing clear button while searching. Debounced onChange for performance.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c44"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f7a60ff9f38e6f87b2651d651564fde9070590db38318d222222c76f78c51ed6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a search input with icon and clear button.",
+    "detailed": "Create search input component with accessories. Container: relative flex items-center. Search icon: absolute left-3 w-5 h-5 text-gray-400 pointer-events-none. Input: w-full pl-10 pr-10 h-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500. Placeholder: \"Search...\" in gray. Clear button: absolute right-3, X icon, visible only when input has value. Keyboard: Enter to submit, Escape to clear. Loading state: spinner replacing clear button while searching. Debounced onChange for performance.",
+    "advanced": "Create feature-rich search input with autocomplete support. Container: relative w-full max-w-md. Input wrapper: relative flex items-center. Search icon: absolute left-3 w-5 h-5 text-gray-400 pointer-events-none z-10. Input: w-full h-10 pl-10 pr-10 bg-white border border-gray-300 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow. Right accessories: absolute right-2 flex items-center gap-1. Clear button: p-1 rounded hover:bg-gray-100, X icon w-4 h-4, opacity-0 when empty, tabIndex={-1} to skip in tab order. Loading spinner: w-4 h-4 animate-spin when loading. Keyboard shortcut hint: hidden sm:flex text-xs text-gray-400 border rounded px-1.5 \"⌘K\". Dropdown suggestions: absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-[300px] overflow-auto. Suggestion item: px-4 py-2 hover:bg-gray-100 cursor-pointer, highlight matching text with font-medium or bg-yellow-100. Keyboard navigation: arrow up/down through suggestions, Enter to select, Escape to close. Recent searches: section showing last 5 searches with clock icon. Debouncing: 300ms delay before triggering search API. Accessibility: role=\"combobox\", aria-expanded, aria-controls, aria-activedescendant for suggestions. Props: value, onChange, onSearch, placeholder, suggestions, loading, showRecent, debounceMs, shortcutKey."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

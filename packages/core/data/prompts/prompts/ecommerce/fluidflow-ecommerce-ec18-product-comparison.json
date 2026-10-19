@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec18-product-comparison",
+  "slug": "fluidflow-ecommerce-ec18-product-comparison",
+  "title": "Product Comparison",
+  "description": "FluidFlow · Product Comparison",
+  "content": "Build product comparison feature. Comparison bar: sticky bottom bar showing selected products (2-4 max) with mini images, remove X, \"Compare Now\" button. Comparison page/modal: products as columns, specs as rows. Header row: product images, names, prices, \"Add to Cart\" buttons. Spec rows: grouped by category (Display, Performance, Battery, etc.), checkmarks for boolean features, values for specs. Highlight differences: option to show only differences. Remove product: X in column header.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7e907e5045de5169a2ba160c34174e07ec9542965050000cec430abcd1050a46",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product comparison table showing specs side by side.",
+    "detailed": "Build product comparison feature. Comparison bar: sticky bottom bar showing selected products (2-4 max) with mini images, remove X, \"Compare Now\" button. Comparison page/modal: products as columns, specs as rows. Header row: product images, names, prices, \"Add to Cart\" buttons. Spec rows: grouped by category (Display, Performance, Battery, etc.), checkmarks for boolean features, values for specs. Highlight differences: option to show only differences. Remove product: X in column header.",
+    "advanced": "Build comprehensive product comparison feature with selection flow and comparison view. Comparison selection: \"Compare\" checkbox or button on product cards/pages, badge counter showing selected count (max 4), sticky comparison bar at bottom when items selected. Comparison bar: fixed bottom-0 inset-x-0 bg-white shadow-lg border-t, transform translate-y-full when empty, slide up animation when first item added. Bar content: flex items-center justify-between p-4, left side shows selected product thumbnails (w-16 h-16) with X remove button overlay, product name truncated, right side shows count \"3 of 4 selected\" and \"Compare Now\" primary button, \"Clear All\" text button. Comparison page/modal: full-page or large modal (max-w-6xl). Layout: responsive table with products as columns, specs as rows, first column sticky on horizontal scroll for row labels. Column header: product image (aspect-square w-32), product name (font-semibold line-clamp-2), price (text-xl font-bold), rating stars, \"Add to Cart\" button, remove from comparison X. Spec rows: alternate row colors (even:bg-gray-50), grouped by category with category headers (Display, Performance, Camera, Battery, Connectivity). Category headers: bg-gray-100 font-semibold py-2 spanning all columns. Spec cells: centered text, boolean values show Check (text-green-500) or X (text-gray-300), numeric values with units, text values for strings. Highlight best: optionally bold or highlight the best value in each row (e.g., highest battery, lowest price). Differences only toggle: checkbox/switch to hide rows where all values are same, show only differentiating specs. Empty column: if less than max, show \"Add Product\" card with search/browse to add more. Summary row: quick verdict or score if algorithmic comparison available. Print/Share: \"Print Comparison\" and \"Share\" buttons generating comparison URL. Mobile: horizontal scroll table or vertical card-based comparison (one product per card, swipeable). Clear comparison: \"Clear All\" resets selection. Persist selection: store in localStorage so comparison survives page navigation. Product detail page integration: \"Add to Compare\" button shows current comparison state. Accessibility: proper table semantics, row/column headers, comparison status announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u26-skeleton-loading",
+  "slug": "fluidflow-ux-u26-skeleton-loading",
+  "title": "Skeleton Loading",
+  "description": "FluidFlow · Skeleton Loading",
+  "content": "Implement skeleton screens for perceived performance. Create placeholder shapes matching actual content layout. Use subtle pulse animation (animate-pulse). Match skeleton dimensions to real content. Show skeletons immediately, replace with content when ready. Create reusable skeleton components (SkeletonText, SkeletonImage). Vary placeholder widths for natural appearance. Handle multiple loading states (initial vs updating). Consider reduced motion preference.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5102e183a49f6b612ad6a2dc158af5dc97f784f31a0a226678b49d95d6f61de6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show content placeholder shapes while loading data.",
+    "detailed": "Implement skeleton screens for perceived performance. Create placeholder shapes matching actual content layout. Use subtle pulse animation (animate-pulse). Match skeleton dimensions to real content. Show skeletons immediately, replace with content when ready. Create reusable skeleton components (SkeletonText, SkeletonImage). Vary placeholder widths for natural appearance. Handle multiple loading states (initial vs updating). Consider reduced motion preference.",
+    "advanced": "Implement skeleton screens for perceived performance improvement. Design principle: skeleton should preview content structure, reducing perceived loading time by 10-20%. Create placeholder shapes: rounded rectangles for text (varying widths for natural look), squares/circles for images, match actual dimensions. Animation: subtle pulse (animate-pulse bg-gray-200), or shimmer sweep (gradient animation left to right). Dimension matching: skeleton heights must match content to prevent layout shift (CLS). Immediate display: show skeleton instantly on mount, transition to content when loaded. Reusable components: SkeletonText (lines prop for multiple lines), SkeletonImage (aspect ratio prop), SkeletonCard (composed skeleton). Variation: randomize text line widths (80%, 60%, 90%) for organic feel, last line shorter. Multiple states: initial load (full skeleton), updating (overlay skeleton or spinner on existing content), error (error state, not skeleton). Compose skeletons: page-level skeleton composing multiple component skeletons. Implementation: Skeleton wrapper component that shows skeleton or children based on loading prop. Reduced motion: for prefers-reduced-motion, use static gray instead of animation. Accessibility: use aria-busy=\"true\" on loading containers, aria-hidden on skeleton elements. Timeout: if loading exceeds 10s, offer retry/cancel instead of endless skeleton."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

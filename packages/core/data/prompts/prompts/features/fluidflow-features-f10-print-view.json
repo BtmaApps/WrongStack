@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f10-print-view",
+  "slug": "fluidflow-features-f10-print-view",
+  "title": "Print View",
+  "description": "FluidFlow · Print View",
+  "content": "Create print-optimized view and styles. Add @media print CSS rules. Hide non-essential elements: navigation, sidebar, footer, buttons (display: none in print). Optimize layout: single column, full width. Typography: black text on white background. Tables: add borders for clarity. Print button: window.print() on click. Page breaks: use break-inside: avoid for tables.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d6045a0c4a9c988a665e7c6541ef58d05bf5db0db52f8ab6c35f17c3116d29e3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add print button that opens browser print dialog with optimized styles.",
+    "detailed": "Create print-optimized view and styles. Add @media print CSS rules. Hide non-essential elements: navigation, sidebar, footer, buttons (display: none in print). Optimize layout: single column, full width. Typography: black text on white background. Tables: add borders for clarity. Print button: window.print() on click. Page breaks: use break-inside: avoid for tables.",
+    "advanced": "Create print-optimized view and comprehensive print styles. Add @media print CSS rules in global styles or Tailwind plugin. Hide non-essential elements: navigation, sidebar, footer, interactive buttons, ads, chat widgets using print:hidden utility or display: none in @media print. Show print-only elements: content hidden on screen using screen:hidden print:block, like full URLs or additional context. Optimize layout: single column (print:w-full), no fixed/sticky positioning, remove max-width constraints. Typography: ensure black text on white background (print:text-black print:bg-white), reasonable font sizes (12-14pt body), serif fonts optional for readability. Images: set max-width: 100%, use print:hidden for decorative images, ensure important images have high resolution. Tables: add borders for clarity (print:border), handle page breaks (break-inside: avoid on tbody tr). Links: optionally show URL after link text using print:after:content-[\" (\" attr(href) \")\"] or [href]::after. Page breaks: use break-before-page, break-after-page, break-inside-avoid for content grouping. Headers/footers: use @page rules for margins, page numbers (@page { @bottom-center { content: counter(page); } }). Print button: window.print() onClick, hide button itself in print. Print preview: consider showing preview modal first with react-to-print library. Save as PDF: browser native from print dialog. Include page title and date in header. Remove shadows and unnecessary borders. Test in multiple browsers and actual printers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

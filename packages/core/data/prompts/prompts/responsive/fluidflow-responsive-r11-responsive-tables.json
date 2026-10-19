@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r11-responsive-tables",
+  "slug": "fluidflow-responsive-r11-responsive-tables",
+  "title": "Responsive Tables",
+  "description": "FluidFlow · Responsive Tables",
+  "content": "Optimize tables for mobile viewing. Option 1: Horizontal scroll with overflow-x-auto wrapper, sticky first column. Option 2: Transform to card layout on mobile - each row becomes a card with label-value pairs stacked vertically. Add data-label attributes for mobile card labels. Use min-w-full to prevent table shrinking. Hide less important columns on mobile with hidden md:table-cell. Add visual scroll indicators for horizontal scroll tables.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b1cf8887fd082069d6fef4715386e3d301a30fd67b1696f89dcb9cbb339d06f0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Transform data tables for mobile with horizontal scroll or card layouts.",
+    "detailed": "Optimize tables for mobile viewing. Option 1: Horizontal scroll with overflow-x-auto wrapper, sticky first column. Option 2: Transform to card layout on mobile - each row becomes a card with label-value pairs stacked vertically. Add data-label attributes for mobile card labels. Use min-w-full to prevent table shrinking. Hide less important columns on mobile with hidden md:table-cell. Add visual scroll indicators for horizontal scroll tables.",
+    "advanced": "Optimize tables for mobile with multiple strategies based on data type. Horizontal scroll: overflow-x-auto wrapper, min-w-[600px] on table, sticky first column (sticky left-0 bg-white z-10), shadow on scroll indicator. Card transformation: use CSS grid or flexbox at mobile breakpoint, display:block on all table elements, add ::before pseudo-element with attr(data-label) for field names. Priority columns: mark with data-priority, hide lower priority with hidden md:table-cell. Responsive actions: move row actions to dropdown menu on mobile. Pagination: show fewer rows per page on mobile. Sorting: ensure sort controls are touch-friendly. Search/filter: full-width on mobile, collapsible filter panel. Empty state: responsive empty message. Loading: skeleton matching current layout. Export: offer data export as alternative to viewing large tables. Accessibility: maintain proper table semantics even when restyled, ensure data relationships are clear."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

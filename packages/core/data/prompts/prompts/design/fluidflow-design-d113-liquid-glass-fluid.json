@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d113-liquid-glass-fluid",
+  "slug": "fluidflow-design-d113-liquid-glass-fluid",
+  "title": "Liquid Glass/Fluid",
+  "description": "FluidFlow · Liquid Glass/Fluid",
+  "content": "Apply liquid glass aesthetic with fluid organic feel. Transparent glass-like surfaces with refraction effects. Blob shapes with smooth curves and gradients. Layered transparency with depth perception. Soft color bleeding between elements. Floating bubbles and droplet accents. Smooth morphing animations between states. Frosted overlay panels. Iridescent color shifts on movement. Wavy borders and organic containers.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d113"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6a6b3700fd6a3bc225d2fff53281d1fb92f1bf7e56673e7a67cd90d06b612d9b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create liquid glass effect with fluid shapes, transparency layers, and organic flowing forms.",
+    "detailed": "Apply liquid glass aesthetic with fluid organic feel. Transparent glass-like surfaces with refraction effects. Blob shapes with smooth curves and gradients. Layered transparency with depth perception. Soft color bleeding between elements. Floating bubbles and droplet accents. Smooth morphing animations between states. Frosted overlay panels. Iridescent color shifts on movement. Wavy borders and organic containers.",
+    "advanced": "Apply liquid glass aesthetic with advanced fluid dynamics feel. Glass panels: backdrop-blur-xl with bg-white/10, subtle border border-white/20. Blob shapes: border-radius with 8-point curves (40% 60% 70% 30% / 40% 50% 60% 50%), animate morphing. Layered depth: multiple overlapping translucent layers, z-index stacking. Refraction: pseudo-element with slight offset and color shift simulating light bending. Color bleed: gradient backgrounds that transition smoothly, mix-blend-mode for overlap effects. Bubble accents: small circles with radial gradient (white center fading out), float animation. Morphing: CSS keyframes transitioning border-radius values smoothly. Frosted sections: backdrop-filter: blur(20px) saturate(180%). Iridescence: background with conic-gradient, animate hue-rotate on hover/scroll. Wave borders: SVG path for wavy edges, or clip-path with bezier curves. Droplet shapes: border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%. Shadows: colored shadows (box-shadow with rgba) matching element colors. Hover: scale slightly, increase blur, shift colors."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

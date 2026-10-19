@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da32-dashboard-customization",
+  "slug": "fluidflow-dashboard-da32-dashboard-customization",
+  "title": "Dashboard Customization",
+  "description": "FluidFlow · Dashboard Customization",
+  "content": "Build customizable dashboard. Widget library: available widgets to add. Drag and drop: arrange widgets on grid. Resize: resize widget dimensions. Remove: delete unwanted widgets. Settings: per-widget configuration. Layouts: save and switch layouts. Defaults: reset to default layout. Sharing: share custom layouts with others.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3e9a962355847fd473380e3e59c49fcda8bb874ab901652f96fab9e115e541d6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Let users customize their dashboard layout.",
+    "detailed": "Build customizable dashboard. Widget library: available widgets to add. Drag and drop: arrange widgets on grid. Resize: resize widget dimensions. Remove: delete unwanted widgets. Settings: per-widget configuration. Layouts: save and switch layouts. Defaults: reset to default layout. Sharing: share custom layouts with others.",
+    "advanced": "Build comprehensive dashboard customization system. Widget library: panel or modal showing available widgets (charts, stats, lists, etc.), search/filter widgets, categorized by type. Widget catalog: each widget has name, description, preview, size requirements. Drag and drop: drag from library to dashboard grid, visual drop zones, snap to grid. Grid system: responsive grid (12 columns typically), widgets occupy grid cells (2x2, 4x2, etc.), minimum and maximum sizes per widget type. Resize handles: corner and edge handles to resize widgets, respect min/max constraints, show ghost during resize. Widget reordering: drag existing widgets to new positions, other widgets reflow, smooth animations. Remove widget: X button on hover, or drag off dashboard, confirmation for widgets with configuration. Widget configuration: gear icon opens settings panel, widget-specific options (data source, chart type, filters), live preview of changes. Layout save: save current layout as named configuration, auto-save on changes (debounced), manual save option. Multiple layouts: create multiple dashboard layouts, quick switch between layouts, layout for different contexts (overview, detailed, mobile). Default layout: system default as starting point, reset to default option, admin-set defaults per role. Sharing: share custom layout with team or public, import shared layouts, clone and customize others layouts. Per-user: each user has own layout preferences, stored in database per user. Responsive: layouts adapt to screen size, or separate mobile layout. Lock layout: option to lock to prevent accidental changes. Template layouts: pre-designed layouts as starting points. Export/import: export layout config as JSON, import on different account."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

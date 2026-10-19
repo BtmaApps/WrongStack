@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d79-circuit-board-pcb",
+  "slug": "fluidflow-design-d79-circuit-board-pcb",
+  "title": "Circuit Board/PCB",
+  "description": "FluidFlow · Circuit Board/PCB",
+  "content": "Apply circuit board/PCB aesthetic with electronics hardware feel. PCB green (#006400) or blue base color. Copper trace patterns connecting points. Component footprints and solder pads. Through-hole and SMD component representations. Silkscreen white text labels. Via holes (small circles). IC chip rectangles with pins. Include circuit paths as decorative elements. Hardware engineering atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d79"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "24392427eeeeca3b553d80d02d4eb8461366fd0c593ff16e1b7565af1c5d6f03",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create electronic circuit board aesthetic with traces, components, and PCB green color scheme.",
+    "detailed": "Apply circuit board/PCB aesthetic with electronics hardware feel. PCB green (#006400) or blue base color. Copper trace patterns connecting points. Component footprints and solder pads. Through-hole and SMD component representations. Silkscreen white text labels. Via holes (small circles). IC chip rectangles with pins. Include circuit paths as decorative elements. Hardware engineering atmosphere.",
+    "advanced": "Apply circuit board/PCB aesthetic with authentic electronics design feel. Base colors: classic PCB green (#0a5c36, solder mask), PCB blue (#1a365d), PCB red (#7c1d1d), or matte black for modern boards. Copper traces: golden-copper color (#b87333, #d97706) lines connecting components, consistent width, 45/90 degree angles (no arbitrary curves). Trace patterns: parallel traces, bus lines, ground planes (copper fill areas with thermal relief). Solder pads: circular or rectangular copper areas, gold finish (#ffd700) for ENIG. Through-holes: circles with copper ring and dark center hole. Via holes: small filled circles connecting layers, sometimes tented (covered). Components: resistors (rectangle with bands), capacitors (cylinders or rectangles), IC chips (rectangle with pins on sides, dot for pin 1), connectors (multi-pin headers). Silkscreen: white (#ffffff) text labels, component outlines, version numbers, logos - slightly rough printing texture. Solder mask: slight texture, soldermask-defined pads. Board edge: milled edge profile, mounting holes in corners. Reference designators: R1, C1, U1 labels near components. Test points: labeled TP1, TP2 circles. Layers: suggestion of multi-layer board (via stitching). Fiducials: circular or cross-shaped alignment marks. Interactive: trace highlighting, component hover info. Implementation: SVG for circuit patterns, careful line work for traces. Accessibility: ensure any text is readable against busy PCB pattern."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

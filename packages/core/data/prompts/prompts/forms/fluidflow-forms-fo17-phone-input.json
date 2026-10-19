@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo17-phone-input",
+  "slug": "fluidflow-forms-fo17-phone-input",
+  "title": "Phone Input",
+  "description": "FluidFlow · Phone Input",
+  "content": "Build phone input with international support. Country selector: dropdown with flag and dial code. Auto-format: format number based on country pattern. Validation: validate phone format per country. Default country: detect from IP or browser locale. Search: search countries in dropdown. Display: show formatted number as typed. Mobile: numeric keyboard with inputmode.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fa69fc7ac0f1ee3fc9f6c25d250076bebd15b9409ee8933b2100cbe96d7d171a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create phone number input with country code selector and formatting.",
+    "detailed": "Build phone input with international support. Country selector: dropdown with flag and dial code. Auto-format: format number based on country pattern. Validation: validate phone format per country. Default country: detect from IP or browser locale. Search: search countries in dropdown. Display: show formatted number as typed. Mobile: numeric keyboard with inputmode.",
+    "advanced": "Build comprehensive international phone input. Country selector: dropdown or modal with flag emoji/icon, country name, and dial code (+1, +44, etc.), search/filter functionality, grouped by region optionally. Library: use libphonenumber-js for parsing, formatting, and validation. Auto-formatting: format as user types according to country pattern ((555) 123-4567 for US, +44 20 7123 4567 for UK). Validation: validate number format per country rules, check is-possible and is-valid, show specific error (\"Number too short\", \"Invalid format\"). Default country: detect from browser locale (navigator.language), IP geolocation API, or explicit default prop. Input attributes: inputmode=\"tel\" for numeric keyboard, type=\"tel\", autocomplete=\"tel\". Display format: national format in input, international format when needed (+1 555 123 4567). Example number: show placeholder with example format for selected country. Country change: revalidate and reformat number on country change. Single input option: parse country from +XX prefix automatically. Flag icons: use country flag emoji or flag-icons library. Popular countries: show recently used or popular countries at top of list. Phone verification: optional \"Send code\" button for OTP verification flow. Clear formatting: store E.164 format (+15551234567) for backend, display formatted. Validation timing: validate on blur, show error after interaction. Mobile UX: bottom sheet for country selector, adequate touch targets."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

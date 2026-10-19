@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a13-pulse-glow-effects",
+  "slug": "fluidflow-animation-a13-pulse-glow-effects",
+  "title": "Pulse/Glow Effects",
+  "description": "FluidFlow · Pulse/Glow Effects",
+  "content": "Add attention-grabbing pulse and glow animations. Pulse effect: subtle scale oscillation (scale-100 to scale-105) with animate-pulse or custom keyframes. Use for: notification badges, important buttons, live indicators. Glow effect: animated box-shadow with colored blur - shadow-[0_0_15px_rgba(59,130,246,0.5)] that intensifies and fades. Ring pulse: expanding ring that fades out (like iOS notification). Dot pulse: small dot with expanding ring for \"live\" or \"recording\" indicators. Apply to: CTAs needing attention, new feature badges, alerts. Use sparingly - too many competing animations distract. Add animation-delay for multiple elements to prevent synchronization. Implement breathing effect for subtle constant attention without being annoying.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "894aabf7205b5865f3111fef1e3b5b7e20519fe2eb3628a1a642ef22c200437b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add pulsing and glowing attention animations.",
+    "detailed": "Add attention-grabbing pulse and glow animations. Pulse effect: subtle scale oscillation (scale-100 to scale-105) with animate-pulse or custom keyframes. Use for: notification badges, important buttons, live indicators. Glow effect: animated box-shadow with colored blur - shadow-[0_0_15px_rgba(59,130,246,0.5)] that intensifies and fades. Ring pulse: expanding ring that fades out (like iOS notification). Dot pulse: small dot with expanding ring for \"live\" or \"recording\" indicators. Apply to: CTAs needing attention, new feature badges, alerts. Use sparingly - too many competing animations distract. Add animation-delay for multiple elements to prevent synchronization. Implement breathing effect for subtle constant attention without being annoying.",
+    "advanced": "Add attention-grabbing pulse and glow animations for important UI elements without overwhelming users. Pulse effect variations: scale pulse (animate-pulse with scale-100 to scale-105), opacity pulse (subtle fade in/out), combined transform: scale + shadow increase. Custom keyframes for precise control: @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } }. Glow effect: box-shadow with colored blur - shadow-[0_0_15px_rgba(59,130,246,0.5)], animate intensity with keyframes alternating shadow spread (15px to 25px). Ring pulse (iOS notification style): ::before pseudo-element with absolute positioning, scale(1) to scale(2) with opacity 1 to 0, infinite animation 1.5s ease-out. Dot pulse for live indicators: small dot (w-2 h-2 rounded-full bg-green-500) with ring pulse behind it, offset timing between dot pulse and ring expansion. Breathing effect: very subtle scale (1 to 1.02) over 3-4 seconds for gentle constant attention. Use cases: notification badges (unread count), important CTAs (limited time offers), live/recording indicators, new feature badges, alert icons. CRITICAL: use sparingly - one pulsing element per viewport maximum, too many competing animations overwhelm users and reduce effectiveness. Prevent synchronization: add unique animation-delay (100ms, 234ms, 389ms - varied, not sequential) to multiple elements so they don't pulse together. Disable on interaction: stop pulse after user clicks/acknowledges element. ACCESSIBILITY: respect prefers-reduced-motion (disable or reduce to static glow), don't rely solely on animation for conveying importance. Duration: 1-2 seconds for pulse cycle, ease-in-out for smooth effect."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

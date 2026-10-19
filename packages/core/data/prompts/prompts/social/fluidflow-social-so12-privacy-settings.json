@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so12-privacy-settings",
+  "slug": "fluidflow-social-so12-privacy-settings",
+  "title": "Privacy Settings",
+  "description": "FluidFlow · Privacy Settings",
+  "content": "Create privacy and security settings section. Profile visibility: public, private, friends-only radio options. Discoverability: toggles for \"Show in search\", \"Show in recommendations\". Activity status: toggle \"Show when you are online\". Blocking: list of blocked users with unblock option. Two-factor authentication: enable/disable 2FA. Login alerts: toggle \"Email me about new logins\". App permissions: list of connected apps with revoke.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c888ce68ca65c5cf3ffb97b0242214b9370aba189b23e3926bf22b1c506b962f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create privacy settings with visibility options and blocking controls.",
+    "detailed": "Create privacy and security settings section. Profile visibility: public, private, friends-only radio options. Discoverability: toggles for \"Show in search\", \"Show in recommendations\". Activity status: toggle \"Show when you are online\". Blocking: list of blocked users with unblock option. Two-factor authentication: enable/disable 2FA. Login alerts: toggle \"Email me about new logins\". App permissions: list of connected apps with revoke.",
+    "advanced": "Create privacy and security settings section with comprehensive controls. Profile visibility card: Radio group for visibility level - Public (Anyone can see your profile and posts), Private (Only approved followers can see), Friends Only (mutual follows only). Description text for each option. Lock icon for private options. Discoverability card: Toggle switches with descriptions - \"Show profile in search results\" (Allow others to find you by searching your name), \"Show in recommendations\" (Appear in suggested users and People You May Know), \"Allow tagging\" (Let others tag you in posts and photos). Activity status card: Toggle \"Show when you are online\" with description about who can see (Everyone, Followers, No one dropdown). Toggle \"Show read receipts in messages\". Blocking & Muting card: Blocked users section: list of blocked users with avatar, name, date blocked, \"Unblock\" button each. \"Block someone\" button opens user search modal. Blocked users cannot see your profile, message you, or tag you. Muted accounts: list similarly with \"Unmute\". Muted keywords: add words/phrases to hide from notifications and feed. Data & Privacy card: Toggles for \"Personalized ads based on activity\" and \"Share data with partners for analytics\". Links to Privacy Policy and Terms of Service. \"Download your data\" button. Security card: Two-factor authentication section: current status (Enabled/Disabled), enable flow (choose SMS or Authenticator app, scan QR or enter code, verify), backup codes display (reveal, regenerate, download). Login alerts: toggle \"Email me about unrecognized logins\". Password: link to change password. Sessions: link to view active sessions. App permissions card: List of connected third-party apps with app icon, name, permissions granted, date authorized, \"Revoke\" button each. Warning about revoking. Privacy checkup: Banner or button for guided walkthrough of important privacy settings with progress indicator. Last updated: timestamp showing when privacy settings were last changed. Help links: question mark icons with tooltips explaining each privacy option. Accessibility: proper fieldset/legend grouping, descriptive labels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

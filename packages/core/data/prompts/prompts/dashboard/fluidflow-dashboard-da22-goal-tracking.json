@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da22-goal-tracking",
+  "slug": "fluidflow-dashboard-da22-goal-tracking",
+  "title": "Goal Tracking",
+  "description": "FluidFlow · Goal Tracking",
+  "content": "Build goal tracking dashboard. Goals list: cards or rows for each goal. Progress: progress bar or ring. Metrics: current value vs target. Timeline: due date and time remaining. Status: on track, at risk, behind indicators. Milestones: intermediate checkpoints. History: progress over time chart. Actions: buttons to update progress.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "27deaa1c9d6216473071e60152a51b07f581a528db6d799750ba69dbdda4161b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Track progress toward goals with visual indicators.",
+    "detailed": "Build goal tracking dashboard. Goals list: cards or rows for each goal. Progress: progress bar or ring. Metrics: current value vs target. Timeline: due date and time remaining. Status: on track, at risk, behind indicators. Milestones: intermediate checkpoints. History: progress over time chart. Actions: buttons to update progress.",
+    "advanced": "Build comprehensive goal tracking dashboard for OKRs or targets. Goal card: goal title and description, owner (avatar and name), target value and current value, progress indicator (bar or circular), due date and time remaining. Progress visualization: horizontal progress bar with percentage, or circular progress ring, color changes based on status (green on track, yellow at risk, red behind). Status calculation: compare current progress to expected progress (linear interpolation to deadline), determine on track/at risk/behind. Status badges: colored badge with icon (CheckCircle, AlertTriangle, XCircle). Milestones: intermediate checkpoints with dates, show milestone progress (3 of 5 completed), milestone icons on progress bar. Trend chart: line chart showing progress over time, target line for reference, projected completion based on current rate. Goal hierarchy: support OKR structure (Objectives with Key Results), expandable parent goals, roll-up progress from child goals. Filters: by owner, team, status, time period. Add/edit goals: form to create new goals, inline editing for updates. Progress updates: log progress entries with date and notes, update history visible. Notifications: alert when goal at risk, reminder before deadline. Scoring: optional weighted scoring for multiple goals, overall score display. Alignment: show how goals align to company objectives. Retrospective: after deadline, mark as achieved/missed, capture learnings. Export: goal report export, progress summary PDF. Gamification: optional badges for achieving goals."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

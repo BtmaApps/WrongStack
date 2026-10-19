@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a18-flip-animation",
+  "slug": "fluidflow-animation-a18-flip-animation",
+  "title": "Flip Animation",
+  "description": "FluidFlow · Flip Animation",
+  "content": "Create 3D flip animations for interactive cards. Use CSS perspective on container. Apply transform-style: preserve-3d to card. Create front and back faces with backface-visibility: hidden. Flip with rotateY(180deg) on hover or click. Back face pre-rotated 180deg. Add transition for smooth flip (500-600ms). Include proper z-index handling during flip. Support both horizontal (rotateY) and vertical (rotateX) flips. Add depth with translateZ. Handle content on both sides.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a16544a607a351e3eb20b16ad8b953b4b15068f1e4bac6dab72f4c71dff67ce8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create 3D flip animations for cards revealing content on back.",
+    "detailed": "Create 3D flip animations for interactive cards. Use CSS perspective on container. Apply transform-style: preserve-3d to card. Create front and back faces with backface-visibility: hidden. Flip with rotateY(180deg) on hover or click. Back face pre-rotated 180deg. Add transition for smooth flip (500-600ms). Include proper z-index handling during flip. Support both horizontal (rotateY) and vertical (rotateX) flips. Add depth with translateZ. Handle content on both sides.",
+    "advanced": "Create 3D flip animations for interactive card reveals. Container setup: perspective on parent (perspective: 1000px or perspective-[1000px] in Tailwind), enables 3D effect. Card structure: transform-style: preserve-3d, transition-transform duration-500 ease-out, contains front and back faces. Front face: backface-visibility: hidden, positioned normally. Back face: backface-visibility: hidden, rotateY(180deg) applied by default (pre-flipped), same absolute positioning as front. Flip trigger: on hover or click, apply rotateY(180deg) to card container. Horizontal vs Vertical: rotateY for left-right flip, rotateX for top-bottom flip. Depth enhancement: add translateZ(50px) during flip for slight lift effect. Z-index handling: during transition, flipping card needs higher z-index to avoid clipping siblings. Content considerations: front shows preview, back shows details/actions, both need proper styling. Click-to-flip: use state for isFlipped, toggle on click, apply conditional classes. Hover-to-flip: group-hover on container controls flip, consider touch devices (use click instead). Performance: will-change: transform on card during hover/interaction. Easing: ease-in-out for smooth acceleration/deceleration, or custom cubic-bezier. Duration: 500-600ms feels natural for full 180deg rotation. Accessibility: ensure content accessible without flip (provide alternative interaction), visible focus styles, keyboard support (Enter/Space to flip). Responsive: may need smaller perspective on mobile. Libraries: Framer Motion provides simpler API for complex 3D transforms."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a10-morphing-icons",
+  "slug": "fluidflow-animation-a10-morphing-icons",
+  "title": "Morphing Icons",
+  "description": "FluidFlow · Morphing Icons",
+  "content": "Create smooth icon morphing transitions between states. Hamburger to X: animate three lines - top rotates 45deg down, middle fades out, bottom rotates -45deg up. Play to Pause: triangle morphs to two rectangles using SVG path animation or separate elements. Plus to Minus: vertical line shrinks to 0 while horizontal stays. Arrow directions: rotate transform between states (rotate-90, rotate-180). Heart fill: scale animation with color change on like. Use CSS transitions on transform and opacity. For complex morphs, use SVG with animated paths or Lottie animations. Keep duration short (200-300ms) for responsive feel. Add appropriate ARIA labels for state changes.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d79fb5519eba57dbf9edcbfc7192c7ae8a5cbe8210036912ace21418c43c0e64",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create smooth transitions between icon states (hamburger to X, play to pause).",
+    "detailed": "Create smooth icon morphing transitions between states. Hamburger to X: animate three lines - top rotates 45deg down, middle fades out, bottom rotates -45deg up. Play to Pause: triangle morphs to two rectangles using SVG path animation or separate elements. Plus to Minus: vertical line shrinks to 0 while horizontal stays. Arrow directions: rotate transform between states (rotate-90, rotate-180). Heart fill: scale animation with color change on like. Use CSS transitions on transform and opacity. For complex morphs, use SVG with animated paths or Lottie animations. Keep duration short (200-300ms) for responsive feel. Add appropriate ARIA labels for state changes.",
+    "advanced": "Create smooth icon morphing transitions between states for intuitive state feedback. Hamburger to X menu icon: three span elements in flex-col, transition-all duration-300 on each; open state: top span rotate-45 translate-y-[center], middle span opacity-0 scale-x-0, bottom span -rotate-45 -translate-y-[center]; use origin-center for rotation pivot. Play to Pause: SVG approach with path d attribute transition (requires same point count or use libraries), or element approach with triangle (border-left trick) transitioning to two rectangles. Plus to Minus: two absolutely positioned spans forming cross, vertical span transitions scaleY(1) to scaleY(0). Arrow directions: simple rotate transition (rotate-0 to rotate-90/180/-90), ensure transform-origin is centered. Heart fill: outline heart to filled - use two hearts stacked, filled underneath with scale-0 opacity-0, on like: scale-100 opacity-100 with bounce easing; add particle burst effect for delight. Checkbox morphing: square to checkmark using SVG path animation or clip-path transition. Toggle switch: circle to rectangle with border-radius animation. Complex morphs: use Lottie animations for designer-created morphs, or GSAP MorphSVG plugin for path morphing. CSS approach: use clip-path transitions for simpler shape morphs. TIMING: keep duration short (200-300ms) for responsive feel, use ease-out for quick response. ACCESSIBILITY: update aria-label or aria-expanded to reflect state, announce changes to screen readers. Implementation: controlled component with isOpen/isActive state, conditional classes based on state. Ensure SVG icons have consistent viewBox for smooth transitions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

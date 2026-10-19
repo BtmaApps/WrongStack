@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u35-collaborative-indicators",
+  "slug": "fluidflow-ux-u35-collaborative-indicators",
+  "title": "Collaborative Indicators",
+  "description": "FluidFlow · Collaborative Indicators",
+  "content": "Show real-time collaboration awareness. Display avatars of users viewing same page. Show cursor positions in collaborative editing. Indicate when someone is typing in shared inputs. Use colored highlights per user. Show user status (viewing, editing, idle). List online collaborators in sidebar. Notify when changes are made by others. Handle conflict resolution. Show \"last edited by\" information.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u35"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "01211e86ce7ec5fcaa782d4312ff0ad878d832828ff70d5d0d86b7dbf27445e7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show who else is viewing or editing the same content.",
+    "detailed": "Show real-time collaboration awareness. Display avatars of users viewing same page. Show cursor positions in collaborative editing. Indicate when someone is typing in shared inputs. Use colored highlights per user. Show user status (viewing, editing, idle). List online collaborators in sidebar. Notify when changes are made by others. Handle conflict resolution. Show \"last edited by\" information.",
+    "advanced": "Show real-time collaboration awareness for team productivity. Presence indicators: avatar stack showing users on same page (max 3 + \"+2\" overflow), colored rings per user, tooltip with names. Live cursors: in collaborative docs/canvas, show labeled cursors with user name, colored per user, fade when idle >30s. Typing indicators: \"Alex is typing...\" for chat/comments, \"3 people editing\" for docs. Per-element highlights: colored border/background on elements being edited by others (prevent conflicts). User status: online (solid dot), idle (hollow dot), editing (typing indicator), offline (gray). Collaborator list: sidebar or panel showing all collaborators, their current position/section, click to navigate to them. Change notifications: toast when others make changes (\"Sarah added a comment\"), dont interrupt focused work. Conflict handling: last-write-wins with notification, or operational transform for true real-time, or explicit merge UI. \"Last edited by\": show in metadata, hover for timestamp. Implementation: WebSocket for real-time, presence heartbeat (every 30s), cleanup stale presence. Performance: throttle cursor updates (50-100ms), batch presence updates. Privacy: option to go \"invisible\", respect if feature disabled. Offline: graceful degradation, sync on reconnect with conflict resolution."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

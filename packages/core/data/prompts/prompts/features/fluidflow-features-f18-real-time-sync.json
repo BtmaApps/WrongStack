@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f18-real-time-sync",
+  "slug": "fluidflow-features-f18-real-time-sync",
+  "title": "Real-time Sync",
+  "description": "FluidFlow · Real-time Sync",
+  "content": "Implement real-time sync across browser tabs and windows. Use BroadcastChannel API for same-origin communication. Sync state: changes in one tab reflect immediately in others. Conflict resolution: last-write-wins or merge strategy. Visual indicator: show sync status icon. Offline support: queue changes when offline, sync when back online. Storage: sync to localStorage as backup. Events: listen for storage events as fallback. Debounce: batch rapid changes.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3798e5179de7cbdf0b54bbfff08e3c4f788b7a45c859d90b0fe0b8cc7e4a5722",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add real-time data synchronization across browser tabs.",
+    "detailed": "Implement real-time sync across browser tabs and windows. Use BroadcastChannel API for same-origin communication. Sync state: changes in one tab reflect immediately in others. Conflict resolution: last-write-wins or merge strategy. Visual indicator: show sync status icon. Offline support: queue changes when offline, sync when back online. Storage: sync to localStorage as backup. Events: listen for storage events as fallback. Debounce: batch rapid changes.",
+    "advanced": "Implement real-time synchronization across browser tabs, windows, and potentially devices. Same-origin tab sync: BroadcastChannel API (const channel = new BroadcastChannel(\"app-sync\"); channel.postMessage(data); channel.onmessage), fallback to localStorage storage event for older browsers. State management integration: wrap in context provider, dispatch sync messages on state changes, receive and apply remote changes. Conflict resolution strategies: last-write-wins (timestamp comparison), merge (combine non-conflicting changes), user prompt (show conflict UI for manual resolution). Sync indicator: icon showing sync status (cloud with check, syncing spinner, offline indicator), tooltip with last sync time. Message format: {type, payload, timestamp, tabId, version}. Selective sync: only sync specific state slices, not entire app state. Debouncing: batch rapid changes (100-200ms debounce) to prevent flood. Offline support: detect navigator.onLine, queue changes when offline, process queue on online event. Cross-device sync: WebSocket connection to server, or Firebase Realtime Database/Firestore, handle reconnection with exponential backoff. Optimistic updates: apply locally immediately, roll back on server rejection. Version vectors: track versions per field for accurate conflict detection. Storage persistence: localStorage as local cache, IndexedDB for larger data. Tab leader election: one tab handles server sync, others communicate through it. Reconnection: handle tab sleep/wake, network changes gracefully."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so2-profile-card",
+  "slug": "fluidflow-social-so2-profile-card",
+  "title": "Profile Card",
+  "description": "FluidFlow · Profile Card",
+  "content": "Create compact profile card component for user previews. Card structure: bg-white rounded-lg shadow-sm overflow-hidden. Cover: small top banner (h-16) or gradient. Avatar: w-16 h-16 centered, overlapping cover. Content: name (font-semibold text-center), username (text-gray-500), short bio (line-clamp-2). Stats: followers/following counts. Action buttons: \"Follow\" primary, \"Message\" secondary. Hover card variant: appears on username hover in feeds. Badge: verified checkmark if applicable.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dbb96ad9a0403606e9a1bd6b8ca3ed1e851c080638457d407ca9149bd5581a07",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create compact profile card with avatar, name, bio, and follow button.",
+    "detailed": "Create compact profile card component for user previews. Card structure: bg-white rounded-lg shadow-sm overflow-hidden. Cover: small top banner (h-16) or gradient. Avatar: w-16 h-16 centered, overlapping cover. Content: name (font-semibold text-center), username (text-gray-500), short bio (line-clamp-2). Stats: followers/following counts. Action buttons: \"Follow\" primary, \"Message\" secondary. Hover card variant: appears on username hover in feeds. Badge: verified checkmark if applicable.",
+    "advanced": "Create compact profile card component for user previews and hover cards. Card structure: bg-white rounded-lg shadow-sm overflow-hidden, w-72 for standard size or w-full for responsive. Cover: small top banner (h-16) using user cover image or gradient fallback (bg-gradient-to-r from-blue-400 to-purple-500). Avatar: w-16 h-16 rounded-full border-2 border-white, centered horizontally, overlapping cover with -mt-8, fallback to initials in colored circle. Content area: p-4 pt-10 text-center. Name: font-semibold text-gray-900, verified badge inline if applicable. Username: text-sm text-gray-500 @handle. Short bio: text-sm text-gray-600 line-clamp-2 mt-2. Stats row: flex justify-center gap-4 mt-3, each stat showing count (font-semibold) and label (text-xs text-gray-500). Action buttons: flex gap-2 mt-4 justify-center, \"Follow\" primary button (bg-black text-white px-4 py-1.5 rounded-full text-sm), \"Message\" secondary or icon button. Hover card variant: position absolute, appears on username/avatar hover in feeds with 200ms delay, shadow-xl, includes more details. Badge: verified blue checkmark (BadgeCheck icon) next to name. Online status: green dot indicator (w-3 h-3 rounded-full bg-green-500 absolute) on avatar corner. Mutual indicator: \"Followed by UserA, UserB\" text in text-xs text-gray-500. Variants: horizontal card (flex row with avatar left, content right), vertical card (centered content, default). Click action: entire card or name clickable to navigate to full profile. Loading: skeleton card with circular avatar placeholder, text lines. Animation: subtle scale on hover (hover:scale-[1.02]). Accessibility: card as article or link, proper alt on avatar."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a6-button-animations",
+  "slug": "fluidflow-animation-a6-button-animations",
+  "title": "Button Animations",
+  "description": "FluidFlow · Button Animations",
+  "content": "Add satisfying button interactions that feel responsive. Press effect: scale down on active (active:scale-95) with quick duration-75. Hover: subtle lift (-translate-y-0.5) or background brightness change. Ripple effect: expanding circle from click point using pseudo-element or span. Add ripple with absolute positioning, scale animation (scale-0 to scale-100), and opacity fade. Loading state: smooth transition to spinner, maintain dimensions. Success state: button turns green with checkmark icon, then returns to normal. Disabled state: reduced opacity with not-allowed cursor. Use will-change: transform for performance. Add focus-visible ring for accessibility.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "77ab5b641409fd57b0fb7852a77b183b48f3f04f4bf345da7f21b26cb64b73d1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add press, hover, and loading animations to buttons.",
+    "detailed": "Add satisfying button interactions that feel responsive. Press effect: scale down on active (active:scale-95) with quick duration-75. Hover: subtle lift (-translate-y-0.5) or background brightness change. Ripple effect: expanding circle from click point using pseudo-element or span. Add ripple with absolute positioning, scale animation (scale-0 to scale-100), and opacity fade. Loading state: smooth transition to spinner, maintain dimensions. Success state: button turns green with checkmark icon, then returns to normal. Disabled state: reduced opacity with not-allowed cursor. Use will-change: transform for performance. Add focus-visible ring for accessibility.",
+    "advanced": "Add satisfying button interactions that feel responsive and provide clear feedback. Press effect: scale down on active (active:scale-95 transition-transform duration-75) - quick duration feels snappy. Hover: subtle lift (hover:-translate-y-0.5 hover:shadow-md) or background brightness (hover:brightness-110). Ripple effect implementation: create span on click at pointer position relative to button, apply scale(0) to scale(4) animation with opacity 0.3 to 0 over 600ms, remove span after animation completes; position button as relative, ripple as absolute with pointer-events-none. Material ripple: use ::after pseudo-element for simpler implementation, trigger via :active state. Loading state: smooth transition to spinner (fade text out, fade spinner in), maintain exact button dimensions with explicit width/height or min-w, disable pointer events during load. Success/error states: background color transition (bg-green-600 or bg-red-600), icon swap (Check or X icon), hold for 2 seconds, transition back to original state. Disabled state: opacity-50 cursor-not-allowed, remove all hover/active effects. Icon animations: icon rotates (rotate-180) or slides (translate-x) on hover for arrow buttons. Group hover: button with icon, icon moves on button hover using group and group-hover:translate-x-1. PERFORMANCE: will-change: transform on interactive elements, use transform and opacity for all animations. ACCESSIBILITY: focus-visible:ring-2 focus-visible:ring-offset-2 for keyboard focus, maintain 44x44px minimum touch target, announce loading state with aria-busy. Reduced motion: remove transform animations, keep color feedback only."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

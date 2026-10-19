@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a12-typing-animation",
+  "slug": "fluidflow-animation-a12-typing-animation",
+  "title": "Typing Animation",
+  "description": "FluidFlow · Typing Animation",
+  "content": "Implement typewriter text effect for hero sections and highlights. Type out text character by character with consistent speed (50-100ms per character). Add blinking cursor using animate-pulse or custom animation (opacity 0/1 toggle every 500ms). Support typing multiple phrases with delete animation between. Delete faster than typing (30-50ms). Add pause between phrases (1-2 seconds). Use monospace cursor character (|) or custom styled span. Handle word wrapping - ensure container accommodates full text. Add option for permanent cursor vs disappearing after complete. Consider accessibility - provide full text to screen readers. Implement using setTimeout chain or CSS animation with steps().",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "38674297d1b72dda78cdb19377577a4b5b0fc4b71f3d70a5873f5016885ffa33",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add typewriter text effect with blinking cursor.",
+    "detailed": "Implement typewriter text effect for hero sections and highlights. Type out text character by character with consistent speed (50-100ms per character). Add blinking cursor using animate-pulse or custom animation (opacity 0/1 toggle every 500ms). Support typing multiple phrases with delete animation between. Delete faster than typing (30-50ms). Add pause between phrases (1-2 seconds). Use monospace cursor character (|) or custom styled span. Handle word wrapping - ensure container accommodates full text. Add option for permanent cursor vs disappearing after complete. Consider accessibility - provide full text to screen readers. Implement using setTimeout chain or CSS animation with steps().",
+    "advanced": "Implement typewriter text effect for hero sections and highlights with smooth, natural feel. Typing mechanism: setTimeout chain incrementing character index, or useEffect with setInterval and cleanup. Speed: 50-80ms per character for natural feel, vary slightly with random ±20ms for more human effect. Cursor: blinking | character using animate-pulse or custom keyframes (opacity 0 to 1, step-end for sharp blink), span positioned after text or ::after pseudo-element. Multi-phrase rotation: array of phrases, type first phrase, pause 2s, delete (faster: 30-40ms per char), pause 500ms, type next phrase, loop. Delete animation: remove characters from end, visual effect of backspacing. Cursor variations: underscore _, block cursor with bg-current, vertical bar |. Container handling: fixed height container to prevent layout shift as text length changes, or measure longest phrase and set min-width. Pause points: longer pause after punctuation (.,!?), shorter between words. Component API: <Typewriter phrases={[\"Hello\", \"World\"]} typingSpeed={70} deleteSpeed={40} pauseDuration={2000} loop={true} />. CSS-only approach: animate max-width from 0 to 100% with steps(characterCount), combine with overflow-hidden and white-space-nowrap. ACCESSIBILITY CRITICAL: provide full text to screen readers - use aria-label on container with full phrase, or visually hidden span with complete text. Handle completion: optional callback onComplete, option to hide cursor after final phrase. Advanced: cursor color matches text color, random typos that self-correct for personality (use sparingly), support for HTML/emoji in typed text."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

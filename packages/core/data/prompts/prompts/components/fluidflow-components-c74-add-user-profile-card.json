@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c74-add-user-profile-card",
+  "slug": "fluidflow-components-c74-add-user-profile-card",
+  "title": "Add User Profile Card",
+  "description": "FluidFlow · Add User Profile Card",
+  "content": "Create profile card. Container: bg-white rounded-xl shadow p-6 text-center. Avatar: w-24 h-24 rounded-full mx-auto mb-4, border-4 border-white shadow. Name: text-xl font-bold. Title/bio: text-gray-500. Stats: flex justify-center gap-8 my-4, posts/followers/following counts. Actions: flex gap-2 justify-center, Follow button (primary), Message button (secondary).",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c74"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "516f16756ee6ecbdc4d4fcfa5e2ba4686c7673c54d9cf86ba8cf80b84cb1d5da",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create user profile card with avatar, info, and actions.",
+    "detailed": "Create profile card. Container: bg-white rounded-xl shadow p-6 text-center. Avatar: w-24 h-24 rounded-full mx-auto mb-4, border-4 border-white shadow. Name: text-xl font-bold. Title/bio: text-gray-500. Stats: flex justify-center gap-8 my-4, posts/followers/following counts. Actions: flex gap-2 justify-center, Follow button (primary), Message button (secondary).",
+    "advanced": "Create comprehensive user profile card. Layout variants: horizontal (for list), vertical (for grid), compact (minimal info). Cover image: optional banner at top with gradient overlay. Avatar: multiple sizes, online status indicator (green dot), verified badge, click to view full size. User info: name, username (@handle), pronouns, bio (with link parsing), location, website link, join date. Verification: badge for verified accounts with tooltip. Stats: follower/following counts (clickable to show list), posts/content count, other relevant metrics. Action buttons: Follow/Unfollow (toggle state), Message, More menu (block, report, share profile). Follow states: not following, following, follows you (badge), mutual follow. Edit mode: if viewing own profile, show Edit Profile button instead. Social links: icons for connected platforms. Skills/tags: badge list of skills or interests. Mutual connections: \"Followed by X, Y and 3 others you follow\". Loading: skeleton state matching layout. Responsive: adapt layout for different contexts. Accessibility: all actions keyboard accessible, proper heading hierarchy."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

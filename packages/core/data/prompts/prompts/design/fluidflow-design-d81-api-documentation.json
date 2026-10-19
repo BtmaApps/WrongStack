@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d81-api-documentation",
+  "slug": "fluidflow-design-d81-api-documentation",
+  "title": "API Documentation",
+  "description": "FluidFlow · API Documentation",
+  "content": "Apply API documentation aesthetic with developer portal feel. Clean code examples with syntax highlighting. HTTP method badges (GET, POST, PUT, DELETE) color-coded. Endpoint URL paths with parameter highlighting. Request/response JSON examples. Collapsible sections for details. Parameter tables with types and descriptions. Authentication section styling. Try-it console appearance. Developer-friendly reference atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d81"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9b8cbde84045fb6cab6d61fb1711f3c9d3d150c4792fe79c3383fccb20a6aba5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create API docs aesthetic with endpoint listings, request/response examples, and technical documentation styling.",
+    "detailed": "Apply API documentation aesthetic with developer portal feel. Clean code examples with syntax highlighting. HTTP method badges (GET, POST, PUT, DELETE) color-coded. Endpoint URL paths with parameter highlighting. Request/response JSON examples. Collapsible sections for details. Parameter tables with types and descriptions. Authentication section styling. Try-it console appearance. Developer-friendly reference atmosphere.",
+    "advanced": "Apply API documentation aesthetic with professional developer portal feel. Layout: three-column (nav, content, examples) or two-column responsive. HTTP method badges: GET (green #22c55e), POST (blue #3b82f6), PUT (yellow #eab308), PATCH (orange #f97316), DELETE (red #ef4444) - bold uppercase labels with rounded backgrounds. Endpoints: monospace path styling, path parameters highlighted (:id in different color), query parameters listed. Code blocks: dark theme syntax highlighting, language tabs (curl, JavaScript, Python), copy button, line numbers optional. Request/response: JSON pretty-printed, collapsible for large payloads, schema annotations. Parameter tables: name, type, required badge, description columns, nested params indented. Authentication: prominent section, code examples for headers/tokens, security scheme badges (OAuth2, API Key). Version selector: dropdown in header, deprecation warnings. Search: quick search with keyboard shortcut, search in endpoints and descriptions. Navigation: sticky sidebar, section hierarchy, scroll spy highlighting current section. Status codes: table with code, name, description, colored by category (2xx green, 4xx orange, 5xx red). Rate limits: clear display of limits and headers. SDKs: tabbed code examples for different languages. Changelog: versioned change history, breaking change warnings. Try it: interactive console with parameter inputs, live request execution. Sandbox: test API key generation. Implementation: proper heading hierarchy for TOC generation, accessible code blocks. Accessibility: code examples need proper semantics, tables need headers, examples have text alternatives."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c10-add-testimonials",
+  "slug": "fluidflow-components-c10-add-testimonials",
+  "title": "Add Testimonials",
+  "description": "FluidFlow · Add Testimonials",
+  "content": "Build testimonials/reviews section with multiple layout options. Card structure: quote icon (Quote from lucide-react) or quotation marks, testimonial text in italic or regular weight, rating stars if applicable, author section with avatar (rounded-full w-12 h-12), name, title/company. Layout variants: single featured testimonial, grid of cards (grid-cols-1 md:grid-cols-2 lg:grid-cols-3), horizontal carousel with navigation. Add visual variety: different card backgrounds, accent borders, varied avatar sizes. Include company logo option. Star rating component with filled/empty states. Animate cards on scroll. Consider video testimonial option with play button overlay.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f7943db0733d25f0e5822fd13969f9a426926f0c9376fd627b5b0d66c4b356fe",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a testimonials section with quotes, avatars, and ratings.",
+    "detailed": "Build testimonials/reviews section with multiple layout options. Card structure: quote icon (Quote from lucide-react) or quotation marks, testimonial text in italic or regular weight, rating stars if applicable, author section with avatar (rounded-full w-12 h-12), name, title/company. Layout variants: single featured testimonial, grid of cards (grid-cols-1 md:grid-cols-2 lg:grid-cols-3), horizontal carousel with navigation. Add visual variety: different card backgrounds, accent borders, varied avatar sizes. Include company logo option. Star rating component with filled/empty states. Animate cards on scroll. Consider video testimonial option with play button overlay.",
+    "advanced": "Build testimonials/reviews section with multiple layout variants and engaging design. Card structure: bg-white rounded-xl shadow-sm p-6 or p-8, relative for quote decoration. Quote icon: absolute -top-4 -left-4 text-4xl text-blue-600/20, or large \" quotation marks. Testimonial text: text-gray-700 leading-relaxed, can be italic for stylistic effect, line-clamp-4 if needed. Star rating: flex gap-0.5 mb-4, Star icons filled (text-yellow-400) or outline (text-gray-300). Author section: flex items-center gap-4 mt-6, avatar (w-12 h-12 rounded-full object-cover), text (name font-semibold, role/company text-sm text-gray-500). Company logo: optional grayscale logo next to or below author. Layout variants: 1) Single featured: large centered card with larger text and avatar, 2) Grid: grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6, 3) Carousel: horizontal scroll or animated slider with navigation dots/arrows, 4) Masonry: varying card heights for visual interest. Visual variety: alternate card backgrounds (white, gray-50, blue-50), colored left border (border-l-4 border-blue-500), shadow variations. Video testimonial: card with video thumbnail, play button overlay, opens modal or inline player. Floating design: cards at slight angles or overlapping for dynamic feel. Section header: \"What our customers say\", centered with optional subtitle. Trust indicators: \"Trusted by 10,000+ customers\", average rating badge. Scroll animations: cards fade in and slide up when scrolled into view with stagger delay. Responsive: single column on mobile, adjust text sizes. ACCESSIBILITY: blockquote element for testimonial text, cite for author, proper alt text on avatars. Consider testimonial rotation for pages with many reviews."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

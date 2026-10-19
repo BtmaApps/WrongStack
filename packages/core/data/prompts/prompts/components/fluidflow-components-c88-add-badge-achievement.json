@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c88-add-badge-achievement",
+  "slug": "fluidflow-components-c88-add-badge-achievement",
+  "title": "Add Badge/Achievement",
+  "description": "FluidFlow · Add Badge/Achievement",
+  "content": "Create badge component. Container: relative inline-block. Badge: w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center shadow-lg. Icon: text-white text-2xl. Locked state: grayscale filter, lock overlay icon. Tooltip: badge name and description on hover. Progress: optional ring around badge showing progress to unlock.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c88"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "aa7f7a72ebfc845b9aa18de621af579341b7176d7eb2da394356d7c9519e362d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create achievement badge display with unlock status.",
+    "detailed": "Create badge component. Container: relative inline-block. Badge: w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center shadow-lg. Icon: text-white text-2xl. Locked state: grayscale filter, lock overlay icon. Tooltip: badge name and description on hover. Progress: optional ring around badge showing progress to unlock.",
+    "advanced": "Create gamification badge system. Badge display: circular or shield shape, icon/image center, color scheme by category or rarity. Rarity levels: common (gray), uncommon (green), rare (blue), epic (purple), legendary (gold) with distinct styling. States: locked (grayed, question mark or lock icon), unlocked (full color, shine effect), new (notification dot, special animation). Unlock animation: confetti, glow pulse, count-up points earned. Progress badges: circular progress ring, \"3/5 completed\" text, current/required metrics. Badge details: modal or popover with full description, how to earn, date earned, rarity, share button. Badge grid: display all badges with locked/unlocked status, filter by category or status. Categories: activity (posted X times), social (followed by X), quality (got X likes), milestone (member for X years). Notifications: toast when badge earned, email notification option. Leaderboard: users with most badges or points. Points system: badges worth points, total point display. Share: share earned badge to social media with custom card. Accessibility: not rely on color alone for rarity, descriptive alt text, locked state in text. Tooltips: name, description, earn criteria, date earned. Display contexts: profile page, activity items (\"earned a badge\"), notification."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

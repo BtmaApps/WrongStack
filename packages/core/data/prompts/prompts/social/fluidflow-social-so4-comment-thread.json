@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so4-comment-thread",
+  "slug": "fluidflow-social-so4-comment-thread",
+  "title": "Comment Thread",
+  "description": "FluidFlow · Comment Thread",
+  "content": "Create threaded comment system. Comment structure: avatar (w-8 h-8), header (name, timestamp), content text, actions row. Actions: Like with count, Reply, Edit/Delete for own comments, Report. Replies: indented below parent (pl-8), connecting line. Nested replies: support 2-3 levels deep. Reply form: appears inline when Reply clicked. Like animation: heart fill with scale. Relative timestamps. Real-time: new comments appear with animation.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2f40ee73431662ddf08cd794a36149e564e305b2aa12fdf67493cbf7241cb017",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create threaded comments with replies, likes, and reply form.",
+    "detailed": "Create threaded comment system. Comment structure: avatar (w-8 h-8), header (name, timestamp), content text, actions row. Actions: Like with count, Reply, Edit/Delete for own comments, Report. Replies: indented below parent (pl-8), connecting line. Nested replies: support 2-3 levels deep. Reply form: appears inline when Reply clicked. Like animation: heart fill with scale. Relative timestamps. Real-time: new comments appear with animation.",
+    "advanced": "Create threaded comment system with nested replies and interactions. Comment container: space-y-4 for top-level comments. Comment structure: flex gap-3 for avatar + content layout. Avatar: w-8 h-8 rounded-full, link to profile. Comment body: flex-1. Header row: flex items-center gap-2, name (font-medium text-sm hover:underline), verified badge if applicable, timestamp (text-xs text-gray-500 relative: \"2h\", title with full date). Content text: text-sm whitespace-pre-wrap, linkify URLs and mentions. Actions row: flex items-center gap-4 mt-1 text-xs text-gray-500. Like button: Heart icon (w-4 h-4), count, click toggles with scale animation and fill-red-500 when liked. Reply button: opens inline reply form. More dropdown: Edit (own comments, switches to edit mode), Delete (own comments, confirms then removes or shows \"[deleted]\"), Report (others). Replies container: ml-8 or ml-10 (indentation), optional vertical connecting line (border-l-2 border-gray-200) from parent. Nested replies: support 2-3 levels deep with increasing indent, beyond that show \"View more replies\" link that expands or navigates to focused view. Reply form: appears inline below comment when Reply clicked, flex gap-2 with avatar (w-6 h-6), textarea (auto-resize), submit button, Cancel to close. Like animation: heart icon fill with brief scale-125 transition. Relative timestamps: \"2h\", \"1d\", \"2w\", \"Jan 15\" for older. Load more: \"Load X more replies\" button for long threads, or automatic with intersection observer. Sort options: Newest first, Oldest first, Most liked (dropdown above comments). Real-time updates: new comments appear at top or inline with subtle highlight animation (bg-blue-50 fade out). Collapse/expand: long threads can be collapsed with \"Hide replies\" toggle. Deleted comments: soft delete showing \"[deleted]\" placeholder maintaining thread structure. Edited indicator: \"edited\" text after timestamp on modified comments. Loading: skeleton comments. Empty state: \"No comments yet. Be the first!\" Accessibility: nested list structure, announce new comments with aria-live."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

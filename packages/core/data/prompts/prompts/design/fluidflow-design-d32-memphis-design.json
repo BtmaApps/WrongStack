@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d32-memphis-design",
+  "slug": "fluidflow-design-d32-memphis-design",
+  "title": "Memphis Design",
+  "description": "FluidFlow · Memphis Design",
+  "content": "Apply Memphis Design Group aesthetic from 1980s. Use bold geometric shapes: circles, triangles, squiggles, zigzags as patterns. Bright, clashing colors: primary red, yellow, blue plus hot pink, teal, black. Asymmetric compositions breaking grid rules. Terrazzo/confetti patterns for backgrounds. Mix patterns fearlessly. Bold black outlines on elements. Use shapes decoratively without function. Playful, anti-minimalist maximalism.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7f2322be1a566d66ae00cb0f58e79984ab8826d6ce611ec23fd123cad7d7f4d8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create bold, playful 1980s Memphis style with geometric patterns and bright colors.",
+    "detailed": "Apply Memphis Design Group aesthetic from 1980s. Use bold geometric shapes: circles, triangles, squiggles, zigzags as patterns. Bright, clashing colors: primary red, yellow, blue plus hot pink, teal, black. Asymmetric compositions breaking grid rules. Terrazzo/confetti patterns for backgrounds. Mix patterns fearlessly. Bold black outlines on elements. Use shapes decoratively without function. Playful, anti-minimalist maximalism.",
+    "advanced": "Apply Memphis Design Group aesthetic (1981-1987 Italian postmodern movement). Geometric vocabulary: circles, triangles, squares, squiggly lines, zigzags, dots - used as both patterns and standalone decorative elements. Color palette: bold primaries (red-500, yellow-400, blue-600), plus shocking pink (#ff6090), teal (#008080), black for outlines; colors clash intentionally. Pattern implementation: terrazzo/confetti dots (random positioned circles via SVG or pseudo-elements), zigzag borders (CSS gradient), grid of geometric shapes. Background patterns: layer multiple patterns at low opacity, or solid color with pattern accent areas. Shape decorations: large geometric shapes placed asymmetrically, extending beyond containers, overlapping content. Outlines: thick black borders (border-4 border-black) on elements, shapes have visible stroke. Layout: intentionally break grid conventions, asymmetric compositions, scattered elements. Typography: bold geometric sans-serif (Futura, Avant Garde), mixed sizes, rotated text blocks. Laminate/surface aesthetic: elements look like physical shapes on surface, shadows suggesting thickness. Interactive: shapes can animate, rotate on hover, bounce. Maximalism: more is more - layer patterns, colors, shapes generously. Modern adaptation: tone down for usability while keeping spirit - accent sections with full Memphis, cleaner content areas. Accessibility: high contrast black outlines help definition, ensure patterns dont obscure content, provide visual breaks from busy areas."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c89-add-onboarding-tour",
+  "slug": "fluidflow-components-c89-add-onboarding-tour",
+  "title": "Add Onboarding Tour",
+  "description": "FluidFlow · Add Onboarding Tour",
+  "content": "Create onboarding tour. Overlay: fixed inset-0 bg-black/50 z-50. Spotlight: cutout around target element, border-radius matching element. Tooltip: absolute positioned near target, bg-white rounded-lg shadow-xl p-4 max-w-xs. Content: step title, description, step indicator (1 of 5). Navigation: Previous, Next, Skip buttons. Arrow: pointing to target element.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c89"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "995b2a1c7392a94750111dd3c4ad4a54cd875b11189a0ce03ee37ff3e9e1a68d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create guided product tour with tooltips and steps.",
+    "detailed": "Create onboarding tour. Overlay: fixed inset-0 bg-black/50 z-50. Spotlight: cutout around target element, border-radius matching element. Tooltip: absolute positioned near target, bg-white rounded-lg shadow-xl p-4 max-w-xs. Content: step title, description, step indicator (1 of 5). Navigation: Previous, Next, Skip buttons. Arrow: pointing to target element.",
+    "advanced": "Create comprehensive product tour system. Tour definition: array of steps with target selector, content, position, actions. Spotlight: highlight target element with dark overlay around it, smooth transition between targets, optional pulsing animation. Tooltip: positioned automatically (prefer bottom, flip if necessary), arrow pointing to target, title, description, optional image/gif. Progress: step indicator dots, \"Step X of Y\" text. Navigation: Back, Next (or Continue), Skip Tour buttons, keyboard navigation (arrows, Escape to skip). Target scrolling: scroll element into view before showing tooltip, account for fixed headers. Target highlighting: z-index boost for target element, optional border or glow effect. Interactive steps: require user to perform action (click button, fill input) before advancing. Conditional steps: skip steps based on user state or feature flags. Branching: different paths based on user choices. Persistence: save progress in localStorage, resume where left off, mark completed tours. Triggers: start on first visit, on feature release, manually via help menu. Completion: celebration animation, next steps suggestions, don't show again option. Multiple tours: different tours for different features or user types. Analytics: track completion rate, drop-off points, time per step. Mobile: adapt tooltip size and position, disable tour on very small screens. Accessibility: focus management, screen reader announcements, respect reduced motion preference."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

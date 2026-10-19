@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c24-add-cookie-banner",
+  "slug": "fluidflow-components-c24-add-cookie-banner",
+  "title": "Add Cookie Banner",
+  "description": "FluidFlow · Add Cookie Banner",
+  "content": "Create GDPR-compliant cookie consent banner. Position: fixed bottom-0 full-width or floating card in corner. Content: brief explanation of cookie usage, link to Privacy Policy. Buttons: \"Accept All\", \"Reject All\" or \"Necessary Only\", \"Manage Preferences\" link. Preferences modal: categorized toggles (Necessary - always on, Functional, Analytics, Marketing). Save preferences to localStorage with consent timestamp. Hide banner once user makes choice. Re-show option in footer settings link. Styling: subtle shadow, z-50, doesn't block main content. Animation: slide up from bottom. Add optional detailed cookie list in preferences. Remember to not set non-essential cookies before consent. Show again after policy update with new timestamp check.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c2266b5be3dfa503661a252bb5f7ec88cef1fbc68f7a1ce6a78bd76d9c9492d2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a GDPR-compliant cookie consent banner.",
+    "detailed": "Create GDPR-compliant cookie consent banner. Position: fixed bottom-0 full-width or floating card in corner. Content: brief explanation of cookie usage, link to Privacy Policy. Buttons: \"Accept All\", \"Reject All\" or \"Necessary Only\", \"Manage Preferences\" link. Preferences modal: categorized toggles (Necessary - always on, Functional, Analytics, Marketing). Save preferences to localStorage with consent timestamp. Hide banner once user makes choice. Re-show option in footer settings link. Styling: subtle shadow, z-50, doesn't block main content. Animation: slide up from bottom. Add optional detailed cookie list in preferences. Remember to not set non-essential cookies before consent. Show again after policy update with new timestamp check.",
+    "advanced": "Create GDPR-compliant cookie consent banner with preferences management. Banner component: fixed bottom-0 inset-x-0 z-50 (full-width) or fixed bottom-4 right-4 max-w-md (floating card). Animation: slide up from bottom (translate-y-full to translate-y-0) with fade. Banner content: bg-white shadow-lg rounded-t-xl (full) or rounded-xl (card), p-4. Text: brief explanation \"We use cookies to improve your experience\", link to Privacy Policy (text-blue-600 hover:underline). Buttons: flex gap-3 mt-4, \"Accept All\" (primary bg-blue-600), \"Reject All\" or \"Necessary Only\" (secondary outline), \"Manage Preferences\" (text link). Preferences modal: triggered by link, categorized cookie toggles. Categories: Necessary (always on, toggle disabled, required for site function), Functional (remember preferences), Analytics (usage data), Marketing (ads, tracking). Each category: toggle switch, name, description of what cookies do. Cookie list option: expandable list showing individual cookies with name, provider, purpose, expiration. Consent storage: localStorage object with {necessary: true, functional: boolean, analytics: boolean, marketing: boolean, timestamp: ISO date, version: \"1.0\"}. Implementation: check localStorage on mount, if no consent or outdated version show banner. Save preferences: update localStorage, trigger callback to enable/disable scripts. Script control: don't load analytics/marketing scripts until consent given, load conditionally based on preferences. Re-consent: show banner again if policy version changes (timestamp check). Footer link: \"Cookie Settings\" in footer to re-open preferences modal. ACCESSIBILITY: proper focus management in modal, form labels for toggles, banner not blocking content navigation. Legal compliance: log consent with timestamp, allow withdrawal, don't pre-check non-essential categories. Component API: policyVersion, privacyPolicyUrl, onConsent callback with preferences object."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q10-add-search",
+  "slug": "fluidflow-quick-actions-q10-add-search",
+  "title": "🔍 Add Search",
+  "description": "FluidFlow · 🔍 Add Search",
+  "content": "Implement full search functionality. Add search input with Search icon prefix, pl-10 for icon space. Include clear button (X icon) when input has value. Show autocomplete dropdown with recent searches and suggestions. Implement real-time search with 300ms debounce. Display results with highlighted matching terms. Create \"No results\" empty state with helpful suggestions. Add keyboard navigation (arrow keys, Enter to select, Escape to close). Include filters sidebar or dropdown. Show result count and sort options. Store search history in localStorage.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b400358d84bebab35f0633c870ea576cbb91ca093f533f7b286b19b597ac9e7f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add search functionality with input, results dropdown, and keyboard navigation.",
+    "detailed": "Implement full search functionality. Add search input with Search icon prefix, pl-10 for icon space. Include clear button (X icon) when input has value. Show autocomplete dropdown with recent searches and suggestions. Implement real-time search with 300ms debounce. Display results with highlighted matching terms. Create \"No results\" empty state with helpful suggestions. Add keyboard navigation (arrow keys, Enter to select, Escape to close). Include filters sidebar or dropdown. Show result count and sort options. Store search history in localStorage.",
+    "advanced": "Implement full search functionality with excellent UX. Search input: relative container, Search icon (absolute left-3 text-gray-400), input with pl-10 pr-10, X clear button (absolute right-3) visible when value exists. Debounced search: 300ms delay using setTimeout/clearTimeout or useDebouncedValue hook. Autocomplete dropdown: absolute w-full mt-1 bg-white rounded-lg shadow-lg border max-h-80 overflow-y-auto z-50. Result sections: \"Recent Searches\" (Clock icon), \"Suggestions\" based on input, \"Results\" with match highlighting. Highlight matches: split text at match, wrap match in <mark className=\"bg-yellow-200\">. Result items: hover:bg-gray-50, flex items-center gap-3, icon based on type, title with highlighted match, subtitle/description. Empty state: SearchX icon, \"No results for [query]\", helpful suggestions (\"Try different keywords\"). Keyboard navigation: onKeyDown handler, arrow up/down to navigate (track activeIndex), Enter to select, Escape to close dropdown. Search history: store in localStorage (last 5-10), clear history button. Filters: dropdown or sidebar with category checkboxes, price range slider, date range. Results header: \"[count] results for [query]\", sort dropdown (Relevance, Date, Price). URL state: sync search query to URL params for shareability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

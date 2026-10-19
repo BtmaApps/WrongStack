@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a29-morphing-shapes",
+  "slug": "fluidflow-animation-a29-morphing-shapes",
+  "title": "Morphing Shapes",
+  "description": "FluidFlow · Morphing Shapes",
+  "content": "Create morphing shape animations using SVG paths. Animate between different path definitions. Ensure paths have same number of points for smooth morph. Use SMIL animations or CSS/JS. Create blob morphing with organic transitions. Support click-triggered or continuous morphing. Handle complex shapes with multiple paths. Add color transitions during morph.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5ea37525ce0df356fab92d202258da2ffb3b8cdf671b0869a413f1f34dd1cc34",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create SVG shapes that smoothly morph between states.",
+    "detailed": "Create morphing shape animations using SVG paths. Animate between different path definitions. Ensure paths have same number of points for smooth morph. Use SMIL animations or CSS/JS. Create blob morphing with organic transitions. Support click-triggered or continuous morphing. Handle complex shapes with multiple paths. Add color transitions during morph.",
+    "advanced": "Create morphing shape animations using SVG paths for organic transitions. Morphing requirement: source and target paths must have same number of points/commands for smooth interpolation. Path matching: manually create paths with matching point counts, or use libraries like flubber to interpolate between different paths. CSS approach: transition d attribute (limited browser support), or use SVG SMIL animate element. JavaScript approach: interpolate path points each frame, update d attribute via ref. Blob morphing: organic blob shapes with bezier curves, multiple control points, animate point positions with noise/random for continuous organic movement. Continuous morph: animate path points in loop with varying speeds per point, creates breathing/flowing effect. Click-triggered: interpolate between two specific states on interaction, reverse on toggle. Implementation pattern: store path points as state, animate point positions, generate d attribute from points. Easing: apply easing to point position changes for natural movement. Multi-path SVG: each path morphs independently, coordinate timing for cohesive animation. Color sync: animate fill/stroke color alongside shape change. Libraries: GSAP MorphSVG (most powerful, handles different point counts), Anime.js, Framer Motion SVG animation. Performance: complex morphs with many points can be expensive, optimize point count. Use cases: logo animations, decorative backgrounds, illustration interactions, button states. Fallback: for browsers without support, crossfade between static states. Looping: use seamless loop by morphing A→B→A or through multiple states. Reduced motion: show static shape or simple fade between states."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

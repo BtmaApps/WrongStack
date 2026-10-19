@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec3-product-detail",
+  "slug": "fluidflow-ecommerce-ec3-product-detail",
+  "title": "Product Detail",
+  "description": "FluidFlow · Product Detail",
+  "content": "Build complete product detail page. Layout: two columns - gallery left, details right. Image gallery: main large image, thumbnail strip below, click to change, lightbox on click, zoom on hover. Product info: breadcrumbs, product name (text-2xl font-bold), brand, star rating with review count, price, short description. Variants: color swatches, size buttons with availability. Quantity selector: plus/minus. Actions: \"Add to Cart\", \"Add to Wishlist\", \"Share\". Tabs below: Description, Specifications, Reviews. Related products at bottom.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "58c9b8e15aed93d353e59f9dc292abb02826aafd409100ed56cfce9c0dc6f188",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product page with image gallery, description, variants, and add to cart.",
+    "detailed": "Build complete product detail page. Layout: two columns - gallery left, details right. Image gallery: main large image, thumbnail strip below, click to change, lightbox on click, zoom on hover. Product info: breadcrumbs, product name (text-2xl font-bold), brand, star rating with review count, price, short description. Variants: color swatches, size buttons with availability. Quantity selector: plus/minus. Actions: \"Add to Cart\", \"Add to Wishlist\", \"Share\". Tabs below: Description, Specifications, Reviews. Related products at bottom.",
+    "advanced": "Build complete product detail page with full e-commerce functionality. Layout: max-w-7xl mx-auto px-4, two columns on desktop (grid grid-cols-1 lg:grid-cols-2 gap-8), gallery on top for mobile. Image gallery section: main image container (aspect-square relative), thumbnail strip below (flex gap-2 overflow-x-auto). Main image: object-contain bg-gray-50 rounded-lg, click opens lightbox modal with zoom and navigation, hover shows magnified view (scale-150 at cursor position). Thumbnails: w-16 h-16 rounded border-2, border-black when active, click to change main image. Lightbox: full-screen modal with navigation arrows, close button, swipe on mobile. Product info section: breadcrumbs (Home > Category > Subcategory > Product), product name (text-2xl md:text-3xl font-bold), brand link (text-gray-500), star rating display with review count link (\"4.5 ★ (128 reviews)\"), price section (text-3xl font-bold, sale price with original struck through), short description paragraph. Variants section: color selector with swatches showing color name, size selector buttons with availability (in-stock, low-stock warning, out-of-stock disabled), material/style options if applicable. Quantity selector: plus/minus buttons with input, min 1, max based on stock. Action buttons: \"Add to Cart\" (bg-black text-white px-8 py-4 rounded-lg w-full md:w-auto, loading state with spinner), \"Add to Wishlist\" (outline button with Heart icon), \"Share\" (dropdown with social options). Stock info: \"In Stock\" green badge or \"Only 3 left\" warning, shipping estimate (\"Ships in 1-2 business days\"). Tabs/Accordion below: Description (rich text with images), Specifications (key-value table), Reviews (full review section component), Shipping & Returns (policy info). Related products carousel at bottom. Sticky add to cart bar on mobile: fixed bottom-0, shows on scroll past main CTA, contains price, quantity, Add button. Structured data: JSON-LD for SEO. Accessibility: proper headings hierarchy, image alts, focusable elements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

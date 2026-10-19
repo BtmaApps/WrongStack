@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d37-stained-glass",
+  "slug": "fluidflow-design-d37-stained-glass",
+  "title": "Stained Glass",
+  "description": "FluidFlow · Stained Glass",
+  "content": "Apply stained glass aesthetic with jewel-toned sections. Use bold black outlines (leading) between colored areas. Rich, saturated jewel colors: ruby, sapphire, emerald, amber. Create segmented designs with geometric or organic shapes. Add glow effects suggesting light passing through. Include gradient overlays simulating glass depth. Decorative border frames. Gothic or Art Nouveau inspired patterns optional.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d37"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9ac8da60d1ba42e40fb244b331c86fe9a53261559dd566cf882a7ebc98fed9c1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create colorful stained glass effect with bold outlines, jewel tones, and light-through-glass aesthetic.",
+    "detailed": "Apply stained glass aesthetic with jewel-toned sections. Use bold black outlines (leading) between colored areas. Rich, saturated jewel colors: ruby, sapphire, emerald, amber. Create segmented designs with geometric or organic shapes. Add glow effects suggesting light passing through. Include gradient overlays simulating glass depth. Decorative border frames. Gothic or Art Nouveau inspired patterns optional.",
+    "advanced": "Apply stained glass aesthetic with light-through-glass effect. Leading (outlines): bold black borders (border-2 to border-4 border-gray-900) between colored sections, use CSS Grid or flexbox for segment layout. Color palette: saturated jewel tones - ruby (rose-600), sapphire (blue-600), emerald (green-600), amber (amber-500), amethyst (purple-600). Each section solid color or subtle gradient. Glass depth: add inner shadow and subtle gradient overlay to each pane suggesting thickness and light refraction. Glow effect: colored shadows matching pane color (shadow-[0_0_20px_rgba(color,0.3)]), stronger glow on hover suggesting illumination. Texture: subtle noise or bubble texture within panes. Shape vocabulary: geometric (rectangles, triangles, circles) or organic flowing curves for Art Nouveau style. Composition: central focal design (rosette, figure, pattern) with border frame. Border: decorative frame with repeated geometric pattern. Background illumination: radial gradient (lighter center) suggesting light source behind. Interactive: panes can glow brighter on hover, subtle color shift. Gothic option: pointed arch shapes, religious iconography patterns. Art Nouveau option: flowing organic lines, nature motifs, Mucha-inspired. SVG implementation: complex shapes easier with SVG paths, filter effects for texture. Accessibility: ensure any text has sufficient contrast, dont rely on color alone for meaning."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec20-gift-options",
+  "slug": "fluidflow-ecommerce-ec20-gift-options",
+  "title": "Gift Options",
+  "description": "FluidFlow · Gift Options",
+  "content": "Build gift options section for checkout. Toggle: \"This is a gift\" checkbox to reveal options. Gift wrapping: selection of wrapping styles with images and prices, or free option. Gift message: textarea for personal message (max 150 chars with counter). Gift receipt: checkbox to include gift receipt (price hidden). Preview: show wrapped product mockup if available. Recipient info: optional separate shipping address for gift.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3ca73ff8c00ba62ac268eb1518fbad4f0eb0571dfc8853f6d541c997ba39f5a4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create gift options form with message and wrapping selection.",
+    "detailed": "Build gift options section for checkout. Toggle: \"This is a gift\" checkbox to reveal options. Gift wrapping: selection of wrapping styles with images and prices, or free option. Gift message: textarea for personal message (max 150 chars with counter). Gift receipt: checkbox to include gift receipt (price hidden). Preview: show wrapped product mockup if available. Recipient info: optional separate shipping address for gift.",
+    "advanced": "Build comprehensive gift options section for cart/checkout flow. Container: bg-gray-50 rounded-lg p-4 border. Gift toggle: checkbox or switch \"This order is a gift\" with Gift icon, unchecked hides all options, checking reveals animated expansion (max-height transition). Gift wrapping section: \"Select Gift Wrap\" label, grid of wrapping options (3-4 options) as selectable cards. Each card: image of wrapping style (w-full aspect-square), name (\"Classic Red\", \"Birthday Celebration\"), price (\"+ $4.99\" or \"Free\"), selected state (ring-2 ring-black). None option: \"No Gift Wrap - Free\" default selected. Premium options: higher tier wrapping with better presentation at higher price. Gift bag alternative: for items that don't wrap well. Gift box: rigid box option for premium feel. Gift message: \"Add a Gift Message\" expandable section or always visible. Textarea: max-length 150-200 chars, character counter (text-gray-500 text-sm), placeholder \"Enter your message here...\", preview of how message will appear on card. Message card style selector: if multiple card designs available, small thumbnails to choose. Handwritten option: premium option for hand-written message at extra cost. Gift receipt: checkbox \"Include gift receipt\" with info tooltip explaining receipt shows items but not prices. From/To fields: optional fields for card printing \"From: [name]\" \"To: [name]\". Preview section: if assets available, show rendered preview of wrapped package with message card, or placeholder illustration. Separate shipping: \"Ship to different address\" checkbox revealing secondary address form for gift recipient, gift message sent with package, order confirmation (with prices) sent to buyer. Hide prices: \"Hide prices on packing slip\" checkbox. Scheduling: for gift delivery, date picker \"Deliver on specific date\" for timed gift arrival. Per-item gifts: in cart, option to mark individual items as gifts with different wrapping/messages. Corporate gifting: bulk gift options, CSV upload for multiple recipients. Summary: in order summary, show \"Gift wrap: Classic Red - $4.99\", \"Gift message: included\". Accessibility: expandable sections properly announced, form fields labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

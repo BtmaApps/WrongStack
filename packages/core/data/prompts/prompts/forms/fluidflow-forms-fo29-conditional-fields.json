@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo29-conditional-fields",
+  "slug": "fluidflow-forms-fo29-conditional-fields",
+  "title": "Conditional Fields",
+  "description": "FluidFlow · Conditional Fields",
+  "content": "Build conditional form fields. Dependencies: define which fields depend on others. Show/hide: render fields only when conditions met. Animation: smooth show/hide transitions. Validation: only validate visible fields. Clear values: optionally clear hidden field values. Chaining: support nested dependencies. Rules: flexible condition rules (equals, contains, greater than).",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b793cbcea61c3da7ba93d8db37311bf93510dc49d63984e645dcb3440b9ad931",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show or hide form fields based on other field values.",
+    "detailed": "Build conditional form fields. Dependencies: define which fields depend on others. Show/hide: render fields only when conditions met. Animation: smooth show/hide transitions. Validation: only validate visible fields. Clear values: optionally clear hidden field values. Chaining: support nested dependencies. Rules: flexible condition rules (equals, contains, greater than).",
+    "advanced": "Build comprehensive conditional form field system. Dependency definition: declarative rules mapping field visibility to conditions, support AND/OR logic, multiple conditions per field. Condition types: equals (field === value), not equals, contains, starts with, greater/less than, in array, is empty/not empty, regex match. Show/hide animation: smooth height animation using grid-template-rows or max-height transition, opacity fade, prevent layout shift. Visibility tracking: track visible fields in state, update when dependencies change. Validation scope: only validate currently visible fields, clear or preserve hidden field errors. Value handling on hide: optionally clear values when field hidden (configurable), preserve values if might show again. Nested dependencies: A shows B, B shows C - handle cascading visibility. Required fields: conditionally required based on other values. Complex logic: support expressions (\"if A=1 AND (B=2 OR C=3)\"). React Hook Form integration: use watch() to track trigger fields, conditionally render with animations. Performance: memoize condition evaluation, avoid re-renders on unrelated changes. Initial state: evaluate conditions on mount for correct initial visibility. Read-only mode: conditions should work in both edit and view modes. Debugging: dev mode indicator showing why fields are shown/hidden. Section visibility: apply conditions to entire sections, not just individual fields. Accessibility: properly handle focus when fields appear/disappear. Implementation: useMemo for condition evaluation, useEffect for side effects (clearing values)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

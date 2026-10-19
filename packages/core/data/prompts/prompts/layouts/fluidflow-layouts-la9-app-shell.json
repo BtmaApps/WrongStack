@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la9-app-shell",
+  "slug": "fluidflow-layouts-la9-app-shell",
+  "title": "App Shell",
+  "description": "FluidFlow · App Shell",
+  "content": "Build standard application shell layout. Structure: fixed header (h-14 or h-16), optional sidebar, main content area, optional bottom nav (mobile). Header: logo/brand, center search or title, right actions (notifications, profile). Content area: flex-1 overflow-auto. Safe areas: account for mobile notches. Loading states: skeleton shell. Navigation transitions: smooth content transitions. Scroll restoration. Offline indicator. Toast container.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1db737e2edd25826c43c17feea590c1a80d24060233156850a72362beff09905",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create app shell with fixed header, main content area, and mobile bottom nav.",
+    "detailed": "Build standard application shell layout. Structure: fixed header (h-14 or h-16), optional sidebar, main content area, optional bottom nav (mobile). Header: logo/brand, center search or title, right actions (notifications, profile). Content area: flex-1 overflow-auto. Safe areas: account for mobile notches. Loading states: skeleton shell. Navigation transitions: smooth content transitions. Scroll restoration. Offline indicator. Toast container.",
+    "advanced": "Build standard application shell layout with comprehensive features. Structure: flex flex-col h-screen (or min-h-screen). Fixed header: h-14 md:h-16 bg-white border-b fixed top-0 left-0 right-0 z-50, flex items-center justify-between px-4. Header left: logo/brand (link to home), hamburger menu button (mobile, opens sidebar drawer). Header center: search bar (hidden on mobile, expands from icon) or page title. Header right: action buttons (icon buttons), notifications bell (with badge), user avatar (dropdown menu with profile, settings, logout). Optional sidebar: fixed left-0 w-64, hidden on mobile (becomes drawer), navigation links with icons. Main content area: flex-1 pt-14 md:pt-16 (header height), pb-16 md:pb-0 (bottom nav height on mobile), overflow-auto. Content wrapper: max-w-7xl mx-auto px-4 py-6. Optional bottom nav (mobile only, md:hidden): fixed bottom-0 left-0 right-0 h-16 bg-white border-t, flex justify-around items-center. Nav items: icon + label stacked, active state (text-blue-600), 4-5 items max. Footer: optional, below main content or fixed at bottom, links and copyright. Safe areas: use env(safe-area-inset-*) or pb-safe for iPhone notches and home indicator. Loading states: skeleton shell while app initializes (header skeleton, content skeletons). Error boundary: wrap content in error boundary, display friendly error with retry. Navigation transitions: fade or slide transitions between routes (Framer Motion or CSS transitions). Scroll restoration: remember scroll position per route, restore on back navigation (use ScrollRestoration or manual). Pull to refresh: mobile gesture support using touch events. Offline indicator: banner at top when navigator.onLine is false (\"You are offline\"). Toast container: fixed positioned (bottom-right or top-center) for notification toasts, portal rendered. Modal/drawer portals: proper z-index stacking (z-40 header, z-50 modals, z-60 toasts). Focus management: focus first focusable element on route change. Responsive: mobile-first, progressively enhance for larger screens. Accessibility: skip to main content link, proper landmarks (header, nav, main, footer)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

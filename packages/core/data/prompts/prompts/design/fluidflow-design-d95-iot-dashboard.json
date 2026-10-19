@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d95-iot-dashboard",
+  "slug": "fluidflow-design-d95-iot-dashboard",
+  "title": "IoT Dashboard",
+  "description": "FluidFlow · IoT Dashboard",
+  "content": "Apply IoT dashboard aesthetic with connected device feel. Sensor reading gauges and displays. Device status cards with online/offline indicators. Temperature, humidity, motion data visualization. Smart home control switches. Automation rule builders. Device pairing interfaces. Firmware update progress. Battery level indicators. Location-based device maps. Alert and notification panels.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d95"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7aef874856bbb12640c6f9147ec3ddff8149d60c40974e142fd7030f308bf501",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create IoT dashboard with sensor readings, device status, and smart home controls.",
+    "detailed": "Apply IoT dashboard aesthetic with connected device feel. Sensor reading gauges and displays. Device status cards with online/offline indicators. Temperature, humidity, motion data visualization. Smart home control switches. Automation rule builders. Device pairing interfaces. Firmware update progress. Battery level indicators. Location-based device maps. Alert and notification panels.",
+    "advanced": "Apply IoT aesthetic with smart device dashboard patterns. Sensor gauges: circular for temp/humidity, linear for levels. Device cards with MAC address, firmware version, last seen. Real-time charts for sensor time-series. Toggle switches for smart controls with state sync. Automation flows with trigger→condition→action. Device discovery lists with pairing buttons. OTA update progress bars. Battery icons with percentage (full→critical colors). Floor plan SVG with device markers. Push notification cards with device source. MQTT connection status indicators."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

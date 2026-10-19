@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d89-system-architecture",
+  "slug": "fluidflow-design-d89-system-architecture",
+  "title": "System Architecture",
+  "description": "FluidFlow · System Architecture",
+  "content": "Apply system architecture aesthetic with technical design documentation feel. Component boxes with icons and labels. Layer diagrams (presentation, business, data). Arrows showing data/control flow. Service boundaries. Interface definitions. Dependency arrows. Module groupings. API gateway representations. System design documentation atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d89"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "62a29e73b316394d7f5ec2ff72cdf5e7262f39a9ecf22ce5cfc4870fc70f8770",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create software architecture aesthetic with component diagrams, layer visualization, and technical documentation styling.",
+    "detailed": "Apply system architecture aesthetic with technical design documentation feel. Component boxes with icons and labels. Layer diagrams (presentation, business, data). Arrows showing data/control flow. Service boundaries. Interface definitions. Dependency arrows. Module groupings. API gateway representations. System design documentation atmosphere.",
+    "advanced": "Apply system architecture aesthetic with enterprise architecture documentation feel. Component styling: rounded rectangles with icon + label, consistent sizing, color-coded by type (UI blue, service green, database purple, external gray). Layer diagrams: horizontal bands representing architectural layers - presentation (top), application/business logic, domain, infrastructure, data (bottom). Flow arrows: solid for synchronous calls, dashed for async/events, labeled with protocols (HTTP, gRPC, AMQP). Arrow heads: direction indicators, optional cardinality. Service boundaries: bounded context boxes with service mesh representation. Microservices: each service as box, internal components shown on drill-down. APIs: interface boxes on service edges, REST/GraphQL badges. Message queues: queue icon between services, topic/queue labels. Databases: cylinder shapes, replication indicators, read/write separation. Caching: lightning bolt cache layer, Redis/Memcached icons. Load balancers: balance scale icon, distribution arrows. CDN: edge location indicators, content distribution. External services: cloud shape or different border style, third-party badges. Containers: docker-style boxed deployments, Kubernetes pod groupings. Infrastructure as Code: Terraform-style resource blocks. Sequence diagrams: timeline-style interaction flows. C4 model: Context, Container, Component, Code zoom levels. Decision records: ADR-style documentation blocks. Non-functional: performance annotations, security zones, compliance boundaries. Version: diagram version, last updated date. Implementation: SVG or diagramming library output styling. Accessibility: architecture diagrams need comprehensive text descriptions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

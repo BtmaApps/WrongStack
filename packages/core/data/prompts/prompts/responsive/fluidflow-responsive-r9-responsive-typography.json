@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r9-responsive-typography",
+  "slug": "fluidflow-responsive-r9-responsive-typography",
+  "title": "Responsive Typography",
+  "description": "FluidFlow · Responsive Typography",
+  "content": "Implement fluid typography that scales smoothly across viewports. Use clamp() for fluid sizing - e.g., text-[clamp(1rem,2.5vw,1.5rem)]. Scale headings proportionally: h1 (text-3xl md:text-4xl lg:text-5xl), h2 (text-2xl md:text-3xl), h3 (text-xl md:text-2xl). Adjust line-height for different sizes (leading-tight for large headings, leading-relaxed for body). Reduce letter-spacing on mobile for tighter text. Ensure minimum text size of 16px to prevent iOS zoom on input focus. Use responsive max-width for optimal line length (max-w-prose or max-w-[65ch]). Test readability at all sizes.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bff4c826099445bb4e18ba6f0cd2030a158149b6190e180af8178bd24717d5f1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Scale text sizes smoothly across different screen sizes.",
+    "detailed": "Implement fluid typography that scales smoothly across viewports. Use clamp() for fluid sizing - e.g., text-[clamp(1rem,2.5vw,1.5rem)]. Scale headings proportionally: h1 (text-3xl md:text-4xl lg:text-5xl), h2 (text-2xl md:text-3xl), h3 (text-xl md:text-2xl). Adjust line-height for different sizes (leading-tight for large headings, leading-relaxed for body). Reduce letter-spacing on mobile for tighter text. Ensure minimum text size of 16px to prevent iOS zoom on input focus. Use responsive max-width for optimal line length (max-w-prose or max-w-[65ch]). Test readability at all sizes.",
+    "advanced": "Implement fluid typography that scales smoothly across viewports using CSS clamp() for true fluidity. Formula: clamp(min, preferred, max) - e.g., text-[clamp(1rem,0.5rem+2vw,1.5rem)] for body, text-[clamp(2rem,1rem+4vw,4rem)] for h1. Scale headings proportionally maintaining hierarchy: h1 (text-3xl md:text-4xl lg:text-5xl), h2 (text-2xl md:text-3xl lg:text-4xl), h3 (text-xl md:text-2xl). Adjust line-height inversely to size: leading-tight (1.25) for large headings, leading-normal (1.5) for subheadings, leading-relaxed (1.625) for body text. Reduce letter-spacing on mobile (tracking-tight) where space is premium, increase on desktop for large headings (tracking-wide). CRITICAL: Minimum 16px text size for form inputs to prevent iOS auto-zoom on focus. Use responsive max-width for optimal line length: 45-75 characters (max-w-prose ≈ 65ch). Test with browser zoom up to 200% - text should remain readable and not overflow containers. Implement proper heading hierarchy for accessibility. Consider dyslexia-friendly options: increased letter/word spacing, specific fonts. Add text-wrap: balance for headings in supporting browsers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

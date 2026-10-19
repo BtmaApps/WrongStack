@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r10-hide-on-mobile",
+  "slug": "fluidflow-responsive-r10-hide-on-mobile",
+  "title": "Hide on Mobile",
+  "description": "FluidFlow · Hide on Mobile",
+  "content": "Strategically hide non-essential elements on mobile using hidden sm:block or hidden md:flex. Hide secondary navigation items - keep in hamburger menu. Remove decorative images or illustrations that dont add value. Collapse detailed descriptions to \"Read more\" expandable sections. Hide table columns showing secondary data - keep essential columns only. Remove sidebar widgets on mobile - move to bottom or hide. Hide breadcrumbs on mobile (space-consuming). Simplify footer - show only essential links. Keep all functionality accessible through alternative paths. Use lg:hidden to hide mobile-only elements on desktop.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5cdca2fd8c9937cdf31f87a28649a17c318fde8431231d3d32766c8bff7a1691",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Hide non-essential elements on mobile to reduce clutter.",
+    "detailed": "Strategically hide non-essential elements on mobile using hidden sm:block or hidden md:flex. Hide secondary navigation items - keep in hamburger menu. Remove decorative images or illustrations that dont add value. Collapse detailed descriptions to \"Read more\" expandable sections. Hide table columns showing secondary data - keep essential columns only. Remove sidebar widgets on mobile - move to bottom or hide. Hide breadcrumbs on mobile (space-consuming). Simplify footer - show only essential links. Keep all functionality accessible through alternative paths. Use lg:hidden to hide mobile-only elements on desktop.",
+    "advanced": "Strategically hide non-essential elements on mobile using hidden sm:block or hidden md:flex - but NEVER hide functionality without alternative access. Hide secondary navigation items - move to hamburger menu, not remove entirely. Remove decorative images/illustrations that consume bandwidth without adding value - consider replacing with smaller icons. Collapse detailed descriptions to \"Read more\" expandable sections using disclosure pattern. Hide table columns showing secondary data: use data-priority attribute to mark importance, keep essential columns (name, status, primary action), offer \"View details\" for full data. Remove sidebar widgets on mobile - move to end of main content or dedicated page, not just hidden. Hide breadcrumbs on mobile (space-consuming) but ensure other navigation paths exist. Simplify footer: accordion sections by category, essential links only, move secondary links to dedicated pages. Use lg:hidden to hide mobile-specific elements (like bottom nav) on desktop. ACCESSIBILITY: Hidden content must be truly hidden (display:none or hidden attribute) not just visually hidden, unless its meant for screen readers only. Ensure no functionality is lost - all hidden features must have alternative access path. Test keyboard navigation after hiding elements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

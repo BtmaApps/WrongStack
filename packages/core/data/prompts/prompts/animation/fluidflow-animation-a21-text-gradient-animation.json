@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a21-text-gradient-animation",
+  "slug": "fluidflow-animation-a21-text-gradient-animation",
+  "title": "Text Gradient Animation",
+  "description": "FluidFlow · Text Gradient Animation",
+  "content": "Create animated gradient text effect. Apply background gradient to text using bg-clip-text and text-transparent. Animate background-position or hue-rotate for color shift. Use larger background-size for smooth loop. Support multiple color stops. Control animation speed. Add shimmer variant with linear gradient sweep. Consider performance for large text. Ensure readability throughout animation.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3ca15e314e4c61aaac92ce315a34293c04ffa1398b3f0d5513de83243c0ec5c5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create animated gradient text that shifts colors.",
+    "detailed": "Create animated gradient text effect. Apply background gradient to text using bg-clip-text and text-transparent. Animate background-position or hue-rotate for color shift. Use larger background-size for smooth loop. Support multiple color stops. Control animation speed. Add shimmer variant with linear gradient sweep. Consider performance for large text. Ensure readability throughout animation.",
+    "advanced": "Create animated gradient text for attention-grabbing headings. Base technique: background linear-gradient, background-clip: text (-webkit-background-clip: text), color: transparent (text-transparent). Moving gradient: background-size: 200% 200%, @keyframes gradient-text { 0% { background-position: 0% 50% } 100% { background-position: 100% 50% } }, animate 3-5s ease infinite. Hue shift: single gradient, filter: hue-rotate animation from 0deg to 360deg. Shimmer effect: linear-gradient with transparent, white highlight, transparent, animate background-position across text width. Multi-color: gradient with multiple stops (rainbow or brand colors), animate position for flowing effect. Chrome/metallic: gradient with multiple white/gray stops at different angles, subtle position animation for reflective look. Tailwind implementation: custom animation in tailwind.config, or inline styles for complex gradients. Browser support: -webkit-background-clip for Safari, test in all browsers. Performance: filter animations can be expensive on large text, prefer transform/background-position when possible. Readability: ensure all color combinations in animation provide sufficient contrast. Use cases: hero headlines, highlight text, call-to-action text. Fallback: for browsers without support, ensure solid color fallback. Animation speed: 3-10s depending on effect, faster for attention, slower for ambient. ACCESSIBILITY: animated text can be distracting, consider prefers-reduced-motion to disable, ensure text remains readable. Gradient direction: 45deg or 90deg most common, experiment for desired effect."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

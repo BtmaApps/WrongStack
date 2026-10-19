@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo11-otp-input",
+  "slug": "fluidflow-forms-fo11-otp-input",
+  "title": "OTP Input",
+  "description": "FluidFlow · OTP Input",
+  "content": "Build OTP/verification code input component. Structure: row of individual digit inputs (4-6 boxes). Input styling: w-12 h-14 text-2xl text-center border rounded-lg. Auto-advance: automatically focus next input after entering digit. Backspace: delete and move to previous. Paste support: distribute pasted code across inputs. Error state: shake animation, red border. Resend code: link with countdown.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ca2a1d1dd137528ae6b9a3ab0dc9c85019ee3b5d1c5775eb14e2e4a8634a3a51",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create row of single-digit inputs for entering verification codes.",
+    "detailed": "Build OTP/verification code input component. Structure: row of individual digit inputs (4-6 boxes). Input styling: w-12 h-14 text-2xl text-center border rounded-lg. Auto-advance: automatically focus next input after entering digit. Backspace: delete and move to previous. Paste support: distribute pasted code across inputs. Error state: shake animation, red border. Resend code: link with countdown.",
+    "advanced": "Build OTP/verification code input component with excellent UX. Structure: row of individual digit inputs (configurable length: 4, 6, or custom), flex gap-2 or gap-3 for spacing. Input styling: w-12 h-14 (or w-10 h-12 for compact), text-2xl font-medium text-center, border-2 rounded-lg, focus:border-blue-500 focus:ring-2. Auto-advance: onInput, if single digit entered, automatically focus next input using refs array. Backspace handling: onKeyDown, if Backspace pressed and current input empty, focus previous input; if has value, delete it. Paste support: onPaste handler intercepts paste event, extracts digits from clipboard text, distributes across inputs starting from current, prevents default paste. Selection: select all content on focus (input.select()) for easy overwrite. Separator: optional dash or space between groups for 6-digit codes (XXX-XXX), achieved with margin or literal separator element. Validation: accept only digits (0-9), use inputMode=\"numeric\" pattern=\"[0-9]*\" for mobile numeric keyboard, prevent non-digit input. Submit: auto-submit when all digits filled (trigger onComplete callback), or show explicit \"Verify\" button that becomes enabled. Resend code: \"Didn't receive code? Resend\" link with countdown timer (\"Resend in 30s\"), disabled during countdown, increments with each resend, uses setInterval. Expiry: optionally show code expiration countdown (\"Code expires in 2:30\") if API provides expiry time. Error state: shake animation (CSS keyframes for horizontal shake), red border (border-red-500), \"Invalid code\" message, clear inputs. Success: green borders (border-green-500), brief success state before redirect. Accessibility: wrap in fieldset with legend describing purpose, or use single visually-hidden input with aria-label, announce errors to screen readers with aria-live. Handle autofill: some browsers/apps autofill OTP from SMS, handle via onChange."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

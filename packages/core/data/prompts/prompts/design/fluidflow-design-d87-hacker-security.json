@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d87-hacker-security",
+  "slug": "fluidflow-design-d87-hacker-security",
+  "title": "Hacker/Security",
+  "description": "FluidFlow · Hacker/Security",
+  "content": "Apply hacker/security aesthetic with cybersecurity professional feel. Dark theme with green or red accents. Terminal windows with \"hacking\" output. IP addresses and port numbers. Encryption/lock symbols. Vulnerability severity ratings. CVE identifiers. Network scanning visuals. Password/hash representations. Security badge/clearance styling. Ethical hacking atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d87"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "54fb5b065e3b88c9e2c1d45a461e2ac806c0155b3bc36d9f7df0efead3aa646b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create cybersecurity aesthetic with penetration testing visuals, encryption symbols, and dark hacker themes.",
+    "detailed": "Apply hacker/security aesthetic with cybersecurity professional feel. Dark theme with green or red accents. Terminal windows with \"hacking\" output. IP addresses and port numbers. Encryption/lock symbols. Vulnerability severity ratings. CVE identifiers. Network scanning visuals. Password/hash representations. Security badge/clearance styling. Ethical hacking atmosphere.",
+    "advanced": "Apply hacker/security aesthetic with cybersecurity operations feel. Color scheme: dark (#0a0a0a, #111827), hacker green (#00ff00) or warning red (#ff0000) accents, matrix green for \"active\" operations. Terminal aesthetic: multiple terminal windows, scrolling output suggesting active scanning/exploitation. Tool output styling: nmap scans (port tables, service detection), Metasploit sessions, Burp Suite request/response. IP addresses: IPv4/IPv6 highlighted, port:protocol pairings, CIDR notation. Vulnerability displays: severity badges (Critical red, High orange, Medium yellow, Low blue), CVSS scores, CVE-YYYY-NNNNN identifiers. Exploitation: payload code blocks, shell sessions, privilege escalation indicators. Encryption: lock/unlock icons, certificate chains, hash representations (truncated SHA256), key icons for public/private. Network: packet capture styling, hex+ASCII payload views, protocol decoding. Authentication: credential tables, password strength meters, MFA indicators. Scanning: progress bars with host count, port sweep visualizations. Alerts: intrusion detection hits, SIEM event styling. Threat intel: IOC lists, threat actor badges, TTP references. Kill chain: attack phase indicators (Recon > Weaponize > Deliver > Exploit > Install > C2 > Actions). CTF elements: flag formats (flag{...}), challenge categories, point values. War room: multi-monitor feel, alert dashboards. Classified: security clearance markers, redacted text effects. Implementation: terminal styling, table-heavy layouts. Accessibility: ensure security severity not color-only, proper contrast despite dark theme. IMPORTANT: aesthetic only - do not provide actual exploitation guidance."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

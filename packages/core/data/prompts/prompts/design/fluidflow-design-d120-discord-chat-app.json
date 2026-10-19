@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d120-discord-chat-app",
+  "slug": "fluidflow-design-d120-discord-chat-app",
+  "title": "Discord/Chat App",
+  "description": "FluidFlow · Discord/Chat App",
+  "content": "Apply Discord aesthetic with community chat feel. Dark theme with gray tones. Server icons sidebar. Channel list with categories. Message area with user messages. User list sidebar. Rich embeds and attachments. Emoji reactions. Voice channel states. Role-based colors. Mention highlights. Thread indicators.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d120"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "38d202e9b059c1c6c9e769c38af2be72a3441d257151427211a13523fd29aa32",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create chat application with servers, channels, and rich messaging.",
+    "detailed": "Apply Discord aesthetic with community chat feel. Dark theme with gray tones. Server icons sidebar. Channel list with categories. Message area with user messages. User list sidebar. Rich embeds and attachments. Emoji reactions. Voice channel states. Role-based colors. Mention highlights. Thread indicators.",
+    "advanced": "Apply Discord aesthetic with chat platform patterns. Background: bg-[#313338] for main, bg-[#2b2d31] for sidebars. Server bar: w-18, circular icons with unread indicator, selected with pill left. Channel sidebar: w-60, category headers (collapsible), channel rows with icons (#, speaker, etc), selected bg-[#404249]. Messages: flex with avatar left, username (role color), timestamp on hover, message content, reactions below. Message input: bottom, textarea with formatting buttons, emoji picker, file attach. Embeds: max-w-lg, left color border, rich preview (images, links, code). Reactions: emoji pills with count, add reaction +. Mentions: bg-blue-500/20 text-blue-400, @role, @user, #channel. Threads: reply count badge, side panel for thread view. Voice channels: user avatars when connected, mute/deafen icons. User sidebar: grouped by role, status indicator dot. Status: online (green), idle (yellow), dnd (red), offline (gray). User popup: profile card on click, roles, mutual servers. Roles: colored dots/names, role management. Search: messages, users, filter by date/channel. Notifications: badge counts, ping sounds. Streaming: Go Live indicator."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

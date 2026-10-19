@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d48-gothic-dark-academia",
+  "slug": "fluidflow-design-d48-gothic-dark-academia",
+  "title": "Gothic/Dark Academia",
+  "description": "FluidFlow · Gothic/Dark Academia",
+  "content": "Apply gothic/dark academia aesthetic with intellectual darkness. Dark, muted colors: deep burgundy, forest green, navy, black, gold accents. Vintage academic imagery: books, libraries, classical architecture. Ornate serif typography. Include candles, ink, feathers as motifs. Antique paper textures. Gothic architectural elements: arches, columns. Mysterious, scholarly, romantic atmosphere. Victorian elegance meets academia.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d48"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2e119075bab19699536e1cd2168ff0a0d319915b1d982d4ef22172fd37f800d3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create moody gothic aesthetic with dark elegance, vintage academia, and mysterious atmosphere.",
+    "detailed": "Apply gothic/dark academia aesthetic with intellectual darkness. Dark, muted colors: deep burgundy, forest green, navy, black, gold accents. Vintage academic imagery: books, libraries, classical architecture. Ornate serif typography. Include candles, ink, feathers as motifs. Antique paper textures. Gothic architectural elements: arches, columns. Mysterious, scholarly, romantic atmosphere. Victorian elegance meets academia.",
+    "advanced": "Apply gothic/dark academia aesthetic with intellectual darkness and romantic decay. Color palette: deep burgundy (#800020), forest green (#013220), navy (#1a1a4e), charcoal (#36454f), with gold (#d4af37) and cream accents. Dark backgrounds with warm accent lighting. Textures: aged leather, antique paper (foxing spots, yellowed), velvet, dark wood grain. Academic imagery: stacked books, quill and ink, botanical illustrations, classical sculptures. Typography: elegant serifs (Playfair Display, Cormorant Garamond, Old Standard TT), blackletter for titles (Fraktur style), proper typographic details. Architectural elements: gothic arches (pointed arch shapes), columns, ornate moldings, library ladders. Candlelight: warm glow effects, flickering animation, wax drip details. Nature decay: pressed flowers, autumn leaves, ivy, moths. Patterns: damask, heraldic motifs, bookplate designs. Photography: moody, underexposed, vintage filter (sepia tint, vignette). Interactive: page turn effects, candlelight flicker, dust motes floating. Frame details: gilded frames, ornate borders, wax seals. Writing aesthetic: fountain pen strokes, handwritten margin notes. Books: leather spines, gold embossing, ribbon bookmarks. Implementation: layered textures, careful shadow work for mood. Accessibility: dark interface needs careful contrast ratios, ensure readability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c81-add-feature-comparison",
+  "slug": "fluidflow-components-c81-add-feature-comparison",
+  "title": "Add Feature Comparison",
+  "description": "FluidFlow · Add Feature Comparison",
+  "content": "Create comparison table. Container: overflow-x-auto. Table: w-full border-collapse. Header row: sticky top-0 bg-white, product/plan names, price info. Feature rows: alternate bg-gray-50. Feature name: text-left font-medium. Check/X icons: green check for included, gray X or dash for not included. Category rows: bg-gray-100 font-semibold spanning all columns. Highlight column: recommended option with border and ribbon.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c81"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d3d22c37755b615be994445157c21a384d06ce392d1126454534a4e400bfe604",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create feature comparison table for products or plans.",
+    "detailed": "Create comparison table. Container: overflow-x-auto. Table: w-full border-collapse. Header row: sticky top-0 bg-white, product/plan names, price info. Feature rows: alternate bg-gray-50. Feature name: text-left font-medium. Check/X icons: green check for included, gray X or dash for not included. Category rows: bg-gray-100 font-semibold spanning all columns. Highlight column: recommended option with border and ribbon.",
+    "advanced": "Create comprehensive comparison component. Layout: responsive table, becomes stacked cards on mobile. Header: product images/logos, product names, prices, CTA buttons (sticky on scroll). Feature categories: collapsible sections (e.g., \"Core Features\", \"Advanced Features\", \"Support\"). Feature rows: feature name with optional info tooltip, values for each product (checkmark, X, partial check, text value, or number). Value types: boolean (check/X), text (specific value), number (with unit), limited (check with \"(up to 100)\" text). Comparison types: products, plans, versions, competitors. Add to compare: on product pages, \"Compare\" button adds to comparison. Max items: limit compared items (3-4), remove oldest or show error. Differences only: toggle to show only differing features. Sticky elements: headers stick on vertical scroll, first column sticks on horizontal scroll. Print/export: download as PDF, shareable comparison link. Empty state: \"Add products to compare\" prompt. Mobile: switch to card-per-product with feature toggles. Highlighting: hover row highlights across all columns, highlight \"best\" values per row. Summary: quick summary of each option at bottom. Winner badges: \"Best for X\" labels. Accessibility: proper table semantics, scope attributes, keyboard navigation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

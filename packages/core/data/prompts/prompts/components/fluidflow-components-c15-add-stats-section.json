@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c15-add-stats-section",
+  "slug": "fluidflow-components-c15-add-stats-section",
+  "title": "Add Stats Section",
+  "description": "FluidFlow · Add Stats Section",
+  "content": "Create statistics/metrics display section. Layout: grid grid-cols-2 md:grid-cols-4 gap-8 for four key metrics. Item structure: large number (text-4xl md:text-5xl font-bold), label below (text-gray-600), optional icon or trend indicator. Add animated number counting on scroll into view. Trend indicators: green up arrow for positive, red down arrow for negative, with percentage change. Visual variants: simple text, cards with borders, icons above numbers. Include optional sparkline mini-charts. Background options: light cards, gradient accents, full-width colored band. Responsive: 2-column on mobile, full row on desktop. Add context tooltips explaining metrics.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7be287cd76ef32825d427c604eb6f602bf8921ae731f81976e24d18bde70d4de",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a statistics display with large numbers and labels.",
+    "detailed": "Create statistics/metrics display section. Layout: grid grid-cols-2 md:grid-cols-4 gap-8 for four key metrics. Item structure: large number (text-4xl md:text-5xl font-bold), label below (text-gray-600), optional icon or trend indicator. Add animated number counting on scroll into view. Trend indicators: green up arrow for positive, red down arrow for negative, with percentage change. Visual variants: simple text, cards with borders, icons above numbers. Include optional sparkline mini-charts. Background options: light cards, gradient accents, full-width colored band. Responsive: 2-column on mobile, full row on desktop. Add context tooltips explaining metrics.",
+    "advanced": "Create statistics/metrics display section with animated counters and trend indicators. Container: max-w-7xl mx-auto px-4 py-16, optional bg-gray-50 or gradient background. Grid layout: grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12. Stat item structure: flex flex-col items-center text-center (centered) or items-start text-left (aligned). Optional icon: w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-4. Number display: text-4xl md:text-5xl font-bold text-gray-900, tracking-tight. Animated counting: trigger on scroll into view using Intersection Observer, animate from 0 to target over 1.5-2s with easeOutExpo easing, format with toLocaleString() for commas. Prefix/suffix: support $, %, + symbols before/after number. Label: mt-2 text-sm md:text-base text-gray-600. Trend indicator: flex items-center gap-1 mt-2, TrendingUp (text-green-600) or TrendingDown (text-red-600) icon with percentage change text. Sparkline: optional mini line chart below number showing trend over time (use simple SVG path or library). Visual variants: 1) Simple: no background, just text, 2) Cards: bg-white rounded-lg shadow-sm p-6, 3) Bordered: border-l-4 border-blue-500 pl-4, 4) Icons above: icon prominently above number. Section styling: full-width colored band (bg-blue-600 text-white), or alternating stat backgrounds. Context tooltips: Info icon with tooltip explaining what metric measures. Responsive: 2 columns on mobile ensures readability, numbers scale down appropriately. Animation polish: subtle scale bounce when counter completes. ACCESSIBILITY: ensure numbers are readable (not just visual), provide context in aria-label if icon-only."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

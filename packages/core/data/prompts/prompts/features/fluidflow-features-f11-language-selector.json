@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f11-language-selector",
+  "slug": "fluidflow-features-f11-language-selector",
+  "title": "Language Selector",
+  "description": "FluidFlow · Language Selector",
+  "content": "Add language/locale selector for internationalization. UI: dropdown with current language flag/name, list of available languages. Display: flag icons (emoji or images) with language name. Store selection: localStorage key \"locale\". Apply: update UI text, date/number formats. React context: provide locale value and setter. Consider browser language detection for initial value.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2e4007ae6be03b177f2de850c838172923f497539f49f4e61233e63a6cf77071",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add dropdown to select language with flag icons and store preference.",
+    "detailed": "Add language/locale selector for internationalization. UI: dropdown with current language flag/name, list of available languages. Display: flag icons (emoji or images) with language name. Store selection: localStorage key \"locale\". Apply: update UI text, date/number formats. React context: provide locale value and setter. Consider browser language detection for initial value.",
+    "advanced": "Add language/locale selector for complete internationalization support. UI: dropdown with current language flag emoji and name, list of available languages in scrollable menu. Display: flag icons (emoji flags 🇺🇸 🇫🇷 or SVG sprites for consistency) with language name in native script (English, Français, 日本語). Structure: Globe icon trigger button, dropdown with search input for apps with many languages (>10). Store selection: localStorage key \"locale\" or \"language\", also set document.documentElement.lang attribute. Apply on selection: update all UI text via i18n system, update date/number formats (Intl.DateTimeFormat, Intl.NumberFormat), handle text direction change for RTL languages (Arabic, Hebrew) with dir=\"rtl\" on html element. React context: create LocaleContext providing locale value, setLocale function, t() translation function, formatDate/formatNumber helpers. Integration: implement with react-i18next, next-intl, or custom solution using JSON translation files. Browser language detection: navigator.language or navigator.languages[0] for initial value, match to supported locales with fallback. URL-based routing: optionally include locale in URL path (/en/about, /fr/about) for SEO using Next.js i18n routing or manual routing. Format helpers: useFormatter hook wrapping Intl APIs for dates, numbers, currencies, relative time. Regional variants: distinguish en-US vs en-GB for date formats (MM/DD vs DD/MM). Mark current language in dropdown with checkmark icon. Handle missing translations gracefully with fallback to default language. Support pluralization and interpolation in translation strings."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

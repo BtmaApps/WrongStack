@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r1-mobile-first",
+  "slug": "fluidflow-responsive-r1-mobile-first",
+  "title": "Mobile First",
+  "description": "FluidFlow · Mobile First",
+  "content": "Optimize for mobile-first design starting with base styles for small screens. Stack all elements vertically using flex-col. Increase touch targets to minimum 44x44px (min-h-11 min-w-11). Use full-width buttons (w-full) and inputs. Simplify navigation to hamburger menu. Reduce padding (p-4) and margins for efficient space use. Use larger text (text-base minimum) for readability. Remove hover-only interactions - ensure all actions work with tap. Add proper spacing between tappable elements to prevent mis-taps.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b0ba81a35a68ecc3e790e193b4f39687b27e5cbfe09aa655afff990072992314",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Optimize design for mobile screens with vertical stacking and large touch targets.",
+    "detailed": "Optimize for mobile-first design starting with base styles for small screens. Stack all elements vertically using flex-col. Increase touch targets to minimum 44x44px (min-h-11 min-w-11). Use full-width buttons (w-full) and inputs. Simplify navigation to hamburger menu. Reduce padding (p-4) and margins for efficient space use. Use larger text (text-base minimum) for readability. Remove hover-only interactions - ensure all actions work with tap. Add proper spacing between tappable elements to prevent mis-taps.",
+    "advanced": "Optimize for mobile-first design starting with base styles for small screens, then progressively enhance for larger viewports. Stack all elements vertically using flex-col with logical content ordering for screen readers. Increase touch targets to minimum 44x44px (min-h-11 min-w-11) per WCAG 2.1 guidelines - 48px preferred. Use full-width buttons (w-full) and inputs with proper padding. Simplify navigation to hamburger menu with focus trap when open. Reduce padding (p-4) and margins for efficient space use while maintaining visual breathing room. Use text-base (16px) minimum to prevent iOS auto-zoom on input focus. Remove hover-only interactions - ensure all actions work with tap and have visible active states (active:bg-opacity-80). Add 8px minimum spacing between tappable elements to prevent mis-taps. Implement pull-to-refresh for list views. Test with thumb-zone analysis for important actions. Add safe-area-inset support for notched devices. Consider one-handed reachability for key actions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

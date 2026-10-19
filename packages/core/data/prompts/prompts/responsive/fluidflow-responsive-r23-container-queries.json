@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r23-container-queries",
+  "slug": "fluidflow-responsive-r23-container-queries",
+  "title": "Container Queries",
+  "description": "FluidFlow · Container Queries",
+  "content": "Implement container queries for component-based responsiveness. Define container with @container CSS rule. Query container size rather than viewport. Useful for components that appear in different contexts (sidebar vs main content). Components adapt to their container, not the page width. Use Tailwind container query plugin (@container variant).",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5cb2452f949e340bd3348483ab38336cac04bd494d9ea0ade08b95f050baa193",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Use container queries for component-level responsive design.",
+    "detailed": "Implement container queries for component-based responsiveness. Define container with @container CSS rule. Query container size rather than viewport. Useful for components that appear in different contexts (sidebar vs main content). Components adapt to their container, not the page width. Use Tailwind container query plugin (@container variant).",
+    "advanced": "Implement container queries for truly modular responsive components. Define container: container-type: inline-size on parent element, give it container name with container-name. Query syntax: @container (min-width: 400px) { ... } for size-based styles. Use cases: cards that work in sidebar and main content, reusable components in different layouts, widgets that adapt to available space. Tailwind: use @tailwindcss/container-queries plugin, apply @container class to parent, use @[size]: variants on children. Benefits: components are self-contained, work regardless of viewport, true component-level responsive design. Fallback: for unsupported browsers, use viewport-based breakpoints as fallback. Naming: use container-name for multiple containers, avoid conflicts. Style isolation: each component responds to its own container. Performance: similar to media queries, browser optimizes. Testing: resize containers independently, verify component adaptation. Real examples: card that switches layout based on card width, navigation that collapses based on available space."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

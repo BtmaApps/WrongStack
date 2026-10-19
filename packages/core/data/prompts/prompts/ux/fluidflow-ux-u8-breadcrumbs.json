@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u8-breadcrumbs",
+  "slug": "fluidflow-ux-u8-breadcrumbs",
+  "title": "Breadcrumbs",
+  "description": "FluidFlow · Breadcrumbs",
+  "content": "Add breadcrumb navigation for clear wayfinding. Display hierarchical path showing current location (Home > Category > Subcategory > Current). Use ChevronRight or Slash icon as separator. Make all items except current clickable with hover underline. Truncate middle items on long paths with \"...\" (show 2 items + current). Show full path on hover for truncated items. Style current item differently (font-medium, no link). Place breadcrumbs consistently at top of content area. Use semantic nav element with aria-label=\"Breadcrumb\". Include Home icon for first item. Hide on mobile or make horizontally scrollable. Add structured data for SEO.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8680f727f6373a879228949850dac3de6551aea4dc6c85d762c395fbddcbd569",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add breadcrumb navigation showing the current page hierarchy.",
+    "detailed": "Add breadcrumb navigation for clear wayfinding. Display hierarchical path showing current location (Home > Category > Subcategory > Current). Use ChevronRight or Slash icon as separator. Make all items except current clickable with hover underline. Truncate middle items on long paths with \"...\" (show 2 items + current). Show full path on hover for truncated items. Style current item differently (font-medium, no link). Place breadcrumbs consistently at top of content area. Use semantic nav element with aria-label=\"Breadcrumb\". Include Home icon for first item. Hide on mobile or make horizontally scrollable. Add structured data for SEO.",
+    "advanced": "Add breadcrumb navigation for clear wayfinding and SEO benefits. Display hierarchical path: Home > Category > Subcategory > Current Page. Use ChevronRight (w-4 h-4 text-gray-400) or \"/\" as separator - be consistent. Make all items except current clickable with hover:underline and hover:text-blue-600. Style links: text-gray-600, current item: text-gray-900 font-medium (no link). Truncate middle items on long paths (>4 levels): \"Home > ... > Parent > Current\" - show full path in tooltip on truncated \"...\". Place consistently at top of content area, below header, 16px margin bottom. SEMANTIC HTML: Use nav element with aria-label=\"Breadcrumb\", ol/li for list structure, aria-current=\"page\" on current item. Include Home icon (Home from lucide-react, w-4 h-4) for first item to save space. Mobile: hide breadcrumbs (space-consuming) OR horizontal scroll with overflow-x-auto and snap scrolling. Add JSON-LD structured data for SEO: BreadcrumbList schema. Generate breadcrumbs from route automatically if possible. Consider showing back button on mobile instead of full breadcrumbs. Dont use breadcrumbs for linear flows (checkout) - use progress indicator instead."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

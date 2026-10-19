@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo13-address-form",
+  "slug": "fluidflow-forms-fo13-address-form",
+  "title": "Address Form",
+  "description": "FluidFlow · Address Form",
+  "content": "Build comprehensive address form with autocomplete. Fields: street address line 1, line 2 (optional), city, state/province, postal/ZIP code, country. Country selector: dropdown affecting state options. Address autocomplete: integrate Google Places API to fill all fields from selection. Validation: per-country postal code format. Compact layout: two columns where appropriate (city + state).",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "552323fe6bd479182fa1926e9be4780d7853d12c111a1d2bb0f158419dca0ea5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create address form with street, city, state, and postal code fields.",
+    "detailed": "Build comprehensive address form with autocomplete. Fields: street address line 1, line 2 (optional), city, state/province, postal/ZIP code, country. Country selector: dropdown affecting state options. Address autocomplete: integrate Google Places API to fill all fields from selection. Validation: per-country postal code format. Compact layout: two columns where appropriate (city + state).",
+    "advanced": "Build comprehensive address form with autocomplete and international support. Fields: street address line 1 (required), street address line 2 / apt / suite (optional), city (required), state/province/region (required for applicable countries), postal/ZIP code (required, format varies), country (required, affects other field options). Country selector: dropdown with all countries (250+), flag + name display, searchable, changing country updates state/province options and postal code validation. State selector: dynamic dropdown based on country (US: 50 states + territories, CA: 13 provinces/territories, UK: no states needed, AU: 8 states/territories), conditionally required. Address autocomplete: integrate Google Places Autocomplete API or similar (Mapbox, HERE). Implementation: input with onInput triggering debounced API call, show suggestions dropdown below input, on selection call getPlace() to get full address components, auto-fill all fields from structured response. Manual entry: \"Enter address manually\" link expands full form, bypassing autocomplete for edge cases. Validation: per-country postal code format validation (US: 5 digits or 5+4, UK: complex pattern, CA: A1A 1A1), show error if format invalid. Required fields: mark with asterisk (*), validate on blur and submit. Compact layout: grid grid-cols-2 gap-4 where appropriate (city + state same row, postal + country same row on desktop), stack on mobile. International: support international address formats (some countries have different field orders, some don't use postal codes). Save address: checkbox \"Save this address for future orders\" for logged-in users, address book dropdown for saved addresses. Accessibility: proper labels, autocomplete attributes (autocomplete=\"address-line1\", \"postal-code\", \"country\"), announce suggestions to screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

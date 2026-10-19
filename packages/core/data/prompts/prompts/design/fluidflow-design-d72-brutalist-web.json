@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d72-brutalist-web",
+  "slug": "fluidflow-design-d72-brutalist-web",
+  "title": "Brutalist Web",
+  "description": "FluidFlow · Brutalist Web",
+  "content": "Apply brutalist web aesthetic with raw, exposed design. Black and white primary palette. System fonts and monospace typography. Visible borders and structural elements. No rounded corners - harsh geometry. Raw HTML aesthetic. Unconventional layouts breaking conventions. Include intentional ugliness and discomfort. Link underlines and default styling references. Challenging, honest, anti-design atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d72"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3e0e32d1a45405b9e8271b3e84ca35524a564d1e693911c9d77d44bb4dba6f92",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create raw brutalist web design with exposed structure, harsh typography, and anti-design aesthetic.",
+    "detailed": "Apply brutalist web aesthetic with raw, exposed design. Black and white primary palette. System fonts and monospace typography. Visible borders and structural elements. No rounded corners - harsh geometry. Raw HTML aesthetic. Unconventional layouts breaking conventions. Include intentional ugliness and discomfort. Link underlines and default styling references. Challenging, honest, anti-design atmosphere.",
+    "advanced": "Apply brutalist web aesthetic with raw, honest, challenging design. Philosophy: reject polish and convention, embrace raw functionality, challenge beauty standards in design. Color: primarily black (#000) and white (#fff), occasional raw accent (pure red #ff0000, blue #0000ff). Minimal color, maximum contrast. Typography: system fonts (Arial, Times, Georgia), monospace (Courier), deliberately unglamorous. Large, bold, sometimes uncomfortably large text. Visible HTML: design suggests raw markup - visible borders, default blue links with underlines, bullet points, horizontal rules. Structure exposed: grid lines visible, borders on everything, no hidden frameworks. Layout: intentionally unconventional - overlapping elements, unusual proportions, breaking the grid deliberately. No rounded corners: border-radius: 0 everywhere, harsh rectangles. Anti-decoration: no icons, no illustrations, minimal images - content is king. Hover states: can be jarring (color inversion, harsh changes). Scrolling: long scrolling pages, no slick interactions, functional scrollbars. Forms: default styling, no fancy inputs. Cursor: default cursor, no fancy pointers. Table layouts: reference to old-school table-based layout (ironically). Uncomfortable: design may feel wrong but is intentional. Text-heavy: large blocks of text, raw information display. Interactive: minimal JavaScript, progressive enhancement. Performance: fast by default - no heavy assets. Implementation: minimal CSS, embrace defaults, remove rather than add. Accessibility: despite harsh appearance, should be highly accessible - semantic HTML, high contrast, clear focus states, no motion issues."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

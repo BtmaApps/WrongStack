@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c22-add-alert-banner",
+  "slug": "fluidflow-components-c22-add-alert-banner",
+  "title": "Add Alert/Banner",
+  "description": "FluidFlow · Add Alert/Banner",
+  "content": "Build alert/notification banner component. Variants: info (blue), success (green), warning (yellow/amber), error/danger (red). Structure: icon left, message content, optional action button, dismiss X button right. Styling: colored left border-l-4, light background (bg-blue-50), colored icon and text. Full-width or contained with rounded corners. Content: title (font-medium) and description (text-sm). Include link option inline. Dismissible: X button with hover state, animate out on dismiss. Auto-dismiss option with progress indicator. Positioning options: inline in page, fixed top banner, toast notification. Stacking multiple alerts with proper spacing. Icon selection: Info, CheckCircle, AlertTriangle, XCircle from lucide-react. Accessibility: role=\"alert\" for important messages.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1ba4acda337d7847b8c1596e943b91936e322e5a38771655bc0ca1adfcbffa03",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build alert banners for info, success, warning, and error messages.",
+    "detailed": "Build alert/notification banner component. Variants: info (blue), success (green), warning (yellow/amber), error/danger (red). Structure: icon left, message content, optional action button, dismiss X button right. Styling: colored left border-l-4, light background (bg-blue-50), colored icon and text. Full-width or contained with rounded corners. Content: title (font-medium) and description (text-sm). Include link option inline. Dismissible: X button with hover state, animate out on dismiss. Auto-dismiss option with progress indicator. Positioning options: inline in page, fixed top banner, toast notification. Stacking multiple alerts with proper spacing. Icon selection: Info, CheckCircle, AlertTriangle, XCircle from lucide-react. Accessibility: role=\"alert\" for important messages.",
+    "advanced": "Build alert/notification banner component with variants, dismissal, and accessibility. Base structure: div with flex items-start gap-3 p-4 rounded-lg (contained) or border-l-4 (accent border style). Variant colors: info (bg-blue-50 border-blue-500 text-blue-700), success (bg-green-50 border-green-500 text-green-700), warning (bg-yellow-50 border-yellow-500 text-yellow-800), error (bg-red-50 border-red-500 text-red-700). Icon: flex-shrink-0 mt-0.5, icon selection per variant - Info (info), CheckCircle (success), AlertTriangle (warning), XCircle (error). Content wrapper: flex-1. Title: font-medium (optional, for alerts with title + description). Description: text-sm, can include inline links. Action button: optional inline button or link after description. Dismiss button: ml-auto flex-shrink-0, X icon button with hover:bg-black/5 rounded, onClick calls onDismiss. Dismissible animation: animate-out fade-out slide-out-to-right (or height collapse). Auto-dismiss: if duration prop set, auto-dismiss after N seconds, show progress bar at bottom indicating time remaining. Positioning variants: 1) Inline: within content flow, 2) Fixed top: fixed top-4 right-4 z-50 for global notifications, 3) Toast stack: fixed position with multiple stacked alerts. Toast stacking: flex-col gap-2, newer toasts at bottom, auto-dismiss with different timing. Full-width banner: no rounded corners, border-x-0 for top-of-page announcements. Animation on enter: animate-in fade-in slide-in-from-top-2. ACCESSIBILITY: role=\"alert\" for important dynamic alerts (adds to live region), role=\"status\" for less urgent, aria-live=\"polite\" or \"assertive\" based on urgency. Component API: variant, title?, description, dismissible?, onDismiss, duration?, action? {label, onClick}. Integration: context/provider for global toast notifications from anywhere in app."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

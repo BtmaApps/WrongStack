@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c73-add-checkout-form",
+  "slug": "fluidflow-components-c73-add-checkout-form",
+  "title": "Add Checkout Form",
+  "description": "FluidFlow · Add Checkout Form",
+  "content": "Create checkout page layout. Container: grid lg:grid-cols-3 gap-8. Main form: lg:col-span-2, sections for contact, shipping address, payment. Section: bg-white rounded-lg p-6 mb-6, section title mb-4. Form fields: standard inputs for email, name, address, city, zip, country. Payment: card number, expiry, CVC inputs. Order summary: lg:col-span-1, sticky top-4, item list, totals, place order button.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c73"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "38d9204c85f80ce19b7d46901ccb96b337b87448d633fa1ceab887080c952838",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create checkout form with shipping, payment, and order summary.",
+    "detailed": "Create checkout page layout. Container: grid lg:grid-cols-3 gap-8. Main form: lg:col-span-2, sections for contact, shipping address, payment. Section: bg-white rounded-lg p-6 mb-6, section title mb-4. Form fields: standard inputs for email, name, address, city, zip, country. Payment: card number, expiry, CVC inputs. Order summary: lg:col-span-1, sticky top-4, item list, totals, place order button.",
+    "advanced": "Create complete checkout flow. Layout: main form + sticky order summary sidebar. Progress indicator: steps (Information, Shipping, Payment) at top. Contact section: email input, opt-in for marketing checkbox. Shipping address: form with autocomplete, address suggestions via API, save address checkbox for logged-in users. Shipping method: radio cards with carrier, delivery estimate, price. Billing address: same as shipping toggle, or separate form. Payment: credit card form with card brand detection, card number formatting, expiry/CVC fields, or alternative payment buttons (PayPal, Apple Pay, etc). Card validation: real-time validation, card type icon updates. Order summary: collapsible on mobile, line items with thumbnail, quantity, price, subtotal, discount (if applied), shipping, tax, total. Promo code: input in summary with apply. Terms: checkbox to agree to terms with link. Place order: prominent button, loading state, disable on submit. Express checkout: PayPal/Apple Pay/Google Pay buttons at top. Guest checkout: option to create account after order. Error handling: inline validation, API error display. Order confirmation: success page or modal after completion."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

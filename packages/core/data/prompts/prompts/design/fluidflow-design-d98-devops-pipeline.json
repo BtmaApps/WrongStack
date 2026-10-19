@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d98-devops-pipeline",
+  "slug": "fluidflow-design-d98-devops-pipeline",
+  "title": "DevOps Pipeline",
+  "description": "FluidFlow · DevOps Pipeline",
+  "content": "Apply DevOps pipeline aesthetic with CI/CD visualization. Pipeline stage cards connected by arrows. Build status indicators (pass/fail/running). Deployment environment selectors. Container orchestration views. Infrastructure as code previews. Rollback controls. Blue-green deployment toggles. Canary release percentages. Pipeline trigger histories. Artifact versioning displays.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d98"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b6e976d333b5629674be2c60db0a17fb6264ca37f58275de1971190e221283eb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create DevOps pipeline visualization with build stages, deployment flows, and infrastructure status.",
+    "detailed": "Apply DevOps pipeline aesthetic with CI/CD visualization. Pipeline stage cards connected by arrows. Build status indicators (pass/fail/running). Deployment environment selectors. Container orchestration views. Infrastructure as code previews. Rollback controls. Blue-green deployment toggles. Canary release percentages. Pipeline trigger histories. Artifact versioning displays.",
+    "advanced": "Apply DevOps aesthetic with CI/CD pipeline patterns. Stage cards: Build→Test→Deploy with connector arrows. Status badges: green checkmark, red X, spinning gear, gray skip. Environment cards: dev/staging/prod with promotion buttons. Container pods with replica counts. Terraform/YAML code blocks with syntax highlighting. Rollback buttons with version selectors. Blue-green toggle with traffic percentage. Canary slider 0-100%. Pipeline run history table with duration. Artifact cards with SHA, size, download links. Approval gates with reviewer avatars."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

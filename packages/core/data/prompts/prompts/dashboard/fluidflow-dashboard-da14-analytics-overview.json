@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da14-analytics-overview",
+  "slug": "fluidflow-dashboard-da14-analytics-overview",
+  "title": "Analytics Overview",
+  "description": "FluidFlow · Analytics Overview",
+  "content": "Build analytics overview dashboard. Traffic metrics: page views, sessions, users. Charts: line chart for trends, bar chart for comparisons. Sources: traffic source breakdown (pie chart). Top pages: table of most viewed pages. User flow: funnel visualization. Devices: mobile vs desktop split. Geography: map showing user locations. Real-time: current active users count.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "339158e50e465c000b77b926c1cfa1639a6816d155e0a44dd91eb154db144bc5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create analytics page with traffic and user metrics.",
+    "detailed": "Build analytics overview dashboard. Traffic metrics: page views, sessions, users. Charts: line chart for trends, bar chart for comparisons. Sources: traffic source breakdown (pie chart). Top pages: table of most viewed pages. User flow: funnel visualization. Devices: mobile vs desktop split. Geography: map showing user locations. Real-time: current active users count.",
+    "advanced": "Build comprehensive analytics overview dashboard like Google Analytics. Key metrics row: Sessions, Users, Page Views, Bounce Rate, Avg Session Duration as stat cards with sparklines. Main chart: area/line chart showing primary metric over time, multiple series for comparison (current vs previous period as dashed line), zoom/pan for detailed inspection, hover shows tooltip with values. Time range selector: Today, Yesterday, Last 7/30/90 days, Custom range picker, comparison toggle. Traffic sources: pie or donut chart showing Direct, Organic Search, Social, Referral, Email, display percentages and absolute numbers. Top pages table: ranked list of pages by views, columns: Page, Views, Unique Views, Avg Time, Bounce Rate, sortable columns, link to page detail. Users section: new vs returning donut, active users line chart, user acquisition by source. Real-time panel: current active users count (updating live), pages being viewed now, geographic pins. Device breakdown: horizontal bars for Desktop, Mobile, Tablet percentages. Geographic: world map with country heatmap, country list with metrics, drill down to cities. Browser/OS: breakdown charts. Behavior flow: funnel visualization from landing to conversion. Engagement: scroll depth, click patterns if available. Segments: filter all data by segment (new users, mobile, organic). Export: CSV export, scheduled reports, custom dashboards. Loading: show progress for data-heavy queries. Empty state: show when no data for selected period."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

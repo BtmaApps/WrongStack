@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da17-metrics-comparison",
+  "slug": "fluidflow-dashboard-da17-metrics-comparison",
+  "title": "Metrics Comparison",
+  "description": "FluidFlow · Metrics Comparison",
+  "content": "Build comparison view for metrics. Period selection: select two periods to compare. Side by side: show metrics for each period. Percentage change: calculate difference between periods. Visual comparison: bar charts or overlaid lines. Highlight changes: color code improvements vs declines. Metric selection: choose which metrics to compare. Export: comparison report export.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "08d922dba655032ea7136774e4df1ddd93a4518d8bb278cbae02eab15f0f91f9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Compare metrics between different time periods.",
+    "detailed": "Build comparison view for metrics. Period selection: select two periods to compare. Side by side: show metrics for each period. Percentage change: calculate difference between periods. Visual comparison: bar charts or overlaid lines. Highlight changes: color code improvements vs declines. Metric selection: choose which metrics to compare. Export: comparison report export.",
+    "advanced": "Build comprehensive metrics comparison dashboard. Comparison modes: period over period (this week vs last week), year over year (Dec 2024 vs Dec 2023), custom range vs custom range. Period selectors: two date range pickers, preset comparisons (vs Previous Period, vs Same Period Last Year). Metric display: side-by-side cards showing value for each period, percentage change calculated and displayed, absolute difference shown. Visual indicators: TrendingUp (green) for improvements, TrendingDown (red) for declines, neutral for minimal change, threshold for significance (ignore <1% changes). Comparison charts: overlaid line charts with different colors for each period, grouped bar charts for categorical data, toggle between overlay and side-by-side. Metric selection: checkbox list to choose which metrics to compare, category grouping (Revenue, Traffic, Conversions). Table format: rows as metrics, columns as periods and change, sortable by change percentage. Highlight significant changes: background highlight on metrics with large changes, configurable threshold (>10% change). Trend context: show if change is consistent with longer trend or anomaly. Breakdown comparison: compare by segment (by device, by country, by product), table showing each segment comparison. Statistical significance: for sample-based metrics, show confidence level. Notes/annotations: mark events that explain changes (holiday, campaign, bug fix). Report generation: generate comparison report, export as PDF or presentation, scheduled comparison emails. Goal comparison: compare actual vs target for each period. Insights: auto-generate text insights (\"Revenue increased 15% driven by mobile users\")."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

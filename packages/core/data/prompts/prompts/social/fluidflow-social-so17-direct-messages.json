@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so17-direct-messages",
+  "slug": "fluidflow-social-so17-direct-messages",
+  "title": "Direct Messages",
+  "description": "FluidFlow · Direct Messages",
+  "content": "Build DM inbox layout. Sidebar: conversation list with avatar, name, last message preview, timestamp, unread badge. Active conversation: highlighted. New message button. Search conversations. Message requests section for non-followers. Header: back button (mobile), user info. Read receipts indicator.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "27e051a87ff0c4fae1a9a6a974bcc1a68a9e60d02e6ccdb96a54d6b41817e19c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create direct messages inbox with conversation list.",
+    "detailed": "Build DM inbox layout. Sidebar: conversation list with avatar, name, last message preview, timestamp, unread badge. Active conversation: highlighted. New message button. Search conversations. Message requests section for non-followers. Header: back button (mobile), user info. Read receipts indicator.",
+    "advanced": "Build direct messages inbox with conversation management. Layout: two-panel on desktop (conversation list left w-80, active conversation right flex-1), single panel with navigation on mobile. Conversation list panel: Header: \"Messages\" title, compose new message button (Edit or PenSquare icon). Search input: filter conversations by name/username. Conversation list: scrollable, sorted by most recent. Conversation row: flex gap-3 p-3 hover:bg-gray-50, avatar (w-12 h-12, online indicator dot if active), name (font-medium), last message preview (text-gray-500 text-sm line-clamp-1), timestamp (text-xs text-gray-400), unread indicator (w-2 h-2 bg-blue-500 rounded-full or bold text + count badge). Active conversation: bg-gray-100 or border-l-4 border-blue-500. Message requests: separate section or tab for messages from non-followers, count badge on section header, preview shows \"Message request from [Name]\". Group conversations: if supported, show group name and member avatars stacked. Conversation panel: Header: back arrow (mobile only), avatar + name + username of other user, online status (\"Active now\" or \"Active 2h ago\"), more options menu (View Profile, Mute, Block, Delete Conversation). Empty state: select a conversation illustration when none selected. Active conversation: messages thread (separate component). Input bar: text input, emoji picker button, image/file attachment button, send button, voice message button optional. Typing indicator: \"[User] is typing...\" with animated dots. Read receipts: small avatar under last message if read, or checkmarks (single = sent, double = delivered, blue double = read). New message composer: user search to select recipient(s), create group option, search as you type, selected users as chips. Conversation actions: pin conversation, mute notifications, archive, delete with confirmation. Search within conversation: search messages in active conversation. Media gallery: view all shared photos/files in conversation. Mobile navigation: conversation list as main view, selecting opens conversation full-screen with back button. Real-time: WebSocket for instant message delivery and typing indicators. Accessibility: conversation list navigable, screen reader announces new messages, proper ARIA roles."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

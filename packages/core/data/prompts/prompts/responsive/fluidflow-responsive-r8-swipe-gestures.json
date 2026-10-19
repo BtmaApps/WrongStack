@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r8-swipe-gestures",
+  "slug": "fluidflow-responsive-r8-swipe-gestures",
+  "title": "Swipe Gestures",
+  "description": "FluidFlow · Swipe Gestures",
+  "content": "Implement touch swipe interactions for carousels and cards. Use touch-action CSS to control gesture behavior. Track touchstart, touchmove, touchend events for swipe detection. Calculate swipe direction and velocity for natural feel. Add visual feedback during swipe - show next/previous items peeking. Implement momentum scrolling with proper deceleration. Include dot indicators or progress bar for carousel position. Add haptic feedback on iOS if available. Prevent vertical scroll while horizontal swiping. Support both left/right swipe for navigation and swipe-to-dismiss patterns. Add snap points for carousel items (scroll-snap-type, scroll-snap-align).",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "79de98b0c1ca68550c483dd109e17f4a4394a22c144189dddf633e0baae59b2e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add touch swipe interactions for carousels and dismissible cards.",
+    "detailed": "Implement touch swipe interactions for carousels and cards. Use touch-action CSS to control gesture behavior. Track touchstart, touchmove, touchend events for swipe detection. Calculate swipe direction and velocity for natural feel. Add visual feedback during swipe - show next/previous items peeking. Implement momentum scrolling with proper deceleration. Include dot indicators or progress bar for carousel position. Add haptic feedback on iOS if available. Prevent vertical scroll while horizontal swiping. Support both left/right swipe for navigation and swipe-to-dismiss patterns. Add snap points for carousel items (scroll-snap-type, scroll-snap-align).",
+    "advanced": "Implement touch swipe interactions for carousels and cards with native-feeling physics. Use touch-action: pan-y for horizontal carousels (allow vertical scroll, capture horizontal). Track touchstart (record start position), touchmove (calculate delta, apply transform), touchend (determine action based on velocity and distance). Calculate swipe velocity (distance/time) for momentum - above threshold triggers navigation, below snaps back. Add visual feedback: transform: translateX() following finger, show next/previous items peeking (10-20px visible). Implement momentum scrolling with deceleration curve (ease-out, ~300ms duration). Include dot indicators (current highlighted) or progress bar showing position. Add haptic feedback via navigator.vibrate() or iOS taptic engine. Use passive: false on touchmove only when preventing scroll. Support both navigation swipe (threshold ~30% of width or velocity > 0.5) and swipe-to-dismiss (with confirm or undo option). Implement CSS scroll-snap for simpler carousels: scroll-snap-type: x mandatory, scroll-snap-align: start on items. Add keyboard navigation (arrow keys) as alternative to swipe. Consider prefers-reduced-motion - disable momentum animations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

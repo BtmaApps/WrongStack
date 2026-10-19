@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da8-data-table",
+  "slug": "fluidflow-dashboard-da8-data-table",
+  "title": "Data Table",
+  "description": "FluidFlow · Data Table",
+  "content": "Build comprehensive data table for dashboard. Container: overflow-x-auto wrapper. Header row: sticky top, sortable columns (click to sort with direction arrow). Body rows: zebra striping or hover highlight. Cells: proper alignment, truncate long text. Row selection: checkbox column with bulk actions. Pagination: page numbers and items per page dropdown. Search: global search input. Loading: skeleton rows. Empty: helpful message.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ffc3eb8f846316dc23f65d57c63f9b532ce5e55e3f19f4013609aa520d9e836e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create data table with sortable columns and pagination.",
+    "detailed": "Build comprehensive data table for dashboard. Container: overflow-x-auto wrapper. Header row: sticky top, sortable columns (click to sort with direction arrow). Body rows: zebra striping or hover highlight. Cells: proper alignment, truncate long text. Row selection: checkbox column with bulk actions. Pagination: page numbers and items per page dropdown. Search: global search input. Loading: skeleton rows. Empty: helpful message.",
+    "advanced": "Build comprehensive data table for dashboard with full functionality. Container: overflow-x-auto wrapper for horizontal scroll on small screens, bg-white rounded-lg shadow-sm. Header row: sticky top (position: sticky top-0 z-10 bg-white), sortable columns with click handler (show ChevronUp/ChevronDown icon for sort direction, ChevronUpDown for unsorted), column resize handles (draggable dividers between headers, cursor-col-resize). Column header: font-medium text-gray-700, whitespace-nowrap, optional info tooltip. Body rows: zebra striping (even:bg-gray-50) or hover highlight (hover:bg-gray-50), transition for smooth hover. Border options: divide-y divide-gray-200 or individual cell borders. Cells: proper alignment (numbers and currency right-aligned text-right, dates center, text left), truncate long text with text-ellipsis overflow-hidden and tooltip showing full value, proper padding (px-4 py-3). Row selection: checkbox column as first column, \"Select all\" checkbox in header (with indeterminate state when partial), bulk actions toolbar appears (fixed or inline) when rows selected showing count and action buttons (Delete, Export, etc.). Pagination: below table in card footer, previous/next buttons with ChevronLeft/ChevronRight, page number buttons with ellipsis, items per page dropdown (10, 25, 50, 100), \"Showing X-Y of Z results\" text. Search: global search input above table, debounced (300ms), highlights matching terms in results. Filters: column-specific filters in header row (dropdown or popover) or separate filter panel, active filters shown as pills. Column visibility: dropdown menu to show/hide columns, drag to reorder. Export: download as CSV/Excel button using file-saver and xlsx libraries. Loading: skeleton rows (5-10) with animate-pulse or overlay spinner. Empty state: centered message \"No data found\" with optional action button. Responsive: horizontal scroll default, or transform to card view on mobile (each row becomes a card). Row click: optional row click handler for navigation. Inline editing: optional cell editing on double-click. Dark mode support. Accessibility: proper table semantics, sortable column announcements, row selection announcements."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

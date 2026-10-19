@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c75-add-comment-thread",
+  "slug": "fluidflow-components-c75-add-comment-thread",
+  "title": "Add Comment Thread",
+  "description": "FluidFlow · Add Comment Thread",
+  "content": "Create comment thread. Comment: flex gap-3, avatar (w-10 h-10 rounded-full), content area. Content: bg-gray-100 rounded-lg p-3, author name (font-semibold), comment text, actions row (reply, like, timestamp). Replies: ml-12 mt-2 space-y-2 (nested under parent). Reply input: flex gap-2, avatar, textarea, submit button. Load more: \"View X more replies\" link.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c75"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "71242597cb6341b9f9903a0d2eb7da335ae78d7142c637e3cf0ad65747d6ba8b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create nested comment thread with replies.",
+    "detailed": "Create comment thread. Comment: flex gap-3, avatar (w-10 h-10 rounded-full), content area. Content: bg-gray-100 rounded-lg p-3, author name (font-semibold), comment text, actions row (reply, like, timestamp). Replies: ml-12 mt-2 space-y-2 (nested under parent). Reply input: flex gap-2, avatar, textarea, submit button. Load more: \"View X more replies\" link.",
+    "advanced": "Create full comment system. Comment structure: avatar, author info (name, badge if author/mod), timestamp (relative, hover for full), comment body, actions. Voting: upvote/downvote buttons with count, highlight own vote. Actions: reply, edit (own comments), delete (own), report, share/copy link. Nested replies: indented with connecting line, configurable max depth, collapse/expand for deep threads. Reply input: appears inline when Reply clicked, @mention autocomplete, submit/cancel buttons. Edit mode: inline editing, Save/Cancel, \"Edited\" indicator after save. Delete: confirmation dialog, shows \"[deleted]\" for comment with replies. Author badges: OP (original poster), MOD, ADMIN, verified, custom flair. Rich content: markdown support, code blocks, embedded media, link previews. Reactions: emoji reactions beyond votes, click to add reaction. Sorting: newest, oldest, most upvoted, controversial. Pagination: \"Load more comments\" or infinite scroll, \"Load X new comments\" for real-time updates. Collapsing: minimize threads, \"collapsed by moderator\" for hidden content. Keyboard navigation: j/k to navigate comments. Accessibility: proper nesting semantics, screen reader announcements for actions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

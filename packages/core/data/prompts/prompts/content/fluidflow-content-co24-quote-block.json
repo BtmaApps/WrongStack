@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co24-quote-block",
+  "slug": "fluidflow-content-co24-quote-block",
+  "title": "Quote Block",
+  "description": "FluidFlow · Quote Block",
+  "content": "Create styled quote/blockquote components. Blockquote: border-left accent, italic text, citation below. Pull quote: large decorative quote, centered. Testimonial: quote with author photo and attribution. Quote marks: decorative opening/closing quote marks. Colors: accent color for border or quote marks. Author: name, title, company, optional photo. Icons: quote icon decoration. Card variant: boxed quote with shadow. Twitter style: quote card matching tweet appearance. Responsive: adjust font sizes for mobile.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ddc0db0e8b4ae447ad5072d414c38f2b9b68601f278c8c174384cf1614ecd6f8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Style blockquotes and pull quotes attractively.",
+    "detailed": "Create styled quote/blockquote components. Blockquote: border-left accent, italic text, citation below. Pull quote: large decorative quote, centered. Testimonial: quote with author photo and attribution. Quote marks: decorative opening/closing quote marks. Colors: accent color for border or quote marks. Author: name, title, company, optional photo. Icons: quote icon decoration. Card variant: boxed quote with shadow. Twitter style: quote card matching tweet appearance. Responsive: adjust font sizes for mobile.",
+    "advanced": "Create styled quote and testimonial components. Blockquote style: border-l-4 border-gray-300 pl-4 italic text-gray-700, citation as footer with author name. Pull quote: large text-2xl or text-3xl, centered, optional decorative quote marks, different font-weight or font-style. Quote marks decoration: absolute positioned large quote characters (text-6xl text-gray-200) at top-left and bottom-right, or using ::before/::after pseudo-elements. Testimonial card: avatar (rounded-full), quote text, author name (font-semibold), title/company (text-gray-500), optional star rating. Card variants: simple with border, elevated with shadow-lg, filled background (bg-gray-50), gradient accent. Colors: customizable accent for border or quote marks, brand colors for testimonials. Icon decoration: Quote icon from lucide-react as large watermark or inline accent. Tweet/social style: card resembling embedded tweet with author, text, date, platform icon. Attribution line: em dash followed by Author Name, Title at Company (styled consistently). Responsive: base text sizes scale down on mobile, quote marks may hide or shrink. Slider/carousel: multiple testimonials rotating, with navigation dots. Grid layout: testimonial grid for social proof sections. Animation: subtle fade-in on scroll into view. Accessibility: blockquote element for semantic quote, cite element for attribution."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

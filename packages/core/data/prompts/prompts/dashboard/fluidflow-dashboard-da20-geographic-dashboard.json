@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da20-geographic-dashboard",
+  "slug": "fluidflow-dashboard-da20-geographic-dashboard",
+  "title": "Geographic Dashboard",
+  "description": "FluidFlow · Geographic Dashboard",
+  "content": "Build geographic data visualization. World map: country-level data visualization. Choropleth: color intensity based on values. Markers: data point markers with popups. Zoom: zoom and pan controls. Legend: color scale legend. Selection: click region for details. Data overlay: bubble sizes or heatmap. Filter: filter by region or metric.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "044d07bc7927fed96661cbc9513d7606fd4184d506dec30186d22003fc7391c0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show data visualized on geographic map.",
+    "detailed": "Build geographic data visualization. World map: country-level data visualization. Choropleth: color intensity based on values. Markers: data point markers with popups. Zoom: zoom and pan controls. Legend: color scale legend. Selection: click region for details. Data overlay: bubble sizes or heatmap. Filter: filter by region or metric.",
+    "advanced": "Build comprehensive geographic data dashboard. Map options: world map for global, country map for regional, city-level for local data. Choropleth coloring: fill regions based on metric value, color scale from light to dark (or diverging scale), legend showing value ranges. Map library: react-simple-maps, mapbox-gl, or leaflet. Markers: circular markers for point data, size based on value (bubble map), color coding for categories, clustering for dense areas. Popups/tooltips: hover region shows metric values, click for detailed modal. Zoom and pan: smooth zoom with scroll, pan by drag, zoom controls (+/-), fit to data bounds. Legend: color scale legend, interactive (hover to highlight regions). Region selection: click region to select, show details panel, multiple selection for comparison. Overlay options: toggle between choropleth, bubble, heatmap. Multiple metrics: switch between metrics to visualize, optional bivariate choropleth. Time animation: slider to animate through time periods, play/pause, see changes over time. Data table sync: table of regions alongside map, highlight corresponding map region on row hover. Search: search for region by name, zoom to found region. Export: download map as image, export underlying data. Custom boundaries: support for custom geographic boundaries (sales territories). Offline support: map tiles cached for offline use. Accessibility: provide data table alternative for non-visual access. Drill down: click country to zoom to states, state to cities. Comparison: split view comparing two maps side by side."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

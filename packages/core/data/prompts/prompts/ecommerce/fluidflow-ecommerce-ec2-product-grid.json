@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec2-product-grid",
+  "slug": "fluidflow-ecommerce-ec2-product-grid",
+  "title": "Product Grid",
+  "description": "FluidFlow · Product Grid",
+  "content": "Create product listing page with filters and sorting. Layout: sidebar filters (hidden md:block w-64) + main grid area. Filters sidebar: category checkboxes, price range slider, size checkboxes, color swatches, rating filter, clear all button. Mobile filters: filter icon button opens full-screen modal. Active filters: pills above grid showing applied filters with remove buttons. Sorting: dropdown (Featured, Price Low-High, Price High-Low, Newest). Results count: \"Showing 24 of 156 products\". Grid: grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6. Pagination or infinite scroll.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "49059972a822fea91d3c29caeb185ac50e5323ed2d83f3c248640665a83d4063",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product listing grid with filter sidebar and sort dropdown.",
+    "detailed": "Create product listing page with filters and sorting. Layout: sidebar filters (hidden md:block w-64) + main grid area. Filters sidebar: category checkboxes, price range slider, size checkboxes, color swatches, rating filter, clear all button. Mobile filters: filter icon button opens full-screen modal. Active filters: pills above grid showing applied filters with remove buttons. Sorting: dropdown (Featured, Price Low-High, Price High-Low, Newest). Results count: \"Showing 24 of 156 products\". Grid: grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6. Pagination or infinite scroll.",
+    "advanced": "Create product listing page with comprehensive filters and sorting. Layout: flex row with sidebar filters (hidden md:block w-64 flex-shrink-0 pr-6) + main grid area (flex-1). Filters sidebar: sticky top-20 max-h-[calc(100vh-5rem)] overflow-y-auto. Filter sections: category hierarchy with collapsible nested checkboxes, price range slider (dual-thumb with min/max inputs), size checkboxes in grid (XS S M L XL), color swatches (w-6 h-6 rounded-full with checkmark overlay when selected), brand checkboxes with search, rating filter (show 4★ & up, 3★ & up, etc.), availability toggle (In Stock only), clear all button to reset. Mobile filters: filter icon button (Sliders icon) opens Sheet/Modal with all filters, Apply button at bottom, filter count badge on trigger. Active filters: horizontal scroll pills (bg-gray-100 px-3 py-1 rounded-full text-sm) above grid showing applied filters, X button on each to remove, Clear All link. Sorting: dropdown select (Featured, Price: Low to High, Price: High to Low, Newest Arrivals, Best Selling, Highest Rated) positioned top-right of grid. View toggle: Grid/List icons to switch between grid cards and horizontal list items. Results count: \"Showing 24 of 156 products\" text-gray-500 text-sm. Grid: responsive grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6. Pagination: numbered pages at bottom or infinite scroll with IntersectionObserver loading more on scroll. Loading: skeleton product cards matching grid layout. No results: centered message \"No products match your filters\" with illustration and \"Clear filters\" suggestion. Quick view: button on card hover opens modal with product preview without navigation. URL sync: update query params with filters for shareable URLs, hydrate filters from URL on load. Performance: debounce filter changes (300ms), virtualize for large grids."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

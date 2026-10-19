@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la8-magazine-layout",
+  "slug": "fluidflow-layouts-la8-magazine-layout",
+  "title": "Magazine Layout",
+  "description": "FluidFlow · Magazine Layout",
+  "content": "Create editorial/magazine-style content layout. Featured article: large hero area spanning full width, big image with text overlay. Secondary features: 2-3 medium cards in row. Article grid: mix of card sizes - large (span 2 columns), medium, small. Visual hierarchy: varied image sizes and text prominence. Category headers: section dividers. Pull quotes: large styled quote blocks. Sidebar content: newsletter, popular articles. Typography: elegant fonts, drop caps.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1ac7132b3292f7f71619cdd1105560e104f00528ddad4bbaa8f49eb7410085c1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create editorial magazine layout with varied article card sizes.",
+    "detailed": "Create editorial/magazine-style content layout. Featured article: large hero area spanning full width, big image with text overlay. Secondary features: 2-3 medium cards in row. Article grid: mix of card sizes - large (span 2 columns), medium, small. Visual hierarchy: varied image sizes and text prominence. Category headers: section dividers. Pull quotes: large styled quote blocks. Sidebar content: newsletter, popular articles. Typography: elegant fonts, drop caps.",
+    "advanced": "Create editorial/magazine-style content layout with visual hierarchy. Featured article section: large hero spanning full width (min-h-[60vh]). Layout options: big image with text overlay (absolute bottom-0 with gradient backdrop, white text), or side-by-side (grid grid-cols-2). Featured content: category badge, title (text-4xl font-bold), excerpt (text-lg), author + date, \"Read More\" link. Secondary features row: below hero, 2-3 medium sized cards in flex or grid-cols-3 gap-6. Cards: image (aspect-video), category, title (text-xl), short excerpt. Main article grid: complex grid with varied sizes. Use CSS Grid with named areas or span classes. Large article: col-span-2 row-span-2, prominent image, larger title. Medium: col-span-1, standard card. Small/compact: minimal image or no image, title + excerpt only. Create rhythm by mixing sizes intentionally. Visual hierarchy: vary image sizes (full-width, half, thumbnail), text prominence (title sizes from text-2xl down to text-lg), whitespace to separate importance levels. Category headers: section dividers with category name (font-semibold uppercase tracking-wide), \"See all →\" link aligned right, subtle border-b. Pull quotes: large styled blockquote blocks (text-2xl italic, decorative quote marks, colored left border or background), break up long articles. Breaking grid: some elements intentionally break standard grid - full-width image band, pull quote spanning columns - for visual interest. Sidebar (lg:w-80): newsletter signup card (compelling copy, email input), popular/trending articles list (numbered with small thumbnails), social follow buttons, advertisement slots. Typography: elegant fonts (consider serif for body or headings), proper line-height (leading-relaxed), drop caps for article starts (first-letter:text-5xl first-letter:font-bold first-letter:float-left first-letter:mr-2). Image captions: text-sm text-gray-500 italic, photographer credit. Responsive: reorganize grid hierarchy on smaller screens, stack columns, maintain reading order importance. Reading progress: thin progress bar at top of page for long articles. Print styles: optimized @media print CSS. Dark mode: adjust background and text colors while maintaining hierarchy."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

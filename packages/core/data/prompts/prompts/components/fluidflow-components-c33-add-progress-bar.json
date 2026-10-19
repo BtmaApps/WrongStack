@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c33-add-progress-bar",
+  "slug": "fluidflow-components-c33-add-progress-bar",
+  "title": "Add Progress Bar",
+  "description": "FluidFlow · Add Progress Bar",
+  "content": "Create progress bar component with various styles. Linear bar: h-2 bg-gray-200 rounded-full overflow-hidden. Progress fill: h-full bg-blue-600 rounded-full transition-all duration-300. Variants: default (blue), success (green), warning (yellow), error (red). Sizes: sm (h-1), md (h-2), lg (h-4). Indeterminate: animated gradient moving across. With label: percentage text above or inside bar. Striped animated variant. Circular progress ring alternative using SVG.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c33"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d4ee1ecb63af0d442f9bba792b6bb72a7447952bb69c8861dbc55afe0fce8dc2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create progress bar components for showing completion status.",
+    "detailed": "Create progress bar component with various styles. Linear bar: h-2 bg-gray-200 rounded-full overflow-hidden. Progress fill: h-full bg-blue-600 rounded-full transition-all duration-300. Variants: default (blue), success (green), warning (yellow), error (red). Sizes: sm (h-1), md (h-2), lg (h-4). Indeterminate: animated gradient moving across. With label: percentage text above or inside bar. Striped animated variant. Circular progress ring alternative using SVG.",
+    "advanced": "Create comprehensive progress indicator system with linear and circular variants. Linear progress: container h-2 bg-gray-200 rounded-full overflow-hidden relative. Fill: absolute inset-y-0 left-0 bg-blue-600 rounded-full transition-all duration-300 ease-out, width based on percentage. Variants by color: default/primary (bg-blue-600), success (bg-green-600), warning (bg-yellow-500), error (bg-red-600). Sizes: xs (h-1), sm (h-1.5), md (h-2), lg (h-3), xl (h-4). Indeterminate: animated using translateX keyframes or gradient animation sliding infinitely. Striped: background with repeating-linear-gradient diagonal stripes, optionally animated. Label options: percentage above (text-sm mb-1), percentage inside for lg+ sizes (text-xs font-medium text-white), percentage to the right. Circular progress: SVG with viewBox=\"0 0 36 36\", background circle (stroke: gray-200), progress arc using stroke-dasharray and stroke-dashoffset, percentage text in center. Circle sizes: sm (w-8), md (w-12), lg (w-16), xl (w-24). Animation: transition stroke-dashoffset, optional spinning for indeterminate. Props: value (0-100), max, variant, size, showLabel, labelPosition, indeterminate, striped, animated. Accessibility: role=\"progressbar\", aria-valuenow, aria-valuemin=\"0\", aria-valuemax=\"100\", aria-label. Steps variant: segmented progress showing discrete steps completed."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

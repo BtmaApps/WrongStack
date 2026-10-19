@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da30-task-board",
+  "slug": "fluidflow-dashboard-da30-task-board",
+  "title": "Task Board",
+  "description": "FluidFlow · Task Board",
+  "content": "Build task board with columns. Columns: status columns (To Do, In Progress, Done). Cards: task cards with title and metadata. Drag and drop: move cards between columns. Quick add: add new tasks inline. Card details: click for full task details. Filters: filter by assignee, label. Swimlanes: optional row grouping. WIP limits: warn when column has too many items.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b8c361aa7b120b639ebdc2d5bf8dd8fa9eedcb2b1675c0b81a793f47be8ef723",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create kanban-style task board for project management.",
+    "detailed": "Build task board with columns. Columns: status columns (To Do, In Progress, Done). Cards: task cards with title and metadata. Drag and drop: move cards between columns. Quick add: add new tasks inline. Card details: click for full task details. Filters: filter by assignee, label. Swimlanes: optional row grouping. WIP limits: warn when column has too many items.",
+    "advanced": "Build comprehensive kanban-style task board for project management. Board structure: horizontal scrollable columns, each column is a status (Backlog, To Do, In Progress, Review, Done), column header with title and task count. Column features: add new column, rename column, delete empty column, set WIP limit, collapse/expand column. Task cards: title (1-2 lines), labels (colored tags), assignee avatar(s), due date, comment count, priority indicator. Card actions: click for detail modal, drag and drop to move, quick edit on hover. Drag and drop: smooth dnd with visual feedback, drop zones highlight, reorder within column, move between columns. Quick add: input field at bottom of column, press Enter to add, or dedicated Add button. Task detail modal: full description (markdown support), comments thread, attachments, activity log, subtasks, custom fields. Filters: assignee filter, label filter, due date filter, search by title, my tasks toggle. Swimlanes: optional horizontal grouping by assignee, priority, or custom field, collapsible swimlanes. WIP limits: configure max cards per column, visual warning when limit exceeded (red border), encourage finishing over starting. Sorting: within column sort by due date, priority, or manual order. Labels: create and manage labels, multi-select on cards. Bulk actions: select multiple cards, bulk move or edit. Views: toggle between board and list view. Keyboard shortcuts: arrow keys navigate cards, Enter opens, quick keys for actions. Real-time: updates sync across users, show other users viewing/editing. Templates: save board as template, create from template."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

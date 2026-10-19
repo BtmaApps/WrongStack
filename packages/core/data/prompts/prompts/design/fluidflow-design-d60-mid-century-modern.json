@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d60-mid-century-modern",
+  "slug": "fluidflow-design-d60-mid-century-modern",
+  "title": "Mid-Century Modern",
+  "description": "FluidFlow · Mid-Century Modern",
+  "content": "Apply mid-century modern aesthetic from 1950s-60s design. Atomic age motifs: starbursts, boomerangs, kidney shapes. Warm color palette: mustard yellow, teal, orange, olive, warm wood tones. Clean lines with organic curves. Furniture-inspired design elements. Sunburst patterns and clocks. Include Eames-era illustration style. Googie architecture references. Optimistic, stylish, retro-futuristic atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d60"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "43aacbe094c730017ccfee3d7421c3499921066b0cf258b3e7c630c35d6e948b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create 1950s-60s mid-century aesthetic with atomic age shapes, retro furniture vibes, and optimistic design.",
+    "detailed": "Apply mid-century modern aesthetic from 1950s-60s design. Atomic age motifs: starbursts, boomerangs, kidney shapes. Warm color palette: mustard yellow, teal, orange, olive, warm wood tones. Clean lines with organic curves. Furniture-inspired design elements. Sunburst patterns and clocks. Include Eames-era illustration style. Googie architecture references. Optimistic, stylish, retro-futuristic atmosphere.",
+    "advanced": "Apply mid-century modern aesthetic (1945-1970) with atomic age optimism. Atomic motifs: starburst/sunburst shapes (radiating lines from center), boomerang curves, kidney/amoeba organic shapes, atomic orbital patterns. Color palette: warm and earthy - mustard yellow (#d4a017), teal (#008080), burnt orange (#cc5500), olive green (#808000), warm wood brown (#8b4513), cream, black accents. Shape language: clean lines combined with organic curves, tapered legs on elements suggesting furniture. Furniture influence: design elements echoing Eames chairs, Nelson clocks, Saarinen tables. Patterns: abstract geometric, starbursts, boomerang repeats, stylized nature. Typography: clean sans-serif (Futura, Avant Garde) or playful scripts, period-appropriate lettering. Illustration style: flat with limited color, stylized figures, Charley Harper-inspired nature art. Googie elements: upswept roofs, starbursts, space-age optimism (coffee shop/motel signs). Sunburst clock: iconic wall clock shape as decorative element. Textures: wood grain (teak, walnut), terrazzo floors, textured fabrics. Layout: asymmetric balance, floating elements, clean grid. Interactive: smooth, confident transitions, elements can have slight bounce. Photography: period style or modern with retro color grading. Space age: rockets, satellites, atomic symbols for tech contexts. Implementation: CSS shapes for geometric elements, SVG for complex patterns. Accessibility: warm colors generally accessible, ensure sufficient contrast."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

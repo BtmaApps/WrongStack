@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c32-add-rating-stars",
+  "slug": "fluidflow-components-c32-add-rating-stars",
+  "title": "Add Rating Stars",
+  "description": "FluidFlow · Add Rating Stars",
+  "content": "Create star rating component with interactive stars. Container: flex items-center gap-1. Stars: 5 Star icons from lucide-react. Filled state: fill-yellow-400 text-yellow-400. Empty state: text-gray-300. Hover preview: show tentative rating on hover. Click to set rating. Half-star support optional with clip-path. Display mode (read-only) vs input mode. Show numeric value beside stars. Different sizes: sm (w-4 h-4), md (w-5 h-5), lg (w-6 h-6). Accessible with keyboard (arrow keys to change rating).",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f18a09e168244085c0e9e269679745c501f043c6bb49d4f18d025ae497476141",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a star rating component for reviews and feedback.",
+    "detailed": "Create star rating component with interactive stars. Container: flex items-center gap-1. Stars: 5 Star icons from lucide-react. Filled state: fill-yellow-400 text-yellow-400. Empty state: text-gray-300. Hover preview: show tentative rating on hover. Click to set rating. Half-star support optional with clip-path. Display mode (read-only) vs input mode. Show numeric value beside stars. Different sizes: sm (w-4 h-4), md (w-5 h-5), lg (w-6 h-6). Accessible with keyboard (arrow keys to change rating).",
+    "advanced": "Create accessible star rating component with full interaction support. Container: inline-flex items-center gap-0.5. Star component: button type=\"button\" for each star, using Star icon from lucide-react. States: empty (text-gray-300), filled (text-yellow-400 fill-yellow-400), hover preview (text-yellow-300 fill-yellow-300). Half-star implementation: each star split into two click zones (left = x.5, right = x.0), visual half using CSS clip-path or two overlapping icons. Hover behavior: show preview rating from hovered star leftward. Click: set rating, optionally allow clearing by clicking current rating. Read-only mode: no hover effects, no buttons, just display. Sizes: sm (w-4 h-4 gap-0.5), md (w-5 h-5 gap-1), lg (w-6 h-6 gap-1). Numeric display: optional text showing \"4.5 out of 5\" or just \"4.5\". Review count: optional \"(123 reviews)\" text with link. Accessibility: role=\"radiogroup\" on container, role=\"radio\" on each star, aria-checked, aria-label=\"Rate X out of 5 stars\". Keyboard: tab to focus, arrow keys to change rating, Enter/Space to confirm. Touch: larger touch targets on mobile. Animation: scale-110 on hover/focus, smooth color transition. Props: value, onChange, max (default 5), allowHalf, readOnly, size, showValue, disabled. Custom icons: allow replacing Star with other icons (Heart, etc)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

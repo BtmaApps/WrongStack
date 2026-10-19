@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u16-contextual-menu",
+  "slug": "fluidflow-ux-u16-contextual-menu",
+  "title": "Contextual Menu",
+  "description": "FluidFlow · Contextual Menu",
+  "content": "Add right-click context menu with relevant actions. Create menu component positioned at cursor location. Include context-specific actions based on clicked element (edit, delete, duplicate, copy link). Show keyboard shortcuts next to menu items. Group related items with dividers. Add icons prefix for visual scanning. Implement submenus for nested options with ChevronRight indicator. Handle viewport boundaries - flip menu direction if needed. Support keyboard navigation within menu. Close on item click, outside click, or Escape. Add mobile support via long-press trigger. Include disabled states with tooltips explaining why.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c83d4fcaf9576e0875164ab1e5bf8aabed566fe58e57fa2c5f71ba926ecd80a8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add right-click context menu with relevant actions for items.",
+    "detailed": "Add right-click context menu with relevant actions. Create menu component positioned at cursor location. Include context-specific actions based on clicked element (edit, delete, duplicate, copy link). Show keyboard shortcuts next to menu items. Group related items with dividers. Add icons prefix for visual scanning. Implement submenus for nested options with ChevronRight indicator. Handle viewport boundaries - flip menu direction if needed. Support keyboard navigation within menu. Close on item click, outside click, or Escape. Add mobile support via long-press trigger. Include disabled states with tooltips explaining why.",
+    "advanced": "Add right-click context menu with relevant actions for power user efficiency. Create menu component positioned at cursor location using clientX/clientY from contextmenu event. Include context-specific actions based on clicked element: files (open, rename, move, duplicate, delete, copy link), text (copy, cut, paste, select all), items (edit, delete, archive, share). Show keyboard shortcuts right-aligned in menu items (text-gray-400). Group related items with subtle dividers (border-t border-gray-100 my-1). Add icons (w-4 h-4) prefix for visual scanning. Implement submenus for nested options: ChevronRight indicator, submenu appears on hover/arrow-right with 200ms delay. Handle viewport boundaries: calculate available space, flip direction (up/down, left/right) if menu would overflow. Support full keyboard navigation: arrow up/down to move, arrow right to open submenu, arrow left to close submenu, Enter to select, first letter to jump. Close on item click, outside click, Escape, or scroll. Add mobile support: long-press (500ms) triggers menu, position centered above finger. Include disabled states with reduced opacity and cursor-not-allowed, tooltip explaining why on hover. ACCESSIBILITY: role=\"menu\" on container, role=\"menuitem\" on items, aria-disabled for disabled items, proper focus management. Consider right-click alternatives for touchpad/accessibility users."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

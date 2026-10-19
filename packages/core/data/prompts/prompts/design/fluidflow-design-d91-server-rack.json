@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d91-server-rack",
+  "slug": "fluidflow-design-d91-server-rack",
+  "title": "Server Rack",
+  "description": "FluidFlow · Server Rack",
+  "content": "Apply server rack aesthetic with data center hardware feel. 42U rack visualizations. Server chassis with drive bays. Network switch port arrays. Cable management displays. Blinking LED indicators (power, activity, error). Temperature/power gauges. Rack elevation diagrams. PDU power strips. Hardware component styling. Data center operations atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d91"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bb560591901b9e0f809856a0cc84526d767ad754b0abef5c4bbe225507aeef64",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create data center aesthetic with server hardware visuals, rack units, and blinking LED status indicators.",
+    "detailed": "Apply server rack aesthetic with data center hardware feel. 42U rack visualizations. Server chassis with drive bays. Network switch port arrays. Cable management displays. Blinking LED indicators (power, activity, error). Temperature/power gauges. Rack elevation diagrams. PDU power strips. Hardware component styling. Data center operations atmosphere.",
+    "advanced": "Apply server rack aesthetic with data center infrastructure feel. Rack visualization: standard 42U rack (1U = 1.75 inches scale), front and rear views, numbered U positions. Server chassis: horizontal rectangle spanning rack width, drive bays visible (3.5\" or 2.5\" slots), bezel with vendor styling. Server elements: hot-swap drive sleds with LED indicators, USB ports, console ports, ID button. LED indicators: small circles - power (solid green), disk activity (blinking blue), fault (amber/red), network link (green). Network switches: row of ports with link/activity LEDs per port, uplink ports differentiated. Cable management: vertical cable runners, horizontal cable managers between units, color-coded patch cables. PDU: vertical power distribution, outlet status, current draw display. Rack rear: cable mess (realistic) or clean cable management, power supplies, network ports. Temperature: color gradient overlay or sensor badges, cold aisle/hot aisle indication. Power: wattage per device, total rack power draw, redundancy status (A+B feeds). Cooling: fan status, airflow indicators. U consumption: available vs used U space, reservation blocks. Labels: asset tags, hostname labels, rack position (Row-Rack-U). Monitoring overlay: real-time metrics on hover. Empty U: blanking panel styling. Weight: per-device weight, total rack weight for floor loading. Patch panel: fiber and copper panels, port labeling. Implementation: SVG for rack diagrams, canvas for complex visualizations. Accessibility: hardware status needs text alternatives, not just LED colors."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

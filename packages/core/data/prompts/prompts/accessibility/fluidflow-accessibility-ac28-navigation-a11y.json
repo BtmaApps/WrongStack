@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac28-navigation-a11y",
+  "slug": "fluidflow-accessibility-ac28-navigation-a11y",
+  "title": "Navigation A11y",
+  "description": "FluidFlow · Navigation A11y",
+  "content": "Build accessible navigation with proper structure. Element: nav element with aria-label if multiple navs. Links: use a elements with href for navigation. Current page: aria-current=\"page\" on active link. Dropdown menus: button triggers with aria-expanded, submenu appears on click. Keyboard: Tab navigates links, Enter activates, Escape closes submenus. Focus: visible focus indicators, logical tab order. Mobile menu: accessible hamburger button, focus trapped when open. Skip link: first element in page, bypasses navigation. Mega menu: organized with headings, keyboard navigable.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7fb796fcc4e97db15978bb1e1c15b534dafd9dc55c82ae5976a6ed180c892380",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Make navigation menus fully accessible with proper structure.",
+    "detailed": "Build accessible navigation with proper structure. Element: nav element with aria-label if multiple navs. Links: use a elements with href for navigation. Current page: aria-current=\"page\" on active link. Dropdown menus: button triggers with aria-expanded, submenu appears on click. Keyboard: Tab navigates links, Enter activates, Escape closes submenus. Focus: visible focus indicators, logical tab order. Mobile menu: accessible hamburger button, focus trapped when open. Skip link: first element in page, bypasses navigation. Mega menu: organized with headings, keyboard navigable.",
+    "advanced": "Build accessible navigation following best practices. Semantic structure: nav element with aria-label if multiple nav regions (\"Main navigation\", \"Footer navigation\"). Link usage: a elements with href (not buttons) for page navigation, buttons for actions that don't navigate. Current page: aria-current=\"page\" on link to current page, visually distinct styling. Dropdown menus: button trigger with aria-expanded=\"true|false\" and aria-haspopup=\"true\", submenu role=\"menu\" or list, open on click (not hover for accessibility), Escape closes. Keyboard navigation: Tab between top-level items, Enter/Space opens dropdown, Arrow keys navigate dropdown items, Escape closes dropdown and returns focus to trigger. Focus management: submenu doesn't auto-open, focus moves into submenu when opened, logical focus order, visible focus indicator. Mobile hamburger: button with aria-label=\"Menu\" or \"Open menu\", aria-expanded state, icon has aria-hidden. Mobile panel: slide-out menu is accessible dialog or panel, focus trapped within, Escape/X closes, body scroll locked. Skip link: first focusable element on page, visible on focus, links to main content. Mega menus: structured with headings, columns have semantic grouping, keyboard navigable throughout. Breadcrumb: nav with aria-label=\"Breadcrumb\", current page not linked. Testing: navigate entire menu with keyboard, test mobile menu with screen reader."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

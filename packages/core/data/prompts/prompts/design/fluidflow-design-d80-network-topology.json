@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d80-network-topology",
+  "slug": "fluidflow-design-d80-network-topology",
+  "title": "Network Topology",
+  "description": "FluidFlow · Network Topology",
+  "content": "Apply network topology aesthetic with infrastructure diagram feel. Node icons representing devices: servers, routers, switches, cloud. Connection lines between nodes with different styles. Subnet groupings with background colors. Include IP addresses and labels. Network flow arrows. Status indicators (online/offline). Hierarchy levels from internet to endpoints. Data center rack representations. Network architecture atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d80"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6b86ef2342c98056ed25b71db2c06a87bbdac3e09a7e7dc19a4c085966789455",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create network diagram aesthetic with nodes, connections, and infrastructure visualization.",
+    "detailed": "Apply network topology aesthetic with infrastructure diagram feel. Node icons representing devices: servers, routers, switches, cloud. Connection lines between nodes with different styles. Subnet groupings with background colors. Include IP addresses and labels. Network flow arrows. Status indicators (online/offline). Hierarchy levels from internet to endpoints. Data center rack representations. Network architecture atmosphere.",
+    "advanced": "Apply network topology aesthetic with enterprise infrastructure diagram feel. Node types: distinct icons for servers (rectangle with slots), routers (cylinder with arrows), switches (rectangle with ports), firewalls (wall/shield), load balancers, databases (cylinder), cloud (cloud shape), endpoints (laptop, phone). Icon style: consistent line weight, filled or outline, recognizable silhouettes. Connections: solid lines for physical, dashed for logical/virtual, different colors for different networks/VLANs. Line routing: orthogonal (right angles) or curved bezier, avoid crossing where possible. Bandwidth indication: line thickness represents capacity, animated particles for traffic flow. Subnet groupings: colored rectangles grouping devices, labeled with CIDR notation (10.0.1.0/24). Labels: hostname, IP address, role below/beside each node. Status: green dot online, red dot offline, yellow warning, pulsing for activity. Hierarchy: layered layout - Internet/WAN at top, DMZ, internal networks, endpoints at bottom. Data center: rack diagram showing server positions, U heights. Redundancy: dual connections, failover paths indicated. Security zones: different colored backgrounds for trust levels. Protocols: labels on connections (HTTPS, SSH, SQL). Ports: small numbers at connection endpoints. Cloud regions: grouped cloud services by region. Interactive: click node for details, hover for quick stats. Real-time: traffic animation, status updates. Implementation: SVG or canvas for diagram, layout algorithms for auto-positioning. Accessibility: provide text description of topology, meaningful alt text for nodes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q5-improve-ux",
+  "slug": "fluidflow-quick-actions-q5-improve-ux",
+  "title": "🎯 Improve UX",
+  "description": "FluidFlow · 🎯 Improve UX",
+  "content": "Enhance user experience throughout the interface. Improve CTAs with action verbs (\"Get Started\", \"Try Free\") and prominent styling. Add loading states with skeleton screens for async content. Create helpful empty states with illustrations and guidance. Add form validation with inline errors and success indicators. Include confirmation dialogs for destructive actions. Add toast notifications for feedback. Implement breadcrumbs for navigation context. Add tooltips for complex features. Ensure all actions have clear feedback.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "592d29e1a0552d6d142b3cd327329beb378fa72339de89fd32d4460e26bf195f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Improve user experience with better CTAs, loading states, and feedback.",
+    "detailed": "Enhance user experience throughout the interface. Improve CTAs with action verbs (\"Get Started\", \"Try Free\") and prominent styling. Add loading states with skeleton screens for async content. Create helpful empty states with illustrations and guidance. Add form validation with inline errors and success indicators. Include confirmation dialogs for destructive actions. Add toast notifications for feedback. Implement breadcrumbs for navigation context. Add tooltips for complex features. Ensure all actions have clear feedback.",
+    "advanced": "Enhance user experience throughout the interface systematically. CTAs: use action verbs (\"Get Started Free\", \"Download Now\", \"Try for Free\"), primary style (bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 font-medium), position above the fold. Loading states: skeleton screens matching layout (animate-pulse bg-gray-200 rounded), button loading (disabled with Loader2 animate-spin), page loading (progress bar at top). Empty states: friendly illustration, clear headline (\"No projects yet\"), helpful description, single CTA to resolve. Form validation: inline errors (text-red-600 text-sm mt-1) with AlertCircle icon, success states (CheckCircle icon, ring-green-500), validate on blur, preserve input on error. Confirmation dialogs: for destructive actions (delete, cancel subscription), clear consequences, red primary button for destructive. Toast notifications: success (green), error (red), info (blue) - auto-dismiss after 5s, position bottom-right or top-center. Breadcrumbs: Home > Category > Current, use ChevronRight separator. Tooltips: for icon-only buttons, truncated text, complex features - use title attribute or tooltip component. Progress indicators: multi-step forms show step X of Y, progress bar for uploads. Error recovery: retry buttons, helpful error messages, fallback content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

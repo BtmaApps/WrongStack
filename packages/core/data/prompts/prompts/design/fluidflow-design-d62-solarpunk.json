@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d62-solarpunk",
+  "slug": "fluidflow-design-d62-solarpunk",
+  "title": "Solarpunk",
+  "description": "FluidFlow · Solarpunk",
+  "content": "Apply solarpunk aesthetic with optimistic eco-futurism. Lush greens integrated with technology. Solar panels and renewable energy motifs. Organic architecture blending with nature. Bright, hopeful color palette: greens, sky blue, solar gold. Include vertical gardens and living buildings. Community and sustainability themes. Art Nouveau meets sustainable tech. Hopeful, green, utopian atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d62"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "561f233878543fdd142684436e4e7f762f5f268603e5707086599c3427ecd86d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create eco-futuristic solarpunk aesthetic with green technology, organic architecture, and optimistic sustainability.",
+    "detailed": "Apply solarpunk aesthetic with optimistic eco-futurism. Lush greens integrated with technology. Solar panels and renewable energy motifs. Organic architecture blending with nature. Bright, hopeful color palette: greens, sky blue, solar gold. Include vertical gardens and living buildings. Community and sustainability themes. Art Nouveau meets sustainable tech. Hopeful, green, utopian atmosphere.",
+    "advanced": "Apply solarpunk aesthetic with optimistic sustainable futurism. Color palette: lush greens (#2e8b57, #228b22), sky blue (#87ceeb), solar gold (#ffd700), terracotta (#e07040), cream - nature colors dominating tech. Green technology: solar panels integrated beautifully (not industrial), wind turbines, green energy visualizations. Living architecture: buildings with plants growing on/through them, vertical gardens, green roofs, organic curves merged with structures. Nature-tech fusion: vines intertwining with tech elements, bioluminescent lighting, biomimicry patterns. Materials suggested: sustainable wood, recycled materials, natural fiber. Community elements: shared spaces, collaborative imagery, diverse people. Transportation: bikes, trains, electric vehicles, walkable cities. Flora: abundant plants, urban farming, food forests, native species. Patterns: leaf veins, solar cell grids, honeycomb (biomimicry). Typography: friendly, approachable fonts, organic curves. Art Nouveau influence: flowing lines but with tech integration. Illustration: optimistic future scenes, people in harmony with nature/tech. Light: abundant natural light, golden hour optimism, dappled forest light. Interactive: growth animations, blooming effects, energy flow visualization. Sound: nature sounds suggested, birds, water. Implementation: CSS gradients for natural light, SVG for organic shapes. Accessibility: high contrast from natural palette, inclusive imagery important to aesthetic."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

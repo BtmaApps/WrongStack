@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r20-pwa-responsive",
+  "slug": "fluidflow-responsive-r20-pwa-responsive",
+  "title": "PWA Responsive",
+  "description": "FluidFlow · PWA Responsive",
+  "content": "Optimize for PWA installation and standalone mode. Add meta viewport with viewport-fit=cover for notched devices. Use CSS env() for safe area insets. Handle standalone display mode (display-mode: standalone). Design for app-like experience without browser chrome. Add splash screens for various device sizes. Ensure offline mode works responsively. Test installed app behavior.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e3a1f513fddb452bca52f1c61ff0ebc850d517a96a515c4a4be2808d1fe7f321",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Optimize for Progressive Web App installation and standalone mode.",
+    "detailed": "Optimize for PWA installation and standalone mode. Add meta viewport with viewport-fit=cover for notched devices. Use CSS env() for safe area insets. Handle standalone display mode (display-mode: standalone). Design for app-like experience without browser chrome. Add splash screens for various device sizes. Ensure offline mode works responsively. Test installed app behavior.",
+    "advanced": "Optimize for PWA installation across devices. Viewport: <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">. Safe areas: use env(safe-area-inset-*) for padding on notched devices, especially fixed elements. Standalone mode: detect with display-mode: standalone media query or navigator.standalone, adjust UI (hide back button, add custom navigation). manifest.json: include all icon sizes (192, 512, maskable), set display: standalone. Splash screens: Apple requires specific sizes, Android generates from manifest. Offline: responsive layouts should work with cached content, skeleton states for loading. Install prompt: responsive install banner, deferrable. Status bar: meta theme-color, adjust for dark mode. Navigation: handle back button/gesture in standalone, provide navigation within app. Update handling: prompt for update, refresh mechanism. Desktop PWA: handle window resizing, min/max dimensions. Testing: test as installed app on multiple devices, verify safe areas, check orientation handling."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

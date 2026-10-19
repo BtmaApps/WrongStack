@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c59-add-audio-player",
+  "slug": "fluidflow-components-c59-add-audio-player",
+  "title": "Add Audio Player",
+  "description": "FluidFlow · Add Audio Player",
+  "content": "Create audio player. Container: flex items-center gap-4 p-4 bg-gray-100 rounded-lg. Play button: w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center, play/pause icon. Progress: flex-1, slider input type=\"range\" styled, show current time / duration. Volume: volume icon button, slider on hover/click. Waveform: optional visual representation.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c59"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f3153122f5f79e6ef8c63b34100aa89efd6b2127d73ed40815280b9aa792d0d1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create custom audio player with controls.",
+    "detailed": "Create audio player. Container: flex items-center gap-4 p-4 bg-gray-100 rounded-lg. Play button: w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center, play/pause icon. Progress: flex-1, slider input type=\"range\" styled, show current time / duration. Volume: volume icon button, slider on hover/click. Waveform: optional visual representation.",
+    "advanced": "Create comprehensive audio player. Layout options: minimal (just controls), standard (with waveform), full (with playlist). Playback controls: play/pause, skip back 10s, skip forward 10s, previous/next track. Progress bar: custom range input, current position indicator, buffered range shown, click/drag to seek, hover shows time tooltip. Time display: current / total, toggle to show remaining. Volume: icon (muted/low/medium/high), slider popup or inline, mute toggle, remember preference. Waveform: visualize audio waveform using Web Audio API, highlight played portion, click to seek. Speed control: 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x. Playlist mode: queue of tracks, current playing highlighted, drag to reorder, remove from queue. Track info: cover art, title, artist, album. Keyboard shortcuts: Space play/pause, arrow keys seek, M mute, up/down volume. Mini player: minimized view that persists across navigation. Accessibility: all controls labeled, keyboard navigable, announce track changes. Mobile: larger touch targets, gesture controls. Background play: continue when tab not focused. Media session: integrate with OS media controls (lock screen, etc)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

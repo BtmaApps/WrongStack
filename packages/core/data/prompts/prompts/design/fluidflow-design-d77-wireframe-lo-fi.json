@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d77-wireframe-lo-fi",
+  "slug": "fluidflow-design-d77-wireframe-lo-fi",
+  "title": "Wireframe/Lo-Fi",
+  "description": "FluidFlow · Wireframe/Lo-Fi",
+  "content": "Apply wireframe/lo-fi prototype aesthetic with early design stage feel. Gray and white color scheme. Hand-drawn sketchy borders. Placeholder boxes with X patterns for images. Lorem ipsum or squiggle lines for text. Annotation callouts and arrows. Grid dots or lines visible. Include redline measurements. Sticky note elements. Work-in-progress, ideation atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d77"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "883e2324cfd543bfc81ef0e37c750bf74ecc0000621dacd2ec3bb499ce76e26d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create low-fidelity wireframe aesthetic with sketchy boxes, placeholder content, and prototype feel.",
+    "detailed": "Apply wireframe/lo-fi prototype aesthetic with early design stage feel. Gray and white color scheme. Hand-drawn sketchy borders. Placeholder boxes with X patterns for images. Lorem ipsum or squiggle lines for text. Annotation callouts and arrows. Grid dots or lines visible. Include redline measurements. Sticky note elements. Work-in-progress, ideation atmosphere.",
+    "advanced": "Apply wireframe/lo-fi prototype aesthetic with design thinking feel. Color palette: grayscale only - white (#ffffff), light gray (#f5f5f5), medium gray (#999999), dark gray (#333333), with occasional blue (#0066ff) for links/annotations. Sketchy borders: hand-drawn appearance using SVG filters (roughness) or slightly uneven border-radius, border-style could be dashed. Placeholder images: boxes with diagonal X pattern (CSS linear-gradient), or gray boxes with image icon. Text placeholders: actual lorem ipsum, or horizontal lines (squiggles) representing text blocks. Annotations: callout bubbles, numbered circles, arrows pointing to elements, measurement lines with dimensions. Grid system: visible dot grid or light line grid as background, snap-to-grid feeling. Redlines: measurement annotations showing spacing and dimensions in red (#ff0000). Sticky notes: yellow (#fff59d) squares with handwritten-style font, rotated slightly. Component labels: element names above/beside components (Header, Button, Card). Hand-drawn elements: slightly imperfect shapes, Balsamiq-style mockup feel. Cursor: can be crosshair suggesting design tool. Versions: corner version numbers (v1, v2). Comments: annotation comments from stakeholders. Interactive: click to add annotation feeling. Export marks: crop marks, safe area indicators. Implementation: SVG filters for sketch effect, CSS patterns for placeholders. Accessibility: wireframes should still be navigable, proper semantic structure despite sketch appearance."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

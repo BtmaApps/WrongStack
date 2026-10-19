@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a23-magnetic-buttons",
+  "slug": "fluidflow-animation-a23-magnetic-buttons",
+  "title": "Magnetic Buttons",
+  "description": "FluidFlow · Magnetic Buttons",
+  "content": "Create magnetic button effect where button subtly follows cursor. Track mouse position relative to button. Calculate distance and angle from button center. Apply transform to move button toward cursor when nearby. Limit movement range (10-20px max). Add smooth transition for natural feel. Reset position smoothly on mouse leave. Apply to important CTAs for engagement. Handle touch devices gracefully.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5f1857ed4142323ead63c8cce6958c9121649d131a7d36d51eb4106c30ccd510",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create buttons that attract toward cursor on hover.",
+    "detailed": "Create magnetic button effect where button subtly follows cursor. Track mouse position relative to button. Calculate distance and angle from button center. Apply transform to move button toward cursor when nearby. Limit movement range (10-20px max). Add smooth transition for natural feel. Reset position smoothly on mouse leave. Apply to important CTAs for engagement. Handle touch devices gracefully.",
+    "advanced": "Create magnetic button effect for engaging interactive elements. Mouse tracking: onMouseMove on button or container, get cursor position relative to button center. Distance calculation: const rect = button.getBoundingClientRect(); const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2; const deltaX = event.clientX - centerX; const deltaY = event.clientY - centerY;. Magnetic pull: when cursor within threshold radius (100-150px), apply transform: translate(deltaX * 0.3, deltaY * 0.3), multiply by factor <1 for subtlety. Max displacement: clamp movement to prevent button moving too far (max 15-20px). Smooth transition: transition-transform duration-200 ease-out for lag effect that feels natural. Reset: onMouseLeave triggers transition back to translate(0, 0). Activation radius: only start magnetic effect when cursor enters larger radius around button, prevents distant interference. Easing: ease-out when following, ease-in when resetting. Inner content: optionally move inner content (text, icon) in opposite direction for parallax. Performance: use requestAnimationFrame for smoother tracking if needed, throttle updates. Implementation: useRef for button, useState for transform values, useEffect cleanup for listeners. Touch devices: disable effect (no concept of hover distance), use normal button behavior. Use cases: primary CTAs, navigation items, interactive demos. ACCESSIBILITY: magnetic effect is enhancement only, all functionality must work without it, dont interfere with click target. Libraries: GSAP or Framer Motion can simplify implementation with spring physics."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

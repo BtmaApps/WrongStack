@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c86-add-language-selector",
+  "slug": "fluidflow-components-c86-add-language-selector",
+  "title": "Add Language Selector",
+  "description": "FluidFlow · Add Language Selector",
+  "content": "Create language picker. Trigger: button with current language flag and name, dropdown arrow. Dropdown: absolute bg-white rounded-lg shadow-xl border py-2 max-h-64 overflow-y-auto. Language item: px-4 py-2 hover:bg-gray-100 flex items-center gap-3, flag icon, language name in both native and English. Selected: checkmark icon. Search: optional search input at top for many languages.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c86"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a66182961bfd2e84cf47b6772f914c67ba78edb8a0565fa5709df040fab2c777",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create language/locale dropdown selector.",
+    "detailed": "Create language picker. Trigger: button with current language flag and name, dropdown arrow. Dropdown: absolute bg-white rounded-lg shadow-xl border py-2 max-h-64 overflow-y-auto. Language item: px-4 py-2 hover:bg-gray-100 flex items-center gap-3, flag icon, language name in both native and English. Selected: checkmark icon. Search: optional search input at top for many languages.",
+    "advanced": "Create comprehensive locale selector. Trigger variants: dropdown button, icon-only button (for headers), inline select, footer link format. Display options: flag + native name, flag + English name, native name only (flags can be controversial). Language list: ISO language codes, native language names, completion percentage for partial translations. Grouping: popular/common languages at top, then alphabetical, or by region. Search: filter languages by name (in any language), keyboard navigation through filtered results. Selection: current language highlighted, persist choice in cookie/localStorage and user preferences. URL strategy: subdomain (en.site.com), path prefix (/en/page), query param (?lang=en), or domain per region. Detection: auto-detect from browser language, suggest switch if different from current. RTL support: automatically switch to RTL layout for Arabic, Hebrew, etc. Currency/region: optional region selector alongside language (affects currency, date format). Incomplete translations: warning badge if language has incomplete translations, fallback language display. Keyboard shortcut: configurable shortcut to open language selector. Flags: use flag icons carefully, some users find them inaccurate (e.g., UK flag for English used by US users). Accessibility: proper button/menu semantics, language names in native script, live region announcement on change."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

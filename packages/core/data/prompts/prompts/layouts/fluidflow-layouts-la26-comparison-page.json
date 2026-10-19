@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la26-comparison-page",
+  "slug": "fluidflow-layouts-la26-comparison-page",
+  "title": "Comparison Page",
+  "description": "FluidFlow · Comparison Page",
+  "content": "Build comparison page for products or plans. Header: items being compared with images/names. Sticky header: keeps product names visible while scrolling. Feature rows: grouped by category. Values: text, checkmarks, or ratings. Highlight winner: best value per row. Add/remove items. Print comparison. Mobile: horizontal scroll or card-based.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1dbec7376f4c3688f2c4d9ee63d3f4810ad024e38466c3db416daee894cc2cd9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product or plan comparison table with features.",
+    "detailed": "Build comparison page for products or plans. Header: items being compared with images/names. Sticky header: keeps product names visible while scrolling. Feature rows: grouped by category. Values: text, checkmarks, or ratings. Highlight winner: best value per row. Add/remove items. Print comparison. Mobile: horizontal scroll or card-based.",
+    "advanced": "Build comprehensive comparison page for products, plans, or services. Page header: \"Compare [Products/Plans]\" title, \"Compare up to 4 items\" note. Add items: if less than max, show \"Add to Compare\" button opening product search/picker. Selected items header: sticky top-0 bg-white z-10, flex with product columns. Each column: product image (w-24 h-24 object-contain), name (font-semibold), price, rating stars, \"View Details\" link, remove X button. First column: fixed width for feature names. Comparison table: w-full. Feature categories: collapsible sections with category headers (bg-gray-100 font-semibold py-2). Feature rows: border-b hover:bg-gray-50. Row structure: feature name cell (sticky left-0 bg-white w-64, text-sm font-medium), product value cells (text-center). Value types: Boolean (Check icon green or X icon gray), Text (string value), Rating (stars or numeric), Image (small product image), Link (clickable text). Highlight best: optionally bold or badge the winning value per row (lowest price, highest rating). \"Differences only\" toggle: filter to show only rows where values differ. Quick verdict: summary section with \"Best for [use case]: [Product]\" recommendations. Action row: CTA buttons per product (\"Buy Now\", \"Learn More\"). Export: \"Print Comparison\" and \"Share\" buttons. Print styles: clean table format optimized for print. Empty columns: if less than max items, show \"Add Item\" placeholder cards. Responsive: horizontal scroll table wrapper on mobile, or transform to card-based comparison (each product as card with features listed). Sticky first column: feature names visible while scrolling horizontally. Alternating row colors: even:bg-gray-50 for readability. Collapse long content: long text values truncated with tooltip or \"View more\". Loading: skeleton columns while loading product data. URL state: compared items in URL for sharing (/compare?items=1,2,3). Accessibility: proper table headers, comparison context clear for screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

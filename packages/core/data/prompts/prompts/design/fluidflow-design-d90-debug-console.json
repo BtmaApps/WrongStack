@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d90-debug-console",
+  "slug": "fluidflow-design-d90-debug-console",
+  "title": "Debug Console",
+  "description": "FluidFlow · Debug Console",
+  "content": "Apply debug console aesthetic with IDE debugger feel. Breakpoint indicators (red dots). Call stack panel with frame list. Variable watch windows showing values. Step controls (step in/over/out buttons). Current line highlighting. Variable type annotations. Memory inspector views. Console output with errors. Debugging workflow atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d90"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e6bbb7784e4a583eaf6baa88d4baab56df3a45a2ca5b7be2ed9d3db7f14f5f02",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create debugging tool aesthetic with breakpoints, variable inspection, and stack trace styling.",
+    "detailed": "Apply debug console aesthetic with IDE debugger feel. Breakpoint indicators (red dots). Call stack panel with frame list. Variable watch windows showing values. Step controls (step in/over/out buttons). Current line highlighting. Variable type annotations. Memory inspector views. Console output with errors. Debugging workflow atmosphere.",
+    "advanced": "Apply debug console aesthetic with professional debugger/IDE feel. Breakpoint gutter: red filled circles for active breakpoints, hollow circles for disabled, diamond for conditional, function breakpoint icon. Current execution: highlighted line (yellow/gold background), arrow indicator pointing to current statement. Call stack panel: ordered list of stack frames, current frame highlighted, expandable to show locals, file:line locations. Variables panel: tree view of scope (Local, Closure, Global), expandable objects/arrays, type indicators, value previews, changed values highlighted. Watch expressions: user-added watches with live evaluation, error indicators for invalid expressions. Data types: different colors/icons for type (number blue, string green, boolean purple, object orange, function cyan, undefined gray). Object inspection: expandable tree, prototype chain, getters highlighted. Hover inspection: quick variable value popup on mouse hover in editor. Console: integrated REPL, console.log output with source links, error stack traces with clickable frames. Step controls: button group (Continue, Step Over, Step Into, Step Out, Restart, Stop) with keyboard shortcuts shown. Debug toolbar: prominent bar with run controls, configuration selector. Conditional breakpoint: edit mode with expression input. Logpoints: message configuration without stopping execution. Exception handling: caught/uncaught exception toggles, break on exception settings. Performance: basic profiler integration, memory snapshots. Network: request inspector for AJAX debugging. Implementation: proper panel layout, tree view components. Accessibility: all debug actions keyboard accessible, status announcements for screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

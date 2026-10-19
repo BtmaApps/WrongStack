@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d124-tiktok-reels-style",
+  "slug": "fluidflow-design-d124-tiktok-reels-style",
+  "title": "TikTok/Reels Style",
+  "description": "FluidFlow · TikTok/Reels Style",
+  "content": "Apply TikTok aesthetic with short-form video feel. Full-screen vertical video. Overlaid text and CTAs. Right sidebar for actions (like, comment, share). Bottom info with creator and sound. Swipe up for next video. Discover page with grid. Creator profile layouts. Trending sounds. Effect filters. Duet/stitch options.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d124"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7a489e600dedfdd27c75c40758b50ab5affbc5b583ab36baffd8573473092695",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create short-form video interface with full-screen content and swipe navigation.",
+    "detailed": "Apply TikTok aesthetic with short-form video feel. Full-screen vertical video. Overlaid text and CTAs. Right sidebar for actions (like, comment, share). Bottom info with creator and sound. Swipe up for next video. Discover page with grid. Creator profile layouts. Trending sounds. Effect filters. Duet/stitch options.",
+    "advanced": "Apply TikTok aesthetic with short-video patterns. Video container: full viewport height, swipe-up transitions, snap scrolling. Video: object-cover, tap to pause, double-tap to like (heart animation). Right sidebar: like button (heart) with count, comment bubble, bookmark, share arrow, creator avatar with follow plus. Bottom overlay: @username, description with hashtags (linked), sound marquee. Sound: music note icon, spinning album art, tap to view sound page. Progress bar: thin line at bottom showing video progress. Discover: grid of thumbnails, trending tags, search bar. Profile: header with stats (following, followers, likes), bio, grid of videos. Effects: filter browser, AR effects preview. Following/For You: tab switch at top. Comments: bottom sheet, sorted by likes, reply threading. Live: red Live badge, viewer count, gift animations. Create: camera with effects, timer, speed, flip camera. Notifications: activity feed with thumbnails. Accessibility: auto-captions, text-to-speech. Sounds: waveform visualization, favorites. Responsive: desktop shows multiple columns, mobile is primary."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

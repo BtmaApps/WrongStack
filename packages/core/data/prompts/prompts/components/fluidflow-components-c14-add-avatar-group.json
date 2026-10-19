@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c14-add-avatar-group",
+  "slug": "fluidflow-components-c14-add-avatar-group",
+  "title": "Add Avatar Group",
+  "description": "FluidFlow · Add Avatar Group",
+  "content": "Build avatar stack/group component. Container with flex and negative margins for overlap (-space-x-2 or -space-x-4). Individual avatars: rounded-full with ring-2 ring-white for separation. Size variants: xs (w-6), sm (w-8), md (w-10), lg (w-12). Overflow handling: show first N avatars, then \"+X more\" badge. Badge styling: rounded-full bg-gray-100 text-gray-600 with same size as avatars. Hover effect: expand stack to show all with tooltip names. Add status indicators: online (green dot), offline (gray), busy (red) positioned absolute bottom-right. Fallback for missing images: initials with colored background based on name hash. Clickable avatars option linking to profiles. Tooltip with name on hover.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2e192eb54994fe1810926ae5be29cbbf128be3efcb03305c03ca47a38d0ff9f3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build an avatar stack showing multiple users with overflow count.",
+    "detailed": "Build avatar stack/group component. Container with flex and negative margins for overlap (-space-x-2 or -space-x-4). Individual avatars: rounded-full with ring-2 ring-white for separation. Size variants: xs (w-6), sm (w-8), md (w-10), lg (w-12). Overflow handling: show first N avatars, then \"+X more\" badge. Badge styling: rounded-full bg-gray-100 text-gray-600 with same size as avatars. Hover effect: expand stack to show all with tooltip names. Add status indicators: online (green dot), offline (gray), busy (red) positioned absolute bottom-right. Fallback for missing images: initials with colored background based on name hash. Clickable avatars option linking to profiles. Tooltip with name on hover.",
+    "advanced": "Build avatar stack/group component with hover expansion and status indicators. Container: flex items-center. Overlap effect: -space-x-2 for tight overlap, -space-x-3 or -space-x-4 for looser. Individual Avatar component: relative flex-shrink-0. Image wrapper: w-10 h-10 (size variant), rounded-full overflow-hidden ring-2 ring-white (separation), bg-gray-200 (fallback bg). Image: w-full h-full object-cover. Fallback initials: when no image, display initials (first + last name initial) on colored background, color generated from name hash for consistency (hash string to hue value). Size variants: xs (w-6 h-6 text-xs), sm (w-8 h-8 text-xs), md (w-10 h-10 text-sm), lg (w-12 h-12 text-base), xl (w-16 h-16 text-lg). Overflow handling: if avatars.length > max, show first (max-1) avatars + count badge. Count badge: same size as avatars, rounded-full bg-gray-100 text-gray-600 font-medium flex items-center justify-center, displays \"+{remaining}\". Hover expansion: on group hover, transition to -space-x-1 or positive space-x-1, showing all avatars clearly. Tooltip: on individual avatar hover, show name in tooltip (title attribute or custom Tooltip component). Status indicator: absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white, colors: online (bg-green-500), offline (bg-gray-400), busy (bg-red-500), away (bg-yellow-500). Clickable: wrap avatars in Link or button, show pointer cursor, add hover:ring-blue-500 for focus indication. Stacking order: first avatar on top (z-index approach) or last avatar on top (default). Animation: smooth transition for hover expansion. ACCESSIBILITY: if clickable, proper focus states; tooltip text for screen readers; status with aria-label (not just color). Component API: users array with {name, image?, status?}, max count, size variant."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

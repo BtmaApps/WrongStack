@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d39-chalkboard-blackboard",
+  "slug": "fluidflow-design-d39-chalkboard-blackboard",
+  "title": "Chalkboard/Blackboard",
+  "description": "FluidFlow · Chalkboard/Blackboard",
+  "content": "Apply chalkboard aesthetic with classroom nostalgia. Dark green or black slate background. Chalk-textured text and drawings - slightly rough, dusty edges. Hand-drawn style icons and decorations. Include chalk dust effects. Use chalk colors: white, yellow, pink, light blue. Add eraser smudges and imperfections. Wooden frame border optional. Educational, crafty, approachable feel.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d39"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "454946210331ed04ae18749fb54927d6e5ecf5ac5dd7a2949e5f8ce20fbbdfe1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create handwritten chalkboard aesthetic with chalk textures, doodles, and educational feel.",
+    "detailed": "Apply chalkboard aesthetic with classroom nostalgia. Dark green or black slate background. Chalk-textured text and drawings - slightly rough, dusty edges. Hand-drawn style icons and decorations. Include chalk dust effects. Use chalk colors: white, yellow, pink, light blue. Add eraser smudges and imperfections. Wooden frame border optional. Educational, crafty, approachable feel.",
+    "advanced": "Apply chalkboard aesthetic with nostalgic, educational feel. Background: dark slate green (#2d4a3e) or blackboard black (#1a1a1a), subtle texture overlay simulating slate surface (noise pattern). Chalk effect: text and graphics with rough, dusty edges - achieve with SVG filter (turbulence + displacement) or textured font. Colors: chalk palette - white (#f5f5f5 slightly off-white), yellow (#ffd54f), pink (#f48fb1), light blue (#81d4fa), orange (#ffb74d). Dust effects: small particle dots near text edges, smudge areas using blur and reduced opacity. Hand-drawn style: sketchy icons using rough stroke paths, imperfect lines. Eraser marks: lighter smudged areas suggesting erased content, faded corrections. Typography: handwritten/chalk fonts (Architects Daughter, Indie Flower, Schoolbell), vary size and angle for authentic feel. Decorations: doodles, arrows, underlines, boxes around text - all hand-drawn style. Frame: wooden border (amber/brown gradient with grain texture) like classic blackboard. Interactive: chalk drawing/writing animation on load, dust particles on erase. Layout: organic, casual arrangement suggesting someone wrote on board over time. Sound design consideration: chalk squeak, tap sounds for interactions. Implementation: SVG heavily for chalk effects, CSS filters for texture. Accessibility: ensure chalk colors have sufficient contrast on dark background, avoid thin strokes that may be hard to see."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

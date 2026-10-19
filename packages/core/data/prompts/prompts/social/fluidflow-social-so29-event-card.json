@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so29-event-card",
+  "slug": "fluidflow-social-so29-event-card",
+  "title": "Event Card",
+  "description": "FluidFlow · Event Card",
+  "content": "Build event card for social events. Cover: event image with date overlay badge. Details: title, host, date/time, location with map link. RSVP: Going/Interested/Not Going buttons. Attendees: avatar stack of going users, count. Sharing: share event button. Reminders: add to calendar. Recurring: series indicator.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dfe88fd7c7c6c3d9d9d43d528f24d6194a033c7428d42f910d875614f0743022",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create social event card with date, location, and RSVP.",
+    "detailed": "Build event card for social events. Cover: event image with date overlay badge. Details: title, host, date/time, location with map link. RSVP: Going/Interested/Not Going buttons. Attendees: avatar stack of going users, count. Sharing: share event button. Reminders: add to calendar. Recurring: series indicator.",
+    "advanced": "Build comprehensive social event card with RSVP and details. Card container: bg-white rounded-xl shadow-sm overflow-hidden. Cover image: aspect-video object-cover relative. Date badge: absolute top-4 left-4 bg-white rounded-lg shadow-md p-2 text-center, month (text-xs uppercase text-red-500 font-medium \"JAN\"), day (text-2xl font-bold \"15\"). Status badge: absolute top-4 right-4, \"Happening Now\" (bg-red-500 animate-pulse), \"Tomorrow\", \"This Weekend\". Event details: p-4. Title: text-xl font-bold line-clamp-2. Host: flex items-center gap-2 mt-2, avatar (w-6 h-6), \"Hosted by [Name]\" or \"By [Organization]\". Date/time: Calendar icon + \"Saturday, January 15, 2024\" + \"7:00 PM - 10:00 PM\", relative (\"in 3 days\"). Location: MapPin icon + venue name + address line, \"Online Event\" with Video icon for virtual. Map preview: small map thumbnail with pin, tap opens directions. RSVP section: flex gap-2 mt-4. Going: primary button, Interested: secondary/outline, Ignore: text button or implicit. Selected state: button filled with check icon. RSVP counts: \"124 going · 56 interested\" text. Attendee preview: avatar stack of friends going (\"Sarah, John and 3 friends going\"), then \"124 total going\". Ticket info: if paid event, price display (\"$25\"), \"Get Tickets\" button linking to purchase. Add to calendar: Calendar+ icon button, generates .ics file or opens calendar app. Share: Share icon opens share sheet. Event details expandable: description text (line-clamp-3 with \"See more\"), full details include agenda, what to bring, host notes. Recurring indicator: \"Repeating event - Every Monday\" badge. RSVP deadline: \"RSVP by Jan 10\" warning. Capacity: \"Limited spots - 20 remaining\" urgency. Private event: Lock icon, invite-only. Reminder: \"Remind me\" toggle sets notification. Cancel/update notice: if event changed, highlighted banner. Discussion: link to event discussion/comments. Mobile: full-width cards, easy tap targets. Accessibility: date and time clearly formatted, RSVP status announced, interactive elements labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

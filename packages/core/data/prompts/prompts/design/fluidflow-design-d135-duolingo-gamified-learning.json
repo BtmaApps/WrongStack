@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d135-duolingo-gamified-learning",
+  "slug": "fluidflow-design-d135-duolingo-gamified-learning",
+  "title": "Duolingo/Gamified Learning",
+  "description": "FluidFlow · Duolingo/Gamified Learning",
+  "content": "Apply Duolingo aesthetic with gamified learning feel. Owl mascot and character system. XP and leveling progress. Streak tracking with flames. Leaderboards and leagues. Heart/life system. Lesson completion celebrations. Achievement badges. Skill trees. Audio feedback. Encouraging error states.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d135"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d9e5473eb1a83a520748602e0b421804a8844c6a69238cbb4f6b600e08c69a90",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create gamified learning interface with XP, streaks, leaderboards, and character mascots.",
+    "detailed": "Apply Duolingo aesthetic with gamified learning feel. Owl mascot and character system. XP and leveling progress. Streak tracking with flames. Leaderboards and leagues. Heart/life system. Lesson completion celebrations. Achievement badges. Skill trees. Audio feedback. Encouraging error states.",
+    "advanced": "Apply Duolingo aesthetic with gamified learning patterns. Mascot: character illustrations with expressions (happy, sad, encouraging), animations on interactions. XP: gain XP on correct answers, animated +10 XP floating up, daily XP goal progress bar. Streaks: flame icon with current streak count, freeze for missed days, milestone celebrations. Hearts: limited attempts system, lose heart on wrong answer, regenerate or buy. Leaderboard: weekly leagues, rank with XP, promotion/demotion zones. Skill tree: units/modules as nodes, paths connecting, completed/current/locked states. Lessons: question cards, multiple choice, matching, typing, speaking. Progress: lesson progress dots, section completion, course progress percentage. Celebrations: confetti on lesson complete, level up animations, badge unlocks. Feedback: green for correct with sound, red shake for wrong with encouragement. Badges: achievement gallery, locked with criteria, earned with date. Tips: expandable lesson tips, grammar explanations. Audio: pronunciation clips, speech recognition practice. Characters: NPCs for dialogs, distinct personalities. Profile: avatar customization with unlockable items. Store: hearts, streak freezes, bonus content. Social: follow friends, share achievements. Push: reminder notifications, streak protection alerts. Accessibility: audio alternatives, keyboard navigation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

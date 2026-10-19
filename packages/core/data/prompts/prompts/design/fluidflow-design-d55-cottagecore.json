@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d55-cottagecore",
+  "slug": "fluidflow-design-d55-cottagecore",
+  "title": "Cottagecore",
+  "description": "FluidFlow · Cottagecore",
+  "content": "Apply cottagecore aesthetic with romanticized rural life. Soft, muted natural colors: sage green, dusty rose, cream, lavender, warm brown. Floral patterns: wildflowers, pressed flowers, botanical illustrations. Vintage lace and embroidery textures. Handwritten or script typography. Include cottages, gardens, countryside imagery. Gingham and toile patterns. Soft, dreamy photography style. Cozy, nostalgic, simple life atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d55"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "041964866d999db996daa1491f7d7b678372cd2e1138e36aba0090f69906db6c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create cozy pastoral aesthetic with floral patterns, vintage charm, and rural romanticism.",
+    "detailed": "Apply cottagecore aesthetic with romanticized rural life. Soft, muted natural colors: sage green, dusty rose, cream, lavender, warm brown. Floral patterns: wildflowers, pressed flowers, botanical illustrations. Vintage lace and embroidery textures. Handwritten or script typography. Include cottages, gardens, countryside imagery. Gingham and toile patterns. Soft, dreamy photography style. Cozy, nostalgic, simple life atmosphere.",
+    "advanced": "Apply cottagecore aesthetic celebrating romanticized rural simplicity. Color palette: soft, muted naturals - sage green (#9caf88), dusty rose (#d4a5a5), cream (#fffef0), lavender (#e6e6fa), warm brown (#8b7355), butter yellow (#f5deb3). Floral elements: wildflower illustrations, pressed flower collages, botanical drawings, flower borders (SVG). Patterns: gingham check (CSS repeating gradient), toile de Jouy pastoral scenes, delicate floral prints, lace borders. Textures: linen fabric weave, embroidery stitch patterns, aged paper, woven baskets. Typography: handwritten scripts (Dancing Script, Great Vibes), vintage serifs (Libre Baskerville), hand-lettering style. Imagery: cottage illustrations, garden scenes, baking and preserving, mushrooms, bees, herbs. Decorative elements: mason jars, vintage keys, dried flowers, ribbons, wax seals. Photography style: soft focus, golden hour lighting, film grain, slightly desaturated. Frame elements: scalloped edges, embroidery hoop shapes, botanical frames. Interactive: gentle hover effects, soft transitions, nothing jarring. Seasonal: spring/summer flowers, autumn harvest, cozy winter touches. Modern mix: combine vintage elements with clean layouts for usability. Accessibility: script fonts can be hard to read - use sparingly for headings, ensure decorative elements dont obscure content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

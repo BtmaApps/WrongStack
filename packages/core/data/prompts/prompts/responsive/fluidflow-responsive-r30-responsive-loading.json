@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r30-responsive-loading",
+  "slug": "fluidflow-responsive-r30-responsive-loading",
+  "title": "Responsive Loading",
+  "description": "FluidFlow · Responsive Loading",
+  "content": "Create responsive loading states. Skeleton screens should match the layout at current breakpoint. Show fewer skeleton items on mobile. Match skeleton dimensions to actual content. Use responsive skeleton widths and heights. Maintain layout stability during load. Consider simpler loading indicators on mobile to reduce complexity.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5cd55dc49836a8e87653b8f96d2a9430c2b78041ec01099cbe4b849352a9b146",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Adapt loading states and skeletons to match responsive layouts.",
+    "detailed": "Create responsive loading states. Skeleton screens should match the layout at current breakpoint. Show fewer skeleton items on mobile. Match skeleton dimensions to actual content. Use responsive skeleton widths and heights. Maintain layout stability during load. Consider simpler loading indicators on mobile to reduce complexity.",
+    "advanced": "Create responsive loading states that match content layouts. Skeleton structure: mirror actual responsive layout - grid-cols-1 md:grid-cols-2 lg:grid-cols-3 for card skeletons. Item count: fewer items on mobile (3 items) vs desktop (8+ items). Skeleton dimensions: responsive widths (w-32 md:w-48) matching actual content dimensions. Height matching: match actual content heights to prevent layout shift (CLS). Animation: shimmer animation that works across skeleton grid. Simplification: simpler skeletons on mobile (just basic shapes) vs detailed on desktop. Placeholder images: gray boxes with aspect ratio matching actual images. Text lines: varied widths for natural appearance. Tables: skeleton rows matching visible columns at breakpoint. Progressive: show partial content as it loads, not all-or-nothing. Suspense: React Suspense boundaries with responsive fallbacks. Error states: responsive error displays matching layout. Empty states: responsive empty state illustrations and messaging. Performance: lightweight skeletons, avoid complex animations on mobile."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

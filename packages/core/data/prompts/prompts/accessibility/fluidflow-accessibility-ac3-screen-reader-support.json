@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac3-screen-reader-support",
+  "slug": "fluidflow-accessibility-ac3-screen-reader-support",
+  "title": "Screen Reader Support",
+  "description": "FluidFlow · Screen Reader Support",
+  "content": "Enhance screen reader compatibility throughout application. Add aria-label for icon-only buttons and links. Use aria-labelledby and aria-describedby to associate labels with content. Implement aria-live regions for dynamic content updates (\"polite\" for non-urgent, \"assertive\" for critical). Add role attributes for custom widgets: role=\"button\", role=\"dialog\", role=\"tablist\", etc. Use aria-expanded for collapsible content, aria-selected for tabs, aria-checked for toggles. Hide decorative elements with aria-hidden=\"true\". Announce page changes in SPAs. Add aria-current for navigation. Test with VoiceOver (Mac), NVDA (Windows), and mobile screen readers. Ensure form errors are announced.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "89edb7544cce7df905293691f78c8b4e10a0fb12021feee953a1f3ef70156a18",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add ARIA labels and live regions for screen reader compatibility.",
+    "detailed": "Enhance screen reader compatibility throughout application. Add aria-label for icon-only buttons and links. Use aria-labelledby and aria-describedby to associate labels with content. Implement aria-live regions for dynamic content updates (\"polite\" for non-urgent, \"assertive\" for critical). Add role attributes for custom widgets: role=\"button\", role=\"dialog\", role=\"tablist\", etc. Use aria-expanded for collapsible content, aria-selected for tabs, aria-checked for toggles. Hide decorative elements with aria-hidden=\"true\". Announce page changes in SPAs. Add aria-current for navigation. Test with VoiceOver (Mac), NVDA (Windows), and mobile screen readers. Ensure form errors are announced.",
+    "advanced": "Enhance screen reader compatibility with comprehensive ARIA implementation. Labeling: aria-label for icon-only buttons (\"Close\", \"Search\", \"Menu\"), aria-labelledby to reference visible text (dialog title, section header), aria-describedby for supplementary info (hint text, error messages). Live regions: aria-live=\"polite\" for non-urgent updates (search results loaded, form saved), aria-live=\"assertive\" for critical alerts (errors, time-sensitive), aria-atomic=\"true\" to announce entire region, aria-relevant for what changes matter. Role attributes: role=\"button\" on clickable non-button elements, role=\"dialog\" with aria-modal=\"true\" for modals, role=\"tablist/tab/tabpanel\" for tabs, role=\"alert\" for error messages, role=\"status\" for non-critical updates. State attributes: aria-expanded for collapsible (accordions, dropdowns), aria-selected for tabs and listbox options, aria-checked for checkboxes/toggles, aria-pressed for toggle buttons, aria-current=\"page\" for current navigation item, aria-invalid=\"true\" for invalid inputs. Hiding content: aria-hidden=\"true\" for decorative icons/images, inert attribute for background content when modal open. SPA navigation: announce route changes (aria-live region or focus management), manage focus on page change. Testing protocol: VoiceOver (Mac): Cmd+F5 enable, use rotor; NVDA (Windows): free download, test with browse/focus modes; TalkBack (Android) and VoiceOver (iOS) for mobile. Common patterns: proper table markup with headers and scope, figure with figcaption, progress indicators with aria-valuenow. First rule of ARIA: don't use ARIA if native HTML works."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f22-print-styles",
+  "slug": "fluidflow-features-f22-print-styles",
+  "title": "Print Styles",
+  "description": "FluidFlow · Print Styles",
+  "content": "Add print-optimized styles. Media query: @media print for print-specific CSS. Hide elements: navigation, footers, ads, interactive elements. Show elements: reveal full content hidden behind truncation. Typography: black text on white, appropriate sizes. Page breaks: avoid breaking inside important content. Links: show URLs after link text. Tables: repeat headers on each page. Headers/footers: page numbers, document title. Margins: appropriate print margins.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b0fa07b5f7986ffe29013c46d0cb85ecf8cd5ceb8610b273cfb28fd0252a63fe",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Optimize pages for printing with clean layout.",
+    "detailed": "Add print-optimized styles. Media query: @media print for print-specific CSS. Hide elements: navigation, footers, ads, interactive elements. Show elements: reveal full content hidden behind truncation. Typography: black text on white, appropriate sizes. Page breaks: avoid breaking inside important content. Links: show URLs after link text. Tables: repeat headers on each page. Headers/footers: page numbers, document title. Margins: appropriate print margins.",
+    "advanced": "Add comprehensive print-optimized styles for professional output. Media query: @media print { } or Tailwind print: variant for print-specific styles. Hide elements: hide navigation, sidebar, modals, tooltips, interactive buttons, video embeds, chat widgets, cookie banners (print:hidden or display: none). Show elements: expand truncated text (print:line-clamp-none), show content behind \"show more\", display hidden metadata. Typography: force black text (print:text-black), white background (print:bg-white), remove shadows and gradients, increase body text to 12pt minimum, reduce heading sizes proportionally. Links: show URLs after anchor text using ::after pseudo-element (content: \" (\" attr(href) \")\"), or remove underlines and show inline. Images: ensure images print (some browsers hide background images), add border for clarity. Page breaks: page-break-inside: avoid on cards, tables, important sections; page-break-before: always on major sections; widows/orphans control for text. Tables: thead { display: table-header-group } to repeat headers on each page, avoid page breaks inside rows. Headers/footers: @page { @top-center { content: \"Document Title\" }; @bottom-right { content: counter(page) } } for page numbers and running headers (limited browser support). Margins: @page { margin: 2cm } for appropriate print margins. Color: respect prefers-color-scheme: light or force light theme for print. Remove: animations, transitions, fixed/sticky positioning. Test: browser print preview, actual print to PDF."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

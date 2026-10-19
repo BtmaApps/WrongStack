@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da25-cohort-analysis",
+  "slug": "fluidflow-dashboard-da25-cohort-analysis",
+  "title": "Cohort Analysis",
+  "description": "FluidFlow · Cohort Analysis",
+  "content": "Build cohort analysis dashboard. Cohort table: matrix of cohorts and time periods. Color coding: color intensity shows retention. Cohort size: show original cohort size. Metric: select retention metric. Time granularity: day, week, month. Comparison: compare cohorts. Filters: segment cohorts by attributes. Export: cohort data export.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8a4554c3072575c0be006a0e7cd3e80fb5898fdfc33d79afc26d3bf3f8767baa",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Analyze user behavior by cohort groups.",
+    "detailed": "Build cohort analysis dashboard. Cohort table: matrix of cohorts and time periods. Color coding: color intensity shows retention. Cohort size: show original cohort size. Metric: select retention metric. Time granularity: day, week, month. Comparison: compare cohorts. Filters: segment cohorts by attributes. Export: cohort data export.",
+    "advanced": "Build comprehensive cohort analysis dashboard. Cohort table structure: rows are cohorts (grouped by signup date/month), columns are time periods after cohort start (Week 1, Week 2, etc.), cells show metric value (retention %, revenue, activity). Color coding: heatmap coloring (light to dark green for high retention), configurable color scale. Cell values: percentage for retention, absolute values for other metrics, hover tooltip for full details. Cohort definition: default by signup date, custom cohorts (first purchase, feature adoption), cohort size shown in first column. Metrics: retention rate (% still active), average revenue per user, conversion rate, any custom event. Time granularity: daily (first 14 days), weekly, monthly, configurable. Column display: show actual dates or relative periods. Trend lines: toggle row charts showing cohort trend, average line across all cohorts. Comparison: highlight selected cohort vs average, compare two cohorts side by side. Filters: filter users in cohorts by segment (channel, plan, location). Statistical significance: indicate if differences are significant. Export: download cohort table as CSV, or as image. Benchmarks: show target retention rates as reference. Insights: auto-generate text insights about trends. Drill down: click cell to see users in that cohort/period, user list with actions. Time range: select analysis period, update cohort inclusion. Predictions: project future cohort performance based on patterns. Mobile: scrollable table with frozen first column."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u37-smart-notifications",
+  "slug": "fluidflow-ux-u37-smart-notifications",
+  "title": "Smart Notifications",
+  "description": "FluidFlow · Smart Notifications",
+  "content": "Design thoughtful notification system. Categorize by urgency (critical, informational, promotional). Allow per-category preferences. Batch non-urgent notifications into digests. Respect quiet hours and user timezone. Show notification preview before enabling. Throttle to prevent fatigue. Make notifications actionable. Provide clear unsubscribe options. Track engagement for optimization.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u37"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "48900e999ed3b72ad3172f05e47acc5cd5def62af72cf369945b8621e9f884a5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Send relevant notifications at appropriate times without overwhelming.",
+    "detailed": "Design thoughtful notification system. Categorize by urgency (critical, informational, promotional). Allow per-category preferences. Batch non-urgent notifications into digests. Respect quiet hours and user timezone. Show notification preview before enabling. Throttle to prevent fatigue. Make notifications actionable. Provide clear unsubscribe options. Track engagement for optimization.",
+    "advanced": "Design thoughtful notification system balancing engagement with respect for attention. Categorization: critical (security, billing - always on), transactional (receipts, confirmations), activity (comments, mentions), informational (tips, updates), marketing (promotions) - each has different urgency and opt-out rules. Preferences UI: granular controls per category, delivery method per category (push, email, in-app), frequency options (instant, daily digest, weekly digest). Batching: non-urgent notifications batched into digest (daily summary email), intelligent grouping (\"5 new comments on your posts\"). Timing: respect timezone (never notify at 3am), quiet hours setting (default 10pm-8am local), learn engagement patterns (send when user typically active). Preview: show sample notification before enabling push, explain value proposition. Throttling: cap notifications per hour/day, prioritize high-value notifications. Actionable: include direct actions in notification (Approve button, Reply field), deep-link to exact content. Unsubscribe: one-click unsubscribe in emails, \"Reduce frequency\" option before full unsubscribe, explain what youll miss. Engagement tracking: open rates, action rates, unsubscribe rates - optimize send timing, content, frequency. Smart suppression: if user just viewed in-app, dont send push for same thing. A/B testing: test subject lines, timing, content. GDPR/CAN-SPAM: proper consent, easy opt-out, preference center."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

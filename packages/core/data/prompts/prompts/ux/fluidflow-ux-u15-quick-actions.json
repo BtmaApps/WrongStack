@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u15-quick-actions",
+  "slug": "fluidflow-ux-u15-quick-actions",
+  "title": "Quick Actions",
+  "description": "FluidFlow · Quick Actions",
+  "content": "Add floating action button (FAB) or quick action menu for common operations. Position FAB at bottom-right (fixed bottom-6 right-6). Use Plus icon as default, expand to show multiple actions on click. Animate expansion with stagger effect. Include labels next to icons when expanded. Add speed dial pattern for related actions. Consider context - show different actions on different pages. Include keyboard shortcut hints. Add backdrop overlay when expanded. Close on action selection or outside click. Make FAB draggable on mobile for repositioning. Hide FAB when scrolling down, show when scrolling up. Ensure FAB doesnt cover important content.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "22338656626a96c5f802c2d94bceeba6c232a5f844dff8156a760804e271ea3a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add floating action button with expandable menu for common actions.",
+    "detailed": "Add floating action button (FAB) or quick action menu for common operations. Position FAB at bottom-right (fixed bottom-6 right-6). Use Plus icon as default, expand to show multiple actions on click. Animate expansion with stagger effect. Include labels next to icons when expanded. Add speed dial pattern for related actions. Consider context - show different actions on different pages. Include keyboard shortcut hints. Add backdrop overlay when expanded. Close on action selection or outside click. Make FAB draggable on mobile for repositioning. Hide FAB when scrolling down, show when scrolling up. Ensure FAB doesnt cover important content.",
+    "advanced": "Add floating action button (FAB) for quick access to primary actions following Material Design patterns. Position FAB at bottom-right (fixed bottom-6 right-6) respecting safe areas (bottom-[calc(1.5rem+env(safe-area-inset-bottom))]). Use Plus icon as default, rotate to X when expanded. Expand to show multiple actions (3-6 max) on click with stagger animation (delay 50ms each). Include labels next to icons when expanded - labels appear from left side. Add speed dial pattern: actions appear in vertical stack, most important closest to FAB. Context-aware: show different actions on different pages/states (Create on dashboard, Edit on detail page). Include keyboard shortcut hints in labels (\"New Project (N)\"). Add semi-transparent backdrop overlay (bg-black/20) when expanded - click to close. Close on action selection, outside click, Escape key. Consider making FAB draggable on mobile for repositioning - store position in localStorage. Hide FAB on scroll down (scroll-direction detection), show on scroll up for maximum content visibility. CRITICAL: Ensure FAB doesnt cover important content - add padding-bottom to page content, position above bottom navigation if present. ACCESSIBILITY: Use aria-expanded, aria-haspopup, proper focus management when expanded, announce action completion. Add reduced motion support for users with vestibular disorders."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c41-add-social-share",
+  "slug": "fluidflow-components-c41-add-social-share",
+  "title": "Add Social Share",
+  "description": "FluidFlow · Add Social Share",
+  "content": "Create social share button group for major platforms. Container: flex items-center gap-2. Buttons: w-10 h-10 rounded-full flex items-center justify-center transition-colors. Platforms: Twitter/X, Facebook, LinkedIn, WhatsApp, Email. Each with brand color on hover. Icons: use lucide-react or simple SVGs. Share URLs: construct proper share URLs with encoded title and URL. Open in new window/tab: target=\"_blank\" rel=\"noopener noreferrer\". Optional: copy link button with \"Copied!\" feedback. Native share API fallback for mobile.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c41"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fe4a771aab12674dc1a0aaad63ee1b4d0fd07cdb85f19cde35bb0598e2382cc7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create social media share buttons for sharing content.",
+    "detailed": "Create social share button group for major platforms. Container: flex items-center gap-2. Buttons: w-10 h-10 rounded-full flex items-center justify-center transition-colors. Platforms: Twitter/X, Facebook, LinkedIn, WhatsApp, Email. Each with brand color on hover. Icons: use lucide-react or simple SVGs. Share URLs: construct proper share URLs with encoded title and URL. Open in new window/tab: target=\"_blank\" rel=\"noopener noreferrer\". Optional: copy link button with \"Copied!\" feedback. Native share API fallback for mobile.",
+    "advanced": "Create comprehensive social share component with native API support. Platform config array with: name, icon component, base URL pattern, brand color. Platforms: Twitter/X (twitter.com/intent/tweet?text=&url=), Facebook (facebook.com/sharer/sharer.php?u=), LinkedIn (linkedin.com/sharing/share-offsite/?url=), WhatsApp (wa.me/?text=), Reddit (reddit.com/submit?url=&title=), Email (mailto:?subject=&body=), Pinterest (pinterest.com/pin/create/button/?url=&description=), Telegram (t.me/share/url?url=&text=). URL construction: encodeURIComponent for text and URLs. Button styling: w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200. Default: bg-gray-100 text-gray-600. Hover: platform brand color background (Twitter: bg-black, Facebook: bg-[#1877F2], LinkedIn: bg-[#0A66C2], etc). Icon: w-5 h-5. Layout options: horizontal row, vertical stack, dropdown menu, floating bar (fixed side). Copy link button: with clipboard API, success state showing \"Copied!\" for 2 seconds. Native share API: detect navigator.share support, use as primary action on mobile with fallback to buttons. Share count: optionally fetch and display share counts (API dependent). Props: url, title, description, hashtags (for Twitter), platforms (array to show), layout, showLabels, showCounts, onShare callback. Accessibility: proper aria-labels \"Share on Twitter\", focus-visible states. Analytics: onClick handler for tracking shares."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

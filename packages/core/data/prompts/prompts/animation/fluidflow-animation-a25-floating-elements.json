@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a25-floating-elements",
+  "slug": "fluidflow-animation-a25-floating-elements",
+  "title": "Floating Elements",
+  "description": "FluidFlow · Floating Elements",
+  "content": "Create gentle floating animation for decorative elements. Apply subtle vertical movement (translateY oscillation). Add slight horizontal drift for organic feel. Include gentle rotation. Vary animation timing for multiple elements. Use ease-in-out for smooth direction changes. Create different float patterns (gentle bob, figure-8, circular). Apply to icons, images, badges, or decorative shapes. Keep movement subtle to avoid distraction.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a208c19187d3dcb97097ec0fd096425914d00e36a7b24407022a84eab6eb03ec",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create gentle floating animation for decorative elements.",
+    "detailed": "Create gentle floating animation for decorative elements. Apply subtle vertical movement (translateY oscillation). Add slight horizontal drift for organic feel. Include gentle rotation. Vary animation timing for multiple elements. Use ease-in-out for smooth direction changes. Create different float patterns (gentle bob, figure-8, circular). Apply to icons, images, badges, or decorative shapes. Keep movement subtle to avoid distraction.",
+    "advanced": "Create gentle floating animation for ambient decorative elements. Basic float: @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }, animate over 3-5s ease-in-out infinite. Multi-axis float: combine translateY with slight translateX for organic drift, different amplitude for each. Rotation: add subtle rotate(-5deg to 5deg) for natural tumble. Figure-8 pattern: combine translateX and translateY with different durations that create lissajous curve. Circular orbit: use translateX(cos(t)*radius) translateY(sin(t)*radius) via keyframe points. Multiple elements: different animation-duration (3s, 4s, 5s) and animation-delay for desync, prevents unnatural synchronized movement. Parallax float: elements at different depths float at different speeds, creates depth. Scale breathing: subtle scale(1 to 1.05) combined with float. Blur variation: slight blur animation with position for dreamy effect. Apply to: decorative icons, abstract shapes, floating cards, illustrations, badges. Anchor point: use transform-origin to control rotation pivot. Performance: transform only (GPU accelerated), will-change: transform for many elements. Reduced motion: disable or significantly reduce movement. Use cases: hero sections, empty states, illustrations, onboarding. Amount of movement: keep subtle (10-30px displacement), too much distracts from content. Z-index layering: layer floaters at different depths with corresponding size/blur. Interaction: optionally respond to mouse position with parallax offset. Libraries: for complex paths, consider GSAP for precise motion control."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

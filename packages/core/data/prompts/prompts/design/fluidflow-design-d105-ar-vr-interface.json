@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d105-ar-vr-interface",
+  "slug": "fluidflow-design-d105-ar-vr-interface",
+  "title": "AR/VR Interface",
+  "description": "FluidFlow · AR/VR Interface",
+  "content": "Apply AR/VR aesthetic with spatial computing feel. Floating panel windows. Gaze-based selection highlights. Hand tracking gesture icons. 3D object manipulation controls. Environment anchor points. Passthrough camera feeds. Spatial audio indicators. Virtual keyboard layouts. Comfort vignette settings. Guardian boundary visualizations.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d105"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c6d10e18a067e173732ecd0894477bccbe1b2844a7b373e22c68844ab37e30dd",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create AR/VR interface with spatial UI elements, 3D object controls, and immersive menus.",
+    "detailed": "Apply AR/VR aesthetic with spatial computing feel. Floating panel windows. Gaze-based selection highlights. Hand tracking gesture icons. 3D object manipulation controls. Environment anchor points. Passthrough camera feeds. Spatial audio indicators. Virtual keyboard layouts. Comfort vignette settings. Guardian boundary visualizations.",
+    "advanced": "Apply AR/VR aesthetic with spatial UI patterns. Floating panels with glass morphism, slight 3D perspective. Gaze reticle with fill animation on hover. Hand icons: pinch, grab, point, palm gestures. 3D gizmo: translate (arrows), rotate (circles), scale (cubes). Anchor icons placed in space with distance labels. Passthrough feed with AR overlay elements. Audio sources with directional cone visualization. Curved virtual keyboard with key highlights. Vignette slider for motion comfort. Guardian boundary: blue grid floor, red warning when close. IPD adjustment slider."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

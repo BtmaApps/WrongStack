@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co8-code-snippets",
+  "slug": "fluidflow-content-co8-code-snippets",
+  "title": "Code Snippets",
+  "description": "FluidFlow · Code Snippets",
+  "content": "Create code snippet display component with syntax highlighting. Container: bg-gray-900 rounded-lg overflow-hidden. Header bar: flex justify-between with language label (text-gray-400 text-sm) and copy button. Copy button: Copy icon, onClick copies code to clipboard, shows \"Copied!\" feedback for 2 seconds. Code area: p-4 overflow-x-auto, font-mono text-sm. Line numbers optional: text-gray-500 pr-4 select-none. Syntax highlighting: use basic CSS classes for keywords (text-blue-400), strings (text-green-400), comments (text-gray-500), functions (text-yellow-400). Or integrate Prism.js/highlight.js for full highlighting. Support language prop: javascript, typescript, python, bash, json, html, css. Add horizontal scroll for long lines. Dark theme by default, optional light theme variant.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3f1a701fd60c135fead2e63e623c8590dcb03e984e5486e82d94f208e4256df5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create code display component with syntax highlighting.",
+    "detailed": "Create code snippet display component with syntax highlighting. Container: bg-gray-900 rounded-lg overflow-hidden. Header bar: flex justify-between with language label (text-gray-400 text-sm) and copy button. Copy button: Copy icon, onClick copies code to clipboard, shows \"Copied!\" feedback for 2 seconds. Code area: p-4 overflow-x-auto, font-mono text-sm. Line numbers optional: text-gray-500 pr-4 select-none. Syntax highlighting: use basic CSS classes for keywords (text-blue-400), strings (text-green-400), comments (text-gray-500), functions (text-yellow-400). Or integrate Prism.js/highlight.js for full highlighting. Support language prop: javascript, typescript, python, bash, json, html, css. Add horizontal scroll for long lines. Dark theme by default, optional light theme variant.",
+    "advanced": "Create code snippet display component with syntax highlighting and copy functionality. Container: bg-gray-900 rounded-lg overflow-hidden, or bg-gray-100 for light theme. Header bar: flex items-center justify-between px-4 py-2 bg-gray-800/50 border-b border-gray-700, language label (text-gray-400 text-xs uppercase tracking-wide), filename if provided, copy button. Copy button: flex items-center gap-1, Copy icon (h-4 w-4), text \"Copy\", onClick uses navigator.clipboard.writeText(code), shows \"Copied!\" with Check icon for 2 seconds, then reverts. Code area: p-4 overflow-x-auto, font-mono text-sm leading-relaxed, whitespace-pre for preserving formatting. Line numbers: optional, table layout with line numbers in left column (text-gray-500 pr-4 text-right select-none user-select-none), code in right column; or CSS counter approach. Syntax highlighting options: 1) Basic CSS classes (text-blue-400 keywords, text-green-400 strings, text-purple-400 numbers, text-gray-500 comments, text-yellow-400 functions), 2) Prism.js integration (lightweight, many languages), 3) highlight.js (more languages, larger), 4) Shiki (VS Code-accurate, SSR-friendly). Language support: javascript, typescript, jsx, tsx, python, bash, shell, json, html, css, sql, rust, go, etc. Component props: code (string), language, showLineNumbers?, filename?, className. Light/dark themes: provide both, or respect system preference. Scrolling: horizontal scroll for long lines, vertical scroll for many lines with max-height. Diff view variant: show added (bg-green-900/30) and removed (bg-red-900/30) lines. Accessibility: code block should be keyboard navigable if interactive, consider aria-label describing content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

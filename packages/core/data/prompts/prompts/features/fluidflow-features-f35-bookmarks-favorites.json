@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f35-bookmarks-favorites",
+  "slug": "fluidflow-features-f35-bookmarks-favorites",
+  "title": "Bookmarks/Favorites",
+  "description": "FluidFlow · Bookmarks/Favorites",
+  "content": "Implement bookmarking system. Bookmark action: star/bookmark button on items. Toggle: click to add or remove. Bookmarks page: list all bookmarked items. Persistence: save to user account or localStorage. Organization: folders or tags for bookmarks. Quick access: bookmarks in sidebar or dropdown. Search: filter bookmarks. Sync: sync across devices for logged-in users. Sorting: by date added, name, or custom order.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f35"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1468441b733af63a1df05253f11495c22a7a6e4691a0f98efbfcf3b3e4f67012",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Let users bookmark items for quick access.",
+    "detailed": "Implement bookmarking system. Bookmark action: star/bookmark button on items. Toggle: click to add or remove. Bookmarks page: list all bookmarked items. Persistence: save to user account or localStorage. Organization: folders or tags for bookmarks. Quick access: bookmarks in sidebar or dropdown. Search: filter bookmarks. Sync: sync across devices for logged-in users. Sorting: by date added, name, or custom order.",
+    "advanced": "Implement comprehensive bookmarking/favorites system. Bookmark toggle: Star or Bookmark icon on items, click to toggle, filled/unfilled state, optimistic UI update. Storage: logged-in users save to database (user_bookmarks table with user_id, item_type, item_id, created_at), anonymous users save to localStorage. Bookmarks page: dedicated page listing all bookmarks, grid or list view toggle, item preview cards with quick actions. Organization: folders or collections to group bookmarks, drag and drop to organize, tags for cross-cutting categorization. Quick access: bookmarks dropdown in header, recent bookmarks in sidebar, keyboard shortcut to access (Ctrl/Cmd+B). Search and filter: search bookmarks by name/content, filter by type, folder, or tags, sort by date added, name, or custom. Item types: support bookmarking various item types (documents, products, users, searches), polymorphic design. Metadata: store when bookmarked, optional notes per bookmark, usage count (times accessed from bookmarks). Sync: real-time sync across devices for logged-in users, conflict resolution for simultaneous changes. Sharing: optionally share bookmark collections with others, public bookmark lists. Import/export: export bookmarks as JSON or browser bookmark format, import from other services. Limits: optional limit on bookmark count for free users. Analytics: track bookmark usage to surface popular items. Notifications: optionally notify when bookmarked items update."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

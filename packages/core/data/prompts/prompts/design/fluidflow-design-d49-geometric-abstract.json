@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d49-geometric-abstract",
+  "slug": "fluidflow-design-d49-geometric-abstract",
+  "title": "Geometric Abstract",
+  "description": "FluidFlow · Geometric Abstract",
+  "content": "Apply geometric abstract aesthetic with bold visual composition. Overlapping geometric shapes: circles, triangles, rectangles. Strong, confident color choices. Shapes create depth through layering. Include gradients within shapes. Asymmetric, dynamic balance. Negative space as design element. Modern art gallery feel. Clean lines and perfect geometry. Artistic, bold, contemporary atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d49"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "47df723cd2bd01d8da4c810610a2c216a9f505444c88f900b3985fb01b0726ec",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create bold geometric abstract design with overlapping shapes, strong colors, and dynamic compositions.",
+    "detailed": "Apply geometric abstract aesthetic with bold visual composition. Overlapping geometric shapes: circles, triangles, rectangles. Strong, confident color choices. Shapes create depth through layering. Include gradients within shapes. Asymmetric, dynamic balance. Negative space as design element. Modern art gallery feel. Clean lines and perfect geometry. Artistic, bold, contemporary atmosphere.",
+    "advanced": "Apply geometric abstract aesthetic with bold, artistic composition. Shape vocabulary: circles, triangles, rectangles, polygons - perfect geometry, no organic curves. Overlapping: shapes layer with mix-blend-mode effects (multiply, overlay, screen) creating new colors at intersections. Color strategy: bold, confident palette - limit to 3-5 colors maximum, can be complementary, analogous, or triadic. Each shape solid color or subtle gradient. Transparency: semi-transparent shapes (opacity-50 to opacity-80) creating depth where overlapping. Composition: asymmetric balance, tension between shapes, intentional negative space. Scale contrast: mix of large dominant shapes with smaller accent shapes. Positioning: shapes can extend beyond container (overflow-hidden on parent), suggesting continuation. Depth: larger background shapes, smaller foreground shapes, shadow optional for separation. Animation: subtle shape movement, rotation, scale pulsing for dynamic feel. Grid option: underlying grid visible through transparent shapes. Mondrian option: strict horizontal/vertical only, primary colors plus black grid. Kandinsky option: more playful, circles and triangles dominant, warm colors. 3D option: shapes with perspective transforms suggesting depth. Implementation: CSS shapes or SVG, absolute positioning for layering. Accessibility: abstract art can be inaccessible - ensure any functional elements remain clear, provide alternative context where needed."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

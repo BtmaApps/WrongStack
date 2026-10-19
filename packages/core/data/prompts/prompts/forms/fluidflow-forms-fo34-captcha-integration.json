@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo34-captcha-integration",
+  "slug": "fluidflow-forms-fo34-captcha-integration",
+  "title": "Captcha Integration",
+  "description": "FluidFlow · Captcha Integration",
+  "content": "Build captcha integration. Provider: support reCAPTCHA v2 or v3, hCaptcha. Widget: render captcha challenge. Verification: include token in form submission. Server validation: verify token server-side. Invisible: v3 or invisible widget option. Fallback: alternative for accessibility. Error handling: handle verification failures.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8e0926b46078dc7a1daaac8749ce115c9e78638ec02c7550297fa7fe2fd27f7c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add captcha verification to prevent bot submissions.",
+    "detailed": "Build captcha integration. Provider: support reCAPTCHA v2 or v3, hCaptcha. Widget: render captcha challenge. Verification: include token in form submission. Server validation: verify token server-side. Invisible: v3 or invisible widget option. Fallback: alternative for accessibility. Error handling: handle verification failures.",
+    "advanced": "Build comprehensive captcha integration for bot prevention. Provider options: Google reCAPTCHA v2 (checkbox challenge), reCAPTCHA v3 (invisible, score-based), hCaptcha (privacy-focused alternative), Cloudflare Turnstile. Widget rendering: load provider script dynamically, render in designated container, handle multiple forms on page. reCAPTCHA v2: show checkbox, user completes challenge if needed, receive token on completion. reCAPTCHA v3: invisible, get score (0.0-1.0) on form submission, server decides threshold. Token handling: include token in form submission, add to FormData or hidden field. Server validation: POST token to provider verify endpoint with secret key, never verify client-side. Score handling (v3): determine action based on score (allow, challenge, block), configurable thresholds. Expiration: tokens expire after ~2 minutes, re-execute if form takes longer, refresh token on focus. Error handling: network errors (retry), invalid/expired token (prompt new challenge), blocked (show alternative contact). Accessibility: reCAPTCHA has audio challenges, provide contact alternative for edge cases. Loading state: show placeholder while captcha loads, disable submit until ready. Multiple captchas: handle unique widget IDs, track which form completed. Privacy considerations: hCaptcha for GDPR compliance if needed, disclose captcha usage. Styling: match widget theme to site (light/dark), custom positioning. Testing: test mode tokens for development, mock responses in tests. Mobile: ensure widget works on touch devices, adequate size. Analytics: track challenge rates, success rates for monitoring."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

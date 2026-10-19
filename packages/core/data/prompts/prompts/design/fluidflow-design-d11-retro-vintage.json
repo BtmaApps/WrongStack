@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d11-retro-vintage",
+  "slug": "fluidflow-design-d11-retro-vintage",
+  "title": "Retro/Vintage",
+  "description": "FluidFlow · Retro/Vintage",
+  "content": "Apply retro design with nostalgic color palette - muted oranges (orange-600), browns (amber-800), creams (amber-50), and olive greens. Use vintage typography styles - serif fonts for headings, consider decorative borders. Add subtle noise or grain texture overlays using background patterns. Include retro UI patterns like beveled edges or inset effects. Create badges and stamps with circular borders. Use soft, warm shadows. Add decorative dividers and ornamental elements. Consider halftone dot patterns for images.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "39f385f8e69de44ed501cc017bf074c887ef72250b4ca60dd94bedda1277f2ef",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply nostalgic design with muted colors, serif fonts, and vintage textures.",
+    "detailed": "Apply retro design with nostalgic color palette - muted oranges (orange-600), browns (amber-800), creams (amber-50), and olive greens. Use vintage typography styles - serif fonts for headings, consider decorative borders. Add subtle noise or grain texture overlays using background patterns. Include retro UI patterns like beveled edges or inset effects. Create badges and stamps with circular borders. Use soft, warm shadows. Add decorative dividers and ornamental elements. Consider halftone dot patterns for images.",
+    "advanced": "Apply retro design with nostalgic color palette - muted oranges (orange-600), browns (amber-800), creams (amber-50), and olive greens matching specific decades (50s pastels, 70s earth tones, 80s neons). Use vintage typography - serif fonts (Playfair, Merriweather) for headings, typewriter fonts (Courier) for accents. Add subtle noise/grain texture overlays using SVG filters or CSS background patterns (noise opacity 0.02-0.05). Include retro UI patterns: beveled edges via multiple box-shadows, inset effects, pressed button states. Create badges and stamps with circular borders (border-4 rounded-full) and rotation. Use soft, warm shadows with amber tint. Add decorative dividers and ornamental SVG elements. Apply halftone dot patterns to images using CSS mix-blend-mode or SVG filters. Include era-appropriate iconography. IMPORTANT: Ensure vintage aesthetic doesnt compromise accessibility - maintain proper contrast ratios, provide alt text for decorative elements, ensure form inputs remain clearly identifiable despite stylized appearance."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

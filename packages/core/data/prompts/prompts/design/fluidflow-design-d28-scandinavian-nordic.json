@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d28-scandinavian-nordic",
+  "slug": "fluidflow-design-d28-scandinavian-nordic",
+  "title": "Scandinavian/Nordic",
+  "description": "FluidFlow · Scandinavian/Nordic",
+  "content": "Apply Scandinavian/Nordic design with clean, warm minimalism. Use muted, natural color palette: warm whites (bg-stone-50), soft grays, pale blues, dusty pinks, forest green. Simple geometric shapes and clean lines. Natural materials aesthetic: wood textures, linen patterns. Generous whitespace and breathing room. Rounded but not overly soft corners (rounded-lg). Simple, functional typography - clean sans-serif. Include nature-inspired subtle patterns. Create hygge (cozy) atmosphere with warm tones.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0446624fa178222dbd93230e6186eca8599946f4a92a532c4e0413df3d1650d6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create clean, minimal Nordic design with natural colors, simple shapes, and cozy warmth.",
+    "detailed": "Apply Scandinavian/Nordic design with clean, warm minimalism. Use muted, natural color palette: warm whites (bg-stone-50), soft grays, pale blues, dusty pinks, forest green. Simple geometric shapes and clean lines. Natural materials aesthetic: wood textures, linen patterns. Generous whitespace and breathing room. Rounded but not overly soft corners (rounded-lg). Simple, functional typography - clean sans-serif. Include nature-inspired subtle patterns. Create hygge (cozy) atmosphere with warm tones.",
+    "advanced": "Apply Scandinavian/Nordic design philosophy with clean, warm minimalism and functional beauty. Color palette: warm whites and creams (stone-50, orange-50/30), soft grays (gray-200 to gray-400), muted accents - dusty pink (rose-200), pale blue (sky-200), sage green (green-300), mustard (amber-300). Natural material textures: subtle wood grain patterns for cards/backgrounds, linen texture overlays, natural paper feel. Whitespace: generous padding (py-16, px-8), large gaps (gap-8), content breathing room. Shape language: clean geometric, slightly rounded corners (rounded-lg), avoid both sharp and overly bubbly. Typography: clean, humanist sans-serif (Inter, Nunito Sans, Open Sans), moderate weights, comfortable line-height. Functional design: every element serves purpose, no decoration without function. Furniture-inspired: cards and containers with subtle shadows suggesting physical objects. Nature motifs: simple line illustrations of plants, mountains, abstract natural shapes. Hygge warmth: warm lighting feel through subtle amber/cream tints, comfortable not stark. Grid: structured but not rigid, asymmetric balance. Icons: simple, rounded strokes, nature-inspired. Photography style: bright, airy, natural light, lifestyle imagery. Sustainability visual cues: recycled textures, natural dyes, handcraft elements. Accessibility: high contrast from neutral palette, clear functional design aids usability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

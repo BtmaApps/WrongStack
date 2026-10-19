@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co5-image-placeholders",
+  "slug": "fluidflow-content-co5-image-placeholders",
+  "title": "Image Placeholders",
+  "description": "FluidFlow · Image Placeholders",
+  "content": "Create proper image placeholder system. Container: aspect-ratio wrapper (aspect-video, aspect-square, aspect-[4/3]) with overflow-hidden. Placeholder state: bg-gray-100 with centered Image icon (lucide-react) in gray-300. Loading state: animate-pulse on background, or skeleton overlay. Error state: broken image icon with \"Failed to load\" text. Use object-cover for consistent sizing regardless of image dimensions. Add rounded corners matching design system. Lazy loading: loading=\"lazy\" attribute. Transition: fade in image when loaded (opacity-0 to opacity-100 transition-opacity). Consider blur-up technique: tiny blurred version shown while loading. Responsive images: use srcSet for different screen sizes. Add alt text prop requirement.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e9da4cd8bf1347b6ecc6c8ec6134e163c670cbbaacdc368c8455c12381ba5dd0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create image placeholder and loading states.",
+    "detailed": "Create proper image placeholder system. Container: aspect-ratio wrapper (aspect-video, aspect-square, aspect-[4/3]) with overflow-hidden. Placeholder state: bg-gray-100 with centered Image icon (lucide-react) in gray-300. Loading state: animate-pulse on background, or skeleton overlay. Error state: broken image icon with \"Failed to load\" text. Use object-cover for consistent sizing regardless of image dimensions. Add rounded corners matching design system. Lazy loading: loading=\"lazy\" attribute. Transition: fade in image when loaded (opacity-0 to opacity-100 transition-opacity). Consider blur-up technique: tiny blurred version shown while loading. Responsive images: use srcSet for different screen sizes. Add alt text prop requirement.",
+    "advanced": "Create comprehensive image placeholder system with loading and error states. Container structure: aspect ratio wrapper for consistent sizing (aspect-video 16:9, aspect-square 1:1, aspect-[4/3], aspect-[3/2]), overflow-hidden for object-cover containment, relative for absolute-positioned overlays. Placeholder state: bg-gray-100 dark:bg-gray-800, centered Image icon (lucide-react) h-12 w-12 text-gray-300, or subtle pattern/gradient. Loading state: animate-pulse on background, or skeleton overlay with shimmer effect (gradient animation), blur-up technique (tiny base64 image shown blurred while full loads). Error state: bg-gray-100 with ImageOff or AlertCircle icon, \"Failed to load\" text below, optional retry button. Image styling: object-cover for filling container regardless of image aspect, object-contain for showing full image with letterboxing, rounded corners matching design system (rounded-lg). Lazy loading: loading=\"lazy\" attribute for native browser lazy loading, or Intersection Observer for more control. Load transition: initial opacity-0, transition-opacity duration-300, opacity-100 onLoad - creates smooth fade-in. Blur-up technique: generate tiny (10px) base64 placeholder, show scaled up with blur-lg, transition to sharp image on load. Responsive images: srcSet for multiple resolutions, sizes attribute for viewport hints, next/image or similar for automatic optimization. Component props: src (required), alt (required - enforce at type level), aspectRatio, className, onLoad, onError, placeholder (blur | empty | custom). Progressive enhancement: works without JS (native lazy loading), enhanced with JS (blur-up, better loading states). Accessibility: always require alt prop, empty alt=\"\" only for truly decorative images."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

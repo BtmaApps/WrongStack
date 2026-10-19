@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c51-add-calendar-view",
+  "slug": "fluidflow-components-c51-add-calendar-view",
+  "title": "Add Calendar View",
+  "description": "FluidFlow · Add Calendar View",
+  "content": "Create calendar component. Header: flex justify-between, month/year title, prev/next buttons. Weekday labels: grid grid-cols-7 text-center text-sm text-gray-500. Days grid: grid grid-cols-7. Day cell: min-h-[80px] p-1 border, hover:bg-gray-50. Day number: text-sm, today highlighted with bg-blue-500 text-white rounded-full. Events: small colored bars or dots, max 3 visible with \"+N more\" link. Click day: show day detail or open event creation.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c51"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d1ba4b6437ed1b547ee5991bcc69cc2add62c5a43925e0178d226f58f158481a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create monthly calendar with event display.",
+    "detailed": "Create calendar component. Header: flex justify-between, month/year title, prev/next buttons. Weekday labels: grid grid-cols-7 text-center text-sm text-gray-500. Days grid: grid grid-cols-7. Day cell: min-h-[80px] p-1 border, hover:bg-gray-50. Day number: text-sm, today highlighted with bg-blue-500 text-white rounded-full. Events: small colored bars or dots, max 3 visible with \"+N more\" link. Click day: show day detail or open event creation.",
+    "advanced": "Create full calendar component with multiple views. Views: month, week, day, agenda (list). Header: view switcher buttons, prev/today/next navigation, current period display. Month view: 6-week grid always showing, days from adjacent months in lighter color. Day cell: date number (today circled), events stacked as colored bars with title, overflow \"+N more\" opens popover. Week view: 7-column grid with time slots on left (hourly), events as positioned blocks based on time/duration. Day view: single column with time slots, detailed event blocks. Agenda view: scrollable list of upcoming events grouped by date. Event rendering: colored by category/calendar, drag to reschedule, resize to change duration. Event popover: click event to show details (title, time, location, description), edit/delete buttons. Event creation: click+drag on empty slot to create, quick-add modal. Multiple calendars: toggle visibility, color-coded. Recurring events: show with repeat icon. All-day events: separate row at top of day. Timezone support: display timezone, convert times. Keyboard nav: arrow keys to navigate days, Enter to select. Today button: quick return to current date."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

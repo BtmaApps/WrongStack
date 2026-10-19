@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo5-date-picker",
+  "slug": "fluidflow-forms-fo5-date-picker",
+  "title": "Date Picker",
+  "description": "FluidFlow · Date Picker",
+  "content": "Build date picker with calendar interface. Trigger input: displays formatted date, Calendar icon button. Calendar popup: absolute positioned, month/year header with navigation arrows. Days grid: 7 columns (Sun-Sat headers), 6 rows for dates. Day cells: hover highlight, selected state (bg-blue-600 text-white), today indicator. Navigate: previous/next month arrows. Date range mode: select start and end dates. Disabled dates: past dates option. Keyboard navigation: arrow keys.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3c5d4e38a5f0f53dcdac4423c10d841800d99f3e364b26af894855e92f7690df",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create date input with calendar popup for selecting dates.",
+    "detailed": "Build date picker with calendar interface. Trigger input: displays formatted date, Calendar icon button. Calendar popup: absolute positioned, month/year header with navigation arrows. Days grid: 7 columns (Sun-Sat headers), 6 rows for dates. Day cells: hover highlight, selected state (bg-blue-600 text-white), today indicator. Navigate: previous/next month arrows. Date range mode: select start and end dates. Disabled dates: past dates option. Keyboard navigation: arrow keys.",
+    "advanced": "Build date picker with full calendar interface and multiple modes. Trigger: input displaying formatted date (configurable format: MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD), Calendar icon button on right to open picker, clicking input also opens. Calendar popup: absolute positioned below trigger (or above if near bottom), bg-white shadow-xl rounded-lg p-4, z-50. Header: month and year display (clickable to jump), ChevronLeft/ChevronRight navigation arrows, Today button to jump to current date. Days grid: 7 columns for days of week (S M T W T F S headers in text-gray-500 text-xs), 6 rows for dates, grid layout. Day cells: w-10 h-10 centered, hover:bg-gray-100 rounded-full, selected state (bg-blue-600 text-white rounded-full), today indicator (ring-1 ring-blue-600), dates from other months shown in text-gray-400. Navigate: click arrows for month, click month/year header to show month picker then year picker views. Date range mode: select start date first, then end date, highlight range between with bg-blue-100, show selected range as \"Start - End\" in input. Disabled dates: option to disable past dates, specific dates array, or date ranges, disabled dates show text-gray-300 cursor-not-allowed. Format: localized display using Intl.DateTimeFormat, store as ISO string (YYYY-MM-DD) for value. Clear button: X to reset to empty/null. Time picker: optional extension adding hour:minute selection below calendar. Keyboard: arrow keys navigate days, Enter selects, Escape closes. Close: on selection (configurable), outside click, Escape. Mobile: consider native <input type=\"date\"> as fallback for better UX, or full-screen picker. Accessibility: role=\"dialog\" on popup, aria-label on buttons, manage focus trap."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da28-audit-log-viewer",
+  "slug": "fluidflow-dashboard-da28-audit-log-viewer",
+  "title": "Audit Log Viewer",
+  "description": "FluidFlow · Audit Log Viewer",
+  "content": "Build audit log viewer. Log entries: list of actions with details. Filters: filter by user, action type, date. Search: search log entries. Actor: who performed the action. Target: what was affected. Changes: before/after values for edits. Timestamp: precise time of action. Export: download audit log. Pagination: handle large log volumes.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da28"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9c00b364e1b44f1351521057d5b15b423db94b7c238102124d2ad93a6149626a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Display audit trail of system activities.",
+    "detailed": "Build audit log viewer. Log entries: list of actions with details. Filters: filter by user, action type, date. Search: search log entries. Actor: who performed the action. Target: what was affected. Changes: before/after values for edits. Timestamp: precise time of action. Export: download audit log. Pagination: handle large log volumes.",
+    "advanced": "Build comprehensive audit log viewer for compliance and debugging. Log entry structure: timestamp (with timezone), actor (user or system), action type (verb), resource type and ID, changes (before/after), IP address, user agent. List display: table with key columns, expandable rows for full details. Action types: create, update, delete, read (if logged), login/logout, permission changes, settings changes. Filtering: by actor (user dropdown), by action type (checkboxes), by resource type, by date range, by IP. Search: full-text search across entries, search by resource ID. Change display: JSON diff view or formatted table showing changed fields, before values (red), after values (green). Related entries: link to related log entries (all actions on same resource). Export: CSV or JSON export, filtered or all, scheduled exports for compliance. Retention: display entries within retention period, indicate if older logs archived. Immutability: logs are read-only, cannot be edited or deleted (display only). Volume handling: pagination or virtual scroll for millions of entries, lazy loading. Aggregation: summary stats (actions per day, top actors), optional charts. Real-time: new entries appear at top (optional auto-refresh). Access control: audit log access is itself audited, restricted to admin roles. Compliance: GDPR/SOC2 friendly presentation, redact sensitive values. API access: programmatic access to audit logs. Anomaly detection: highlight unusual activity patterns. Print view: formatted print-friendly view for compliance documentation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

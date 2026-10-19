@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo7-multi-select",
+  "slug": "fluidflow-forms-fo7-multi-select",
+  "title": "Multi-Select",
+  "description": "FluidFlow · Multi-Select",
+  "content": "Build multi-select dropdown component. Trigger: button showing selected items as tags, or \"Select items...\" placeholder. Dropdown: absolute positioned list with checkboxes. Search: filter input at top. Options: checkbox + label for each with hover highlight. Select all: checkbox to toggle all. Tags display: selected items as removable pills. Clear all: X button to deselect all. Keyboard navigation.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0a63b4111fa45a4362641350cca2443cad68fe5603d847e82c07e3b6bf87e00c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dropdown that allows selecting multiple items with checkboxes.",
+    "detailed": "Build multi-select dropdown component. Trigger: button showing selected items as tags, or \"Select items...\" placeholder. Dropdown: absolute positioned list with checkboxes. Search: filter input at top. Options: checkbox + label for each with hover highlight. Select all: checkbox to toggle all. Tags display: selected items as removable pills. Clear all: X button to deselect all. Keyboard navigation.",
+    "advanced": "Build multi-select dropdown component with search and tags. Trigger button: min-w-[200px] border rounded-lg p-2, showing selected items as tags (bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-sm with X remove button each), or \"Select items...\" placeholder text when empty. ChevronDown indicator that rotates 180deg when open. Dropdown: absolute positioned (top-full mt-1), w-full min-w-[250px], bg-white shadow-lg rounded-lg border, z-50. Search: sticky top filter input with Search icon prefix, filters options as user types. Options list: max-h-60 overflow-y-auto. Each option: flex items-center gap-2, checkbox input + label, hover:bg-gray-50, selected options have checkbox checked and optional bg-blue-50 highlight. Select all: checkbox at top \"Select all\" to toggle all visible (filtered) items, shows \"Deselect all\" when all selected. Selected count: when many items selected (>3), show \"X selected\" instead of all tags. Tags display: in trigger, show first N tags (configurable, e.g., 3) then \"+X more\" badge. Max selections: optionally limit number of selections with error message. Clear all: X button in trigger to deselect all, visible when any selected. Keyboard: type to search (focus search on open), arrow keys navigate options, Space toggles highlighted option, Enter closes, Escape closes. Close: outside click, Escape, optional close on last selection. Mobile: consider full-screen modal for better UX on small screens. Groups: optionally group options by category with non-selectable group headers. Accessibility: proper ARIA (combobox role, aria-multiselectable, aria-selected on options), announce selections to screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d4-dark-mode",
+  "slug": "fluidflow-design-d4-dark-mode",
+  "title": "Dark Mode",
+  "description": "FluidFlow · Dark Mode",
+  "content": "Create elegant dark mode using dark backgrounds (bg-gray-900 or bg-slate-900 for main, bg-gray-800 for cards). Use off-white text (text-gray-100) for primary content and muted gray (text-gray-400) for secondary text. Ensure minimum 4.5:1 contrast ratio. Use muted accent colors - desaturate bright colors slightly. Add subtle borders (border-gray-700) to define sections. Use darker shadows that blend with background. Include smooth transitions when switching themes. Avoid pure black (#000) and pure white (#fff).",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "170fcc41ec99d49cdeb7c387bfc74739c9f1bbe3437eec03c4b351c9d1154415",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dark theme with dark backgrounds and light text.",
+    "detailed": "Create elegant dark mode using dark backgrounds (bg-gray-900 or bg-slate-900 for main, bg-gray-800 for cards). Use off-white text (text-gray-100) for primary content and muted gray (text-gray-400) for secondary text. Ensure minimum 4.5:1 contrast ratio. Use muted accent colors - desaturate bright colors slightly. Add subtle borders (border-gray-700) to define sections. Use darker shadows that blend with background. Include smooth transitions when switching themes. Avoid pure black (#000) and pure white (#fff).",
+    "advanced": "Create elegant dark mode using dark backgrounds (bg-gray-900 or bg-slate-900 for main, bg-gray-800 for cards). Use off-white text (text-gray-100) for primary content and muted gray (text-gray-400) for secondary text. Ensure WCAG AAA 7:1 contrast ratio for body text, 4.5:1 for large text. Use muted accent colors - desaturate bright colors by 10-20% to reduce eye strain. Add subtle borders (border-gray-700) to define sections without harsh lines. Use colored shadows (shadow-blue-900/20) that complement the theme. Implement prefers-color-scheme media query for system preference detection. Store user preference in localStorage. Add smooth color-scheme transitions (duration-300) to prevent flash. Avoid pure black (#000) which causes halation - use bg-gray-950 maximum. Test all states: links visited/hover/active, form validation colors, disabled states. Ensure charts, graphs, and data visualizations adapt properly. Add dark mode variants for images where needed."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

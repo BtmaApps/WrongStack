@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f16-comparison-view",
+  "slug": "fluidflow-features-f16-comparison-view",
+  "title": "Comparison View",
+  "description": "FluidFlow · Comparison View",
+  "content": "Build side-by-side comparison interface. Layout: two or more columns with items to compare. Header: item titles/images at top with remove button. Comparison rows: feature name on left, values for each item in columns. Highlight differences: background color where values differ. Add to compare: button on cards with compare count badge. Limit: 2-4 items maximum.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7618e491d020042b2b72079837beea0a615c0109cc44455951e94e7bf1db8504",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show items side by side in columns to compare their features.",
+    "detailed": "Build side-by-side comparison interface. Layout: two or more columns with items to compare. Header: item titles/images at top with remove button. Comparison rows: feature name on left, values for each item in columns. Highlight differences: background color where values differ. Add to compare: button on cards with compare count badge. Limit: 2-4 items maximum.",
+    "advanced": "Build side-by-side comparison interface for informed decision making. Layout: scrollable container with 2-4 columns for compared items plus fixed first column for feature labels. Header row: sticky top-0, item image/thumbnail, title, price, quick action buttons (Remove from compare, View details). Comparison rows: feature name in fixed first column (w-48 bg-gray-50), values for each item in flexible columns with equal widths. Highlight differences: light yellow or blue background (bg-yellow-50) on cells where values differ from others. Identical values: subtle gray text, option to \"Hide identical rows\" toggle that collapses matching rows. Add to compare: button on product/item cards throughout site, show badge with current compare count (0-4), disable add when at limit with tooltip \"Remove an item to add more\". Compare drawer: fixed bottom bar (h-16) showing items being compared as small thumbnails with X remove, prominent \"Compare Now\" button, appears when 2+ items added. Limit: maximum 4 items to compare (mobile: 2), show \"Maximum items reached\" message. Clear comparison: \"Clear all\" button to remove all items, confirm dialog. Mobile: horizontally swipeable columns with scroll snap, or stacked accordion view with toggle between layouts. Feature categories: group comparison rows by category (Specifications, Features, Pricing) with collapsible headers. Print comparison: formatted print view with all items on one page, optimized table layout. Share comparison: URL with compared item IDs (?compare=id1,id2,id3) for bookmarking and sharing. Persist comparison: save to localStorage, restore on return visit. Winner highlighting: optional \"Best value\" or \"Best rated\" badge on winning item per row. Export comparison as PDF or image."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

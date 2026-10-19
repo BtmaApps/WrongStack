@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d96-gaming-hud",
+  "slug": "fluidflow-design-d96-gaming-hud",
+  "title": "Gaming HUD",
+  "description": "FluidFlow · Gaming HUD",
+  "content": "Apply gaming HUD aesthetic with video game UI feel. Health and mana bars with animated depletion. Inventory grid with item slots and tooltips. Minimap with player and objective markers. Quest tracker panels. Achievement popups. Skill cooldown indicators. Damage numbers floating up. Level and XP progress bars. Crosshair and targeting elements. Buff/debuff icon rows.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d96"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6deaff57e0135503c4aca537b5cde833c6d56c8795634486e63044e097b66161",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create gaming HUD interface with health bars, inventory slots, and minimap elements.",
+    "detailed": "Apply gaming HUD aesthetic with video game UI feel. Health and mana bars with animated depletion. Inventory grid with item slots and tooltips. Minimap with player and objective markers. Quest tracker panels. Achievement popups. Skill cooldown indicators. Damage numbers floating up. Level and XP progress bars. Crosshair and targeting elements. Buff/debuff icon rows.",
+    "advanced": "Apply gaming HUD aesthetic with AAA game UI patterns. Health bar with gradient (green→yellow→red), shield overlay. Inventory: 8x4 grid with rarity border colors (gray/green/blue/purple/gold). Minimap circular with fog of war, player arrow, objective diamonds. Quest tracker with checkbox objectives. Achievement toast with icon, title, XP reward. Skill bar with cooldown sweep animation. Floating damage numbers with crit styling. XP bar with level badges. Crosshair SVG variants. Buff icons with duration timers. Kill feed with player names."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

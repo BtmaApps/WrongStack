@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a24-reveal-animation",
+  "slug": "fluidflow-animation-a24-reveal-animation",
+  "title": "Reveal Animation",
+  "description": "FluidFlow · Reveal Animation",
+  "content": "Create reveal animations using clip-path or mask. Animate clip-path to reveal content progressively. Support multiple reveal directions (left to right, center out, diagonal). Use inset for rectangular reveals. Use polygon for angular reveals. Use circle for radial reveals. Combine with content animation for layered effect. Add staggered reveals for multiple elements. Control timing and easing.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "48ceb934c7eb4dc1dbd7ecc3136547e2df4d0f5ba625dab140dd9b3c8c81defe",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create content reveal animations with mask or clip-path.",
+    "detailed": "Create reveal animations using clip-path or mask. Animate clip-path to reveal content progressively. Support multiple reveal directions (left to right, center out, diagonal). Use inset for rectangular reveals. Use polygon for angular reveals. Use circle for radial reveals. Combine with content animation for layered effect. Add staggered reveals for multiple elements. Control timing and easing.",
+    "advanced": "Create content reveal animations using clip-path for dramatic entrances. Clip-path techniques: inset (rectangular), circle (radial), polygon (angular/custom shapes). Left-to-right reveal: clip-path: inset(0 100% 0 0) to inset(0 0 0 0), transition-[clip-path] duration-700. Right-to-left: inset(0 0 0 100%) to inset(0). Top-down: inset(100% 0 0 0) to inset(0). Center-out (horizontal): inset(0 50% 0 50%) to inset(0). Center-out (radial): circle(0% at center) to circle(100% at center). Diagonal wipe: polygon(0 0, 0 0, 0 100%, 0 100%) to polygon(0 0, 100% 0, 100% 100%, 0 100%). Custom shapes: use polygon with multiple points for creative reveals. Staggered reveals: apply delays to each element, creates cascade effect. Layered reveal: reveal background first, then content with offset timing. Performance: clip-path animations are GPU-accelerated, smooth even for complex shapes. Browser support: good modern browser support, consider fallback opacity animation for older browsers. Trigger: combine with Intersection Observer for scroll-triggered reveals. Combined animations: reveal clip-path while also animating content transform/opacity for richer effect. Direction patterns: match reveal direction to reading direction or scroll direction for natural feel. Easing: cubic-bezier(0.77, 0, 0.175, 1) for smooth accelerate-decelerate. Duration: 500-1000ms for dramatic reveals, shorter for functional transitions. ACCESSIBILITY: ensure content is accessible once revealed, provide reduced-motion fallback (simple fade)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

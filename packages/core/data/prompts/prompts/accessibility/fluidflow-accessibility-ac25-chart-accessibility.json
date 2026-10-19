@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac25-chart-accessibility",
+  "slug": "fluidflow-accessibility-ac25-chart-accessibility",
+  "title": "Chart Accessibility",
+  "description": "FluidFlow · Chart Accessibility",
+  "content": "Make charts and graphs accessible. Text alternative: provide data table alternative for all charts. Description: aria-label or aria-describedby with chart summary. Patterns: use patterns in addition to colors for differentiation. High contrast: ensure sufficient contrast on all elements. Interactive charts: keyboard navigable data points. Tooltip content: announced to screen readers. Legend: associated with chart, clear labels. Focus order: logical focus order through chart elements. Table toggle: button to switch between chart and table view. Screen reader: describe trends and key insights, not just raw data.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9c27156162874455013bf90e2b18f8868b344224e2e5649adc1116fe25ccc62b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Make data visualizations accessible with text alternatives.",
+    "detailed": "Make charts and graphs accessible. Text alternative: provide data table alternative for all charts. Description: aria-label or aria-describedby with chart summary. Patterns: use patterns in addition to colors for differentiation. High contrast: ensure sufficient contrast on all elements. Interactive charts: keyboard navigable data points. Tooltip content: announced to screen readers. Legend: associated with chart, clear labels. Focus order: logical focus order through chart elements. Table toggle: button to switch between chart and table view. Screen reader: describe trends and key insights, not just raw data.",
+    "advanced": "Make data visualizations accessible for screen reader users and those with visual impairments. Data table alternative: always provide accessible data table showing same information as chart, toggle button to switch views (\"View as table\"/\"View as chart\"). Chart container: role=\"img\" with aria-label describing what chart shows (not raw data, but insight: \"Bar chart showing sales increasing 25% from January to March\"). Detailed description: aria-describedby linking to longer description for complex charts, describe trends, outliers, key takeaways. Color considerations: don't rely on color alone (add patterns, shapes, or direct labels), ensure all colors meet contrast requirements, test with colorblind simulation. High contrast mode: ensure chart remains usable, borders visible, text readable. Interactive charts: keyboard navigable (Tab/arrows move through data points), focus indicator on elements, tooltips announced (aria-live or aria-describedby), keyboard press activates point for details. Chart libraries: Chart.js, Recharts, Victory have varying a11y support, may need enhancement. Live data: announce significant changes via aria-live (\"Alert: CPU usage exceeded 90%\"). Legend: clearly labeled, associated with chart, interactive legends keyboard accessible. SVG charts: add role=\"img\" and aria-label to svg element, or use title and desc elements with aria-labelledby. Testing: navigate chart with screen reader, verify data is obtainable without vision."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

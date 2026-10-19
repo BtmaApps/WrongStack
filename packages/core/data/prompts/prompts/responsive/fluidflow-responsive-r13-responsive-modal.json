@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r13-responsive-modal",
+  "slug": "fluidflow-responsive-r13-responsive-modal",
+  "title": "Responsive Modal",
+  "description": "FluidFlow · Responsive Modal",
+  "content": "Adapt modals for mobile devices. Use bottom sheet pattern on mobile (fixed bottom-0 inset-x-0) sliding up from bottom. On desktop, use centered modal. Add rounded-t-2xl for bottom sheet style. Include drag handle indicator at top for swipe-to-dismiss. Make modal full-screen on very small devices if content is lengthy. Add safe area padding for notched devices. Ensure close button is easily reachable.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8eb25e5da40191e180a17a1274cf5fef0d6ecf6924cdc4a7bc7e88ad5be09f89",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create modals that work well on mobile as bottom sheets or full screen.",
+    "detailed": "Adapt modals for mobile devices. Use bottom sheet pattern on mobile (fixed bottom-0 inset-x-0) sliding up from bottom. On desktop, use centered modal. Add rounded-t-2xl for bottom sheet style. Include drag handle indicator at top for swipe-to-dismiss. Make modal full-screen on very small devices if content is lengthy. Add safe area padding for notched devices. Ensure close button is easily reachable.",
+    "advanced": "Adapt modals for mobile with bottom sheet pattern. Mobile: fixed bottom-0 inset-x-0 left-0 right-0, transform translate-y for slide animation, rounded-t-2xl for rounded top corners, max-h-[90vh] with overflow-y-auto. Drag handle: w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 for swipe-to-dismiss affordance. Implement swipe-to-dismiss with touch handlers and velocity detection. Full-screen: on small devices (<375px) or lengthy content, use full screen with close button in header. Desktop: centered modal with max-w-lg, rounded-xl, centered vertically. Backdrop: fixed inset-0 bg-black/50, tap to close. Safe area: pb-[env(safe-area-inset-bottom)] for notched devices. Close button: always visible in top-right or header. Focus trap: keep focus within modal when open. Keyboard: Escape to close, Tab cycles through focusable elements. Body scroll lock: prevent background scrolling. Reduce motion: respect prefers-reduced-motion, use fade instead of slide. Animation: slide-up for bottom sheet, fade+scale for centered modal."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec9-color-selector",
+  "slug": "fluidflow-ecommerce-ec9-color-selector",
+  "title": "Color Selector",
+  "description": "FluidFlow · Color Selector",
+  "content": "Build color variant selector with swatches. Layout: horizontal row of color swatches. Swatch: w-8 h-8 rounded-full, actual color as background. Selected state: ring-2 ring-offset-2 ring-black. Hover: scale-110, show color name tooltip. Color name: display selected color as text label. Availability: dim unavailable colors. Image change: selecting color changes product gallery images.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "50cbd60682631be01895e2234865aeef19613bdbf40d4c17e21e24cbb0ac8830",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create color swatches that show selected color name and update product images.",
+    "detailed": "Build color variant selector with swatches. Layout: horizontal row of color swatches. Swatch: w-8 h-8 rounded-full, actual color as background. Selected state: ring-2 ring-offset-2 ring-black. Hover: scale-110, show color name tooltip. Color name: display selected color as text label. Availability: dim unavailable colors. Image change: selecting color changes product gallery images.",
+    "advanced": "Build color variant selector with swatches and image synchronization. Layout: vertical section with \"Color: [Selected Color Name]\" label and swatch row. Swatch container: flex flex-wrap gap-3 for swatch buttons. Swatch button: w-8 h-8 rounded-full, actual color as background using inline style or Tailwind arbitrary value, border for light colors (border border-gray-200). For white/cream: add subtle border so it's visible. Selected state: ring-2 ring-offset-2 ring-black, slightly larger scale-110. Hover: scale-110 transform transition-transform, show tooltip with color name below or above swatch. Color name display: \"Color: Navy Blue\" text above swatches showing currently selected, update on selection. Availability per swatch: available (normal appearance), low stock (small badge or pulsing dot), out of stock (opacity-50 with diagonal line overlay using ::after or X icon overlay, cursor-not-allowed). Tooltip on unavailable: \"Currently unavailable\" message. Pattern swatches: for patterned variants (stripes, floral), show small pattern image (bg-cover) instead of solid color. Large swatches variant: for fewer colors (3-4), show larger circles (w-10 h-10) with color name label below each. Image synchronization: selecting color updates product gallery to show that color variant, smooth transition. If color affects price, show price difference on hover. Low stock warning: when selecting a low-stock color, show \"Only 2 left in Blue\" message below selector. Combined display: inline \"Color: \" with small swatch circle next to selected name text. Accessibility: ensure color name is programmatically available (aria-label on button), not just visual color representation. Use aria-checked for selection state. Keyboard: arrow keys to navigate between swatches when focused. Screen reader: announce \"Navy Blue, In Stock\" on focus."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

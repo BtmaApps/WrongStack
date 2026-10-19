@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u38-performance-perception",
+  "slug": "fluidflow-ux-u38-performance-perception",
+  "title": "Performance Perception",
+  "description": "FluidFlow · Performance Perception",
+  "content": "Optimize perceived performance beyond actual speed. Prefetch likely next pages on hover. Use skeleton screens instead of spinners. Show progress for long operations. Optimistic UI updates. Animate loading content into view. Defer non-critical content. Lazy load below-fold content. Cache previously viewed content. Use service worker for offline and speed. Show last-known state while refreshing.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u38"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "090e5d11675323dff386a828c62e007f035b6a3150cb7d476b7eee61b57ca7e3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Use techniques to make the app feel faster than actual load times.",
+    "detailed": "Optimize perceived performance beyond actual speed. Prefetch likely next pages on hover. Use skeleton screens instead of spinners. Show progress for long operations. Optimistic UI updates. Animate loading content into view. Defer non-critical content. Lazy load below-fold content. Cache previously viewed content. Use service worker for offline and speed. Show last-known state while refreshing.",
+    "advanced": "Optimize perceived performance to make app feel faster. Prefetching: on hover over links (after 100ms), prefetch page data, use Intersection Observer for visible links. Skeleton screens: show content shape immediately, reduces perceived wait vs spinner (feels 10-20% faster). Progress indication: determinate progress bars (54%) feel faster than indeterminate spinners, break long operations into stages. Optimistic updates: update UI before server confirms, feels instant for common actions (likes, saves). Animation: content animating in feels faster than instant appear, stagger list items (50ms delay each). Defer non-critical: load analytics, tracking, chat widgets after main content. Lazy loading: images below fold load on scroll, heavy components load when needed. Caching strategy: memory cache for session, localStorage for persistence, stale-while-revalidate for freshness with speed. Service worker: cache app shell, offline fallback, background sync. Stale state: show cached/previous data immediately while fetching fresh data (show refresh indicator). Priority hints: fetchpriority=\"high\" for critical resources, low for defer. Streaming: stream long responses, show partial content as it arrives. Skeleton-to-content transition: smooth crossfade, not jarring replacement. Metrics: track and optimize Core Web Vitals (LCP, FID, CLS). User research: perceived performance often matters more than actual - test with real users."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

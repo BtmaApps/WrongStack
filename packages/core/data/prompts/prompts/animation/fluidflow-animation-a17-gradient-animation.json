@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a17-gradient-animation",
+  "slug": "fluidflow-animation-a17-gradient-animation",
+  "title": "Gradient Animation",
+  "description": "FluidFlow · Gradient Animation",
+  "content": "Create animated gradient backgrounds. Use CSS background with linear-gradient or radial-gradient. Animate background-position to create movement. Set background-size larger than element (200% 200%) for smooth loop. Animate hue-rotate for color cycling. Create mesh gradient with multiple color stops. Add subtle movement with transform animations. Use for hero backgrounds, cards, buttons. Control speed to avoid distraction. Layer with noise texture for depth.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c02f9afa3b662dcaea95ecd9528a2c6476a232ee950a06517a6657cd50d3c256",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create animated gradient backgrounds that shift colors smoothly.",
+    "detailed": "Create animated gradient backgrounds. Use CSS background with linear-gradient or radial-gradient. Animate background-position to create movement. Set background-size larger than element (200% 200%) for smooth loop. Animate hue-rotate for color cycling. Create mesh gradient with multiple color stops. Add subtle movement with transform animations. Use for hero backgrounds, cards, buttons. Control speed to avoid distraction. Layer with noise texture for depth.",
+    "advanced": "Create animated gradient backgrounds for dynamic visual interest. Moving gradient: background linear-gradient at angle (45deg), background-size: 200% 200% (or 400%), @keyframes gradient { 0% { background-position: 0% 50% } 50% { background-position: 100% 50% } 100% { background-position: 0% 50% } }, animate over 10-15s ease infinite. Hue rotation: single gradient with hue-rotate filter animation, cycles through color wheel smoothly. Mesh gradient: multiple overlapping radial-gradients with different positions, animate positions for morphing effect. Conic gradient: conic-gradient from center, rotate with transform animation. Aurora effect: multiple color bands with blur, animating position creates flowing aurora. Implementation: @keyframes in Tailwind config or inline styles with CSS custom properties. Performance: use GPU-accelerated properties (transform for position, filter for hue), avoid animating background-position on large elements. Overlay: semi-transparent gradient over solid color base for subtlety. Noise texture: overlay with noise SVG or PNG at low opacity for organic feel. Use cases: hero sections (subtle movement), buttons (attention-grabbing), cards (premium feel), loading states. Speed: 10-20s for subtle background, 3-5s for attention-grabbing. ACCESSIBILITY: ensure text contrast maintained throughout animation, prefers-reduced-motion pauses or disables animation. Variants: breathing gradient (scale or opacity pulse), gradient border (pseudo-element technique)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

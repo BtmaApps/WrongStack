@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a5-loading-animations",
+  "slug": "fluidflow-animation-a5-loading-animations",
+  "title": "Loading Animations",
+  "description": "FluidFlow · Loading Animations",
+  "content": "Create polished loading animations for various contexts. Spinner: rotating circle using animate-spin with Loader2 icon or custom SVG. Progress bar: animated width with gradient shimmer overlay moving left to right. Skeleton screens: pulsing gray shapes (animate-pulse) matching content layout exactly. Dots loader: three dots with staggered bounce animation. Logo loader: brand logo with pulse or morph animation. Button loading: replace text with spinner, maintain button width. Full page loader: centered spinner with optional loading message and progress percentage. Add minimum display time (400ms) to prevent flash. Use CSS animations for smooth 60fps performance.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fd6906e335c7df98dadf37226691f98a2f5719106c2247b10618008cc064871a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create spinner, skeleton, and progress bar loading states.",
+    "detailed": "Create polished loading animations for various contexts. Spinner: rotating circle using animate-spin with Loader2 icon or custom SVG. Progress bar: animated width with gradient shimmer overlay moving left to right. Skeleton screens: pulsing gray shapes (animate-pulse) matching content layout exactly. Dots loader: three dots with staggered bounce animation. Logo loader: brand logo with pulse or morph animation. Button loading: replace text with spinner, maintain button width. Full page loader: centered spinner with optional loading message and progress percentage. Add minimum display time (400ms) to prevent flash. Use CSS animations for smooth 60fps performance.",
+    "advanced": "Create polished loading animations for various contexts with appropriate feedback levels. Spinner variations: rotating circle using Loader2 with animate-spin, custom SVG with animated stroke-dashoffset for drawing effect, dual-ring spinner with counter-rotation. Progress bar: determinate (width transition) and indeterminate (gradient shimmer using @keyframes translateX from -100% to 100%), include percentage text and ETA when available. Skeleton screens: pulsing gray shapes (bg-gray-200 animate-pulse) matching EXACT content layout - same heights, widths, spacing as real content; use rounded corners matching text (rounded for text, rounded-full for avatars). Dots loader: three dots with staggered bounce using animation-delay (0s, 0.2s, 0.4s). Logo loader: brand logo with subtle pulse (scale 1 to 1.05) or drawing animation. Button loading: replace text with Loader2 animate-spin, maintain button width with min-w-[original-width] to prevent layout shift, disable button during load. Full page loader: fixed inset-0 flex items-center justify-center, centered spinner with loading message below, include progress percentage if available, subtle background blur on content behind. Loading states hierarchy: button spinner (inline), content skeleton (area), overlay loader (blocking), progress bar (known duration). CRITICAL: minimum display time (400ms) to prevent flash for fast loads - use setTimeout or Promise.all([fetch, delay]). Performance: CSS animations only, avoid JS-driven animations, use @keyframes with transform. Accessibility: aria-busy=\"true\" on loading container, aria-live=\"polite\" for status updates, visually hidden text describing loading state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

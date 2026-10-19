@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d50-rustic-farmhouse",
+  "slug": "fluidflow-design-d50-rustic-farmhouse",
+  "title": "Rustic/Farmhouse",
+  "description": "FluidFlow · Rustic/Farmhouse",
+  "content": "Apply rustic farmhouse aesthetic with cozy country comfort. Natural wood textures: barn wood, shiplap, weathered planks. Warm neutral colors: creams, warm grays, muted greens, barn red. Include burlap and linen textures. Vintage typography with serif fonts. Mason jar and farm motifs. Distressed, worn finishes. Wrought iron accent elements. Handcrafted, homey atmosphere. Simple, honest design.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d50"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9169bb476b8881f869f1e58e4e43ec798ededae0e8fa758e134b3c36a1f506b1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create warm rustic farmhouse aesthetic with wood, natural textures, and country comfort.",
+    "detailed": "Apply rustic farmhouse aesthetic with cozy country comfort. Natural wood textures: barn wood, shiplap, weathered planks. Warm neutral colors: creams, warm grays, muted greens, barn red. Include burlap and linen textures. Vintage typography with serif fonts. Mason jar and farm motifs. Distressed, worn finishes. Wrought iron accent elements. Handcrafted, homey atmosphere. Simple, honest design.",
+    "advanced": "Apply rustic farmhouse aesthetic with warm country authenticity. Wood elements: barn wood texture (gray weathered), shiplap pattern (horizontal lines), reclaimed planks with grain and knots. Apply as backgrounds or accents. Color palette: warm neutrals - cream (#fffef0), warm gray (#a8a39d), sage green (#9caf88), muted barn red (#8b4513), black accents. Natural textures: burlap weave pattern, linen fabric, cotton, worn leather. Metal accents: wrought iron (matte black decorative elements), galvanized steel (silver-gray industrial touches), copper patina. Typography: vintage serif (Libre Baskerville, Lora), hand-lettered style for accents (Amatic SC), stencil fonts. Farm motifs: wheat stalks, chickens, mason jars, windmills, farm animals, botanical herbs. Distressed effects: worn edges, scratched surfaces, paint chips revealing wood beneath. Decorative: vintage labels, grain sack stripes, gingham patterns (small check). Lighting: warm, soft, golden hour feel (amber tints). Photography: lifestyle imagery, raw ingredients, handmade goods. Interactive: subtle texture reveals, worn button states. Frame elements: white-washed wood frames, simple borders. Modern farmhouse: cleaner lines, more white, less distress. Implementation: CSS patterns for textures, SVG for decorative elements. Accessibility: ensure textured backgrounds dont reduce readability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

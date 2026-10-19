@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co18-faq-accordion",
+  "slug": "fluidflow-content-co18-faq-accordion",
+  "title": "FAQ Accordion",
+  "description": "FluidFlow · FAQ Accordion",
+  "content": "Create FAQ accordion component. Structure: list of questions with expandable answers. Single/multi: allow one or multiple open at once. Icons: ChevronDown rotates when expanded. Animation: smooth height expansion. Search: filter questions by keyword. Categories: group FAQs by topic with tabs or headings. Anchor links: each question has shareable URL. Answer content: support rich text and images in answers. Popular: highlight frequently viewed questions. Feedback: \"Was this helpful?\" rating. Contact: \"Still need help?\" CTA at bottom.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "765085616616dd3e0f3c1ade42c66f4620405ddc4bd89175308a90ad449e7279",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build FAQ section with expandable question/answer pairs.",
+    "detailed": "Create FAQ accordion component. Structure: list of questions with expandable answers. Single/multi: allow one or multiple open at once. Icons: ChevronDown rotates when expanded. Animation: smooth height expansion. Search: filter questions by keyword. Categories: group FAQs by topic with tabs or headings. Anchor links: each question has shareable URL. Answer content: support rich text and images in answers. Popular: highlight frequently viewed questions. Feedback: \"Was this helpful?\" rating. Contact: \"Still need help?\" CTA at bottom.",
+    "advanced": "Create comprehensive FAQ section with search, categories, and accessibility. Structure: array of {question, answer, category?, id} objects. Accordion behavior: single-open (only one answer visible) or multi-open (independent), configurable. Animation: CSS transition on max-height or grid-template-rows: 0fr to 1fr for smooth expand. Icons: ChevronDown with rotate-180 transition when expanded, aria-hidden on icon. Accessibility: button trigger with aria-expanded and aria-controls, answer region with id, proper focus management. Search/filter: search input filters visible questions by keyword match in question/answer, live filtering as user types, show result count, clear button. Categories: group by topic (Billing, Account, Features), display as tabs, sidebar links, or accordion sections with headers. URL anchors: each question has unique id, hash navigation (#faq-billing-cancel), open and scroll to question on page load with matching hash. Rich answers: support markdown or HTML in answers, images, lists, links, code blocks. \"Was this helpful\": Yes/No buttons per answer, tracks feedback for analytics. Popular/trending: show most viewed FAQs at top, track views via analytics. Related questions: show related FAQs based on category or tags. Schema markup: add FAQPage structured data for SEO. Empty search: friendly message with suggestions or contact link. Contact CTA: \"Cannot find what you are looking for?\" with link to support."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d119-spotify-music-app",
+  "slug": "fluidflow-design-d119-spotify-music-app",
+  "title": "Spotify/Music App",
+  "description": "FluidFlow · Spotify/Music App",
+  "content": "Apply Spotify aesthetic with music streaming feel. Very dark backgrounds with vibrant album art. Dominant color extraction from artwork. Left navigation sidebar. Large cover art displays. Playback bar with progress. Horizontal scroll carousels. Playlist and track lists. Artist cards and grids. Search with recent history. User library organization.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d119"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2a1f63f8afe7a8a3aff22fad569c31ed62edf48469941328ea9c702ea2ff3da5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create music app interface with album art focus, playback controls, and playlist management.",
+    "detailed": "Apply Spotify aesthetic with music streaming feel. Very dark backgrounds with vibrant album art. Dominant color extraction from artwork. Left navigation sidebar. Large cover art displays. Playback bar with progress. Horizontal scroll carousels. Playlist and track lists. Artist cards and grids. Search with recent history. User library organization.",
+    "advanced": "Apply Spotify aesthetic with music app patterns. Background: bg-[#121212], gradients extracted from album art at top. Sidebar: bg-[#000] w-56, logo top, nav links, playlists list, resize handle. Content: scrollable, gradient header fading to bg. Album art: rounded-md shadows, hover shows play button overlay. Play button: rounded-full bg-green-500, centered play icon, hover:scale-105. Cards: album/playlist cards with image, title, subtitle, hover darken overlay. Carousels: horizontal scroll with arrow buttons on hover, snap to item. Track list: table with #, title (with explicit badge), album, date added, duration, hover shows more actions. Now playing bar: fixed bottom, album art small, track info, controls center, volume/queue right. Progress bar: thin green line, hover expands, draggable. Lyrics: synced highlight scroll, black overlay on album art background. Queue: slide-in panel from right. Search: large input, recent searches, browse categories grid. Explicit badge: text-[10px] border border-gray-400 rounded px-1. Context menus: dark themed, comprehensive options. Animations: smooth page transitions, play button bounce."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

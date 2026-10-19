@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c54-add-stats-dashboard",
+  "slug": "fluidflow-components-c54-add-stats-dashboard",
+  "title": "Add Stats Dashboard",
+  "description": "FluidFlow · Add Stats Dashboard",
+  "content": "Create stats dashboard. Container: grid grid-cols-2 md:grid-cols-4 gap-4. Stat card: bg-white rounded-xl p-6 shadow-sm. Card content: icon in colored circle (bg-blue-100 text-blue-600), metric value (text-3xl font-bold), label (text-gray-500 text-sm), change indicator (+12% with arrow, green for up, red for down). Hover: slight scale and shadow increase.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c54"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "03c5577dcf2005352ccb49636e44e18e6499a1be695892d42eb0cb311719f59a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create statistics dashboard with metric cards.",
+    "detailed": "Create stats dashboard. Container: grid grid-cols-2 md:grid-cols-4 gap-4. Stat card: bg-white rounded-xl p-6 shadow-sm. Card content: icon in colored circle (bg-blue-100 text-blue-600), metric value (text-3xl font-bold), label (text-gray-500 text-sm), change indicator (+12% with arrow, green for up, red for down). Hover: slight scale and shadow increase.",
+    "advanced": "Create comprehensive stats dashboard. Header: title, date range picker, refresh button. KPI cards: grid layout responsive 1-2-4 columns. Card types: simple number, number with trend, number with sparkline, number with progress bar. Card content: icon with category color, metric name, current value (formatted with locale), comparison (vs last period, vs target), trend arrow with percentage, mini chart (sparkline or progress). Sparkline: last 7/30 data points, highlight current, tooltip on hover. Change indicators: color-coded (green positive, red negative, gray neutral), configurable if up is good or bad. Loading state: pulse skeleton matching card layout. Click action: navigate to detailed view or open drill-down modal. Time comparison: toggle absolute/relative change. Goal tracking: progress toward target with percentage. Alerts: badge for metrics outside normal range. Export: download stats as CSV/PDF. Responsive: cards reflow, values remain readable. Real-time: optional WebSocket updates with highlight animation on change."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

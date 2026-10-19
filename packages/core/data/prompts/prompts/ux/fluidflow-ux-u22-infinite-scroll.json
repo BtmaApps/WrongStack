@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u22-infinite-scroll",
+  "slug": "fluidflow-ux-u22-infinite-scroll",
+  "title": "Infinite Scroll",
+  "description": "FluidFlow · Infinite Scroll",
+  "content": "Implement infinite scroll for long content lists. Detect scroll position using Intersection Observer. Load more when approaching bottom (threshold before reaching end). Show loading spinner or skeleton at bottom during load. Handle loading states to prevent duplicate fetches. Add \"Load more\" button as fallback. Show \"No more items\" when list ends. Implement scroll position restoration on navigation back. Handle errors with retry option. Consider virtualization for very long lists.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3936dc4502c02c752f47e84038d1e2f820a38aae1ca8de6cec50d2b92de74b5e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Load more content automatically as user scrolls down.",
+    "detailed": "Implement infinite scroll for long content lists. Detect scroll position using Intersection Observer. Load more when approaching bottom (threshold before reaching end). Show loading spinner or skeleton at bottom during load. Handle loading states to prevent duplicate fetches. Add \"Load more\" button as fallback. Show \"No more items\" when list ends. Implement scroll position restoration on navigation back. Handle errors with retry option. Consider virtualization for very long lists.",
+    "advanced": "Implement infinite scroll for seamless content consumption. Use Intersection Observer (not scroll events) for performance: observe sentinel element at end of list, trigger load when intersecting. Threshold: trigger at 200-300px before reaching bottom (rootMargin: \"0px 0px 200px 0px\"). Loading indicator: spinner or skeleton rows at bottom during load, maintain layout stability. State management: track loading, hasMore, error states, prevent duplicate fetches with loading guard. Fallback: \"Load more\" button for users who prefer manual control or if Intersection Observer fails. End state: \"No more items\" or \"Youve reached the end\" message, remove loading trigger. Scroll restoration: save scroll position to sessionStorage on navigation, restore on back - works with browser back button. Error handling: show error message with \"Retry\" button, dont break existing content. Virtual scrolling: for very long lists (1000+ items), use react-window or @tanstack/virtual to only render visible items. URL state: optionally reflect current page in URL for shareable links. Performance: debounce/throttle if using scroll events, batch DOM updates. ACCESSIBILITY: announce new content loaded via aria-live, ensure focus doesnt jump unexpectedly. Alternative: pagination with clear page indicators for users who prefer."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

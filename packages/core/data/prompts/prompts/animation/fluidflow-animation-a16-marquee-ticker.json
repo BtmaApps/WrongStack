@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a16-marquee-ticker",
+  "slug": "fluidflow-animation-a16-marquee-ticker",
+  "title": "Marquee/Ticker",
+  "description": "FluidFlow · Marquee/Ticker",
+  "content": "Create smooth scrolling marquee for logos, testimonials, or announcements. Duplicate content for seamless loop. Animate using translateX from 0 to -50% (half because of duplication). Use CSS animation for smooth 60fps. Control speed with animation duration. Add pause on hover. Support both directions (left-to-right, right-to-left). Handle variable content widths. Add fade edges for polish. Consider accessibility - pausable, dont distract.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "eb093fa145d90eccdfdb476c3cea1d2e206b3c61e763cf128b9a2118e18debd2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create smooth scrolling text or logo marquee animation.",
+    "detailed": "Create smooth scrolling marquee for logos, testimonials, or announcements. Duplicate content for seamless loop. Animate using translateX from 0 to -50% (half because of duplication). Use CSS animation for smooth 60fps. Control speed with animation duration. Add pause on hover. Support both directions (left-to-right, right-to-left). Handle variable content widths. Add fade edges for polish. Consider accessibility - pausable, dont distract.",
+    "advanced": "Create smooth scrolling marquee for continuous content display. Content structure: container with overflow-hidden, inner flex with two identical content blocks for seamless loop. Animation: @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }, apply with animation: marquee 20s linear infinite. Duration controls speed: shorter = faster. Direction: negative translateX for left scroll, positive for right. Tailwind: animate-marquee with custom keyframes in config. Pause on hover: hover:paused using animation-play-state: paused. Variable content: measure content width, set animation duration proportionally (longer content = longer duration for consistent speed). Fade edges: gradient masks on left/right using mask-image linear-gradient. Content types: logo strips (flex gap-8 with logos), news tickers (text with separators), testimonial highlights. Vertical marquee: use translateY instead for upward scroll. Accessibility: add aria-live=\"off\" to prevent constant announcements, provide pause control, dont use for critical information. Performance: use CSS animation (not JS), will-change: transform. Gap handling: ensure gap between last and first item matches internal gaps. Multiple rows: stack multiple marquees with different speeds or directions. Implementation: create Marquee component with speed, direction, pauseOnHover props. Mobile: consider reducing content or disabling for performance. Reduced motion: pause animation or disable entirely."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

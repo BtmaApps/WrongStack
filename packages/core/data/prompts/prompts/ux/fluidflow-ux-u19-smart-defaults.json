@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u19-smart-defaults",
+  "slug": "fluidflow-ux-u19-smart-defaults",
+  "title": "Smart Defaults",
+  "description": "FluidFlow · Smart Defaults",
+  "content": "Pre-fill forms with intelligent defaults to reduce cognitive load. Use user profile data for name, email, address fields. Remember last-used selections (payment method, shipping address). Set date pickers to today or logical defaults. Pre-select most popular or recommended options. Use location data for country/timezone when permitted. Remember form state if user navigates away and returns. Provide \"Same as previous\" options for repeated data.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b59bd403f5cdf48adb10461425b846550d42f9ff5d1c058ca1efef50b3488f12",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Pre-fill forms with intelligent defaults based on user context.",
+    "detailed": "Pre-fill forms with intelligent defaults to reduce cognitive load. Use user profile data for name, email, address fields. Remember last-used selections (payment method, shipping address). Set date pickers to today or logical defaults. Pre-select most popular or recommended options. Use location data for country/timezone when permitted. Remember form state if user navigates away and returns. Provide \"Same as previous\" options for repeated data.",
+    "advanced": "Pre-fill forms with intelligent defaults to reduce cognitive load and completion time. User data: populate from profile (name, email, phone, company). Last-used values: remember previous selections for dropdowns (payment method, shipping address, currency). Date defaults: today for start dates, tomorrow for due dates, common ranges (this week, this month). Popular options: pre-select most common choices with \"Most popular\" badge. Location intelligence: use IP geolocation or browser geolocation for country, timezone, currency, language - with permission. Session state: persist form data to sessionStorage, restore if user navigates away and returns, clear on successful submit. \"Same as\" options: \"Same as billing address\" toggle, \"Same as last order\". Conditional defaults: different defaults based on user segment (enterprise vs individual). Progressive profiling: dont ask for data you already have. Learn from behavior: if user always changes a default, update their preference. PRIVACY: be transparent about data sources, dont prefill sensitive fields (passwords, SSN). Clear defaults option available. A/B test default choices to optimize completion rates. Accessibility: ensure defaults dont frustrate screen reader users, allow easy clearing."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

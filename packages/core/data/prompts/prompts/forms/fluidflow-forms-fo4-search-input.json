@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo4-search-input",
+  "slug": "fluidflow-forms-fo4-search-input",
+  "title": "Search Input",
+  "description": "FluidFlow · Search Input",
+  "content": "Create feature-rich search input. Structure: relative wrapper with Search icon positioned inside left. Input: pl-10 to accommodate icon, border rounded-lg. Clear button: X icon on right, visible when input has value. Keyboard shortcut: Cmd/Ctrl+K hint badge. Autocomplete dropdown: absolute below input with recent searches and suggestions. Keyboard navigation: arrow keys to navigate, Enter to select, Escape to close. Loading state: spinner while fetching.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2464c198d802cf5546a4a32cdabb66592fc704cb2e560dfdce54fdf61d7a503f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create search input with magnifying glass icon and clear button.",
+    "detailed": "Create feature-rich search input. Structure: relative wrapper with Search icon positioned inside left. Input: pl-10 to accommodate icon, border rounded-lg. Clear button: X icon on right, visible when input has value. Keyboard shortcut: Cmd/Ctrl+K hint badge. Autocomplete dropdown: absolute below input with recent searches and suggestions. Keyboard navigation: arrow keys to navigate, Enter to select, Escape to close. Loading state: spinner while fetching.",
+    "advanced": "Create feature-rich search input with autocomplete and keyboard navigation. Structure: relative wrapper for positioning children. Input: pl-10 (left padding for icon), pr-20 (right padding for clear + shortcut), border rounded-lg or rounded-full, focus:ring-2. Search icon: absolute left-3, text-gray-400, w-5 h-5. Clear button: X icon absolute right-12, visible only when input has value, hover:text-gray-600, onClick clears input and focuses. Keyboard shortcut: Cmd/Ctrl+K hint badge (absolute right-3, bg-gray-100 rounded px-1.5 text-xs), use useEffect to add global keydown listener. Autocomplete dropdown: absolute below input (top-full mt-1), w-full, bg-white shadow-lg rounded-lg border, max-h-80 overflow-y-auto, shows on focus when has content. Sections: Recent searches (Clock icon, \"Clear history\" button, stored in localStorage limited to 10), Suggested (popular/trending searches), Results (instant search results if API available). Highlight matching text in results using mark tag or span with bg-yellow-100. Keyboard navigation: arrow keys navigate list with visual highlight, Enter selects highlighted item, Escape closes dropdown, maintain selected index in state. Loading state: Loader2 animate-spin replaces Search icon while fetching. No results: helpful message \"No results for [query]\" with suggestions. Mobile: option for full-screen search overlay with dedicated page. Debounce: 300ms delay before firing search API. History: add selected items to localStorage history. Accessibility: role=\"combobox\", aria-expanded, aria-autocomplete=\"list\", proper listbox role on dropdown."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

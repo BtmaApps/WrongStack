@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac21-loading-state-a11y",
+  "slug": "fluidflow-accessibility-ac21-loading-state-a11y",
+  "title": "Loading State A11y",
+  "description": "FluidFlow · Loading State A11y",
+  "content": "Make loading states accessible for screen reader users. Loading start: announce \"Loading...\" via aria-live region. Progress: announce percentage updates for long operations (debounced). Completion: announce \"Content loaded\" or specific success message. Spinner: add aria-label=\"Loading\" and role=\"status\" or aria-live. Loading button: aria-disabled=\"true\", aria-busy=\"true\", change label to \"Saving...\" or show spinner. Skeleton content: aria-hidden=\"true\" on skeleton, announce when real content loaded. Page loads: manage focus appropriately after load. Avoid: silent loading states, constant announcements.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d1031106ca5d4404c5692e406db786dfa284562e42a708322575059a67db86c2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Announce loading states to screen reader users.",
+    "detailed": "Make loading states accessible for screen reader users. Loading start: announce \"Loading...\" via aria-live region. Progress: announce percentage updates for long operations (debounced). Completion: announce \"Content loaded\" or specific success message. Spinner: add aria-label=\"Loading\" and role=\"status\" or aria-live. Loading button: aria-disabled=\"true\", aria-busy=\"true\", change label to \"Saving...\" or show spinner. Skeleton content: aria-hidden=\"true\" on skeleton, announce when real content loaded. Page loads: manage focus appropriately after load. Avoid: silent loading states, constant announcements.",
+    "advanced": "Make loading states accessible for screen reader users through announcements and state indication. Loading announcement: use aria-live=\"polite\" region to announce \"Loading content...\" when async operation starts. Implementation: hidden div with aria-live, update text content to trigger announcement. Loading button pattern: during load - aria-disabled=\"true\" prevents action, aria-busy=\"true\" indicates processing, update visible text (\"Saving...\") or add spinner (with aria-hidden=\"true\" on visual spinner, actual status in text). Determinate progress: for file uploads or long operations, periodically announce percentage (debounced to avoid spam, e.g., every 25%). Completion: announce success (\"Products loaded\", \"Saved successfully\") or failure (\"Load failed, try again\"). Skeleton screens: add aria-hidden=\"true\" to skeleton placeholder, skeleton is purely visual while loading; when content loads, announce via live region or manage focus to new content. Spinner component: role=\"status\" or role=\"progressbar\" (for determinate), aria-label=\"Loading\", accessible name. Page/route loading: optionally announce navigation start, focus h1 or main content area after load. Loading overlay: if blocking interaction, ensure focus is trapped or background is inert. Avoid: silent loading (user doesn't know something is happening), excessive announcements (every spinner frame), not announcing completion. Test: screen reader experience during various loading scenarios."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

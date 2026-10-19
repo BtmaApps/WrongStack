@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d20-aurora-northern-lights",
+  "slug": "fluidflow-design-d20-aurora-northern-lights",
+  "title": "Aurora/Northern Lights",
+  "description": "FluidFlow · Aurora/Northern Lights",
+  "content": "Create aurora-inspired design with flowing, animated gradients. Use dark backgrounds (bg-slate-950 or bg-black) as canvas. Apply multi-color gradients with aurora colors: cyan-400, emerald-400, violet-500, pink-500. Create flowing shapes using large blur (blur-3xl) on gradient elements. Animate gradients slowly moving and morphing. Use glassmorphism cards (bg-white/10 backdrop-blur) over aurora background. Keep text light (text-white, text-gray-200) with subtle glow. Add subtle stars or particles for atmosphere. Create sense of depth with layered gradient elements.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2e2ba3b9b654ad8f657bbfa321f5a377fe286ec0196558d1223c5b5816de579b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create ethereal design with flowing gradient backgrounds mimicking aurora borealis.",
+    "detailed": "Create aurora-inspired design with flowing, animated gradients. Use dark backgrounds (bg-slate-950 or bg-black) as canvas. Apply multi-color gradients with aurora colors: cyan-400, emerald-400, violet-500, pink-500. Create flowing shapes using large blur (blur-3xl) on gradient elements. Animate gradients slowly moving and morphing. Use glassmorphism cards (bg-white/10 backdrop-blur) over aurora background. Keep text light (text-white, text-gray-200) with subtle glow. Add subtle stars or particles for atmosphere. Create sense of depth with layered gradient elements.",
+    "advanced": "Create aurora borealis-inspired ethereal design. Base: dark canvas (bg-slate-950 or bg-black) representing night sky. Aurora implementation: multiple absolutely positioned div elements with gradient backgrounds (from-cyan-400 via-emerald-400 to-violet-500, from-pink-500 via-purple-500 to-indigo-500). Apply heavy blur (blur-[100px] or filter: blur(100px)) and mix-blend-mode: screen/overlay. Animation: use CSS keyframes for slow, organic movement - translateY, scale, and opacity changes over 15-30 second cycles. Each aurora layer moves at different speeds for parallax depth. Stagger animation delays. Stars: pseudo-random positioned dots using radial-gradient or SVG, some with twinkle animation. Content cards: glassmorphism style (bg-white/5 backdrop-blur-xl border border-white/10) floating over aurora. Typography: light colors (text-white, text-gray-300), add subtle text-shadow with aurora colors for glow effect on headings. Performance: use will-change on animated elements, consider reduced-motion preference to pause animations. Reduce aurora complexity on mobile for battery. Implementation options: CSS-only with keyframes, or canvas/WebGL for more dynamic effects. Layer order: stars (bottom), aurora layers (middle, 2-4 layers), content (top with z-index)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

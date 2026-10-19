@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c39-add-divider",
+  "slug": "fluidflow-components-c39-add-divider",
+  "title": "Add Divider",
+  "description": "FluidFlow · Add Divider",
+  "content": "Create divider component for separating content sections. Simple divider: h-px bg-gray-200 w-full. With label: flex items-center with border lines on each side. Label style: px-4 text-sm text-gray-500 whitespace-nowrap. Line segments: flex-1 h-px bg-gray-200. Vertical divider: w-px h-full bg-gray-200 for side-by-side content. Variants: solid (default), dashed (border-dashed), dotted. Spacing: my-4 or my-8 for vertical spacing. With icon: icon centered instead of text.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c39"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d29064fe5c353e579c6da446bcbb21447caca47849ddf9681892e87b56de4e84",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create horizontal dividers with optional labels or icons.",
+    "detailed": "Create divider component for separating content sections. Simple divider: h-px bg-gray-200 w-full. With label: flex items-center with border lines on each side. Label style: px-4 text-sm text-gray-500 whitespace-nowrap. Line segments: flex-1 h-px bg-gray-200. Vertical divider: w-px h-full bg-gray-200 for side-by-side content. Variants: solid (default), dashed (border-dashed), dotted. Spacing: my-4 or my-8 for vertical spacing. With icon: icon centered instead of text.",
+    "advanced": "Create flexible divider component with multiple variants. Horizontal divider base: relative flex items-center w-full my-6. Line only: single div h-px bg-gray-200. With centered content: lines as flex-1 h-px bg-gray-200 on each side, content (text/icon) px-4 flex-shrink-0. Content styling: text-sm font-medium text-gray-500 uppercase tracking-wider (for section headers) or normal case. Alignment: center (default), left, right - adjust flex proportions. Vertical divider: w-px self-stretch bg-gray-200 mx-4 for inline separation. Variants: solid (bg-gray-200), dashed (border-l border-dashed), dotted (border-l border-dotted), gradient (bg-gradient-to-r from-transparent via-gray-200 to-transparent). Colors: light (gray-200), medium (gray-300), dark (gray-400), or semantic colors. Thickness: thin (h-px), medium (h-0.5), thick (h-1). Spacing: tight (my-2), normal (my-4), loose (my-8). With icon: replace text content with icon component (ArrowDown, Plus, Star). Decorative: ornamental divider with SVG pattern or icon sequence. Accessibility: role=\"separator\" for semantic meaning, aria-orientation. Props: orientation (horizontal/vertical), variant, color, thickness, spacing, children (label content), align, decorative (boolean for aria-hidden)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

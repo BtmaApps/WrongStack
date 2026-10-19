@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo27-address-autocomplete",
+  "slug": "fluidflow-forms-fo27-address-autocomplete",
+  "title": "Address Autocomplete",
+  "description": "FluidFlow · Address Autocomplete",
+  "content": "Build address autocomplete component. Input: single line address field. Suggestions: fetch from Google Places or similar API. Display: dropdown of matching addresses. Selection: populate full address on select. Parse: split into components (street, city, zip). Loading: show loading while fetching. Debounce: debounce API calls while typing. Geolocation: option to use current location.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "269d93d74b3062d858667bbfe5c35109963d2f402f8fd4b929fc6c704c4acaae",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create address input with autocomplete suggestions.",
+    "detailed": "Build address autocomplete component. Input: single line address field. Suggestions: fetch from Google Places or similar API. Display: dropdown of matching addresses. Selection: populate full address on select. Parse: split into components (street, city, zip). Loading: show loading while fetching. Debounce: debounce API calls while typing. Geolocation: option to use current location.",
+    "advanced": "Build comprehensive address autocomplete component with structured data. Input field: single address input or multi-field (street, city, state, zip). Autocomplete source: Google Places Autocomplete API, or alternative (Mapbox, HERE, Algolia Places). API integration: Places service with sessionToken for billing optimization, restrict by country if needed. Suggestion dropdown: show formatted address predictions, highlight matched text, secondary text (city, country). Debounce: 300ms delay before API call to reduce requests. Selection handling: on select, call getPlaceDetails for full address components, populate structured fields (street_number, route, locality, postal_code, country). Address components: parse into street address line 1, line 2, city, state/province, postal code, country. Multi-field mode: separate inputs auto-filled on selection, allow manual editing. Map preview: optional small map showing selected location, pin marker. Geolocation: \"Use current location\" button, reverse geocode coordinates to address. Validation: verify address with geocoding, warn if unverified/approximate. Manual entry: allow typing address without selecting suggestion. Recent addresses: remember and show recently used addresses. Save addresses: for logged-in users, save to address book. Formatting: display formatted address for confirmation. International: handle various address formats by country. Accessibility: aria-autocomplete, announce suggestions, keyboard navigation. Mobile: larger touch targets, consider bottom sheet for suggestions. Billing: track API usage, implement caching where possible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

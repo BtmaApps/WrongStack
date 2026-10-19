@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so9-notification-list",
+  "slug": "fluidflow-social-so9-notification-list",
+  "title": "Notification List",
+  "description": "FluidFlow · Notification List",
+  "content": "Build notification center/list. Container: dropdown from bell icon or full page. Header: \"Notifications\" title, \"Mark all read\" action. Notification item: icon (type-specific), content text with bold username, timestamp, avatar. Types: likes, comments, follows, mentions - each with distinct icon. Unread: background highlight. Click: navigate to relevant content. Grouping: combine similar (\"User1 and 3 others liked\"). Real-time: new notifications appear at top.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "718bcfe65aaf79ca143b58f7cc02119ee885c96f8a808cd46276cc7b97d8fa19",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create notification dropdown with icons, messages, and timestamps.",
+    "detailed": "Build notification center/list. Container: dropdown from bell icon or full page. Header: \"Notifications\" title, \"Mark all read\" action. Notification item: icon (type-specific), content text with bold username, timestamp, avatar. Types: likes, comments, follows, mentions - each with distinct icon. Unread: background highlight. Click: navigate to relevant content. Grouping: combine similar (\"User1 and 3 others liked\"). Real-time: new notifications appear at top.",
+    "advanced": "Build notification center/list with comprehensive features. Trigger: Bell icon in header with unread count badge (absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full). Container: dropdown (w-96 max-h-[70vh] overflow-hidden rounded-lg shadow-xl) or full page route. Header: flex justify-between items-center px-4 py-3 border-b. Title: \"Notifications\" (font-semibold). Actions: \"Mark all as read\" text button, Settings gear icon link. Notification list: divide-y divide-gray-100 overflow-y-auto. Notification item: flex gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition. Type icon container: w-8 h-8 rounded-full flex items-center justify-center, color-coded background (Heart: bg-red-100 text-red-500 for likes, MessageCircle: bg-blue-100 text-blue-500 for comments, UserPlus: bg-green-100 text-green-500 for follows, AtSign: bg-purple-100 text-purple-500 for mentions, Bell: bg-gray-100 text-gray-500 for system). Content column (flex-1): text with bold actor name and action (\"John liked your post\"), timestamp (text-xs text-gray-500 relative). Actor avatar: w-8 h-8 rounded-full on right side. Unread state: bg-blue-50 background or blue dot indicator left edge. Click behavior: navigate to relevant content (post, profile, comment), mark as read. Grouping: combine similar notifications (\"Sarah and 3 others liked your post\") with stacked mini avatars, click expands to show all actors. Filters: tab bar or dropdown (All, Mentions, Follows). Loading: skeleton notification items. Empty state: bell illustration + \"No notifications\" + \"When you get notifications, they will show up here\". Pagination: infinite scroll or \"Load earlier\" button. Real-time: new notifications appear at top with subtle entrance animation, update badge count. Sound/vibration: optional for new notifications. Settings link: opens notification preferences. Accessibility: list of notifications, announce count changes, click targets properly labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

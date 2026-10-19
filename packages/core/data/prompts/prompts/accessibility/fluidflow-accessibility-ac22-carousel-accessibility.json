@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac22-carousel-accessibility",
+  "slug": "fluidflow-accessibility-ac22-carousel-accessibility",
+  "title": "Carousel Accessibility",
+  "description": "FluidFlow · Carousel Accessibility",
+  "content": "Build accessible carousel with proper controls and announcements. Region: role=\"region\" with aria-label describing carousel. Slides: role=\"group\" with aria-roledescription=\"slide\", aria-label=\"1 of 5\". Controls: Previous/Next buttons with clear labels. Pagination: current indicator with aria-current=\"true\". Auto-play: pause button required, pause on hover/focus. Keyboard: arrows navigate slides. Live region: announce current slide on change. Reduce motion: disable auto-play and reduce animations. Focus management: handle focus appropriately when slides change.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8a984c479c3bd8290661b79b70743d8736b6c8e4305cad8371080f1aa8fedf1d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Make carousel/slider components fully accessible.",
+    "detailed": "Build accessible carousel with proper controls and announcements. Region: role=\"region\" with aria-label describing carousel. Slides: role=\"group\" with aria-roledescription=\"slide\", aria-label=\"1 of 5\". Controls: Previous/Next buttons with clear labels. Pagination: current indicator with aria-current=\"true\". Auto-play: pause button required, pause on hover/focus. Keyboard: arrows navigate slides. Live region: announce current slide on change. Reduce motion: disable auto-play and reduce animations. Focus management: handle focus appropriately when slides change.",
+    "advanced": "Build fully accessible carousel following WAI-ARIA Carousel pattern. Container: role=\"group\" (or \"region\" for important content), aria-roledescription=\"carousel\", aria-label describing content (\"Product images\", \"Testimonials\"). Slides container: role=\"group\" or live region for announcements. Individual slides: role=\"group\", aria-roledescription=\"slide\", aria-label=\"Slide 1 of 5\" or actual content description. Visible state: non-visible slides have aria-hidden=\"true\" or inert attribute. Navigation buttons: Previous/Next with clear labels (aria-label=\"Previous slide\"), disabled (aria-disabled) when at boundaries for non-looping. Pagination dots: button elements, current has aria-current=\"true\", aria-label=\"Go to slide 3\". Auto-play requirements: must have pause button (labeled \"Pause auto-play\"), must pause on hover or keyboard focus within carousel, must respect prefers-reduced-motion. Keyboard: focus on carousel region, arrow keys or Tab navigate slides/controls. Announcements: aria-live region announces current slide (\"Slide 2 of 5: Product name\") on change, debounce for auto-play. Reduced motion: @media (prefers-reduced-motion: reduce) disables auto-play entirely and uses instant transitions. Focus management: when navigating, focus can move with slide or stay on controls depending on design. Touch: swipe gestures with adequate targets. Testing: navigate with keyboard only, test with screen reader, test with reduced motion enabled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

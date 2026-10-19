@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c61-add-stepper-input",
+  "slug": "fluidflow-components-c61-add-stepper-input",
+  "title": "Add Stepper Input",
+  "description": "FluidFlow · Add Stepper Input",
+  "content": "Create stepper input. Container: flex items-center. Minus button: w-10 h-10 border rounded-l-lg flex items-center justify-center hover:bg-gray-100, disabled when at min. Input: w-16 h-10 border-y text-center, type=\"number\" hidden arrows. Plus button: w-10 h-10 border rounded-r-lg flex items-center justify-center hover:bg-gray-100, disabled when at max. Value display: font-medium.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c61"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cbb3a89fe3a10f36eb5be868f0142e8d9b6c372b2b2715c17ae04f50f7a1c10d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create number input with increment/decrement buttons.",
+    "detailed": "Create stepper input. Container: flex items-center. Minus button: w-10 h-10 border rounded-l-lg flex items-center justify-center hover:bg-gray-100, disabled when at min. Input: w-16 h-10 border-y text-center, type=\"number\" hidden arrows. Plus button: w-10 h-10 border rounded-r-lg flex items-center justify-center hover:bg-gray-100, disabled when at max. Value display: font-medium.",
+    "advanced": "Create full-featured stepper/quantity input. Layout variants: horizontal (default), vertical (stacked buttons), compact (smaller). Buttons: minus and plus with icons, clear disabled styling (opacity, cursor-not-allowed) at min/max, hold to auto-increment (accelerating). Input: type=\"text\" with number pattern, centered text, optional direct editing. Validation: min, max, step values, clamp on blur if outside range. Sizes: sm, md, lg with consistent proportions. Special values: min=0 for quantities, allow negative, decimal precision (step=0.1). Display formatting: optional unit suffix (e.g., \"5 items\"), comma thousands separator. Accessibility: aria-label for buttons (\"Increase quantity\", \"Decrease quantity\"), input has aria-valuemin, aria-valuemax, aria-valuenow. Touch: larger touch targets on mobile, haptic feedback optional. Keyboard: up/down arrows when input focused, Shift for larger step. Callbacks: onChange, onIncrement, onDecrement, onMin, onMax. Controlled and uncontrolled modes. Error state: border-red-500 when invalid. Animation: optional value change animation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

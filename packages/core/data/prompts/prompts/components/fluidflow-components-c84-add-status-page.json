@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c84-add-status-page",
+  "slug": "fluidflow-components-c84-add-status-page",
+  "title": "Add Status Page",
+  "description": "FluidFlow · Add Status Page",
+  "content": "Create status page layout. Header: company logo, \"System Status\" title, overall status badge (All Systems Operational - green). Current status: list of services, each with name and status indicator (green dot = operational, yellow = degraded, red = outage). Incident history: timeline of past incidents with dates and descriptions. Subscribe: email input to get status updates.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c84"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e9cc9d2adab50c9ed09fd9f02f7100ff875490b2cfcea2c6a82a1c5aaf189b49",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create system status page with service status indicators.",
+    "detailed": "Create status page layout. Header: company logo, \"System Status\" title, overall status badge (All Systems Operational - green). Current status: list of services, each with name and status indicator (green dot = operational, yellow = degraded, red = outage). Incident history: timeline of past incidents with dates and descriptions. Subscribe: email input to get status updates.",
+    "advanced": "Create comprehensive status page. Overall status: large banner showing current status (Operational, Degraded, Partial Outage, Major Outage) with color coding. Component groups: organize services by category (API, Web App, Database, CDN, etc), each with individual status. Status indicators: operational (green), degraded performance (yellow), partial outage (orange), major outage (red), maintenance (blue), unknown (gray). Uptime display: 90-day uptime bar chart per component, percentage uptime. Current incidents: active incidents with severity, title, status (investigating, identified, monitoring, resolved), timestamps, updates timeline. Scheduled maintenance: upcoming maintenance windows with date, time, expected duration, affected components. Incident history: past incidents grouped by date, expandable for full details and update history. Response metrics: average response time charts, latency by region. Subscribe: email and webhook subscriptions, notify on all updates or specific components only. Embed: widget code to embed status on other sites. API status: public API for programmatic access. Time display: show times in visitor timezone. Refresh: auto-refresh with last updated timestamp. Incident communication: markdown support for updates, affected components list. Historical uptime: monthly/yearly uptime reports. Accessibility: status conveyed by more than color (text, icons)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

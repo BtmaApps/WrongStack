@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d121-airbnb-booking",
+  "slug": "fluidflow-design-d121-airbnb-booking",
+  "title": "Airbnb/Booking",
+  "description": "FluidFlow · Airbnb/Booking",
+  "content": "Apply Airbnb aesthetic with travel platform feel. White background with accent coral/pink. Large listing photos with carousel. Map integration with markers. Date and guest pickers. Filter pills and dropdowns. Listing cards with price and rating. Host profiles and reviews. Booking flow steps. Wishlist hearts. Location-based search.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d121"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8201c73f654c5ebc64ca592de4db972757f07c7738b5433e4da6467d9211b73c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create travel booking interface with listing cards, search filters, and reservation flows.",
+    "detailed": "Apply Airbnb aesthetic with travel platform feel. White background with accent coral/pink. Large listing photos with carousel. Map integration with markers. Date and guest pickers. Filter pills and dropdowns. Listing cards with price and rating. Host profiles and reviews. Booking flow steps. Wishlist hearts. Location-based search.",
+    "advanced": "Apply Airbnb aesthetic with booking platform patterns. Colors: white bg, text-gray-900, accent #FF385C (Airbnb pink) for CTAs. Search bar: prominent, location input, date range picker, guest counter, search button. Photos: aspect-square carousel with dots, fill cover, rounded-xl. Listing cards: image carousel, heart overlay top-right, title, rating, price per night. Map: split view or full screen, custom markers with price, cluster at zoom out. Filters: horizontal pill row, modal for more filters, clear all option. Date picker: inline calendar, range selection, blocked dates grayed. Reviews: star rating, review count, individual reviews with avatar. Host section: circular avatar, superhost badge, response rate. Booking widget: sticky sidebar, price breakdown, reserve button, rare find badge. Amenities: icon grid with labels. Location: map with approximate area circle. House rules: icons with descriptions. Cancellation: policy summary with link. Wishlist: filled heart, save to list modal. Mobile: bottom bar for booking, swipe photos. Trust: verified badges, ID confirmation. Footer: comprehensive links, language/currency selectors."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

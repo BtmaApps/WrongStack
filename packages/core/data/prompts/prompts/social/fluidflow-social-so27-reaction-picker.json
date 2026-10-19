@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so27-reaction-picker",
+  "slug": "fluidflow-social-so27-reaction-picker",
+  "title": "Reaction Picker",
+  "description": "FluidFlow · Reaction Picker",
+  "content": "Build reaction picker component. Quick reactions: row of common emojis (❤️ 😂 😮 😢 😡 👍). Expanded picker: full emoji keyboard on expand. Animation: emoji pops/scales on hover and select. Display: reactions shown below content with counts. Remove: tap own reaction to remove. Tooltip: shows who reacted.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "176f04560c4a9a4e5ed41a801ff4f84de8bcc48f5c9ae4d33e2522e130aec4c6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create emoji reaction picker for posts and messages.",
+    "detailed": "Build reaction picker component. Quick reactions: row of common emojis (❤️ 😂 😮 😢 😡 👍). Expanded picker: full emoji keyboard on expand. Animation: emoji pops/scales on hover and select. Display: reactions shown below content with counts. Remove: tap own reaction to remove. Tooltip: shows who reacted.",
+    "advanced": "Build comprehensive emoji reaction picker for posts and messages. Quick reaction bar: appears on hover/long-press near content. Layout: bg-white rounded-full shadow-lg px-2 py-1.5 flex gap-1. Common reactions: 6 default emojis (❤️ 😂 😮 😢 😡 👍), customizable per platform. Each emoji: w-8 h-8 flex items-center justify-center text-xl cursor-pointer. Hover effect: transform scale-150 transition-transform with slight Y offset (pop up). Select animation: brief scale-125 pulse then reaction applied. Expand trigger: + button or long-press any emoji opens full picker. Full emoji picker: larger popover/modal, emoji grid organized by category (Smileys, Gestures, Animals, Food, etc.), category tabs, recent/frequently used section at top, search emoji input, skin tone selector for applicable emoji. Reaction display (below content): flex flex-wrap gap-1. Each unique reaction: rounded-full px-2 py-0.5 text-sm flex items-center gap-1, emoji + count, bg-gray-100 hover:bg-gray-200, own reaction highlighted (bg-blue-100 border border-blue-300). Tooltip on hover: shows who reacted (\"Sarah, John, and 5 others\"). Click reaction: if same as yours removes your reaction, if different switches to that, if from others adds yours. Reaction detail modal: clicking reaction count opens modal showing all users who used each reaction, tabs per emoji, user rows with Follow action. Animation: reactions animate when added (float up + fade out effect), count increments with brief highlight. Reaction limit: max reactions per content (e.g., 1 per user per item). Super reactions: premium/animated reactions for subscribers. Custom reactions: if platform supports, add custom emoji/stickers as reactions. Real-time: reactions update live via WebSocket. Notifications: notify content author of reactions (grouped). Message reactions: inline display next to message bubble, different positioning. Remove reaction: tap your own reaction to remove. Accessibility: picker navigable by keyboard, reaction type and count announced, button clearly labeled."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

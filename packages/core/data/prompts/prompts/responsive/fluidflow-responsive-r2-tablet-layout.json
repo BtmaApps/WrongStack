@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r2-tablet-layout",
+  "slug": "fluidflow-responsive-r2-tablet-layout",
+  "title": "Tablet Layout",
+  "description": "FluidFlow · Tablet Layout",
+  "content": "Create optimized tablet layout for md: breakpoint (768px+). Use two-column grids (grid-cols-2) for cards and content where appropriate. Keep sidebar navigation but make it collapsible. Increase spacing (p-6, gap-6) compared to mobile. Use touch-friendly button sizes (h-12 px-6). Split forms into two columns for shorter forms. Show more content per row in data tables. Adjust hero sections to side-by-side layouts. Consider landscape and portrait orientations - test both. Keep navigation accessible with larger touch targets.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "64ecc8b1ef9fd2144a2ecc4021c3ab3cdb8c34834ba9aeece4d675ff44e07bb5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create tablet-optimized layout with two columns and collapsible sidebar.",
+    "detailed": "Create optimized tablet layout for md: breakpoint (768px+). Use two-column grids (grid-cols-2) for cards and content where appropriate. Keep sidebar navigation but make it collapsible. Increase spacing (p-6, gap-6) compared to mobile. Use touch-friendly button sizes (h-12 px-6). Split forms into two columns for shorter forms. Show more content per row in data tables. Adjust hero sections to side-by-side layouts. Consider landscape and portrait orientations - test both. Keep navigation accessible with larger touch targets.",
+    "advanced": "Create optimized tablet layout for md: breakpoint (768px+) supporting both iPad and Android tablets. Use two-column grids (grid-cols-2) for cards and content where appropriate - consider content relationship when splitting. Keep sidebar navigation but make it collapsible with toggle button always visible (fixed position). Increase spacing (p-6, gap-6) compared to mobile for better touch accuracy. Use touch-friendly button sizes (h-12 px-6 min-w-[120px]). Split forms into two columns for shorter forms - keep related fields grouped. Show more content per row in data tables - consider horizontal scroll for wide tables. Adjust hero sections to side-by-side layouts (flex-row). Test thoroughly in landscape and portrait orientations - content reflow should feel natural in both. Implement Split View/Slide Over support for iPadOS. Add keyboard shortcut support for external keyboard users. Consider stylus input for drawing/annotation features. Maintain 48px touch targets. Test with iPad cursor/trackpad navigation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

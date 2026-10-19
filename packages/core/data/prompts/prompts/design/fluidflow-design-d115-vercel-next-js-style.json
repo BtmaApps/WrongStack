@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d115-vercel-next-js-style",
+  "slug": "fluidflow-design-d115-vercel-next-js-style",
+  "title": "Vercel/Next.js Style",
+  "description": "FluidFlow · Vercel/Next.js Style",
+  "content": "Apply Vercel aesthetic with developer platform feel. Dark backgrounds with pure black sections. White text with gray hierarchy. Gradient text for emphasis. Geometric patterns and grids. Sharp corners with subtle borders. Terminal-inspired code blocks. Animated gradient orbs. Technical documentation layouts. Metric displays with monospace numbers. Clean form inputs.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d115"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "64a58e25a88151cd2d71a92f905f3d39114c6eedeee61b8753eaf99df795803d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create developer-focused design with dark theme, gradient accents, and technical precision.",
+    "detailed": "Apply Vercel aesthetic with developer platform feel. Dark backgrounds with pure black sections. White text with gray hierarchy. Gradient text for emphasis. Geometric patterns and grids. Sharp corners with subtle borders. Terminal-inspired code blocks. Animated gradient orbs. Technical documentation layouts. Metric displays with monospace numbers. Clean form inputs.",
+    "advanced": "Apply Vercel aesthetic with developer platform patterns. Background: bg-black or bg-[#0a0a0a], sections with bg-[#111]. Text: text-white for primary, text-gray-400 for secondary. Gradient text: bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent. Borders: border-[#333] thin, cards with border hover:border-gray-600. Code blocks: bg-[#1a1a1a] with bright syntax highlighting, filename tabs. Orbs: fixed gradient circles with blur-3xl, animate-pulse subtle. Grid patterns: repeating grid lines as background SVG or gradient. Buttons: bg-white text-black for primary, border border-gray-700 for secondary. Inputs: bg-transparent border-gray-700, focus:border-white. Monospace: font-mono for numbers, stats, code. Metrics: large text-5xl font-bold numbers with unit text-sm. Cards: bg-[#111] border border-gray-800, hover glow effect. Navigation: minimal, logo left, links center/right. Footer: comprehensive with multiple columns. Animations: smooth, purposeful, no excess. Deployment status: green/yellow/red dots with status text."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c21-add-stepper",
+  "slug": "fluidflow-components-c21-add-stepper",
+  "title": "Add Stepper",
+  "description": "FluidFlow · Add Stepper",
+  "content": "Create step wizard/stepper component. Horizontal layout: flex with items-center, numbered circles connected by lines. Step states: completed (check icon, green bg), current (blue ring, blue text), upcoming (gray bg, gray text). Connector lines: flex-1 h-0.5, filled color for completed, gray for upcoming. Labels below or beside numbers. Vertical stepper variant for mobile or sidebar placement. Step content area: show content for current step only. Navigation: Previous/Next buttons, direct step click for completed steps only. Validation: prevent advancing if current step invalid. Progress bar alternative: show percentage complete. Add transition animation between steps. Accessibility: aria-current=\"step\", proper labels. Save progress to localStorage for resuming.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9668f3d63f7070a1cf1160ab17c77b87ebd9f9e321e2173e2d14b3954f26d411",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a step indicator for multi-step forms or processes.",
+    "detailed": "Create step wizard/stepper component. Horizontal layout: flex with items-center, numbered circles connected by lines. Step states: completed (check icon, green bg), current (blue ring, blue text), upcoming (gray bg, gray text). Connector lines: flex-1 h-0.5, filled color for completed, gray for upcoming. Labels below or beside numbers. Vertical stepper variant for mobile or sidebar placement. Step content area: show content for current step only. Navigation: Previous/Next buttons, direct step click for completed steps only. Validation: prevent advancing if current step invalid. Progress bar alternative: show percentage complete. Add transition animation between steps. Accessibility: aria-current=\"step\", proper labels. Save progress to localStorage for resuming.",
+    "advanced": "Create step wizard/stepper component for multi-step forms and processes. Horizontal stepper structure: nav element, ol with flex items-center. Step item: li with flex-1 for equal spacing, flex items-center. Step indicator: flex items-center flex-col or flex-row (label beside). Circle/number: w-10 h-10 rounded-full flex items-center justify-center font-semibold. Step states: completed (bg-green-600 text-white with Check icon), current (ring-2 ring-blue-600 text-blue-600), upcoming (bg-gray-200 text-gray-500). Connector line: flex-1 h-0.5 mx-2, completed (bg-green-600), upcoming (bg-gray-200). Labels: mt-2 text-sm, completed/current (font-medium text-gray-900), upcoming (text-gray-500). Vertical stepper: flex-col layout, line as h-full w-0.5 instead of horizontal, used for sidebar or mobile. Step content area: below stepper, render current step content only with key for remounting. Navigation buttons: flex justify-between mt-8, Previous (disabled on first step), Next/Submit (disabled if current step invalid). Direct navigation: click completed steps to go back, upcoming steps not clickable. Validation integration: validateStep(stepIndex) function called before advancing, show errors inline. Progress bar alternative: div with percentage width, label \"Step 2 of 4\". Animation: content fade/slide transition between steps using AnimatePresence or CSS transitions. Save progress: persist currentStep and formData to localStorage, restore on page load. Optional step indicators: some steps can be marked optional with skip link. ACCESSIBILITY: nav with aria-label=\"Progress\", ol with role=\"list\", current step with aria-current=\"step\", buttons properly labeled. Mobile responsive: vertical layout or simplified horizontal with current step prominent. Component API: steps array with {label, optional?, component}, currentStep, onStepChange, validateStep callback."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

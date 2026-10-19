@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d64-afrofuturism",
+  "slug": "fluidflow-design-d64-afrofuturism",
+  "title": "Afrofuturism",
+  "description": "FluidFlow · Afrofuturism",
+  "content": "Apply Afrofuturist aesthetic blending African diaspora culture with science fiction. Rich colors: royal purple, gold, deep blue, earth tones. African patterns: kente, mud cloth, tribal geometrics. Futuristic technology with African design. Cosmic and spiritual elements. Include natural hair and African features in imagery. Egyptian and Ethiopian influences. Empowering, cosmic, heritage-meets-future atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d64"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1287c76c454c0e6a42007ca7a78500572e70ec1482f9bfe97bec75ed75aa56ed",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create Afrofuturist aesthetic blending African heritage with sci-fi technology and cosmic spirituality.",
+    "detailed": "Apply Afrofuturist aesthetic blending African diaspora culture with science fiction. Rich colors: royal purple, gold, deep blue, earth tones. African patterns: kente, mud cloth, tribal geometrics. Futuristic technology with African design. Cosmic and spiritual elements. Include natural hair and African features in imagery. Egyptian and Ethiopian influences. Empowering, cosmic, heritage-meets-future atmosphere.",
+    "advanced": "Apply Afrofuturist aesthetic blending African diaspora heritage with speculative futures. Color palette: rich and regal - royal purple (#7851a9), gold (#ffd700), deep blue (#00008b), burnt orange (#cc5500), earth brown (#8b4513), black, cosmic silver. African patterns: kente cloth geometric weaves, mud cloth (bogolanfini) symbols, Ndebele patterns, Ankara prints - implement as backgrounds or accents (SVG patterns). Technology design: futuristic tech incorporating African aesthetic - curved organic forms, tribal patterns on surfaces, Wakanda-inspired. Cosmic elements: stars, galaxies, celestial bodies, spiritual connection to universe. Ancient-future: Egyptian (hieroglyphs, pyramids, Nefertiti), Ethiopian (Lalibela, Solomonic), Great Zimbabwe references merged with sci-fi. Sacred geometry: African mathematical patterns, fractal village layouts. Typography: bold, powerful fonts, can incorporate African-inspired letterforms. Imagery: celebrate natural Black features, Afros, braids, African dress, strong powerful figures. Nature connection: African landscapes, baobabs, savannas, merged with tech. Music influence: Afrobeat, jazz, electronic - visualize rhythm. Spirituality: ancestral connection, Sankofa (looking back to move forward), cosmic consciousness. Interactive: flowing, rhythmic animations, cosmic particle effects. Fashion: African fashion meets sci-fi suits. Implementation: SVG for patterns, careful color layering. Accessibility: rich colors provide good contrast, ensure diverse representation is authentic and respectful."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

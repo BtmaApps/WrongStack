@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u10-notifications",
+  "slug": "fluidflow-ux-u10-notifications",
+  "title": "Notifications",
+  "description": "FluidFlow · Notifications",
+  "content": "Build complete notification system. Add toast notifications for transient feedback using fixed bottom-right positioning. Include variants: success (green), error (red), warning (yellow), info (blue) with appropriate icons. Auto-dismiss after 5 seconds with manual close option. Stack multiple toasts with proper spacing. Create notification bell icon with badge showing unread count. Build notification center dropdown/sidebar with list of all notifications. Group notifications by time (Today, Yesterday, Earlier). Mark as read on view or explicit action. Add notification preferences/settings. Implement real-time updates. Include notification sounds option.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "478e9539cd04129960fd4dfb7a44e4ac336f911c92978baf178ff75a9ca9f0ae",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build notification system with toast messages and notification center.",
+    "detailed": "Build complete notification system. Add toast notifications for transient feedback using fixed bottom-right positioning. Include variants: success (green), error (red), warning (yellow), info (blue) with appropriate icons. Auto-dismiss after 5 seconds with manual close option. Stack multiple toasts with proper spacing. Create notification bell icon with badge showing unread count. Build notification center dropdown/sidebar with list of all notifications. Group notifications by time (Today, Yesterday, Earlier). Mark as read on view or explicit action. Add notification preferences/settings. Implement real-time updates. Include notification sounds option.",
+    "advanced": "Build complete notification system covering transient and persistent notifications. Toast notifications for transient feedback: fixed bottom-right (or top-right) positioning avoiding mobile safe areas, z-50. Variants: success (green-500, CheckCircle), error (red-500, XCircle), warning (yellow-500, AlertTriangle), info (blue-500, Info). Auto-dismiss after 5s with progress bar indicator, manual close X button, pause timer on hover. Stack multiple toasts (gap-2), limit to 3 visible, queue others. Animate enter (slide-in-from-right) and exit (fade-out). Notification bell icon: relative positioned badge showing unread count (max \"99+\"), subtle pulse animation for new notifications. Build notification center: dropdown (desktop) or slide-over (mobile), header with \"Notifications\" and \"Mark all read\" button. List notifications grouped by time (Today, Yesterday, This Week, Earlier). Each notification: icon, title, description, timestamp (\"2m ago\"), unread indicator (blue dot). Mark as read on click or explicit action. Add notification preferences in settings: email, push, in-app toggles per notification type. Implement real-time updates via WebSocket or polling. Include notification sound option (with browser permission) and preference toggle. ACCESSIBILITY: Use aria-live=\"polite\" for toasts, manage focus properly in notification center, announce unread count changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

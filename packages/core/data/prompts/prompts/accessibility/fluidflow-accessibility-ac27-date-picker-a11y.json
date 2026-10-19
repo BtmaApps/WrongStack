@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac27-date-picker-a11y",
+  "slug": "fluidflow-accessibility-ac27-date-picker-a11y",
+  "title": "Date Picker A11y",
+  "description": "FluidFlow · Date Picker A11y",
+  "content": "Create accessible date picker component. Structure: dialog or inline calendar with proper ARIA. Grid: role=\"grid\" for calendar, cells are gridcell or button. Keyboard: Arrow keys navigate days, Page Up/Down for months, Home/End for week start/end. Focus: date cells focusable, clear focus indicator. Current date: marked visually and with aria-current=\"date\". Selected date: aria-selected=\"true\". Labels: month/year heading, day-of-week headers. Buttons: previous/next month with labels. Input: connected with aria-describedby for format hint. Announcements: date announced when focused.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6e29eb06ba8b3cfa070324073c27426f0e2f5a613a2e7615358c2bd21e436dd0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build accessible date picker with keyboard navigation.",
+    "detailed": "Create accessible date picker component. Structure: dialog or inline calendar with proper ARIA. Grid: role=\"grid\" for calendar, cells are gridcell or button. Keyboard: Arrow keys navigate days, Page Up/Down for months, Home/End for week start/end. Focus: date cells focusable, clear focus indicator. Current date: marked visually and with aria-current=\"date\". Selected date: aria-selected=\"true\". Labels: month/year heading, day-of-week headers. Buttons: previous/next month with labels. Input: connected with aria-describedby for format hint. Announcements: date announced when focused.",
+    "advanced": "Create accessible date picker following ARIA Date Picker pattern. Calendar structure: role=\"grid\" on calendar, role=\"row\" for weeks, role=\"gridcell\" or role=\"button\" for individual days. Month/year header: heading element or role=\"heading\" showing current month and year. Day-of-week headers: role=\"columnheader\" or th in table structure. Navigation buttons: Previous/Next month buttons with aria-label=\"Previous month, November 2024\". Keyboard navigation: Arrow keys move focus between days (wrap weeks), Page Up/Down change months, Page Up/Down + Shift change years, Home/End go to start/end of week, Enter/Space select date. Focus management: roving tabindex on days (focused day has tabindex=\"0\", others tabindex=\"-1\"), clear visible focus indicator. Date states: aria-current=\"date\" on today, aria-selected=\"true\" on selected date, aria-disabled=\"true\" on disabled dates. Input field: text input with date format hint (aria-describedby), opens calendar on focus or button click, accepts typed dates. Calendar display: as dialog (role=\"dialog\") for popup, trap focus when open, Escape closes; or inline always visible. Date announcement: when focus moves to date, announce full date (\"Wednesday, January 15, 2025\"). Range picker: both dates selected indicated, range highlighted visually. Testing: select date using only keyboard, verify dates announced correctly, test with screen reader."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

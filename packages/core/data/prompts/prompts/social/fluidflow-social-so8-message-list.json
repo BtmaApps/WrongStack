@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so8-message-list",
+  "slug": "fluidflow-social-so8-message-list",
+  "title": "Message List",
+  "description": "FluidFlow · Message List",
+  "content": "Create conversations/inbox list. List item: avatar (w-12 h-12), name/title, last message preview (truncated), timestamp, unread indicator. Unread: bold text, blue dot. Online status: green dot on avatar. Group chats: multiple avatars. Timestamp: relative. Typing indicator: \"typing...\" replaces preview. Search: filter conversations. Tabs: All, Unread, Groups. New message button prominent.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7e6b68cb46a96ce1fa1fb4fe5db2673db8ecf0a9b5ed1710bbe333222c1006f6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create inbox list showing conversations with preview and timestamp.",
+    "detailed": "Create conversations/inbox list. List item: avatar (w-12 h-12), name/title, last message preview (truncated), timestamp, unread indicator. Unread: bold text, blue dot. Online status: green dot on avatar. Group chats: multiple avatars. Timestamp: relative. Typing indicator: \"typing...\" replaces preview. Search: filter conversations. Tabs: All, Unread, Groups. New message button prominent.",
+    "advanced": "Create conversations/inbox list for messaging app. Container: flex flex-col h-full. Header: flex justify-between items-center px-4 py-3 border-b. Title: \"Messages\" (text-xl font-bold). New message button: primary icon button (Edit or PenSquare icon). Search: below header, input with Search icon to filter conversations by name or message content, debounced. Tabs: horizontal tab bar (All, Unread, Groups, Archived) with counts on Unread tab. List: flex-1 overflow-y-auto divide-y divide-gray-100. List item: flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition. Avatar: w-12 h-12 rounded-full relative. Online status: green dot (w-3 h-3 bg-green-500 rounded-full absolute bottom-0 right-0 border-2 border-white). Group chats: stacked avatars (2-3 small overlapping) or group icon. Content column (flex-1 min-w-0): top row (flex justify-between) with name (font-medium truncate) and timestamp (text-xs text-gray-500 flex-shrink-0, relative: \"2m\", \"1h\", \"Yesterday\"). Bottom row: last message preview (text-sm text-gray-500 truncate), typing indicator (\"typing...\" in italic replaces preview when active). Unread indicator: when unread, name and preview in font-semibold, blue dot badge (w-2 h-2 bg-blue-500 rounded-full) or unread count badge. Muted indicator: bell-off icon for muted conversations. Pinned conversations: pinned to top with Pin icon indicator, separate section if many. Actions: swipe to archive/delete on mobile (touch gesture), right-click or long-press for context menu (Pin, Mute, Archive, Delete) on desktop. Empty state: illustration + \"No messages yet\" + \"Start a conversation\" CTA. New message: tapping compose opens contact picker or new conversation view. Real-time: new messages bump conversation to top with subtle animation, update preview text, increment badge. Unread badge on app/tab: show total unread count. Loading: skeleton items. Accessibility: list role, items as buttons or links, announce unread state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

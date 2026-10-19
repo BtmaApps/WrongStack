@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u7-tooltips-hints",
+  "slug": "fluidflow-ux-u7-tooltips-hints",
+  "title": "Tooltips & Hints",
+  "description": "FluidFlow · Tooltips & Hints",
+  "content": "Add contextual tooltips and hints throughout the interface. Use Tooltip component triggered on hover (desktop) or long-press (mobile). Position tooltips intelligently to stay within viewport (top/bottom/left/right). Include arrow pointer indicating the trigger element. Keep tooltip text concise (max 2-3 lines). Add Info icon (HelpCircle) next to complex features as tooltip trigger. Implement dismissible hint banners for important first-time information. Use coach marks for feature discovery with spotlight effect. Add keyboard shortcut hints in tooltips where applicable. Ensure tooltips are accessible with proper ARIA attributes and keyboard support.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5dcf08ac1495f1bb7b36ca03ad2894004002485a3bb00ab1277aa451ddb9f29e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add helpful tooltips that appear on hover with explanations.",
+    "detailed": "Add contextual tooltips and hints throughout the interface. Use Tooltip component triggered on hover (desktop) or long-press (mobile). Position tooltips intelligently to stay within viewport (top/bottom/left/right). Include arrow pointer indicating the trigger element. Keep tooltip text concise (max 2-3 lines). Add Info icon (HelpCircle) next to complex features as tooltip trigger. Implement dismissible hint banners for important first-time information. Use coach marks for feature discovery with spotlight effect. Add keyboard shortcut hints in tooltips where applicable. Ensure tooltips are accessible with proper ARIA attributes and keyboard support.",
+    "advanced": "Add contextual tooltips and hints throughout the interface following accessibility best practices. Use Tooltip component triggered on hover (desktop) with 200ms delay, long-press (mobile) with 500ms threshold. Position tooltips intelligently: calculate viewport boundaries, flip position if needed, maintain 8px padding from edges. Include arrow pointer indicating trigger element using CSS triangle or SVG. Keep tooltip text concise: max 2-3 lines, no critical information (must be accessible without tooltip). Add HelpCircle icon (w-4 h-4 text-gray-400) next to complex features as explicit tooltip trigger - not relying on hover discovery. Implement dismissible hint banners for important first-time information: yellow/blue background, dismiss persists to localStorage. Use coach marks for feature discovery: spotlight effect, step-through tour, \"1 of 5\" counter. Add keyboard shortcut hints in tooltips: \"Save (Ctrl+S)\". ACCESSIBILITY CRITICAL: Use role=\"tooltip\", aria-describedby on trigger, ensure keyboard focusable triggers show tooltip on focus, dont put interactive elements in tooltips, provide 300ms delay before hide to allow mouse movement to tooltip if needed. Consider touch-only devices: add dedicated help buttons instead of relying on long-press. Track tooltip engagement to identify confusing features."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

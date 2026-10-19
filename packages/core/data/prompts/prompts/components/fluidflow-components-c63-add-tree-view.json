@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c63-add-tree-view",
+  "slug": "fluidflow-components-c63-add-tree-view",
+  "title": "Add Tree View",
+  "description": "FluidFlow · Add Tree View",
+  "content": "Create tree view component. Container: pl-0 for root, nested items indented. Item: flex items-center gap-2 py-1 hover:bg-gray-100 px-2 rounded cursor-pointer. Expand icon: rotate-90 when expanded, hidden for leaf nodes. Item icon: folder/file or custom icon. Item text: truncate for long names. Nested children: pl-4 indentation, revealed when parent expanded.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c63"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7b93da739d5aa3bcffa13f64c48cecfa65930d0ba007e62a4140f30291012af6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create collapsible tree structure for file browser or categories.",
+    "detailed": "Create tree view component. Container: pl-0 for root, nested items indented. Item: flex items-center gap-2 py-1 hover:bg-gray-100 px-2 rounded cursor-pointer. Expand icon: rotate-90 when expanded, hidden for leaf nodes. Item icon: folder/file or custom icon. Item text: truncate for long names. Nested children: pl-4 indentation, revealed when parent expanded.",
+    "advanced": "Create full-featured tree view component. Data structure: recursive nodes [{id, label, icon, children, data}]. Node types: folder (has children), file (leaf), with appropriate icons. Expand/collapse: chevron rotates, double-click or Enter to toggle, remember expanded state. Selection: single or multi-select mode, checkbox optional, selected items highlighted. Drag and drop: reorder within same level, move to different parent, drop indicators. Context menu: right-click shows actions (rename, delete, copy, paste, new folder, new file). Inline editing: rename on slow double-click or F2, Enter to save, Escape to cancel. Lazy loading: load children on expand for large trees. Search/filter: filter tree to show matching items with parents. Keyboard navigation: up/down through visible items, left collapse/go to parent, right expand/go to first child, Space select, Enter activate. Icons: customizable per node type, status indicators (modified, error). Badges: counts, status indicators on folders. Virtual scrolling: for very large trees. Accessibility: proper tree ARIA roles (tree, treeitem, group), aria-expanded, keyboard support. Events: onSelect, onExpand, onDrop, onRename, onDelete."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

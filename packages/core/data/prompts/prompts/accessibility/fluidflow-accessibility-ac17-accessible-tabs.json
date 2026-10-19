@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac17-accessible-tabs",
+  "slug": "fluidflow-accessibility-ac17-accessible-tabs",
+  "title": "Accessible Tabs",
+  "description": "FluidFlow · Accessible Tabs",
+  "content": "Build accessible tabs following WAI-ARIA pattern. Structure: tablist with role=\"tablist\", tab buttons with role=\"tab\", panels with role=\"tabpanel\". Associations: aria-controls on tab pointing to panel id, aria-labelledby on panel pointing to tab id. States: aria-selected=\"true\" on active tab. Keyboard: Arrow keys move between tabs, Tab moves to panel content. Activation: automatic (arrows activate) or manual (Enter/Space activates). Focus management: roving tabindex pattern (active tab tabindex=\"0\", others tabindex=\"-1\"). Panel association: panel shows when its tab is selected.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4f8ae0bf79ff3ad19fba66b860a5d8401351781b17cfca5838e4b9865cf756be",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Implement accessible tab interface with proper ARIA roles.",
+    "detailed": "Build accessible tabs following WAI-ARIA pattern. Structure: tablist with role=\"tablist\", tab buttons with role=\"tab\", panels with role=\"tabpanel\". Associations: aria-controls on tab pointing to panel id, aria-labelledby on panel pointing to tab id. States: aria-selected=\"true\" on active tab. Keyboard: Arrow keys move between tabs, Tab moves to panel content. Activation: automatic (arrows activate) or manual (Enter/Space activates). Focus management: roving tabindex pattern (active tab tabindex=\"0\", others tabindex=\"-1\"). Panel association: panel shows when its tab is selected.",
+    "advanced": "Build accessible tabs following WAI-ARIA Tabs pattern. Container: role=\"tablist\", optional aria-label describing the tab group. Tab buttons: role=\"tab\", id for panel reference, aria-controls=\"panel-id\", aria-selected=\"true|false\". Tab panels: role=\"tabpanel\", id matching aria-controls, aria-labelledby=\"tab-id\", tabindex=\"0\" for keyboard access. Roving tabindex: selected tab has tabindex=\"0\", unselected tabs have tabindex=\"-1\", only selected tab in tab order. Keyboard navigation: Left/Right arrows move between horizontal tabs (Up/Down for vertical), arrows wrap from end to start, Tab key moves from tabs to panel content. Activation mode: automatic (arrows immediately show panel) is recommended, manual (arrows just move focus, Enter/Space activates) is alternative. Orientation: aria-orientation=\"horizontal\" (default) or \"vertical\" for vertical tabs, affects which arrows work. Focus visible: clear focus indicator on focused tab. Disabled tabs: aria-disabled=\"true\", style as disabled, skip in arrow navigation. Panel rendering: can render all panels and hide non-selected with hidden attribute, or conditionally render only selected. Animations: fade or slide transitions for panel changes. Persistence: optionally save selected tab to URL hash or localStorage. Mobile: consider switching to accordion pattern on small screens. Testing: Tab to tablist, arrow through tabs, Tab to panel, verify screen reader announces tab name and selected state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

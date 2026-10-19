@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d44-noir-film-noir",
+  "slug": "fluidflow-design-d44-noir-film-noir",
+  "title": "Noir/Film Noir",
+  "description": "FluidFlow · Noir/Film Noir",
+  "content": "Apply film noir aesthetic with dramatic black and white cinematography feel. High contrast lighting with deep shadows. Venetian blind shadow effects. Limited color - mostly grayscale with single accent (red). Dramatic typography with strong hierarchy. Silhouettes and mysterious figures. 1940s-50s visual style. Include subtle grain/film texture. Moody, mysterious, dramatic atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d44"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5ac13ecd87f113c56b1e0fd54432f060cb2147c37d8129ed0342a61695948666",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dramatic film noir aesthetic with high contrast, dramatic shadows, and mysterious atmosphere.",
+    "detailed": "Apply film noir aesthetic with dramatic black and white cinematography feel. High contrast lighting with deep shadows. Venetian blind shadow effects. Limited color - mostly grayscale with single accent (red). Dramatic typography with strong hierarchy. Silhouettes and mysterious figures. 1940s-50s visual style. Include subtle grain/film texture. Moody, mysterious, dramatic atmosphere.",
+    "advanced": "Apply film noir aesthetic with 1940s-50s cinematic drama. Color palette: primarily black and white with extreme contrast, single accent color (blood red #8b0000, amber #ffa000 for warmth). Venetian blind effect: diagonal striped shadows across images and backgrounds (CSS gradient or SVG pattern), iconic noir lighting. Shadows: dramatic, sharp-edged shadows (not soft), deep blacks, strong directional lighting feel. Silhouettes: figure outlines against light backgrounds, mysterious half-lit faces. Typography: classic noir fonts (Bodoni, Times, Impact for headlines), dramatic sizing, italics for emphasis. Film texture: subtle grain overlay, vignette (radial gradient darkening edges), occasional light leaks. Lighting: single source feel, rim lighting on edges, pools of light in darkness. Smoke/fog: subtle haze effects in backgrounds, atmospheric depth. Photography treatment: high contrast B&W filter (filter: grayscale(1) contrast(1.3)), occasional dutch angles. Rain effects: optional rain streaks, wet reflections. Interactive: elements emerge from shadow on hover, dramatic reveals. Detective aesthetic: magnifying glass, case files, newspaper clippings. Urban night: city skyline silhouettes, street lamps, neon sign accents. Implementation: CSS filters for photo treatment, careful shadow layering. Accessibility: extreme contrast needs careful handling, ensure text remains readable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

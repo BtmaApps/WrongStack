@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec14-related-products",
+  "slug": "fluidflow-ecommerce-ec14-related-products",
+  "title": "Related Products",
+  "description": "FluidFlow · Related Products",
+  "content": "Create related/recommended products section. Section header: \"You May Also Like\" or \"Related Products\". Layout: horizontal scroll row. Cards: compact product cards with image, name, price, quick add button. Carousel controls: left/right arrow buttons (hidden on mobile). Responsive: 2 visible on mobile, 4-6 on desktop. Loading: skeleton cards. Personalization: \"Based on your browsing\" if history available. Cross-sell: \"Frequently bought together\" with bundle option.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e249cbffe70506ed7be82f5d496b9a08472d78df8a673a77cb158b396b86aa9d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create horizontal scroll row of related product cards.",
+    "detailed": "Create related/recommended products section. Section header: \"You May Also Like\" or \"Related Products\". Layout: horizontal scroll row. Cards: compact product cards with image, name, price, quick add button. Carousel controls: left/right arrow buttons (hidden on mobile). Responsive: 2 visible on mobile, 4-6 on desktop. Loading: skeleton cards. Personalization: \"Based on your browsing\" if history available. Cross-sell: \"Frequently bought together\" with bundle option.",
+    "advanced": "Create related/recommended products section with multiple display modes. Section container: py-12 with max-w-7xl mx-auto px-4. Section header: flex justify-between items-center mb-6. Title: \"You May Also Like\", \"Related Products\", \"Customers Also Bought\", or personalized \"Based on Your Browsing\" (text-2xl font-bold). \"View All\" link aligned right. Layout options: horizontal scroll row (default) or grid. Horizontal scroll: flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4, hide scrollbar using scrollbar-hide utility or CSS. Each card: snap-center flex-shrink-0 w-[200px] or responsive width. Navigation arrows: absolute positioned ChevronLeft/ChevronRight buttons on sides, hidden on mobile (sm:flex), show only when scrollable (hide at scroll ends), circular bg-white shadow-lg hover:bg-gray-50 rounded-full p-2 buttons, z-10. Dot indicators: optional dots below carousel showing scroll position. Product cards: compact variant with image (aspect-square), product name (line-clamp-2), price, optional \"Quick Add\" button that appears on hover. Quick Add: adds to cart with default options, or opens quick view modal if variants needed. Product selection logic: based on same category, shared tags, purchase history, manual curation, or ML recommendation API. Personalization: if user history exists, show \"Based on your browsing\" with products from view history. \"Recently Viewed\" section: separate horizontal scroll showing products user recently looked at, stored in localStorage. Cross-sell variants: \"Complete the Look\" for fashion (styled outfit pieces), \"Frequently Bought Together\" showing bundle of 2-3 products with combined price and \"Add All to Cart\" button with discount. Responsive: show 2 cards on mobile viewport, 3-4 on tablet, 5-6 on desktop. Cards should be fully visible (no partial cards at edges, or half-visible to hint scrollability). Loading: skeleton cards matching card dimensions. Empty: hide section entirely if no related products. Tracking: track impressions and clicks on related products for analytics/ML training. Performance: lazy load images, defer rendering if below fold. Accessibility: carousel should be navigable via keyboard, announce slide changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

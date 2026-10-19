@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co3-add-icons",
+  "slug": "fluidflow-content-co3-add-icons",
+  "title": "Add Icons",
+  "description": "FluidFlow · Add Icons",
+  "content": "Add relevant icons throughout the UI using lucide-react. Import icons: import { IconName } from \"lucide-react\". Navigation items: Home, Settings, User, Bell, Search, Menu, X. Actions: Plus, Trash2, Edit, Copy, Download, Upload, Share, Save. Status: Check, X, AlertCircle, AlertTriangle, Info, Loader2. Social: Twitter, Github, Linkedin, Mail. Content: FileText, Image, Video, Link, Calendar, Clock. Commerce: ShoppingCart, CreditCard, Package. Sizing: use consistent sizes (h-4 w-4 for inline, h-5 w-5 for buttons, h-6 w-6 for standalone). Add strokeWidth={1.5} for thinner lines if needed. Position icons before text with gap-2. Use aria-hidden=\"true\" on decorative icons.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ba49e3c7733931adc354fbbcf184eb99ef8196915b7a9e0d75c67844e852437e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add relevant icons using lucide-react throughout the UI.",
+    "detailed": "Add relevant icons throughout the UI using lucide-react. Import icons: import { IconName } from \"lucide-react\". Navigation items: Home, Settings, User, Bell, Search, Menu, X. Actions: Plus, Trash2, Edit, Copy, Download, Upload, Share, Save. Status: Check, X, AlertCircle, AlertTriangle, Info, Loader2. Social: Twitter, Github, Linkedin, Mail. Content: FileText, Image, Video, Link, Calendar, Clock. Commerce: ShoppingCart, CreditCard, Package. Sizing: use consistent sizes (h-4 w-4 for inline, h-5 w-5 for buttons, h-6 w-6 for standalone). Add strokeWidth={1.5} for thinner lines if needed. Position icons before text with gap-2. Use aria-hidden=\"true\" on decorative icons.",
+    "advanced": "Add relevant icons throughout the UI using lucide-react for visual clarity and recognition. Import: import { IconName } from \"lucide-react\" - tree-shakes unused icons. Icon categories and suggestions: Navigation (Home, Settings, User, Users, Bell, Search, Menu, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft), Actions (Plus, Trash2, Edit, Pencil, Copy, Download, Upload, Share, Share2, Save, RefreshCw, RotateCcw), Status (Check, CheckCircle, X, XCircle, AlertCircle, AlertTriangle, Info, Loader2, Clock, Ban), Files (FileText, File, Folder, FolderOpen, Image, Video, Music, Archive), Social (Twitter, Github, Linkedin, Facebook, Instagram, Youtube, Mail, Globe), Commerce (ShoppingCart, ShoppingBag, CreditCard, Package, Truck, Receipt, DollarSign), Communication (MessageSquare, MessageCircle, Send, Phone, Video, AtSign), Data (BarChart, LineChart, PieChart, TrendingUp, TrendingDown, Activity). Sizing consistency: h-4 w-4 for inline text and small UI, h-5 w-5 for buttons and nav items, h-6 w-6 for standalone features, h-8 w-8 or larger for hero/empty states. Stroke customization: strokeWidth={1.5} for thinner elegant lines, strokeWidth={2.5} for bolder emphasis. Icon + text pattern: flex items-center gap-2, icon before text typically, after for external links (ExternalLink). Accessibility: aria-hidden=\"true\" on decorative icons (when text label exists), aria-label on icon-only buttons (<button aria-label=\"Delete\"><Trash2 aria-hidden=\"true\" /></button>). Color: inherit text color by default (currentColor), or explicit text-gray-500, text-blue-600 etc. Loading states: replace action icon with Loader2 animate-spin during async operations. Hover states: icon color change or subtle scale."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

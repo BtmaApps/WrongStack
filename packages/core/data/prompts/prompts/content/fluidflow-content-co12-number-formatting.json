@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co12-number-formatting",
+  "slug": "fluidflow-content-co12-number-formatting",
+  "title": "Number Formatting",
+  "description": "FluidFlow · Number Formatting",
+  "content": "Implement number formatting utilities. Use Intl.NumberFormat for locale-aware formatting. Patterns: thousands separators (1,234,567), decimal places (1,234.56), percentages (45.6%), currency ($1,234.00). Abbreviations: 1.2K, 3.5M, 1.2B for large numbers. Ordinals: 1st, 2nd, 3rd, 4th. File sizes: 1.5 KB, 2.3 MB, 1.1 GB. Duration: 2h 30m, 1d 5h. Compact notation: Intl compact display. Negative numbers: handle with parentheses or minus sign. Zero handling: display \"0\" or \"-\" based on context.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d450f927aedf7bfa8da2c032a0400cfcea98cf496deee51a5e62812a7377142e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Format numbers with locale-aware thousands separators and abbreviations.",
+    "detailed": "Implement number formatting utilities. Use Intl.NumberFormat for locale-aware formatting. Patterns: thousands separators (1,234,567), decimal places (1,234.56), percentages (45.6%), currency ($1,234.00). Abbreviations: 1.2K, 3.5M, 1.2B for large numbers. Ordinals: 1st, 2nd, 3rd, 4th. File sizes: 1.5 KB, 2.3 MB, 1.1 GB. Duration: 2h 30m, 1d 5h. Compact notation: Intl compact display. Negative numbers: handle with parentheses or minus sign. Zero handling: display \"0\" or \"-\" based on context.",
+    "advanced": "Implement comprehensive number formatting utilities. Intl.NumberFormat usage: new Intl.NumberFormat(locale, options).format(number). Standard formats: decimal with separators (style: \"decimal\", maximumFractionDigits), currency (style: \"currency\", currency: \"USD\"), percentage (style: \"percent\"). Compact notation: notation: \"compact\" for 1.2K, 3.5M, 1.2B automatically. Custom abbreviations: function to handle thresholds (>=1e9: B, >=1e6: M, >=1e3: K) with specified decimal places. Ordinals: 1st, 2nd, 3rd, 4th - Intl.PluralRules or manual mapping for suffix. File sizes: divide by 1024 progressively, format as bytes/KB/MB/GB/TB with 1-2 decimals. Duration formatting: break into days/hours/minutes/seconds, display relevant units (2h 30m for short, 2 hours 30 minutes for long). Significant figures: maximumSignificantDigits for scientific contexts. Negative handling: accounting style with parentheses vs minus sign. Edge cases: NaN, Infinity, null/undefined (return placeholder or \"N/A\"), very small decimals. Utility structure: formatNumber(value, options), formatCurrency(value, currency), formatPercent(value), formatFileSize(bytes), formatDuration(seconds). Locale: detect from browser or accept as parameter, fallback to \"en-US\". Memoization: cache Intl.NumberFormat instances for performance."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

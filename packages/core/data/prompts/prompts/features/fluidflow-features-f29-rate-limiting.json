@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f29-rate-limiting",
+  "slug": "fluidflow-features-f29-rate-limiting",
+  "title": "Rate Limiting",
+  "description": "FluidFlow · Rate Limiting",
+  "content": "Implement client-side rate limiting. Track attempts: count actions within time window. Throttle: prevent rapid repeated actions. Debounce: combine rapid inputs into single action. Cooldown: enforce waiting period after action. Visual feedback: show remaining cooldown time. Exponential backoff: increase delays after repeated attempts. Per-action limits: different limits for different actions. Reset: clear limits after success or timeout.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "577ef41bfe4e8be2c45554aab73b2c77b6eb1d78a4860537ef1dfe906b004203",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Prevent abuse by limiting action frequency.",
+    "detailed": "Implement client-side rate limiting. Track attempts: count actions within time window. Throttle: prevent rapid repeated actions. Debounce: combine rapid inputs into single action. Cooldown: enforce waiting period after action. Visual feedback: show remaining cooldown time. Exponential backoff: increase delays after repeated attempts. Per-action limits: different limits for different actions. Reset: clear limits after success or timeout.",
+    "advanced": "Implement comprehensive rate limiting for abuse prevention and UX improvement. Client-side throttling: prevent rapid button clicks (onClick disabled for 500ms after click), form submission (disable submit during request), API calls (max N per minute). Debounce for inputs: search input waits 300ms after typing stops before querying, rapid filters batch into single update. Implementation: throttle/debounce from lodash or custom hooks (useThrottle, useDebounce). Cooldown display: if action blocked, show countdown timer (\"Try again in 15s\"), countdown updates live, re-enable button when expired. Token bucket algorithm: allow burst up to limit, refill tokens over time, provides smooth limiting. Per-action configuration: different limits for different actions (comments: 5/min, likes: 30/min, file uploads: 10/hour). Exponential backoff: on repeated failures increase wait time (1s, 2s, 4s, 8s, max 30s), reset on success. Storage: track limits in memory (page session), localStorage (cross-session), or server-side (cross-device). Server coordination: client limits for UX, server limits for actual enforcement, handle 429 responses gracefully. Visual feedback: subtle indicator before limit reached (\"Slow down\"), clear error after limit hit, progress bar showing recovery. Captcha integration: after N failed attempts, require captcha verification. Limit by resource: per-user, per-IP, per-action type. Admin bypass: optional override for admin users or testing."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la13-contact-page",
+  "slug": "fluidflow-layouts-la13-contact-page",
+  "title": "Contact Page",
+  "description": "FluidFlow · Contact Page",
+  "content": "Build contact page. Two-column layout: contact form left, info right. Form: name, email, subject dropdown, message textarea, submit button. Validation: required fields, email format. Contact info: email, phone, address with icons. Office hours. Map embed. Social links. FAQ link. Response time expectation. Success state: thank you message.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b201de79ca0b56c48a8538b80dc0712ee04a3676a9ea75000e8d01986de8d57a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create contact page with form, contact info, and map.",
+    "detailed": "Build contact page. Two-column layout: contact form left, info right. Form: name, email, subject dropdown, message textarea, submit button. Validation: required fields, email format. Contact info: email, phone, address with icons. Office hours. Map embed. Social links. FAQ link. Response time expectation. Success state: thank you message.",
+    "advanced": "Build comprehensive contact page with multiple contact methods. Page header: \"Get in Touch\" (text-4xl font-bold), subheadline \"We would love to hear from you\" (text-xl text-gray-600). Layout: grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto py-16 px-4. Contact form card: bg-white rounded-xl shadow-lg p-8. Form fields: name (text input, required), email (email input, required with format validation), phone (tel input, optional), company (text input, optional), subject dropdown (General Inquiry, Support, Sales, Partnership, Other), message (textarea, rows-6, required, character count). Submit button: w-full, loading state with spinner, disabled when submitting. Validation: inline errors (text-red-600 text-sm), real-time for email format, on submit for required. Success state: replace form with success message (CheckCircle icon, \"Thank you for your message!\", \"We'll get back to you within 24 hours\", \"Send another message\" link). Contact info column: space-y-8. Info cards: each with icon, label, value. Email: Mail icon, email address (clickable mailto:). Phone: Phone icon, number (clickable tel:). Address: MapPin icon, full address. Office hours: Clock icon, hours by day. Social links: horizontal row of social icons (Twitter, LinkedIn, Facebook, Instagram). Map section: aspect-video rounded-xl overflow-hidden, embedded Google Map or Mapbox, alternatively static map image with link to directions. Alternative contacts: \"Need immediate help?\" with link to live chat or support docs. Department contacts: if applicable, separate email/phone for Sales, Support, Press. FAQ preview: \"Frequently Asked Questions\" section with 3-4 common questions in accordion, \"View all FAQs\" link. Trust indicators: response time badge (\"Average response: 4 hours\"), secure form indicator. Mobile: stack columns, full-width map. Accessibility: form labels properly associated, required fields marked, error messages linked to inputs."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

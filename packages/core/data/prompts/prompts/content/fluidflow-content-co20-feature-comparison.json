@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co20-feature-comparison",
+  "slug": "fluidflow-content-co20-feature-comparison",
+  "title": "Feature Comparison",
+  "description": "FluidFlow · Feature Comparison",
+  "content": "Create feature comparison table. Structure: features as rows, plans/products as columns. Header: plan names with highlight on recommended. Cell values: checkmarks, x marks, text values, or partial indicators. Feature groups: section headers grouping related features. Sticky: sticky header for scrolling. Highlight column: emphasized styling on featured plan. Tooltips: extra info on features. Mobile: horizontal scroll or accordion layout. Pricing: row for price with per-month/year. CTA: action buttons per column (Sign up, Contact sales).",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "40367a408ed8304789d5bfd988ca9e89a094bc29caf34b1d76751397ee940e0c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build comparison table for features or pricing plans.",
+    "detailed": "Create feature comparison table. Structure: features as rows, plans/products as columns. Header: plan names with highlight on recommended. Cell values: checkmarks, x marks, text values, or partial indicators. Feature groups: section headers grouping related features. Sticky: sticky header for scrolling. Highlight column: emphasized styling on featured plan. Tooltips: extra info on features. Mobile: horizontal scroll or accordion layout. Pricing: row for price with per-month/year. CTA: action buttons per column (Sign up, Contact sales).",
+    "advanced": "Create comprehensive feature comparison table for pricing or product comparison. Structure: matrix with products/plans as columns, features as rows. Header row: plan names, pricing, recommended badge, CTA buttons. Feature cells: check icon (included), x icon (not included), text/number (limits like \"5 users\"), partial (limited with tooltip). Feature groupings: section headers spanning full width (\"Core Features\", \"Advanced Features\", \"Support\"), collapsible groups for long lists. Sticky header: position: sticky top-0 for scroll, with shadow when scrolled. Column highlighting: recommended/popular plan with distinct background, border, or \"Most Popular\" badge. Tooltips: info icon on features with hover tooltip explaining feature, or on cells explaining limitations. Pricing row: monthly/annual pricing with toggle, show savings for annual, crossed out higher price. Mobile handling: horizontal scroll with sticky first column (feature names), or switch to card layout per plan, or accordion comparing each feature across plans. Responsive columns: hide less important columns on mobile, show expand to see all. CTA row: action buttons per plan (Get Started, Contact Sales), style primary on recommended. Schema markup: Product structured data for SEO. Sticky column: optionally sticky feature name column for wide tables. Empty/null handling: dash for not applicable features. Annual savings: calculate and show \"Save 20%\" badge on annual pricing."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

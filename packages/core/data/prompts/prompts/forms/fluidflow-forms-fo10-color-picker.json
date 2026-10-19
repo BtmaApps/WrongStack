@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo10-color-picker",
+  "slug": "fluidflow-forms-fo10-color-picker",
+  "title": "Color Picker",
+  "description": "FluidFlow · Color Picker",
+  "content": "Create color picker component. Trigger: color swatch button showing current color. Picker panel: absolute dropdown with color selection. Color gradient: saturation-brightness square with draggable selector. Hue slider: horizontal strip for hue selection. Preset swatches: grid of common colors. Input fields: HEX input. Copy button: copy color value. Eyedropper: EyeDropper API if supported.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "276aa3a31aea2ee40d31bd31c66561f51713c2fa4526bec96a23aab18c66a666",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create color swatch button that opens color selection palette.",
+    "detailed": "Create color picker component. Trigger: color swatch button showing current color. Picker panel: absolute dropdown with color selection. Color gradient: saturation-brightness square with draggable selector. Hue slider: horizontal strip for hue selection. Preset swatches: grid of common colors. Input fields: HEX input. Copy button: copy color value. Eyedropper: EyeDropper API if supported.",
+    "advanced": "Create color picker component with gradient selector and multiple input formats. Trigger: color swatch button (w-10 h-10 rounded-lg border shadow-sm) showing current color as background, click to open picker. Picker panel: absolute dropdown (top-full mt-2), bg-white shadow-xl rounded-lg p-4, z-50. Color gradient: 200x150px saturation-brightness square (HSL with fixed hue, S on X-axis, L on Y-axis), rendered using CSS gradient (linear-gradient overlay on linear-gradient), with small circular draggable selector (w-4 h-4 rounded-full border-2 border-white shadow). Hue slider: horizontal strip below (h-3 rounded-full) showing full rainbow gradient, with vertical line thumb. Alpha slider: optional transparency slider below hue, checkered background showing transparency, colored gradient overlay. Preset swatches: grid (4x4 or 8x2) of commonly used colors (brand colors, grays, rainbow), click to select. Recent colors: row showing last 5-10 selected colors, stored in localStorage. Input fields: HEX input with # prefix (validate 3 or 6 char hex), RGB inputs (0-255 each for R, G, B), HSL inputs optional. Format toggle: button to switch between HEX/RGB/HSL display. Color preview: side-by-side comparison showing current vs previous color. Copy button: copy color value to clipboard with \"Copied!\" feedback. Eyedropper: if window.EyeDropper supported, show eyedropper button that activates screen color picking. Named colors: optional tab showing named HTML colors (red, blue, coral, etc.). Keyboard: arrow keys adjust position in gradient, Tab between controls. Close: Apply button saves and closes, outside click with option to save or cancel. Accessibility: proper labels for all controls, announce color changes."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

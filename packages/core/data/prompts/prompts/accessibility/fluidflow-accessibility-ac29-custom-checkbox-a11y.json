@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac29-custom-checkbox-a11y",
+  "slug": "fluidflow-accessibility-ac29-custom-checkbox-a11y",
+  "title": "Custom Checkbox A11y",
+  "description": "FluidFlow · Custom Checkbox A11y",
+  "content": "Create accessible custom checkbox and radio components. Hidden native input: visually hidden but not display:none, receives focus and input. Custom visual: pseudo-element or sibling styled element. Label: clicking label toggles input (htmlFor). States: checked state styled, focus ring visible, disabled styling. Keyboard: Space toggles checkbox, arrow keys navigate radio group. ARIA: aria-checked for indeterminate state if needed. Grouping: radio buttons in fieldset with legend, role=\"radiogroup\" with aria-labelledby. Custom styling: focus-visible ring, checked indicator (check icon, filled circle).",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "37daa4ec9feee8c6d8b3249cf56a7422d81f777994009185e2ff18cb095ab3bf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build accessible custom-styled checkboxes and radio buttons.",
+    "detailed": "Create accessible custom checkbox and radio components. Hidden native input: visually hidden but not display:none, receives focus and input. Custom visual: pseudo-element or sibling styled element. Label: clicking label toggles input (htmlFor). States: checked state styled, focus ring visible, disabled styling. Keyboard: Space toggles checkbox, arrow keys navigate radio group. ARIA: aria-checked for indeterminate state if needed. Grouping: radio buttons in fieldset with legend, role=\"radiogroup\" with aria-labelledby. Custom styling: focus-visible ring, checked indicator (check icon, filled circle).",
+    "advanced": "Create accessible custom checkbox and radio components with full keyboard and screen reader support. Implementation approach: visually hidden native input + styled pseudo-element/sibling. Hidden input: position: absolute, opacity: 0, width: 1px, height: 1px (not display: none which removes from accessibility tree), still focusable and operable. Label connection: label wraps input, or label htmlFor matches input id, clicking label toggles input. Custom visual element: sibling span styled as checkbox/radio, or ::before pseudo-element, pointer-events: none (clicks go to input). States to style: unchecked (border), checked (check icon or filled), focused (focus ring on custom element via input:focus-visible + sibling), disabled (opacity, cursor), indeterminate (dash icon). Focus indicator: input:focus-visible + .custom-checkbox { ring-2 ring-blue-500 }, ensure visible on all backgrounds. Checked indicator: SVG checkmark or pseudo-element, transition for smooth appearance. Radio specifics: circular shape, filled circle when selected, group with fieldset/legend or role=\"radiogroup\" with aria-labelledby. Indeterminate: for checkbox trees, set via JavaScript (input.indeterminate = true), style with :indeterminate pseudo-class. Touch targets: ensure 44x44px minimum clickable area. Animation: subtle scale or color transition on check/uncheck. Tailwind example: sr-only on input, peer class for sibling styling. Testing: Tab to each control, Space to toggle, verify screen reader announces checked state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

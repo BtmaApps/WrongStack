@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so31-connection-request",
+  "slug": "fluidflow-social-so31-connection-request",
+  "title": "Connection Request",
+  "description": "FluidFlow · Connection Request",
+  "content": "Build connection request component. Request card: avatar, name, mutual connections, message if included. Actions: Accept and Decline buttons. Preview: brief profile preview. Request list: pending requests with count badge. Sent requests: view pending outgoing requests. Suggestions: \"People you may know\" below requests.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "27ecb8caf6e45a0a0be363d21ff0e050a39311bcbef3db6dc84335f3310ab014",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create connection/friend request notification with actions.",
+    "detailed": "Build connection request component. Request card: avatar, name, mutual connections, message if included. Actions: Accept and Decline buttons. Preview: brief profile preview. Request list: pending requests with count badge. Sent requests: view pending outgoing requests. Suggestions: \"People you may know\" below requests.",
+    "advanced": "Build comprehensive connection/friend request system UI. Request notification card: bg-white rounded-lg shadow-sm p-4 border. Layout: flex gap-3. Avatar: w-14 h-14 rounded-full, click previews profile. Content: flex-1. Name: font-semibold, verified badge if applicable, click to profile. Username: text-gray-500 text-sm. Mutual connections: text-sm text-gray-600 \"8 mutual friends\" with tiny avatar stack, or \"Works at [Company]\" context. Request message: if included, text-sm italic text-gray-600 in quotes, line-clamp-2 with expand. Sent time: text-xs text-gray-400 \"2 days ago\". Action buttons: flex gap-2 mt-3. Accept/Confirm: bg-blue-500 text-white px-4 py-2 rounded-lg. Decline/Delete: text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-lg, or just X button. Confirmation: brief success animation on accept, card removes with animation on decline. Quick actions: accept without opening card via checkmark button. Pending requests page: header with count \"Friend Requests (12)\", tabs or sections for Received and Sent. Received list: cards as described above, infinite scroll if many. Sent requests: similar cards but with \"Pending\" status and \"Cancel Request\" option. Request settings: \"Who can send you requests\" link to privacy settings. Bulk actions: \"Accept All\" for trusted sources (e.g., from contacts). Request expiration: old requests auto-expire or show \"Expired\" state. Request from notification: push notification \"[Name] sent you a friend request\" with Accept/View actions. Profile integration: \"Add Friend\" button state changes to \"Request Sent\" then \"Friends\". Cancel sent request: from profile or sent requests list. Connection suggestions: \"People You May Know\" section below requests, similar cards with \"Add Friend\" instead of Accept/Decline. Request message: option to include message when sending request. Follow vs friend: if platform has both, UI distinguishes (Follow is one-way, Friend is mutual). Rate limiting: prevent spam requests, \"You've sent too many requests\" warning. Accessibility: request actions clearly labeled with user name, status changes announced, keyboard navigable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

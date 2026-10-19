@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c42-add-back-to-top",
+  "slug": "fluidflow-components-c42-add-back-to-top",
+  "title": "Add Back to Top",
+  "description": "FluidFlow · Add Back to Top",
+  "content": "Create back to top button appearing after scroll. Button: fixed bottom-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg. Icon: ArrowUp centered. Show/hide: hidden initially, show after scrolling down 300px. Click handler: window.scrollTo({ top: 0, behavior: \"smooth\" }). Transition: opacity and transform for smooth appear/disappear. Hover state: scale-110 or darker background. z-index: z-40 to stay above content but below modals.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c42"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "e433ec764c2db2ca3f4ec21ef6860fb07096f39a034a158c00e4b322f2c9fb09",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a back to top button that appears on scroll.",
+    "detailed": "Create back to top button appearing after scroll. Button: fixed bottom-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg. Icon: ArrowUp centered. Show/hide: hidden initially, show after scrolling down 300px. Click handler: window.scrollTo({ top: 0, behavior: \"smooth\" }). Transition: opacity and transform for smooth appear/disappear. Hover state: scale-110 or darker background. z-index: z-40 to stay above content but below modals.",
+    "advanced": "Create polished back-to-top button with progress indicator. Show logic: useState for visibility, useEffect with scroll event listener (throttled with requestAnimationFrame or lodash throttle). Show threshold: configurable, default 300px from top. Button: fixed bottom-6 right-6 z-40. Button styling: w-12 h-12 rounded-full shadow-lg transition-all duration-300 ease-out. Hidden state: opacity-0 translate-y-4 pointer-events-none. Visible state: opacity-100 translate-y-0. Colors: bg-blue-600 hover:bg-blue-700 text-white, or bg-white hover:bg-gray-50 text-gray-700 border. Icon: ArrowUp w-5 h-5 centered. Click handler: window.scrollTo({ top: 0, behavior: \"smooth\" }), or use scrollIntoView on body. Progress ring: SVG circle around button showing scroll progress (stroke-dashoffset based on scroll percentage). Mobile considerations: bottom-4 right-4, larger touch target, avoid overlapping with mobile navigation. Accessibility: aria-label=\"Back to top\", focus-visible:ring-2. Animation enhancement: icon animates up slightly on hover. Tooltip: optional \"Back to top\" tooltip on hover. Props: threshold, smooth (boolean), showProgress, position (bottom-left, bottom-right, etc), offset from edge. Optional: show current scroll percentage as text."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

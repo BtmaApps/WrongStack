@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so16-search-with-filters",
+  "slug": "fluidflow-social-so16-search-with-filters",
+  "title": "Search with Filters",
+  "description": "FluidFlow · Search with Filters",
+  "content": "Build search page with comprehensive filtering. Search input: prominent, with search icon, recent searches dropdown. Result tabs: Top, People, Posts, Tags, Places. People results: user cards with follow button. Posts: post cards with highlighting. Tags: hashtag list with post counts. Filters: date range, from user, has media. Search suggestions as you type.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "400f18f9fdf1a5cf0a74469ab2db473ce1f7fd0b206d4d185d6ba9f5efcbb791",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create search interface with type filters and result sections.",
+    "detailed": "Build search page with comprehensive filtering. Search input: prominent, with search icon, recent searches dropdown. Result tabs: Top, People, Posts, Tags, Places. People results: user cards with follow button. Posts: post cards with highlighting. Tags: hashtag list with post counts. Filters: date range, from user, has media. Search suggestions as you type.",
+    "advanced": "Build comprehensive search interface with multi-type results and filtering. Search header: large search input (text-lg py-3 px-4), Search icon inside, clear X button when has value, recent searches dropdown on focus (if empty query). Auto-suggestions: as typing, show suggestions grouped by type (Users, Tags, Topics) with icons, keyboard navigation. Result tabs: horizontal tabs (Top, People, Posts, Tags, Places/Locations), active tab underlined, counts in badges. Top results page: mixed results showing best matches from each type, sections with \"See all\" links. People results: list or grid of user cards, each with avatar, name, username, bio preview (line-clamp-2), mutual followers count, Follow button, click navigates to profile. Posts results: post cards with search term highlighting (mark tag or bg-yellow-100), show matched content context, standard post engagement. Tags/Hashtags: list showing #hashtag, post count (\"12.4K posts\"), trending indicator if applicable, click searches that tag. Locations: if applicable, location name, map pin icon, post count. Advanced filters sidebar or dropdown: date range (Any time, Today, This week, This month, Custom), from specific user (@username input), has media toggle (only show posts with images/video), minimum likes/engagement filter, language filter. Filter pills: active filters shown as removable pills above results. Search operators: support \"from:username\", \"has:media\", \"since:2024-01-01\" in query. No results state: helpful message, suggestions (check spelling, try different keywords), related searches. Saved searches: star to save, access from recent searches. Search history: recent searches stored locally, clear history option. Trending: sidebar or below search showing trending topics/hashtags. Pagination: infinite scroll with loading indicator. Performance: debounced search (300ms), show skeleton during load. URL state: search query and filters reflected in URL for sharing/bookmarking. Mobile: full-screen search experience, filter sheet slides up. Accessibility: search input properly labeled, results announced, keyboard navigable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

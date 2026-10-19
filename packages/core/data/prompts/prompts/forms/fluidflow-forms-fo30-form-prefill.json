@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo30-form-prefill",
+  "slug": "fluidflow-forms-fo30-form-prefill",
+  "title": "Form Prefill",
+  "description": "FluidFlow · Form Prefill",
+  "content": "Build form prefill functionality. URL params: read field values from query string. Storage: prefill from localStorage or API. Mapping: map param names to field names. Transform: transform values as needed. Defaults: merge with default values. Clear: option to clear prefilled data. Privacy: handle sensitive prefilled data carefully.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "507b15b4a2d5ea1ae2063b1fb530290880e3856b9abebd61c54dc88437b42a1c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Prefill form fields from URL parameters or stored data.",
+    "detailed": "Build form prefill functionality. URL params: read field values from query string. Storage: prefill from localStorage or API. Mapping: map param names to field names. Transform: transform values as needed. Defaults: merge with default values. Clear: option to clear prefilled data. Privacy: handle sensitive prefilled data carefully.",
+    "advanced": "Build comprehensive form prefill system from multiple sources. URL parameters: parse URLSearchParams, map to form fields, support nested params (address[city]=NYC). LocalStorage/SessionStorage: read saved draft data, merge with defaults. API response: prefill from existing record (edit mode), transform API format to form format. Data sources priority: defaults < storage < URL params < API (or configurable order). Field name mapping: handle different param names vs form field names, transformation rules. Value transformation: convert strings to proper types (numbers, booleans, dates), handle arrays from comma-separated, decode URI components. Partial prefill: fill only provided fields, keep defaults for others. Sensitive data: never prefill passwords, tokens, or security questions from URL, consider hiding from browser history. Clear prefill: button to reset to defaults, clear storage. Edit mode detection: detect if editing existing record vs creating new, show appropriate UI. Prefill indicators: optionally show which fields were prefilled, \"Reset to original\" per field. Validation timing: validate prefilled data, show errors if invalid. History cleanup: optionally remove prefill params from URL after reading (replaceState). Multi-step forms: prefill data persists across steps. Testing: query string builder for testing prefill scenarios. Redirect handling: preserve prefill params through auth redirects. Accessibility: announce when form is prefilled. Analytics: track prefill usage and sources. Default value handling: distinguish between empty and intentionally cleared."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d61-risograph-print",
+  "slug": "fluidflow-design-d61-risograph-print",
+  "title": "Risograph Print",
+  "description": "FluidFlow · Risograph Print",
+  "content": "Apply risograph print aesthetic with screen printing charm. Limited color palette (2-4 spot colors). Visible halftone dot patterns. Slight color misregistration/offset. Paper texture and grain. Colors overlap creating new tones. Fluorescent accent colors available. Include print imperfections. Flat graphic illustration style. Handmade, indie publishing atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d61"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7a0b2d4de18825e81d4a9b6f81b12f276895d3aef3a671ce5bda22d286d1d0b1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create risograph print aesthetic with limited colors, texture grain, and layered ink effects.",
+    "detailed": "Apply risograph print aesthetic with screen printing charm. Limited color palette (2-4 spot colors). Visible halftone dot patterns. Slight color misregistration/offset. Paper texture and grain. Colors overlap creating new tones. Fluorescent accent colors available. Include print imperfections. Flat graphic illustration style. Handmade, indie publishing atmosphere.",
+    "advanced": "Apply risograph print aesthetic with screen printing/duplicator charm. Limited palette: traditionally 2-4 spot colors per print - common colors: fluorescent pink (#ff6eb4), blue (#0078bf), yellow (#ffe800), orange (#ff6c2f), green (#00a95c), black. Colors are semi-transparent inks. Halftone: visible dot patterns for tonal variation - implement using SVG filter or CSS radial-gradient pattern, vary dot density for shading. Color mixing: where colors overlap, they create third color (like screen printing) - use mix-blend-mode: multiply for overlapping elements. Misregistration: slight offset between color layers (1-3px) suggesting imperfect alignment - apply different transforms to color layers. Paper texture: visible paper grain/fiber, off-white background (#f5f2e8), subtle noise overlay. Ink characteristics: slightly uneven coverage, occasional speckling, soft edges. Illustration style: flat graphic shapes, bold outlines, limited color fills. Typography: often bold sans-serif, can have slight texture. Imperfections: embrace happy accidents - ink bleeds, dust marks, uneven coverage. Composition: often layered, overlapping elements, collage-like. Neon option: fluorescent colors on dark paper for special effect. Zine aesthetic: DIY publishing, indie comics, art prints. Implementation: SVG with filters for halftone, multiple layers with blend modes, noise texture overlay. Accessibility: limited palette helps contrast, ensure halftone doesnt reduce readability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

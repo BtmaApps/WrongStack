@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f2-filter-sort",
+  "slug": "fluidflow-features-f2-filter-sort",
+  "title": "Filter & Sort",
+  "description": "FluidFlow · Filter & Sort",
+  "content": "Add comprehensive filter and sort controls for lists/grids. Filter UI: sidebar with checkboxes for categories, range sliders for prices/dates, search input for text filter. Active filters: show pills/tags above results with remove button each. Clear all filters option. Sort controls: dropdown with options (Newest, Oldest, Price: Low to High, Name A-Z, Popular). Sort direction toggle (ascending/descending arrow). Show result count (\"Showing 24 of 156 items\"). Loading state during filter application.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "91e81d95d03ef5e4477537943a872339e064284e0a6740b34ef4099533c2317c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add filter checkboxes and sort dropdown to filter and order list items.",
+    "detailed": "Add comprehensive filter and sort controls for lists/grids. Filter UI: sidebar with checkboxes for categories, range sliders for prices/dates, search input for text filter. Active filters: show pills/tags above results with remove button each. Clear all filters option. Sort controls: dropdown with options (Newest, Oldest, Price: Low to High, Name A-Z, Popular). Sort direction toggle (ascending/descending arrow). Show result count (\"Showing 24 of 156 items\"). Loading state during filter application.",
+    "advanced": "Add comprehensive filter and sort controls for lists/grids. Filter UI: sidebar with checkboxes for categories, range sliders for prices/dates, search input for text filter, color swatches for color filters. Active filters: show pills/tags above results with remove button each, persist to URL query params for shareable filtered views. Clear all filters option. Sort controls: dropdown with options (Newest, Oldest, Price: Low to High, Name A-Z, Popular, Best Match). Sort direction toggle (ascending/descending arrow icon). Apply filters client-side for small datasets (<500 items) or trigger debounced API call for large datasets. Show result count (\"Showing 24 of 156 items\"). Loading state: skeleton or spinner during filter application. Reset filters to default. Mobile: collapsible filter panel (Sheet component) or full-screen modal with Apply button. URL sync: update query params on filter change for bookmarking and sharing. Handle empty results with helpful \"No items match\" message and filter adjustment suggestions. Implement faceted filtering showing available options based on current results. Add \"Save filter preset\" for power users."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

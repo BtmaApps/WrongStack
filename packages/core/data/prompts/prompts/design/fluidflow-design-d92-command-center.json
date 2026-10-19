@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d92-command-center",
+  "slug": "fluidflow-design-d92-command-center",
+  "title": "Command Center",
+  "description": "FluidFlow · Command Center",
+  "content": "Apply command center aesthetic with operations center feel. Multi-screen wall visualization. Real-time status panels. Alert and incident indicators. World map with location markers. Communication status displays. Timeline and event logging. Priority queue displays. Operator workstation styling. Mission-critical monitoring atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d92"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7ae7cba1b189a7bbf86bdd4f1d07c6bb032ed270968018d8dedaa29bc90fce02",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create mission control aesthetic with multi-screen dashboards, alert systems, and operations monitoring.",
+    "detailed": "Apply command center aesthetic with operations center feel. Multi-screen wall visualization. Real-time status panels. Alert and incident indicators. World map with location markers. Communication status displays. Timeline and event logging. Priority queue displays. Operator workstation styling. Mission-critical monitoring atmosphere.",
+    "advanced": "Apply command center aesthetic with mission-critical operations center feel. Multi-screen layout: grid of panels simulating video wall, each panel a distinct view. Main display: large central visualization (world map, system topology, or live feed), smaller surrounding panels. Alert system: priority levels (P1 critical - red pulse, P2 high - orange, P3 medium - yellow, P4 low - blue), audible alert references, acknowledgment buttons. Incident ticker: scrolling recent incidents, time since occurrence, assigned operator. World map: dark theme map with location markers, animated pulses for events, connection lines between sites, regional status overlays. Time displays: multiple timezone clocks, UTC prominent, local times for key locations. Status matrices: grid of systems/services with RAG status, quick drill-down. Metrics: large single-number displays for key metrics, trend arrows, threshold lines. Communication panel: channel status (satellite, fiber, radio), link quality bars. Queue management: incident queue, SLA timers, escalation countdowns. Timeline: horizontal timeline of events, shift markers, incident duration bars. Operator identification: logged-in operator badge, role/permission indicators. Runbook: procedure panels, checklist tracking. Escalation: escalation path visualization, on-call roster. Audio levels: visual representation of communication channels. Video feeds: grid of camera/screen views, fullscreen toggle. Announcement bar: system-wide messages, maintenance notifications. Shift handover: status summary for shift change. Implementation: CSS Grid for panel layout, real-time updates via WebSocket-style. Accessibility: critical alerts must have non-visual indicators, all information accessible via keyboard. Performance: handle many real-time updates efficiently."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

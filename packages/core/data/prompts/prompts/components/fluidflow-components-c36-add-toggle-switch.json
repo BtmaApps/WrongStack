@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c36-add-toggle-switch",
+  "slug": "fluidflow-components-c36-add-toggle-switch",
+  "title": "Add Toggle Switch",
+  "description": "FluidFlow · Add Toggle Switch",
+  "content": "Create toggle switch component for boolean settings. Container: relative inline-flex items-center cursor-pointer. Track: w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-blue-600 transition-colors. Thumb: absolute w-5 h-5 bg-white rounded-full shadow transform transition-transform, left-0.5 when off, translate-x-5 when on. Hidden checkbox input for accessibility. Label text alongside. Disabled state: opacity-50 cursor-not-allowed. Focus ring on keyboard navigation. Optional on/off icons inside thumb.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c36"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f4664083991f753be52760f27f80ed018d4a796973256d7acad0560b73a0173c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create an on/off toggle switch component.",
+    "detailed": "Create toggle switch component for boolean settings. Container: relative inline-flex items-center cursor-pointer. Track: w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-blue-600 transition-colors. Thumb: absolute w-5 h-5 bg-white rounded-full shadow transform transition-transform, left-0.5 when off, translate-x-5 when on. Hidden checkbox input for accessibility. Label text alongside. Disabled state: opacity-50 cursor-not-allowed. Focus ring on keyboard navigation. Optional on/off icons inside thumb.",
+    "advanced": "Create accessible toggle switch following best practices. Structure: label wrapper containing hidden checkbox + visual toggle. Hidden input: type=\"checkbox\" sr-only, handles actual state. Visual toggle - track: relative w-11 h-6 rounded-full transition-colors duration-200, off (bg-gray-200), on (peer-checked:bg-blue-600). Thumb: absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200, on state: peer-checked:translate-x-5. Focus state: peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 on track. Sizes: sm (w-9 h-5, thumb w-4 h-4), md (w-11 h-6, thumb w-5 h-5), lg (w-14 h-7, thumb w-6 h-6). With icons: show icons inside track or thumb (sun/moon for dark mode, check/x for on/off). With labels: \"On\"/\"Off\" text labels beside or inside track. Loading state: spinner in thumb, disabled interaction. Disabled: opacity-50 cursor-not-allowed on container. Colors: success (green), error (red), warning (yellow) variants. Accessibility: checkbox is the actual control, label wraps entire component, aria-checked reflects state if using role=\"switch\" instead of checkbox. Props: checked, onChange, disabled, loading, size, onIcon, offIcon, onLabel, offLabel. Animation: smooth translate + color transition, optional bounce on toggle."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f17-file-upload",
+  "slug": "fluidflow-features-f17-file-upload",
+  "title": "File Upload",
+  "description": "FluidFlow · File Upload",
+  "content": "Build file upload component with drag and drop. Drop zone: dashed border area with icon and text prompt. Visual feedback: border color change on drag over. File preview: thumbnails for images, icons for other types. Progress: upload progress bar per file. Multiple files: support selecting multiple files. File info: show name, size, type. Remove: X button to remove before upload. Validation: file type and size limits. Error states: show validation errors per file.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c4e9865dd660a62ba725014cbca009128b436336bd8416fc53da095f8ccefe13",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add drag and drop file upload with preview and progress.",
+    "detailed": "Build file upload component with drag and drop. Drop zone: dashed border area with icon and text prompt. Visual feedback: border color change on drag over. File preview: thumbnails for images, icons for other types. Progress: upload progress bar per file. Multiple files: support selecting multiple files. File info: show name, size, type. Remove: X button to remove before upload. Validation: file type and size limits. Error states: show validation errors per file.",
+    "advanced": "Build comprehensive file upload component with drag and drop support. Drop zone: dashed border (border-2 border-dashed border-gray-300), centered icon (Upload or CloudUpload), instructional text (\"Drag files here or click to browse\"). Visual states: default, hover (border-gray-400), dragover active (border-blue-500 bg-blue-50), error (border-red-500). Input: hidden file input triggered by click on zone, accept attribute for allowed types. Multiple files: multiple attribute, handle FileList. File preview list: below drop zone, each file shows: thumbnail (for images, use URL.createObjectURL), icon (for other types based on extension), filename (truncated with tooltip), file size (formatted KB/MB), remove button (X icon), status indicator. Upload progress: individual progress bar per file (bg-blue-600, transition-all), percentage text, or global progress for batch. States per file: pending, uploading, complete (green check), error (red X with message). Validation: check file type against accept list, max file size (e.g., 10MB), max total size, max file count. Error display: inline error message with specific reason (\"File too large\", \"Invalid type\"). Drag and drop events: onDragEnter, onDragOver (preventDefault), onDragLeave, onDrop. Prevent full page drop: add listeners to window to prevent browser default. Upload handling: FormData for multipart, or base64 encoding, chunked upload for large files. Cancel upload: abort controller for in-progress uploads. Accessibility: keyboard accessible, aria-label on drop zone, announce upload status."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a22-skeleton-shimmer",
+  "slug": "fluidflow-animation-a22-skeleton-shimmer",
+  "title": "Skeleton Shimmer",
+  "description": "FluidFlow · Skeleton Shimmer",
+  "content": "Create shimmer animation for skeleton loading states. Apply moving highlight gradient over gray base. Animate from left to right continuously. Use linear-gradient with transparent, light highlight, transparent. Animate background-position. Keep animation subtle and non-distracting. Apply to text placeholders, image containers, and UI shapes. Sync animation across multiple skeleton elements. Consider reduced motion preference.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8f94d8262526bb44e90dc8558768a09d2f89c89ab0a5b7be443f0a68772e8b19",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add shimmer animation to skeleton loading placeholders.",
+    "detailed": "Create shimmer animation for skeleton loading states. Apply moving highlight gradient over gray base. Animate from left to right continuously. Use linear-gradient with transparent, light highlight, transparent. Animate background-position. Keep animation subtle and non-distracting. Apply to text placeholders, image containers, and UI shapes. Sync animation across multiple skeleton elements. Consider reduced motion preference.",
+    "advanced": "Create shimmer animation for skeleton loading placeholders providing perceived progress. Base skeleton: bg-gray-200 (or bg-gray-100) with border-radius matching content type (rounded for text, rounded-lg for cards). Shimmer technique: linear-gradient overlay with three stops (transparent, rgba(255,255,255,0.4), transparent), positioned at -100% initially, animate to 100% over 1.5-2s. Implementation: pseudo-element ::after with absolute positioning, gradient background, @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }. Alternative: animate background-position on the skeleton itself with larger background-size. Gradient angle: slight angle (20deg) for natural sweep, or horizontal for uniform. Timing: 1.5-2s duration, infinite loop, ease-in-out or linear. Sync across elements: same animation-duration and animation-delay: 0 ensures synchronized shimmer, or stagger for wave effect. Skeleton shapes: text (h-4 with varying widths for lines), avatar (rounded-full), image (aspect-ratio container), button (rounded-lg). Color matching: adjust shimmer color to match background (lighter shimmer on gray). Performance: use transform: translateX (GPU accelerated) instead of background-position. Reduced motion: static gray without shimmer, or very slow subtle pulse. Component structure: reusable Skeleton component with variant prop (text, avatar, image, button). Content transition: crossfade from skeleton to real content, not abrupt replacement. Dark mode: adjust base gray and shimmer highlight colors. Consider: skeleton should roughly match content dimensions to prevent layout shift."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

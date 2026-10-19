@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec23-price-drop-alert",
+  "slug": "fluidflow-ecommerce-ec23-price-drop-alert",
+  "title": "Price Drop Alert",
+  "description": "FluidFlow · Price Drop Alert",
+  "content": "Build price drop alert feature. Trigger: \"Notify me when price drops\" link/button on product page. Modal form: email input, optional target price (\"Alert me when below $X\"), current price display. Confirmation: success message with check, email sent. Management: link to manage all alerts. Badge on product: show if user has active alert. Integration: appears when product viewed but not purchased.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "291195ca471025e3752c773b34ccc652a052d666ec5068316adc04456d7aa684",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create price drop notification signup form.",
+    "detailed": "Build price drop alert feature. Trigger: \"Notify me when price drops\" link/button on product page. Modal form: email input, optional target price (\"Alert me when below $X\"), current price display. Confirmation: success message with check, email sent. Management: link to manage all alerts. Badge on product: show if user has active alert. Integration: appears when product viewed but not purchased.",
+    "advanced": "Build comprehensive price drop alert system with signup flow and management. Trigger placement: on product page near price, text link \"Get Price Drop Alert\" or \"Notify me when price drops\" with Bell icon, also appears in wishlist items. Trigger states: default state for new signup, \"Alert Active\" badge (bg-blue-100 text-blue-800) if user already subscribed, click to modify. Modal/drawer form: header \"Price Drop Alert\" with Bell icon. Current price display: \"Current Price: $149.99\" prominently shown. Email input: pre-filled if user logged in, placeholder \"Enter your email\", validation. Target price option: optional section \"Alert me when price drops below:\", input with currency symbol, slider alternative between current price and 50% off, presets: \"Any drop\", \"10% off ($134.99)\", \"25% off ($112.49)\". Frequency preference: \"How often can we email you?\" - Immediately, Daily digest, Weekly digest. Product info: small product image and name for confirmation of what they're tracking. Submit button: \"Set Alert\" or \"Notify Me\" primary button. Terms: small text \"We'll email you when price drops. Unsubscribe anytime.\" Privacy link. Success confirmation: modal shows success check animation, \"You'll be notified when [Product] drops below $[Target]\", \"Check your email for confirmation\" note, \"View All Alerts\" link to management page. Already subscribed: if returning, show current alert settings, \"Update Alert\" and \"Remove Alert\" buttons. Alert management page: list of all active price alerts, each row shows product thumbnail, name, current price, target price, date created, status (Active, Triggered, Expired), actions to edit target or remove. Email template: professional email showing product dropped to $X, clear CTA to view product, one-click unsubscribe. Notification channels: email primary, optional SMS, push notification if app. Integration with wishlist: all wishlisted items show option to add price alert, bulk \"Set alerts for all\" option. Back-in-stock combo: for out-of-stock items, combine with stock alert. Analytics: track alert-to-purchase conversion. Rate limiting: limit number of alerts per user to prevent abuse. Accessibility: form properly labeled, success clearly announced, modal traps focus."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

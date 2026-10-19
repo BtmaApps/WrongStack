@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo24-inline-edit",
+  "slug": "fluidflow-forms-fo24-inline-edit",
+  "title": "Inline Edit",
+  "description": "FluidFlow · Inline Edit",
+  "content": "Build inline edit component. Display mode: show text/value normally. Edit mode: click to transform into input. Save: Enter or blur saves changes. Cancel: Escape reverts changes. Validation: validate before saving. Placeholder: show placeholder when empty. Icons: edit icon hint, check/x while editing. Loading: show loading state during save.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "cfa10e911f129f54ea960cfde2d0b918bc15c348fe1888f8a24a8c5f9e957bb1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create text that becomes editable input on click.",
+    "detailed": "Build inline edit component. Display mode: show text/value normally. Edit mode: click to transform into input. Save: Enter or blur saves changes. Cancel: Escape reverts changes. Validation: validate before saving. Placeholder: show placeholder when empty. Icons: edit icon hint, check/x while editing. Loading: show loading state during save.",
+    "advanced": "Build comprehensive inline edit component. Display mode: render as text span or custom element, cursor indicates editability (cursor-pointer or pencil icon on hover). Edit trigger: click text to enter edit mode, or explicit edit button. Edit mode: replace text with input (same size/position), auto-focus, select all text on enter. Input styling: minimal styling to blend with text, or subtle border to indicate editing. Save triggers: Enter key submits, blur saves (configurable), check button explicit save. Cancel triggers: Escape key reverts to original value, X button explicit cancel. Validation: validate before save, show inline error if invalid, prevent save until valid. Optimistic update: show new value immediately, revert on API error. Loading state: show spinner or disable during save request. Success feedback: brief green flash or checkmark on save. Different input types: text input, textarea for multiline, select dropdown for options, date picker for dates. Placeholder: show gray placeholder text when value empty, click to add. Empty state: optionally show \"Click to add\" or plus icon when no value. Icons: pencil icon on hover/focus (Edit2), check and X buttons while editing. Double-click option: require double-click to edit (prevents accidental edits). Keyboard navigation: Tab to next inline edit field. Permissions: disable editing for read-only users. Accessibility: proper labeling, announce mode changes. Implementation: toggle between text element and input based on isEditing state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

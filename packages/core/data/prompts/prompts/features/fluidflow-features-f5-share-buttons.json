@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f5-share-buttons",
+  "slug": "fluidflow-features-f5-share-buttons",
+  "title": "Share Buttons",
+  "description": "FluidFlow · Share Buttons",
+  "content": "Add social sharing functionality. Share button: Share2 icon triggers share options. Native Web Share API: if navigator.share supported, use for mobile-friendly sheet. Fallback: custom dropdown with platform options. Platforms: Twitter/X, Facebook, LinkedIn, WhatsApp, Email, Copy Link. Share URLs: construct proper share URLs with encodeURIComponent. Success feedback: \"Link copied!\" toast.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "99b7ab496ebc4b25b255d14b757605178b7fedf8b52134aeda1fc76245de336e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add share button that opens options for Twitter, Facebook, and copy link.",
+    "detailed": "Add social sharing functionality. Share button: Share2 icon triggers share options. Native Web Share API: if navigator.share supported, use for mobile-friendly sheet. Fallback: custom dropdown with platform options. Platforms: Twitter/X, Facebook, LinkedIn, WhatsApp, Email, Copy Link. Share URLs: construct proper share URLs with encodeURIComponent. Success feedback: \"Link copied!\" toast.",
+    "advanced": "Add social sharing functionality with comprehensive platform support. Share button: Share2 icon triggers share options. Native Web Share API: if navigator.share && navigator.canShare supported, use for mobile-friendly native sheet with title, text, url parameters. Fallback: custom dropdown/modal with platform options. Platforms: Twitter/X (icon, opens intent URL with text and url), Facebook (sharer.php URL), LinkedIn (shareArticle URL with title, summary, source), WhatsApp (wa.me/send?text= with message and URL), Telegram (t.me/share/url), Pinterest (for images), Reddit, Email (mailto: with subject and body), Copy Link (navigator.clipboard.writeText). Share URLs: construct proper share URLs with encodeURIComponent, handle special characters. Include: page title, description meta, canonical URL, optional og:image. Track shares for analytics (fire event on share click). Show share count if available from API. Customize share message per platform respecting character limits. Ensure Open Graph and Twitter Card meta tags are present for rich previews when shared. Success feedback: \"Link copied!\" or \"Opening Twitter...\" toast notification. Handle share failures gracefully. Add QR code generation option for easy mobile sharing. Consider branded short URLs for tracking."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

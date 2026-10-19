@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so7-chat-interface",
+  "slug": "fluidflow-social-so7-chat-interface",
+  "title": "Chat Interface",
+  "description": "FluidFlow · Chat Interface",
+  "content": "Build real-time chat/messaging interface. Layout: flex-col h-full with header, messages area (flex-1 overflow-y-auto), input area. Header: recipient avatar and name, online status, call/video icons. Messages: grouped by date. Message bubbles: own messages right-aligned (bg-blue-600 text-white), others left-aligned (bg-gray-100). Typing indicator: animated dots. Input area: text input, attachment button, emoji button, send button.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4045ed96d1d1f5fdfdf3b8fcb52aa368ce9b2ff7cf6e44f006a8c675e4d7992f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create messaging interface with message bubbles and input field.",
+    "detailed": "Build real-time chat/messaging interface. Layout: flex-col h-full with header, messages area (flex-1 overflow-y-auto), input area. Header: recipient avatar and name, online status, call/video icons. Messages: grouped by date. Message bubbles: own messages right-aligned (bg-blue-600 text-white), others left-aligned (bg-gray-100). Typing indicator: animated dots. Input area: text input, attachment button, emoji button, send button.",
+    "advanced": "Build real-time chat/messaging interface with full features. Layout: flex flex-col h-full (typically h-screen or fixed height container). Header: flex items-center justify-between px-4 py-3 border-b. Header left: back arrow (mobile), recipient avatar (w-10 h-10 rounded-full), name (font-medium), online status indicator (green dot + \"Online\" or \"Last seen 2h ago\"). Header right: call (Phone icon), video (Video icon), more menu (info, mute, block). Messages area: flex-1 overflow-y-auto px-4 py-2, flex flex-col. Date separators: sticky text-xs text-gray-500 text-center py-2 (\"Today\", \"Yesterday\", \"Jan 15\"). Message bubbles: own messages (ml-auto bg-blue-600 text-white rounded-2xl rounded-br-md max-w-[75%] px-4 py-2), others (mr-auto bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md). Consecutive same-sender: reduce spacing, hide avatar. Bubble content: message text (whitespace-pre-wrap), optional image/file attachments with thumbnail (click to expand), timestamp below in text-xs text-gray-400 (own) or text-gray-500. Typing indicator: three animated dots (animate-pulse or bounce) in bubble shape when other user is typing. Read receipts: checkmarks after message (single check = sent, double check = delivered, blue double check = read). Input area: flex items-end gap-2 px-4 py-3 border-t bg-white. Attachment button: Paperclip icon, opens file picker or bottom sheet with options (photo, file, location). Emoji button: Smile icon, opens emoji picker popover. Text input: flex-1 rounded-full border px-4 py-2, auto-resize textarea for multiline, placeholder \"Type a message...\". Send button: Send icon (or arrow), bg-blue-600 text-white rounded-full p-2, disabled when input empty. Send behavior: Enter sends (configurable), Shift+Enter for newline. Scroll behavior: auto-scroll to bottom on new message, show \"Scroll to bottom\" floating button when scrolled up. Message states: sending (opacity-70), sent (normal), failed (red warning with \"Tap to retry\"). Image messages: thumbnail with aspect ratio preserved, click opens lightbox. Link previews: unfurled inline. Reactions: long-press message to add emoji reaction. Real-time: WebSocket connection, messages appear instantly. Accessibility: messages in list, announce new messages."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

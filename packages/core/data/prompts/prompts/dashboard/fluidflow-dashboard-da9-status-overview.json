@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da9-status-overview",
+  "slug": "fluidflow-dashboard-da9-status-overview",
+  "title": "Status Overview",
+  "description": "FluidFlow · Status Overview",
+  "content": "Create status overview component showing counts by state. Layout: horizontal row of status blocks. Each block: status icon with color, count (large, bold), status label. Status types: Active (green), Pending (yellow), Completed (blue), Failed (red). Visual indicators: colored left border or icon color. Click to filter: clicking filters the main list. Animation: counts animate up on load.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4e8a95ec53df478bc922fd4693e73bf685ea5b42ce5b6490f3c0a40dc76ae9d9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create status blocks showing counts by state (Active, Pending, Complete, etc.).",
+    "detailed": "Create status overview component showing counts by state. Layout: horizontal row of status blocks. Each block: status icon with color, count (large, bold), status label. Status types: Active (green), Pending (yellow), Completed (blue), Failed (red). Visual indicators: colored left border or icon color. Click to filter: clicking filters the main list. Animation: counts animate up on load.",
+    "advanced": "Create status overview component showing counts by state with interactivity. Layout: horizontal row (flex gap-4) of status blocks or cards, wrap to multiple rows on mobile (flex-wrap). Each block/card: bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer. Content: status icon (CircleCheck, Clock, AlertCircle, XCircle) with status-specific color in small circle background, count value (text-2xl md:text-3xl font-bold), status label (text-sm text-gray-500). Status types with colors: Active (green-500, CheckCircle), Pending/In Progress (amber-500, Clock), Completed (blue-500, CircleCheck), Failed/Error (red-500, XCircle), Draft (gray-400, FileText), Cancelled (gray-500, Ban). Visual indicators: colored left border (border-l-4), colored icon, or subtle background tint (bg-green-50). Click to filter: clicking a status block filters the main table/list to show only items with that status, highlight selected status with ring-2 ring-offset-2. Active state: show which filter is currently applied. Percentage bars: optional horizontal bar below each showing proportion of total (w-full h-1 rounded-full bg-gray-200 with colored fill). Animation: counts animate up from 0 on load using requestAnimationFrame or framer-motion. Total: show total count in separate prominent block or as sum. Trend indicators: optional +5 or -3 badge showing change from previous period with colored arrow. Donut summary: optional small donut chart (40x40px) showing all proportions as visual summary. Responsive: 2 columns on tablet (grid-cols-2), stack on mobile or horizontal scroll. Interactive tooltips: hover shows additional details (\"12 items, 15% of total\"). Real-time updates: counts update without page refresh using polling or WebSocket, subtle flash animation on change. Dark mode: dark:bg-gray-800. Accessibility: each block is a button with aria-label describing action."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

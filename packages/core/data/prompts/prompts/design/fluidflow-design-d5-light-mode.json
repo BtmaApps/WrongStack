@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d5-light-mode",
+  "slug": "fluidflow-design-d5-light-mode",
+  "title": "Light Mode",
+  "description": "FluidFlow · Light Mode",
+  "content": "Design clean light mode with white or off-white backgrounds (bg-white, bg-gray-50). Use dark text (text-gray-900) for headings and medium gray (text-gray-600) for body text. Add subtle gray backgrounds (bg-gray-100) to distinguish sections. Include light shadows (shadow-sm) for cards and elevation. Use proper contrast ratios for accessibility. Add subtle borders (border-gray-200) where needed. Keep the feel fresh and airy with ample whitespace and breathing room between elements.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1e4f5c3818508c5643ed8c286add4e6d76314438dbe14be9e6813b34ca16b143",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Design clean light theme with white backgrounds and dark text.",
+    "detailed": "Design clean light mode with white or off-white backgrounds (bg-white, bg-gray-50). Use dark text (text-gray-900) for headings and medium gray (text-gray-600) for body text. Add subtle gray backgrounds (bg-gray-100) to distinguish sections. Include light shadows (shadow-sm) for cards and elevation. Use proper contrast ratios for accessibility. Add subtle borders (border-gray-200) where needed. Keep the feel fresh and airy with ample whitespace and breathing room between elements.",
+    "advanced": "Design clean light mode with white or off-white backgrounds (bg-white, bg-gray-50). Use dark text (text-gray-900) for headings and medium gray (text-gray-600) for body text meeting WCAG AA standards. Add subtle gray backgrounds (bg-gray-100) to distinguish sections without harsh contrasts. Include light shadows (shadow-sm to shadow-md) for cards and elevation hierarchy. Use proper contrast ratios - verify with automated tools. Add subtle borders (border-gray-200) for definition. Keep fresh and airy feel with consistent whitespace scale. Consider users in bright environments - avoid pure white (#fff) that causes glare, use bg-gray-50. Test form inputs visibility against white backgrounds. Ensure focus states are clearly visible. Add subtle texture or noise for visual interest without distraction. Implement proper print styles that work with light theme."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

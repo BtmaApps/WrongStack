@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u24-gesture-navigation",
+  "slug": "fluidflow-ux-u24-gesture-navigation",
+  "title": "Gesture Navigation",
+  "description": "FluidFlow · Gesture Navigation",
+  "content": "Implement swipe gestures for natural mobile interactions. Swipe left/right on list items for quick actions (delete, archive, favorite). Swipe between pages/tabs with indicator dots. Edge swipe for back navigation. Implement gesture velocity for natural feel. Show action preview during swipe. Add visual affordances (subtle arrows or hints). Support gesture cancellation (swipe back). Handle conflicts with scroll. Provide button alternatives for accessibility.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u24"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "68e95c248ed66a1648e2f7310b3b8865e1fc908ad18ad12c73cef5ec33ae6af1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add swipe gestures for navigation and common actions.",
+    "detailed": "Implement swipe gestures for natural mobile interactions. Swipe left/right on list items for quick actions (delete, archive, favorite). Swipe between pages/tabs with indicator dots. Edge swipe for back navigation. Implement gesture velocity for natural feel. Show action preview during swipe. Add visual affordances (subtle arrows or hints). Support gesture cancellation (swipe back). Handle conflicts with scroll. Provide button alternatives for accessibility.",
+    "advanced": "Implement swipe gestures for natural mobile interactions. Item swipes: left/right on list items reveals action buttons (archive left, delete right), threshold-based action trigger, color-coded backgrounds (green save, red delete). Page swipes: horizontal swipe between pages/tabs, indicator dots show position, snap to page boundaries, velocity-based (fast swipe jumps pages). Edge swipe: back navigation from left edge (iOS pattern), show preview of previous page, velocity threshold for trigger. Gesture physics: velocity detection (fast vs slow swipe), momentum/inertia, spring animation for snap-back. Preview during swipe: show action that will trigger, progressive reveal of action buttons, haptic feedback at trigger threshold. Visual affordances: subtle hints on first use (animated prompt), edge indicators. Gesture cancellation: swipe back past threshold, gesture interrupted by other touch. Scroll conflicts: lock axis after 10px movement in dominant direction (horizontal swipe vs vertical scroll), dead zone for ambiguous angles. Button alternatives REQUIRED: all swipe actions must be accessible via menu/buttons for accessibility and discoverability. Implementation: use react-use-gesture or native touch events, requestAnimationFrame for smooth animations. Disable gestures: respect prefers-reduced-motion, provide toggle in settings. Tutorial: first-time gesture education with skip option."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

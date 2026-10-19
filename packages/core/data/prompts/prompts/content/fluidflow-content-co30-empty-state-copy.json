@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co30-empty-state-copy",
+  "slug": "fluidflow-content-co30-empty-state-copy",
+  "title": "Empty State Copy",
+  "description": "FluidFlow · Empty State Copy",
+  "content": "Create effective empty state messaging. Structure: illustration/icon, headline, description, action button. Headline: clear statement of empty state (\"No projects yet\"). Description: explain value and next step. Action CTA: primary button to create/add first item. Illustration: friendly, relevant illustration or icon. Tone: encouraging, not negative. Variants: first-time vs. filtered/searched empty. Search empty: \"No results\" with suggestions. Error empty: differentiate from normal empty. Secondary actions: alternative actions or help links. Examples: show example data option.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7367b94e752e6517b806d2105c6b1390b7cbb297f88fe5a60f89043ec9c92df5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Write engaging copy for empty states with clear actions.",
+    "detailed": "Create effective empty state messaging. Structure: illustration/icon, headline, description, action button. Headline: clear statement of empty state (\"No projects yet\"). Description: explain value and next step. Action CTA: primary button to create/add first item. Illustration: friendly, relevant illustration or icon. Tone: encouraging, not negative. Variants: first-time vs. filtered/searched empty. Search empty: \"No results\" with suggestions. Error empty: differentiate from normal empty. Secondary actions: alternative actions or help links. Examples: show example data option.",
+    "advanced": "Create effective empty state messaging system for different scenarios. Core structure: illustration or icon (centered, not too large), headline (text-xl font-semibold), description (text-gray-500 max-w-md), primary action button (Create, Add, Get Started). Messaging principles: focus on positive outcome not absence, explain value user will get, clear single action to resolve. Tone: encouraging and helpful, not apologetic or negative, match brand voice. Scenario variations: first-time empty (welcome, explain value, encourage first action), search/filter empty (no results found, suggest adjustments), error-caused empty (explain issue, provide recovery action). First-time copy example: headline \"Start your first project\", description \"Projects help you organize your work and collaborate with your team.\", button \"Create Project\". Search empty copy: headline \"No results for query\", description \"Try adjusting your search or filters.\", actions: clear filters button, search tips link. Illustration guidance: friendly, relevant to feature, consistent style, not too prominent (should support, not dominate). Icon alternative: large icon (h-12 w-12 text-gray-400) when illustration not available. Secondary actions: help link, documentation, example templates. Demo/example data: \"Load example data\" option to show how feature works. Permissions empty: when user lacks access, explain and provide request access flow. Component API: <EmptyState icon={Folder} title=\"...\" description=\"...\" action={{label, onClick}} secondaryAction={{label, href}} />."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

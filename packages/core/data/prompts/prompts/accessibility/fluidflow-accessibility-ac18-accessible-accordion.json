@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac18-accessible-accordion",
+  "slug": "fluidflow-accessibility-ac18-accessible-accordion",
+  "title": "Accessible Accordion",
+  "description": "FluidFlow · Accessible Accordion",
+  "content": "Build accessible accordion component. Trigger: button with aria-expanded=\"true|false\", aria-controls pointing to content panel. Content panel: id matching aria-controls, role=\"region\" with aria-labelledby pointing to button. Keyboard: Enter/Space toggles, up/down arrows move between buttons (optional). Focus: remains on button after toggle. Animation: smooth height transition using grid-rows or max-height. Multiple open: allow or restrict to single open panel. Icons: chevron rotates indicating state, aria-hidden on icon. Heading: wrap button in heading element for semantics.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2460defa198bed98d301be4177b035ace0e0f63fed16dd3f85dcad6a5f53724c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create accessible accordion with proper expand/collapse behavior.",
+    "detailed": "Build accessible accordion component. Trigger: button with aria-expanded=\"true|false\", aria-controls pointing to content panel. Content panel: id matching aria-controls, role=\"region\" with aria-labelledby pointing to button. Keyboard: Enter/Space toggles, up/down arrows move between buttons (optional). Focus: remains on button after toggle. Animation: smooth height transition using grid-rows or max-height. Multiple open: allow or restrict to single open panel. Icons: chevron rotates indicating state, aria-hidden on icon. Heading: wrap button in heading element for semantics.",
+    "advanced": "Build accessible accordion component following disclosure pattern. Trigger element: button element (not div with onClick), wrapped in heading (h3, h4, etc.) for proper document outline, aria-expanded=\"true|false\" indicating state, aria-controls=\"panel-id\" linking to content. Content panel: id matching aria-controls, role=\"region\" with aria-labelledby=\"button-id\" (or omit region role for simple content), hidden when collapsed. Expand/collapse: toggle aria-expanded and panel visibility on button click. Keyboard: Enter/Space on button toggles panel, optionally arrow keys move between accordion buttons (like tabs). Focus management: focus stays on button after toggle, don't auto-focus content. Single vs multiple: decide if only one panel can be open (like exclusive) or multiple (independent), no ARIA difference but UX consideration. Animation: CSS transition on max-height or grid-template-rows for smooth expand/collapse, ensure not jarring for reduced motion preference. Icons: ChevronDown that rotates 180deg when expanded, aria-hidden=\"true\" on decorative icon. State persistence: optionally save open panels to localStorage. Nested accordions: ensure heading levels remain logical. Screen reader testing: verify \"expanded\"/\"collapsed\" state announced, button label read, content accessible when expanded. Default state: consider which panels (if any) start expanded. Group label: if accordion group has overall label, wrap in section with aria-label."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

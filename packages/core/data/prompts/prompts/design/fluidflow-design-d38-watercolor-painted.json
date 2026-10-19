@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d38-watercolor-painted",
+  "slug": "fluidflow-design-d38-watercolor-painted",
+  "title": "Watercolor/Painted",
+  "description": "FluidFlow · Watercolor/Painted",
+  "content": "Apply watercolor/painted aesthetic with artistic, handmade feel. Use soft, bleeding edges on elements - no hard lines. Watercolor texture backgrounds with color bleeds. Muted, natural color palette. Brushstroke effects on borders and decorations. Paper texture as base. Flowing, organic shapes. Hand-painted typography style optional. Include splatter and drip accents. Artistic, gallery-like presentation.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d38"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "271607ff20f2da0919a4e8c6c1ca194fbc0735ba0e3d4b6a1a4e84f65ee7d21a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create soft watercolor aesthetic with painted textures, flowing edges, and artistic brushstroke effects.",
+    "detailed": "Apply watercolor/painted aesthetic with artistic, handmade feel. Use soft, bleeding edges on elements - no hard lines. Watercolor texture backgrounds with color bleeds. Muted, natural color palette. Brushstroke effects on borders and decorations. Paper texture as base. Flowing, organic shapes. Hand-painted typography style optional. Include splatter and drip accents. Artistic, gallery-like presentation.",
+    "advanced": "Apply watercolor/painted aesthetic with artistic, handmade feel. Edge treatment: soft, irregular edges using CSS mask with watercolor brush SVG, or clip-path with organic curves. Bleed effects: gradient masks fading to transparent, color spreading beyond boundaries. Texture layers: watercolor paper texture (subtle bump/grain), wet-on-wet color bleeds. Color palette: soft, muted tones as if diluted - pale blues, soft greens, blush pinks, diluted ochres. Colors can overlap and mix (use mix-blend-mode: multiply for overlapping colored areas). Brushstroke borders: SVG paths with rough, brushy edges instead of solid borders. Splatter accents: decorative paint splatters and drips (SVG elements) positioned organically. Typography: hand-painted style fonts (Satisfy, Pacifico for scripts), or regular fonts with watercolor texture overlay. Background washes: large areas of diluted color with irregular edges, multiple wash layers. Paint palette decoration: optional circular color swatches as design element. Interactive: color can bleed/spread on hover, paint drip animations. Composition: asymmetric, flowing, following organic movement. Frame: torn paper or deckled edge effect around content areas. Implementation: heavy use of SVG for organic shapes and textures, CSS filters for effects. Performance: optimize SVG assets, consider using CSS gradients for simpler washes. Accessibility: ensure text remains readable over textured backgrounds, provide solid fallback."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

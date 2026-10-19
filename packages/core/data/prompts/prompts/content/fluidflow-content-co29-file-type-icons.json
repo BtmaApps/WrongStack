@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co29-file-type-icons",
+  "slug": "fluidflow-content-co29-file-type-icons",
+  "title": "File Type Icons",
+  "description": "FluidFlow · File Type Icons",
+  "content": "Create file type icon mapping system. Mapping: extension to icon (js to code icon, pdf to file text, jpg to image). Categories: documents, images, code, archives, audio, video. Fallback: generic file icon for unknown types. Colors: different colors per category. Size options: small, medium, large icons. Preview hint: thumbnail for images, preview indicator. Badges: show extension text on icon. Folder icon: distinct icon for directories. Special files: package.json, README, .gitignore specific icons. Icon library: use lucide-react icons.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5e33d45ed8087b06bd9025a2c63a4176fbf79973b423bd3f3d5f189b8dd949c0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Display appropriate icons for different file types.",
+    "detailed": "Create file type icon mapping system. Mapping: extension to icon (js to code icon, pdf to file text, jpg to image). Categories: documents, images, code, archives, audio, video. Fallback: generic file icon for unknown types. Colors: different colors per category. Size options: small, medium, large icons. Preview hint: thumbnail for images, preview indicator. Badges: show extension text on icon. Folder icon: distinct icon for directories. Special files: package.json, README, .gitignore specific icons. Icon library: use lucide-react icons.",
+    "advanced": "Create comprehensive file type icon system with visual categorization. Icon mapping by extension: code files (js, ts, jsx, tsx, py, java, go, rust mapped to FileCode/colored code icon), documents (pdf, doc, docx mapped to FileText), spreadsheets (xls, xlsx, csv mapped to FileSpreadsheet), images (jpg, png, gif, svg, webp mapped to Image), video (mp4, mov, webm mapped to Video), audio (mp3, wav, flac mapped to Music), archives (zip, tar, gz mapped to Archive), config (json, yaml, toml, xml mapped to Settings), markdown (md, mdx mapped to FileText with M badge). Category colors: code files (blue), documents (red/orange for pdf), images (purple), video (pink), audio (yellow), archives (brown). Folder icons: Folder for directories, FolderOpen for expanded, special folders (node_modules, .git with muted/special icon). Special files: package.json (npm icon or Package), README.md (BookOpen), .env (Key), Dockerfile (container icon), .gitignore (Git). Size variants: h-4 w-4 for lists, h-8 w-8 for grid view, h-16 w-16 for single file display. Extension badge: small text badge showing extension on larger icons (.pdf, .tsx). Preview thumbnails: for images, show actual thumbnail instead of icon when available. Implementation: function getFileIcon(filename) returning icon component and color. Fallback: generic File icon for unrecognized extensions. MIME type support: also accept MIME types for flexibility. Icon pack: lucide-react for consistency, or react-icons for more variety. Dark mode: ensure icon colors work on dark backgrounds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

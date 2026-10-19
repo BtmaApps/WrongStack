@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c85-add-activity-feed",
+  "slug": "fluidflow-components-c85-add-activity-feed",
+  "title": "Add Activity Feed",
+  "description": "FluidFlow · Add Activity Feed",
+  "content": "Create activity feed. Container: max-w-2xl mx-auto. Feed item: flex gap-3 py-4 border-b. Avatar: w-10 h-10 rounded-full. Content: flex-1. Actor and action: \"John liked your post\" with bold actor name. Target: link to affected content. Timestamp: text-xs text-gray-400. Thumbnail: optional small preview of content. Group: \"X and 2 others liked your post\".",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c85"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "06097832e1043adf0ce1796754a65b0d79924bddbda571259d3b2b03f08e5cec",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create social activity feed with various event types.",
+    "detailed": "Create activity feed. Container: max-w-2xl mx-auto. Feed item: flex gap-3 py-4 border-b. Avatar: w-10 h-10 rounded-full. Content: flex-1. Actor and action: \"John liked your post\" with bold actor name. Target: link to affected content. Timestamp: text-xs text-gray-400. Thumbnail: optional small preview of content. Group: \"X and 2 others liked your post\".",
+    "advanced": "Create comprehensive activity feed. Activity types: follow, like, comment, mention, share, post, reply, achievement, milestone, system notification - each with unique icon and structure. Activity structure: actor(s), verb, object, target, timestamp, optional preview. Grouped activities: combine similar activities (\"X, Y, and 3 others liked your post\"), expand to show all. Rich previews: thumbnail for media, snippet for text, embed for links. Actor display: avatar, name (link to profile), verified badge if applicable. Time display: relative (\"2h ago\"), group by date for older (\"Yesterday\", \"December 15\"). Filters: filter by activity type, actor, or content type. Read/unread: visual distinction, mark as read on view or explicitly, \"Mark all as read\". Actions: quick actions per activity type (reply to comment, follow back, view post). Infinite scroll: load more on scroll, virtualize for performance. Real-time: new activities appear at top with animation, \"X new activities\" button if scrolled down. Empty state: no activity message with suggestions. Privacy: respect blocking and privacy settings. Aggregation window: combine activities within time window. Notifications: differentiate between activity feed and notifications. Accessibility: semantic list markup, live region for new items, actions keyboard accessible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

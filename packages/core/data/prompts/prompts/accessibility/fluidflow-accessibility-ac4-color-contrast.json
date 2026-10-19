@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac4-color-contrast",
+  "slug": "fluidflow-accessibility-ac4-color-contrast",
+  "title": "Color Contrast",
+  "description": "FluidFlow · Color Contrast",
+  "content": "Fix all color contrast issues for accessibility compliance. Use contrast checking tools to verify ratios. Normal text (under 18px or 14px bold): minimum 4.5:1 ratio. Large text (18px+ or 14px+ bold): minimum 3:1 ratio. UI components and graphics: minimum 3:1 ratio against adjacent colors. Update low contrast combinations: light gray text on white, colored text on colored backgrounds. Ensure links are distinguishable from regular text (not just by color). Check contrast in both light and dark modes. Use sufficient contrast for placeholder text. Verify disabled states are still readable. Test with colorblind simulation tools. Provide alternative indicators beyond color alone (icons, patterns, underlines).",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "eb57e39573aa0c2536353172244c15b0ad2ee4558b928e4f377d74ef597643bf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Fix color contrast issues to meet 4.5:1 ratio for text.",
+    "detailed": "Fix all color contrast issues for accessibility compliance. Use contrast checking tools to verify ratios. Normal text (under 18px or 14px bold): minimum 4.5:1 ratio. Large text (18px+ or 14px+ bold): minimum 3:1 ratio. UI components and graphics: minimum 3:1 ratio against adjacent colors. Update low contrast combinations: light gray text on white, colored text on colored backgrounds. Ensure links are distinguishable from regular text (not just by color). Check contrast in both light and dark modes. Use sufficient contrast for placeholder text. Verify disabled states are still readable. Test with colorblind simulation tools. Provide alternative indicators beyond color alone (icons, patterns, underlines).",
+    "advanced": "Fix all color contrast issues for WCAG AA/AAA compliance. WCAG requirements: normal text (<18px or <14px bold) needs 4.5:1 minimum (7:1 for AAA), large text (≥18px or ≥14px bold) needs 3:1 minimum (4.5:1 for AAA), UI components and graphical objects need 3:1 against adjacent colors. Tools: browser devtools accessibility panel, WebAIM Contrast Checker, Stark plugin, axe DevTools. Common violations to fix: light gray text on white (text-gray-400 on white fails - use text-gray-600+), colored text on colored backgrounds (blue on purple), placeholder text (often too light), disabled states (still need to be perceivable). Links: must be distinguishable from surrounding text by more than color (add underline, font-weight, or icon), visited vs unvisited distinction. Mode testing: verify in both light and dark modes, ensure theme toggle doesn't break contrast. Focus indicators: ring color must contrast with background. Beyond color: never use color alone to convey meaning (add icons, text, patterns for errors, status, required fields). Colorblind considerations: test with Sim Daltonism or browser extensions, avoid red/green only distinctions, use patterns or shapes as backup. Interactive states: hover, active, focus states all need sufficient contrast. Disabled elements: use opacity-50 or similar but ensure still perceivable (don't rely on color to show disabled). Text over images: add overlay or text shadow for reliable contrast. Dynamic content: ensure programmatically-added content maintains contrast."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

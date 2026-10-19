@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo19-currency-input",
+  "slug": "fluidflow-forms-fo19-currency-input",
+  "title": "Currency Input",
+  "description": "FluidFlow · Currency Input",
+  "content": "Build currency input with formatting. Symbol: show currency symbol prefix or suffix. Decimal places: limit to 2 decimal places for standard currencies. Thousand separators: add commas or dots as appropriate. Min/max: validate within allowed range. Negative: optionally allow negative values. Locale: format according to user locale. Right-aligned: optionally align numbers right.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "404eae06c8620b328fd9514cff908a8fd1936bad31189b6b35fcaa916b14887b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create currency input with symbol and proper decimal formatting.",
+    "detailed": "Build currency input with formatting. Symbol: show currency symbol prefix or suffix. Decimal places: limit to 2 decimal places for standard currencies. Thousand separators: add commas or dots as appropriate. Min/max: validate within allowed range. Negative: optionally allow negative values. Locale: format according to user locale. Right-aligned: optionally align numbers right.",
+    "advanced": "Build comprehensive currency input with proper formatting and validation. Currency symbol: prefix ($, £) or suffix (EUR) based on currency, inside input or outside. Input handling: store raw number in state, display formatted version. Decimal handling: limit decimals (2 for USD/EUR, 0 for JPY, 3 for some currencies), auto-add trailing zeros on blur (10 becomes 10.00). Thousand separators: add locale-appropriate separators (1,234,567.89 or 1.234.567,89), remove for storage. Input filtering: only allow digits, decimal separator, minus (if allowed), prevent multiple decimals. Formatting library: Intl.NumberFormat or currency.js for formatting/parsing. Currency selector: optional dropdown to select currency, affects symbol and decimal rules. Min/max validation: validate within bounds, show error if exceeded. Step buttons: optional increment/decrement buttons (+/- or arrow buttons). Negative values: configurable to allow/disallow, show in red or parentheses. Keyboard: inputmode=\"decimal\", type=\"text\" (not number, for formatting control). Selection handling: select all on focus for easy replacement. Clear button: X button to clear input. Calculation helper: optional calculator dropdown for quick math. Display: right-align numbers (text-right) for ledger-style, or left-align. Read-only formatted: for display-only, show as formatted text not input. Localization: detect locale from Intl.NumberFormat or explicit prop. Zero handling: show 0.00 or empty based on preference."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

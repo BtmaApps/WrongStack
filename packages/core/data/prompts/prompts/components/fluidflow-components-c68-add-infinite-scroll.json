@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c68-add-infinite-scroll",
+  "slug": "fluidflow-components-c68-add-infinite-scroll",
+  "title": "Add Infinite Scroll",
+  "description": "FluidFlow · Add Infinite Scroll",
+  "content": "Create infinite scroll. Container: overflow-y-auto max-h-[600px]. Content: items list, rendered from data. Sentinel: div at bottom observed with IntersectionObserver. Loading: when sentinel visible, fetch more data, show spinner. End state: \"No more items\" message when all loaded.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c68"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ec134b4008946571e3b54d10f9899e09732050237ab9bcccb4e86068d37f50f4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create infinite scroll list that loads more on scroll.",
+    "detailed": "Create infinite scroll. Container: overflow-y-auto max-h-[600px]. Content: items list, rendered from data. Sentinel: div at bottom observed with IntersectionObserver. Loading: when sentinel visible, fetch more data, show spinner. End state: \"No more items\" message when all loaded.",
+    "advanced": "Create robust infinite scroll component. Scroll container: parent with overflow scroll, or window scroll. Sentinel element: invisible div after last item, observed with IntersectionObserver (rootMargin for early trigger). Load trigger: when sentinel intersects, call loadMore if not loading and hasMore. Loading states: initial load (skeleton list), loading more (spinner at bottom), error (retry button), no more (end message or hide). Performance: throttle/debounce scroll handling, use CSS containment. Virtual scrolling: for very long lists, only render visible items + buffer (react-virtual/react-window). Item rendering: render prop or component prop for flexibility. Loading indicator: spinner, skeleton items, or custom. Error handling: show error message with retry button, exponential backoff. Bi-directional: optional load older items when scrolling to top (chat-style). Restore position: remember scroll position on back navigation. Pull to refresh: optional at top (mobile). Item count: optionally show \"Showing X of Y items\". Scroll to top: button appears when scrolled down. Keyboard: focus management for accessibility. Analytics: track scroll depth. Reset: method to reset list and start fresh. Caching: integrate with React Query/SWR for data caching."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la30-calendar-schedule-view",
+  "slug": "fluidflow-layouts-la30-calendar-schedule-view",
+  "title": "Calendar/Schedule View",
+  "description": "FluidFlow · Calendar/Schedule View",
+  "content": "Build calendar interface. Views: month grid, week view, day view with toggle. Month: 7-column grid with day cells, event dots or previews. Week: 7 columns with hour rows, events as blocks. Day: single column with detailed hour slots. Navigation: previous/next, today button. Event display: colored blocks with title. Click event: opens detail popover.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3caf384f71ea51540d4eeeef254f1f698f09551cdbba1d90c1620539680478e5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create calendar view with month, week, and day layouts.",
+    "detailed": "Build calendar interface. Views: month grid, week view, day view with toggle. Month: 7-column grid with day cells, event dots or previews. Week: 7 columns with hour rows, events as blocks. Day: single column with detailed hour slots. Navigation: previous/next, today button. Event display: colored blocks with title. Click event: opens detail popover.",
+    "advanced": "Build comprehensive calendar interface with multiple views and event management. Header: flex justify-between items-center p-4 border-b. Navigation: prev/next buttons (ChevronLeft/ChevronRight), today button (\"Today\"), current date display (month/year or date range). View toggle: Month/Week/Day buttons or segmented control. Actions: \"New Event\" button, settings dropdown. Month view: grid-cols-7 for days of week. Header row: day names (Sun-Sat or Mon-Sun based on locale). Day cells: aspect-square or min-h-24, border, position relative. Cell header: day number (font-medium, text-gray-400 if other month, text-blue-600 if today with bg-blue-100 circle). Events: event pills showing time and title, truncated, \"+N more\" link if overflow. Different colors per calendar/category. Today: highlighted cell background. Click day: opens day view or quick-add event. Week view: grid with hour rows and day columns. Header: day names with dates. Time column: hour labels (12 AM - 11 PM, or 24h format). Day columns: relative position, full height. Events: positioned absolutely based on start time and duration, width spans column, colored blocks with time and title. Overlapping events: side by side or stacked. Current time: horizontal red line indicator. Day view: single day with hour rows, more detail per event. Hour rows: border-b, min-h-16. Events: positioned by time, full width, detailed view with description. Current hour: highlighted. Event component: bg-[color]-100 border-l-4 border-[color]-500 rounded px-2 py-1, click opens event detail. Event detail popover/modal: title, date/time, location, description, attendees, edit/delete actions. Create event: click empty time slot opens quick-add form, or \"New Event\" opens full form. Event form: title, date/time pickers, all-day toggle, location, description, repeat options, calendar/category selector, attendees. Drag-and-drop: move events by dragging, resize by dragging edges, visual feedback during drag. Recurring events: display recurring event instances. Mini calendar: sidebar month view for quick date navigation. Calendar list: sidebar showing different calendars with visibility toggles. Mobile: day view default, swipe to change days, bottom sheet for event details. Accessibility: keyboard navigation through dates, events announced with full details, focus management."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

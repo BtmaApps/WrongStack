@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec34-cross-sell-modal",
+  "slug": "fluidflow-ecommerce-ec34-cross-sell-modal",
+  "title": "Cross-sell Modal",
+  "description": "FluidFlow · Cross-sell Modal",
+  "content": "Build cross-sell modal triggered after add to cart. Content: \"Complete Your Order\" header, complementary products (2-4 items). Product cards: image, name, price, quick add button. Logic: related products, frequently bought together, accessories. Actions: \"Add to Cart\" per item, \"No Thanks, Continue\" dismiss. Discount: optional bundle discount for adding items.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ab38bf7a017e362a323cb67c5e699bcd9ab84ab8ceef3233987721978b54b457",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create add-on product suggestion modal shown after cart add.",
+    "detailed": "Build cross-sell modal triggered after add to cart. Content: \"Complete Your Order\" header, complementary products (2-4 items). Product cards: image, name, price, quick add button. Logic: related products, frequently bought together, accessories. Actions: \"Add to Cart\" per item, \"No Thanks, Continue\" dismiss. Discount: optional bundle discount for adding items.",
+    "advanced": "Build cross-sell modal system triggered at key moments. Trigger points: after add to cart (most common), at checkout start, on cart page as section, cart drawer slide-in, as order bump on checkout page. Modal design: centered modal or slide-in drawer, not too intrusive (easy dismiss), header: \"Complete Your Look\", \"Frequently Bought Together\", \"Customers Also Bought\", \"Don't Forget\" depending on context. Product suggestions (3-4 max): selection logic: frequently bought together (data-driven), accessories for the product added, complementary products (e.g., phone + case), products from same collection, AI/ML recommendations. Product display: image (w-20 h-20), product name (line-clamp-2), variant info if relevant, original price crossed out if discounted, offer price or regular price, \"Quick Add\" button (adds to cart inline, no page reload, button shows checkmark when added). Bundle discount: \"Add both and save 10%\" offer, show individual prices and bundle price, combined add button for bundle. Progress incentive: if close to free shipping, \"Add $X for FREE shipping\" with progress bar, highlight item(s) that would qualify for free shipping. One-click add: buttons should add instantly with success feedback (checkmark, briefly disabled), update cart count in header, optional \"View Cart\" link in modal. Dismiss options: \"No Thanks, Continue Shopping\" goes to original destination, \"Go to Cart\" button, click outside closes, X button in corner, don't show again preference (stored). Smart timing: don't show if user has already dismissed recently, don't show on every add to cart (perhaps every 3rd), don't show if suggested items already in cart. A/B testing: test different product selection algorithms, test discount vs no discount, test modal vs inline vs drawer. Tracking: impression tracking, add-to-cart rate from modal, revenue attributed to cross-sell. Order bump variant: on checkout page, single compelling offer with checkbox \"Add [Product] for just $X\" with image, pre-checked or unchecked based on test results. Upsell variant: upgrade to premium version \"Upgrade to Pro for $X more\" comparison. Mobile: bottom sheet that slides up, touch-friendly buttons, easy dismiss gesture (swipe down). Accessibility: modal properly announced, focus trapped while open, escape key dismisses, all interactive elements reachable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

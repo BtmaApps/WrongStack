@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d54-holographic-iridescent",
+  "slug": "fluidflow-design-d54-holographic-iridescent",
+  "title": "Holographic/Iridescent",
+  "description": "FluidFlow · Holographic/Iridescent",
+  "content": "Apply holographic iridescent aesthetic with rainbow shifting surfaces. Color-shifting gradients that change with angle/scroll. Metallic rainbow reflections. Foil texture effects. Prismatic light dispersion. Soft focus ethereal glow. Include holographic sticker/seal elements. Chrome with rainbow tints. Light leak and lens flare accents. Futuristic, premium, magical atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d54"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c1cc7ad6b23bbebfea735f0aca286d5ba5828ba7fdf9ed565da68e10ce6ed03e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create shimmering holographic surfaces with rainbow color shifts and futuristic shine.",
+    "detailed": "Apply holographic iridescent aesthetic with rainbow shifting surfaces. Color-shifting gradients that change with angle/scroll. Metallic rainbow reflections. Foil texture effects. Prismatic light dispersion. Soft focus ethereal glow. Include holographic sticker/seal elements. Chrome with rainbow tints. Light leak and lens flare accents. Futuristic, premium, magical atmosphere.",
+    "advanced": "Apply holographic iridescent aesthetic with rainbow-shifting surfaces. Iridescent gradient: multi-color gradient (pink, purple, blue, cyan, green, yellow) using conic-gradient or linear-gradient with many color stops. Animation: shift gradient position on hover/scroll using background-position animation creating color-shift effect. Foil texture: combine gradient with noise texture overlay and metallic highlights (white spots). Implementation: background with gradient + pseudo-element for texture + mix-blend-mode for interaction. Holographic sticker: circular/badge element with rainbow gradient border, slight 3D tilt on hover using transform perspective. Chrome effect: metallic base gradient (gray tones) with rainbow reflection overlay using mix-blend-mode: color or hue. Light dispersion: rainbow edge effect suggesting light through prism, use box-shadow with multiple color layers offset. Soft glow: backdrop-blur on overlays, ethereal blur around elements. Lens flares: radial gradient hotspots, hexagonal artifacts. Interaction: colors shift dramatically on mouse move using CSS custom properties updated via JS, or scroll-based gradient position. Background: often dark or neutral to make iridescence pop. Typography: can have subtle rainbow text-shadow or gradient text. 3D cards: perspective transform revealing different colors at different angles. Performance: gradient animations can be heavy - use will-change, prefer CSS over JS where possible. Accessibility: ensure text readable against shifting colors, provide solid background fallback for text."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

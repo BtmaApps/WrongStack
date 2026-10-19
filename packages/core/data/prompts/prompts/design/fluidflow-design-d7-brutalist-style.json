@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d7-brutalist-style",
+  "slug": "fluidflow-design-d7-brutalist-style",
+  "title": "Brutalist Style",
+  "description": "FluidFlow · Brutalist Style",
+  "content": "Apply brutalist aesthetics with bold, raw visual elements. Use heavy black borders (border-4 border-black), stark contrasts between black and bright colors. Implement oversized typography with font-black weight and dramatic size differences. Use unconventional layouts with overlapping elements and asymmetric positioning. Add harsh shadows (shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]). Avoid rounded corners - use sharp edges throughout. Include raw, unpolished textures. Break traditional alignment rules intentionally.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d7"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2cb0874d93ed9c0aba672627a26226cae52296152dc353d300023164d7ef2e4d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply bold, raw design with heavy borders and stark contrasts.",
+    "detailed": "Apply brutalist aesthetics with bold, raw visual elements. Use heavy black borders (border-4 border-black), stark contrasts between black and bright colors. Implement oversized typography with font-black weight and dramatic size differences. Use unconventional layouts with overlapping elements and asymmetric positioning. Add harsh shadows (shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]). Avoid rounded corners - use sharp edges throughout. Include raw, unpolished textures. Break traditional alignment rules intentionally.",
+    "advanced": "Apply brutalist aesthetics with bold, raw visual elements. Use heavy black borders (border-4 border-black) with stark contrasts between black and bright accent colors. Implement oversized typography (text-6xl to text-9xl) with font-black weight and dramatic size differences. Use unconventional layouts with overlapping elements (negative margins, absolute positioning) and asymmetric grids. Add harsh shadows (shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]) for flat 3D effect. Keep sharp edges throughout - no rounded corners. Include raw textures via CSS patterns or SVG backgrounds. Break traditional alignment rules intentionally but maintain logical content flow for screen readers. IMPORTANT: Despite visual chaos, ensure tab order is logical, maintain proper heading hierarchy, and keep interactive elements clearly identifiable. Add visible focus states that work with bold aesthetic. Consider motion-sensitive users when adding jarring transitions. Use semantic HTML to maintain accessibility despite unconventional visual presentation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

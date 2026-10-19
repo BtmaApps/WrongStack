@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c76-add-dashboard-sidebar",
+  "slug": "fluidflow-components-c76-add-dashboard-sidebar",
+  "title": "Add Dashboard Sidebar",
+  "description": "FluidFlow · Add Dashboard Sidebar",
+  "content": "Create sidebar navigation. Container: fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white flex flex-col. Logo: p-4 border-b border-gray-800. Nav: flex-1 overflow-y-auto py-4. Nav item: flex items-center gap-3 px-4 py-2 hover:bg-gray-800 rounded-lg mx-2, icon and label. Active: bg-gray-800 text-blue-400. Section divider: text-xs text-gray-500 uppercase px-4 mt-4 mb-2. Footer: p-4 border-t border-gray-800, user info.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c76"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6794c1f114bd3685fff0c5af37d98d6813e420b430cc672834340e8c7f6f79eb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create collapsible dashboard sidebar with navigation.",
+    "detailed": "Create sidebar navigation. Container: fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white flex flex-col. Logo: p-4 border-b border-gray-800. Nav: flex-1 overflow-y-auto py-4. Nav item: flex items-center gap-3 px-4 py-2 hover:bg-gray-800 rounded-lg mx-2, icon and label. Active: bg-gray-800 text-blue-400. Section divider: text-xs text-gray-500 uppercase px-4 mt-4 mb-2. Footer: p-4 border-t border-gray-800, user info.",
+    "advanced": "Create professional dashboard sidebar. Layout: fixed or static, full height, flex column. Collapse: toggle between full (w-64) and collapsed (w-16) modes, icons only when collapsed, tooltips for labels. Logo: clickable, different versions for full/collapsed. Search: optional command palette trigger in sidebar. Navigation structure: grouped sections with headers, nested items (expandable), badges for counts/status. Nav item: icon, label, optional badge, optional submenu indicator. Item states: default, hover, active/current, disabled. Submenu: expand on click, animate height, indent children. Icons: consistent size and style, active state color. Hover: background color, scale icon slightly. Sections: collapsible groups, persist collapse state. Favorites/pinned: user-pinnable items at top. Recent: recently visited items section. Footer: user avatar/name, role, dropdown for settings/logout. Notifications: indicator on relevant items. Keyboard: arrow keys navigate, Enter selects, Escape closes submenus. Mobile: overlay drawer with backdrop, swipe to close. Responsive: auto-collapse on medium screens. Theme: support light/dark modes. Accessibility: proper navigation landmark, aria-current for active item."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

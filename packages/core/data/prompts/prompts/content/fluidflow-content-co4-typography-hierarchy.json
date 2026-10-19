@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co4-typography-hierarchy",
+  "slug": "fluidflow-content-co4-typography-hierarchy",
+  "title": "Typography Hierarchy",
+  "description": "FluidFlow · Typography Hierarchy",
+  "content": "Establish clear typography hierarchy throughout the application. Heading scale: h1 (text-4xl font-bold), h2 (text-3xl font-semibold), h3 (text-2xl font-semibold), h4 (text-xl font-medium), h5 (text-lg font-medium), h6 (text-base font-medium). Body text: text-base text-gray-700 leading-relaxed for paragraphs. Small text: text-sm text-gray-600 for secondary info. Caption: text-xs text-gray-500 for metadata. Emphasize: font-semibold or font-bold for important text. Links: text-blue-600 hover:underline. Use proper heading elements (h1-h6) for accessibility. Limit one h1 per page. Add proper line-height: leading-tight for headings, leading-relaxed for body. Use max-w-prose for optimal line length in content blocks.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "020f1005039c76b40eb9937f1513276f4ec678128083ba6036e9a008e6a9dafc",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Establish clear heading and text size hierarchy.",
+    "detailed": "Establish clear typography hierarchy throughout the application. Heading scale: h1 (text-4xl font-bold), h2 (text-3xl font-semibold), h3 (text-2xl font-semibold), h4 (text-xl font-medium), h5 (text-lg font-medium), h6 (text-base font-medium). Body text: text-base text-gray-700 leading-relaxed for paragraphs. Small text: text-sm text-gray-600 for secondary info. Caption: text-xs text-gray-500 for metadata. Emphasize: font-semibold or font-bold for important text. Links: text-blue-600 hover:underline. Use proper heading elements (h1-h6) for accessibility. Limit one h1 per page. Add proper line-height: leading-tight for headings, leading-relaxed for body. Use max-w-prose for optimal line length in content blocks.",
+    "advanced": "Establish clear typography hierarchy throughout the application for readability and visual structure. Heading scale (with semantic HTML): h1 (text-4xl md:text-5xl font-bold tracking-tight leading-tight) - page title, one per page; h2 (text-3xl font-semibold leading-snug) - major sections; h3 (text-2xl font-semibold) - subsections; h4 (text-xl font-medium) - card titles, list headers; h5 (text-lg font-medium) - minor headings; h6 (text-base font-medium) - smallest heading level. Body text: text-base (16px) text-gray-700 dark:text-gray-300 leading-relaxed (1.625) for paragraphs, optimal line-height for readability. Secondary text: text-sm text-gray-600 for supporting info, helper text, timestamps. Caption/meta: text-xs text-gray-500 for metadata, labels, fine print. Emphasis: font-semibold for inline emphasis, font-bold sparingly for strong emphasis. Links: text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400, underline always for accessibility or on hover. Line length: max-w-prose (65ch) for article content, prevents eye strain from overly long lines. Line height: leading-tight (1.25) for headings, leading-normal (1.5) for UI text, leading-relaxed (1.625) for reading content. Letter spacing: tracking-tight for large headings, tracking-wide for small caps/labels. Font weights: 400 (normal) body, 500 (medium) UI elements, 600 (semibold) emphasis, 700 (bold) headings. Responsive type: text-2xl md:text-3xl lg:text-4xl for hero text scaling. Contrast: ensure text colors meet WCAG contrast ratios. Dark mode: invert gray scale appropriately (gray-700 → gray-300). Consistency: use design tokens or Tailwind config for reusable type scales."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da21-user-activity-timeline",
+  "slug": "fluidflow-dashboard-da21-user-activity-timeline",
+  "title": "User Activity Timeline",
+  "description": "FluidFlow · User Activity Timeline",
+  "content": "Build user activity timeline. Vertical timeline: chronological list of activities. Event types: different icons/colors per type. Time grouping: group by day or session. Details: expandable details per event. Filtering: filter by activity type. User context: show user info at top. Infinite scroll: load more as scrolling. Export: download activity log.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "98c8b078a7ef07817fc8745ff2aef7762688d2192d218e15f0623a18bdc9e099",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show timeline of user activities and events.",
+    "detailed": "Build user activity timeline. Vertical timeline: chronological list of activities. Event types: different icons/colors per type. Time grouping: group by day or session. Details: expandable details per event. Filtering: filter by activity type. User context: show user info at top. Infinite scroll: load more as scrolling. Export: download activity log.",
+    "advanced": "Build comprehensive user activity timeline for user analysis. Timeline layout: vertical chronological list, newest at top, date/time separators for grouping. Activity item: timestamp (relative or absolute), icon for activity type, activity description, additional context (IP, device, location). Activity types: logins/logouts, page views, clicks, form submissions, transactions, errors, support interactions, each with distinct icon and color. Expandable details: click to expand full activity details, request/response data (sanitized), related items. User header: user profile card at top, avatar, name, email, key user metrics (total activities, last active, lifetime value). Filtering: filter by activity type (checkboxes), date range picker, search within activities. Session grouping: group activities into sessions, collapsed session summary with expand. Infinite scroll: load 50 activities initially, load more on scroll, loading indicator. Empty state: \"No activities in selected period\". Export: download as CSV, full log or filtered view. Privacy: hide/mask sensitive data (passwords, tokens), access controls on who can view. Comparison: optionally compare to typical user behavior. Related users: link to related users (same IP, same company). Anomaly highlighting: flag unusual activities (suspicious login, error spike). Live mode: for support, show activities updating in real-time. Integration: link to related records (order details, support ticket). Time zone: display in user local time or viewer time with toggle."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

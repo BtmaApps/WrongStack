@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a27-cursor-effects",
+  "slug": "fluidflow-animation-a27-cursor-effects",
+  "title": "Cursor Effects",
+  "description": "FluidFlow · Cursor Effects",
+  "content": "Create custom cursor effects for unique experiences. Hide default cursor. Track mouse position. Create custom cursor element that follows mouse. Add trailing effect with multiple following elements. Include interactive states (hover changes). Add blob/circle that responds to clicks. Implement magnetic pull near interactive elements. Create cursor spotlight effect. Handle cursor leaving window.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "819973b42f0b8abf18176f6b85ac54222966c5282912994fe1ca3e9b613daeaf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create custom cursor with trail or interactive effects.",
+    "detailed": "Create custom cursor effects for unique experiences. Hide default cursor. Track mouse position. Create custom cursor element that follows mouse. Add trailing effect with multiple following elements. Include interactive states (hover changes). Add blob/circle that responds to clicks. Implement magnetic pull near interactive elements. Create cursor spotlight effect. Handle cursor leaving window.",
+    "advanced": "Create custom cursor effects for distinctive interactive experience. Hide default cursor: body { cursor: none }, or per-element. Cursor element: fixed position div, pointer-events-none, z-50 (above all content), transform translate(-50%, -50%) to center on mouse. Position tracking: document mousemove listener, update CSS custom properties or state with clientX, clientY. Smooth follow: use transition on cursor element (transition: transform 0.1s ease-out) or lerp position in rAF for lag effect. Trail effect: multiple cursor elements with increasing transition delay, creates snake trail. Interactive states: change cursor size, color, or shape based on what is being hovered (detect with event.target), grow on clickable elements. Click effect: scale pulse or ripple from cursor on mousedown. Blob cursor: larger soft circle that morphs/stretches based on movement speed and direction. Spotlight: radial gradient mask that follows cursor, reveals hidden content. Magnetic effect: cursor distorts or pulls when near specific elements. Hover detection: poll or use mouseover/mouseout on interactive elements to change cursor state. Mixed cursor: show custom cursor alongside default (partial replacement). Performance: use transform for position (GPU accelerated), reduce complexity on mobile. Touch devices: hide custom cursor entirely on touch-only devices. Accessibility: custom cursor is enhancement, ensure all interactions work with default cursor. Cursor context: different cursor for different page sections (pointer over links, crosshair over canvas). Window boundary: detect mouseout on document to hide/position cursor appropriately. Implementation: React refs or vanilla JS event listeners, cleanup on unmount."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

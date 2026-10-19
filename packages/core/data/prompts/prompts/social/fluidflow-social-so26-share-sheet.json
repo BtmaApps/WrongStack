@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so26-share-sheet",
+  "slug": "fluidflow-social-so26-share-sheet",
+  "title": "Share Sheet",
+  "description": "FluidFlow · Share Sheet",
+  "content": "Build share sheet component. Apps row: horizontal scroll of share targets (Twitter, Facebook, WhatsApp, Email, SMS). Action row: Copy Link, Save, Add to Bookmarks. Native integration: trigger native share if available. Contact sharing: share to specific contacts. Share preview: show content being shared.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1ee01b5169441d3a7a236e607890b9bf64e127b8d27feeaa7b1ec221f48732a6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create native-style share sheet with app options.",
+    "detailed": "Build share sheet component. Apps row: horizontal scroll of share targets (Twitter, Facebook, WhatsApp, Email, SMS). Action row: Copy Link, Save, Add to Bookmarks. Native integration: trigger native share if available. Contact sharing: share to specific contacts. Share preview: show content being shared.",
+    "advanced": "Build native-style share sheet with comprehensive sharing options. Trigger: share button opens bottom sheet. Container: fixed bottom-0 inset-x-0 bg-white rounded-t-2xl shadow-2xl transform transition-transform. Backdrop: fixed inset-0 bg-black/50 for dismissing. Sheet content: p-4. Handle: w-12 h-1.5 rounded-full bg-gray-300 mx-auto mb-4 for drag-to-close. Content preview: compact preview of shared content (thumbnail, title, URL) in rounded container with light bg. Share targets - Recent contacts: horizontal scroll of recent share targets (people DMed), circular avatars with name below, tap shares via DM. Share targets - Apps: horizontal scroll of app icons. Apps: Twitter/X, Facebook, WhatsApp, Telegram, LinkedIn, Email, SMS/Messages, Slack, Discord. Each: app icon (w-12 h-12 rounded-xl), app name below (text-xs). Tap opens app with share intent pre-filled. Action buttons: vertical list of action rows with icon + label. Copy Link: Link icon, click copies URL with \"Copied!\" feedback. Save/Bookmark: Bookmark icon. Download: Download icon for media. Add to collection: for Pinterest-style saving. QR Code: generate QR code to share. Embed: copy embed code. Native share integration: if navigator.share available, show \"More...\" option that triggers native OS share sheet for access to all apps. Share to specific users: \"Share via Message\" opens user search. Recent shares: remember recently used share destinations, show first. Share count: if available, show how many times content has been shared. Share settings: if content has visibility settings, allow selecting audience before sharing. Animation: sheet slides up, taps on targets briefly highlight. Dismiss: tap backdrop, swipe down, or tap action. Mobile-first: designed for mobile, adapts to desktop with centered modal. Sound/haptics: optional feedback on share completion. Accessibility: sheet announced when opened, all targets focusable and labeled, dismiss method clear."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

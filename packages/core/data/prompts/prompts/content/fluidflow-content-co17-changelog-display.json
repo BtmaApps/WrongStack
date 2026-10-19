@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co17-changelog-display",
+  "slug": "fluidflow-content-co17-changelog-display",
+  "title": "Changelog Display",
+  "description": "FluidFlow · Changelog Display",
+  "content": "Build changelog/release notes component. Version structure: version number, date, list of changes. Change types: Added (green), Changed (blue), Fixed (yellow), Removed (red), Security (purple). Timeline layout: vertical timeline with version markers. Collapsible: expand/collapse older versions. Badges: version type (major, minor, patch). Links: issue/PR references as clickable links. Search: filter changes by keyword. Current version: highlight or pin current version. Markdown: render descriptions from markdown. Notification: new badge on unread changelog entries.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co17"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9c0ac1fa8c74695ae618cd20ea323ac6103b9045a8c7d6b3b21ce379c20d2aa6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create formatted changelog or release notes display.",
+    "detailed": "Build changelog/release notes component. Version structure: version number, date, list of changes. Change types: Added (green), Changed (blue), Fixed (yellow), Removed (red), Security (purple). Timeline layout: vertical timeline with version markers. Collapsible: expand/collapse older versions. Badges: version type (major, minor, patch). Links: issue/PR references as clickable links. Search: filter changes by keyword. Current version: highlight or pin current version. Markdown: render descriptions from markdown. Notification: new badge on unread changelog entries.",
+    "advanced": "Build changelog/release notes component following keep-a-changelog format. Version structure: semantic version (v1.2.3), release date, grouped changes by type. Change categories: Added (new features, bg-green-100 border-green-500), Changed (modifications, bg-blue-100 border-blue-500), Deprecated (soon to remove, bg-yellow-100 border-yellow-500), Removed (deleted features, bg-red-100 border-red-500), Fixed (bug fixes, bg-orange-100 border-orange-500), Security (vulnerability patches, bg-purple-100 border-purple-500). Layout options: simple list, timeline with version nodes, cards per version. Version badges: \"major\" (breaking changes), \"minor\" (new features), \"patch\" (bug fixes only), \"beta\", \"alpha\". Collapsible: older versions collapsed by default, click to expand, or virtual scroll for very long history. References: parse and link #123 to issues, PR #456 to pull requests, @username to contributors. Markdown rendering: descriptions can include markdown for formatting, code snippets. Search/filter: filter changes by keyword, category type, or version range. Pin current: current app version highlighted or pinned to top. \"What is new\" modal: triggered on update, shows latest version changes, dismiss to mark as read. Compare versions: show diff between two versions. Data structure: array of {version, date, changes: [{type, description, issues}]}. RSS/Atom: optionally generate feed for changelog. Contributor credits: optional list of contributors per version."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r22-responsive-footer",
+  "slug": "fluidflow-responsive-r22-responsive-footer",
+  "title": "Responsive Footer",
+  "description": "FluidFlow · Responsive Footer",
+  "content": "Build responsive footer layout. Mobile: stack all sections vertically, accordion for link groups, centered content. Tablet: 2-column grid for link sections. Desktop: 4+ column layout with sitemap-style navigation. Logo and social links adapt position. Newsletter signup spans appropriate width. Legal links in single row on desktop, stacked on mobile.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5274a34df2e05cc4b5dddb43e58addf9bab60a40168b0a3b07b0974ead6a6459",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create footer that adapts from stacked to multi-column layout.",
+    "detailed": "Build responsive footer layout. Mobile: stack all sections vertically, accordion for link groups, centered content. Tablet: 2-column grid for link sections. Desktop: 4+ column layout with sitemap-style navigation. Logo and social links adapt position. Newsletter signup spans appropriate width. Legal links in single row on desktop, stacked on mobile.",
+    "advanced": "Build responsive footer with complete adaptation. Mobile: single column stack, accordion link sections (save space, tap to expand), centered logo, stacked social icons, full-width newsletter input, vertical legal links with separators. Tablet: 2-column grid (grid-cols-2) for link sections, side-by-side logo and social, inline newsletter form. Desktop: 4-5 column layout (grid-cols-4 or grid-cols-5), sitemap-style link groups with headings, horizontal newsletter, inline legal links with dot separators. Logo: prominent on all sizes, link to home. Social icons: horizontal row, appropriately sized touch targets. Newsletter: label + input + button, responsive layout (stacked to inline). Back to top: fixed button on long pages, smooth scroll. Legal: copyright, privacy, terms links, responsive separator. Accessibility: footer as landmark, proper heading hierarchy, link groups as nav elements. Dark mode: appropriate color adjustments. Animation: fade-in on scroll into view."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c26-add-skeleton-loading",
+  "slug": "fluidflow-components-c26-add-skeleton-loading",
+  "title": "Add Skeleton Loading",
+  "description": "FluidFlow · Add Skeleton Loading",
+  "content": "Create skeleton loading components that mimic content structure while loading. Base skeleton: bg-gray-200 rounded animate-pulse. Create variants: SkeletonText (h-4 rounded), SkeletonAvatar (w-10 h-10 rounded-full), SkeletonImage (aspect-video rounded-lg), SkeletonButton (h-10 w-24 rounded-md), SkeletonCard (full card with image, title, text areas). Animation: use animate-pulse or custom shimmer with gradient animation moving left to right. Match exact dimensions of real content to prevent layout shift. Create compound skeletons for common patterns: CardSkeleton, ListItemSkeleton, TableRowSkeleton.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "33a06353118b0cafc86105ca09d849a92cc82b811e32d110eb75b47b907f5766",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create animated skeleton placeholders for loading states.",
+    "detailed": "Create skeleton loading components that mimic content structure while loading. Base skeleton: bg-gray-200 rounded animate-pulse. Create variants: SkeletonText (h-4 rounded), SkeletonAvatar (w-10 h-10 rounded-full), SkeletonImage (aspect-video rounded-lg), SkeletonButton (h-10 w-24 rounded-md), SkeletonCard (full card with image, title, text areas). Animation: use animate-pulse or custom shimmer with gradient animation moving left to right. Match exact dimensions of real content to prevent layout shift. Create compound skeletons for common patterns: CardSkeleton, ListItemSkeleton, TableRowSkeleton.",
+    "advanced": "Create comprehensive skeleton loading system with multiple variants. Base component: div with bg-gray-200 dark:bg-gray-700 rounded animate-pulse. Custom shimmer animation: background linear-gradient(-90deg, gray-200 0%, gray-100 50%, gray-200 100%) with background-size: 200% 100% and animate sliding. Variants: SkeletonText (h-4 w-full, with width variants w-3/4 w-1/2 for realistic text), SkeletonHeading (h-6 w-2/3), SkeletonAvatar (w-10 h-10 rounded-full), SkeletonImage (aspect-video or aspect-square rounded-lg), SkeletonButton (h-10 w-24 rounded-md), SkeletonInput (h-10 w-full rounded-md). Compound skeletons: CardSkeleton (image + heading + 2-3 text lines), ListItemSkeleton (avatar + text lines), TableRowSkeleton (multiple cells), ProfileSkeleton (avatar + name + bio). Component props: width, height, rounded variant, animation (pulse/shimmer/none), count for repeating. Accessibility: add aria-label=\"Loading...\" and role=\"status\" on container, aria-busy=\"true\" on parent. Performance: use will-change: opacity for smooth animation, CSS containment. Dark mode support with dark: variants. Prevent layout shift by matching exact real content dimensions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "fluidflow-ui-templates-builtin-3-fix-styling-issue",
+  "slug": "fluidflow-ui-templates-builtin-3-fix-styling-issue",
+  "title": "Fix Styling Issue",
+  "description": "Fix CSS/Tailwind styling problems",
+  "content": "Fix the styling issue in {{componentName}}: {{issue}}. Ensure it looks correct on all screen sizes.",
+  "category": "ui-templates",
+  "tags": ["fluidflow", "ui-templates", "builtin-3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fe31700aa46769e8593fc9c3c22bb08fa2697e13e78f10485c4d86399c96169a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variables": [
+    {
+      "name": "componentName",
+      "description": "Component with issue",
+      "default": "Header",
+      "required": true
+    },
+    {
+      "name": "issue",
+      "description": "Describe the problem",
+      "default": "elements are not aligned properly on mobile",
+      "required": true
+    }
+  ],
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

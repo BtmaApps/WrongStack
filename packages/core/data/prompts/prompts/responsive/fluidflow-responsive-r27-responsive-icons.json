@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r27-responsive-icons",
+  "slug": "fluidflow-responsive-r27-responsive-icons",
+  "title": "Responsive Icons",
+  "description": "FluidFlow · Responsive Icons",
+  "content": "Scale icons responsively. Use relative sizing where possible (em-based). Standard sizes: w-4 h-4 (16px) for inline, w-5 h-5 (20px) for UI, w-6 h-6 (24px) for touch targets. Increase touch target size on mobile even if icon stays same. Hide icon labels on mobile, show on desktop. Use responsive classes: w-5 h-5 md:w-6 md:h-6.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4d7e63314bb07e13a07d02e57393c7064a44aec32f97088b2aa0c990a1bba88d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Scale icons appropriately across different screen sizes.",
+    "detailed": "Scale icons responsively. Use relative sizing where possible (em-based). Standard sizes: w-4 h-4 (16px) for inline, w-5 h-5 (20px) for UI, w-6 h-6 (24px) for touch targets. Increase touch target size on mobile even if icon stays same. Hide icon labels on mobile, show on desktop. Use responsive classes: w-5 h-5 md:w-6 md:h-6.",
+    "advanced": "Scale icons with contextual responsiveness. Size scale: w-4 h-4 (inline/small), w-5 h-5 (standard UI), w-6 h-6 (primary actions), w-8 h-8 (feature icons), w-12 h-12+ (hero/feature). Touch targets: even if icon is 20px, touch target should be 48px minimum (add padding). Responsive sizing: w-5 h-5 md:w-6 md:h-6 for icons that grow. Icon + label: flex items-center gap-2, hide text on mobile (span hidden md:inline), keep icon visible. Icon-only buttons: larger on mobile (w-10 h-10 md:w-8 md:h-8). Tooltips: show on hover for icon-only on desktop, consider long-press on mobile. SVG optimization: use currentColor for fill/stroke, inherit text color. Icon libraries: ensure tree-shaking, only import used icons. Consistent stroke width: maintain visual weight across sizes. Loading states: icon buttons show spinner at same size. Accessibility: always include aria-label for icon-only buttons. Emoji: use as icons sparingly, may render differently across platforms."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

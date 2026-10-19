@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so5-follow-button",
+  "slug": "fluidflow-social-so5-follow-button",
+  "title": "Follow Button",
+  "description": "FluidFlow · Follow Button",
+  "content": "Build follow/unfollow button component. States: not following (\"Follow\" blue/primary), following (\"Following\" gray outline), hover on following (\"Unfollow\" red). Animation: smooth transition between states. Loading state: spinner while processing. Optimistic update: change immediately, revert on error. Count display: optional follower count. Mutual follow: show \"Follows you\" badge. Sizes: sm, md, lg.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ae36e693e664f6115e8f27aed4a5b0b595c72204425ec774034dcbec01c462b3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create follow/unfollow button with state changes and loading state.",
+    "detailed": "Build follow/unfollow button component. States: not following (\"Follow\" blue/primary), following (\"Following\" gray outline), hover on following (\"Unfollow\" red). Animation: smooth transition between states. Loading state: spinner while processing. Optimistic update: change immediately, revert on error. Count display: optional follower count. Mutual follow: show \"Follows you\" badge. Sizes: sm, md, lg.",
+    "advanced": "Build follow/unfollow button component with comprehensive state handling. States: not following (bg-black text-white \"Follow\"), following (bg-transparent border border-gray-300 text-gray-700 \"Following\"), hover on following state (border-red-300 text-red-600 \"Unfollow\"). Animation: smooth transition-all duration-200 between states, subtle scale on click. Loading state: spinner (Loader2 animate-spin) replacing text while processing API call, button disabled. Optimistic update: change UI state immediately on click for snappy feel, revert if API call fails with error toast. Click handler: toggle follow state, API POST /follow or DELETE /unfollow, update follower count in UI (+1 or -1). Count display: optional inline follower count badge next to button or separate. Mutual follow indicator: \"Follows you\" badge (text-xs text-gray-500) shown near button or on profile. Private account: show \"Request\" instead of \"Follow\", pending state shows \"Requested\" (can cancel), approved converts to \"Following\". Variants: icon only (UserPlus/UserMinus icons for compact spaces like user lists), text only, text + icon, full button. Sizes: sm (text-xs px-3 py-1), md (text-sm px-4 py-1.5), lg (px-6 py-2). Mobile: ensure min 44x44px touch target. Confirmation: optional confirm dialog for unfollow (\"Stop following @username?\") to prevent accidental unfollows. Block state: if user is blocked, show \"Blocked\" in disabled button state, or hide follow button entirely. Keyboard: Enter/Space triggers action. Accessibility: clear aria-label describing current state and action (\"Follow @username\" or \"Unfollow @username\"), aria-pressed for toggle state, announce state changes to screen readers. Error handling: show toast on failure, button reverts to previous state."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

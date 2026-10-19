@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d30-isometric-3d",
+  "slug": "fluidflow-design-d30-isometric-3d",
+  "title": "Isometric/3D",
+  "description": "FluidFlow · Isometric/3D",
+  "content": "Apply isometric/3D design with dimensional elements. Use isometric grid perspective (30-degree angles). Create 3D box-like cards with visible sides using CSS transforms (rotateX, rotateY). Add isometric illustrations for visuals. Color: use shading to show 3D form - darker sides, lighter tops. Include drop shadows suggesting elevation. Layered elements creating depth. Floating elements with perspective. CSS 3D transforms for interactive depth effects.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fc59d3ca1de67029aeafae7f8116dfb7efb2ecef05d96eb757508a302f47bbf2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create depth with isometric 3D illustrations and pseudo-3D UI elements.",
+    "detailed": "Apply isometric/3D design with dimensional elements. Use isometric grid perspective (30-degree angles). Create 3D box-like cards with visible sides using CSS transforms (rotateX, rotateY). Add isometric illustrations for visuals. Color: use shading to show 3D form - darker sides, lighter tops. Include drop shadows suggesting elevation. Layered elements creating depth. Floating elements with perspective. CSS 3D transforms for interactive depth effects.",
+    "advanced": "Apply isometric/3D design creating dimensional, spatial interfaces. Isometric foundation: 30-degree angle grid system, objects shown from consistent viewpoint. 3D cards: use CSS transforms - transform: rotateX(-10deg) rotateY(10deg) for subtle tilt, or full isometric with perspective parent. Box construction: visible top, left, and right faces using pseudo-elements or stacked divs with transforms; each face different shade (top lightest, right medium, left darkest). Color shading: simulate light source from top-left; use HSL color manipulation for consistent shading (same hue, varying lightness). Shadow system: layered shadows (shadow-sm on close elements, shadow-xl on raised), consider colored shadows matching element. Floating elements: translate3d and scale creating hierarchy levels, parallax on scroll. Isometric illustrations: SVG icons and images in isometric style, consistent angle throughout. Depth layers: clear foreground, midground, background separation using z-index and transforms. Interactive: hover states that rotate or lift elements further (translateZ), smooth transitions. Grid: isometric grid background pattern as subtle guide. Typography: remains flat and readable, not perspective-warped. Performance: use transform3d for GPU acceleration, will-change for animated elements. Reduce complexity on mobile. Accessibility: ensure depth cues are decorative not meaningful, maintain flat reading order for screen readers. 3D should enhance not confuse interaction models."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

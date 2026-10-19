@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d66-maximalist",
+  "slug": "fluidflow-design-d66-maximalist",
+  "title": "Maximalist",
+  "description": "FluidFlow · Maximalist",
+  "content": "Apply maximalist aesthetic with more-is-more philosophy. Mix multiple patterns boldly. Layer colors, textures, and decorative elements. Clash prints intentionally. Include abundant ornamentation. Use full color spectrum. No empty space - fill everything. Combine different cultural influences. Eclectic collected aesthetic. Bold, overwhelming, expressive atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d66"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ae3a5613e43d4740b74565f8232dec220effdc5e39dc133b507aa9961029a997",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create overwhelming maximalist design with clashing patterns, bold colors, and abundant decoration.",
+    "detailed": "Apply maximalist aesthetic with more-is-more philosophy. Mix multiple patterns boldly. Layer colors, textures, and decorative elements. Clash prints intentionally. Include abundant ornamentation. Use full color spectrum. No empty space - fill everything. Combine different cultural influences. Eclectic collected aesthetic. Bold, overwhelming, expressive atmosphere.",
+    "advanced": "Apply maximalist aesthetic with more-is-more philosophy - the antithesis of minimalism. Pattern mixing: fearlessly combine multiple patterns - florals + stripes + geometrics + animal prints. Layer 3-5 patterns with varying scales. Color abundance: use many colors simultaneously, can include clashes, jewel tones alongside pastels alongside neons. No fear of bold combinations. Surface coverage: fill all available space with pattern, texture, or decoration - avoid large empty areas. Texture layering: combine velvet, metallics, embroidery, fringe, sequins - multiple textures simultaneously. Cultural fusion: mix influences from different traditions - Moroccan tiles + chinoiserie + Victorian + tribal. Collections displayed: abundance of objects, grouped items, gallery walls, curated excess. Typography: decorative, can layer multiple fonts, embellished, sometimes overlapping. Borders within borders: frames containing frames, nested decorative elements. Color blocking with pattern: each color block can have its own pattern. Gold/metallic: abundant metallic accents connecting disparate elements. Photography: styled shots with many objects, layered backgrounds. Interior influence: \"grandmillennial\" style, eclectic collecting. Balance in chaos: despite excess, create visual flow through repeated colors or motifs. Interactive: reveals showing even more layers beneath. Implementation: careful z-index layering, SVG patterns, blend modes for interaction. Accessibility: CRITICAL - overwhelming visuals can be disorienting, ensure text areas have sufficient calm backgrounds, provide simplified alternative for important content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

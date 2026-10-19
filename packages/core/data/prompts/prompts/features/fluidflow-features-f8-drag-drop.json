@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f8-drag-drop",
+  "slug": "fluidflow-features-f8-drag-drop",
+  "title": "Drag & Drop",
+  "description": "FluidFlow · Drag & Drop",
+  "content": "Implement drag and drop for reordering items. Use HTML5 Drag and Drop API. Draggable items: draggable=\"true\" attribute. Visual indicators: grab cursor on hover, grabbing while dragging. Drop zones: highlight valid drop targets. Handle events: onDragStart, onDragOver, onDrop to reorder array. Animation: smooth transition as items shift. Save new order to localStorage or API.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8feae943d96ba79e8a78d2012d2c4afdf93de5227f470ecd773def1f91988cfa",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Allow users to drag items to reorder them in a list.",
+    "detailed": "Implement drag and drop for reordering items. Use HTML5 Drag and Drop API. Draggable items: draggable=\"true\" attribute. Visual indicators: grab cursor on hover, grabbing while dragging. Drop zones: highlight valid drop targets. Handle events: onDragStart, onDragOver, onDrop to reorder array. Animation: smooth transition as items shift. Save new order to localStorage or API.",
+    "advanced": "Implement drag and drop for reordering items with full accessibility. Use HTML5 Drag and Drop API with fallback to touch events for mobile. Draggable items: draggable=\"true\" attribute, tabIndex for keyboard access. Visual indicators: cursor-grab on hover, cursor-grabbing while dragging. Drag preview: semi-transparent clone follows cursor (default browser behavior or custom using setDragImage). Store dragged item reference in dataTransfer or React state. Drop zones: highlight valid drop targets with dashed border (border-dashed border-2 border-blue-400) or bg change on dragEnter. Drop indicator: horizontal line (h-0.5 bg-blue-500) showing where item will be placed, position based on mouse Y. Handle events: onDragStart (store item index, set effectAllowed), onDragEnter/onDragOver (preventDefault to allow drop, update indicator position), onDragLeave (remove highlight), onDrop (calculate new index, reorder array). State update: immutably move item from source index to target index using array methods. Animation: transition-transform duration-200 as items shift to make room. Mobile support: long-press (300ms) to initiate drag, touch move to drag, handle touch events parallel to drag events. Save new order: debounced API call or localStorage on drop, show saving indicator. Accessibility: keyboard reordering with Space to grab, arrow keys to move, Space/Enter to drop, Escape to cancel. Screen reader announcements using aria-live: \"Item grabbed\", \"Moved to position 3\", \"Item dropped\". Consider dnd-kit or react-beautiful-dnd library for complex cases."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

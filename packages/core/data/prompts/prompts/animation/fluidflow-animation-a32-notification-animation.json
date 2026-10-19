@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a32-notification-animation",
+  "slug": "fluidflow-animation-a32-notification-animation",
+  "title": "Notification Animation",
+  "description": "FluidFlow · Notification Animation",
+  "content": "Create notification/toast animations. Slide in from screen edge (top, bottom, right). Stack multiple notifications properly. Add exit animation before removal. Include progress bar for auto-dismiss timing. Support different notification types (success, error, warning, info). Add hover pause for auto-dismiss. Handle notification queue and limits. Create subtle attention animation for critical alerts.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c851db98800c442047c85e05a8d7e122c77cd05da1e734648309d8f71fbcc6ad",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create slide-in animations for toast notifications.",
+    "detailed": "Create notification/toast animations. Slide in from screen edge (top, bottom, right). Stack multiple notifications properly. Add exit animation before removal. Include progress bar for auto-dismiss timing. Support different notification types (success, error, warning, info). Add hover pause for auto-dismiss. Handle notification queue and limits. Create subtle attention animation for critical alerts.",
+    "advanced": "Create notification/toast animations with proper queuing and interaction. Entry animation: slide from edge with fade - right edge: translateX(100%) opacity-0 to translateX(0) opacity-100, top edge: translateY(-100%). Exit animation: reverse direction or fade out, trigger before removal, remove from DOM after animation completes (300ms). Stacking: flex-col gap-2 for vertical stack, new notifications push existing ones. Position variants: top-right (most common), top-center, bottom-right, bottom-center. Progress indicator: thin bar at bottom showing time until auto-dismiss, animates width from 100% to 0 over duration. Type styling: success (green accent, CheckCircle icon), error (red, XCircle), warning (yellow, AlertTriangle), info (blue, Info). Auto-dismiss: default 5s timeout, pause timer on hover (onMouseEnter/Leave), resume on leave. Manual dismiss: X button with fade/slide out animation. Queue management: limit visible notifications (max 3-5), queue others, show next when space available. Animation timing: 300ms enter, 250ms exit, use ease-out for enter, ease-in for exit. Attention animation: for critical notifications, add subtle pulse or shake animation. Swipe to dismiss: on mobile, swipe right to dismiss with drag gesture. Sound: optional audio cue for important notifications (with user permission). Implementation: notification state manager (array), portal rendering, AnimatePresence for exit animations. ACCESSIBILITY: role=\"alert\" for important, role=\"status\" for informational, aria-live=\"polite\" or \"assertive\", focus management for persistent notifications. Reduced motion: fade only without slide. Z-index: high enough to appear above all content (z-50)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la15-404-error-page",
+  "slug": "fluidflow-layouts-la15-404-error-page",
+  "title": "404 Error Page",
+  "description": "FluidFlow · 404 Error Page",
+  "content": "Build friendly 404 error page. Centered content: illustration or creative visual (lost astronaut, broken robot, etc.). Headline: \"Page Not Found\" or creative alternative. Helpful message: explain what happened. Navigation options: \"Go Home\" primary button, \"Go Back\" secondary, search input. Suggested pages: popular or recent pages. Report issue link. Consistent with site branding.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "aba66a273407b4dc1d7773b5e432c693bfeedfd992e5b75f31e757eb53f48758",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create 404 error page with illustration and navigation options.",
+    "detailed": "Build friendly 404 error page. Centered content: illustration or creative visual (lost astronaut, broken robot, etc.). Headline: \"Page Not Found\" or creative alternative. Helpful message: explain what happened. Navigation options: \"Go Home\" primary button, \"Go Back\" secondary, search input. Suggested pages: popular or recent pages. Report issue link. Consistent with site branding.",
+    "advanced": "Build engaging and helpful 404 error page. Layout: min-h-screen flex items-center justify-center px-4, centered content. Illustration section: large creative visual (w-96 h-auto), options include: lost astronaut floating, broken robot, confused dog, empty box, 404 numbers styled creatively. Can use Lottie animation for movement. Can be SVG illustration or image. Headline: text-3xl md:text-4xl font-bold mt-8, \"Oops! Page Not Found\" or creative: \"Looks like you are lost in space\", \"This page took a vacation\", \"404: Reality not found\". Message: text-gray-600 text-lg max-w-md text-center mt-4, \"The page you are looking for might have been moved, deleted, or never existed.\" Action buttons: flex gap-4 mt-8 justify-center. \"Go Home\" primary button (Home icon + text), \"Go Back\" secondary button (ArrowLeft icon + text, uses history.back()). Search section: \"Or try searching:\" text, search input with button, searches site content. Suggested pages: mt-12, \"You might be looking for:\" heading, grid or list of 4-6 popular/helpful pages with icons and brief descriptions (Home, Products, Pricing, Contact, Help Center, Blog). Report issue: text-sm text-gray-500 mt-8, \"Think this is a mistake? Let us know.\" with link to report. Branding: maintain site header/navigation if applicable, or simplified logo-only header. Footer: optional minimal footer or none. Background: can add subtle pattern, gradient, or particle animation for visual interest. Console Easter egg: optional console.log with ASCII art or funny message for developers. Auto-redirect: optionally suggest redirect if close URL match found. Status code: ensure server returns proper 404 status. Analytics: track 404 hits with referring URL for debugging. Mobile: responsive illustration size, stack buttons vertically. Accessibility: proper heading, alt text on illustration, all links/buttons accessible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

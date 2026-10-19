@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f13-comments-section",
+  "slug": "fluidflow-features-f13-comments-section",
+  "title": "Comments Section",
+  "description": "FluidFlow · Comments Section",
+  "content": "Build full-featured comments section. Comment form: textarea with placeholder, submit button, character counter. Display comments: avatar, username, timestamp (relative: \"2 hours ago\"), comment text. Threading: reply button opens nested reply form. Actions: reply, edit, delete own comments. Likes on comments with count. Sorting: newest, oldest, most liked. Empty state: \"Be the first to comment\".",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "61d5cf728c99b09a86ac5ec9488bb2142d59d6d177b77bceedbbb24ad6f6929a",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add comment form with textarea and display comments with username and timestamp.",
+    "detailed": "Build full-featured comments section. Comment form: textarea with placeholder, submit button, character counter. Display comments: avatar, username, timestamp (relative: \"2 hours ago\"), comment text. Threading: reply button opens nested reply form. Actions: reply, edit, delete own comments. Likes on comments with count. Sorting: newest, oldest, most liked. Empty state: \"Be the first to comment\".",
+    "advanced": "Build full-featured comments section with threading and moderation. Comment form: textarea with placeholder \"Add a comment...\", submit button (primary), character counter showing remaining (e.g., \"245/500\"). Show logged-in user avatar next to input, or \"Sign in to comment\" prompt for guests. Display comments: avatar (w-10 h-10 rounded-full), username (font-medium), verified badge if applicable, timestamp (relative: \"2h ago\", \"Yesterday\", hover for exact date), comment text (whitespace-pre-wrap for line breaks). Threading: Reply button opens nested reply form inline below comment, indent child comments with pl-8 or pl-12 and connecting vertical line, support 2-3 levels deep then \"View more replies\" collapse link. Actions row: Reply, Edit (own comments - inline editing mode), Delete (own comments - with confirmation), Report (dropdown with reasons), Share (copy link to comment). Likes on comments: thumbs up icon with count, toggle on click. Load more: \"Load X more comments\" button or infinite scroll for long threads. Sorting dropdown: Newest first, Oldest first, Most liked, Most discussed. Mention users: @username with autocomplete dropdown showing matching users. Rich text: support basic markdown (bold, italic, links) with preview, or WYSIWYG toolbar. Moderation: flag button reports to moderators, auto-hide comments with many reports. Real-time updates: new comments appear at top with highlight animation using polling (30s) or WebSocket subscription. Empty state: \"Be the first to comment\" with friendly illustration. Guest commenting: option to comment with name/email without account, show \"Guest\" badge."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

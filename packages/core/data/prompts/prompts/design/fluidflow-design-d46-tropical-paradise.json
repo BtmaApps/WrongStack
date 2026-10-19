@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d46-tropical-paradise",
+  "slug": "fluidflow-design-d46-tropical-paradise",
+  "title": "Tropical/Paradise",
+  "description": "FluidFlow · Tropical/Paradise",
+  "content": "Apply tropical paradise aesthetic with vacation vibes. Vibrant colors: turquoise, coral, golden yellow, lush green. Palm tree and tropical leaf motifs. Sunset gradient backgrounds. Include tropical flowers: hibiscus, plumeria. Beach and ocean imagery. Relaxed, curved typography. Bamboo and rattan texture accents. Fun, energetic summer atmosphere. Island resort aesthetic.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d46"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a722e3f38bda052f5e648fae6c74499646be6226fbd2d15f3c0818eda95669c4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create vibrant tropical theme with palm trees, exotic colors, and beach vacation atmosphere.",
+    "detailed": "Apply tropical paradise aesthetic with vacation vibes. Vibrant colors: turquoise, coral, golden yellow, lush green. Palm tree and tropical leaf motifs. Sunset gradient backgrounds. Include tropical flowers: hibiscus, plumeria. Beach and ocean imagery. Relaxed, curved typography. Bamboo and rattan texture accents. Fun, energetic summer atmosphere. Island resort aesthetic.",
+    "advanced": "Apply tropical paradise aesthetic with vibrant vacation energy. Color palette: ocean turquoise (#00bcd4, cyan-500), coral (#ff7f50, pink-400), golden sun yellow (#ffc107), palm green (#4caf50), sunset orange (#ff5722). Gradient skies: sunset gradients (yellow to orange to pink to purple) for backgrounds. Tropical foliage: palm fronds, monstera leaves, banana leaves as decorative elements (SVG), can frame content. Flowers: hibiscus, plumeria, bird of paradise as accents. Water effects: wave patterns, ocean texture, swimming pool ripples. Typography: relaxed, playful fonts (Pacifico, Lobster for display, Nunito for body), slightly bouncy feel. Textures: bamboo/rattan patterns for accents, woven texture, driftwood. Beach elements: sand texture, seashells, surfboards, tiki elements. Lighting: golden hour warmth, lens flare effects, bright and cheerful. Patterns: tropical print patterns (leaves, flowers) for backgrounds or accents. Interactive: gentle wave animations, swaying palm leaves, sun rays. Tiki option: carved wood textures, tribal patterns, torch flames. Resort option: clean pool-side aesthetic, cabana stripes. Photography: saturated, warm color grading, blue skies. Implementation: CSS gradients for skies, SVG for foliage patterns. Accessibility: vibrant colors need contrast attention, maintain readability."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

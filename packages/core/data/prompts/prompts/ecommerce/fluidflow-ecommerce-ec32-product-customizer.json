@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec32-product-customizer",
+  "slug": "fluidflow-ecommerce-ec32-product-customizer",
+  "title": "Product Customizer",
+  "description": "FluidFlow · Product Customizer",
+  "content": "Build product customizer for personalization. Canvas: live preview of product showing customizations. Options: text input (name, initials, message), font selector, color picker, graphic upload, placement selector. Preview: real-time update of preview image. Price updates: show added cost for customizations. Validation: character limits, approved graphics only. Submit: add customized product to cart.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9575c33eac3840ca611e096f46e524fe4533d35fbe88486ca3499e622a28643f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product customization interface for personalized products.",
+    "detailed": "Build product customizer for personalization. Canvas: live preview of product showing customizations. Options: text input (name, initials, message), font selector, color picker, graphic upload, placement selector. Preview: real-time update of preview image. Price updates: show added cost for customizations. Validation: character limits, approved graphics only. Submit: add customized product to cart.",
+    "advanced": "Build comprehensive product customization interface for personalized products. Container: two-panel layout - preview left (larger), options right, or stacked on mobile. Preview panel: large product visualization, canvas-based or image composition, show product from multiple angles if applicable, hotspots indicating customizable areas, zoom in/out controls, 3D rotation if available (three.js integration), downloadable preview image option. Customization options panel: accordion or tabbed sections for different customization types. Text customization: \"Add Text\" section, text input field with character limit (e.g., \"Max 12 characters\"), font selector dropdown with preview of each font, text color picker (preset swatches and/or color wheel), size adjustment (small/medium/large or slider), style options (bold, italic, uppercase), placement selector (click hotspot on preview or dropdown), text effects (shadow, outline) for premium. Monogram specific: 3-letter input, style selector (circle, diamond, stacked), thread/foil color. Graphics/images: preset graphics library by category (sports, animals, symbols), search/filter graphics, upload custom image with format/size requirements, crop/resize tool for uploads, image placement and scaling, image filters or effects optional. Color customization: if product has color options, color picker per customizable area, \"Base color\", \"Accent color\", etc., live preview update. Engraving options: for jewelry/accessories, font, size, placement on item, preview of engraved look. Monogram placement: for apparel, placement options (left chest, center, sleeve), size options. Add-ons: checkboxes for optional additions (gift box, rush production). Price calculation: base price displayed, dynamic \"+$X\" for each customization option, running total updates live, price breakdown tooltip. Validation: character limits enforced with counter, profanity filter on text, image moderation for uploads, required fields marked. Preview accuracy: disclaimer \"Actual product may vary slightly from preview\". Save design: for logged-in users, save design for later, \"My Designs\" gallery for returning to saved customizations. Share design: generate shareable link to preview customization. Templates: pre-made popular design templates user can start from. Add to cart: \"Add to Cart - $X\" button with total, adds customized product with all specifications, cart shows customization summary, editing from cart returns to customizer. Production notes: special handling indicators for warehouse. Mobile: full-width preview, options below in scrollable area, sticky \"Preview\" toggle to return to preview while editing. Accessibility: all inputs properly labeled, preview described, color not sole indicator of options."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

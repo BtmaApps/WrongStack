@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c12-add-faq-section",
+  "slug": "fluidflow-components-c12-add-faq-section",
+  "title": "Add FAQ Section",
+  "description": "FluidFlow · Add FAQ Section",
+  "content": "Build FAQ accordion component. Container with max-w-3xl mx-auto for readability. Item structure: question as trigger button (w-full text-left flex justify-between), ChevronDown icon that rotates on open, answer panel with smooth height animation. Group related questions with section headers. Add search/filter functionality for many FAQs. Implement single-open (close others when opening) or multi-open behavior. Style: border-b between items, hover highlight on question, open state with background change. Accessibility: proper button semantics, aria-expanded, aria-controls on trigger, proper focus styles. Add \"Was this helpful?\" feedback option. Link to contact support for unanswered questions. Schema markup for SEO.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f48d8d6430bd9e321d766cb36806a720ce88aa11a21f3b6888062c0fcccd3cc0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build an FAQ accordion with expandable questions and answers.",
+    "detailed": "Build FAQ accordion component. Container with max-w-3xl mx-auto for readability. Item structure: question as trigger button (w-full text-left flex justify-between), ChevronDown icon that rotates on open, answer panel with smooth height animation. Group related questions with section headers. Add search/filter functionality for many FAQs. Implement single-open (close others when opening) or multi-open behavior. Style: border-b between items, hover highlight on question, open state with background change. Accessibility: proper button semantics, aria-expanded, aria-controls on trigger, proper focus styles. Add \"Was this helpful?\" feedback option. Link to contact support for unanswered questions. Schema markup for SEO.",
+    "advanced": "Build FAQ accordion component with search, categories, and full accessibility. Container: max-w-3xl mx-auto px-4 py-16. Section header: text-center \"Frequently Asked Questions\" h2, optional subtitle. Search bar: mb-8, relative with Search icon, filters FAQ items as user types, highlight matching text. Categories: if many FAQs, group by category with tabs or section headers. Accordion implementation: each item in array mapped to AccordionItem component. Item structure: div with border-b border-gray-200, last:border-0. Trigger button: w-full flex items-center justify-between py-5 text-left, question text (font-medium text-gray-900), ChevronDown icon with transform rotate-180 transition when open. Answer panel: using CSS grid technique (grid-rows-[0fr] to grid-rows-[1fr]) or max-height for smooth height animation, inner div with overflow-hidden and pb-5 for spacing. Answer content: prose styling, can include links, lists, formatted text. Behavior modes: prop for single-open (only one can be open) vs multi-open (independent). State: array of open indices or single index. Styling: question hover:text-blue-600, open item with subtle bg-gray-50. \"Was this helpful?\" feedback: Yes/No buttons at end of each answer, track responses. Contact CTA: \"Can't find what you're looking for?\" with link to contact/support at end of section. Schema markup: add FAQPage structured data for SEO (JSON-LD script). Animated icons: optional plus/minus icon morph instead of chevron rotation. ACCESSIBILITY: button role implicit, aria-expanded={isOpen}, aria-controls={panelId}, panel with id and role=\"region\", keyboard navigation with Enter/Space to toggle. Mobile: ensure adequate tap targets (min 44px). Pre-expanded: option to expand specific items by default or via URL hash."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

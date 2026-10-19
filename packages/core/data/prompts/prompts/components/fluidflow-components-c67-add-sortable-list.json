@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c67-add-sortable-list",
+  "slug": "fluidflow-components-c67-add-sortable-list",
+  "title": "Add Sortable List",
+  "description": "FluidFlow · Add Sortable List",
+  "content": "Create sortable list. Container: space-y-2. List item: bg-white p-4 rounded-lg shadow-sm flex items-center gap-3, cursor-grab. Drag handle: 6-dot grid icon (grip), text-gray-400. Item content: flex-1. Drag state: shadow-lg scale-105 opacity-90. Drop indicator: border-2 border-blue-500 border-dashed between items.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c67"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d02389b57b5bedc4cd59958481a6313a17e56a128ec23cb780bd0d5afad61d4d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create drag-and-drop sortable list.",
+    "detailed": "Create sortable list. Container: space-y-2. List item: bg-white p-4 rounded-lg shadow-sm flex items-center gap-3, cursor-grab. Drag handle: 6-dot grid icon (grip), text-gray-400. Item content: flex-1. Drag state: shadow-lg scale-105 opacity-90. Drop indicator: border-2 border-blue-500 border-dashed between items.",
+    "advanced": "Create full-featured sortable list. Implementation: @dnd-kit/sortable or similar. Items: unique id required, render content via render prop or children. Drag handle: optional dedicated handle vs whole item draggable, grip icon. Drag activation: pointer down + delay, or immediate. Drag preview: lifted item follows cursor, scale up slightly, shadow increases. Drop zones: visual indicator of drop position, animate other items moving aside. Constraints: optional axis lock (vertical only), boundary limits. Accessibility: keyboard reorder (Space to pick up, arrows to move, Space to drop), screen reader announcements (\"Picked up item 3\", \"Dropped in position 2\"). Multi-select: checkbox to select multiple, drag selection together. Groups/sections: sortable within sections, optionally between sections. Animation: smooth transitions using CSS transforms, configurable duration. Events: onReorder callback with old and new indices/order. Undo: optional undo after reorder. Disabled items: some items not draggable. External drop: accept drops from outside the list. Nested: sortable lists within sortable items. Touch: long press to activate drag on mobile, haptic feedback optional. Performance: virtualized list for many items."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

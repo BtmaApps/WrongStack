@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-quick-actions-q6-fix-accessibility",
+  "slug": "fluidflow-quick-actions-q6-fix-accessibility",
+  "title": "♿ Fix Accessibility",
+  "description": "FluidFlow · ♿ Fix Accessibility",
+  "content": "Ensure WCAG 2.1 AA accessibility compliance. Fix color contrast to minimum 4.5:1 for text. Add visible focus indicators (focus-visible:ring-2 focus-visible:ring-blue-500). Include proper ARIA labels on interactive elements. Use semantic HTML (nav, main, article, aside). Add alt text to all images. Ensure keyboard navigation works throughout. Add skip links for navigation. Support screen readers with aria-live regions. Test with VoiceOver/NVDA. Respect prefers-reduced-motion for animations.",
+  "category": "quick-actions",
+  "tags": ["fluidflow", "quick-actions", "q6"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f41c5dbb6f054fb83d06f5f54782c430e9b9d0f8c1907b3f583218f37dbb39f6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Fix accessibility issues for WCAG compliance and screen reader support.",
+    "detailed": "Ensure WCAG 2.1 AA accessibility compliance. Fix color contrast to minimum 4.5:1 for text. Add visible focus indicators (focus-visible:ring-2 focus-visible:ring-blue-500). Include proper ARIA labels on interactive elements. Use semantic HTML (nav, main, article, aside). Add alt text to all images. Ensure keyboard navigation works throughout. Add skip links for navigation. Support screen readers with aria-live regions. Test with VoiceOver/NVDA. Respect prefers-reduced-motion for animations.",
+    "advanced": "Ensure WCAG 2.1 AA accessibility compliance throughout. Color contrast: minimum 4.5:1 for normal text, 3:1 for large text (18px+ or 14px+ bold), use WebAIM contrast checker. Focus indicators: focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2, never remove outlines without replacement. Semantic HTML: header/nav for navigation, main for primary content, article for self-contained content, aside for sidebars, section with headings, footer for page footer. ARIA labels: aria-label on icon buttons, aria-labelledby for regions, aria-describedby for form help text, aria-expanded on toggles, aria-current=\"page\" on nav links. Images: descriptive alt text for meaningful images, alt=\"\" for decorative, role=\"img\" aria-label for CSS background images. Keyboard navigation: all interactive elements focusable, logical tab order, Escape closes modals, arrow keys in menus. Skip links: first focusable element, visually hidden until focused (sr-only focus:not-sr-only). Live regions: aria-live=\"polite\" for updates, aria-live=\"assertive\" for errors. Form accessibility: label elements with htmlFor, fieldset/legend for groups, aria-invalid=\"true\" on errors, aria-required=\"true\". Motion: prefers-reduced-motion:motion-reduce for animations. Test: keyboard-only navigation, VoiceOver (Mac), NVDA (Windows), axe DevTools extension."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

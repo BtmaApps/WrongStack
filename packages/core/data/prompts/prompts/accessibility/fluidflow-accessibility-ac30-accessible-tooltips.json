@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac30-accessible-tooltips",
+  "slug": "fluidflow-accessibility-ac30-accessible-tooltips",
+  "title": "Accessible Tooltips",
+  "description": "FluidFlow · Accessible Tooltips",
+  "content": "Build accessible tooltips following ARIA practices. Trigger: element has aria-describedby pointing to tooltip id. Show on: hover AND focus (not hover only). Delay: slight show delay (100-200ms), longer hide delay. Tooltip content: role=\"tooltip\", id matching aria-describedby. Positioning: above/below trigger, doesn't get cut off. Keyboard: visible when trigger focused, Escape dismisses. Persistence: remains visible while hovering tooltip itself. Non-essential: tooltips for supplementary info only. Touch: consider alternative for touch devices (tap to show, tap elsewhere to hide). Text: concise, don't put essential info only in tooltips.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac30"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "47fcf02cbdd622e240f6176c00769b7e83c2d7f0ab80e5a41923f85cbb722d65",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create accessible tooltips that work for all users.",
+    "detailed": "Build accessible tooltips following ARIA practices. Trigger: element has aria-describedby pointing to tooltip id. Show on: hover AND focus (not hover only). Delay: slight show delay (100-200ms), longer hide delay. Tooltip content: role=\"tooltip\", id matching aria-describedby. Positioning: above/below trigger, doesn't get cut off. Keyboard: visible when trigger focused, Escape dismisses. Persistence: remains visible while hovering tooltip itself. Non-essential: tooltips for supplementary info only. Touch: consider alternative for touch devices (tap to show, tap elsewhere to hide). Text: concise, don't put essential info only in tooltips.",
+    "advanced": "Build accessible tooltips following best practices for all users. ARIA connection: trigger element has aria-describedby pointing to tooltip id when visible (add/remove dynamically). Tooltip element: role=\"tooltip\", unique id, content provides supplementary description. Triggering: show on mouseenter AND focus (keyboard users), not just hover. Timing: slight delay before showing (150ms prevents flash), longer delay before hiding (300ms allows moving to tooltip), instant show on focus. Positioning: above/below/left/right of trigger, flip to stay in viewport, don't cover trigger element. Escape to dismiss: keydown listener closes tooltip and returns focus. Hover persistence: tooltip stays visible while pointer is over tooltip itself, not just trigger. Touch devices: tooltips problematic on touch (no hover state), consider: tap trigger to show, tap elsewhere to hide, or use toggle button pattern, or show info inline. Content guidelines: concise supplementary text only, never put essential information only in tooltip (user must be able to proceed without it), no interactive content (use popover instead). Focus visible: tooltip trigger should have focus indicator. Animation: subtle fade in, respect prefers-reduced-motion. Pointer: cursor-help on trigger to indicate additional info available. Implementation: Radix UI Tooltip or Floating UI for positioning. Testing: Tab to trigger and verify tooltip shows, test keyboard dismissal, verify screen reader announces tooltip content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

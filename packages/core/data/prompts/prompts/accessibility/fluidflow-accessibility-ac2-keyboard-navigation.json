@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac2-keyboard-navigation",
+  "slug": "fluidflow-accessibility-ac2-keyboard-navigation",
+  "title": "Keyboard Navigation",
+  "description": "FluidFlow · Keyboard Navigation",
+  "content": "Implement complete keyboard accessibility. Ensure all interactive elements are focusable (buttons, links, inputs, custom controls). Use proper tabindex: 0 for focusable, -1 for programmatic focus, never positive values. Create logical tab order matching visual layout. Add visible focus indicators with sufficient contrast (focus-visible:ring-2). Implement skip links: \"Skip to main content\", \"Skip to navigation\". Handle focus trapping in modals - focus stays within, returns on close. Add keyboard shortcuts for common actions with discoverable hints. Support arrow key navigation in menus, tabs, and custom widgets. Use roving tabindex for composite widgets. Test entire app using only keyboard.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "67a0032060f96a92676c980a28ee2bc96a529195eac72fc85d6b17519a9fbd2d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Ensure all functionality is keyboard accessible with visible focus.",
+    "detailed": "Implement complete keyboard accessibility. Ensure all interactive elements are focusable (buttons, links, inputs, custom controls). Use proper tabindex: 0 for focusable, -1 for programmatic focus, never positive values. Create logical tab order matching visual layout. Add visible focus indicators with sufficient contrast (focus-visible:ring-2). Implement skip links: \"Skip to main content\", \"Skip to navigation\". Handle focus trapping in modals - focus stays within, returns on close. Add keyboard shortcuts for common actions with discoverable hints. Support arrow key navigation in menus, tabs, and custom widgets. Use roving tabindex for composite widgets. Test entire app using only keyboard.",
+    "advanced": "Implement complete keyboard accessibility for all interactive functionality. Focus management: all interactive elements focusable (button, a, input, select, textarea, [tabindex=\"0\"]), tabindex usage (0 for custom focusable, -1 for programmatic focus, NEVER positive values which break natural order), logical tab order matching visual layout (use CSS order/flex carefully). Focus indicators: focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2, minimum 3:1 contrast against all backgrounds, visible in both light/dark modes. Skip links: first focusable element, sr-only focus:not-sr-only, target has id and tabindex=\"-1\" for receiving focus. Focus trapping: modals keep focus within until closed (Tab cycles through focusable elements), return focus to trigger element on close, implement with useEffect tracking and event listeners. Keyboard shortcuts: common actions (Ctrl+S save, Escape close), show hints in UI or help modal, don't conflict with browser/screen reader shortcuts, provide alternative for single-key shortcuts. Arrow key navigation: menus (up/down), tabs (left/right), grids (all arrows), implement roving tabindex (only one item tabindex=0, others -1, move 0 with arrows). Composite widgets: toolbar, listbox, tree, grid - follow WAI-ARIA patterns. Testing: navigate entire app with Tab, Shift+Tab, Enter, Space, Escape, arrow keys; verify no focus traps except modals; ensure all functionality reachable. Focus visible polyfill: consider for consistent behavior across browsers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

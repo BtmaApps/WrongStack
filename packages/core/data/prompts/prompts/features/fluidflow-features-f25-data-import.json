@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f25-data-import",
+  "slug": "fluidflow-features-f25-data-import",
+  "title": "Data Import",
+  "description": "FluidFlow · Data Import",
+  "content": "Build file import functionality. File selection: file input or drag and drop. Parsing: parse CSV with proper delimiter and quote handling. Validation: check required fields, data types. Preview: show parsed data before confirming. Mapping: map file columns to database fields. Error handling: show row-level errors. Batch import: handle large files in batches. Progress: show import progress. Duplicate handling: skip, update, or error on duplicates. Rollback: ability to undo import.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b0b8eee08ec62f97722b884b815241097b55f8aa9415f304275c37a91938bb1f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Import data from CSV or JSON files.",
+    "detailed": "Build file import functionality. File selection: file input or drag and drop. Parsing: parse CSV with proper delimiter and quote handling. Validation: check required fields, data types. Preview: show parsed data before confirming. Mapping: map file columns to database fields. Error handling: show row-level errors. Batch import: handle large files in batches. Progress: show import progress. Duplicate handling: skip, update, or error on duplicates. Rollback: ability to undo import.",
+    "advanced": "Build comprehensive file import functionality for CSV and JSON. File selection: file input with accept=\".csv,.json\", drag and drop zone, paste from clipboard. Parsing: PapaParse library for robust CSV parsing (handles quotes, delimiters, newlines), JSON.parse for JSON with error catching. Validation framework: schema definition (required fields, data types, formats, constraints), validate each row, collect all errors before aborting. Preview UI: modal or page showing parsed data in table, highlight validation errors per cell, show row count and error count. Column mapping: if headers don not match exactly, show mapping UI connecting file columns to target fields, save mapping for future imports. Type coercion: convert strings to numbers, parse dates (support multiple formats), normalize booleans (yes/no, true/false, 1/0). Error handling: row-level errors with specific messages, allow excluding invalid rows, show error log downloadable as CSV. Batch processing: chunk large files (1000 rows at a time), show progress bar, yield to main thread between chunks. Async import: for large datasets, import in background with status polling. Duplicate handling options: skip (don not import), update (merge with existing), error (abort on duplicate), detect duplicates by key field. Dry run: validate without actually importing, show what would happen. Transaction/rollback: wrap import in database transaction, rollback on error or user cancel. Import history: log successful imports with timestamp, row count, user, undo option. Templates: downloadable template file showing expected format with example data."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

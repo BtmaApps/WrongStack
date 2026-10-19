@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo31-dynamic-form-builder",
+  "slug": "fluidflow-forms-fo31-dynamic-form-builder",
+  "title": "Dynamic Form Builder",
+  "description": "FluidFlow · Dynamic Form Builder",
+  "content": "Build dynamic form generator. Schema: JSON definition of form fields. Field types: support all common input types. Validation: include validation rules in schema. Layout: define layout (grid, sections) in schema. Render: dynamically render form from schema. Submission: collect and format data based on schema. Custom components: support custom field types.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "74634bf2f1a8ec11faa839040a506f5418f122db36647029aaa71b5cd5b57b33",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Generate forms from JSON schema configuration.",
+    "detailed": "Build dynamic form generator. Schema: JSON definition of form fields. Field types: support all common input types. Validation: include validation rules in schema. Layout: define layout (grid, sections) in schema. Render: dynamically render form from schema. Submission: collect and format data based on schema. Custom components: support custom field types.",
+    "advanced": "Build comprehensive dynamic form generator from JSON schema. Schema structure: array of field definitions with type, name, label, validation, options, layout hints. Field types: text, email, password, number, textarea, select, checkbox, radio, date, file, phone, currency, rich text, custom. Validation in schema: required, min/max length, pattern (regex), min/max value, custom validators with error messages. Conditional logic: showWhen, hideWhen conditions in schema, field dependencies. Layout configuration: grid columns, sections with headers, fieldsets, inline groups, responsive breakpoints. Schema format: JSON Schema draft-7 compatible, or custom simpler format. Rendering engine: map schema to React components, support custom component registry for field types. Default values: include in schema, support computed defaults (today for date). Options for selects: static options in schema, or async function reference. Submission: collect form data matching schema structure, nested objects for grouped fields. Schema validation: validate schema itself before rendering, helpful error messages. Live preview: optional live preview of form while building. Schema storage: load schema from API, support versioning. Custom components: register custom field types with render function, integrate seamlessly. Form state: work with react-hook-form or similar, schema-driven validation. i18n: support for translatable labels and error messages. Accessibility: generated forms meet a11y requirements. Performance: lazy load complex field types, virtualize long forms."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

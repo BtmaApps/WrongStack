@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac1-wcag-compliance",
+  "slug": "fluidflow-accessibility-ac1-wcag-compliance",
+  "title": "WCAG Compliance",
+  "description": "FluidFlow · WCAG Compliance",
+  "content": "Audit and fix for WCAG 2.1 AA compliance. Check color contrast ratios (4.5:1 minimum for normal text, 3:1 for large text) using tools. Ensure all interactive elements have visible focus indicators (ring-2 ring-blue-500 ring-offset-2). Use semantic HTML elements: nav, main, article, aside, header, footer, section. Add proper heading hierarchy (h1 through h6 in order). Ensure links have descriptive text (not \"click here\"). Make all functionality keyboard accessible. Add skip links for navigation. Test with screen readers (VoiceOver, NVDA). Verify form inputs have labels. Check touch targets are minimum 44x44px on mobile.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c5a61c672dc6d4ce26def6cda730372422f9e819794b6eda26bc477f6bc9ba31",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Audit and fix for WCAG 2.1 AA accessibility compliance.",
+    "detailed": "Audit and fix for WCAG 2.1 AA compliance. Check color contrast ratios (4.5:1 minimum for normal text, 3:1 for large text) using tools. Ensure all interactive elements have visible focus indicators (ring-2 ring-blue-500 ring-offset-2). Use semantic HTML elements: nav, main, article, aside, header, footer, section. Add proper heading hierarchy (h1 through h6 in order). Ensure links have descriptive text (not \"click here\"). Make all functionality keyboard accessible. Add skip links for navigation. Test with screen readers (VoiceOver, NVDA). Verify form inputs have labels. Check touch targets are minimum 44x44px on mobile.",
+    "advanced": "Audit and fix for WCAG 2.1 AA compliance with comprehensive testing. Perceivable: color contrast ratios (4.5:1 normal text, 3:1 large text/UI) using WebAIM or browser devtools, text alternatives for all non-text content, captions for video, adaptable content that works in different presentations, distinguishable content (don't use color alone for meaning). Operable: all functionality keyboard accessible with visible focus (focus-visible:ring-2 ring-blue-500 ring-offset-2), no keyboard traps, sufficient time for interactions, no content that flashes >3 times/second, skip navigation links, clear page titles, focus order follows visual order, link purpose clear from text. Understandable: page language set (lang attribute), consistent navigation patterns, input assistance with clear labels and error messages. Robust: valid HTML, proper ARIA usage only where needed. Testing protocol: automated scan (axe, WAVE), keyboard-only navigation test, screen reader testing (VoiceOver Mac, NVDA Windows, TalkBack Android, VoiceOver iOS), color blindness simulation, zoom to 200%. Semantic HTML: use nav, main, article, aside, header, footer, section appropriately, proper heading hierarchy (h1-h6 in order, one h1 per page). Forms: all inputs have associated labels, error messages linked with aria-describedby. Touch targets: minimum 44x44px on mobile. Documentation: maintain accessibility statement and conformance report."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

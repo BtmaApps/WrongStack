@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d47-space-cosmic",
+  "slug": "fluidflow-design-d47-space-cosmic",
+  "title": "Space/Cosmic",
+  "description": "FluidFlow · Space/Cosmic",
+  "content": "Apply cosmic space aesthetic with astronomical wonder. Dark space backgrounds (deep purple, black). Star fields with varying brightness. Nebula gradients: purple, pink, blue clouds. Planet and moon imagery. Include constellation patterns. Floating, zero-gravity feel to elements. Subtle sparkle animations. Galaxy spiral decorations. Add lens flare effects. Mysterious, vast, inspiring atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d47"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5fcac1cf37e6cb8d4968cf765607eecc239e670a6c72dfcc14e3c4cb52d5b344",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create cosmic space theme with stars, galaxies, nebulae, and astronomical wonder.",
+    "detailed": "Apply cosmic space aesthetic with astronomical wonder. Dark space backgrounds (deep purple, black). Star fields with varying brightness. Nebula gradients: purple, pink, blue clouds. Planet and moon imagery. Include constellation patterns. Floating, zero-gravity feel to elements. Subtle sparkle animations. Galaxy spiral decorations. Add lens flare effects. Mysterious, vast, inspiring atmosphere.",
+    "advanced": "Apply cosmic space aesthetic with astronomical wonder and scale. Base: deep space background (bg-slate-950, bg-purple-950, true black for stars to pop). Star field: layered - tiny dots (radial-gradient circles at random positions), varying sizes and opacities, some with twinkle animation (opacity pulsing). Nebulae: large blurred gradient shapes (blur-[100px]), colors: purple (#9c27b0), magenta (#e91e63), teal (#00bcd4), orange (#ff5722). Use mix-blend-mode: screen for layering. Galaxies: spiral patterns using SVG, star clusters with dense dot concentration. Planets: spherical elements with subtle gradient for 3D, rings optional, can peek into frame. Moons: crater textures, phase lighting (half-lit sphere). Constellations: star patterns connected with faint lines. Floating effect: elements with subtle drift animation, parallax on scroll. Cosmic dust: fine particle layer, gentle movement. Lens flare: radial gradient highlights, hexagonal artifacts. Typography: clean, modern fonts (Space Grotesk, Exo 2), or futuristic (Orbitron). Glow effects: text and elements with soft glow (text-shadow with spread). Interactive: stars twinkle more on hover, planets rotate slowly. Deep space: sense of layers - foreground stars, middle nebulae, distant galaxies. Implementation: multiple layered backgrounds, CSS animations for stars, SVG for complex elements. Performance: particle effects can be heavy - optimize or use CSS only. Accessibility: ensure text readable against busy space backgrounds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d52-moroccan-arabian",
+  "slug": "fluidflow-design-d52-moroccan-arabian",
+  "title": "Moroccan/Arabian",
+  "description": "FluidFlow · Moroccan/Arabian",
+  "content": "Apply Moroccan/Arabian aesthetic with exotic ornamental beauty. Intricate geometric patterns: stars, arabesques, tessellations. Rich jewel tone colors: sapphire, ruby, emerald, gold. Ornate borders and frames. Include mosaic tile patterns. Pointed arch (Moorish arch) shapes. Lantern and light motifs. Luxurious textiles: silk, velvet textures. Mysterious, romantic, opulent atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d52"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b73cedae35bd9f802e31ba8caa066d53fd69719e6486c9ed894eb7c0029df5e3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create ornate Moroccan aesthetic with geometric patterns, jewel tones, and exotic elegance.",
+    "detailed": "Apply Moroccan/Arabian aesthetic with exotic ornamental beauty. Intricate geometric patterns: stars, arabesques, tessellations. Rich jewel tone colors: sapphire, ruby, emerald, gold. Ornate borders and frames. Include mosaic tile patterns. Pointed arch (Moorish arch) shapes. Lantern and light motifs. Luxurious textiles: silk, velvet textures. Mysterious, romantic, opulent atmosphere.",
+    "advanced": "Apply Moroccan/Arabian aesthetic with ornamental Islamic art influence. Geometric patterns: complex tessellations, 8-point stars, arabesque curves, interlocking shapes - implement as SVG patterns or CSS backgrounds. Follow Islamic geometry principles (no figural representation). Color palette: rich jewel tones - sapphire blue (#0f4c81), ruby red (#9b111e), emerald green (#046307), amethyst purple (#9966cc), with gold (#d4af37) outlines and accents. Tiles: zellige mosaic patterns, square or hexagonal arrangements, grout lines visible. Architectural elements: Moorish pointed arches (keyhole shape), carved screens (mashrabiya), domed shapes. Typography: decorative fonts suggesting Arabic calligraphy, or pair elegant serif with geometric display fonts. Lanterns: Moroccan lamp shapes, cut-out patterns casting decorative shadows, warm amber glow. Textiles: rich damask patterns, velvet texture, silk sheen, tassels and fringe details. Metal work: hammered brass textures, filigree patterns, ornate handles. Doors: famous Moroccan door motifs, studded, colorful, arched. Interactive: pattern reveals, lantern glow intensifies on hover. Borders: complex geometric bands, corner ornaments. Photography: saturated colors, souks and riads, spices and textiles. Implementation: SVG essential for complex patterns, CSS custom properties for color variations. Accessibility: busy patterns need careful text placement, ensure contrast."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

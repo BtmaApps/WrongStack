@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d73-terminal-cli",
+  "slug": "fluidflow-design-d73-terminal-cli",
+  "title": "Terminal/CLI",
+  "description": "FluidFlow · Terminal/CLI",
+  "content": "Apply terminal/CLI aesthetic with command-line interface feel. Dark background (black or dark gray). Green, amber, or white monospace text. Include command prompts ($ or >). Show command output formatting. Blinking cursor animation. Use terminal color codes: green for success, red for errors, yellow for warnings. Include ASCII art decorations. Directory paths and file listings. System command atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d73"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1645d17756f6773c220b6b30282e688f08ff834a424307ff3554e4a8d6856a97",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create command-line terminal aesthetic with monospace text, prompt symbols, and console output styling.",
+    "detailed": "Apply terminal/CLI aesthetic with command-line interface feel. Dark background (black or dark gray). Green, amber, or white monospace text. Include command prompts ($ or >). Show command output formatting. Blinking cursor animation. Use terminal color codes: green for success, red for errors, yellow for warnings. Include ASCII art decorations. Directory paths and file listings. System command atmosphere.",
+    "advanced": "Apply terminal/CLI aesthetic with authentic command-line interface feel. Background: terminal black (#0d1117, #1e1e1e) or classic green-screen black (#0a0a0a). Text colors: classic green (#00ff00, #4af626), amber (#ffb000), white (#f0f0f0), or modern theme colors. Monospace fonts: JetBrains Mono, Fira Code, SF Mono, Consolas, or system monospace. Prompt styling: user@host:path$ format, colored segments (green user, blue path), configurable prompt symbols. Command output: proper line spacing, indentation for hierarchical data, table formatting with box characters (┌─┬─┐). Cursor: blinking block cursor (animate-pulse), can be bar or underline style. ANSI colors: success green (#00ff00), error red (#ff5555), warning yellow (#ffff55), info cyan (#55ffff), path blue (#5555ff). ASCII art: figlet-style headers, box-drawing borders, progress bars [████░░░░]. Directory listing: ls -la style output with permissions, sizes, dates. Status indicators: [OK], [FAIL], [WARN] badges. Loading: spinner animation (⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏), dots loading (...). Interactive: command history feel, tab completion suggestion styling. Scrollback: content scrolls up like terminal buffer. Man page styling: bold commands, underlined arguments. Exit codes: [0] success, [1] failure indicators. Implementation: pre/code blocks, custom scrollbar, selection highlighting. Accessibility: high contrast by default, respect system preferences for cursor blink."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac20-landmark-regions",
+  "slug": "fluidflow-accessibility-ac20-landmark-regions",
+  "title": "Landmark Regions",
+  "description": "FluidFlow · Landmark Regions",
+  "content": "Implement ARIA landmark regions for screen reader navigation. Use semantic HTML5 elements: header (banner), nav (navigation), main (main), aside (complementary), footer (contentinfo). Explicit roles: add role attribute when element doesn't have implicit landmark. Labels: aria-label or aria-labelledby for multiple landmarks of same type (e.g., two nav regions). Required landmarks: every page needs main. Nesting: banner and contentinfo must not be nested. Single main: only one main landmark per page. Test: screen reader landmark navigation (rotor in VoiceOver) shows all regions.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5ce0d73a72627b65fb65d3c8861c2f939c9876d8b67cd6d40f581016f0cd8662",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add ARIA landmarks to define page regions.",
+    "detailed": "Implement ARIA landmark regions for screen reader navigation. Use semantic HTML5 elements: header (banner), nav (navigation), main (main), aside (complementary), footer (contentinfo). Explicit roles: add role attribute when element doesn't have implicit landmark. Labels: aria-label or aria-labelledby for multiple landmarks of same type (e.g., two nav regions). Required landmarks: every page needs main. Nesting: banner and contentinfo must not be nested. Single main: only one main landmark per page. Test: screen reader landmark navigation (rotor in VoiceOver) shows all regions.",
+    "advanced": "Implement ARIA landmark regions for screen reader navigation and orientation. HTML5 landmarks with implicit roles: header (banner - not inside article/section), nav (navigation), main (main), aside (complementary - not inside article/section), footer (contentinfo - not inside article/section), section with aria-label/labelledby (region), form with accessible name (form). Required landmark: main - every page must have exactly one main landmark containing primary content. Labeling multiple landmarks: if page has multiple nav elements, add aria-label to distinguish (\"Primary navigation\", \"Footer navigation\"); same for multiple aside elements. Page structure example: header role=\"banner\", nav aria-label=\"Main\", main, aside aria-label=\"Related content\", footer role=\"contentinfo\". Explicit roles: add when HTML element doesn't have implicit role or for older browser support. Nesting rules: banner and contentinfo should not be inside article, aside, main, nav, or section; main should not be inside these either. Search landmark: role=\"search\" on form or div containing search functionality. Testing: use screen reader landmark navigation (VoiceOver: Ctrl+Option+U shows landmarks rotor, NVDA: D key cycles landmarks); verify all page regions discoverable. Skip links: complement landmarks, especially useful when landmarks don't cover all repetitive content. Avoid: empty landmarks, too many landmarks (cognitive load), landmarks without discernible content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

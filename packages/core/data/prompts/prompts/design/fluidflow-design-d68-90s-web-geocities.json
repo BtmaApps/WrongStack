@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d68-90s-web-geocities",
+  "slug": "fluidflow-design-d68-90s-web-geocities",
+  "title": "90s Web/GeoCities",
+  "description": "FluidFlow · 90s Web/GeoCities",
+  "content": "Apply 1990s web/GeoCities aesthetic with early internet nostalgia. Tiled background patterns. Animated GIF decorations (construction signs, flames, spinning graphics). Bright clashing colors. Comic Sans and other era fonts. \"Under construction\" elements. Hit counters and guestbook buttons. Horizontal rule dividers (rainbow, 3D). Visitor badges and webrings. Chaotic, nostalgic, innocent web atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d68"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "443f4757a8a3e9041b869beab866dbc05be6ba506770b7c36a0049ad17019195",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create nostalgic 90s web aesthetic with animated GIFs, tiled backgrounds, and early internet chaos.",
+    "detailed": "Apply 1990s web/GeoCities aesthetic with early internet nostalgia. Tiled background patterns. Animated GIF decorations (construction signs, flames, spinning graphics). Bright clashing colors. Comic Sans and other era fonts. \"Under construction\" elements. Hit counters and guestbook buttons. Horizontal rule dividers (rainbow, 3D). Visitor badges and webrings. Chaotic, nostalgic, innocent web atmosphere.",
+    "advanced": "Apply 1990s web aesthetic with GeoCities/early internet nostalgia. Tiled backgrounds: small repeating images (stars, clouds, patterns) using background-repeat, often busy and distracting. Animated GIFs: iconic elements - construction worker (\"under construction\"), flames, spinning @ symbol, dancing baby, waving flag, rotating 3D objects. Implement with actual GIFs or CSS animations mimicking them. Color chaos: bright, saturated, often clashing - hot pink, electric blue, lime green, yellow, red - no cohesive palette. Typography: Comic Sans MS, Times New Roman, Papyrus, multiple fonts on single page, colored text, different sizes mixed chaotically. HTML elements: horizontal rules (rainbow gradient or 3D beveled), tables for layout, centered text, marquee scrolling text (CSS animation), blink effect. Interactive elements: hit counter (fake counter display), guestbook button, webring navigation, email mailto links with envelope icon. Clipart: low-res clip art images, often with white backgrounds not removed. Buttons: beveled 3D buttons, \"best viewed in Netscape\" badges, awards badges. Layout: no grid, elements placed wherever, scrolling pages. Cursor: custom cursors (implement with cursor: url()). Music: reference to auto-playing MIDI (dont actually do this). Performance: intentionally unoptimized aesthetic. Frames: reference frameset layouts. Implementation: embrace CSS for recreating era effects, actual GIFs for authenticity. Accessibility: IMPORTANT - despite chaotic aesthetic, ensure actual usability, provide skip links, respect motion preferences."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co26-breadcrumb-trail",
+  "slug": "fluidflow-content-co26-breadcrumb-trail",
+  "title": "Breadcrumb Trail",
+  "description": "FluidFlow · Breadcrumb Trail",
+  "content": "Create breadcrumb navigation component. Structure: list of links showing path hierarchy. Separator: chevron, slash, or arrow between items. Current page: last item not linked, styled differently. Home: optional home icon as first item. Truncation: collapse middle items with \"...\" for long paths. Responsive: hide middle items on mobile, show first and last. Accessibility: nav with aria-label=\"Breadcrumb\", aria-current on current. Schema markup: BreadcrumbList structured data. Styling: text-sm text-gray-600, hover styles on links. Icons: optional icons per item. Dropdown: collapsed items show in dropdown.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9d6046dce7d446f75b6da1c5b33113b5cd7eaf126c093d03f700daacc9974448",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build breadcrumb navigation showing page hierarchy.",
+    "detailed": "Create breadcrumb navigation component. Structure: list of links showing path hierarchy. Separator: chevron, slash, or arrow between items. Current page: last item not linked, styled differently. Home: optional home icon as first item. Truncation: collapse middle items with \"...\" for long paths. Responsive: hide middle items on mobile, show first and last. Accessibility: nav with aria-label=\"Breadcrumb\", aria-current on current. Schema markup: BreadcrumbList structured data. Styling: text-sm text-gray-600, hover styles on links. Icons: optional icons per item. Dropdown: collapsed items show in dropdown.",
+    "advanced": "Create comprehensive breadcrumb navigation component. Structure: nav element with aria-label=\"Breadcrumb\", ordered list (ol) of items, each item a link except last. Separator: ChevronRight or \"/\" between items, aria-hidden on separator, consistent sizing (h-4 w-4 text-gray-400). Current page: last item as span (not link), aria-current=\"page\", different styling (text-gray-900 font-medium vs text-gray-500). Home item: optional Home icon as first item, can be icon-only with aria-label=\"Home\" or text. Truncation for long paths: if >4-5 items, show first 1-2, ellipsis dropdown, last 2 items. Ellipsis dropdown: button with \"...\" expands to show hidden items. Responsive: on mobile, show only home icon + current page, or just current with back arrow. Item styling: text-sm, links: text-gray-500 hover:text-gray-700, current: text-gray-900. With icons: optional icon per item (Folder, File, Settings), sized h-4 w-4 mr-1. Schema markup: add structured data script with BreadcrumbList, itemListElement array with position, name, item (URL). Click navigation: clicking link navigates, current page not clickable. Back button variant: on mobile, single back button with parent page name. Styling: contained in card/bar, or minimal inline. Generation: can be auto-generated from route path or manually specified. Accessibility testing: verify screen reader announces \"Breadcrumb navigation\", each link, and current page."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

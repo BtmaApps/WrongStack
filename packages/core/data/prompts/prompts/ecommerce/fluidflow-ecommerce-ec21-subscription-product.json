@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec21-subscription-product",
+  "slug": "fluidflow-ecommerce-ec21-subscription-product",
+  "title": "Subscription Product",
+  "description": "FluidFlow · Subscription Product",
+  "content": "Build subscription purchase option. Selection: \"One-time purchase\" vs \"Subscribe & Save X%\" radio options. Frequency dropdown: every 2 weeks, monthly, every 2 months, etc. Savings display: show per-delivery price and monthly savings. Benefits list: free shipping, cancel anytime, easy management. Summary: \"Delivered every 4 weeks - $24.99/delivery\". Manage link: for existing subscribers, link to subscription management.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4fbd34aeff3957be00398faa5d949e6384193e30d07db53c2d02d3d8c240a668",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create subscription option for repeat purchase products.",
+    "detailed": "Build subscription purchase option. Selection: \"One-time purchase\" vs \"Subscribe & Save X%\" radio options. Frequency dropdown: every 2 weeks, monthly, every 2 months, etc. Savings display: show per-delivery price and monthly savings. Benefits list: free shipping, cancel anytime, easy management. Summary: \"Delivered every 4 weeks - $24.99/delivery\". Manage link: for existing subscribers, link to subscription management.",
+    "advanced": "Build comprehensive subscription purchase option for consumable/repeat products. Container: bg-gray-50 rounded-lg p-4 border or card format near Add to Cart. Purchase type selection: two prominent radio cards or segmented control. One-time option: \"One-time purchase\" label, regular price displayed. Subscribe option: \"Subscribe & Save\" label, percentage off badge (\"Save 15%\"), discounted price (original crossed out), per-delivery price clearly shown, recommended tag if better value. Subscribe option expanded content (when selected): Frequency selector: \"Deliver every:\" dropdown with options (Every 2 weeks, Every month, Every 6 weeks, Every 2 months, Every 3 months), default to most popular or recommended. Quantity per delivery: if applicable, selector for units per shipment. Next delivery: calculated date displayed (\"First delivery: Jan 15, 2024\"). Savings calculator: monthly or yearly savings displayed (\"Save $120/year\"). Benefits list: checkmarks with benefits (✓ 15% off every order, ✓ Free shipping always, ✓ Cancel or skip anytime, ✓ Easy online management, ✓ Exclusive subscriber perks). How it works: expandable section explaining subscription flow. Price breakdown: Regular price crossed out, your price with discount, savings amount highlighted. Subscribe CTA: \"Subscribe - $24.99/delivery\" button, different styling from one-time (e.g., gradient or accent color). Trust badges: \"No commitment\", \"Pause anytime\", \"Free cancellation\". For existing subscribers: show current subscription status (\"You subscribe to this - Next delivery Jan 15\"), \"Manage Subscription\" link, option to add another subscription at different frequency or add more quantity. Subscription management preview: link to portal where they can pause, skip, change frequency, swap products, cancel. First order bonus: \"First box includes free gift\" or extra discount on first order. Trial option: \"Try 1 month for 50% off\" trial period offer. Bundle subscriptions: suggest complementary products to add to subscription. Gift subscription: option to purchase subscription as gift with set duration (3, 6, 12 months). Payment info: note about how recurring billing works. Accessibility: radio groups properly labeled, savings announced clearly, subscription terms accessible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

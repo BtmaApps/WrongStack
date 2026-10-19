@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c43-add-notification-badge",
+  "slug": "fluidflow-components-c43-add-notification-badge",
+  "title": "Add Notification Badge",
+  "description": "FluidFlow · Add Notification Badge",
+  "content": "Create badge component for notification counts and status indicators. Dot badge: w-2 h-2 rounded-full bg-red-500 absolute -top-1 -right-1. Count badge: min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center. Position: absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2. Large numbers: show \"99+\" for counts over 99. Status dots: green (online), yellow (away), red (busy), gray (offline). Animated pulse for new notifications. Use with icons, avatars, or buttons.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c43"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2d46aca7217f4f814f18e385ce52ffbf6cb8fe1031244a8ed467b91b1b86ccba",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create badge/dot indicators for notifications and status.",
+    "detailed": "Create badge component for notification counts and status indicators. Dot badge: w-2 h-2 rounded-full bg-red-500 absolute -top-1 -right-1. Count badge: min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center. Position: absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2. Large numbers: show \"99+\" for counts over 99. Status dots: green (online), yellow (away), red (busy), gray (offline). Animated pulse for new notifications. Use with icons, avatars, or buttons.",
+    "advanced": "Create versatile badge system for notifications and status. Wrapper component: relative inline-flex (wraps trigger element). Badge positioning: absolute, with placement options (top-right, top-left, bottom-right, bottom-left). Position styles: top-right: -top-1 -right-1 or top-0 right-0 translate-x-1/2 -translate-y-1/2. Badge variants: dot (w-2.5 h-2.5 rounded-full), count (min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold), text (px-2 py-0.5 rounded-full text-xs). Count formatting: show number up to max (default 99), then \"99+\". Zero handling: optionally hide when count is 0 (showZero prop). Colors: primary (bg-blue-500), danger (bg-red-500), success (bg-green-500), warning (bg-yellow-500), custom. Animation: animate-pulse for attention, or animate-bounce for new items. Ring: optional ring-2 ring-white around badge for better separation from background. Status indicator for avatars: create AvatarBadge component with status prop (online/offline/busy/away) mapping to colors, positioned bottom-right. Invisible badge: sr-only text for accessibility when using dot only. Props: content (number, string, or ReactNode), max, showZero, variant, color, placement, invisible, pulse. Accessibility: aria-label or title describing the notification count."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

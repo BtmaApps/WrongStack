@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r4-mobile-navigation",
+  "slug": "fluidflow-responsive-r4-mobile-navigation",
+  "title": "Mobile Navigation",
+  "description": "FluidFlow · Mobile Navigation",
+  "content": "Add mobile hamburger menu with Menu icon from lucide-react. Create slide-out drawer (fixed inset-y-0 left-0 w-64) with smooth transform transition (translate-x-0/-full). Include dark overlay backdrop (fixed inset-0 bg-black/50) that closes menu on tap. Add close X button inside drawer. Stack navigation links vertically with large touch targets (py-4 px-6). Include user profile section at top if applicable. Add smooth animation (duration-300 ease-in-out). Ensure menu is accessible with proper ARIA labels and focus trap. Handle body scroll lock when open.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dcf2c854aa87b1a1f67ab4c7c9c2c38c0e0c4f406cd2a79247dcf136ee06eb42",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add hamburger menu with slide-out drawer for mobile navigation.",
+    "detailed": "Add mobile hamburger menu with Menu icon from lucide-react. Create slide-out drawer (fixed inset-y-0 left-0 w-64) with smooth transform transition (translate-x-0/-full). Include dark overlay backdrop (fixed inset-0 bg-black/50) that closes menu on tap. Add close X button inside drawer. Stack navigation links vertically with large touch targets (py-4 px-6). Include user profile section at top if applicable. Add smooth animation (duration-300 ease-in-out). Ensure menu is accessible with proper ARIA labels and focus trap. Handle body scroll lock when open.",
+    "advanced": "Add mobile hamburger menu with Menu icon from lucide-react (w-6 h-6). Create slide-out drawer (fixed inset-y-0 left-0 w-64 sm:w-80) with smooth transform transition (translate-x-0 for open, -translate-x-full for closed) using GPU-accelerated transforms. Include dark overlay backdrop (fixed inset-0 bg-black/50) that closes menu on tap with fade transition. Add close X button inside drawer at top-right. Stack navigation links vertically with large touch targets (py-4 px-6 min-h-[48px]). Include user profile section at top with avatar and name. Add smooth animation (duration-300 ease-in-out). ACCESSIBILITY: Add aria-expanded, aria-controls, aria-label on trigger button. Implement focus trap keeping focus within drawer when open. Set aria-hidden on main content when drawer open. Handle body scroll lock (overflow-hidden on body) when open. Return focus to trigger on close. Support Escape key to close. Add role=\"navigation\" and aria-label to nav element. Announce drawer open/close to screen readers. Support swipe-to-close gesture from right edge. Consider safe-area-inset for notched devices."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

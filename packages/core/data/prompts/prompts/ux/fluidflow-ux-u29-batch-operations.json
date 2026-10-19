@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u29-batch-operations",
+  "slug": "fluidflow-ux-u29-batch-operations",
+  "title": "Batch Operations",
+  "description": "FluidFlow · Batch Operations",
+  "content": "Enable batch operations for efficiency. Add checkbox to each item for multi-select. Implement \"Select All\" for current view/page. Show action bar when items selected with count. Provide bulk actions: delete, move, archive, export, edit. Confirm destructive bulk actions with item count. Show progress for long operations. Handle partial failures gracefully. Support keyboard selection (Shift+click range). Clear selection after action or explicit dismiss.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "22861c6b14f018cb3dae4e008df2d9c4feb0d3f401f5fb958d72531decb50170",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Allow selecting multiple items for bulk actions.",
+    "detailed": "Enable batch operations for efficiency. Add checkbox to each item for multi-select. Implement \"Select All\" for current view/page. Show action bar when items selected with count. Provide bulk actions: delete, move, archive, export, edit. Confirm destructive bulk actions with item count. Show progress for long operations. Handle partial failures gracefully. Support keyboard selection (Shift+click range). Clear selection after action or explicit dismiss.",
+    "advanced": "Enable batch operations for power user efficiency. Selection UI: checkbox on each item (left side), checkbox in header for \"Select All\", indeterminate state when partial selection. Select All options: \"Select all on page\" vs \"Select all X items\" (across pages) - clear distinction. Action bar: sticky bar appears when items selected, shows count (\"3 selected\"), provides bulk actions, \"Cancel\" or \"Clear selection\" option. Bulk actions: delete, archive, move to folder, add/remove tags, export, change status - context-dependent. Confirmation: for destructive actions, modal showing \"Delete 47 items?\" with count, require explicit confirmation. Progress: for long operations (>2s), show progress bar with count (\"Deleting 15 of 47...\"), allow cancellation. Partial failures: show success count and failure count, list failed items with reasons, offer retry for failures. Selection methods: click checkbox (single), Shift+click (range from last selected), Cmd/Ctrl+click (toggle), Shift+arrow keys (keyboard range). Clear selection: after successful action, on navigation, explicit clear button. Persistence: maintain selection across pagination (store selected IDs). Performance: handle thousands of selected items without lag. ACCESSIBILITY: announce selection count changes, announce action results. Mobile: long-press to enter selection mode, bottom action bar."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

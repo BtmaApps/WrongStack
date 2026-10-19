@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c27-add-toast-notifications",
+  "slug": "fluidflow-components-c27-add-toast-notifications",
+  "title": "Add Toast Notifications",
+  "description": "FluidFlow · Add Toast Notifications",
+  "content": "Create toast notification system with multiple notification types. Container: fixed top-4 right-4 or bottom-4 right-4 z-50, flex flex-col gap-2. Toast component: flex items-start gap-3 p-4 rounded-lg shadow-lg max-w-sm. Variants: success (bg-green-50 border-green-200 text-green-800), error (bg-red-50 border-red-200 text-red-800), warning (bg-yellow-50 border-yellow-200 text-yellow-800), info (bg-blue-50 border-blue-200 text-blue-800). Include: icon (CheckCircle, XCircle, AlertTriangle, Info), title, message, close button. Animation: slide in from right, fade out. Auto-dismiss after 5 seconds with progress bar. Stack multiple toasts vertically.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c27"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6b8ac656432f179f6f74aa337e7e330ae29d8697b06cef92929d8466264a1068",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a toast notification system for success, error, and info messages.",
+    "detailed": "Create toast notification system with multiple notification types. Container: fixed top-4 right-4 or bottom-4 right-4 z-50, flex flex-col gap-2. Toast component: flex items-start gap-3 p-4 rounded-lg shadow-lg max-w-sm. Variants: success (bg-green-50 border-green-200 text-green-800), error (bg-red-50 border-red-200 text-red-800), warning (bg-yellow-50 border-yellow-200 text-yellow-800), info (bg-blue-50 border-blue-200 text-blue-800). Include: icon (CheckCircle, XCircle, AlertTriangle, Info), title, message, close button. Animation: slide in from right, fade out. Auto-dismiss after 5 seconds with progress bar. Stack multiple toasts vertically.",
+    "advanced": "Create comprehensive toast notification system with queue management. Toast container: fixed z-50, configurable position (top-left, top-center, top-right, bottom-left, bottom-center, bottom-right). Container styling: flex flex-col gap-3, pointer-events-none on container, pointer-events-auto on toasts. Toast component: flex items-start gap-3 p-4 bg-white rounded-lg shadow-lg border max-w-sm. Variants with semantic colors: success (border-l-4 border-l-green-500, CheckCircle icon), error (border-l-4 border-l-red-500, XCircle icon), warning (border-l-4 border-l-yellow-500, AlertTriangle icon), info (border-l-4 border-l-blue-500, Info icon). Content: optional title (font-medium), message (text-sm text-gray-600), close button (absolute top-2 right-2 or inline). Animation: enter from edge (translate-x-full to translate-x-0), exit fade + slide. Timing: configurable duration (default 5000ms), progress bar showing remaining time (h-1 absolute bottom-0 bg-current opacity-20). Queue: max visible toasts (default 5), stack order (newest on top/bottom). Actions: optional action button in toast. Accessibility: role=\"alert\" for errors, role=\"status\" for others, aria-live=\"polite\", focus management. API: useToast hook returning {toast, dismiss, dismissAll}, toast({type, title, message, duration, action})."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

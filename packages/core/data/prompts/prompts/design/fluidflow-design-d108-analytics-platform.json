@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d108-analytics-platform",
+  "slug": "fluidflow-design-d108-analytics-platform",
+  "title": "Analytics Platform",
+  "description": "FluidFlow · Analytics Platform",
+  "content": "Apply analytics aesthetic with data platform feel. KPI cards with sparklines and trends. Funnel visualization with conversion rates. Cohort retention matrices. Segment builder interfaces. Real-time user counters. Event stream displays. Custom report builders. Dashboard widget grids. Date range pickers. Export and scheduling options.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d108"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "019976a46d77b4656260c151cea96cb19799c687d93172890fc786a3ea34f8d2",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create analytics platform interface with dashboards, metrics, funnels, and cohort analysis.",
+    "detailed": "Apply analytics aesthetic with data platform feel. KPI cards with sparklines and trends. Funnel visualization with conversion rates. Cohort retention matrices. Segment builder interfaces. Real-time user counters. Event stream displays. Custom report builders. Dashboard widget grids. Date range pickers. Export and scheduling options.",
+    "advanced": "Apply analytics aesthetic with Amplitude/Mixpanel patterns. KPI cards: metric value, percentage change (green up, red down), sparkline. Funnel: vertical bars with step labels, conversion % between steps, drop-off highlighting. Cohort matrix: heatmap with week cohorts (rows) vs periods (columns). Segment builder: property dropdowns, operator selects, AND/OR groups. Live counter with incrementing animation. Event stream: scrolling list with event name, properties, timestamp. Report builder: metric/dimension dropdowns, visualization picker. Dashboard: draggable widget grid with resize handles. Date picker with presets (7d, 30d, 90d) and custom range. Export buttons (CSV, PNG), scheduled report config."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da11-user-list",
+  "slug": "fluidflow-dashboard-da11-user-list",
+  "title": "User List",
+  "description": "FluidFlow · User List",
+  "content": "Create user list component for team management. List item: avatar (w-10 h-10 rounded-full), name (font-medium), email or role, status badge, actions. Status badges: Active (green), Invited (yellow), Inactive (gray). Actions: dropdown menu with Edit, Deactivate, Remove. List header: search input, role filter, Add User button. Sorting: by name, date, status. Pagination for long lists. Empty state: \"No users found\".",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da11"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7285c7c33a5952e5039084905d5d829b670883c16ef12b8cd6dd139c78d6c6c7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create user list with avatars, names, roles, and status badges.",
+    "detailed": "Create user list component for team management. List item: avatar (w-10 h-10 rounded-full), name (font-medium), email or role, status badge, actions. Status badges: Active (green), Invited (yellow), Inactive (gray). Actions: dropdown menu with Edit, Deactivate, Remove. List header: search input, role filter, Add User button. Sorting: by name, date, status. Pagination for long lists. Empty state: \"No users found\".",
+    "advanced": "Create user list component for team or customer management with full features. List layout: table-style rows or card grid variant. List item row: flex items-center gap-4 py-4 border-b hover:bg-gray-50 transition. Content: avatar (w-10 h-10 rounded-full object-cover, fallback to initials in colored circle), name column (name as font-medium text-gray-900, email below as text-sm text-gray-500, or role), status badge, date added, actions. Status badges: Active (bg-green-100 text-green-800), Invited/Pending (bg-amber-100 text-amber-800), Inactive (bg-gray-100 text-gray-600), Admin (bg-purple-100 text-purple-800). Badge styling: px-2 py-0.5 text-xs font-medium rounded-full. Actions: dropdown menu (MoreHorizontal trigger) with Edit Profile, Change Role, Resend Invite (if pending), Deactivate/Activate, Remove from team options, or inline icon buttons (Edit, Trash2). List header: flex justify-between items-center mb-4. Header left: search input (w-64, Search icon), role filter dropdown (All Roles, Admin, Member, Viewer). Header right: \"Add User\" or \"Invite User\" primary button. Sorting: click column headers to sort by name (A-Z, Z-A), date added (newest, oldest), status, role, last active. Sort indicator: ChevronUp/Down icon in header. Bulk selection: checkbox as first column, select all checkbox in header with indeterminate state, bulk actions toolbar (Change role, Remove selected) appears when rows selected. Pagination: for lists >20 users, page numbers or \"Load more\". Card variant: grid of user cards (grid-cols-1 sm:grid-cols-2 lg:grid-cols-3) with avatar centered, more profile details visible. Online status: green dot indicator (w-3 h-3 rounded-full bg-green-500 absolute) positioned on avatar corner for currently online users. Last active: \"Active 2h ago\" or \"Last seen Jan 15\" timestamp. Quick profile: hover card (absolute positioned) showing more user details without navigation. Empty state: illustration with \"No users found\" message, \"Invite your first team member\" CTA. Loading: skeleton rows with avatar circle and text lines. Search: filter list as user types (debounced). Dark mode support. Accessibility: table semantics, sortable column announcements, checkbox labels."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

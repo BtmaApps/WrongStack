@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c71-add-shopping-cart",
+  "slug": "fluidflow-components-c71-add-shopping-cart",
+  "title": "Add Shopping Cart",
+  "description": "FluidFlow · Add Shopping Cart",
+  "content": "Create shopping cart component. Container: bg-white rounded-lg shadow p-6. Header: flex justify-between, title \"Shopping Cart\", item count. Item list: divide-y. Item row: flex gap-4, product image (w-20 h-20), name and variant, quantity selector, price, remove button. Quantity: stepper input with +/- buttons. Subtotal: flex justify-between mt-4 pt-4 border-t. Checkout button: w-full bg-blue-600 text-white py-3 rounded-lg.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c71"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d1d5fc241fe62300ccc992dc783afc98eba4d4170ff6c591ded57ca4becfa0f0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create shopping cart with item list, quantities, and totals.",
+    "detailed": "Create shopping cart component. Container: bg-white rounded-lg shadow p-6. Header: flex justify-between, title \"Shopping Cart\", item count. Item list: divide-y. Item row: flex gap-4, product image (w-20 h-20), name and variant, quantity selector, price, remove button. Quantity: stepper input with +/- buttons. Subtotal: flex justify-between mt-4 pt-4 border-t. Checkout button: w-full bg-blue-600 text-white py-3 rounded-lg.",
+    "advanced": "Create full e-commerce cart component. Layout: responsive - side drawer on desktop, full page on mobile. Header: item count, \"Clear all\" link. Empty state: illustration, \"Cart is empty\" message, \"Continue shopping\" button. Item card: product thumbnail, name (link to product), variant options (size, color), unit price, quantity stepper (min 1, max stock), line total, remove button, save for later link. Quantity change: debounced update, loading state, out of stock warning if exceeds available. Saved items: separate section for \"Saved for later\" with move to cart button. Promo code: input with Apply button, applied codes shown as removable chips, discount reflected in totals. Order summary: subtotal, discount amount, shipping estimate (or \"Calculated at checkout\"), tax estimate, order total. Sticky summary: on desktop, summary sticks while scrolling items. Checkout button: prominent, loading state during checkout init. Continue shopping: link back to store. Stock warnings: low stock, out of stock indicators. Recently viewed: carousel below cart. Persistence: localStorage sync, merge with server on login."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

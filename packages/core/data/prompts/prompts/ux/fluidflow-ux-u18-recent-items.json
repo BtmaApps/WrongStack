@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u18-recent-items",
+  "slug": "fluidflow-ux-u18-recent-items",
+  "title": "Recent Items",
+  "description": "FluidFlow · Recent Items",
+  "content": "Add recently viewed/used items for quick access. Store recent items in localStorage with timestamp. Display in dropdown, sidebar section, or dedicated page. Show item preview: name, thumbnail/icon, last accessed time. Limit to reasonable count (5-10 items). Update list on each view/use. Add \"Clear history\" option. Group by type or time period if many items. Include quick actions (open, remove from recent). Handle deleted items gracefully - remove from recent list. Pin frequently used items to top separately. Add search/filter within recent items. Sync across devices if user is logged in.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "448da5b60edbc21f55bce28730cbb4b094715dec725e3bddd7f12d8366022ee7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show recently viewed items for quick access.",
+    "detailed": "Add recently viewed/used items for quick access. Store recent items in localStorage with timestamp. Display in dropdown, sidebar section, or dedicated page. Show item preview: name, thumbnail/icon, last accessed time. Limit to reasonable count (5-10 items). Update list on each view/use. Add \"Clear history\" option. Group by type or time period if many items. Include quick actions (open, remove from recent). Handle deleted items gracefully - remove from recent list. Pin frequently used items to top separately. Add search/filter within recent items. Sync across devices if user is logged in.",
+    "advanced": "Add recently viewed/used items for quick access reducing navigation friction. Store recent items in localStorage with timestamp and minimal metadata: {id, type, name, thumbnail, accessedAt}. Display in multiple locations: dropdown in header (quick access), sidebar section (persistent visibility), dedicated page (full history). Show item preview: icon/thumbnail (w-8 h-8), name (truncate with ellipsis), relative time (\"2 hours ago\"). Limit to reasonable count: 5 in dropdown, 10 in sidebar, unlimited on page with pagination. Update list on each view/use: move to top if exists, add if new, respect limit. Add \"Clear history\" option with confirmation. Group by type (Projects, Documents, People) or time period (Today, Yesterday, This Week) when many items. Include quick actions on hover/focus: Open, Remove from recent, Pin. Handle deleted items gracefully: check existence on display, silently remove stale items. Implement pinned items separately at top - user explicitly pins, different from recent. Add search/filter within recent items on dedicated page. Sync across devices if user logged in: store in backend, merge with localStorage, handle conflicts by most recent. PRIVACY: Clear recent on logout, respect private browsing mode, allow disabling history. Track recent item clicks for personalization insights."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

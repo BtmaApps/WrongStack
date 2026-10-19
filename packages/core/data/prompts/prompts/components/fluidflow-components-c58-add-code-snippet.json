@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c58-add-code-snippet",
+  "slug": "fluidflow-components-c58-add-code-snippet",
+  "title": "Add Code Snippet",
+  "description": "FluidFlow · Add Code Snippet",
+  "content": "Create code snippet component. Container: relative rounded-lg overflow-hidden. Header: flex justify-between px-4 py-2 bg-gray-800, language label (text-sm text-gray-400), copy button. Code area: bg-gray-900 p-4 overflow-x-auto. Pre/code: text-sm font-mono text-gray-100, syntax highlighting via PrismJS or highlight.js. Copy button: hover:bg-gray-700 p-1 rounded, shows \"Copied!\" tooltip on success. Line numbers: optional, text-gray-500 select-none pr-4.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c58"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bcf63c40146680c1d2efefb436fcbeec360207fb652b5121b4f014c8ecba98ac",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create syntax-highlighted code block with copy button.",
+    "detailed": "Create code snippet component. Container: relative rounded-lg overflow-hidden. Header: flex justify-between px-4 py-2 bg-gray-800, language label (text-sm text-gray-400), copy button. Code area: bg-gray-900 p-4 overflow-x-auto. Pre/code: text-sm font-mono text-gray-100, syntax highlighting via PrismJS or highlight.js. Copy button: hover:bg-gray-700 p-1 rounded, shows \"Copied!\" tooltip on success. Line numbers: optional, text-gray-500 select-none pr-4.",
+    "advanced": "Create full-featured code snippet component. Syntax highlighting: PrismJS/Shiki/highlight.js with multiple theme options (dark, light, specific like Dracula, One Dark). Language support: detect language or accept prop, display language badge. Header: filename if provided, language badge, action buttons. Line numbers: optional, sticky when scrolling horizontally, clickable to select line. Line highlighting: highlight specific lines (e.g., lines 3-5), different styles for added/removed (diff mode). Copy button: copies code without line numbers, visual feedback (icon change, tooltip), copy successful notification. Word wrap toggle: button to toggle wrapping vs horizontal scroll. Expand/collapse: for long snippets, show first N lines with \"Show more\" button. Diff mode: side-by-side or inline diff view, color-coded additions (green) and deletions (red). Live editing: optional editable mode with onChange callback. Run button: optional for runnable snippets (JS playground). Tab size: 2 or 4 spaces toggle. Max height: scrollable with fade gradient at bottom indicating more content. Accessibility: proper code semantics, copy button accessible, not using only color for highlighting."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

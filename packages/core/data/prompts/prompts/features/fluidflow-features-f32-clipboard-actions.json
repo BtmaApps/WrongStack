@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f32-clipboard-actions",
+  "slug": "fluidflow-features-f32-clipboard-actions",
+  "title": "Clipboard Actions",
+  "description": "FluidFlow · Clipboard Actions",
+  "content": "Implement clipboard operations. Copy: copy text/data to clipboard. Feedback: show \"Copied!\" toast. Rich copy: support copying formatted content. Paste: handle paste from clipboard. Paste preview: show preview before applying paste. Keyboard shortcuts: Ctrl/Cmd+C/X/V. Context menu: right-click menu with clipboard options. History: optional clipboard history. Format handling: plain text, HTML, or custom formats.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f32"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "59d64a48d343811f48c052bc196788278faa91b7e25d2d26c8205d22e1d4a1c0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add copy, cut, and paste functionality.",
+    "detailed": "Implement clipboard operations. Copy: copy text/data to clipboard. Feedback: show \"Copied!\" toast. Rich copy: support copying formatted content. Paste: handle paste from clipboard. Paste preview: show preview before applying paste. Keyboard shortcuts: Ctrl/Cmd+C/X/V. Context menu: right-click menu with clipboard options. History: optional clipboard history. Format handling: plain text, HTML, or custom formats.",
+    "advanced": "Implement comprehensive clipboard operations with rich content support. Copy implementation: navigator.clipboard.writeText for plain text, navigator.clipboard.write for rich content (ClipboardItem with multiple types). Async handling: clipboard API is async, handle promise. Feedback: toast notification \"Copied to clipboard\", brief confirmation icon animation on trigger button. Copy sources: text selection, button to copy element content, copy code blocks with dedicated button. Rich copy: HTML content for formatted text, include both text/plain and text/html for paste compatibility. Custom data: use application-specific MIME type for internal copy (application/x-myapp-item). Paste implementation: navigator.clipboard.read or readText, check permissions (Clipboard API requires user permission). Paste handling: onPaste event intercept, process clipboard data based on target (plain text input vs rich editor). Paste preview: for complex data (images, formatted content) show preview modal before inserting. Format detection: check clipboardData.types for available formats, handle each appropriately. Keyboard shortcuts: Ctrl/Cmd+C (copy), Ctrl/Cmd+X (cut), Ctrl/Cmd+V (paste), native browser behavior for inputs, custom handling for canvas/custom editors. Context menu: custom right-click menu with Copy/Cut/Paste options, native context menu as fallback. Image handling: copy images as blob, paste images from clipboard. Code blocks: copy button on code snippets, preserve formatting. Error handling: clipboard access denied, handle gracefully with fallback (select text, prompt to copy manually)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

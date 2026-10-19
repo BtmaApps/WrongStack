@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so18-chat-message-bubbles",
+  "slug": "fluidflow-social-so18-chat-message-bubbles",
+  "title": "Chat Message Bubbles",
+  "description": "FluidFlow · Chat Message Bubbles",
+  "content": "Build chat message UI for conversations. Messages: bubbles aligned left (received) or right (sent). Sent styling: bg-blue-500 text-white rounded-2xl rounded-br-sm. Received: bg-gray-100 rounded-2xl rounded-bl-sm. Avatar: show for received messages. Timestamp: below message or on long-press. Grouping: consecutive messages from same sender grouped. Status: sent, delivered, read indicators.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "eed63cf4c675c2c3becbae175862733f8d1dafe38f517063d3fb61a1cc4f0161",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create chat message bubbles with sent/received styling.",
+    "detailed": "Build chat message UI for conversations. Messages: bubbles aligned left (received) or right (sent). Sent styling: bg-blue-500 text-white rounded-2xl rounded-br-sm. Received: bg-gray-100 rounded-2xl rounded-bl-sm. Avatar: show for received messages. Timestamp: below message or on long-press. Grouping: consecutive messages from same sender grouped. Status: sent, delivered, read indicators.",
+    "advanced": "Build comprehensive chat message bubbles for conversation UI. Message container: flex flex-col gap-1, py-4. Message grouping: consecutive messages from same sender within 1 minute grouped without repeating avatar/name. Sent messages (from current user): flex justify-end, bubble: bg-blue-500 text-white rounded-2xl px-4 py-2 max-w-[70%], rounded-br-sm for last in group (speech bubble tail), text-sm or base. Received messages: flex gap-2, avatar (w-8 h-8 rounded-full) shown only on last message of group, bubble: bg-gray-100 text-gray-900 rounded-2xl px-4 py-2 max-w-[70%], rounded-bl-sm for last in group. Sender name: shown above first message in group for group chats (text-xs text-gray-500 font-medium). Timestamps: shown between message groups when time gap > 5 minutes (\"Today 2:34 PM\"), or inline after message (text-xs text-gray-400 ml-2) for individual timestamps. Message status (sent messages): below message, icons: single check (sent), double check (delivered), double check blue/colored (read), clock icon (sending), red exclamation (failed with retry). Read receipt: tiny avatar(s) of reader(s) at bottom right of last read message. Media messages: images render inline (rounded-lg max-w-xs), click opens lightbox, video with play overlay, file attachment card (icon, filename, size, download). Link previews: unfurled card below message with title, description, image, domain. Emoji-only messages: larger emoji display (text-4xl) without bubble background. Reply/quote: if replying to specific message, show quoted message above in smaller container with grey left border. Reactions: emoji reactions shown below message bubble (multiple reactions grouped with counts). Voice message: waveform visualization with play button and duration. Message actions: long press or right-click shows context menu (Reply, React, Copy, Forward, Delete). Deleted messages: \"[Message deleted]\" placeholder in italics. Edited indicator: \"edited\" text next to timestamp for edited messages. System messages: centered, text-gray-500, for \"User joined\", \"User left\", date separators. Loading: skeleton messages or spinner. Accessibility: messages in list with proper roles, timestamps readable, media has descriptions."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

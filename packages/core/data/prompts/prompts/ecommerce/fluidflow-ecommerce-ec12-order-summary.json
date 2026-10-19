@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec12-order-summary",
+  "slug": "fluidflow-ecommerce-ec12-order-summary",
+  "title": "Order Summary",
+  "description": "FluidFlow · Order Summary",
+  "content": "Create order summary component for cart and checkout. Container: bg-gray-50 rounded-lg p-6. Items preview: collapsed list showing first 2-3 items with \"Show all\" expand. Line items: small image, name, quantity, price. Subtotal, Shipping (calculated or \"FREE\"), Taxes, Discounts if promo applied, Order total (large, bold). Promo code input. Trust badges: payment icons, secure checkout badge. Sticky on desktop.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9104ba59210b07fc473b432f7a99ae31bb895315a93c0f506b405bb97f45fd4d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create order summary box showing items, subtotal, shipping, and total.",
+    "detailed": "Create order summary component for cart and checkout. Container: bg-gray-50 rounded-lg p-6. Items preview: collapsed list showing first 2-3 items with \"Show all\" expand. Line items: small image, name, quantity, price. Subtotal, Shipping (calculated or \"FREE\"), Taxes, Discounts if promo applied, Order total (large, bold). Promo code input. Trust badges: payment icons, secure checkout badge. Sticky on desktop.",
+    "advanced": "Create order summary component for cart and checkout pages. Container: bg-gray-50 rounded-lg p-6, or bg-white shadow-sm variant. Sticky behavior on desktop: sticky top-4 within sidebar, max-height with scroll if needed. Items preview section: collapsed by default showing first 2-3 items in compact rows. Each item: flex gap-3 with small image (w-12 h-12 rounded), name (line-clamp-1), quantity badge (×2), price aligned right. \"Show all X items\" expand button (Collapsible/Accordion) reveals full list. For checkout: always show all items. Summary rows: space-y-2 border-t border-gray-200 pt-4 mt-4. Row structure: flex justify-between text-sm, label text-gray-600, value text-gray-900. Rows: Subtotal (items total), Shipping (calculated amount like \"$5.99\", or \"Calculated at checkout\" if unknown, or \"FREE\" badge in green), Estimated Tax (amount or \"Calculated at checkout\"), Discount row (if promo applied: code in parentheses, negative amount in text-green-600). Total row: border-t pt-4 mt-4, text-lg font-bold, prominent styling. Savings callout: if discount applied, show \"You're saving $25!\" in green badge/text. Promo code section: collapsible \"Have a promo code?\" accordion, expands to show input + Apply button (inline flex), or separate PromoCode component. States: checking (spinner), valid (green check, show discount amount), invalid (red error message). Trust elements: below summary, row of accepted payment icons (Visa, Mastercard, Amex, PayPal, Apple Pay icons in grayscale), \"Secure Checkout\" text with Lock icon, \"Free returns\" if applicable. Mobile behavior: collapsible accordion \"Order Summary - $XX.XX\" that expands to show full details, or bottom sheet variant. Always show total prominently. Update behavior: recalculate totals when cart changes (optimistic or loading state), animate total change. Price formatting: consistent currency formatting using Intl.NumberFormat. Accessibility: summary information should be clearly labeled for screen readers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

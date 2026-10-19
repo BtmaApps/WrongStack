@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f23-pdf-export",
+  "slug": "fluidflow-features-f23-pdf-export",
+  "title": "PDF Export",
+  "description": "FluidFlow · PDF Export",
+  "content": "Implement PDF export functionality. Library: use jsPDF or react-pdf. Content: capture DOM element or generate from data. Styling: maintain visual fidelity. Tables: proper table formatting in PDF. Images: embed images correctly. Multi-page: handle content spanning multiple pages. Headers/footers: page numbers, document title. Download: trigger browser download. Filename: descriptive filename with date. Progress: show generation progress for large documents.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "89ff99c5a33d5699de2585e86743499d4cce100a94402771df5bd6a36e0c2fa0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Generate PDF exports of content or data.",
+    "detailed": "Implement PDF export functionality. Library: use jsPDF or react-pdf. Content: capture DOM element or generate from data. Styling: maintain visual fidelity. Tables: proper table formatting in PDF. Images: embed images correctly. Multi-page: handle content spanning multiple pages. Headers/footers: page numbers, document title. Download: trigger browser download. Filename: descriptive filename with date. Progress: show generation progress for large documents.",
+    "advanced": "Implement comprehensive PDF export functionality. Library options: jsPDF (client-side, full control), html2pdf.js (HTML to PDF), @react-pdf/renderer (React components to PDF), Puppeteer server-side (best fidelity). Client-side with jsPDF: const doc = new jsPDF(); add text, tables, images programmatically, doc.save(\"filename.pdf\"). HTML capture: html2canvas to capture DOM element as image, then add to jsPDF, or use html2pdf wrapper. React-PDF: define PDF document with React components (Document, Page, View, Text, Image), render to blob, trigger download. Styling: match visual design as closely as possible, use explicit dimensions and colors, handle font embedding for custom fonts. Tables: use jspdf-autotable plugin for complex tables with headers, footers, styling. Images: convert to base64 if from external URLs, handle CORS, resize appropriately. Multi-page: automatic page breaks based on content height, or explicit page break elements. Headers/footers: add to each page with page numbers, document title, date, company logo. Metadata: set PDF metadata (title, author, subject, keywords). Download trigger: create blob URL, create anchor element with download attribute, click programmatically. Filename: descriptive with content type and date (\"Report_2024-12-15.pdf\"). Progress: for large documents show progress indicator, use async generation. Server-side option: for best fidelity, use Puppeteer or Playwright to render page and print to PDF (handles CSS perfectly). Security: sanitize user content in PDFs to prevent PDF injection attacks. Compression: optimize images and enable PDF compression."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co1-realistic-content",
+  "slug": "fluidflow-content-co1-realistic-content",
+  "title": "Realistic Content",
+  "description": "FluidFlow · Realistic Content",
+  "content": "Replace all placeholder content with realistic, contextual mock data. User names: realistic full names with diverse backgrounds. Company data: actual-sounding company names, addresses, phone numbers. Product descriptions: detailed, benefit-focused copy matching industry. Dates: realistic relative dates (\"2 hours ago\", \"Dec 15, 2024\"). Prices: appropriate for the product/service type. Images: use placeholder services with relevant categories (picsum.photos, unsplash). Statistics: believable numbers with proper formatting. Comments/reviews: varied lengths and sentiments. Email addresses: realistic format (not test@test.com). Avoid Lorem Ipsum entirely. Match content tone to the app purpose (professional, casual, technical).",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8bb5c29ed4379ad939f0effa5ffda46896946200aeedeaea7509d262b6ff49e8",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Replace placeholder content with realistic mock data.",
+    "detailed": "Replace all placeholder content with realistic, contextual mock data. User names: realistic full names with diverse backgrounds. Company data: actual-sounding company names, addresses, phone numbers. Product descriptions: detailed, benefit-focused copy matching industry. Dates: realistic relative dates (\"2 hours ago\", \"Dec 15, 2024\"). Prices: appropriate for the product/service type. Images: use placeholder services with relevant categories (picsum.photos, unsplash). Statistics: believable numbers with proper formatting. Comments/reviews: varied lengths and sentiments. Email addresses: realistic format (not test@test.com). Avoid Lorem Ipsum entirely. Match content tone to the app purpose (professional, casual, technical).",
+    "advanced": "Replace all placeholder content with realistic, contextual mock data that makes the app feel production-ready. User data: realistic full names with diverse cultural backgrounds (Sarah Chen, Marcus Johnson, Priya Patel), profile images from randomuser.me or UI Faces, varied roles and departments. Company data: actual-sounding company names (Horizon Technologies, Stellar Analytics), real address formats, formatted phone numbers ((555) 123-4567). Product content: detailed benefit-focused descriptions matching industry tone, realistic specs and features, varied pricing ($29.99, $149/month). Temporal data: relative dates (\"2 hours ago\", \"Yesterday\", \"Dec 15, 2024\"), realistic timestamps spanning recent days/weeks. Financial data: believable statistics with proper formatting ($1.2M, 45.6%, 12,847 users), varied enough to seem real. Images: use Unsplash (source.unsplash.com/400x300/?office) or Pexels for contextual images, picsum.photos for generic placeholders. Reviews/comments: varied lengths (one-liners to paragraphs), mix of sentiments (4-5 stars, some 3 stars), realistic usernames and dates. Email formats: firstname.lastname@company.com, not test@test.com. Avoid entirely: Lorem Ipsum, \"Test User\", placeholder@example.com, obviously fake data. Content tone: match app purpose (professional for B2B, casual for consumer, technical for dev tools). Consistency: same person's name throughout their data, logical relationships between data points. Volume: 5-10 items minimum for lists to show realistic usage."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

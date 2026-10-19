@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c23-add-command-palette",
+  "slug": "fluidflow-components-c23-add-command-palette",
+  "title": "Add Command Palette",
+  "description": "FluidFlow · Add Command Palette",
+  "content": "Build command palette/launcher (Cmd+K style). Modal overlay: fixed inset-0, centered content, dark backdrop. Search input: large, autofocused, with Search icon and keyboard shortcut hint. Results list: grouped by category with headers, icon + label + optional shortcut for each item. Keyboard navigation: arrow keys to navigate, Enter to execute, Escape to close. Search: filter all commands in real-time, fuzzy matching if possible. Recent/frequent commands section at top. Categories: Navigation, Actions, Settings, Help. Highlight matching text in results. Loading state for async searches. Empty state with suggestions. Animation: scale from 95% with opacity. Track usage for smart sorting. Register global keyboard shortcut with useEffect. Proper focus management and accessibility.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "94cb9e0c7f353fe95313cf3a1fa05040949cfbe539b9c8ab7fa8c2fda19f513d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build a command palette (Cmd+K) with search and keyboard navigation.",
+    "detailed": "Build command palette/launcher (Cmd+K style). Modal overlay: fixed inset-0, centered content, dark backdrop. Search input: large, autofocused, with Search icon and keyboard shortcut hint. Results list: grouped by category with headers, icon + label + optional shortcut for each item. Keyboard navigation: arrow keys to navigate, Enter to execute, Escape to close. Search: filter all commands in real-time, fuzzy matching if possible. Recent/frequent commands section at top. Categories: Navigation, Actions, Settings, Help. Highlight matching text in results. Loading state for async searches. Empty state with suggestions. Animation: scale from 95% with opacity. Track usage for smart sorting. Register global keyboard shortcut with useEffect. Proper focus management and accessibility.",
+    "advanced": "Build command palette/launcher (Cmd+K style) with search, categories, and full keyboard control. Trigger: global keyboard shortcut (Cmd+K or Ctrl+K) via useEffect with keydown listener on document, check metaKey/ctrlKey + key === \"k\", prevent default. Modal structure: fixed inset-0 z-50, backdrop bg-black/50 backdrop-blur-sm, centered dialog max-w-xl w-full max-h-[60vh]. Dialog styling: bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col. Search header: p-4 border-b, input with pl-10 for Search icon, text-lg, autofocus, placeholder \"Search commands...\". Keyboard hint: absolute right-4 text-sm text-gray-400 \"⌘K\" badge. Results container: flex-1 overflow-y-auto py-2. Category groups: px-2, group header (text-xs font-semibold text-gray-500 uppercase px-2 py-2). Result items: px-2 py-2.5 rounded-lg mx-2 cursor-pointer, flex items-center gap-3, icon (w-5 h-5 text-gray-400), label, optional keyboard shortcut (ml-auto text-xs bg-gray-100 px-1.5 rounded). Active/selected item: bg-blue-50 text-blue-700 (or bg-gray-100). Keyboard navigation: state for selectedIndex, ArrowDown/Up moves selection (wrap around), Enter executes selected command and closes, Escape closes. Search filtering: filter commands by label matching input, fuzzy matching with highlighting (bold matched chars), debounced for performance. Categories: Recent (last 5 used), Navigation (pages/routes), Actions (create, delete, etc.), Settings, Help. Empty state: \"No results for [query]\" with suggestions. Loading state: spinner for async searches (e.g., searching users/content). Track usage: store recent commands in localStorage, increment usage count for smart sorting. Animation: dialog scale-95 opacity-0 to scale-100 opacity-100. ACCESSIBILITY: role=\"dialog\" aria-modal, combobox pattern (role=\"combobox\" on input, role=\"listbox\" on results, role=\"option\" on items), aria-activedescendant for selected item. Focus trap: focus stays in palette. Close: Escape, backdrop click, or command execution."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

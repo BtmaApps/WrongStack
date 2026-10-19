@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec1-product-card",
+  "slug": "fluidflow-ecommerce-ec1-product-card",
+  "title": "Product Card",
+  "description": "FluidFlow · Product Card",
+  "content": "Build product card component for shop grids. Structure: aspect-square image container, content padding below. Image: object-cover with hover zoom effect, optional sale badge overlay (absolute top-left). Wishlist button: heart icon (absolute top-right). Content: product name (font-medium truncate), brand/category (text-sm text-gray-500), star rating with count, price display. Price: current price (font-bold), original price if on sale (line-through). Quick add: \"Add to Cart\" button appears on hover. Stock status: \"Only 3 left\" warning or \"Out of Stock\" overlay. Link: entire card clickable to product detail.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "696368d9102f38a8c3db0a361a5a1f841903c793e1e8f0387888f84834b36296",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create product card with image, name, price, and add to cart button.",
+    "detailed": "Build product card component for shop grids. Structure: aspect-square image container, content padding below. Image: object-cover with hover zoom effect, optional sale badge overlay (absolute top-left). Wishlist button: heart icon (absolute top-right). Content: product name (font-medium truncate), brand/category (text-sm text-gray-500), star rating with count, price display. Price: current price (font-bold), original price if on sale (line-through). Quick add: \"Add to Cart\" button appears on hover. Stock status: \"Only 3 left\" warning or \"Out of Stock\" overlay. Link: entire card clickable to product detail.",
+    "advanced": "Build product card component for shop grids with comprehensive features. Structure: bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden, aspect-square image container using aspect-square, content padding below (p-4). Image container: relative for badge positioning, overflow-hidden for zoom effect. Image: object-cover w-full h-full, hover scale-105 transition-transform duration-300, optional lazy loading with skeleton placeholder. Sale badge: absolute top-2 left-2, bg-red-500 text-white text-xs font-bold px-2 py-1 rounded. \"New\" badge variant in different color. Wishlist button: absolute top-2 right-2, heart icon (Heart from lucide), bg-white/80 backdrop-blur-sm rounded-full p-2, click to toggle with filled red heart when saved, scale animation on click. Content area: product name (font-medium text-gray-900 truncate or line-clamp-2), brand/category (text-sm text-gray-500), star rating display (filled/empty Star icons with count in parentheses), price display row. Price styling: current price (text-lg font-bold text-gray-900), original price if on sale (text-sm line-through text-gray-400 ml-2), discount percentage badge (bg-green-100 text-green-800 text-xs px-1 rounded). Quick add: \"Add to Cart\" button (bg-black text-white w-full py-2 rounded-lg) appears on hover (opacity-0 group-hover:opacity-100 transition), or always visible variant. Variants preview: small color swatches (w-4 h-4 rounded-full) if multiple colors available, show 4 max with +N indicator. Stock status: \"Only 3 left\" warning text (text-amber-600 text-xs), \"Out of Stock\" overlay (absolute inset-0 bg-white/80 flex items-center justify-center). Card interaction: entire card clickable via Link wrapper or onClick, subtle hover lift (-translate-y-1). Loading: skeleton card with animate-pulse gray rectangles. Accessibility: proper image alt text, button labels. Mobile: larger touch targets for buttons."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

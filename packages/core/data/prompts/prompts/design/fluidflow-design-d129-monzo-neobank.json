@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d129-monzo-neobank",
+  "slug": "fluidflow-design-d129-monzo-neobank",
+  "title": "Monzo/Neobank",
+  "description": "FluidFlow · Monzo/Neobank",
+  "content": "Apply Monzo aesthetic with digital banking feel. Coral/bright color palette. Spending category breakdowns. Transaction feed with merchant logos. Budget and savings pots. Instant payment notifications. Card management. Analytics and insights. Bill splitting. Salary sorting. Travel features.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d129"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0e76fa21a5b2d0251fe028be697555d8ee0dbf95883ccd4479ecc7df4392c0ee",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create digital banking interface with spending insights, budgets, and instant transactions.",
+    "detailed": "Apply Monzo aesthetic with digital banking feel. Coral/bright color palette. Spending category breakdowns. Transaction feed with merchant logos. Budget and savings pots. Instant payment notifications. Card management. Analytics and insights. Bill splitting. Salary sorting. Travel features.",
+    "advanced": "Apply Monzo aesthetic with neobank patterns. Colors: coral (#ff5c57) primary, hot coral gradient for card, white backgrounds. Card: virtual card display with details, freeze toggle, PIN reveal. Feed: transaction list with merchant logos (rounded), amount, category color dot, pending status. Categories: colored rings/bars showing spend by category (groceries, transport, etc). Balance: large prominent number, animated count up. Spending: weekly/monthly bar chart, comparison to last period. Pots: savings goals with progress rings, round-up savings, locked pots. Payments: send money with contacts, QR codes, scheduled payments. Split: bill splitting with contact selection, status tracking. Insights: spending alerts, unusual activity, subscription detection. Salary: early salary arrival, automatic sorting to pots. Travel: foreign spending stats, rate comparison, travel report. Notifications: instant push with transaction details, spend alerts. Card controls: gambling blocks, online payments toggle, location security. Summary: monthly summary with stats and insights. Export: PDF statements, CSV export. Search: transaction search, filter by amount/date/merchant. Skeleton loading: shimmer effect matching layout. Responsive: mobile-first design, desktop expansion."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

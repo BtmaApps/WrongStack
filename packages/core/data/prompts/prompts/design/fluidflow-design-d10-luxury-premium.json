@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d10-luxury-premium",
+  "slug": "fluidflow-design-d10-luxury-premium",
+  "title": "Luxury/Premium",
+  "description": "FluidFlow · Luxury/Premium",
+  "content": "Create sophisticated luxury aesthetic using rich colors - deep blacks (bg-black or bg-gray-950), gold accents (text-amber-400 or text-yellow-500), and deep jewel tones (purple-900, emerald-900). Implement elegant serif or thin sans-serif typography with generous letter-spacing. Add gold or silver gradients for highlights. Use subtle animations that feel refined, not flashy. Include generous whitespace and breathing room. Add fine details like thin borders and delicate dividers. Keep imagery high-quality with proper aspect ratios.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "3578282352469c3806e33774a713b51982e1f23680f871408b6f3392a267cb79",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create sophisticated design with dark backgrounds, gold accents, and elegant typography.",
+    "detailed": "Create sophisticated luxury aesthetic using rich colors - deep blacks (bg-black or bg-gray-950), gold accents (text-amber-400 or text-yellow-500), and deep jewel tones (purple-900, emerald-900). Implement elegant serif or thin sans-serif typography with generous letter-spacing. Add gold or silver gradients for highlights. Use subtle animations that feel refined, not flashy. Include generous whitespace and breathing room. Add fine details like thin borders and delicate dividers. Keep imagery high-quality with proper aspect ratios.",
+    "advanced": "Create sophisticated luxury aesthetic using rich colors - deep blacks (bg-black or bg-gray-950), gold accents (text-amber-400 or custom gold #D4AF37), and deep jewel tones (purple-900, emerald-900). Implement elegant serif typography (Playfair Display, Cormorant) or thin sans-serif (Montserrat Light) with generous letter-spacing (tracking-wider to tracking-widest). Add gold/silver gradients using linear-gradient with metallic color stops for highlights. Use subtle, refined animations - slow fades (duration-500), gentle parallax, smooth reveals. Include generous whitespace with large padding (py-16 to py-24). Add fine details: thin borders (border-[0.5px]), delicate dividers with gradient fades, subtle texture overlays. Keep imagery high-quality with proper aspect ratios and subtle hover zoom. Implement custom cursor for enhanced premium feel. Add micro-interactions on scroll. Ensure high contrast despite dark theme. Consider international audiences - gold symbolism varies by culture. Load premium fonts efficiently with font-display: swap."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

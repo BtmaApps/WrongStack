@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d97-crypto-trading",
+  "slug": "fluidflow-design-d97-crypto-trading",
+  "title": "Crypto Trading",
+  "description": "FluidFlow · Crypto Trading",
+  "content": "Apply crypto trading aesthetic with exchange platform feel. Candlestick price charts with volume bars. Order book depth visualization. Trading pair selectors. Buy/sell order forms. Portfolio pie charts. Price alerts configuration. Historical trade tables. Wallet balance summaries. Market ticker strips. Liquidation warning indicators.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d97"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f7753cbe2b11777b123e497baf9b5b371042155bb792dbe2b0000238d0fcb02d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create crypto trading interface with candlestick charts, order books, and portfolio trackers.",
+    "detailed": "Apply crypto trading aesthetic with exchange platform feel. Candlestick price charts with volume bars. Order book depth visualization. Trading pair selectors. Buy/sell order forms. Portfolio pie charts. Price alerts configuration. Historical trade tables. Wallet balance summaries. Market ticker strips. Liquidation warning indicators.",
+    "advanced": "Apply trading platform aesthetic with exchange patterns. TradingView-style candlesticks with OHLC data, MA lines overlay. Order book with bid/ask depth bars, spread display. Trading pairs: BTC/USDT format with 24h change percentage. Order forms with limit/market tabs, leverage sliders. Portfolio donut chart with asset breakdown. Price alert cards with trigger conditions. Trade history with timestamp, side, price, amount. Balance cards with available/in-order split. Scrolling ticker with green/red price changes. Margin call warnings with liquidation price."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

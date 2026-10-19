@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d78-data-dashboard",
+  "slug": "fluidflow-design-d78-data-dashboard",
+  "title": "Data Dashboard",
+  "description": "FluidFlow · Data Dashboard",
+  "content": "Apply data dashboard aesthetic with analytics platform feel. Dark or light theme with accent colors for data. Metric cards with large numbers and trend arrows. Charts: line graphs, bar charts, pie charts, sparklines. KPI indicators with RAG status (red/amber/green). Data tables with sorting indicators. Date range selectors. Real-time update indicators. Grid layout for dashboard tiles. Data-driven decision atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d78"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0b004646c14b0e88b14c13f01ef6017052ce5a319059de8bd9e52de05481e62c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create analytics dashboard aesthetic with charts, metrics cards, and data visualization components.",
+    "detailed": "Apply data dashboard aesthetic with analytics platform feel. Dark or light theme with accent colors for data. Metric cards with large numbers and trend arrows. Charts: line graphs, bar charts, pie charts, sparklines. KPI indicators with RAG status (red/amber/green). Data tables with sorting indicators. Date range selectors. Real-time update indicators. Grid layout for dashboard tiles. Data-driven decision atmosphere.",
+    "advanced": "Apply data dashboard aesthetic with enterprise analytics platform feel. Layout: CSS Grid dashboard tiles, responsive breakpoints, draggable/resizable panels optional. Metric cards: large primary number (text-4xl font-bold), label, trend indicator (arrow up/down with percentage), sparkline mini-chart, comparison period. Color system: primary brand color for highlights, semantic colors - positive green (#10b981), negative red (#ef4444), neutral gray, warning amber (#f59e0b). Charts: consistent styling across chart types - line charts with area fill, bar charts with rounded corners, donut charts with center metric, proper axis labels and legends. Chart colors: carefully selected palette that works together, accessible color combinations, patterns for colorblind support. Data tables: sortable columns (arrow indicators), alternating row colors, hover states, pagination, row selection checkboxes. Filters: dropdown selects, date range pickers, search inputs, filter chips showing active filters. Time controls: preset ranges (Today, 7D, 30D, YTD), custom date picker, timezone indicator. Real-time: live indicator dot (pulsing green), last updated timestamp, refresh button. Loading states: skeleton loaders matching chart shapes, spinner overlays. Status indicators: RAG status (red/amber/green dots or badges), threshold lines on charts. Drill-down: clickable chart elements revealing detail. Export: CSV/PDF export buttons per widget. Responsive: cards stack on mobile, charts resize gracefully. Implementation: chart library integration (Chart.js, Recharts patterns), CSS Grid for layout. Accessibility: data tables need proper headers, charts need text alternatives, color not sole indicator."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

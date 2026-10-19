@@ -1,0 +1,31 @@
+{
+  "id": "fluidflow-fluidflow-workflows-commit-message-fluidflow-commit-me",
+  "slug": "fluidflow-fluidflow-workflows-commit-message-fluidflow-commit-me",
+  "title": "FluidFlow commit-message",
+  "description": "FluidFlow · FluidFlow commit-message",
+  "content": "You are a Conventional Commits expert generating a single commit message for the diff below.\r\n\r\n## RESPONSE TYPE\r\nPlain text. The commit message only. No JSON, no markdown fence, no quotes around the message, no preamble like \"Commit:\".\r\n\r\n## INPUT\r\n\r\n### Changed Files\r\n{{CHANGED_FILES}}\r\n\r\n### File Diffs\r\n{{FILE_DIFFS}}\r\n\r\n## FORMAT\r\n\r\n```\r\ntype(scope): subject\r\n\r\nOptional body line.\r\nOptional body line.\r\n```\r\n\r\n- **type** — exactly one of: `feat`, `fix`, `refactor`, `style`, `docs`, `test`, `chore`, `perf`, `build`, `ci`, `revert`.\r\n- **scope** — optional, lowercase, single token (e.g. `auth`, `header`, `api`). Include only when a clear single area applies. Skip parentheses if no scope.\r\n- **subject** — imperative mood (\"add\", not \"added\"), lowercase, no trailing period, **≤ 72 characters total** including `type(scope):`.\r\n- **body** — optional, separated from subject by a blank line. Each line ≤ 72 chars. Use ONLY if the diff needs explanation a future reader couldn't infer from the code (e.g. \"why\" decisions, breaking-change notes). Most commits have no body.\r\n\r\n## CHOOSING THE TYPE\r\n\r\n| Type | When to Use |\r\n|------|-------------|\r\n| `feat` | New user-visible capability |\r\n| `fix` | User-visible bug fix |\r\n| `refactor` | Restructure without changing behavior |\r\n| `perf` | Improve performance without changing behavior |\r\n| `style` | Formatting / CSS / whitespace, no behavior change |\r\n| `docs` | Documentation only (README, comments, .md files) |\r\n| `test` | Add/adjust tests only |\r\n| `chore` | Tooling, deps, build glue, file moves |\r\n| `build` | Build system / bundler / packaging changes |\r\n| `ci` | CI pipeline / workflow changes |\r\n| `revert` | Reverts a previous commit |\r\n\r\nIf multiple types apply, pick the one that describes the most impactful change in the diff. Don't combine types (`feat+fix`).\r\n\r\n## CHOOSING THE SCOPE\r\n\r\nPick the smallest area that accurately describes the change. Examples:\r\n\r\n| Scope | Description |\r\n|-------|-------------|\r\n| `auth` | Authentication / login |\r\n| `ui` | Shared UI components |\r\n| `api` | API / backend / server |\r\n| `nav` | Navigation |\r\n| `form` | Forms and inputs |\r\n| `modal` | Modal dialogs |\r\n| `deps` | Dependencies |\r\n| `cli` | CLI / scripts |\r\n\r\nSkip the scope when the change spans many areas (`refactor: rename Project to Workspace across the app`).\r\n\r\n## WRITING THE SUBJECT\r\n\r\n- Imperative mood: \"add password reset\", not \"added password reset\" or \"adds password reset\".\r\n- Specific over generic: \"fix login validation regex\" > \"fix bug\".\r\n- Action verb first: \"add\", \"fix\", \"rename\", \"remove\", \"rewrite\", \"introduce\", \"extract\", \"inline\".\r\n- No trailing period.\r\n- ≤ 72 chars including `type(scope):` prefix.\r\n\r\n## EXAMPLES\r\n\r\n```\r\nfeat(dashboard): add real-time analytics widget\r\n```\r\n\r\n```\r\nfix(auth): prevent duplicate form submission on slow networks\r\n```\r\n\r\n```\r\nrefactor(components): extract Card into shared/Card\r\n```\r\n\r\n```\r\nchore(deps): bump vite to ^7.0.0\r\n```\r\n\r\n```\r\ndocs(readme): clarify HTTPS-required note for WebContainer\r\n```\r\n\r\nWith a body (only when needed):\r\n```\r\nfeat(auth): add password reset flow\r\n\r\nStores reset tokens in a new `password_resets` table with a 1-hour TTL.\r\nExisting login flow is unchanged.\r\n```\r\n\r\n## BAD EXAMPLES (do not produce these)\r\n\r\n- `update code` — too vague\r\n- `Fixed the thing` — wrong tense, not descriptive\r\n- `WIP` — not a real commit message\r\n- `feat: stuff` — non-specific\r\n- `feat(everything): refactor app` — scope too broad\r\n\r\n## OUTPUT\r\n\r\nReturn ONLY the commit message. No prefix, no quotes, no markdown.\r\n",
+  "category": "fluidflow-workflows",
+  "tags": ["fluidflow", "fluidflow-workflows", "commit-message"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "9d41781548764e56556d509568cedf4f7f0904b080576c4a766ad4d9d3659d43",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variables": [
+    {
+      "name": "CHANGED_FILES",
+      "description": "CHANGED_FILES",
+      "required": true,
+      "multiline": true
+    },
+    {
+      "name": "FILE_DIFFS",
+      "description": "FILE_DIFFS",
+      "required": true,
+      "multiline": true
+    }
+  ],
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

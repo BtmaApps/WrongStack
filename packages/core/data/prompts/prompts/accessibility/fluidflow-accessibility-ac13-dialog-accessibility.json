@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac13-dialog-accessibility",
+  "slug": "fluidflow-accessibility-ac13-dialog-accessibility",
+  "title": "Dialog Accessibility",
+  "description": "FluidFlow · Dialog Accessibility",
+  "content": "Implement fully accessible modal dialogs. Structure: role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"dialog-title\". Focus trap: Tab cycles within dialog, doesn't escape to background. Initial focus: first focusable element or dialog itself (tabindex=\"-1\"). Return focus: to trigger element when dialog closes. Escape key: closes dialog. Background: aria-hidden=\"true\" on content behind dialog, or use inert attribute. Overlay: clicking closes dialog (optional, confirm for important dialogs). Scrolling: prevent body scroll when open. Announce: dialog title read on open. Close button: accessible, labeled \"Close dialog\".",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac13"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "8b7834e45963731068b87444b35f5456bdc5d49aee29df5b06186050b6d104a6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Make modal dialogs fully accessible with focus trapping and ARIA.",
+    "detailed": "Implement fully accessible modal dialogs. Structure: role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"dialog-title\". Focus trap: Tab cycles within dialog, doesn't escape to background. Initial focus: first focusable element or dialog itself (tabindex=\"-1\"). Return focus: to trigger element when dialog closes. Escape key: closes dialog. Background: aria-hidden=\"true\" on content behind dialog, or use inert attribute. Overlay: clicking closes dialog (optional, confirm for important dialogs). Scrolling: prevent body scroll when open. Announce: dialog title read on open. Close button: accessible, labeled \"Close dialog\".",
+    "advanced": "Implement fully accessible modal dialogs following WAI-ARIA Authoring Practices. Structure: role=\"dialog\", aria-modal=\"true\", aria-labelledby pointing to dialog title id, optional aria-describedby for description. Focus trap implementation: on open, save previously focused element, move focus to first focusable item in dialog (or dialog itself with tabindex=\"-1\"), Tab key cycles only through dialog elements (wrap from last to first), Shift+Tab wraps from first to last. Focus trap code: add keydown listener, detect Tab/Shift+Tab, if target is last focusable and Tab, focus first, if target is first and Shift+Tab, focus last. Return focus: store document.activeElement before opening, restore on close (triggerRef.current.focus()). Escape key: add keydown listener for Escape, call close function. Background treatment: add aria-hidden=\"true\" to app root content (not dialog), or use inert attribute on siblings, prevents AT accessing background content. Click outside: overlay click closes dialog (but consider confirmation for destructive actions). Body scroll lock: add overflow-hidden to body when open, restore on close. Animation: don't autofocus until transition complete. Close button: position top-right, aria-label=\"Close dialog\" or \"Close\" with visually hidden text. Alert dialogs: use role=\"alertdialog\" for critical dialogs requiring user action, don't auto-close. Testing: Tab through entire dialog, verify can't Tab to background, verify Escape closes, test with screen reader."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

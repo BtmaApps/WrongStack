@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo35-form-state-persistence",
+  "slug": "fluidflow-forms-fo35-form-state-persistence",
+  "title": "Form State Persistence",
+  "description": "FluidFlow · Form State Persistence",
+  "content": "Build form persistence functionality. Auto-save: save form data periodically. Storage: localStorage or sessionStorage. Restore: restore data on page load. Clear: clear saved data on submission. Conflict: handle conflicts with server data. Expiry: expire old saved data. Indicator: show save status to user.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo35"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "12ef118f143f564b081d926f65a2467cc573370bf9cecf0795fbf9595b963a87",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Save form state to survive page refresh and navigation.",
+    "detailed": "Build form persistence functionality. Auto-save: save form data periodically. Storage: localStorage or sessionStorage. Restore: restore data on page load. Clear: clear saved data on submission. Conflict: handle conflicts with server data. Expiry: expire old saved data. Indicator: show save status to user.",
+    "advanced": "Build comprehensive form state persistence for draft saving. Save triggers: onChange with debounce (1-2 seconds), on blur, on interval (every 30s), before unload. Storage options: localStorage for persistent drafts, sessionStorage for session-only, IndexedDB for large forms. Storage key: unique per form + user + optional record ID (form_contact_user123, form_product_edit_456). Data format: {data: formValues, savedAt: timestamp, version: schemaVersion}. Restore on mount: check storage on form mount, restore if data exists and valid. Merge with defaults: restored data merged with current defaults (new fields have defaults). Conflict detection: if editing existing record, compare server version with saved draft, prompt user to choose. Clear on submit: remove saved data after successful submission. Clear on cancel: optionally clear on explicit cancel, or keep for accidental navigation. Expiry: expire drafts after 7-30 days, clean up on app load. Draft indicator: show \"Draft saved\" with timestamp, or \"Saving...\" during save. Resume prompt: \"You have a saved draft from [date]. Resume or discard?\" Discard option: button to explicitly discard draft and start fresh. Versioning: schema version in saved data, handle migration if form fields changed. Multiple drafts: optionally support multiple drafts per form type. Sync: for logged-in users, optionally sync drafts to server. Privacy: don not persist sensitive fields (passwords, payment info). Size limits: monitor localStorage usage, handle quota exceeded. Testing: easy clearing of persisted data in dev tools."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

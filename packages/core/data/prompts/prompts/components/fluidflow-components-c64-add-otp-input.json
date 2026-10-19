@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c64-add-otp-input",
+  "slug": "fluidflow-components-c64-add-otp-input",
+  "title": "Add OTP Input",
+  "description": "FluidFlow · Add OTP Input",
+  "content": "Create OTP input component. Container: flex gap-2. Digit inputs: w-12 h-14 border-2 rounded-lg text-center text-2xl font-bold, focus:border-blue-500. Auto-focus: first empty input. Auto-advance: move to next input after entry. Backspace: move to previous input and clear. Paste support: handle full code paste.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c64"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7bc86cb9e97b8980f0eb6be61cf7dbc176724e50f37f71b354cdea531cff400b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create one-time password input with separate digit boxes.",
+    "detailed": "Create OTP input component. Container: flex gap-2. Digit inputs: w-12 h-14 border-2 rounded-lg text-center text-2xl font-bold, focus:border-blue-500. Auto-focus: first empty input. Auto-advance: move to next input after entry. Backspace: move to previous input and clear. Paste support: handle full code paste.",
+    "advanced": "Create robust OTP/verification code input. Configuration: length prop (4, 6, or custom), input type (number, alphanumeric). Input boxes: equally sized, clearly separated or with gap, focused input highlighted (ring or border). Auto-focus: focus first input on mount. Auto-advance: after valid input, focus next. Backspace behavior: clear current then focus previous, allow editing previous. Arrow keys: navigate between inputs. Paste handling: intercept paste, distribute digits across inputs, trigger onChange if complete. Mobile: inputmode=\"numeric\" for number pad, autocomplete=\"one-time-code\" for SMS autofill. Validation: only accept valid characters (digits or alphanumeric based on type). Error state: red border on all inputs, error message below. Timer: optional resend countdown, \"Resend code\" button after expiry. Masked input: optional hide entered digits (dots like password). Completion callback: onComplete fires when all digits entered. Auto-submit: optional submit form when complete. Clear button: reset all inputs. Accessibility: single input with aria-label for screen readers, or group with individual labels. Loading state: disabled during verification. Success state: visual confirmation before navigation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

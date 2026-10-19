@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac15-live-regions",
+  "slug": "fluidflow-accessibility-ac15-live-regions",
+  "title": "Live Regions",
+  "description": "FluidFlow · Live Regions",
+  "content": "Implement ARIA live regions for dynamic content announcements. Types: aria-live=\"polite\" (waits for pause in speech), aria-live=\"assertive\" (interrupts immediately). Use cases: form validation messages, search results count, loading states, save confirmations, chat messages, notifications. Status messages: role=\"status\" with aria-live=\"polite\" for non-critical updates. Alert messages: role=\"alert\" with aria-live=\"assertive\" for critical information. Avoid: overusing assertive (annoying), announcing too frequently, announcing unchanged content. Best practice: announce meaningful changes, keep messages concise, test with actual screen readers.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c5bd52d61100643bbcbd7a046c62267f64a4befbf15fd164706f42d7acde5abf",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add ARIA live regions for dynamic content updates.",
+    "detailed": "Implement ARIA live regions for dynamic content announcements. Types: aria-live=\"polite\" (waits for pause in speech), aria-live=\"assertive\" (interrupts immediately). Use cases: form validation messages, search results count, loading states, save confirmations, chat messages, notifications. Status messages: role=\"status\" with aria-live=\"polite\" for non-critical updates. Alert messages: role=\"alert\" with aria-live=\"assertive\" for critical information. Avoid: overusing assertive (annoying), announcing too frequently, announcing unchanged content. Best practice: announce meaningful changes, keep messages concise, test with actual screen readers.",
+    "advanced": "Implement ARIA live regions for announcing dynamic content changes to screen readers. Live region politeness levels: aria-live=\"polite\" (queued, read during speech pauses) for non-urgent updates, aria-live=\"assertive\" (interrupts immediately) for critical alerts only. Built-in live region roles: role=\"status\" (implicit polite) for status updates, role=\"alert\" (implicit assertive) for errors/warnings, role=\"log\" for chat/activity logs, role=\"timer\" for countdown displays. Atomic vs non-atomic: aria-atomic=\"true\" announces entire region content on any change, aria-atomic=\"false\" (default) announces only changed nodes. Relevant changes: aria-relevant=\"additions\" (default, new content), \"removals\" (content removed), \"text\" (text changes), \"all\" (everything). Common use cases: form validation (\"Email is invalid\"), search results (\"24 results found\"), save status (\"Changes saved\"), loading states (\"Loading content...\"), cart updates (\"Item added to cart\"), notifications, chat messages. Implementation: create hidden live region, update its text content when events occur. Avoid: too many announcements (fatiguing), assertive for non-critical info, empty live regions that later fill, announcing on every keystroke. Testing: actually use screen readers (VoiceOver, NVDA) to verify announcements occur and are understandable. Timing: some readers need element to exist before populating, consider rendering empty region on mount."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

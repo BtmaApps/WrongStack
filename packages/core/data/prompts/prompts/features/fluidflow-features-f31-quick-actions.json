@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f31-quick-actions",
+  "slug": "fluidflow-features-f31-quick-actions",
+  "title": "Quick Actions",
+  "description": "FluidFlow · Quick Actions",
+  "content": "Build floating action button (FAB) with quick actions. Button: circular button fixed position bottom-right. Icon: Plus icon, rotates to X when open. Menu: fan out action buttons on click. Actions: contextual quick actions for current page. Labels: tooltip labels for each action. Animation: staggered animation on open/close. Close: click outside or press Escape. Mobile: larger touch targets. Accessibility: keyboard navigation, aria labels.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b8da24e41e5fe029f35ce5fa7f5742a525bfb4830e223760c18dcec26235c237",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add floating action button with quick action menu.",
+    "detailed": "Build floating action button (FAB) with quick actions. Button: circular button fixed position bottom-right. Icon: Plus icon, rotates to X when open. Menu: fan out action buttons on click. Actions: contextual quick actions for current page. Labels: tooltip labels for each action. Animation: staggered animation on open/close. Close: click outside or press Escape. Mobile: larger touch targets. Accessibility: keyboard navigation, aria labels.",
+    "advanced": "Build floating action button with expandable quick actions menu. Main button: fixed position (bottom-6 right-6), circular (w-14 h-14), primary color, shadow-lg, Plus icon. Open state: icon rotates 45deg to X, background may darken (overlay-sm). Action menu: smaller buttons fanning upward from main button, each with icon and label. Animation: main button rotates on toggle, action buttons animate in with staggered delay (100ms each), scale from 0 and translate from main button position, smooth spring easing. Action button style: w-12 h-12, varied colors per action type, icon centered, label appears on hover (right-aligned tooltip). Common actions: Create new (primary), Upload file, Send message, context-specific actions. Labels: visible tooltips or appear on hover, positioned to not overlap. Close triggers: click main button, click outside, Escape key, select action. Accessibility: main button aria-expanded, aria-haspopup=\"menu\", action buttons in role=\"menu\", keyboard focus traps in open menu, arrow keys navigate, announce open/close state. Mobile optimization: larger touch targets (w-16 h-16), label always visible or on long-press, consider bottom sheet alternative for many actions. Speed dial variant: labeled actions in vertical list rather than fan. Conditional visibility: hide FAB on certain pages or during scroll (scroll down to hide, scroll up to show). Extended FAB: pill shape with icon + text label for primary action."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

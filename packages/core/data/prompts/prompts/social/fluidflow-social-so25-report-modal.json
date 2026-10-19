@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so25-report-modal",
+  "slug": "fluidflow-social-so25-report-modal",
+  "title": "Report Modal",
+  "description": "FluidFlow · Report Modal",
+  "content": "Build report modal for posts/users. Trigger: report option in post/user menu. Reason selection: radio buttons (Spam, Harassment, Violence, Misinformation, etc.). Additional info: optional textarea for details. Confirmation: thank you message after submit. Block option: offer to block user. Status tracking: report submitted indicator.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "49c683d18e303e9b50b10e094741cdd3dbae2c6ccb408ab7b60de49ad4a0bda5",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create report content modal with reason selection.",
+    "detailed": "Build report modal for posts/users. Trigger: report option in post/user menu. Reason selection: radio buttons (Spam, Harassment, Violence, Misinformation, etc.). Additional info: optional textarea for details. Confirmation: thank you message after submit. Block option: offer to block user. Status tracking: report submitted indicator.",
+    "advanced": "Build comprehensive report modal for content moderation. Trigger: \"Report\" option in post menu, user menu, or message menu. Modal: max-w-md, bg-white rounded-xl shadow-2xl. Header: \"Report [Post/User/Message]\" with Flag icon, close X button. Step 1 - What are you reporting?: content preview showing what's being reported (post snippet, user card, etc.). Step 2 - Select reason: radio group of report categories. Category groups: Spam or misleading (Spam, Scam, Misleading information), Abuse (Harassment or bullying, Hate speech, Violent threats), Harmful content (Violence, Adult content, Self-harm), Intellectual property (Copyright infringement, Trademark), Other (Something else with required text input). Each option: radio + label + brief description. Selecting reveals relevant sub-options if applicable. Step 3 - Additional context: textarea \"Help us understand the issue\" (optional for most reasons, required for \"Something else\"), attach screenshot button optional. Step 4 - Submit confirmation: \"Report submitted\" success message with Check icon, \"Thank you for helping keep our community safe\", reference ID for tracking. Additional actions offered: \"Block [Username]\" checkbox/button (\"You won't see their content\"), \"Mute [Username]\" option, \"Unfollow\" if following. What happens next: brief explanation \"We'll review this report and take action if it violates our Community Guidelines. We may contact you if we need more information.\" Link to Community Guidelines. Status tracking: \"View your reports\" link to see submitted reports and their status (Under review, Action taken, No violation found). Urgent reports: for imminent harm categories, highlighted as priority with additional resources (crisis hotlines). Anonymous: note that reports are confidential, reported user won't know who reported. Multi-step flow: navigation with Back button, progress indicator optional. Rate limiting: prevent spam reports, \"You've recently reported this\" if duplicate. Mobile: full-screen modal, step-by-step flow. Accessibility: radio group properly structured, status changes announced, focus management between steps."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d14-flat-design",
+  "slug": "fluidflow-design-d14-flat-design",
+  "title": "Flat Design",
+  "description": "FluidFlow · Flat Design",
+  "content": "Convert to flat design removing all shadows, gradients, and 3D effects. Use solid, bold colors for backgrounds and UI elements. Implement simple geometric shapes - circles, rectangles, triangles. Use clean line icons with consistent stroke width. Apply bright, saturated color palette with strong contrast. Keep typography simple and readable. Use color blocks to separate sections. Add simple hover states with color changes only. Focus on clarity and simplicity over decoration. Maintain visual interest through color and composition.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "6f52fd4d358e0e8bfe735cb898b85cec27c85e1a735feba590600e538ece43df",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Remove all shadows and gradients for clean, solid-color 2D appearance.",
+    "detailed": "Convert to flat design removing all shadows, gradients, and 3D effects. Use solid, bold colors for backgrounds and UI elements. Implement simple geometric shapes - circles, rectangles, triangles. Use clean line icons with consistent stroke width. Apply bright, saturated color palette with strong contrast. Keep typography simple and readable. Use color blocks to separate sections. Add simple hover states with color changes only. Focus on clarity and simplicity over decoration. Maintain visual interest through color and composition.",
+    "advanced": "Convert to flat design removing all shadows, gradients, and 3D effects for clean 2D aesthetic. Use solid, bold colors for backgrounds and UI elements with intentional color blocking. Implement simple geometric shapes - circles, rectangles, triangles for visual interest. Use clean line icons with consistent stroke width (1.5-2px) from lucide-react. Apply bright, saturated color palette with strong contrast meeting WCAG AA. Keep typography simple, readable, and bold - one sans-serif family with 2-3 weights. Use color blocks to separate sections clearly. Add simple hover states with color shifts (darker/lighter shade) only - no transforms. Focus on clarity and simplicity over decoration. Maintain visual interest through thoughtful color composition and strategic use of accent colors. IMPORTANT: Without shadows for elevation cues, use color and borders to clearly distinguish interactive elements from static content. Ensure buttons are obviously clickable. Add subtle border on focus for accessibility. Consider using outlined buttons as secondary actions for clear hierarchy."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

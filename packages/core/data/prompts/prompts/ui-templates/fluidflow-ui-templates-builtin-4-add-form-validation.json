@@ -1,0 +1,31 @@
+{
+  "id": "fluidflow-ui-templates-builtin-4-add-form-validation",
+  "slug": "fluidflow-ui-templates-builtin-4-add-form-validation",
+  "title": "Add Form Validation",
+  "description": "Add client-side validation to a form",
+  "content": "Add form validation to {{formName}} with the following rules: {{validationRules}}. Show inline error messages and disable submit until valid.",
+  "category": "ui-templates",
+  "tags": ["fluidflow", "ui-templates", "builtin-4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "37b51042241514183ab4e8df6f8de466ac602a3d9645f72670cea58e13f39c1c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variables": [
+    {
+      "name": "formName",
+      "description": "Form to validate",
+      "default": "contact form",
+      "required": true
+    },
+    {
+      "name": "validationRules",
+      "description": "Validation requirements",
+      "default": "email must be valid, name required, message min 10 chars",
+      "required": true
+    }
+  ],
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

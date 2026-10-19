@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d104-smart-home-hub",
+  "slug": "fluidflow-design-d104-smart-home-hub",
+  "title": "Smart Home Hub",
+  "description": "FluidFlow · Smart Home Hub",
+  "content": "Apply smart home aesthetic with home automation feel. Room-based device grouping. Scene preset buttons (Movie, Sleep, Away). Lighting dimmer sliders. Thermostat controls with temperature display. Security camera feeds. Door lock status. Energy consumption graphs. Voice assistant integration. Routine scheduling. Away mode panels.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d104"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "53907430de98f528f59ceb495a2af65d8383e5e2ef2a2fff2c504bdc3dd6a693",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create smart home hub interface with room controls, device scenes, and automation rules.",
+    "detailed": "Apply smart home aesthetic with home automation feel. Room-based device grouping. Scene preset buttons (Movie, Sleep, Away). Lighting dimmer sliders. Thermostat controls with temperature display. Security camera feeds. Door lock status. Energy consumption graphs. Voice assistant integration. Routine scheduling. Away mode panels.",
+    "advanced": "Apply smart home aesthetic with home hub patterns. Room tabs: Living Room, Bedroom, Kitchen with device counts. Scene buttons with icons: Movie (dim lights, TV on), Sleep (all off, lock), Away (security on). Light sliders with color temperature picker, brightness percentage. Thermostat: circular dial with current/target temp, mode buttons (heat/cool/auto). Camera thumbnails with live badge, last motion time. Lock icons: locked (green), unlocked (red), with last activity. Energy chart: daily/weekly usage bars with cost estimate. Assistant orb with listening animation. Routine cards with time, days, actions list. Vacation mode toggle with smart presence simulation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

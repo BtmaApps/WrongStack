@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u36-feedback-collection",
+  "slug": "fluidflow-ux-u36-feedback-collection",
+  "title": "Feedback Collection",
+  "description": "FluidFlow · Feedback Collection",
+  "content": "Implement feedback collection touchpoints. Add persistent feedback button (edge-fixed). Create quick emoji or star rating after actions. Build NPS survey triggered periodically. Include contextual feedback for specific features. Add bug report form with automatic context. Implement screenshot capture for visual feedback. Thank users after submission. Track feedback for product improvement. Close the loop by updating users on addressed feedback.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u36"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ec201095f6d2b9b97ff0b65f3bf6f651080f7bf43f5249554fe85550c202c651",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Gather user feedback through ratings, surveys, and feedback buttons.",
+    "detailed": "Implement feedback collection touchpoints. Add persistent feedback button (edge-fixed). Create quick emoji or star rating after actions. Build NPS survey triggered periodically. Include contextual feedback for specific features. Add bug report form with automatic context. Implement screenshot capture for visual feedback. Thank users after submission. Track feedback for product improvement. Close the loop by updating users on addressed feedback.",
+    "advanced": "Implement feedback collection to inform product decisions. Persistent feedback button: fixed edge button (\"Feedback\"), expands to form, captures URL and user context automatically. Quick ratings: 5-star or emoji after key actions (completed task, closed ticket), optional comment follow-up if low rating. NPS survey: triggered periodically (not more than once per quarter), after milestone (paid, 30 days active), score + \"Why?\" follow-up. Contextual feedback: \"Rate this feature\" on specific pages, appears after 3+ uses. Bug reports: structured form (what happened, expected, steps to reproduce), auto-capture browser, OS, URL, user ID, console errors. Screenshot tool: capture and annotate, highlight areas, blur sensitive info automatically. Submission experience: acknowledge immediately (\"Thanks for your feedback!\"), set expectation (\"We review all feedback\"). Context capture: include session replay ID, recent actions, feature flags active. Prioritization: categorize by theme, impact, sentiment, route to appropriate team. Close the loop: if acting on feedback, notify the user (\"We fixed the bug you reported\"), in-app changelog mentioning community input. Privacy: explain what context is captured, allow opt-out. Rate limiting: prevent spam, cap submissions per user. Analytics: feedback sentiment trends, correlation with churn/retention."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

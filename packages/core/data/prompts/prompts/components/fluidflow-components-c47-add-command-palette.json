@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c47-add-command-palette",
+  "slug": "fluidflow-components-c47-add-command-palette",
+  "title": "Add Command Palette",
+  "description": "FluidFlow · Add Command Palette",
+  "content": "Create command palette (Cmd+K style). Trigger: Cmd/Ctrl+K keyboard shortcut. Modal: fixed inset-0 z-50 with backdrop blur. Container: max-w-lg mx-auto mt-20 bg-white rounded-xl shadow-2xl overflow-hidden. Search input: w-full px-4 py-3 text-lg border-b focus:outline-none, autofocus on open. Results: max-h-96 overflow-y-auto. Result item: px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-3. Active item: bg-blue-50 border-l-2 border-blue-500. Keyboard nav: up/down arrows, Enter to select, Escape to close.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c47"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "71c31b7349a4f7c42a25bfce142a75f31bdc484b7e80bb1188b349159ceeddb9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create keyboard-accessible command palette with search.",
+    "detailed": "Create command palette (Cmd+K style). Trigger: Cmd/Ctrl+K keyboard shortcut. Modal: fixed inset-0 z-50 with backdrop blur. Container: max-w-lg mx-auto mt-20 bg-white rounded-xl shadow-2xl overflow-hidden. Search input: w-full px-4 py-3 text-lg border-b focus:outline-none, autofocus on open. Results: max-h-96 overflow-y-auto. Result item: px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-3. Active item: bg-blue-50 border-l-2 border-blue-500. Keyboard nav: up/down arrows, Enter to select, Escape to close.",
+    "advanced": "Create advanced command palette with categories and recent items. Trigger: useEffect for keydown listener, Cmd/Ctrl+K opens, prevent default browser behavior. Modal: createPortal to body, AnimatePresence for mount/unmount animation. Backdrop: fixed inset-0 bg-black/50 backdrop-blur-sm, click to close. Container: transform animation (scale and opacity). Search: input with placeholder \"Type a command or search...\", clear button on right, loading spinner when searching. Results structure: grouped by category (Navigation, Actions, Recent). Category header: px-4 py-2 text-xs font-semibold text-gray-500 uppercase sticky top-0 bg-white. Result item: flex items-center gap-3, icon on left, title and description, keyboard shortcut badge on right (kbd styling). Keyboard navigation: useRef for active index, scroll into view for active item. Search logic: fuzzy search with highlighting of matched characters. Recent items: stored in localStorage, shown when input empty. No results: helpful message with suggestions. Actions: each command has action callback, close palette after action. Nested commands: some items open sub-menus (e.g., \"Go to...\" shows page list). Footer: keyboard hints \"↑↓ Navigate • Enter Select • Esc Close\"."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

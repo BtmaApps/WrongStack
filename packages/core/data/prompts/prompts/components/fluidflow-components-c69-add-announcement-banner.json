@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c69-add-announcement-banner",
+  "slug": "fluidflow-components-c69-add-announcement-banner",
+  "title": "Add Announcement Banner",
+  "description": "FluidFlow · Add Announcement Banner",
+  "content": "Create announcement banner. Container: fixed top-0 inset-x-0 z-50 or relative in page flow. Banner: bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 flex items-center justify-center gap-4. Icon: optional alert or megaphone icon. Text: text-sm font-medium, can include link (underline). Dismiss: button with X icon on right, absolute or flex end.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c69"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0af09511953c8650177a33e28f827b3935dc87bf0d2b433393f2225fd9fc5168",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dismissible announcement banner at top of page.",
+    "detailed": "Create announcement banner. Container: fixed top-0 inset-x-0 z-50 or relative in page flow. Banner: bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 flex items-center justify-center gap-4. Icon: optional alert or megaphone icon. Text: text-sm font-medium, can include link (underline). Dismiss: button with X icon on right, absolute or flex end.",
+    "advanced": "Create flexible announcement banner system. Positioning: top fixed, bottom fixed, or inline in page flow. Types: info (blue), success (green), warning (yellow), error (red), promotional (gradient). Content: text, optional icon, optional CTA link or button. Multiple banners: stack when multiple active, or show one with navigation. Dismissible: X button, click stores dismissed in localStorage (with expiry). Animation: slide down on show, slide up on dismiss. Auto-dismiss: optional timer to auto-hide. Countdown: show urgency (\"Offer ends in 2 days\"). Progress: optional progress bar for time-limited announcements. Responsive: text truncates on mobile with \"Learn more\" expansion. Scheduling: show only within date range. Targeting: show to specific user segments. A/B testing: variant support for testing messages. Link tracking: analytics on CTA clicks. Cookie consent: special handling for GDPR banners. Sticky behavior: stays visible while scrolling or scrolls with content. Accessibility: role=\"alert\" for important announcements, dismissible via keyboard, not blocking main content. Integration: fetch active announcements from API."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

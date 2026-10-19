@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so10-settings-page",
+  "slug": "fluidflow-social-so10-settings-page",
+  "title": "Settings Page",
+  "description": "FluidFlow · Settings Page",
+  "content": "Create settings page layout and structure. Layout: sidebar navigation + main content area. Navigation: sections like Account, Privacy, Notifications, Appearance, Billing. Section structure: heading, description, settings controls. Control types: toggle switches, dropdowns, radio groups. Toggle pattern: label left, switch right. Save behavior: auto-save on change with toast, or explicit Save button. Responsive: on mobile, nav becomes accordion.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "0731129fd6550cef2a36562d87aad52723e2dc283b4b5760d2a2b33597f2cd91",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create settings page with sidebar navigation and toggle controls.",
+    "detailed": "Create settings page layout and structure. Layout: sidebar navigation + main content area. Navigation: sections like Account, Privacy, Notifications, Appearance, Billing. Section structure: heading, description, settings controls. Control types: toggle switches, dropdowns, radio groups. Toggle pattern: label left, switch right. Save behavior: auto-save on change with toast, or explicit Save button. Responsive: on mobile, nav becomes accordion.",
+    "advanced": "Create settings page layout and structure with comprehensive UX. Layout: flex row on desktop - sidebar navigation (w-64 flex-shrink-0) + main content area (flex-1 max-w-2xl). Sidebar navigation: sticky top-4, space-y-1. Nav items: px-3 py-2 rounded-lg, hover:bg-gray-100, active state (bg-gray-100 font-medium). Sections: Account, Privacy & Security, Notifications, Appearance, Billing, Help & Support. Section icons: User, Shield, Bell, Palette, CreditCard, HelpCircle from lucide. Main content: px-6 py-4 overflow-y-auto. Section structure: heading (text-xl font-semibold mb-1), description (text-sm text-gray-500 mb-6), settings controls grouped in cards or bordered sections. Control types and patterns: Toggle switches (label on left, switch on right, optional description below in text-sm text-gray-500), Select dropdowns (for multi-option choices), Radio groups (for mutually exclusive options, vertical stack with descriptions), Text inputs (for editable values like name, email). Toggle pattern: flex justify-between items-center py-4 border-b, label column (label text + optional description), switch aligned right. Save behavior: auto-save on change with brief success toast (\"Settings saved\"), loading state on control during save, error toast with retry on failure. Alternative: explicit \"Save Changes\" button at bottom with unsaved changes indicator. Grouping: related settings in cards (bg-white rounded-lg shadow-sm p-4) or sections with border-b separators. Search: filter/search input at top to find settings by keyword, highlights matching sections. Reset: \"Reset to defaults\" option per section or global with confirmation. Responsive: on mobile (md:hidden), sidebar becomes horizontal scrolling tabs at top, accordion sections, or hamburger menu. Full-width content area. Loading: skeleton for settings values while fetching. Error handling: inline errors below controls, retry option. Unsaved changes: warning modal on navigation away (\"You have unsaved changes. Discard?\"). Help links: question mark icons linking to documentation per setting. Accessibility: proper form labels, fieldset/legend for groups, announce save confirmations."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

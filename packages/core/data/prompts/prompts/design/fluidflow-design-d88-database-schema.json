@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d88-database-schema",
+  "slug": "fluidflow-design-d88-database-schema",
+  "title": "Database Schema",
+  "description": "FluidFlow · Database Schema",
+  "content": "Apply database schema aesthetic with data architecture feel. Entity-relationship diagram styling. Table representations with columns. Primary/foreign key indicators. Relationship lines (one-to-many, many-to-many). SQL query syntax highlighting. Data type badges. Index indicators. Schema navigation. Query result tables. Database design atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d88"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b1cf7d0952163e9d20d95a139bf9be6a5b0b8b9d1ee8a654073f21e2a050d31e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create database design aesthetic with ER diagrams, SQL styling, and data modeling visuals.",
+    "detailed": "Apply database schema aesthetic with data architecture feel. Entity-relationship diagram styling. Table representations with columns. Primary/foreign key indicators. Relationship lines (one-to-many, many-to-many). SQL query syntax highlighting. Data type badges. Index indicators. Schema navigation. Query result tables. Database design atmosphere.",
+    "advanced": "Apply database schema aesthetic with data modeling and DBA feel. ERD tables: rectangular boxes with table name header (bold, dark background), columns listed with names and types. Column display: name, data type (VARCHAR, INT, etc.), constraints inline. Key indicators: PK (yellow key icon), FK (blue key), unique constraint (fingerprint), nullable (question mark or empty). Relationships: lines connecting tables, crow's foot notation (one: single line, many: fork), relationship labels (has, belongs_to). Cardinality: 1:1, 1:N, M:N notation at line ends. Indexes: small lightning bolt or I indicator, composite index grouping. Data types: badges for type categories - numeric (blue), string (green), date (orange), boolean (purple), JSON (yellow). SQL syntax highlighting: keywords blue (SELECT, FROM, WHERE), table names white, strings green, numbers orange, functions purple, comments gray. Query formatting: proper indentation, one clause per line for complex queries. Result sets: table with column headers, row count, execution time. NULL handling: italic gray \"NULL\" display. Schema browser: tree view of database > schema > tables > columns. Explain plans: visual query execution plan, cost estimates. Constraints: check constraints, default values shown. Migrations: version history, up/down indicators. Stored procedures: procedure/function icons, parameter lists. Views: dashed table borders distinguishing from base tables. Triggers: event indicators (BEFORE/AFTER, INSERT/UPDATE/DELETE). Implementation: SVG for ER diagrams, proper table components. Accessibility: diagram relationships described in text, tables have proper headers."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

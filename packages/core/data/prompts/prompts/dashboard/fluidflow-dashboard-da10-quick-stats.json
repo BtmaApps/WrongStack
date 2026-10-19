@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da10-quick-stats",
+  "slug": "fluidflow-dashboard-da10-quick-stats",
+  "title": "Quick Stats",
+  "description": "FluidFlow · Quick Stats",
+  "content": "Build quick stats row for key metrics at a glance. Layout: flex row with equal-width items. Stat item: icon (optional), label (text-sm text-gray-500), value (text-2xl font-bold), change indicator. Change indicator: arrow icon, percentage, color (green/red). Sparkline: optional mini chart. Responsive: 2 columns on tablet, stack on mobile. Loading state: skeleton placeholders.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da10"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "fe27606830bb35eb0720b52e092dcca84be0b9b7c40ee0b985d6b7c243049588",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create stats row showing key metrics with labels and values.",
+    "detailed": "Build quick stats row for key metrics at a glance. Layout: flex row with equal-width items. Stat item: icon (optional), label (text-sm text-gray-500), value (text-2xl font-bold), change indicator. Change indicator: arrow icon, percentage, color (green/red). Sparkline: optional mini chart. Responsive: 2 columns on tablet, stack on mobile. Loading state: skeleton placeholders.",
+    "advanced": "Build quick stats row for key metrics at a glance with comprehensive features. Layout: flex row (flex-wrap or grid grid-cols-2 md:grid-cols-4) with equal-width items, gap-4 or gap-6, optional card backgrounds or dividers between items. Stat item structure: icon (optional, in w-10 h-10 rounded-full colored background circle, representing metric type), label (text-sm text-gray-500 uppercase tracking-wide), value (text-2xl md:text-3xl font-bold, properly formatted - currency with symbol, percentages with %, numbers with commas), change indicator row below. Change indicator: flex items-center gap-1, ArrowUp (text-green-600) or ArrowDown (text-red-600) icon, percentage change (+12.3%), color matching direction, comparison period text in parentheses (\"vs last week\"). Sparkline: optional inline mini chart (60x20px) showing 7-day trend, simple SVG path or tiny line chart, helps visualize trend beyond single number. Variants: simple text (no backgrounds), with card backgrounds (bg-white rounded-lg shadow-sm p-4), with vertical borders between items (divide-x), compact single-row. Click interaction: entire stat clickable, navigates to detailed view/report page. Loading state: skeleton placeholders matching layout (animate-pulse gray rectangles for value and label). Refresh button: optional RefreshCw icon button to manually refresh stats, loading state during refresh. Time range: selector dropdown or button group (Today, This Week, This Month, Custom) affecting all stats. Custom stat: \"+\" button to add custom tracked metric with configuration modal. Error state: show error icon with \"Unable to load\" message and retry. Real-time: optional live updates with subtle animation on change. Responsive: 2 columns on tablet (sm:grid-cols-2), stack to single column on mobile. Dark mode: dark:bg-gray-800 dark:text-white. Accessibility: proper labeling, announce value changes with aria-live for real-time updates."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

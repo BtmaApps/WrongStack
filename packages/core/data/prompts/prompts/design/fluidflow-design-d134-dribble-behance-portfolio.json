@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d134-dribble-behance-portfolio",
+  "slug": "fluidflow-design-d134-dribble-behance-portfolio",
+  "title": "Dribble/Behance Portfolio",
+  "description": "FluidFlow · Dribble/Behance Portfolio",
+  "content": "Apply portfolio aesthetic with creative showcase feel. Large hero images and videos. Case study layouts. Before/after comparisons. Process documentation. Tool and skill badges. Testimonials integration. Contact sections. Grid galleries. Hover effects with info overlays. Smooth page transitions.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d134"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "951cdf53d97fad60810433c0348131f72b79c6c634f930046688155d9e7cee13",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create designer portfolio with large imagery, case studies, and creative layouts.",
+    "detailed": "Apply portfolio aesthetic with creative showcase feel. Large hero images and videos. Case study layouts. Before/after comparisons. Process documentation. Tool and skill badges. Testimonials integration. Contact sections. Grid galleries. Hover effects with info overlays. Smooth page transitions.",
+    "advanced": "Apply portfolio aesthetic with creative showcase patterns. Hero: full-viewport image/video with overlay text, scroll indicator. Grid: masonry or uniform grid with project thumbnails, hover reveals title and category. Project card: aspect ratio image, title, category, year, hover zoom and filter. Case study: structured sections (overview, problem, process, solution, results). Large imagery: full-bleed images, before/after sliders, image galleries with lightbox. Process: step documentation with screenshots, annotations, sketches. Metrics: results with large numbers, animated count-up. Skills: icon grid or list with proficiency indicators. Testimonials: quote cards, client logos, recommendations. About: portrait image, bio, downloadable resume. Contact: form or email link, social icons, availability status. Navigation: minimal, logo + project links, fixed on scroll. Transitions: page transitions with shared elements, smooth scrolling. Cursor: custom cursor, magnetic buttons, cursor text on hover. Videos: autoplay loops, click to play with sound. Mobile: adapted layouts, thumb-friendly navigation. Performance: lazy loading images, optimized assets. Filters: project category filters, animated reflow. Footer: copyright, social links, back to top. Dark mode: toggle with system preference detection."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

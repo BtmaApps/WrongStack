@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u34-version-history",
+  "slug": "fluidflow-ux-u34-version-history",
+  "title": "Version History",
+  "description": "FluidFlow · Version History",
+  "content": "Implement version history for content recovery. Track changes automatically on each save. Store timestamps and user who made changes. Create timeline or list view of versions. Enable viewing any previous version. Allow comparing versions (diff view). Provide restore to previous version option. Set retention policy (keep last N versions or time-based). Show changes summary for each version. Handle merge conflicts when restoring.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u34"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a9c1a3a7a54f092a1584d2701af08f3a36fe08775f50eb4a423dd593f41ccb33",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show history of changes with ability to view and restore previous versions.",
+    "detailed": "Implement version history for content recovery. Track changes automatically on each save. Store timestamps and user who made changes. Create timeline or list view of versions. Enable viewing any previous version. Allow comparing versions (diff view). Provide restore to previous version option. Set retention policy (keep last N versions or time-based). Show changes summary for each version. Handle merge conflicts when restoring.",
+    "advanced": "Implement version history for content recovery and collaboration transparency. Automatic tracking: save new version on significant changes (save, not every keystroke), include timestamp and user. Storage strategy: full snapshots vs diffs (based on content type and size), retention policy (last 100 versions, or 90 days, or per-plan limit). Version list UI: timeline or list view, show date, user avatar/name, brief change summary, current version highlighted. View previous: click to view read-only previous version, clear indicator that viewing history not current. Compare (diff): show side-by-side or inline diff, highlight additions (green) and deletions (red), toggle between views. Restore: prominent \"Restore this version\" button, confirmation dialog, creates new version (doesnt delete history). Named versions: allow naming important versions (\"Before redesign\"), show starred versions prominently. Change summary: auto-generate (\"Added 3 paragraphs, removed 1 image\") or user-provided commit message. Branching (advanced): create branch from version, merge branches with conflict resolution. Storage optimization: compress old versions, deduplicate similar content. Collaborative awareness: show when viewing version modified by others. ACCESSIBILITY: version comparison accessible to screen readers. Export: download specific version. Conflict resolution: if restoring while others editing, handle gracefully."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

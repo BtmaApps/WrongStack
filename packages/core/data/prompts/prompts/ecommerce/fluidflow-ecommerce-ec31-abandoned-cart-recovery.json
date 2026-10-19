@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ecommerce-ec31-abandoned-cart-recovery",
+  "slug": "fluidflow-ecommerce-ec31-abandoned-cart-recovery",
+  "title": "Abandoned Cart Recovery",
+  "description": "FluidFlow · Abandoned Cart Recovery",
+  "content": "Build abandoned cart recovery UI. Exit intent modal: triggered when user moves to leave with items in cart. Content: \"Leaving so soon?\" message, cart contents preview, discount incentive offer. Actions: \"Complete Purchase\" CTA, \"Save for Later\" secondary, \"No Thanks\" dismiss. Email capture: if not logged in, offer to email cart link. Return visit: show notification bar with saved cart items.",
+  "category": "ecommerce",
+  "tags": ["fluidflow", "ecommerce", "ec31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "092664035403d9e657a7d6437dd1c3b8d05df7dcaa3a43fb8beeed55483c3777",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create abandoned cart reminder modal or notification.",
+    "detailed": "Build abandoned cart recovery UI. Exit intent modal: triggered when user moves to leave with items in cart. Content: \"Leaving so soon?\" message, cart contents preview, discount incentive offer. Actions: \"Complete Purchase\" CTA, \"Save for Later\" secondary, \"No Thanks\" dismiss. Email capture: if not logged in, offer to email cart link. Return visit: show notification bar with saved cart items.",
+    "advanced": "Build comprehensive abandoned cart recovery system with multiple touchpoints. Exit intent modal: triggered when mouse moves toward browser close/tab (desktop), or inactivity timeout (mobile). Modal content: friendly headline \"Wait! You left something behind\" or \"Leaving so soon?\", cart preview showing items (1-3 items with images, names, quantities), total value display, optional urgency (\"Your cart is reserved for 10 minutes\" or \"Items selling fast\"), incentive offer (if enabled): \"Complete your order now and get 10% off\" with auto-applied code, or free shipping offer, CTA: \"Complete My Purchase\" primary button going to checkout, \"Save Cart\" secondary option saving cart to account or emailing link, \"No Thanks\" dismiss link. Save cart functionality: for guests, email capture form \"Enter email to save your cart\", sends email with cart restoration link, for logged in, cart persisted to account automatically. Return visit notification: sticky bar or toast on return: \"Welcome back! You have X items in your cart\", quick link to cart, show first item thumbnail, dismiss after interaction or timeout. Email sequence: automated emails for abandoned carts. Email 1 (1 hour): \"You left items behind\" with cart contents, no discount. Email 2 (24 hours): gentle reminder, optional small incentive. Email 3 (48-72 hours): stronger incentive or urgency (\"Items selling fast\"). Each email: personalized cart contents, direct link to restored cart, one-click checkout if possible, unsubscribe option. Push notifications: if user has push enabled, abandoned cart reminder notification. SMS: for high-value carts or opted-in users. In-app notification: for mobile app users. Stock alerts: if cart items going low stock, urgent notification \"Only 2 left!\". Price drop: if cart item goes on sale, notify \"Item in your cart is now $X cheaper!\". Admin dashboard: abandoned cart analytics showing recovery rate, revenue recovered, best-performing incentives. Targeting: different messages based on cart value, user history, product category. A/B testing: test different incentive levels, messaging, timing. Suppression: don't show recovery UI to users who just completed checkout, respect frequency caps. Legal: comply with email marketing laws, clear unsubscribe. Accessibility: modal accessible with proper focus management, clear dismiss option."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

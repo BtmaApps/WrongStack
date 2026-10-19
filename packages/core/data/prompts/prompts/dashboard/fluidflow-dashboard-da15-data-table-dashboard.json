@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da15-data-table-dashboard",
+  "slug": "fluidflow-dashboard-da15-data-table-dashboard",
+  "title": "Data Table Dashboard",
+  "description": "FluidFlow · Data Table Dashboard",
+  "content": "Build dashboard centered on data table. Table: sortable columns, pagination. Search: global search across all columns. Filters: column-specific filters. Actions: row actions (edit, delete). Selection: checkbox selection for batch actions. Export: download table data. Column visibility: show/hide columns. Responsive: horizontal scroll or card view on mobile.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a800619dad3a7e3089234ce4ae9e88d60507bbbd6045715c3cf0dc4a6f785770",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dashboard with searchable, filterable data table.",
+    "detailed": "Build dashboard centered on data table. Table: sortable columns, pagination. Search: global search across all columns. Filters: column-specific filters. Actions: row actions (edit, delete). Selection: checkbox selection for batch actions. Export: download table data. Column visibility: show/hide columns. Responsive: horizontal scroll or card view on mobile.",
+    "advanced": "Build comprehensive data table dashboard with advanced features. Table structure: clean table with proper spacing, header row with sortable columns, striped or hover rows. Sorting: click column header to sort, toggle asc/desc, multi-column sort with shift+click, show sort indicators (ChevronUp/Down). Search: global search input searching all text columns, debounced (300ms), highlight matches, clear button. Filters: per-column filters in header or filter panel, text filters (contains, equals), number filters (equals, greater/less than, range), date filters (range picker), select filters for enum columns, active filter indicators. Pagination: page size selector (10, 25, 50, 100), page number display, prev/next/first/last buttons, total row count. Row actions: actions column with dropdown or icon buttons, Edit, View, Delete, custom actions. Bulk selection: checkbox in header for select all (current page or all), checkbox per row, selection count display, bulk action buttons (Delete selected, Export selected). Column features: resizable column widths, reorderable via drag, hide/show columns toggle panel, sticky first column or actions column. Export: CSV download (current page or all, respecting filters), JSON option, print-friendly view. Virtualization: for large datasets, virtualize rows (react-window or tanstack-virtual). Loading: skeleton rows or loading overlay. Empty state: \"No results\" message with clear filters option. Error state: retry button on load failure. Mobile: responsive with horizontal scroll, or transform to card layout showing key fields. Keyboard navigation: arrow keys move between cells, Enter to edit. Customization: column configuration saved to localStorage. Integration: works with React Table, TanStack Table, or custom implementation."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

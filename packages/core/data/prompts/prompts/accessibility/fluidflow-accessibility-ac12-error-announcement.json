@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac12-error-announcement",
+  "slug": "fluidflow-accessibility-ac12-error-announcement",
+  "title": "Error Announcement",
+  "description": "FluidFlow · Error Announcement",
+  "content": "Ensure form validation errors are announced to screen readers immediately. Use aria-live=\"polite\" region for error summary or individual errors. Link error messages to inputs with aria-describedby. Add aria-invalid=\"true\" to invalid inputs. Error message container: role=\"alert\" for critical inline errors. Focus management: on form submit with errors, focus first invalid field or error summary. Error format: \"Error: [field name] - [problem and solution]\". Visual + audible: red text/border plus screen reader announcement. Clear errors when user corrects them. Test complete error flow with screen readers.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "de5fa09f885f0d523d14081438795fe8639ed37e7029ccf3c842e631050b73e3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Announce form errors to screen readers when they occur.",
+    "detailed": "Ensure form validation errors are announced to screen readers immediately. Use aria-live=\"polite\" region for error summary or individual errors. Link error messages to inputs with aria-describedby. Add aria-invalid=\"true\" to invalid inputs. Error message container: role=\"alert\" for critical inline errors. Focus management: on form submit with errors, focus first invalid field or error summary. Error format: \"Error: [field name] - [problem and solution]\". Visual + audible: red text/border plus screen reader announcement. Clear errors when user corrects them. Test complete error flow with screen readers.",
+    "advanced": "Ensure form validation errors are fully accessible and announced to screen readers. Announcement methods: aria-live=\"polite\" region for error summary (updates on submit), role=\"alert\" for individual critical errors that need immediate attention. Link errors to inputs: aria-describedby=\"email-error\" on input, matching id on error message span. Input state: aria-invalid=\"true\" when field is invalid, remove when corrected. Error message format: specific and actionable (\"Email address must include @\" not \"Invalid\"), include field name for context when read in isolation. Focus management: on submit with errors, either focus first invalid field or focus error summary at top. Error summary pattern: list of errors linking to respective fields, announced when appearing. Inline errors: position near input (below or beside), associate with aria-describedby. Visual indicators: red text (text-red-600), red border (border-red-500), error icon (XCircle), plus text for color-blind users. Clear errors: remove aria-invalid and hide error message when user corrects input (on blur or change). Real-time validation: announce corrections positively (\"Email format is now valid\") using aria-live. Testing: complete form with errors using VoiceOver/NVDA, verify errors announced, verify focus moves appropriately. Avoid: error-only announcements without visual indication, clearing errors only on submit."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

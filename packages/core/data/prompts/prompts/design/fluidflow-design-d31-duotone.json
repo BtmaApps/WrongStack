@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d31-duotone",
+  "slug": "fluidflow-design-d31-duotone",
+  "title": "Duotone",
+  "description": "FluidFlow · Duotone",
+  "content": "Apply duotone design using two-color palette throughout. Convert images to duotone using CSS filters and blend modes - base color layer with mix-blend-mode. Choose contrasting or complementary color pair (purple/orange, blue/yellow, pink/teal). Apply same treatment to photos, icons, and illustrations. Use solid versions of duotone colors for UI elements. High contrast between the two colors. Gradient blends between the duotone pair. Bold, graphic visual impact.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "a8475fbf0fc88db38a011fe6812f9594a84521ac96074db8d1c893edd166ba2e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply two-color duotone effect to images and create striking visual contrast.",
+    "detailed": "Apply duotone design using two-color palette throughout. Convert images to duotone using CSS filters and blend modes - base color layer with mix-blend-mode. Choose contrasting or complementary color pair (purple/orange, blue/yellow, pink/teal). Apply same treatment to photos, icons, and illustrations. Use solid versions of duotone colors for UI elements. High contrast between the two colors. Gradient blends between the duotone pair. Bold, graphic visual impact.",
+    "advanced": "Apply duotone design creating bold, unified visual language with two-color palette. Duotone image technique: wrap image in container with colored pseudo-element overlay, use mix-blend-mode (multiply, color, luminosity) combinations. Alternative: CSS filter approach - grayscale + sepia + hue-rotate to target colors. Color pair selection: high contrast pairs (deep purple + bright orange, navy + coral, forest green + gold) or harmonious pairs (blue + teal, pink + purple). Implementation: background-color on container + image with mix-blend-mode: multiply creates duotone. Fine-tune with filter: contrast(1.1) saturate(1.2). Apply consistently: all photos, hero images, icons, illustrations receive same treatment. UI elements: use the two duotone colors as primary palette - one for backgrounds/text, one for accents/CTAs. Gradient usage: blend between the two colors for backgrounds, buttons, dividers. Typography: one color for headings, contrast for body or accents. Icon treatment: solid fill in duotone colors, or apply filter treatment to icon images. Hover states: swap the duotone colors or shift blend mode. Dark mode: invert which color dominates. Brand application: duotone creates instant visual recognition, consistent brand photography style. Accessibility: ensure color pair provides sufficient contrast for text, duotone images maintain enough detail for meaning. Performance: CSS blend modes are performant, prefer over canvas/SVG manipulation for multiple images."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da31-resource-usage",
+  "slug": "fluidflow-dashboard-da31-resource-usage",
+  "title": "Resource Usage",
+  "description": "FluidFlow · Resource Usage",
+  "content": "Build resource usage dashboard. CPU: usage percentage with gauge. Memory: used/total with bar. Storage: disk usage breakdown. Network: bandwidth usage. Processes: top resource-consuming processes. Alerts: threshold warning indicators. History: usage over time charts. Comparison: compare to capacity limits.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "42b0b04da5e0590e5a5ece46def86dae177daa6250616cfb0d178a026889ee59",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Display system resource usage metrics.",
+    "detailed": "Build resource usage dashboard. CPU: usage percentage with gauge. Memory: used/total with bar. Storage: disk usage breakdown. Network: bandwidth usage. Processes: top resource-consuming processes. Alerts: threshold warning indicators. History: usage over time charts. Comparison: compare to capacity limits.",
+    "advanced": "Build comprehensive resource usage dashboard for infrastructure monitoring. Metric gauges: circular or semi-circular gauges for CPU %, Memory %, Disk %, each with value label, color zones (green <70%, yellow 70-90%, red >90%). Gauge details: show used/total (8 GB / 16 GB), percentage prominently displayed. Memory breakdown: used, cached, available, swap, stacked bar or breakdown chart. CPU breakdown: by core if multi-core, user vs system vs idle, load averages (1m, 5m, 15m). Disk/storage: per-volume breakdown, used/total/available, inode usage if relevant, growth rate projection. Network: inbound/outbound bandwidth, packets/second, current active connections, interface breakdown. Process table: top 10 processes by CPU or memory, columns: PID, name, CPU %, memory %, user, sortable. Historical charts: line charts showing metric over time, selectable time range (1h, 6h, 24h, 7d), zoom and pan. Alerts: visual indicator when threshold exceeded, configurable thresholds, active alerts panel. Capacity planning: current vs capacity limit, projection when capacity reached, recommendation prompts. Comparison: compare to previous period, compare to other servers in cluster. Auto-refresh: real-time updates every 5-10 seconds, last updated timestamp. Server selection: for multiple servers, dropdown to select which to view, or overview dashboard. Export: download usage data, generate capacity report. Responsive: dashboard adapts to different screen sizes. Tooltips: detailed info on hover for each metric."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

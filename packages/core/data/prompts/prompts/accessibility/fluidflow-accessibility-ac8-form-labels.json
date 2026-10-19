@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac8-form-labels",
+  "slug": "fluidflow-accessibility-ac8-form-labels",
+  "title": "Form Labels",
+  "description": "FluidFlow · Form Labels",
+  "content": "Ensure all form inputs have proper labels and accessibility support. Associate labels with inputs using htmlFor matching input id. Wrap inputs in label elements for implicit association. Add aria-label for inputs without visible labels (search boxes). Use aria-describedby to connect inputs with hint text and error messages. Group related inputs with fieldset and legend (radio groups, checkbox groups). Add aria-required=\"true\" for required fields, show visually with asterisk or text. Error messages: associate with aria-describedby, use role=\"alert\" for dynamic errors. Input validation: use aria-invalid=\"true\" when invalid. Placeholder text: supplement labels, don't replace them. Ensure autocomplete attributes are set correctly. Test forms with screen readers.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac8"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b23a6a4eb294b5c23d63c9a0861c7a48c2e182a3ff8e359b4c01da7f44ef97f0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Ensure all form inputs have proper labels.",
+    "detailed": "Ensure all form inputs have proper labels and accessibility support. Associate labels with inputs using htmlFor matching input id. Wrap inputs in label elements for implicit association. Add aria-label for inputs without visible labels (search boxes). Use aria-describedby to connect inputs with hint text and error messages. Group related inputs with fieldset and legend (radio groups, checkbox groups). Add aria-required=\"true\" for required fields, show visually with asterisk or text. Error messages: associate with aria-describedby, use role=\"alert\" for dynamic errors. Input validation: use aria-invalid=\"true\" when invalid. Placeholder text: supplement labels, don't replace them. Ensure autocomplete attributes are set correctly. Test forms with screen readers.",
+    "advanced": "Ensure all form inputs have proper labels and accessibility support. Label association methods: 1) Explicit label with htmlFor matching input id (<label htmlFor=\"email\">Email</label><input id=\"email\">), 2) Implicit wrapping (<label>Email <input /></label>), 3) aria-label for inputs without visible labels (search boxes: <input aria-label=\"Search products\">), 4) aria-labelledby to reference another element. Descriptive text: use aria-describedby to connect inputs with hint text (\"Password must be 8+ characters\") and error messages, multiple IDs supported (aria-describedby=\"hint error\"). Grouping: fieldset + legend for related inputs (radio groups, checkbox groups, address sections), legend provides group label. Required fields: aria-required=\"true\" on input, visual indicator (* or \"Required\") with legend explaining (\"* Required fields\"). Error handling: aria-invalid=\"true\" when validation fails, error message linked via aria-describedby, role=\"alert\" or aria-live=\"polite\" for dynamically shown errors so they're announced, error message should be specific (\"Email must include @\"). Placeholder text: never use as only label (disappears on input, insufficient contrast), use for examples or hints that supplement visible label. Autocomplete: set correct values for common fields (email, name, tel, postal-code, cc-number) for autofill and AT. Input types: use appropriate type (email, tel, url, number) for validation and mobile keyboards. Forms testing: screen reader testing through entire form submission flow, verify all labels announced, errors caught. Additional: instructions at top of form, clear submit button text (\"Create Account\" not \"Submit\"), success/error feedback accessible."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

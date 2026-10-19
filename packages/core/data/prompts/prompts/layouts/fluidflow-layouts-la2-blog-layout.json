@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la2-blog-layout",
+  "slug": "fluidflow-layouts-la2-blog-layout",
+  "title": "Blog Layout",
+  "description": "FluidFlow · Blog Layout",
+  "content": "Build blog/news layout with article listings. Header: blog title/logo, navigation (categories, about, subscribe). Featured post: large hero card with image, category badge, title, excerpt, author. Post grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 of article cards. Card structure: image, category, title, excerpt, author, date, read time. Sidebar: categories list, popular posts, newsletter signup. Pagination or \"Load more\". Search input.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la2"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d53f74d8c508913df491dba05b08ce19ddd07d299f910b793022fd497ed84ca6",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create blog layout with featured post, article grid, and sidebar.",
+    "detailed": "Build blog/news layout with article listings. Header: blog title/logo, navigation (categories, about, subscribe). Featured post: large hero card with image, category badge, title, excerpt, author. Post grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 of article cards. Card structure: image, category, title, excerpt, author, date, read time. Sidebar: categories list, popular posts, newsletter signup. Pagination or \"Load more\". Search input.",
+    "advanced": "Build blog/news layout with article listings and comprehensive features. Header: flex justify-between items-center py-4, blog title/logo (text-2xl font-bold), navigation links (Categories dropdown, About, Subscribe button), mobile hamburger menu. Featured post section: large hero card spanning full width (md:flex gap-8), image (aspect-video md:w-1/2 rounded-lg), content side with category badge (bg-blue-100 text-blue-800 px-2 py-0.5 text-xs rounded), title (text-3xl font-bold mt-2), excerpt (text-gray-600 line-clamp-3), author row (avatar w-10 h-10, name, date), read time badge. Post grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8. Article card: image (aspect-video rounded-lg), category badge (absolute or above title), title (text-xl font-semibold line-clamp-2 hover:text-blue-600), excerpt (text-gray-600 line-clamp-3), footer (author avatar+name, date, read time \"5 min read\"). Sidebar (lg:w-80 flex-shrink-0): sticky top-4, categories list with counts, popular/trending posts (compact cards with small image), newsletter signup (email input, subscribe button, \"Join 10k+ readers\"), social links row, tags cloud. Layout: flex gap-8 with main (flex-1) and sidebar. Pagination: numbered pages (1, 2, 3 ... 10) or \"Load more\" button with loading spinner. Category filtering: category tabs/pills above grid with active state, filter posts on click. Search: search input in header or sidebar, results page with highlighted matches. Single post layout: max-w-prose mx-auto, large featured image, article body with prose class (proper typography, headings, lists, blockquotes), author bio card at end, related posts grid, comments section. RSS feed link in footer. Dark mode support. SEO: proper heading hierarchy, meta tags. Accessibility: skip to content link, proper landmarks."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a1-micro-interactions",
+  "slug": "fluidflow-animation-a1-micro-interactions",
+  "title": "Micro-interactions",
+  "description": "FluidFlow · Micro-interactions",
+  "content": "Add subtle micro-interactions to all interactive elements. Buttons: scale down slightly on press (active:scale-95), lift on hover (hover:-translate-y-0.5). Inputs: smooth border color transition on focus (transition-colors duration-200). Checkboxes/toggles: smooth state change with spring-like feel. Links: underline slide-in animation on hover. Icons: gentle rotation or bounce on interaction. Form submit: button loading state with spinner. Success states: checkmark draw animation. Use consistent timing (200-300ms) and easing (ease-out for enter, ease-in for exit). Keep animations subtle - enhance, don't distract.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a1"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "1f1952ea4b9cb4bbac328237dff48a6802a98ec8c7d918b09b01323074e80e2f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add subtle micro-interactions to buttons, inputs, and interactive elements.",
+    "detailed": "Add subtle micro-interactions to all interactive elements. Buttons: scale down slightly on press (active:scale-95), lift on hover (hover:-translate-y-0.5). Inputs: smooth border color transition on focus (transition-colors duration-200). Checkboxes/toggles: smooth state change with spring-like feel. Links: underline slide-in animation on hover. Icons: gentle rotation or bounce on interaction. Form submit: button loading state with spinner. Success states: checkmark draw animation. Use consistent timing (200-300ms) and easing (ease-out for enter, ease-in for exit). Keep animations subtle - enhance, don't distract.",
+    "advanced": "Add subtle micro-interactions to all interactive elements for a polished, premium feel. Buttons: scale down slightly on press (active:scale-95 transition-transform duration-75), lift on hover (hover:-translate-y-0.5 hover:shadow-md transition-all duration-200). Inputs: smooth border color transition on focus (transition-colors duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20). Checkboxes/toggles: smooth state change with spring-like feel - use cubic-bezier(0.68, -0.55, 0.265, 1.55) for bounce. Links: underline slide-in animation on hover using pseudo-element width from 0 to 100% with transition-all. Icons in buttons: gentle rotation (hover:rotate-12) or bounce on interaction. Form submit button: loading state with Loader2 icon using animate-spin, maintain button width with min-w. Success states: checkmark draw animation using SVG stroke-dasharray and stroke-dashoffset. Error states: subtle shake animation using keyframes translateX(-2px, 2px). Use consistent timing functions: ease-out for enter animations, ease-in for exit. Performance: use transform and opacity only, add will-change on hover for GPU acceleration. CRITICAL: respect prefers-reduced-motion - wrap all motion in motion-safe: or check media query. Keep animations subtle (max 300ms) - they should enhance UX, not distract from content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

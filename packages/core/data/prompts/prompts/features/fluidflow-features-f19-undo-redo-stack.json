@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f19-undo-redo-stack",
+  "slug": "fluidflow-features-f19-undo-redo-stack",
+  "title": "Undo/Redo Stack",
+  "description": "FluidFlow · Undo/Redo Stack",
+  "content": "Build undo/redo system for user actions. Data structure: stack of previous states or command pattern. Keyboard shortcuts: Ctrl/Cmd+Z for undo, Ctrl/Cmd+Shift+Z for redo. Buttons: undo/redo buttons with disabled state when stack empty. History limit: cap at N items to manage memory. Action types: track what changed for display. Grouping: batch rapid changes into single undo step. Visual feedback: show what was undone in toast.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "059300ac62b5379ecbbf74671ae29a256c09d22d9f051a2fdcba4f95d8c4677b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Implement undo and redo functionality for user actions.",
+    "detailed": "Build undo/redo system for user actions. Data structure: stack of previous states or command pattern. Keyboard shortcuts: Ctrl/Cmd+Z for undo, Ctrl/Cmd+Shift+Z for redo. Buttons: undo/redo buttons with disabled state when stack empty. History limit: cap at N items to manage memory. Action types: track what changed for display. Grouping: batch rapid changes into single undo step. Visual feedback: show what was undone in toast.",
+    "advanced": "Build comprehensive undo/redo system with history management. Architecture options: 1) State snapshots (store complete state at each step, simple but memory heavy), 2) Command pattern (store actions with inverse operations, more complex but efficient). State snapshot implementation: maintain past[], present, future[] arrays, on action push present to past and set new present clear future, undo pops past to present and pushes old present to future. Command pattern: each action has execute() and undo() methods, store action objects in stack, undo calls action.undo(). Keyboard shortcuts: useEffect with keydown listener, check Ctrl/Cmd+Z (undo), Ctrl/Cmd+Shift+Z or Ctrl+Y (redo), prevent default. UI buttons: Undo (RotateCcw icon) and Redo (RotateCw icon), disabled state (opacity-50 cursor-not-allowed) when respective stack empty, show stack count in tooltip. History limit: cap at 50-100 items, drop oldest when exceeded. Action grouping: batch rapid changes (typing) into single undo step using debounce or explicit grouping API. Action metadata: store action type/description for UI display (\"Undo: Delete item\", \"Redo: Format text\"). History panel: optional UI showing action history with ability to jump to specific point. Selective history: different undo stacks for different contexts (text editing vs object manipulation). Persistence: optionally save history to sessionStorage for page refresh survival. Memory optimization: for state snapshots, use structural sharing (immer) or store diffs only. Clear history: option to reset undo stack (e.g., on save). Disable for certain actions: some actions should not be undoable (save, publish)."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la12-about-team-page",
+  "slug": "fluidflow-layouts-la12-about-team-page",
+  "title": "About/Team Page",
+  "description": "FluidFlow · About/Team Page",
+  "content": "Build about/team page. Hero: large headline, mission statement, background image or gradient. Story section: company history with timeline or narrative paragraphs, milestone highlights. Values section: 3-4 value cards with icons and descriptions. Team section: grid of team member cards with photos, names, roles, social links. Investors/partners section. Press mentions. Office locations with images. Join us CTA linking to careers.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "15d6c9ec086aa2bfe62c3e09a507aa85c407a0eeb7d2eb75890661f809358c85",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create about page with company story, mission, and team members.",
+    "detailed": "Build about/team page. Hero: large headline, mission statement, background image or gradient. Story section: company history with timeline or narrative paragraphs, milestone highlights. Values section: 3-4 value cards with icons and descriptions. Team section: grid of team member cards with photos, names, roles, social links. Investors/partners section. Press mentions. Office locations with images. Join us CTA linking to careers.",
+    "advanced": "Build comprehensive about/team page showcasing company culture. Hero section: min-h-[60vh] flex items-center, background image with overlay or gradient. Content: headline \"About [Company]\" (text-5xl font-bold text-white), mission statement (text-xl text-white/90 max-w-2xl), optional scroll indicator. Mission/vision section: py-20 bg-gray-50, centered content max-w-3xl, \"Our Mission\" heading, large quote-style mission statement (text-2xl font-light leading-relaxed), vision paragraph. Story section: timeline or narrative format. Timeline: vertical line (left on desktop, center on mobile), year markers, event descriptions alternating sides. Or narrative: two-column layout with images, paragraph blocks telling founding story, growth milestones. Values section: py-20, grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8. Value card: icon in colored circle (w-16 h-16), value name (text-xl font-semibold), description paragraph. Example values: Innovation, Integrity, Customer Focus, Collaboration. Team section: \"Meet the Team\" heading centered. Leadership: larger cards (grid-cols-1 md:grid-cols-3), photo (aspect-square rounded-xl), name (font-semibold), title (text-gray-600), bio paragraph, social links (LinkedIn, Twitter). Full team: smaller cards (grid-cols-2 md:grid-cols-4 lg:grid-cols-6), photo, name, title. Department grouping optional. Hover effect: reveal social links or additional info. Investors/partners: logo grid (grayscale, hover color), \"Backed by\" or \"Partners\" heading. Press mentions: \"As seen in\" with publication logos and quote snippets. Office locations: grid of location cards with office photos, city name, address. Culture gallery: photo grid showcasing team events, office, culture. Join us CTA: full-width banner \"Want to join our team?\" with \"View Open Positions\" button linking to careers. Footer: standard site footer. Accessibility: proper heading hierarchy, alt text on all images, team member cards focusable."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

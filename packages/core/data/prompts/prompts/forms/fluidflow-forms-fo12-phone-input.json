@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-forms-fo12-phone-input",
+  "slug": "fluidflow-forms-fo12-phone-input",
+  "title": "Phone Input",
+  "description": "FluidFlow · Phone Input",
+  "content": "Create international phone number input. Country selector: dropdown with flag, country name, dial code. Phone input: format as user types based on country format. Validation: validate phone number length and format per country. Placeholder: show example number for selected country. Store value: E.164 format (+15551234567). Flag icons: emoji flags or SVG. Error handling: invalid number format message.",
+  "category": "forms",
+  "tags": ["fluidflow", "forms", "fo12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "df42588f1eeef5d398252e2ab32169dcc7cb4e462443de72711e9e617a29ff0f",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create phone number input with country code dropdown selector.",
+    "detailed": "Create international phone number input. Country selector: dropdown with flag, country name, dial code. Phone input: format as user types based on country format. Validation: validate phone number length and format per country. Placeholder: show example number for selected country. Store value: E.164 format (+15551234567). Flag icons: emoji flags or SVG. Error handling: invalid number format message.",
+    "advanced": "Create international phone number input with formatting and validation. Country selector: dropdown button attached to left of input showing selected country flag (emoji or SVG) and dial code (+1, +44, etc.). Dropdown: searchable list of countries with flag, country name, and dial code, popular countries (US, UK, CA, AU) pinned to top, alphabetical list below. Search: type country name to filter in open dropdown. Default country: auto-detect from browser locale (navigator.language) or IP geolocation API, fallback to US. Phone input: main text input, auto-format as user types based on selected country's format (US: (555) 123-4567, UK: 07911 123456). Validation: validate phone number length and format per country using regex patterns or libphonenumber-js library. Combined input: flex row with country selector (w-20 border-r) attached to left of phone input (flex-1). Placeholder: show example number for selected country (\"(555) 123-4567\" for US), update on country change. Format display: add spaces/dashes/parentheses according to country format as user types using input masking. Store value: E.164 format (+15551234567) for form submission and API, display formatted for UX. Flag icons: emoji flags (🇺🇸) for simplicity or SVG sprites (flag-icons library) for consistency. Keyboard: when dropdown open, type to search, arrow keys navigate, Enter selects. Error handling: \"Please enter a valid phone number\" message below input for invalid format. Mobile: use type=\"tel\" for proper keyboard, consider native behavior on iOS. Accessibility: proper labels, aria-haspopup on dropdown trigger. Consider: country detection from pasted number (+44... → UK), preserve country on phone number paste."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

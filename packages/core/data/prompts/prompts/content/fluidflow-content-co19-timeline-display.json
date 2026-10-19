@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-content-co19-timeline-display",
+  "slug": "fluidflow-content-co19-timeline-display",
+  "title": "Timeline Display",
+  "description": "FluidFlow · Timeline Display",
+  "content": "Build vertical timeline component. Structure: list of events with dates and descriptions. Visual: vertical line with nodes at each event. Position: alternating left/right or all on one side. Node icons: custom icon per event type. Date display: formatted date or relative time. Content: title, description, optional image or link. Connector: line connecting events. Animation: fade/slide in as scrolled into view. Colors: different colors for event types. Responsive: adjust layout for mobile. Loading: skeleton for loading state.",
+  "category": "content",
+  "tags": ["fluidflow", "content", "co19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f8a4944642e5fa5320c995a7e57341d55ab3ae6cff55cc241de87f05836716e7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create vertical timeline for events or history.",
+    "detailed": "Build vertical timeline component. Structure: list of events with dates and descriptions. Visual: vertical line with nodes at each event. Position: alternating left/right or all on one side. Node icons: custom icon per event type. Date display: formatted date or relative time. Content: title, description, optional image or link. Connector: line connecting events. Animation: fade/slide in as scrolled into view. Colors: different colors for event types. Responsive: adjust layout for mobile. Loading: skeleton for loading state.",
+    "advanced": "Build comprehensive vertical timeline component for event history. Structure: chronological list of events, each with: timestamp, title, description, optional icon, optional image/media, optional link. Visual elements: vertical line (1-2px, gray-200) as connector, nodes/circles at each event (w-3 h-3 rounded-full), horizontal connector from line to card. Layout options: single-sided (all events on right of line), alternating (events alternate left/right), configurable alignment. Node customization: icon inside node for event type (CheckCircle for completed, Clock for scheduled, Star for milestone), color based on status or type. Date display: formatted date (Dec 15, 2024), relative time (2 days ago), or grouped by year/month. Card content: title (font-semibold), description (text-gray-600), media (image, video preview), action links, tags/badges. Animation: events animate in on scroll (opacity-0 translate-y-4 to visible), staggered delay for multiple visible items. Direction: vertical by default, horizontal variant for process flows. Colors: color-coded by event type (green for positive, red for negative, blue for info). Responsive: on mobile, switch to single-sided, compact spacing. Loading: skeleton placeholders maintaining layout structure. Filter/expand: optionally filter by event type, show/hide older events. Current marker: highlight \"now\" position on ongoing timeline. Accessibility: list semantics (ol/li), dates as time element with datetime attribute."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

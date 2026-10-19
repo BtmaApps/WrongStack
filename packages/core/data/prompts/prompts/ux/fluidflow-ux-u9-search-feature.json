@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u9-search-feature",
+  "slug": "fluidflow-ux-u9-search-feature",
+  "title": "Search Feature",
+  "description": "FluidFlow · Search Feature",
+  "content": "Implement comprehensive search functionality. Add search input with Search icon prefix and clear (X) button. Implement real-time search with debouncing (300ms delay). Show search suggestions/autocomplete dropdown as user types. Display recent searches for quick access. Add filters sidebar or dropdown (category, date, type). Show result count and sort options (relevance, date, name). Create search results layout with highlighted matching terms. Design \"No results\" state with suggestions (\"Try different keywords\"). Add keyboard navigation (arrow keys, Enter to select). Support advanced search operators if applicable. Track search queries for analytics.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c1c1cb1e42e7c32405f840d9bc0444f266268b61bc03a8fe605e8d525f25fca7",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add search input with autocomplete suggestions and results filtering.",
+    "detailed": "Implement comprehensive search functionality. Add search input with Search icon prefix and clear (X) button. Implement real-time search with debouncing (300ms delay). Show search suggestions/autocomplete dropdown as user types. Display recent searches for quick access. Add filters sidebar or dropdown (category, date, type). Show result count and sort options (relevance, date, name). Create search results layout with highlighted matching terms. Design \"No results\" state with suggestions (\"Try different keywords\"). Add keyboard navigation (arrow keys, Enter to select). Support advanced search operators if applicable. Track search queries for analytics.",
+    "advanced": "Implement comprehensive search functionality optimized for findability. Add search input: Search icon prefix (text-gray-400), clear X button on input, placeholder \"Search...\" or more specific. Implement real-time search with 300ms debounce - balance responsiveness vs API load. Show search suggestions dropdown as user types: recent searches (clock icon), popular searches, autocomplete predictions. Display recent searches (localStorage) with clear history option. Add filters: sidebar for desktop, bottom sheet for mobile - category, date range, type, status. Show result count (\"24 results\") and sort options (relevance default, date, name) in results header. Create search results layout: highlighted matching terms using mark element or span with bg-yellow-100, snippet context around matches. Design \"No results\" state: friendly message, suggestions (check spelling, fewer filters, browse categories), show what was searched. Implement keyboard navigation: arrow keys move selection, Enter selects, Escape closes. Support operators if applicable: quotes for exact match, minus for exclusion, site: for scoped search. Track search queries and clicks for relevance improvement. Add search analytics dashboard. ACCESSIBILITY: Use role=\"combobox\" pattern, aria-expanded, aria-activedescendant for dropdown, announce result count. Consider fuzzy matching for typo tolerance."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

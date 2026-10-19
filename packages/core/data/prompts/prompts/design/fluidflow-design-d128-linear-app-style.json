@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d128-linear-app-style",
+  "slug": "fluidflow-design-d128-linear-app-style",
+  "title": "Linear App Style",
+  "description": "FluidFlow · Linear App Style",
+  "content": "Apply Linear aesthetic with project management feel. Minimal chrome with maximum content. Ultra-fast keyboard shortcuts. Real-time collaboration indicators. Status workflows (backlog, todo, in progress, done). Cycles and projects. Priority levels. Label management. Roadmap views. Integrations display. Activity feeds.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d128"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ee111eb22beaf96fd51e4ad590d069bc137058fe96c6fd02c14a6bd6e7395c6e",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create issue tracker with clean minimal design, fast keyboard navigation, and real-time sync.",
+    "detailed": "Apply Linear aesthetic with project management feel. Minimal chrome with maximum content. Ultra-fast keyboard shortcuts. Real-time collaboration indicators. Status workflows (backlog, todo, in progress, done). Cycles and projects. Priority levels. Label management. Roadmap views. Integrations display. Activity feeds.",
+    "advanced": "Apply Linear aesthetic with issue tracking patterns. Colors: white/light bg with purple accent (#5E6AD2), dark mode with purple highlights. Typography: Inter font, minimal sizes, tight spacing. Navigation: compact sidebar, icons + labels, collapse to icons only. Issue list: priority indicator, ID, title, status pill, assignee avatar, labels. Issue detail: full screen, markdown description, activity sidebar. Status workflow: columns (Backlog, Todo, In Progress, In Review, Done), drag between. Priority: urgent (red), high (orange), medium (yellow), low (gray), no priority (empty). Keyboard: heavy keyboard use, hints in tooltips, command palette Cmd+K. Real-time: presence indicators, cursor positions, typing indicators. Projects: group issues, progress bar, target date. Cycles: time-boxed sprints, velocity tracking. Roadmap: timeline view, milestone markers. Labels: colored pills, manageable. Filters: compound filters, save views. Search: instant, fuzzy matching. Inbox: notifications with mark read. Integrations: GitHub, Figma, Slack icons and links. Views: list, board, timeline switch. Comments: threaded, reactions, @mentions. Attachments: inline images, file links. Archive: completed cycles, closed issues."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

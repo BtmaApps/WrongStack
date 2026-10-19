@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la25-timeline-layout",
+  "slug": "fluidflow-layouts-la25-timeline-layout",
+  "title": "Timeline Layout",
+  "description": "FluidFlow · Timeline Layout",
+  "content": "Build vertical timeline component. Structure: vertical line with event nodes. Event card: date/time, title, description, optional image. Alternating sides: events alternate left/right on desktop. Icons: event type icons at node points. Colors: different colors for event types. Expandable: click to expand full details. Responsive: single column on mobile.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la25"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2d6bfefd3280ce6e5130a887d502d2402a7002b73da2728fe132f75e81eac16c",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create vertical timeline with events, dates, and details.",
+    "detailed": "Build vertical timeline component. Structure: vertical line with event nodes. Event card: date/time, title, description, optional image. Alternating sides: events alternate left/right on desktop. Icons: event type icons at node points. Colors: different colors for event types. Expandable: click to expand full details. Responsive: single column on mobile.",
+    "advanced": "Build comprehensive vertical timeline for events, history, or changelog. Container: relative py-8, max-w-4xl mx-auto. Vertical line: absolute left-1/2 md:left-1/2 top-0 bottom-0 w-0.5 bg-gray-200, on mobile: left-4. Event structure: flex gap-8 mb-12 last:mb-0, alternating: even items flex-row-reverse on desktop. Node circle: absolute left-1/2 -translate-x-1/2 (or left-4 on mobile), w-10 h-10 rounded-full bg-white border-4, flex items-center justify-center. Icon inside: event type icon (Briefcase for work, GraduationCap for education, Star for achievement). Colors: border/icon color varies by type (blue for work, green for education, purple for milestone). Connecting line: the main vertical line connects nodes. Event card: flex-1, max-w-[calc(50%-2rem)] on desktop (full width mobile). Card styles: bg-white rounded-xl shadow-sm border p-6. Pointer: CSS triangle or before pseudo-element pointing toward timeline. Date badge: absolute or inline, text-sm text-gray-500 font-medium, can be above card or on opposite side of timeline. Card content: title (text-xl font-semibold), subtitle/organization (text-gray-600), date range (\"2020 - 2023\"), description paragraphs, tags/skills (flex flex-wrap gap-2, pills), optional image (rounded-lg mt-4). Expandable details: truncate description with \"Read more\" link, expand/collapse with animation. Timeline variants: Work experience, Education, Company history, Product changelog, Personal milestones. Changelog variant: version number as node, date, list of changes (Added, Changed, Fixed, Removed) with badges. Current/present: \"Present\" badge for ongoing events, node can be pulsing. Year markers: large year labels in timeline for grouping. Filter: filter by type or year with horizontal controls. Lazy loading: load more events on scroll for long timelines. Print styles: clean print layout. Mobile: single column, line on left, all cards right-aligned. Animation: fade-in on scroll using Intersection Observer. Accessibility: semantic list structure, dates readable, expandable content announced."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

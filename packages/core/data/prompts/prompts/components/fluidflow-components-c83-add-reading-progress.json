@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c83-add-reading-progress",
+  "slug": "fluidflow-components-c83-add-reading-progress",
+  "title": "Add Reading Progress",
+  "description": "FluidFlow · Add Reading Progress",
+  "content": "Create progress indicator. Container: fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200. Progress bar: h-full bg-blue-500 transition-all, width based on scroll position. Calculation: scrollTop / (scrollHeight - clientHeight) * 100. Update: on scroll event with throttle.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c83"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "11c2ed99deaee6faf9bd1bd68712c21078616fedc487cd579a99d66e11535f0d",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create reading progress bar for articles.",
+    "detailed": "Create progress indicator. Container: fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200. Progress bar: h-full bg-blue-500 transition-all, width based on scroll position. Calculation: scrollTop / (scrollHeight - clientHeight) * 100. Update: on scroll event with throttle.",
+    "advanced": "Create comprehensive reading progress indicator. Bar types: top fixed bar (default), bottom bar, circular indicator, sticky TOC highlight. Progress calculation: track scroll through article element specifically (not whole page), handle dynamic content height. Fixed bar: thin line at top, color customizable, optional gradient effect. Circular: floating circle with percentage or arc fill, click to toggle visibility. Table of contents: highlight current section, scroll spy for headings. Time estimate: \"X min read\" based on word count, optional \"X min remaining\". Completion: trigger event at 100%, save reading progress for logged-in users. Scroll behavior: smooth scroll to continue reading after page refresh. Partial reads: save position in localStorage, prompt to continue. Article zones: break progress into sections (intro, body, conclusion). Hide rules: hide until scrolled past hero, hide on scroll up (re-show on scroll down). Multiple articles: handle page with multiple articles. Print: hide for print styles. Accessibility: progress is supplementary info, not essential, aria-hidden if purely decorative. Performance: use requestAnimationFrame, passive scroll listener. Mobile: larger touch target for circular variant."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

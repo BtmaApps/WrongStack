@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la23-dashboard-widget-grid",
+  "slug": "fluidflow-layouts-la23-dashboard-widget-grid",
+  "title": "Dashboard Widget Grid",
+  "description": "FluidFlow · Dashboard Widget Grid",
+  "content": "Build customizable dashboard with widget system. Grid layout: responsive grid for widget placement. Widget types: stat cards, charts, tables, activity feeds. Widget chrome: header with title, menu (edit, remove), optional expand. Drag and drop: reorder widgets. Resize: drag corners to resize. Add widget: button opens widget picker. Save layout: persist configuration. Reset to default option.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la23"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "409768a0c49a084e65bbce0e978a84a2343509421cabf67471a3ba73bcb941c9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create dashboard with draggable, resizable widget grid.",
+    "detailed": "Build customizable dashboard with widget system. Grid layout: responsive grid for widget placement. Widget types: stat cards, charts, tables, activity feeds. Widget chrome: header with title, menu (edit, remove), optional expand. Drag and drop: reorder widgets. Resize: drag corners to resize. Add widget: button opens widget picker. Save layout: persist configuration. Reset to default option.",
+    "advanced": "Build customizable dashboard with draggable, resizable widget system. Grid system: use react-grid-layout or similar for drag/resize. Grid: responsive breakpoints (lg: 12 cols, md: 6 cols, sm: 1 col), row height 100px, margin [16, 16]. Widget wrapper component: bg-white rounded-xl shadow-sm overflow-hidden, resize handles at corners/edges. Widget chrome: Header: flex justify-between items-center px-4 py-3 border-b, drag handle (GripVertical icon, cursor-grab), title (font-medium), menu button (MoreVertical icon). Menu dropdown: Edit, Refresh, Expand/Fullscreen, Remove. Content area: flex-1 overflow-auto p-4. Widget types: Stat card (KPI with icon, value, trend), Line chart (time series), Bar chart (comparisons), Pie/donut chart (distribution), Table (data grid with pagination), Activity feed (recent events list), Map (geographic data), Calendar (upcoming events), Progress (goals/targets), Custom (user-defined). Widget configuration: each widget type has config modal (title, data source, display options). Add widget: \"+\" button or \"Add Widget\" opens picker modal. Picker: grid of widget type cards with previews, select type, configure, add to dashboard. Drag and drop: widgets draggable by header handle, placeholder shows drop position, smooth animations. Resize: drag resize handles, respect min/max sizes per widget type, maintain aspect ratio optionally. Layout persistence: save layout to localStorage or backend API, include widget positions, sizes, configurations. Per-user layouts: each user has own saved layout. Reset: \"Reset to Default\" restores initial layout. Dashboard switcher: if multiple dashboards, tabs or dropdown to switch. Edit mode: toggle edit mode to enable drag/resize (disabled in view mode for stability). Fullscreen widget: expand single widget to modal/overlay for detailed view. Auto-refresh: widgets can have refresh intervals. Loading states: skeleton per widget during data fetch. Error states: error message with retry per widget. Mobile: widgets stack in single column, no drag/resize. Accessibility: widgets as regions with labels, drag operations have keyboard alternatives."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

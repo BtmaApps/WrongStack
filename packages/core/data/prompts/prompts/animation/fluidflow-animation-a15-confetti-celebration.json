@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a15-confetti-celebration",
+  "slug": "fluidflow-animation-a15-confetti-celebration",
+  "title": "Confetti Celebration",
+  "description": "FluidFlow · Confetti Celebration",
+  "content": "Create confetti celebration effect for success moments. Generate multiple confetti particles with random colors, sizes, and shapes. Animate particles falling with rotation and drift. Add cannon burst origin point. Control particle count and spread angle. Include shapes: circles, squares, rectangles, stars. Use physics for natural falling motion. Auto-cleanup after animation completes. Trigger on success actions (form submit, achievement unlock). Consider performance with limited particle count.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a15"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "bebbc179ccda7d15ebed410a21b7bd9557e3c453a8ba047e66cf3299c369f819",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add confetti explosion animation for celebrations and success states.",
+    "detailed": "Create confetti celebration effect for success moments. Generate multiple confetti particles with random colors, sizes, and shapes. Animate particles falling with rotation and drift. Add cannon burst origin point. Control particle count and spread angle. Include shapes: circles, squares, rectangles, stars. Use physics for natural falling motion. Auto-cleanup after animation completes. Trigger on success actions (form submit, achievement unlock). Consider performance with limited particle count.",
+    "advanced": "Create confetti celebration effect for memorable success moments. Particle generation: create 50-150 particles (canvas or DOM elements), random colors from festive palette (gold, red, blue, green, pink), random sizes (5-15px), shapes (circles, squares, rectangles using CSS, SVGs for stars). Cannon effect: origin point (center, button, or custom), initial velocity with spread angle (60-120 degrees), particles burst outward then fall. Physics simulation: initial upward velocity, gravity pulling down, horizontal drift with randomness, rotation (random rotateZ, rotateY for tumble). Implementation options: canvas (best performance), DOM elements with CSS transforms (simpler, good for <100 particles), libraries (canvas-confetti, react-confetti). Canvas approach: requestAnimationFrame loop, update particle positions each frame, clear and redraw. DOM approach: create absolutely positioned divs, use CSS animations with random values via custom properties. Timing: initial burst 0.5s, fall duration 2-3s, stagger cleanup. Customization: configurable particle count, colors, origin point, spread angle, gravity. Performance: limit particle count (50-100 for mobile), use will-change, cleanup particles after animation. Variants: continuous stream, single burst, emoji rain. Use cases: form success, payment complete, achievement unlock, milestone reached, game win. ACCESSIBILITY: purely decorative (aria-hidden), dont distract from success message. Cleanup: remove particles after animation completes to prevent memory leaks."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

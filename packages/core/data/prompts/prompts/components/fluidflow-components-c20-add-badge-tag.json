@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c20-add-badge-tag",
+  "slug": "fluidflow-components-c20-add-badge-tag",
+  "title": "Add Badge/Tag",
+  "description": "FluidFlow · Add Badge/Tag",
+  "content": "Build badge and tag component library. Badge variants: default (gray), primary (blue), success (green), warning (yellow), danger (red). Size options: sm (text-xs px-2 py-0.5), md (text-sm px-2.5 py-1), lg (text-base px-3 py-1.5). Styles: filled solid background, outlined border only, soft/light background (bg-blue-100 text-blue-700). Add optional icon prefix or suffix. Dot indicator variant: small colored dot before text. Removable tags: X button with hover state, onClick handler. Pill shape (rounded-full) vs rounded rectangle. Use cases: status indicators, categories, counts (notification badges), tags/labels. Truncation for long text with tooltip. Interactive hover states for clickable badges.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c20"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "16b7bb8549ddebbb034d36fa35081007ce6cbef43096a2aadfe28b415b1b0582",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Build badge components for status indicators and labels.",
+    "detailed": "Build badge and tag component library. Badge variants: default (gray), primary (blue), success (green), warning (yellow), danger (red). Size options: sm (text-xs px-2 py-0.5), md (text-sm px-2.5 py-1), lg (text-base px-3 py-1.5). Styles: filled solid background, outlined border only, soft/light background (bg-blue-100 text-blue-700). Add optional icon prefix or suffix. Dot indicator variant: small colored dot before text. Removable tags: X button with hover state, onClick handler. Pill shape (rounded-full) vs rounded rectangle. Use cases: status indicators, categories, counts (notification badges), tags/labels. Truncation for long text with tooltip. Interactive hover states for clickable badges.",
+    "advanced": "Build badge and tag component library with variants, sizes, and interactive states. Base badge: inline-flex items-center font-medium. Size variants: sm (text-xs px-2 py-0.5), md (text-xs px-2.5 py-0.5), lg (text-sm px-3 py-1). Shape: rounded-md (default) or rounded-full (pill prop). Color variants with filled style: default (bg-gray-100 text-gray-700), primary (bg-blue-100 text-blue-700), success (bg-green-100 text-green-700), warning (bg-yellow-100 text-yellow-800), danger (bg-red-100 text-red-700). Outlined style: border border-current bg-transparent, e.g., border-blue-600 text-blue-600. Solid style: bg-blue-600 text-white for high emphasis. Dot indicator variant: flex items-center gap-1.5, span w-1.5 h-1.5 rounded-full bg-current before text. Icon support: icon prop renders before text with gap-1, size matches badge size. Removable tag: onRemove prop enables X button, button ml-1 -mr-1 rounded hover:bg-black/10, X icon h-3 w-3. Interactive/clickable: when onClick provided, add cursor-pointer hover state (hover:bg-opacity-80 or shadow). Count badge (notification): rounded-full min-w-[20px] h-5 flex items-center justify-center, for numbers like unread count. Truncation: max-w with truncate class, title attribute for full text on hover. Status badge: specific styling for status indicators (Active, Pending, Archived). Group of badges: flex flex-wrap gap-2 for tag lists. Animation: subtle scale on add/remove for tag lists. ACCESSIBILITY: if interactive, use button element; if status, consider aria-label describing status; if removable, X button needs aria-label \"Remove [tag name]\". Component API: variant (color), size, pill (boolean), icon, onRemove, onClick, children."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

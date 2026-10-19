@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-components-c35-add-date-picker",
+  "slug": "fluidflow-components-c35-add-date-picker",
+  "title": "Add Date Picker",
+  "description": "FluidFlow · Add Date Picker",
+  "content": "Create date picker with calendar dropdown. Input field: shows selected date in readable format, calendar icon button. Calendar dropdown: absolute z-50 bg-white shadow-lg rounded-lg p-4. Header: month/year display with prev/next month buttons. Days grid: 7 columns for weekdays, date cells. Day cell: w-10 h-10 rounded-full hover:bg-gray-100. Selected day: bg-blue-600 text-white. Today: ring-2 ring-blue-600. Disabled dates (past/future limits): text-gray-300 cursor-not-allowed. Month/year quick navigation. Close on date selection or click outside.",
+  "category": "components",
+  "tags": ["fluidflow", "components", "c35"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "aadaf24e2fc0a399faadb3436b6c9847542f59e9dc3c5e5b87dbb59ef8647945",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create a date picker component for selecting dates.",
+    "detailed": "Create date picker with calendar dropdown. Input field: shows selected date in readable format, calendar icon button. Calendar dropdown: absolute z-50 bg-white shadow-lg rounded-lg p-4. Header: month/year display with prev/next month buttons. Days grid: 7 columns for weekdays, date cells. Day cell: w-10 h-10 rounded-full hover:bg-gray-100. Selected day: bg-blue-600 text-white. Today: ring-2 ring-blue-600. Disabled dates (past/future limits): text-gray-300 cursor-not-allowed. Month/year quick navigation. Close on date selection or click outside.",
+    "advanced": "Create comprehensive date picker with range and accessibility support. Structure: input group (input + calendar trigger button) + dropdown calendar. Input: displays formatted date (locale-aware using Intl.DateTimeFormat), editable with date validation. Calendar trigger: CalendarIcon button, aria-label=\"Choose date\". Dropdown: absolute z-50 mt-1 bg-white rounded-xl shadow-xl border p-4. Calendar header: flex justify-between items-center mb-4 - prev month button, month/year text (clickable to show month/year picker), next month button. Weekday headers: grid grid-cols-7, text-xs text-gray-500 font-medium text-center. Days grid: grid grid-cols-7 gap-1. Day cell: w-10 h-10 flex items-center justify-center rounded-full text-sm transition-colors. Day states: default (hover:bg-gray-100), today (font-bold, ring-1 ring-blue-500), selected (bg-blue-600 text-white), in-range for range picker (bg-blue-100), disabled (text-gray-300 cursor-not-allowed), outside-month (text-gray-400). Month picker: grid of 12 months when clicking month name. Year picker: grid or scrollable list of years. Range mode: select start and end dates, highlight range between. Props: value, onChange, minDate, maxDate, disabledDates (array or function), locale, format, mode (\"single\"|\"range\"), placeholder. Keyboard navigation: arrows to navigate days, Enter to select, Escape to close. Accessibility: role=\"dialog\" on dropdown, role=\"grid\" on calendar, aria-selected on days, focus management."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

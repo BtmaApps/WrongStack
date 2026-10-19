@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so3-post-feed",
+  "slug": "fluidflow-social-so3-post-feed",
+  "title": "Post Feed",
+  "description": "FluidFlow · Post Feed",
+  "content": "Build social media style post feed. Feed container: max-w-2xl mx-auto, vertical list with gap-4. Post card: bg-white rounded-lg shadow-sm p-4. Header: avatar, display name, username, timestamp, more options dropdown. Content: post text (preserve line breaks, linkify URLs), media attachments (images grid, video). Engagement bar: like (Heart), comment (MessageCircle), share (Share2), bookmark with counts. Liked state: filled red heart. Infinite scroll loading. Post composer at top.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "19d4ba6f7ff18f71b793c1d2685b499c86c2b052298aaa1691d8d42bad3d7bda",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create social media feed with post cards showing text, images, and engagement buttons.",
+    "detailed": "Build social media style post feed. Feed container: max-w-2xl mx-auto, vertical list with gap-4. Post card: bg-white rounded-lg shadow-sm p-4. Header: avatar, display name, username, timestamp, more options dropdown. Content: post text (preserve line breaks, linkify URLs), media attachments (images grid, video). Engagement bar: like (Heart), comment (MessageCircle), share (Share2), bookmark with counts. Liked state: filled red heart. Infinite scroll loading. Post composer at top.",
+    "advanced": "Build social media style post feed with rich interactions. Feed container: max-w-2xl mx-auto, vertical list with gap-4 or space-y-4. Post card: bg-white rounded-lg shadow-sm. Post header: flex items-center gap-3 p-4, avatar (w-10 h-10 rounded-full), display name (font-semibold hover:underline as link), username (text-gray-500), timestamp (\"2h\" relative, title attribute with full date), more options dropdown (MoreHorizontal icon) with Edit, Delete (own posts), Report, Mute, Block options. Content area: p-4 pt-0. Post text: whitespace-pre-wrap to preserve line breaks, linkify URLs (text-blue-600 hover:underline), @mentions (same styling, link to profile), #hashtags (link to tag page), \"See more\" expansion for long posts (>280 chars). Media attachments: images in grid layout (1 image: full width, 2: side by side, 3: one large + two small, 4: 2x2 grid), click image opens lightbox with navigation, video player with play button overlay and controls. Engagement bar: flex items-center gap-6 px-4 py-3 border-t. Like button: Heart icon, count, click fills red with scale animation, unlike reverts. Comment button: MessageCircle icon, count, click scrolls to comments or opens detail. Share button: Share2 icon, opens share dropdown (Repost, Quote, Copy Link). Bookmark button: Bookmark icon, click toggles saved state. Liked state: filled Heart with text-red-500 fill-red-500. Repost/quote: nested card showing original post with reduced styling. Link previews: unfurled card showing title, description, image, domain from shared URL. Infinite scroll: IntersectionObserver loads more posts when near bottom, loading spinner. Pull to refresh: on mobile touch devices. Post composer: sticky or at top, avatar + \"What is on your mind?\" input that expands to full composer modal. Real-time: new posts appear at top with \"X new posts\" banner. Accessibility: article role per post, proper image alts, announce new content."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

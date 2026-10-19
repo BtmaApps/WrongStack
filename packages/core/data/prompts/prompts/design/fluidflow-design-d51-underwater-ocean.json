@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d51-underwater-ocean",
+  "slug": "fluidflow-design-d51-underwater-ocean",
+  "title": "Underwater/Ocean",
+  "description": "FluidFlow · Underwater/Ocean",
+  "content": "Apply underwater ocean aesthetic with aquatic immersion. Blue gradient depths: light surface to dark abyss. Bubble effects and particles. Marine life motifs: fish, coral, seaweed, shells. Flowing, fluid motion animations. Caustic light patterns (surface light refraction). Include wave and current effects. Translucent, layered elements. Peaceful, serene aquatic atmosphere. Deep sea wonder.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d51"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "50fa06ade16f00994140ebe88cf0fa5d4d558014f3b89d676fb094a1d16f807b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create immersive underwater aesthetic with ocean blues, marine life, and aquatic depth.",
+    "detailed": "Apply underwater ocean aesthetic with aquatic immersion. Blue gradient depths: light surface to dark abyss. Bubble effects and particles. Marine life motifs: fish, coral, seaweed, shells. Flowing, fluid motion animations. Caustic light patterns (surface light refraction). Include wave and current effects. Translucent, layered elements. Peaceful, serene aquatic atmosphere. Deep sea wonder.",
+    "advanced": "Apply underwater ocean aesthetic with immersive aquatic depth. Color gradient: vertical gradient from light surface (#87ceeb, #00bcd4) to deep abyss (#0d1b2a, #1a237e), representing ocean zones. Bubbles: circular elements with gradient stroke (reflecting light), varying sizes, gentle upward float animation with wobble. Caustics: animated light patterns from surface refraction - SVG pattern with wave distortion, or CSS animation moving bright spots. Marine elements: fish silhouettes, coral formations, seaweed (SVG with gentle sway animation), jellyfish (translucent, pulsing), sea shells. Particles: tiny floating debris, plankton, adding atmosphere. Current effects: elements drift slightly, parallax suggesting water movement. Light rays: god rays streaming down from surface (gradient or SVG beams with animation). Depth layers: foreground elements darker/bluer than background (atmospheric perspective). Translucency: overlapping elements with backdrop-blur and transparency. Typography: flowing, rounded fonts suggesting water (Quicksand, Comfortaa). Sound visualization: wave forms, ripple effects. Interactive: bubbles rise from hover, fish swim away. Coral reef option: vibrant colors, busy with life. Deep sea option: bioluminescent glows in darkness, mysterious creatures. Implementation: layered CSS for depth, SVG for marine life, animations for immersion. Performance: particle systems need optimization. Accessibility: ensure text readable against gradient backgrounds."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

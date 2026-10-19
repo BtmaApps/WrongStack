@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac5-focus-indicators",
+  "slug": "fluidflow-accessibility-ac5-focus-indicators",
+  "title": "Focus Indicators",
+  "description": "FluidFlow · Focus Indicators",
+  "content": "Add clear, consistent focus indicators for all interactive elements. Default style: focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2. Ensure focus ring has sufficient contrast (3:1) against all backgrounds. Use focus-visible instead of focus to avoid showing on mouse click. Style focus indicators consistently across the application. Custom focus styles for specific components: cards, images, custom widgets. Ensure focus indicator is visible in both light and dark modes. Add focus states to custom form controls (switches, checkboxes, radio buttons). Make focus indicator offset from element edge for visibility. Test focus appearance at different zoom levels. Never remove outline without providing alternative.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d362164ce94be154c746a0ba55acd585be6163d2e4db4544e2c9bcb06282eb87",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add visible focus indicators for all interactive elements.",
+    "detailed": "Add clear, consistent focus indicators for all interactive elements. Default style: focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2. Ensure focus ring has sufficient contrast (3:1) against all backgrounds. Use focus-visible instead of focus to avoid showing on mouse click. Style focus indicators consistently across the application. Custom focus styles for specific components: cards, images, custom widgets. Ensure focus indicator is visible in both light and dark modes. Add focus states to custom form controls (switches, checkboxes, radio buttons). Make focus indicator offset from element edge for visibility. Test focus appearance at different zoom levels. Never remove outline without providing alternative.",
+    "advanced": "Add clear, consistent focus indicators for all interactive elements meeting WCAG requirements. Default style: focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white (adjust offset color for dark mode). Why focus-visible: shows focus on keyboard navigation but not mouse click, better UX while maintaining accessibility. Contrast requirements: focus indicator needs 3:1 contrast against adjacent colors, on all backgrounds (light, dark, images, gradients). Consistency: apply same focus style across all interactive elements (buttons, links, inputs, custom controls), consider creating Tailwind @apply class for reuse. Custom components: cards (entire card focusable if clickable), images (in galleries/carousels), custom switches/checkboxes (ensure ring visible around control), dropdown triggers, accordions. Dark mode: adjust ring-offset-gray-900 or ring-white for visibility on dark backgrounds. Ring offset importance: offset creates separation from element edge, making indicator visible regardless of element background. Custom form controls: native inputs have built-in focus, but custom replacements need explicit styling. Never: remove outline without replacement (outline-none alone is accessibility fail), use color-only focus indicators (must have shape change). Testing: Tab through entire application, verify focus visible everywhere, test at 200% zoom (focus shouldn't be cropped), test on varied backgrounds. Enhanced focus: consider :focus-within for parent highlighting when child focused (search containers, form groups). High contrast mode: ensure focus remains visible in forced-colors mode."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

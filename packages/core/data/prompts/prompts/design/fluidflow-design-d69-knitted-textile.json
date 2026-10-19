@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d69-knitted-textile",
+  "slug": "fluidflow-design-d69-knitted-textile",
+  "title": "Knitted/Textile",
+  "description": "FluidFlow · Knitted/Textile",
+  "content": "Apply knitted/textile aesthetic with handcraft warmth. Knit stitch texture patterns. Fair Isle and Nordic patterns. Yarn and fiber colors: warm naturals, berry tones. Include embroidery and cross-stitch motifs. Woven fabric textures. Cozy winter sweater vibes. Pom-pom and tassel decorations. Handmade, cozy, craft-loving atmosphere.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d69"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "c8f3de42f65792ac9a8c10f58d24a3bf8ba489dcaf10fb6d36554c09ac2014e4",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create cozy knitted aesthetic with yarn textures, fair isle patterns, and handcraft warmth.",
+    "detailed": "Apply knitted/textile aesthetic with handcraft warmth. Knit stitch texture patterns. Fair Isle and Nordic patterns. Yarn and fiber colors: warm naturals, berry tones. Include embroidery and cross-stitch motifs. Woven fabric textures. Cozy winter sweater vibes. Pom-pom and tassel decorations. Handmade, cozy, craft-loving atmosphere.",
+    "advanced": "Apply knitted/textile aesthetic with handcraft warmth and fiber art appreciation. Knit texture: stockinette stitch pattern (V shapes), cable knit raised patterns, ribbing - implement as SVG patterns or CSS gradients. Fair Isle patterns: traditional colorwork bands with geometric and nature motifs (snowflakes, reindeer, hearts, stars, trees) in 2-3 colors per row. Nordic/Scandinavian: red and white, navy and white classic combinations, eight-pointed stars. Color palette: yarn colors - oatmeal cream (#f5f0e6), heather gray (#9e9e9e), berry red (#8b0000), forest green (#228b22), mustard (#d4a017), navy (#1a1a4e), natural brown (#8b7355). Embroidery: cross-stitch grid patterns, chain stitch borders, French knots as dots. Woven textures: tweed patterns, herringbone, plaid/tartan. Decorative elements: pom-poms, tassels, fringe edges, wooden buttons, yarn balls. Typography: friendly, handwritten feel, or clean to contrast with busy patterns. Frame elements: knitted borders, scalloped crochet edges. Stitching: visible stitches holding elements together. Cozy context: winter warmth, crafting, hygge. Interactive: yarn unraveling effect, stitches appearing. Patches: elements looking sewn or patched on. Implementation: SVG essential for stitch patterns, careful tiling for seamless textures. Performance: complex patterns need optimization. Accessibility: ensure patterns dont reduce text readability, sufficient contrast in colorwork."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

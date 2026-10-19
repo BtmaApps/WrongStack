@@ -1,0 +1,31 @@
+{
+  "id": "fluidflow-ui-templates-builtin-5-create-dashboard-widget",
+  "slug": "fluidflow-ui-templates-builtin-5-create-dashboard-widget",
+  "title": "Create Dashboard Widget",
+  "description": "Add a metric/stat widget to a dashboard",
+  "content": "Create a dashboard widget that displays {{metricType}}. Include {{features}}. Use appropriate icons from lucide-react.",
+  "category": "ui-templates",
+  "tags": ["fluidflow", "ui-templates", "builtin-5"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "d743f6b0903144ed05a4c2eee8523ed2d05a67777267d2df2dd1da7c8852c0d3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variables": [
+    {
+      "name": "metricType",
+      "description": "What metric to show",
+      "default": "total revenue with percentage change",
+      "required": true
+    },
+    {
+      "name": "features",
+      "description": "Widget features",
+      "default": "trend arrow, sparkline chart, and comparison to last period",
+      "required": true
+    }
+  ],
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

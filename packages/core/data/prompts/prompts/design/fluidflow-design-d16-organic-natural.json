@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d16-organic-natural",
+  "slug": "fluidflow-design-d16-organic-natural",
+  "title": "Organic/Natural",
+  "description": "FluidFlow · Organic/Natural",
+  "content": "Use organic design with earthy color palette - forest greens (green-700, green-800), warm browns (amber-700), soft beiges (stone-200), and natural blues (sky-600). Implement soft, irregular curves using custom border-radius or SVG shapes. Add natural textures - subtle paper or leaf patterns. Use nature-inspired icons (leaves, trees, water). Include warm, diffused shadows. Apply hand-drawn or rounded typography. Create flowing layouts that feel natural, not rigid. Add subtle gradients mimicking natural light.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d16"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2168a20963e0c198e98d94b184ce258d02344c33f3bdf57f135d2652d2e506fc",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Use earthy colors, soft curves, and nature-inspired elements.",
+    "detailed": "Use organic design with earthy color palette - forest greens (green-700, green-800), warm browns (amber-700), soft beiges (stone-200), and natural blues (sky-600). Implement soft, irregular curves using custom border-radius or SVG shapes. Add natural textures - subtle paper or leaf patterns. Use nature-inspired icons (leaves, trees, water). Include warm, diffused shadows. Apply hand-drawn or rounded typography. Create flowing layouts that feel natural, not rigid. Add subtle gradients mimicking natural light.",
+    "advanced": "Use organic design with earthy color palette - forest greens (green-700, green-800), warm browns (amber-700), soft beiges (stone-200), natural blues (sky-600), and terracotta accents. Implement soft, irregular curves using custom border-radius (border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%) or SVG blob shapes. Add natural textures - subtle paper grain, leaf vein patterns, wood grain using SVG backgrounds or CSS patterns. Use nature-inspired icons: leaves, trees, water droplets, sun rays from lucide-react or custom SVGs. Include warm, diffused shadows with slight amber tint (shadow-amber-900/10). Apply hand-drawn or rounded typography (Caveat for accents, Nunito for body). Create flowing layouts using CSS Grid with asymmetric columns that feel natural, not rigid. Add subtle gradients mimicking natural light (lighter top, slightly darker bottom). Include organic animations - gentle swaying, breathing scale effects. Consider seasonal color variations. Ensure earthy tones maintain sufficient contrast for accessibility."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

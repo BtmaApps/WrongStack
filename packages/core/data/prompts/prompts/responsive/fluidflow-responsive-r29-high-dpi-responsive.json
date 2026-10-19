@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-responsive-r29-high-dpi-responsive",
+  "slug": "fluidflow-responsive-r29-high-dpi-responsive",
+  "title": "High DPI Responsive",
+  "description": "FluidFlow · High DPI Responsive",
+  "content": "Handle high-DPI (Retina) displays. Provide 2x and 3x image assets using srcset. Use SVG icons for perfect scaling. Consider @2x and @3x background images with media queries. Ensure border widths remain crisp. Test on high-DPI displays for clarity. Use device-pixel-ratio media queries for specific targeting.",
+  "category": "responsive",
+  "tags": ["fluidflow", "responsive", "r29"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "05697dfd4ed97ab7e8904b6962b082d479524c695db043ec31d99c96a9665d19",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Handle high-DPI displays with appropriate image and asset scaling.",
+    "detailed": "Handle high-DPI (Retina) displays. Provide 2x and 3x image assets using srcset. Use SVG icons for perfect scaling. Consider @2x and @3x background images with media queries. Ensure border widths remain crisp. Test on high-DPI displays for clarity. Use device-pixel-ratio media queries for specific targeting.",
+    "advanced": "Handle high-DPI displays for crisp visuals. Images: provide srcset with 1x, 2x, 3x variants, let browser choose - <img srcset=\"image.jpg 1x, image@2x.jpg 2x, image@3x.jpg 3x\">. Responsive images: combine srcset with sizes attribute for responsive + retina. SVG preference: use SVG for icons, logos, illustrations - scale perfectly at any DPI. Background images: use image-set() for CSS backgrounds - background-image: image-set(url(img.jpg) 1x, url(img@2x.jpg) 2x). Media query: @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) for DPI-specific styles. Borders: 1px borders may look too thin on high-DPI, consider adjusting. Shadows: subtle shadows may need adjustment for visibility. Canvas: scale canvas by devicePixelRatio for crisp rendering. Font rendering: high-DPI improves font clarity, can use lighter weights. Performance: balance retina quality with file size, use modern formats (WebP, AVIF). Testing: use Retina/high-DPI displays or simulate in DevTools. Icons: SVG always, or high-res icon fonts."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

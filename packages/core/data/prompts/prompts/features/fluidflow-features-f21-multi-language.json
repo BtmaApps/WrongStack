@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f21-multi-language",
+  "slug": "fluidflow-features-f21-multi-language",
+  "title": "Multi-language",
+  "description": "FluidFlow · Multi-language",
+  "content": "Implement internationalization for multiple languages. Library: use i18next with react-i18next. Translation files: JSON files per language. Language switcher: dropdown in header/settings. Persistence: save preference to localStorage. Detection: detect browser language as default. Interpolation: support variables in translations. Pluralization: handle plural forms per language. RTL support: detect and apply RTL styles for Arabic/Hebrew. Date/number formatting: locale-aware formatting.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f21"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "7910f0f94a6ff2b1f4d75ef2fca7e80e320047e84b5da68a7a798eb3ffe76e02",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add internationalization (i18n) support for multiple languages.",
+    "detailed": "Implement internationalization for multiple languages. Library: use i18next with react-i18next. Translation files: JSON files per language. Language switcher: dropdown in header/settings. Persistence: save preference to localStorage. Detection: detect browser language as default. Interpolation: support variables in translations. Pluralization: handle plural forms per language. RTL support: detect and apply RTL styles for Arabic/Hebrew. Date/number formatting: locale-aware formatting.",
+    "advanced": "Implement comprehensive internationalization (i18n) system. Library setup: i18next with react-i18next, initialize with defaultNS, fallbackLng, interpolation settings. Translation files structure: locales/en/common.json, locales/en/errors.json, namespace organization. Loading: lazy load language files on demand, show loading state during switch. useTranslation hook: const { t } = useTranslation(); t(\"welcome.title\"). Interpolation: t(\"greeting\", { name: \"John\" }) for \"Hello {{name}}\". Pluralization: t(\"items\", { count: 5 }) with _one, _other, _zero keys, ICU format for complex plural rules. Language switcher: dropdown or button group in header, flag icons optional but use language names primarily. Detection: browser language (navigator.language), accept-language header, or stored preference. Persistence: save to localStorage, sync across tabs. RTL support: detect RTL languages (ar, he, fa), add dir=\"rtl\" to html element, use logical CSS properties (margin-inline-start vs margin-left), or Tailwind RTL plugin. Date formatting: Intl.DateTimeFormat with locale, or date-fns locale imports. Number formatting: Intl.NumberFormat for currencies and numbers. Translation management: consider Crowdin, Lokalise, or similar for translator workflow. Missing translations: show key in dev mode, log warnings, fallback to default language in prod. Context: provide language context with current lang, change function, available languages. Dynamic content: handle user-generated content (may not be translated). Namespaces: separate translations by feature (auth, dashboard, settings) for code splitting. Type safety: generate TypeScript types from translation keys."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-social-so22-poll-component",
+  "slug": "fluidflow-social-so22-poll-component",
+  "title": "Poll Component",
+  "description": "FluidFlow · Poll Component",
+  "content": "Build poll component for posts. Poll structure: question text, 2-4 options. Before vote: options as buttons to click. After vote: show results with percentage bars. User vote: highlighted with checkmark. Total votes count. Time remaining: \"2 hours left\" countdown. Option to change vote if allowed.",
+  "category": "social",
+  "tags": ["fluidflow", "social", "so22"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "26e92887c128eb19e6558d21b3fb445c4c35ad843a7dec7132a90ae02eb5a7ce",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create interactive poll with options and voting.",
+    "detailed": "Build poll component for posts. Poll structure: question text, 2-4 options. Before vote: options as buttons to click. After vote: show results with percentage bars. User vote: highlighted with checkmark. Total votes count. Time remaining: \"2 hours left\" countdown. Option to change vote if allowed.",
+    "advanced": "Build comprehensive poll component for social posts. Poll container: within post card, below post text, rounded-lg border p-4 bg-gray-50. Poll question: optional separate question text above options (font-medium). Before voting state: Option buttons: flex flex-col gap-2. Each option: w-full text-left px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition, option text. Click votes for that option. After voting state: Options become result bars. Each option: relative rounded-lg overflow-hidden. Background bar: absolute inset-0, width based on percentage, colored (bg-blue-100 for user vote, bg-gray-100 for others). Content: relative z-10 flex justify-between px-4 py-3. Option text left, percentage right (font-semibold). User's vote: border-2 border-blue-500 with Check icon before text. Winning option: highest percentage can be bold or highlighted. Vote count: below options, \"1,234 votes\" or \"1.2K votes\". Time remaining: \"2 hours left\", \"Final results\" when ended, countdown timer for last hour, \"Poll ended\" for closed polls. Poll settings on creation: duration (1 hour, 6 hours, 1 day, 3 days, 7 days), multiple choice option, anonymous voting. Change vote: if allowed, \"Change vote\" link, otherwise votes are final. Vote restrictions: one vote per user, logged in required. Results visibility: some polls hide results until user votes or poll ends. Animation: bar width animates on vote/result reveal. Multiple choice: checkboxes instead of radio, \"Select up to 2\" instruction. Anonymous indicator: \"Your vote is anonymous\" note if applicable. Share poll: separate share action for poll. Poll notifications: notify poll creator when reaching vote milestones. Real-time updates: vote counts update live via WebSocket. Poll in comments: compact variant for poll replies. Create poll UI: \"Add poll\" button in composer, expandable form for question and options, add/remove option buttons (2-4 options), duration selector. Accessibility: options as radio group or checkboxes, results announced with percentages, clear voting status communication."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

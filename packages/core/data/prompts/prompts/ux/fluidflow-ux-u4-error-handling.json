@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u4-error-handling",
+  "slug": "fluidflow-ux-u4-error-handling",
+  "title": "Error Handling",
+  "description": "FluidFlow · Error Handling",
+  "content": "Implement user-friendly error handling throughout the application. Display inline errors near the source with red text (text-red-600) and error icon (AlertCircle). Show toast notifications for transient errors with auto-dismiss. Create full-page error states for critical failures with illustration, clear message, and recovery actions. Provide specific, actionable error messages - avoid technical jargon. Include \"Try again\" buttons with proper retry logic. Log errors for debugging while showing user-friendly messages. Add error boundaries to prevent full app crashes. Show offline state indicator when network is unavailable.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u4"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "5247fb4264c92b627bb188aa7439872e0871e0def4dcb0d4f1f0ca07a196a41b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Show user-friendly error messages with recovery options.",
+    "detailed": "Implement user-friendly error handling throughout the application. Display inline errors near the source with red text (text-red-600) and error icon (AlertCircle). Show toast notifications for transient errors with auto-dismiss. Create full-page error states for critical failures with illustration, clear message, and recovery actions. Provide specific, actionable error messages - avoid technical jargon. Include \"Try again\" buttons with proper retry logic. Log errors for debugging while showing user-friendly messages. Add error boundaries to prevent full app crashes. Show offline state indicator when network is unavailable.",
+    "advanced": "Implement comprehensive user-friendly error handling with graceful degradation. Display inline errors near source with red styling (text-red-600 border-red-500) and AlertCircle icon - position errors below inputs, not in tooltips. Show toast notifications for transient/recoverable errors (auto-dismiss 5s) at bottom-right with dismiss button. Create full-page error states for critical failures: friendly illustration, clear non-technical message, specific recovery actions (retry, go home, contact support). Provide specific, actionable error messages: \"Couldnt save - check your internet connection\" not \"Error 500\". Include \"Try again\" with exponential backoff retry logic (1s, 2s, 4s, max 3 attempts). Log errors to monitoring service (Sentry) with context while showing user-friendly messages. Implement React Error Boundaries at route and component level to prevent full app crashes - show fallback UI. Show offline indicator: banner at top, disable actions requiring network, queue operations for sync. Handle specific error types: 401 (session expired, redirect to login), 403 (permission denied, explain), 404 (not found, suggest alternatives), 429 (rate limited, show wait time), 5xx (server error, apologize and retry). Add aria-live regions for error announcements. Preserve user input on errors - never lose work."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

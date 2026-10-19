@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u12-progress-indicator",
+  "slug": "fluidflow-ux-u12-progress-indicator",
+  "title": "Progress Indicator",
+  "description": "FluidFlow · Progress Indicator",
+  "content": "Add step progress indicator for multi-step flows. Show numbered steps in horizontal layout (step-1 → step-2 → step-3). Indicate states: completed (check icon, green), current (highlighted, blue), upcoming (gray). Connect steps with progress line that fills as user advances. Display step labels below numbers. Make completed steps clickable to go back. Show validation state - prevent advancing if current step invalid. Add mobile-responsive version (vertical or simplified). Include percentage or \"Step 2 of 5\" text indicator. Animate transitions between steps. Save progress to allow resuming later. Show estimated time remaining if applicable.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u12"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "ffdd92bcef985d03eba99a59edf7a7b27a71eb63506c08d26a35755a4cb0ff52",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Add step progress bar for multi-step forms and wizards.",
+    "detailed": "Add step progress indicator for multi-step flows. Show numbered steps in horizontal layout (step-1 → step-2 → step-3). Indicate states: completed (check icon, green), current (highlighted, blue), upcoming (gray). Connect steps with progress line that fills as user advances. Display step labels below numbers. Make completed steps clickable to go back. Show validation state - prevent advancing if current step invalid. Add mobile-responsive version (vertical or simplified). Include percentage or \"Step 2 of 5\" text indicator. Animate transitions between steps. Save progress to allow resuming later. Show estimated time remaining if applicable.",
+    "advanced": "Add step progress indicator for multi-step flows showing clear progress and enabling navigation. Show numbered steps in horizontal layout (1 → 2 → 3 → 4) with max 5-7 visible steps. Step states: completed (CheckCircle icon, green-500 background), current (blue-500, ring highlight), upcoming (gray-300). Connect steps with progress line: gray-200 background, filled portion green-500, animate width on progress. Display step labels below numbers - truncate on mobile. Make completed steps clickable to go back (but warn if unsaved changes). Show validation state: current step shows errors inline, prevent Next if invalid, shake/highlight Next button on attempt to advance invalid form. Mobile: vertical layout OR simplified \"Step 2 of 5\" text with progress bar only. Include percentage (\"40% complete\") or \"Step 2 of 5\" text. Animate step transitions: current step slides out, new slides in (use AnimatePresence). Save progress to localStorage/backend to allow resuming - show \"Resume where you left off?\" on return. Show estimated time remaining for longer flows (\"About 3 minutes left\"). ACCESSIBILITY: Use aria-current=\"step\" on current item, aria-label on nav, announce step changes. Consider linear vs non-linear flows - some wizards should enforce order, others allow jumping. Add \"Save and exit\" option."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

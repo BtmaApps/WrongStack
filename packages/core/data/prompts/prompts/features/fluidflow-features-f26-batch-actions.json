@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-features-f26-batch-actions",
+  "slug": "fluidflow-features-f26-batch-actions",
+  "title": "Batch Actions",
+  "description": "FluidFlow · Batch Actions",
+  "content": "Implement batch actions for multi-selection. Selection: checkboxes per item, select all checkbox. Selection count: show \"N items selected\" indicator. Action bar: appears when items selected with action buttons. Actions: delete, archive, tag, move, export selected. Confirmation: confirm destructive batch actions. Progress: show progress for batch operations. Partial failure: handle some items succeeding and others failing. Clear selection: after action completion.",
+  "category": "features",
+  "tags": ["fluidflow", "features", "f26"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "b7e626f74c98397c2a03140aa4abdea17afaa7936ca14a9c75e5edc6ee0d34fb",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Apply actions to multiple selected items at once.",
+    "detailed": "Implement batch actions for multi-selection. Selection: checkboxes per item, select all checkbox. Selection count: show \"N items selected\" indicator. Action bar: appears when items selected with action buttons. Actions: delete, archive, tag, move, export selected. Confirmation: confirm destructive batch actions. Progress: show progress for batch operations. Partial failure: handle some items succeeding and others failing. Clear selection: after action completion.",
+    "advanced": "Implement comprehensive batch actions system for multi-item operations. Selection mechanism: checkbox per row (controlled state in parent), \"Select all\" checkbox in header (tri-state: none, some, all), shift+click for range selection. Selection state: Set or Map of selected IDs, clear on page change or optionally retain across pages. Selection indicator: floating bar or header bar appears when items selected, shows \"N items selected\" count. Available actions: Delete, Archive, Restore, Add tags, Remove tags, Move to folder, Change status, Export, Assign to user. Action bar UI: flex row with buttons, dropdown for secondary actions, \"Clear selection\" button. Confirmation dialog: for destructive actions (delete), show count and warning, require explicit confirmation, optional \"do not ask again\" for session. API implementation: batch endpoint accepting array of IDs, or loop with rate limiting if no batch endpoint. Progress: for large batches show progress modal with percentage, processed count, cancel button. Partial failure handling: if some items fail (permissions, conflicts), show summary (45 succeeded, 5 failed), provide details of failures, option to retry failed items. Optimistic UI: update UI immediately, roll back on failure, or wait for confirmation. After completion: show success toast with count, clear selection, optionally keep selection for further actions. Keyboard shortcuts: Ctrl/Cmd+A select all (visible or all), Delete key for batch delete. Accessibility: announce selection changes, action results to screen readers. Audit log: record batch actions with user, timestamp, affected items."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

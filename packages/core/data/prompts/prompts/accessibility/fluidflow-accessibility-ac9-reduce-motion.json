@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-accessibility-ac9-reduce-motion",
+  "slug": "fluidflow-accessibility-ac9-reduce-motion",
+  "title": "Reduce Motion",
+  "description": "FluidFlow · Reduce Motion",
+  "content": "Respect user motion preferences with prefers-reduced-motion. Wrap animations in media query: @media (prefers-reduced-motion: no-preference). In Tailwind: motion-safe:animate-bounce, motion-reduce:transition-none. Affected animations: transitions, transforms, scroll-triggered animations, auto-playing carousels, parallax effects, loading spinners. Provide static alternatives: instant state changes instead of transitions, static images instead of videos. Keep essential motion for understanding (progress indicators) but simplify. Disable auto-play on videos and carousels. Reduce or remove parallax scrolling effects. Test with system settings: macOS Accessibility > Display > Reduce motion, Windows Settings > Ease of Access > Display. Consider providing manual animation toggle in UI settings.",
+  "category": "accessibility",
+  "tags": ["fluidflow", "accessibility", "ac9"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "2ebe622ff3b49c8114559d4d5775b11d672dffe6b97dc254cbc7bb4f377a810b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Respect user motion preferences with prefers-reduced-motion.",
+    "detailed": "Respect user motion preferences with prefers-reduced-motion. Wrap animations in media query: @media (prefers-reduced-motion: no-preference). In Tailwind: motion-safe:animate-bounce, motion-reduce:transition-none. Affected animations: transitions, transforms, scroll-triggered animations, auto-playing carousels, parallax effects, loading spinners. Provide static alternatives: instant state changes instead of transitions, static images instead of videos. Keep essential motion for understanding (progress indicators) but simplify. Disable auto-play on videos and carousels. Reduce or remove parallax scrolling effects. Test with system settings: macOS Accessibility > Display > Reduce motion, Windows Settings > Ease of Access > Display. Consider providing manual animation toggle in UI settings.",
+    "advanced": "Respect user motion preferences for users with vestibular disorders or motion sensitivity. Media query: @media (prefers-reduced-motion: reduce) { /* disable or reduce animations */ }. Tailwind utilities: motion-safe: prefix for animations that only run without reduced motion preference (motion-safe:animate-bounce), motion-reduce: prefix for reduced motion alternatives (motion-reduce:transition-none). What to reduce/disable: transitions longer than ~100ms, transforms (scale, rotate, translate animations), scroll-triggered animations, parallax effects, auto-playing carousels/sliders, loading spinners with rotation, page transition animations, hover animations, infinite animations. What to keep (simplified): progress indicators (essential information), loading states (can use pulse instead of spin), focus transitions (quick, <100ms). Implementation strategies: 1) Conditional classes based on media query, 2) CSS @media at-rules for global reduction, 3) useReducedMotion hook for complex cases. CSS approach: @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }. Alternative content: static images instead of videos/GIFs, instant state changes instead of transitions. Testing: macOS: System Preferences > Accessibility > Display > Reduce motion, Windows: Settings > Ease of Access > Display > Show animations, iOS: Settings > Accessibility > Motion > Reduce Motion. Manual toggle: consider adding animation toggle in app settings for users who prefer reduction but haven't set system preference. Videos: autoplay with muted and playsinline, provide pause control, respect preference by not autoplaying if reduced motion."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

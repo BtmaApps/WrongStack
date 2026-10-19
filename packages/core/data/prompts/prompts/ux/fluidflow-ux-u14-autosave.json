@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-ux-u14-autosave",
+  "slug": "fluidflow-ux-u14-autosave",
+  "title": "Autosave",
+  "description": "FluidFlow · Autosave",
+  "content": "Implement autosave with clear status indication. Save automatically on content change with debouncing (1-2 seconds after last edit). Show save status indicator: \"Saving...\" with spinner, \"Saved\" with check icon, \"Error saving\" with retry. Display last saved timestamp (\"Last saved 2 minutes ago\"). Use optimistic saves - dont block user interaction. Handle offline gracefully - queue saves, sync when online. Add visual pulse or brief highlight when save completes. Store drafts locally as backup. Show unsaved changes warning on navigation (\"You have unsaved changes\"). Implement conflict resolution for collaborative editing. Allow manual \"Save now\" option.",
+  "category": "ux",
+  "tags": ["fluidflow", "ux", "u14"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "84ac26b549077a3ad47a5d6cf12ebf9000196026b0b3d6b94a0a3f2539860025",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Save content automatically with status indicator showing save state.",
+    "detailed": "Implement autosave with clear status indication. Save automatically on content change with debouncing (1-2 seconds after last edit). Show save status indicator: \"Saving...\" with spinner, \"Saved\" with check icon, \"Error saving\" with retry. Display last saved timestamp (\"Last saved 2 minutes ago\"). Use optimistic saves - dont block user interaction. Handle offline gracefully - queue saves, sync when online. Add visual pulse or brief highlight when save completes. Store drafts locally as backup. Show unsaved changes warning on navigation (\"You have unsaved changes\"). Implement conflict resolution for collaborative editing. Allow manual \"Save now\" option.",
+    "advanced": "Implement autosave with clear status indication to eliminate save anxiety. Save automatically on content change with 1-2 second debounce after last edit - balance between data safety and API load. Show save status indicator (fixed position, consistent location): \"Saving...\" with subtle Loader2 spinner, \"Saved\" with CheckCircle icon (fade after 2s), \"Error saving\" with AlertCircle and \"Retry\" button. Display last saved timestamp: \"Last saved 2 minutes ago\" using relative time (formatDistanceToNow). Use optimistic saves: update UI immediately, dont block interaction, rollback on error with notification. Handle offline gracefully: detect with navigator.onLine and online/offline events, queue saves to IndexedDB, show offline indicator, sync automatically when online with conflict resolution. Add visual pulse or brief bg-green-50 highlight when save completes for positive feedback. Store drafts locally in localStorage/IndexedDB as backup even when online. Show unsaved changes warning on navigation: beforeunload event + custom in-app navigation guard (\"You have unsaved changes. Leave anyway?\"). Implement conflict resolution for collaborative: compare timestamps, show diff, let user choose version or merge. Allow manual \"Save now\" button for user control. Track save frequency and failures for reliability monitoring."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

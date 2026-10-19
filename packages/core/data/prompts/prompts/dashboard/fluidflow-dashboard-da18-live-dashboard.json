@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-dashboard-da18-live-dashboard",
+  "slug": "fluidflow-dashboard-da18-live-dashboard",
+  "title": "Live Dashboard",
+  "description": "FluidFlow · Live Dashboard",
+  "content": "Build live updating dashboard. Real-time data: WebSocket or polling for updates. Animation: smooth transitions on data changes. Current status: show live values. Recent activity: stream of recent events. Pulse indicators: show active/live state. Connection status: indicate if connected. Auto-refresh: configurable refresh interval. Pause: ability to pause updates.",
+  "category": "dashboard",
+  "tags": ["fluidflow", "dashboard", "da18"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "850a80a3224dc610f47cd3b4a46851c1f009a79e8ab383921e98d6878f103bb9",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create real-time dashboard with auto-updating metrics.",
+    "detailed": "Build live updating dashboard. Real-time data: WebSocket or polling for updates. Animation: smooth transitions on data changes. Current status: show live values. Recent activity: stream of recent events. Pulse indicators: show active/live state. Connection status: indicate if connected. Auto-refresh: configurable refresh interval. Pause: ability to pause updates.",
+    "advanced": "Build real-time dashboard with live updating data. Data connection: WebSocket for true real-time, or polling (5-30 second intervals). Connection status: indicator showing connected/disconnected/reconnecting, auto-reconnect with exponential backoff. Live metrics: current value updating in real-time, smooth number transitions (animate counting), pulse or glow effect on updates. Activity stream: feed of recent events/transactions, new items animate in at top, auto-scroll or \"N new items\" button, click to expand details. Current users: live count of active users, geographic distribution updating, active pages being viewed. Live chart: line chart that extends in real-time, rolling window (last 5 minutes), smooth animation for new data points. Threshold alerts: visual alert when metric exceeds threshold, color change, optional sound. Server status: health indicators for systems, green/yellow/red status, latency/response time. Pause/resume: button to pause updates, resume button shows backlog count. Refresh indicator: spinning icon or progress bar during data fetch, last updated timestamp. Buffer handling: handle data bursts, batch updates to prevent flickering. Reconnection: graceful handling of connection loss, show reconnecting status, fetch missed data on reconnect. Performance: efficient DOM updates, virtualize long lists, debounce rapid updates. Mobile: battery-conscious polling frequency, reduce update frequency in background. Keyboard shortcut: press to pause/resume. Sound: optional notification sounds for alerts. Full screen mode: distraction-free large display mode for monitoring."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

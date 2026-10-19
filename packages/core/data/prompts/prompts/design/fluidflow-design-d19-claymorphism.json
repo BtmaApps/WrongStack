@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-design-d19-claymorphism",
+  "slug": "fluidflow-design-d19-claymorphism",
+  "title": "Claymorphism",
+  "description": "FluidFlow · Claymorphism",
+  "content": "Apply claymorphism style with soft, inflated 3D appearance. Use rounded corners (rounded-2xl to rounded-3xl) for puffy, clay-like shapes. Apply dual-layer shadows: outer shadow for depth (shadow-xl) and inner highlight (inset shadow at top). Background colors: soft, muted tones (bg-rose-100, bg-sky-100, bg-amber-100). Add subtle gradients from lighter top to slightly darker bottom for 3D effect. Use playful, rounded typography. Keep elements feeling tactile and squeezable. Add hover animations that suggest pressing into the surface.",
+  "category": "design",
+  "tags": ["fluidflow", "design", "d19"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "4d860fc84935a9a26a9a409bbce98cac04efa12c9f6b2fd88b137fd659b219e3",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create soft 3D clay-like UI elements with rounded shapes and playful shadows.",
+    "detailed": "Apply claymorphism style with soft, inflated 3D appearance. Use rounded corners (rounded-2xl to rounded-3xl) for puffy, clay-like shapes. Apply dual-layer shadows: outer shadow for depth (shadow-xl) and inner highlight (inset shadow at top). Background colors: soft, muted tones (bg-rose-100, bg-sky-100, bg-amber-100). Add subtle gradients from lighter top to slightly darker bottom for 3D effect. Use playful, rounded typography. Keep elements feeling tactile and squeezable. Add hover animations that suggest pressing into the surface.",
+    "advanced": "Apply claymorphism style creating soft, inflated 3D appearance like clay or plasticine. Rounded corners: use rounded-2xl to rounded-3xl for puffy, organic shapes. Shadow system: combine outer shadow (shadow-[0_8px_30px_rgb(0,0,0,0.12)]) with inner highlight using pseudo-element (::before with inset shadow and gradient overlay). Background: soft, muted tones - rose-100, sky-100, amber-100, or custom pastels. 3D depth effect: subtle gradient from lighter top (via bg-gradient-to-b) to slightly darker bottom, simulating light source from above. Border: subtle 1px border in slightly darker shade of background color. Typography: rounded, friendly fonts (Nunito, Quicksand) with soft shadows on headings. Interactive elements: hover shows slight \"press\" effect (translateY(2px), shadow reduction), active shows deeper press. Buttons: pill-shaped with gradient and inner glow. Cards: appear to float with larger shadow, hover lifts higher. Animation: use spring-based transitions for bouncy, organic feel. Performance: use transform and opacity for animations (GPU accelerated). Accessibility: ensure sufficient contrast despite soft colors, clear focus states that work with rounded aesthetic. Consider adding subtle texture or noise for tactile quality."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

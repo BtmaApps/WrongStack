@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-layouts-la3-portfolio-layout",
+  "slug": "fluidflow-layouts-la3-portfolio-layout",
+  "title": "Portfolio Layout",
+  "description": "FluidFlow · Portfolio Layout",
+  "content": "Create portfolio/showcase layout for projects. Hero: personal intro with name, title, brief bio, social links. Project grid: responsive grid with project cards. Card: project thumbnail with hover overlay, title, description, tech tags. Filter bar: filter by category/technology. Hover effect: overlay with \"View Project\" button. Project detail: modal or separate page with full description, image gallery. About section: skills list, experience timeline. Contact section.",
+  "category": "layouts",
+  "tags": ["fluidflow", "layouts", "la3"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "dfab022b4bc001cb27a1bd0e1bd136ec526aca91f00112baa30e2d35ceb1d31b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create portfolio page with project grid, filters, and about section.",
+    "detailed": "Create portfolio/showcase layout for projects. Hero: personal intro with name, title, brief bio, social links. Project grid: responsive grid with project cards. Card: project thumbnail with hover overlay, title, description, tech tags. Filter bar: filter by category/technology. Hover effect: overlay with \"View Project\" button. Project detail: modal or separate page with full description, image gallery. About section: skills list, experience timeline. Contact section.",
+    "advanced": "Create portfolio/showcase layout for projects with filtering and modals. Hero section: py-20 text-center or asymmetric layout. Content: personal intro with name (text-4xl font-bold), title/role (text-xl text-gray-600), brief bio paragraph, social links row (GitHub, LinkedIn, Twitter icons), \"View Work\" and \"Contact\" CTAs. Optional: animated avatar or illustration. Project section: py-16. Section title \"Selected Work\" or \"Projects\". Filter bar: horizontal buttons/pills for categories (All, Web, Mobile, Design), active state (bg-black text-white), click filters projects with animation. Project grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6. Project card: group relative overflow-hidden rounded-lg. Thumbnail: aspect-video object-cover, grayscale or brightness filter on hover. Hover overlay: absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity, flex items-center justify-center, \"View Project\" button and external link icon. Card content below: title (font-semibold), brief description (text-sm text-gray-600), tech tags (flex flex-wrap gap-2, small pills). Project detail: modal (or route /project/[slug]) with close button, full description, my role, technologies used (icons or tags), image gallery (grid or carousel with lightbox), live demo link and code repository link buttons. Gallery: multiple images in grid, click opens lightbox viewer with navigation. About section: two columns (text + photo or skills). Longer bio, skills list grouped by category (Frontend, Backend, Tools) with proficiency bars optional, experience timeline (vertical with dates, company, role, description). Contact section: \"Get in touch\" heading, contact form (name, email, message) or email CTA button, location if relevant. Responsive: cards adjust grid-cols-3 to 2 to 1. Animation: subtle entrance animations on scroll (fade-up). Dark mode friendly with appropriate contrast. External links in footer: GitHub, LinkedIn, resume/CV download button. Mobile navigation: hamburger menu."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}

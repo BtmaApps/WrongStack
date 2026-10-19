@@ -1,0 +1,22 @@
+{
+  "id": "fluidflow-animation-a31-particle-systems",
+  "slug": "fluidflow-animation-a31-particle-systems",
+  "title": "Particle Systems",
+  "description": "FluidFlow · Particle Systems",
+  "content": "Create particle systems for dynamic backgrounds. Generate multiple particle elements. Animate position, opacity, and scale. Add physics-like behavior (floating, drifting). Support mouse interaction (attract/repel). Create connected particles with lines. Control density and performance. Handle resize gracefully. Add variety in particle size and speed.",
+  "category": "animation",
+  "tags": ["fluidflow", "animation", "a31"],
+  "source": "builtin",
+  "favorite": false,
+  "checksum": "f02c6bb63406e3e74dc558c2ef1abfec6dcaf3b48c07b0fcfd03a85cd160087b",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "variants": {
+    "simple": "Create particle effects for backgrounds and decorative elements.",
+    "detailed": "Create particle systems for dynamic backgrounds. Generate multiple particle elements. Animate position, opacity, and scale. Add physics-like behavior (floating, drifting). Support mouse interaction (attract/repel). Create connected particles with lines. Control density and performance. Handle resize gracefully. Add variety in particle size and speed.",
+    "advanced": "Create particle systems for engaging backgrounds and decorative effects. Particle creation: generate array of particles with random properties (x, y, size, speed, direction). Canvas approach (recommended for many particles): requestAnimationFrame loop, clear and redraw particles each frame, update positions based on velocity. DOM approach (for fewer particles): absolutely positioned divs with CSS animations, each with random animation-duration and animation-delay. Movement patterns: linear drift, sine wave oscillation, random walk, gravity fall, upward float. Mouse interaction: calculate distance from mouse, apply attraction (move toward mouse) or repulsion (move away), stronger effect when closer. Connected particles: draw lines between particles within threshold distance, line opacity based on distance. Particle properties: position (x, y), velocity (vx, vy), size, opacity, color/hue. Bounds handling: wrap around edges, bounce off edges, or fade out and respawn. Performance: limit particle count (50-200 typically), use canvas for 100+, throttle mouse interaction calculations. Dynamic density: fewer particles on mobile, adjust based on viewport size. Resize handling: recalculate bounds, redistribute particles proportionally. Variety: randomize size (2-6px), speed (0.5-2x), opacity, and optionally color. Parallax layers: particles at different depths move at different speeds. Libraries: particles.js, tsparticles for feature-rich implementations. Reduced motion: reduce to static dots or significantly slow movement. ACCESSIBILITY: purely decorative (pointer-events: none), dont convey information. Use cases: hero backgrounds, login pages, 404 pages, special sections."
+  },
+  "author": "Ersin KOÇ",
+  "version": "6c623ae4b10217d3542a904747c776f58baef268",
+  "license": "MIT"
+}
