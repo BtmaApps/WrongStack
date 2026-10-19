@@ -9,10 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { MAX_ARRAY_ITEMS } from '../src/constants.js';
-import {
-  applyAnswerToRecord,
-  applyAnswerUpdateToRecord,
-} from '../src/service-helpers.js';
+import { applyAnswerToRecord, applyAnswerUpdateToRecord } from '../src/service-helpers.js';
 import type { RequirementIntakeRecord } from '../src/types.js';
 import { ALICE, makeHarness } from './helpers.js';
 
@@ -190,5 +187,23 @@ describe('answer updates must not withdraw create-supplied list items', () => {
       'web dashboard',
       'billing service',
     ]);
+  });
+
+  it('transfers contribution ownership to a surviving answer when the original introducing answer is updated away (F130)', () => {
+    const record = {
+      constraints: [],
+      fieldSources: {},
+      questions: [],
+      answers: [],
+    } as unknown as RequirementIntakeRecord;
+
+    const a1 = applyAnswerToRecord(record, { field: 'constraints', answer: 'rust' }, ALICE.id, 1);
+    const a2 = applyAnswerToRecord(record, { field: 'constraints', answer: 'rust' }, ALICE.id, 2);
+
+    applyAnswerUpdateToRecord(record, a1.id, 'python');
+    expect(record.constraints).toEqual(['rust', 'python']);
+
+    applyAnswerUpdateToRecord(record, a2.id, 'go');
+    expect(record.constraints).toEqual(['python', 'go']);
   });
 });

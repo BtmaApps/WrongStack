@@ -426,17 +426,24 @@ export function applyAnswerUpdateToRecord(
     // full previous text (the historical behavior).
     const contributed = answer.contributedItems ?? splitItems(previous);
     const kept = new Set(splitItems(newAnswer));
-    const stillGiven = new Set(
-      record.answers
-        .filter(
-          (other) => other !== answer && ANSWER_FIELD_MAPPING[other.field]?.list?.(record) === list,
-        )
-        .flatMap((other) => splitItems(other.answer)),
+    const otherAnswers = record.answers.filter(
+      (other) => other !== answer && ANSWER_FIELD_MAPPING[other.field]?.list?.(record) === list,
     );
+    const stillGiven = new Set(otherAnswers.flatMap((other) => splitItems(other.answer)));
     for (const item of contributed) {
       if (kept.has(item)) continue;
       const at = list.indexOf(item);
-      if (at >= 0 && !stillGiven.has(item)) list.splice(at, 1);
+      if (at >= 0 && !stillGiven.has(item)) {
+        list.splice(at, 1);
+      } else if (stillGiven.has(item)) {
+        const successor = otherAnswers.find((other) => splitItems(other.answer).includes(item));
+        if (successor) {
+          const existing = successor.contributedItems ?? [];
+          if (!existing.includes(item)) {
+            successor.contributedItems = [...existing, item];
+          }
+        }
+      }
     }
     const introduced = splitItems(newAnswer).filter((item) => !list.includes(item));
     contribution = [...new Set([...contributed.filter((item) => kept.has(item)), ...introduced])];
