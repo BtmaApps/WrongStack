@@ -437,4 +437,59 @@ describe('createWrongTraceHookPair gate events', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('does not unlock daemon lock if a new preToolUse re-acquires the path while postToolUse awaits getFileHealth (F143)', async () => {
+    let unlockCalls = 0;
+    let lockCallCount = 0;
+    let healthCallCount = 0;
+    let releaseHealthGate: (() => void) | undefined;
+    const healthGate = new Promise<void>((r) => {
+      releaseHealthGate = r;
+    });
+
+    globalThis.fetch = makeFetch(async (url) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/file/health') {
+        healthCallCount++;
+        if (healthCallCount === 2) {
+          await healthGate;
+        }
+        return jsonResponse({
+          path: 'src/race.ts',
+          health_score: 100,
+          is_fragile: false,
+          recent_thrashing_count: 0,
+          is_locked: true,
+          lock_owner: 'wrongstack:sess-1',
+        });
+      }
+      if (u.pathname === '/api/guardrail/lock') {
+        lockCallCount++;
+        if (lockCallCount === 1) {
+          return jsonResponse({ ok: false, status: 'conflict' }, 409);
+        }
+        return jsonResponse({ ok: true, path: 'src/race.ts', status: 'locked' });
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        unlockCalls++;
+        return jsonResponse({ ok: true, path: 'src/race.ts', status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+
+    const pair = createWrongTraceHookPair(() => 'sess-1');
+    const toolInput = { path: 'src/race.ts' };
+
+    await pair.preToolUse({ toolName: 'edit', toolInput });
+    const post1 = pair.postToolUse({ toolName: 'edit', toolInput });
+    await new Promise((r) => setTimeout(r, 15));
+    await pair.preToolUse({ toolName: 'edit', toolInput });
+    releaseHealthGate?.();
+    await post1;
+
+    expect(unlockCalls).toBe(0);
+    await pair.postToolUse({ toolName: 'edit', toolInput });
+    expect(unlockCalls).toBe(1);
+  });
 });

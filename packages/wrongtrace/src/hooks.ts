@@ -309,8 +309,13 @@ export function createWrongTraceHookPair(
         shouldUnlock = true;
       });
       if (!shouldUnlock) return; // a sibling still holds this path
+      const wasRaced = racedSetFor(counters).has(key);
+      const recordedOwner = claimedOwnerSetFor(counters).get(key);
+      racedSetFor(counters).delete(key);
+      claimedOwnerSetFor(counters).delete(key);
       try {
         const wt = await getWrongTrace();
+        if (counters.has(key)) return; // re-acquired by a new preToolUse while awaiting
         if (wt.isAvailable) {
           // If a lock-conflict-race ever touched this path, count-zero does
           // NOT prove the daemon lock is ours — the claim went to a peer (or
@@ -321,12 +326,13 @@ export function createWrongTraceHookPair(
           // empty session identity and cannot re-derive it; only when no
           // acquisition was recorded do we fall back to the pair's session
           // id (pure self-leak cleanup).
-          if (racedSetFor(counters).has(key)) {
-            const recordedOwner = claimedOwnerSetFor(counters).get(key);
+          if (wasRaced) {
             const expectedOwner = recordedOwner ?? `wrongstack:${input.sessionId || sessionId()}`;
             const health = await wt.getFileHealth(path);
+            if (counters.has(key)) return; // re-acquired by a new preToolUse while awaiting
             if (health?.lock_owner !== expectedOwner) return; // not ours — TTL reaps
           }
+          if (counters.has(key)) return;
           const released = await wt.unlockFile(path);
           if (released !== null && released.ok !== false) {
             // Emit lock-released only on a CONFIRMED daemon response —
@@ -339,9 +345,6 @@ export function createWrongTraceHookPair(
         }
       } catch {
         // TTL backstop will reap it.
-      } finally {
-        racedSetFor(counters).delete(key);
-        claimedOwnerSetFor(counters).delete(key);
       }
     },
   };
