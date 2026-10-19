@@ -222,4 +222,15 @@ describe('next-steps survive interleaved runs across two sessions', () => {
       .map((m) => m.nextSteps?.steps.map((s) => s.text));
     expect(rendered).toEqual([stepsA.map((s) => s.text), turn2.map((s) => s.text)]);
   });
+
+  it('clears completedToolNextSteps and nextStepsByToolId when run.result status is failed or aborted', () => {
+    handleToolStarted(nextStepsStarted(SESSION_A, 'tool_fail', stepsA));
+    handleToolExecuted(nextStepsExecuted(SESSION_A, 'tool_fail'));
+    handleRunResult(runResult(SESSION_A, 'failed'));
+
+    // Subsequent done run without calling nextsteps must not inherit failed run's steps
+    handleRunResult(runResult(SESSION_A, 'done'));
+    const laneA = useChatLanes.getState().lanes[SESSION_A];
+    expect(laneA?.messages.filter((m) => (m.nextSteps?.steps.length ?? 0) > 0)).toHaveLength(0);
+  });
 });

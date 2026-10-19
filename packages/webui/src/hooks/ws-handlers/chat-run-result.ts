@@ -14,7 +14,13 @@ import { useBugHuntRunStore } from '@/stores/bug-hunt-run-store';
 import type { ChatLaneActions } from '@/stores/chat-lanes';
 import type { QueuedItem } from '@/stores/chat-store';
 import type { WSServerMessage } from '@/types';
-import { completedToolNextSteps, isForeground, runTag, tabLabel } from './chat-run-state.js';
+import {
+  completedToolNextSteps,
+  isForeground,
+  nextStepsByToolId,
+  runTag,
+  tabLabel,
+} from './chat-run-state.js';
 
 /**
  * A run a provider killed after its own retries, on a failure a later attempt
@@ -92,9 +98,9 @@ export function handleRunResult(msg: WSServerMessage) {
         ? streamed.content
         : (finalText ?? streamed?.content ?? ''),
     });
-    // The run is over — this is the turn's final answer, so its suggestions
-    // are the ones the user should see.
-    chat.finalizeMessage(streamingId, { final: true });
+    // The run is over — this is the turn's final answer when status === 'done',
+    // so its suggestions are the ones the user should see.
+    chat.finalizeMessage(streamingId, { final: payload.status === 'done' });
   } else if (finalText) {
     // Defensive fallback: a run may complete with finalText even if the live
     // text_delta/provider.response path failed to create a visible assistant
@@ -129,11 +135,7 @@ export function handleRunResult(msg: WSServerMessage) {
   // chat run. A hunt either submits its continuation below or clears itself;
   // it never exposes the generic next-step automation between rounds.
   const laneNextStepSuggestions = completedToolNextSteps.get(chat.sessionId) ?? [];
-  if (activeBugHunt) {
-    // Do not leave the completed tool result around to resurface after the
-    // final hunt round or on a later ordinary chat turn.
-    completedToolNextSteps.delete(chat.sessionId);
-  } else if (payload.status === 'done' && laneNextStepSuggestions.length > 0) {
+  if (!activeBugHunt && payload.status === 'done' && laneNextStepSuggestions.length > 0) {
     // Only THIS run's reply can already carry these steps (from its own
     // `<nextsteps>` block). Scanning the whole history meant the first turn
     // that ever rendered chips suppressed the tool-provided suggestions of
@@ -152,8 +154,9 @@ export function handleRunResult(msg: WSServerMessage) {
         nextSteps: { steps: laneNextStepSuggestions },
       });
     }
-    completedToolNextSteps.delete(chat.sessionId);
   }
+  completedToolNextSteps.delete(chat.sessionId);
+  nextStepsByToolId.delete(chat.sessionId);
   chat.setCurrentAssistantMessage(null);
   chat.clearThinking();
   const runStart = chat.runStart;
