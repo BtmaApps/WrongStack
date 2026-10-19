@@ -374,4 +374,15 @@ describe('runtime server mutation', () => {
     );
     expect(value.get('a')).toBeNull();
   });
+
+  it('reassigns language claims to remaining mounted servers when the primary owner is disabled or removed (F129)', async () => {
+    const { value } = registry();
+    await value.upsertServer('a', cfg('typescript'));
+    await value.upsertServer('b', cfg('typescript'));
+    (value.get('b') as unknown as { state: string }).state = 'ready';
+
+    await value.setServerEnabled('a', false);
+    const resolved = await value.findForPath('index.ts');
+    expect(resolved?.name).toBe('b');
+  });
 });

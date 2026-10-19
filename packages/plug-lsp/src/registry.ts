@@ -191,7 +191,14 @@ export class LSPRegistry {
       this.servers.delete(name);
     }
     for (const [language, owner] of [...this.languageIndex]) {
-      if (owner === name) this.languageIndex.delete(language);
+      if (owner !== name) continue;
+      this.languageIndex.delete(language);
+      for (const candidate of this.servers.values()) {
+        if (candidate.config.languages.includes(language)) {
+          this.languageIndex.set(language, candidate.name);
+          break;
+        }
+      }
     }
   }
 
