@@ -58,12 +58,7 @@ export function routingExperiment(report: BenchReport, policy: RoutingPolicy) {
       );
       for (const row of report.results)
         if (ids.has(row.taskId)) {
-          const key = JSON.stringify([
-            row.cell.label,
-            row.cell.provider,
-            row.cell.model,
-            row.cell.reasoningEffort ?? null,
-          ]);
+          const key = JSON.stringify([row.cell.label, row.cell.provider, row.cell.model]);
           const rows = grouped.get(key) ?? [];
           rows.push(row);
           grouped.set(key, rows);
@@ -161,7 +156,6 @@ export function compareQualityExperiment(
       row.cell.label,
       row.cell.provider,
       row.cell.model,
-      row.cell.reasoningEffort ?? null,
       row.attempt ?? 1,
     ]);
   const index = (report: BenchReport) => {
