@@ -194,7 +194,7 @@ export const FILE_RULES: readonly FileRule[] = [
 ];
 
 /** Every rule id the engine can report, for `checked` lists and docs. */
-export const DESIGN_RULE_IDS: readonly string[] = [
+const DESIGN_RULE_IDS: readonly string[] = [
   'color.off-palette',
   'color.generic-utility',
   'color.absolute',

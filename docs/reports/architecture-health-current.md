@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-19T20:55:52.388Z
+**Generated:** 2026-10-19T20:56:36.761Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-- packages/core/src/execution/design-verify-rules.ts: "DESIGN_RULE_IDS" is exported but only tests reference it; wire it, drop it, or record it in architecture/test-only-exports.json
+PASS — no blocking architecture-health errors.
 
 ## Workspace packages
 
@@ -137,7 +137,7 @@ None.
 
 ## Exports only tests reference
 
-- 963 runtime exports are referenced by tests and by no other production file.
+- 962 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

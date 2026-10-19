@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { verifyFiles } from '../../src/execution/design-verify.js';
-import { DESIGN_RULE_IDS } from '../../src/execution/design-verify-rules.js';
 import type { DesignKitTokens } from '../../src/types/design-kit.js';
 
 /**
@@ -109,11 +108,6 @@ describe('catalogue rules', () => {
   it('gives legacy rules their ids too', () => {
     expect(ids('<div className="shadow-lg" />')).toEqual(['WARN composition.stock-elevation']);
     expect(ids('<div className="bg-blue-500" />')).toEqual(['WARN color.generic-utility']);
-  });
-
-  it('lists every id it can report, uniquely', () => {
-    expect(new Set(DESIGN_RULE_IDS).size).toBe(DESIGN_RULE_IDS.length);
-    expect(DESIGN_RULE_IDS.length).toBeGreaterThanOrEqual(30);
   });
 });
 

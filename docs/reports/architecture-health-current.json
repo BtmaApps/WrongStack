@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T20:55:52.388Z",
+  "generatedAt": "2026-10-19T20:56:36.761Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -22,11 +22,9 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 963
+    "testOnlyExports": 962
   },
-  "errors": [
-    "packages/core/src/execution/design-verify-rules.ts: \"DESIGN_RULE_IDS\" is exported but only tests reference it; wire it, drop it, or record it in architecture/test-only-exports.json"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -29744,10 +29742,6 @@
     {
       "file": "packages/core/src/execution/design-project-store.ts",
       "name": "clearCapturedTokens"
-    },
-    {
-      "file": "packages/core/src/execution/design-verify-rules.ts",
-      "name": "DESIGN_RULE_IDS"
     },
     {
       "file": "packages/core/src/execution/model-runtime.ts",
