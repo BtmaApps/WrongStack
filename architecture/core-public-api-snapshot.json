@@ -1624,7 +1624,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 94,
-      "sourceLines": 22903
+      "sourceLines": 22905
     },
     {
       "directory": "extension",
@@ -1652,14 +1652,14 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 63,
-      "sourceLines": 12478
+      "sourceLines": 12506
     },
     {
       "directory": "infrastructure",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 2116
+      "sourceLines": 2115
     },
     {
       "directory": "kernel",
@@ -1694,14 +1694,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused performance package",
       "sourceFiles": 9,
-      "sourceLines": 1773
+      "sourceLines": 1780
     },
     {
       "directory": "plugin",
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
       "sourceFiles": 10,
-      "sourceLines": 2786
+      "sourceLines": 2789
     },
     {
       "directory": "plugins",
@@ -1722,7 +1722,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 1,
-      "sourceLines": 489
+      "sourceLines": 498
     },
     {
       "directory": "registry",
@@ -1764,7 +1764,7 @@
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
       "sourceFiles": 26,
-      "sourceLines": 5285
+      "sourceLines": 5284
     },
     {
       "directory": "statusline",
@@ -1778,7 +1778,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 118,
-      "sourceLines": 26184
+      "sourceLines": 26188
     },
     {
       "directory": "tasking",

@@ -1194,6 +1194,45 @@ describe('run lifecycle and queue drain', () => {
   });
 });
 
+describe('next-step auto-submit eligibility', () => {
+  const FINAL_REPLY = {
+    content: 'Done.\n<nextsteps>\n1. Run the focused tests\n</nextsteps>',
+    stopReason: 'end_turn',
+  };
+
+  function finishRun(owned: boolean, status: string) {
+    const localRunRef = { current: owned };
+    harness = createHarness({ localRunRef });
+    harness.handler({ type: 'provider.response', payload: FINAL_REPLY });
+    harness.handler({ type: 'run.result', payload: { status } });
+    return localRunRef;
+  }
+
+  it('flags the final reply of a done run this client started', () => {
+    const localRunRef = finishRun(true, 'done');
+    expect(harness.state.messages.at(-1)).toMatchObject({ role: 'assistant', autoEligible: true });
+    expect(localRunRef.current).toBe(false);
+  });
+
+  it('does not flag a run another client started', () => {
+    finishRun(false, 'done');
+    expect(harness.state.messages.at(-1)?.autoEligible).toBeUndefined();
+  });
+
+  it.each(['aborted', 'failed', 'max_iterations'])('does not flag a %s run', (status) => {
+    const localRunRef = finishRun(true, status);
+    expect(harness.state.messages.at(-1)?.autoEligible).toBeUndefined();
+    expect(localRunRef.current).toBe(false);
+  });
+
+  it('releases the ownership flag when the run errors', () => {
+    const localRunRef = { current: true };
+    harness = createHarness({ localRunRef });
+    harness.handler({ type: 'error', payload: { message: 'boom' } });
+    expect(localRunRef.current).toBe(false);
+  });
+});
+
 describe('context accounting', () => {
   // Wire contract: `ctx.pct` `load` is a 0-1 fraction of the context budget.
   // Core computes rawLoad = tokens / maxContext and emits it already clamped

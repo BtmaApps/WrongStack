@@ -1,7 +1,8 @@
-import { Check, Copy, ListChecks, LoaderCircle } from 'lucide-react';
+import { Check, Copy, ListChecks, LoaderCircle, Timer } from 'lucide-react';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownHooks as ReactMarkdown } from 'react-markdown';
 import { FileEditEntry } from './file-edit-entry.js';
+import type { NextStepAutoCountdown } from './hooks/use-next-step-auto-submit.js';
 import { formatMessageTime } from './lib/chat-model.js';
 import {
   markdownComponents,
@@ -76,6 +77,8 @@ interface ChatMessageListProps {
   onSelectNextStep: (messageId: string, text: string) => void;
   /** Message IDs whose next-steps have been consumed (selected or auto-run). */
   consumedNextSteps: Set<string>;
+  /** Live auto-submit countdown for the latest suggestions (autonomy auto + YOLO). */
+  nextStepAuto?: { countdown: NextStepAutoCountdown | null; cancel: () => void } | undefined;
   /** Open the file diff panel for a single file edit. */
   onOpenDiff?: ((meta: FileEditMeta) => void) | undefined;
 }
@@ -91,6 +94,8 @@ interface MessageItemProps {
   onCopyMessage: (id: string, text: string) => void;
   onSelectNextStep: (messageId: string, text: string) => void;
   consumedNextSteps: Set<string>;
+  autoCountdown?: NextStepAutoCountdown | null | undefined;
+  onCancelAuto?: (() => void) | undefined;
 }
 
 const MessageItem = memo(function MessageItem({
@@ -102,6 +107,8 @@ const MessageItem = memo(function MessageItem({
   onCopyMessage,
   onSelectNextStep,
   consumedNextSteps,
+  autoCountdown = null,
+  onCancelAuto,
 }: MessageItemProps) {
   // projectAssistantMessage runs two global-regex passes + parseNextSteps over
   // the whole message text. Memoize on the text so it re-runs only when the text
@@ -202,11 +209,27 @@ const MessageItem = memo(function MessageItem({
               <ListChecks size={14} aria-hidden="true" />
               <span>NEXT STEPS</span>
             </div>
+            {autoCountdown && autoCountdown.messageId === message.id && (
+              <div className="next-step-countdown" role="status">
+                <Timer size={13} aria-hidden="true" />
+                <span>
+                  Auto-submitting step {autoCountdown.stepIndex} in {autoCountdown.remaining}s
+                </span>
+                <button type="button" onClick={onCancelAuto}>
+                  Cancel
+                </button>
+              </div>
+            )}
             <div className="next-steps-list">
               {nextSteps.map((step) => (
                 <button
                   type="button"
-                  className="next-step"
+                  className={
+                    autoCountdown?.messageId === message.id &&
+                    autoCountdown.stepIndex === step.index
+                      ? 'next-step next-step-queued'
+                      : 'next-step'
+                  }
                   key={`${step.index}:${step.text}`}
                   onClick={() => onSelectNextStep(message.id, step.text)}
                 >
@@ -245,6 +268,7 @@ export function ChatMessageList({
   onCopyMessage,
   onSelectNextStep,
   consumedNextSteps,
+  nextStepAuto,
   onOpenDiff,
 }: ChatMessageListProps) {
   // Suggestions are an action surface, not transcript history. Keep only the
@@ -384,6 +408,8 @@ export function ChatMessageList({
               onCopyMessage={onCopyMessage}
               onSelectNextStep={onSelectNextStep}
               consumedNextSteps={consumedNextSteps}
+              autoCountdown={nextStepAuto?.countdown}
+              onCancelAuto={nextStepAuto?.cancel}
             />
           );
         }

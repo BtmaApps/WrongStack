@@ -281,47 +281,150 @@ describe('NextStepsBar — session-end auto-fill cancel on autonomy change', () 
     expect(onAutoSubmit).not.toHaveBeenCalled();
   });
 
-  it('cancels the countdown when YOLO turns off mid-countdown', () => {
+  it('submits the first step when autonomy is auto and no step carries the auto marker', async () => {
+    // The auto="true" marker is optional model output. Autonomy 'auto' alone
+    // must make the countdown submit, otherwise it just fills the input.
     vi.useFakeTimers();
     const onAutoSubmit = vi.fn();
-    const onBatchSubmit = vi.fn();
 
-    const { rerender } = render(
+    render(
       <NextStepsBar
-        steps={STEPS}
+        steps={[
+          { index: 1, text: 'Run focused tests' },
+          { index: 2, text: 'Review diff' },
+        ]}
         yoloMode={true}
         autoMode={true}
-        autoDelayMs={60_000}
         onAutoSubmit={onAutoSubmit}
         canAutoSubmit={true}
         sessionEndAutoFill={true}
         isLatest={true}
-        onBatchSubmit={onBatchSubmit}
       />,
     );
 
     act(() => {
       document.dispatchEvent(new CustomEvent('chat:next-step-countdown'));
     });
+    for (let i = 0; i < 6; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
 
-    // YOLO flips off (autonomy still 'auto').
-    rerender(
+    expect(onAutoSubmit).toHaveBeenCalledTimes(1);
+    expect(onAutoSubmit).toHaveBeenCalledWith('Run focused tests');
+  });
+
+  it('never submits when YOLO is off, even in autonomy auto', async () => {
+    vi.useFakeTimers();
+    const onAutoSubmit = vi.fn();
+
+    render(
       <NextStepsBar
         steps={STEPS}
         yoloMode={false}
         autoMode={true}
-        autoDelayMs={60_000}
         onAutoSubmit={onAutoSubmit}
         canAutoSubmit={true}
         sessionEndAutoFill={true}
         isLatest={true}
-        onBatchSubmit={onBatchSubmit}
       />,
     );
 
     act(() => {
-      vi.advanceTimersByTime(10_000);
+      document.dispatchEvent(new CustomEvent('chat:next-step-countdown'));
     });
+    for (let i = 0; i < 6; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
+
+    expect(onAutoSubmit).not.toHaveBeenCalled();
+  });
+
+  it('cancels the countdown when YOLO turns off mid-countdown', async () => {
+    vi.useFakeTimers();
+    const onAutoSubmit = vi.fn();
+    const props = {
+      steps: STEPS,
+      autoMode: true,
+      onAutoSubmit,
+      canAutoSubmit: true,
+      sessionEndAutoFill: true,
+      isLatest: true,
+    };
+
+    const { rerender } = render(<NextStepsBar {...props} yoloMode={true} />);
+    act(() => {
+      document.dispatchEvent(new CustomEvent('chat:next-step-countdown'));
+    });
+    rerender(<NextStepsBar {...props} yoloMode={false} />);
+    for (let i = 0; i < 6; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
+
+    expect(onAutoSubmit).not.toHaveBeenCalled();
+  });
+
+  it('submits the model-marked step instead of the first one', async () => {
+    vi.useFakeTimers();
+    const onAutoSubmit = vi.fn();
+
+    render(
+      <NextStepsBar
+        steps={[
+          { index: 1, text: 'Run focused tests', auto: false },
+          { index: 2, text: 'Review diff', auto: true },
+        ]}
+        yoloMode={true}
+        autoMode={true}
+        onAutoSubmit={onAutoSubmit}
+        canAutoSubmit={true}
+        sessionEndAutoFill={true}
+        isLatest={true}
+      />,
+    );
+
+    act(() => {
+      document.dispatchEvent(new CustomEvent('chat:next-step-countdown'));
+    });
+    for (let i = 0; i < 6; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
+
+    expect(onAutoSubmit).toHaveBeenCalledTimes(1);
+    expect(onAutoSubmit).toHaveBeenCalledWith('Review diff');
+  });
+
+  it('never submits when autonomy is not auto', async () => {
+    vi.useFakeTimers();
+    const onAutoSubmit = vi.fn();
+
+    render(
+      <NextStepsBar
+        steps={STEPS}
+        yoloMode={true}
+        autoMode={false}
+        onAutoSubmit={onAutoSubmit}
+        canAutoSubmit={true}
+        sessionEndAutoFill={true}
+        isLatest={true}
+      />,
+    );
+
+    act(() => {
+      document.dispatchEvent(new CustomEvent('chat:next-step-countdown'));
+    });
+    for (let i = 0; i < 6; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
 
     expect(onAutoSubmit).not.toHaveBeenCalled();
   });

@@ -71,15 +71,15 @@ function AutoCountdown({
  * - Auto items in YOLO+auto mode show countdown and auto-submit
  */
 /**
- * Default countdown seconds for the session-end auto-fill, i.e. how long
- * after the completion sound before the first next-step suggestion is
- * placed into the input.
+ * Default countdown seconds for the session-end countdown, i.e. how long
+ * after the completion sound before a next-step suggestion is submitted
+ * (autonomy 'auto') or placed into the input (otherwise).
  */
 const SESSION_END_FILL_SECONDS = 5;
 
 /**
- * Countdown timer that fills the input (without submitting) when the
- * session-end event fires. Rendered as an inline timer badge.
+ * Countdown timer for the session-end event; its owner decides whether the
+ * completion submits or only fills the input. Rendered as an inline badge.
  */
 function SessionEndFillCountdown({
   seconds,
@@ -169,8 +169,8 @@ export function NextStepsBar({
 
   // ── Session-end auto-fill countdown ──────────────────────────────────
   // Listens for the custom event dispatched after the completion chime and
-  // starts a countdown that fills the input (does NOT auto-submit — the
-  // user can still edit or press Enter).
+  // starts a countdown. In autonomy 'auto' it submits one step on completion;
+  // otherwise it only fills the input so the user can edit or press Enter.
   const [autoFillActive, setAutoFillActive] = useState(false);
   const autoFillFired = useRef(false);
   useEffect(() => {
@@ -224,21 +224,29 @@ export function NextStepsBar({
   // countdown completes we must re-check the gate here, not at arm time:
   // if the user flipped autonomy off between the run finishing and the
   // countdown elapsing, we fall through to `fillInput` instead of sending a
-  // prompt the user explicitly disabled. Same gate as the YOLO countdown path
-  // (showAutoCountdown) so a closed gate at the fire site never auto-submits.
+  // prompt the user explicitly disabled.
+  //
+  // With autonomy 'auto' AND YOLO (or YOLO+, which the caller folds into
+  // `yoloMode`) the countdown SUBMITS one step: the model's auto="true" pick
+  // when it made one, else the first suggestion. It does not wait for the
+  // marker — that is optional model output, and gating on it left the
+  // countdown filling the input almost every time. Without YOLO the submit
+  // would hit tool confirmations unattended, so (like outside auto, or once
+  // the iteration cap closes the gate) the first step is only placed in the
+  // input for the user to edit/send.
   const gateOpen = yoloMode && autoMode && canAutoSubmitProp;
+  const countdownStep = steps.find((s) => s.auto) ?? steps[0];
   const handleAutoFill = useCallback(() => {
     if (manualInteraction) return;
-    if (steps.length > 0) {
-      const step = steps[0]!;
-      if (step.auto && onAutoSubmit && gateOpen) {
-        onAutoSubmit(step.text);
+    if (countdownStep) {
+      if (onAutoSubmit && gateOpen) {
+        onAutoSubmit(countdownStep.text);
       } else {
-        fillInput(step.text);
+        fillInput((steps[0] ?? countdownStep).text);
       }
     }
     setAutoFillActive(false);
-  }, [steps, onAutoSubmit, gateOpen, manualInteraction]);
+  }, [steps, countdownStep, onAutoSubmit, gateOpen, manualInteraction]);
 
   // Clear multi-selection when steps structurally change (new response, new indices).
   // Use a structural key to avoid Zalgo — step objects are new refs on every render
@@ -274,7 +282,7 @@ export function NextStepsBar({
         </span>
         {autoFillActive ? (
           <span className="ml-auto flex items-center gap-1 text-xs text-primary font-medium">
-            {steps[0]?.auto && onAutoSubmit
+            {gateOpen && onAutoSubmit
               ? t('activity:nextSteps.autoSubmitting', 'Auto-submitting in')
               : t('activity:nextSteps.autoFilling', 'Filling in')}{' '}
             <SessionEndFillCountdown
@@ -308,7 +316,7 @@ export function NextStepsBar({
       <div className="flex flex-col p-2 gap-1">
         {steps.map((s) => {
           const isAutoSelected = autoFillActive
-            ? s.index === steps[0]?.index
+            ? s.index === (gateOpen ? countdownStep?.index : steps[0]?.index)
             : showAutoCountdown && s.auto;
           const isSelected = selectedIndices.has(s.index);
           return (

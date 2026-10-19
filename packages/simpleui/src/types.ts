@@ -46,6 +46,13 @@ export interface ChatMessage {
    * panel; mid-turn prose keeps its `<nextsteps>` block stripped but silent.
    */
   final?: boolean | undefined;
+  /**
+   * Set live (never on replay) on the last assistant message of a run this
+   * client started and that ended `done`. Only such a message may arm the
+   * next-step auto-submit countdown — an observer, a resumed transcript, or an
+   * aborted/failed run must never continue on its own.
+   */
+  autoEligible?: boolean | undefined;
   /** Structured fallback for a successful `nextsteps` tool call. */
   nextSteps?: Array<{ index: number; text: string; auto?: boolean | undefined }> | undefined;
   ts?: string | undefined;

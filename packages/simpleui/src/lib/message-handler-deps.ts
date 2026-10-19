@@ -40,6 +40,8 @@ export interface SessionHandlerSlice {
   sessionIdRef: { current: string | null };
   messagesRef: { current: ChatMessage[] };
   runningRef: { current: boolean };
+  /** True while the run in flight was started by this client (see composer). */
+  localRunRef?: { current: boolean } | undefined;
   socketRef: {
     current: { send: (type: string, payload?: Record<string, unknown>) => void } | null;
   };

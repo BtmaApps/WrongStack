@@ -4,8 +4,12 @@ import { useAgentView } from './hooks/use-agent-view.js';
 import { useComposerState } from './hooks/use-composer-state.js';
 import { useGlobalShortcuts } from './hooks/use-global-shortcuts.js';
 import { useModelCatalog } from './hooks/use-model-catalog.js';
-import { usePanelState } from './hooks/use-panel-state.js';
+import {
+  type NextStepAutoPause,
+  useNextStepAutoSubmit,
+} from './hooks/use-next-step-auto-submit.js';
 import { usePalette } from './hooks/use-palette.js';
+import { usePanelState } from './hooks/use-panel-state.js';
 import { useServerOutage } from './hooks/use-server-outage.js';
 import { useSettings } from './hooks/use-settings.js';
 import { useSimpleMailbox } from './hooks/use-simple-mailbox.js';
@@ -230,6 +234,7 @@ export function useSimpleUiSession() {
     messagesRef,
     activeModelRef,
     runningRef,
+    localRunRef: composerState.localRunRef,
     refineStateRef,
     refineEpochRef,
     socketRef,
@@ -322,6 +327,46 @@ export function useSimpleUiSession() {
   );
 
   const load = Math.max(0, Math.min(1, context.load));
+
+  const markNextStepsConsumed = useCallback(
+    (id: string) => setConsumedNextSteps((prev) => (prev.has(id) ? prev : new Set(prev).add(id))),
+    [setConsumedNextSteps],
+  );
+  const onNextStepAutoPaused = useCallback(
+    (reason: NextStepAutoPause) =>
+      setNotice({
+        id: messageId('notice'),
+        text:
+          reason === 'cap'
+            ? 'Auto-proceed paused: iteration limit reached. Send a message to continue.'
+            : 'Auto-proceed halted: the same suggestion kept repeating.',
+        tone: 'warning',
+      }),
+    [setNotice],
+  );
+  // Autonomy `auto` + YOLO: count down, then send one suggestion for the
+  // user. See use-next-step-auto-submit.ts for the guardrails.
+  const nextStepAuto = useNextStepAutoSubmit({
+    sessionId: session?.id ?? null,
+    messages,
+    running,
+    consumed: panelState.consumedNextSteps,
+    markConsumed: markNextStepsConsumed,
+    autonomy: prefs.autonomy,
+    yolo: prefs.yolo,
+    delayMs: prefs.autonomyDelayMs,
+    maxIterations: prefs.autoProceedMaxIterations,
+    hasDraft: composerState.draft.trim().length > 0 || composerState.attachedImages.length > 0,
+    queuedCount: composerState.queue.length,
+    blocked:
+      composerState.pendingConfirm !== null ||
+      composerState.refineState !== null ||
+      fallbackPending !== null ||
+      userInputRequests.length > 0,
+    connected: connection === 'open',
+    submit: dispatchUserMessage,
+    onPaused: onNextStepAutoPaused,
+  });
 
   // Stable identities matter: these handlers are passed into every memo'd
   // MessageItem, so a fresh closure per render would re-render the whole
@@ -460,6 +505,7 @@ export function useSimpleUiSession() {
     resumeProgress,
     copyAssistantMessage,
     selectNextStep,
+    nextStepAuto,
     messages,
     sessionStart,
     setActivity,

@@ -100,6 +100,10 @@ describe('useSettings — resetPrefs', () => {
     const {
       subagentsAllowed: _subagentsAllowed,
       subagentsPolicyLocked: _subagentsPolicyLocked,
+      // Server-owned auto-proceed tuning: a reset must neither send nor
+      // overwrite what the user configured.
+      autonomyDelayMs: _autonomyDelayMs,
+      autoProceedMaxIterations: _autoProceedMaxIterations,
       ...resettablePrefs
     } = DEFAULT_PREFS;
     expect(resetSends).toContainEqual({

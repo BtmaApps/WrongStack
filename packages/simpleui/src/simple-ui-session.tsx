@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
 import { ArrowDown, Sparkles } from 'lucide-react';
+import { useMemo } from 'react';
 import { AgentChatPane } from './agent-chat-pane.js';
 import { ChatMessageList } from './chat-message-list.js';
 import { Composer } from './composer.js';
@@ -55,6 +55,7 @@ export function SimpleUiSession() {
     resumeProgress,
     copyAssistantMessage,
     selectNextStep,
+    nextStepAuto,
     messages,
     sessionStart,
     setActivity,
@@ -190,6 +191,7 @@ export function SimpleUiSession() {
             onCopyMessage={copyAssistantMessage}
             onSelectNextStep={selectNextStep}
             consumedNextSteps={panelState.consumedNextSteps}
+            nextStepAuto={nextStepAuto}
           />
         </main>
         {agentView.agentTabs

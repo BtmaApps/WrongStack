@@ -859,7 +859,7 @@ export function Workspace() {
                           }
                           automatic={
                             state.prefs.autonomy === 'auto' &&
-                            state.prefs.yolo === true &&
+                            (state.prefs.yolo === true || state.prefs.yoloPlus === true) &&
                             message.autoEligible === true &&
                             !hasDraft &&
                             !controller.queue.length &&

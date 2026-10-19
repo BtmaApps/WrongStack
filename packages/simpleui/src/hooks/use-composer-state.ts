@@ -88,6 +88,11 @@ export function useComposerState({
    *  change). Reset at the start of every countdown round by startSend. */
   const refineStartFiredRef = useRef(false);
   const queueRef = useRef<QueuedItem[]>([]);
+  /** True from the moment THIS client sends a prompt until that run reports
+   *  `run.result`/`error`. `running` also flips on for runs other clients
+   *  started on the same session, so only this flag says the run is ours — the
+   *  gate for the next-step auto-submit. Cleared by the message handler. */
+  const localRunRef = useRef(false);
   const attachedImagesRef = useRef<{ data: string; mime: string; name: string; id: string }[]>([]);
   const pendingConfirmRef = useRef<PendingConfirm | null>(null);
   pendingConfirmRef.current = pendingConfirm;
@@ -151,6 +156,7 @@ export function useComposerState({
           },
         ]),
       );
+      localRunRef.current = true;
       setRunning(true);
       setToolCalls([]);
       setActivity('Thinking');
@@ -406,6 +412,7 @@ export function useComposerState({
     refineEpochRef,
     refineStartFiredRef,
     queueRef,
+    localRunRef,
     pendingConfirmRef,
     fileMention,
     setFileMention,

@@ -39,6 +39,14 @@ export interface SimplePrefs {
   subagentsPolicyLocked: boolean;
   autonomy: AutonomyMode;
   yolo: boolean;
+  /**
+   * Server-owned tuning of the auto-proceed loop (`autonomy.autoProceedDelayMs`
+   * / `autoProceedMaxIterations`). Read-only here: not in the settings panel,
+   * and a reset leaves them as the user configured them.
+   */
+  autonomyDelayMs: number;
+  /** Consecutive automatic next-step submissions before pausing. 0 = unlimited. */
+  autoProceedMaxIterations: number;
   featureToolCoach: boolean;
   enhanceEnabled: boolean;
   /** Pre-refine grace countdown (seconds). 0 = skip. */
@@ -75,6 +83,8 @@ export const DEFAULT_PREFS: SimplePrefs = {
   subagentsPolicyLocked: false,
   autonomy: 'off',
   yolo: false,
+  autonomyDelayMs: 15_000,
+  autoProceedMaxIterations: 0,
   featureToolCoach: true,
   enhanceEnabled: false,
   preRefineSeconds: 3,
@@ -117,6 +127,14 @@ export function parsePrefs(payload: unknown, previous: SimplePrefs = DEFAULT_PRE
         // than misrepresenting the running mode as `off`.
         previous.autonomy,
     yolo: bool(raw['yolo'], previous.yolo),
+    autonomyDelayMs:
+      typeof raw['autonomyDelayMs'] === 'number' && raw['autonomyDelayMs'] >= 0
+        ? raw['autonomyDelayMs']
+        : previous.autonomyDelayMs,
+    autoProceedMaxIterations:
+      typeof raw['autoProceedMaxIterations'] === 'number' && raw['autoProceedMaxIterations'] >= 0
+        ? raw['autoProceedMaxIterations']
+        : previous.autoProceedMaxIterations,
     featureToolCoach: bool(raw['featureToolCoach'], previous.featureToolCoach),
     enhanceEnabled: bool(raw['enhanceEnabled'], previous.enhanceEnabled),
     preRefineSeconds:

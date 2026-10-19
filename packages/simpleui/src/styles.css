@@ -8641,3 +8641,39 @@ input:focus-visible,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.next-step-countdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.next-step-countdown span {
+  flex: 1;
+  min-width: 0;
+}
+
+.next-step-countdown button {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  padding: 2px 8px;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.next-step-countdown button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.next-step-queued {
+  background: color-mix(in srgb, var(--surface-2) 76%, var(--accent) 24%);
+  color: var(--text);
+}

@@ -401,6 +401,25 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
                 ]);
           });
         }
+        // A run this client started and that finished `done` may continue on
+        // its own (autonomy auto): flag its final reply so the next-step
+        // countdown can arm. Queued after the updaters above so the flag lands
+        // on the message that carries the suggestions.
+        const ownedRun = deps.localRunRef?.current === true;
+        if (deps.localRunRef) deps.localRunRef.current = false;
+        if (ownedRun && payload['status'] === 'done') {
+          setMessages((current) => {
+            for (let index = current.length - 1; index >= 0; index -= 1) {
+              const item = current[index];
+              if (item?.role !== 'assistant') continue;
+              if (item.final !== true || item.autoEligible === true) return current;
+              return current.map((entry, i) =>
+                i === index ? { ...entry, autoEligible: true } : entry,
+              );
+            }
+            return current;
+          });
+        }
         nextStepsByToolId.clear();
         completedToolNextSteps = [];
         // The run is over: any tool still marked running lost its executed
@@ -421,6 +440,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'error': {
+        if (deps.localRunRef) deps.localRunRef.current = false;
         if (payload['phase'] !== 'rate_limit') {
           nextStepsByToolId.clear();
           completedToolNextSteps = [];

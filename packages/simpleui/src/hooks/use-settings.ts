@@ -81,6 +81,8 @@ export function useSettings(options: UseSettingsOptions): UseSettingsResult {
       ...DEFAULT_PREFS,
       subagentsAllowed: prefsRef.current.subagentsAllowed,
       subagentsPolicyLocked: prefsRef.current.subagentsPolicyLocked,
+      autonomyDelayMs: prefsRef.current.autonomyDelayMs,
+      autoProceedMaxIterations: prefsRef.current.autoProceedMaxIterations,
     };
     setPrefs(resettable);
     // Two wire ops: prefs.update persists the snapshot so other tabs catch up,
@@ -88,7 +90,13 @@ export function useSettings(options: UseSettingsOptions): UseSettingsResult {
     // loop reads autonomy from `autonomy.switch` traffic, never from
     // prefs.update, so sending only the latter would leave a stale YOLO/auto
     // agent running even though the panel shows `off`.
-    const { subagentsAllowed: _allowed, subagentsPolicyLocked: _locked, ...durable } = resettable;
+    const {
+      subagentsAllowed: _allowed,
+      subagentsPolicyLocked: _locked,
+      autonomyDelayMs: _delay,
+      autoProceedMaxIterations: _cap,
+      ...durable
+    } = resettable;
     socketRef.current?.send('prefs.update', durable);
     socketRef.current?.send('autonomy.switch', { mode: DEFAULT_PREFS.autonomy });
   }, [socketRef]);

@@ -31,7 +31,9 @@ export const AssistantContent = memo(function AssistantContent({
   }, [automatic]);
   const latest = useRef({ onSubmit, automatic, showSteps });
   latest.current = { onSubmit, automatic, showSteps };
-  const autoText = projection.steps[0]?.auto ? projection.steps[0].text : '';
+  // The model's auto="true" pick when it made one, else the first step: the
+  // marker is optional model output and must not decide whether auto mode runs.
+  const autoText = (projection.steps.find((step) => step.auto) ?? projection.steps[0])?.text ?? '';
   useEffect(() => {
     if (!automatic || !showSteps || !autoText || cancelled || fired.current) {
       setRemaining(null);

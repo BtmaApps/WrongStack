@@ -84,7 +84,7 @@ export const MessageBubble = memo(function MessageBubble({
   const outputCost = useSessionStore((s) => s.outputCost);
   const cacheReadCost = useSessionStore((s) => s.cacheReadCost);
   const localPrefs = useLocalPrefs();
-  const { autonomy, yolo, showThinkingLogs } = localPrefs;
+  const { autonomy, yolo, yoloPlus, showThinkingLogs } = localPrefs;
 
   // ── Hooks (must precede early return — Rules of Hooks) ──
   // useIsFullChrome reads prefs. It has to run even when a thinking-only
@@ -453,7 +453,7 @@ export const MessageBubble = memo(function MessageBubble({
         {isLatestAssistant && !isLoading && !readOnly && nextSteps.length > 0 && (
           <NextStepsBar
             steps={nextSteps}
-            yoloMode={yolo}
+            yoloMode={yolo || yoloPlus}
             autoMode={autonomy === 'auto'}
             autoDelayMs={localPrefs.autonomyDelayMs}
             onAutoSubmit={handleAutoSubmit}
