@@ -177,6 +177,13 @@ export class NpmAdapter implements EcosystemAdapter {
     const lockInfo = await detectLockfile(root, options.projectRoot);
     const resolvedVersions = new Map<string, string>();
     const allLockVersions = new Map<string, readonly string[]>();
+    /**
+     * Lockfile install-path name → the package it really installs (npm
+     * aliases). The transitive pass has to report the REAL name: npm installs
+     * an alias under the alias name, so the lockfile key is not a package
+     * that exists on the registry.
+     */
+    const lockfileAliases = new Map<string, string>();
     /** Manifest keys the lockfile installs as workspace links. */
     const linkedDeps = new Set<string>();
     let lockEv: Evidence | undefined;
@@ -195,7 +202,7 @@ export class NpmAdapter implements EcosystemAdapter {
     } else if (lockInfo.kind === 'npm') {
       try {
         const lockContent = await readFile(lockInfo.path, 'utf-8');
-        const { versions, installed, links } = parseNpmLockVersions(lockContent);
+        const { versions, installed, links, aliases } = parseNpmLockVersions(lockContent);
         const importer = relative(dirname(lockInfo.path), root)
           .split(/[/\\]/)
           .filter(Boolean)
@@ -227,6 +234,7 @@ export class NpmAdapter implements EcosystemAdapter {
           if (direct) resolvedVersions.set(k, direct);
           allLockVersions.set(k, v);
         }
+        for (const [alias, real] of aliases) lockfileAliases.set(alias, real);
         lockEv = lockfileEvidence(lockInfo.path);
       } catch {
         // ignore
@@ -352,17 +360,24 @@ export class NpmAdapter implements EcosystemAdapter {
         observations.flatMap((dep) => (dep.locked ? [`${dep.name}@${dep.locked}`] : [])),
       );
       for (const [name, versions] of allLockVersions) {
+        // An npm alias installs the REAL package under the alias name, so the
+        // lockfile key is not a package that exists. Report the real name -
+        // the direct row already carries it under that name, and the instance
+        // check below then skips the duplicate.
+        const realName = lockfileAliases.get(name) ?? name;
         const multiple = versions.length > 1;
         for (const locked of versions) {
-          const instance = `${name}@${locked}`;
+          const instance = `${realName}@${locked}`;
           if (emittedInstances.has(instance)) continue;
           emittedInstances.add(instance);
           observations.push({
-            id: multiple ? `dep-${workspace.id}-${name}@${locked}` : `dep-${workspace.id}-${name}`,
+            id: multiple
+              ? `dep-${workspace.id}-${realName}@${locked}`
+              : `dep-${workspace.id}-${realName}`,
             workspaceId: workspace.id,
-            purl: constructPurl('npm', name, locked),
+            purl: constructPurl('npm', realName, locked),
             ecosystem: 'npm',
-            name,
+            name: realName,
             sourceType: 'registry',
             direct: false,
             scope: 'transitive',

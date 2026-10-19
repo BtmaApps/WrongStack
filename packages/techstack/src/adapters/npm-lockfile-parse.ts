@@ -122,10 +122,21 @@ export function parseNpmLockVersions(lockContent: string): {
   installed: Map<string, string>;
   /** Install paths that are symlinks to a local package (`link: true`): workspaces. */
   links: Set<string>;
+  /**
+   * Install path segment → the package it really installs.
+   *
+   * An npm alias (`"typescript5": "npm:typescript@5.9.3"`) installs the REAL
+   * package under the ALIAS name: the lockfile entry is
+   * `node_modules/typescript5` and carries `"name": "typescript"`. Without
+   * this map the alias name is taken for the package name, and the inventory
+   * reports `pkg:npm/typescript5@5.9.3` - a package that does not exist.
+   */
+  aliases: Map<string, string>;
 } {
   const versions = new Map<string, string[]>();
   const installed = new Map<string, string>();
   const links = new Set<string>();
+  const aliases = new Map<string, string>();
   /** Record one instance, ignoring duplicates of the same name+version. */
   const record = (name: string, version: string): void => {
     const existing = versions.get(name);
@@ -147,6 +158,9 @@ export function parseNpmLockVersions(lockContent: string): {
         // to empty and is not a version either).
         const cleanVersion = depInfo.version.replace(/^[^0-9]+/, '');
         if (cleanVersion) record(name, cleanVersion);
+        // npm v1 spelled an alias in the version (`npm:typescript@5.9.3`).
+        const alias = /^npm:(?:@[^/@]+\/)?([^@]+)@/.exec(depInfo.version);
+        if (alias?.[1] && alias[1] !== name) aliases.set(name, alias[1]);
       }
     }
     // npm v2 (lockfileVersion 2+): lock.packages. Its keys are INSTALL PATHS,
@@ -158,7 +172,7 @@ export function parseNpmLockVersions(lockContent: string): {
     // dependency and an install path never becomes a package name.
     const packages = lock.packages ?? {};
     for (const key of Object.keys(packages)) {
-      const pkgInfo = packages[key] as { version?: string; link?: boolean };
+      const pkgInfo = packages[key] as { version?: string; link?: boolean; name?: string };
       const marker = key.lastIndexOf('node_modules/');
       if (pkgInfo.link === true && marker >= 0) links.add(key);
       // A `link: true` install (a `file:` dep or a workspace) points at a LOCAL
@@ -168,13 +182,18 @@ export function parseNpmLockVersions(lockContent: string): {
       if (isLocalSpec(pkgInfo.version)) continue;
       const name = key.slice(marker + 'node_modules/'.length);
       if (!name) continue;
+      // The entry's `name` is the package it really installs. For an alias it
+      // differs from the install path segment.
+      const declared =
+        typeof pkgInfo.name === 'string' && pkgInfo.name.length > 0 ? pkgInfo.name : undefined;
+      if (declared && declared !== name) aliases.set(name, declared);
       record(name, pkgInfo.version);
       installed.set(key, pkgInfo.version);
     }
   } catch {
     // Malformed lockfile — return empty map
   }
-  return { versions, installed, links };
+  return { versions, installed, links, aliases };
 }
 
 /** Name and range of a yarn lock key spec (`minimist@^1.2.0`, `@a/b@npm:^2`). */
