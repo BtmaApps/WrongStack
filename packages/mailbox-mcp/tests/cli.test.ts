@@ -72,4 +72,22 @@ describe('Mailbox MCP CLI arguments', () => {
     expect(parseArgs(['--port', '12.5'], {}).httpPort).toBe(0);
     expect(warn).toHaveBeenCalled();
   });
+
+  it('rejects empty capabilities array in credentialOptions (F136)', async () => {
+    const { credentialOptions } = await import('../src/tool-arg-parsing.js');
+    expect(() =>
+      credentialOptions(
+        {
+          credentialOptions: {
+            principalId: 'agent-1',
+            projectId: 'proj-1',
+            kind: 'agent',
+            ttlMs: 60000,
+            capabilities: [],
+          },
+        },
+        true,
+      ),
+    ).toThrow('credentialOptions.capabilities contains an unsupported capability');
+  });
 });

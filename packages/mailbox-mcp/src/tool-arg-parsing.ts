@@ -187,6 +187,7 @@ export function credentialOptions(
   if (capabilities !== undefined) {
     if (
       !Array.isArray(capabilities) ||
+      capabilities.length === 0 ||
       capabilities.some(
         (capability) =>
           typeof capability !== 'string' ||
