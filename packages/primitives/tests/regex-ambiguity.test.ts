@@ -589,4 +589,9 @@ describe('detectQuantifiedAmbiguity — raw astral literals model as one atom', 
     expect(detectQuantifiedAmbiguity('\u{1F600}a|\u{1F601}a').verdict).toBe('unambiguous');
     expect(detectQuantifiedAmbiguity('\u{1F600}a|\u{1F600}b').verdict).toBe('unambiguous');
   });
+
+  it('does not treat escaped backslash \\\\u{ as Annex B \\u{ escape and honors v flag (F145)', () => {
+    expect(detectQuantifiedAmbiguity('\\\\u{1,2}|\\\\u{1,2}', '').verdict).toBe('ambiguous');
+    expect(detectQuantifiedAmbiguity('\u{1F600}a|\\u{1F600}a', 'v').verdict).toBe('ambiguous');
+  });
 });

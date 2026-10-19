@@ -389,7 +389,7 @@ export function detectQuantifiedAmbiguity(content: string, flags = ''): Ambiguit
   // parser below models. Model ≠ engine here would let the stages prove
   // overlaps on text the real branches cannot share ('ambiguous' with an
   // unmatched witness). Declare such content unparsable: allow.
-  if (!/u/.test(flags) && content.includes('\\u{')) {
+  if (!/[uv]/.test(flags) && /(?:^|[^\\])(?:\\\\)*\\u\{/.test(content)) {
     return { verdict: 'unparsable' };
   }
   const budget = new Budget();
